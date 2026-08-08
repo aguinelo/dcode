@@ -24,7 +24,3 @@ coverage.*
 
 # Sistema operacional
 .DS_Store
-
-# Go build output
-/bin/
-coverage.out
