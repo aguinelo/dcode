@@ -235,6 +235,4 @@ and this README are in English.
 
 ## License
 
-**Not yet chosen.** Until a `LICENSE` file lands, default copyright applies and this
-is not yet open source in any usable sense, despite the intent. This is a known gap,
-not a position.
+[MIT](LICENSE) — the same license as opencode and jcode.
