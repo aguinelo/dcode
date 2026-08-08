@@ -12,7 +12,7 @@ Checks reutilizáveis de alta taxa de acerto. Não é exaustivo; aplique o que c
 - **Goroutine sem dono:** toda `go func()` precisa de caminho de término claro. Disparada sem `context`, `WaitGroup` ou canal de parada → vazamento. Pergunte: quem cancela isso?
 - **`context` como primeiro parâmetro:** função que faz I/O sem receber `ctx` não é cancelável. No caminho de turno do agente isso vira sessão que não morre no Ctrl-C → **blocker**.
 - **`ctx` ignorado:** receber `ctx` e nunca checar `ctx.Done()` nem passar adiante é pior que não receber — dá falsa garantia.
-- **Captura de variável de loop:** o clássico `for _, v := range` + `go func(){ use(v) }` em Go < 1.22. Confirme a versão em `go.mod` antes de apontar.
+- **Captura de variável de loop:** corrigido no Go 1.22, e a diretiva `go` é 1.25 — então nunca se aplica aqui. Fica registrado porque quem vem de base antiga ainda aponta, e apontar não-problema custa tempo de revisão.
 - **Canal sem buffer em caminho de escrita:** produtor bloqueia se o consumidor sumiu. Em fluxo de eventos, sempre `select` com `ctx.Done()` no envio, nunca `ch <- x` cru.
 - **`sync.Mutex` copiado:** struct com mutex passada por valor. `go vet` pega — confirme que roda na CI.
 - **Data race:** mudança que introduz estado compartilhado sem lock exige `go test -race` na CI. Se o PR mexe em concorrência e a CI não roda `-race`, é achado de processo.

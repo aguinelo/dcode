@@ -16,8 +16,9 @@ Reusable, high-hit-rate checks. Not exhaustive; apply what fits the diff.
   **blocker**.
 - **Ignored `ctx`:** receiving `ctx` and never checking `ctx.Done()` nor passing it down
   is worse than not receiving it — it gives a false guarantee.
-- **Loop variable capture:** the classic `for _, v := range` + `go func(){ use(v) }` on
-  Go < 1.22. Confirm the version in `go.mod` before flagging.
+- **Loop variable capture:** fixed in Go 1.22 and the `go` directive is 1.25, so this
+  never applies here. Kept as a note because contributors arriving from older codebases
+  still flag it — and flagging a non-issue costs review time.
 - **Unbuffered channel on a write path:** the producer blocks if the consumer is gone. In
   event streaming, always `select` with `ctx.Done()` on send, never a bare `ch <- x`.
 - **Copied `sync.Mutex`:** a struct with a mutex passed by value. `go vet` catches it —
