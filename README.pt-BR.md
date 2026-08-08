@@ -157,7 +157,7 @@ que é).
 | Spec do conjunto de ferramentas | escrita, `experimental` |
 | Spec de distribuição | escrita, contrato de artefato `stable` |
 | Spec de definição de comportamento | escrita, contrato de instrução `stable` |
-| Spec de configuração | não iniciada |
+| Spec de configuração | escrita, layout e precedência `stable` |
 | Implementação | **não iniciada** |
 
 O primeiro marco de implementação é o vocabulário de tipos do protocolo — sem servidor,

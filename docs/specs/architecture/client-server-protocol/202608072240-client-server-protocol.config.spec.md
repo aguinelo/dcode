@@ -7,8 +7,8 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_SOCKET` | caminho | `$XDG_RUNTIME_DIR/harness.sock`, ou `$TMPDIR/harness-$UID.sock` se ausente | Caminho do socket de domínio Unix. Criado com `0700`. Removido no encerramento limpo; socket órfão é detectado por tentativa de conexão e removido. |
-| `DCODE_STATE_DIR` | caminho | `$XDG_STATE_HOME/harness`, ou `~/.local/state/harness` | Raiz de logs de sessão e dados persistentes. |
+| `DCODE_SOCKET` | caminho | `$XDG_RUNTIME_DIR/dcode.sock`, ou `$TMPDIR/dcode-$UID.sock` se ausente | Caminho do socket de domínio Unix. Criado com `0700`. Removido no encerramento limpo; socket órfão é detectado por tentativa de conexão e removido. |
+| `DCODE_STATE_DIR` | caminho | `$XDG_STATE_HOME/dcode`, ou `~/.local/state/dcode` | Raiz de logs de sessão e dados persistentes. |
 | `DCODE_MAX_SESSIONS` | inteiro | `64` | Teto de sessões vivas. Ao exceder, `POST /sessions` responde `503 max_sessions_reached`. Existe para tornar a densidade de sessão da ADR-01 mensurável, não para limitar o usuário. |
 
 ## 2. Retenção de eventos

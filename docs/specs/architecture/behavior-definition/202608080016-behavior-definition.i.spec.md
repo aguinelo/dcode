@@ -11,9 +11,11 @@
 | `202608072334-provider-adapter` | Passo 1 — a interface `Family` fornece a formulação |
 | `202608072337-tool-suite` | Passo 1 — `ToolDef` entra no prefixo |
 
-## Bloqueio conhecido
+## Dependência resolvida
 
-Os Passos 3 e 6 dependem da **spec de configuração**, ainda não escrita: caminhos, nomes de arquivo e hierarquia de descoberta. Até ela existir, implemente contra um localizador injetado por interface, nunca contra caminho literal — assim a decisão futura não vira refactor.
+Os Passos 3 e 6 dependem de `202608081203-configuration` (Passo 3 daquela spec), que define caminhos, nomes de arquivo e hierarquia de descoberta.
+
+O localizador continua sendo **injetado por interface**, não caminho literal — agora por desenho, não por bloqueio: é o que mantém este pacote puro e testável sem tocar o sistema de arquivos.
 
 ## Ordem de execução
 
@@ -47,7 +49,7 @@ Os Passos 3 e 6 dependem da **spec de configuração**, ainda não escrita: cami
 
 `internal/behavior/instructions.go`
 
-- [ ] Localizador **injetado por interface** — ver bloqueio acima.
+- [ ] Localizador **injetado por interface**, implementado por `internal/config`.
 - [ ] Resolução de precedência conforme a seção 4 do `.p`.
 - [ ] Empilhamento, não substituição: menor autoridade primeiro.
 - [ ] Truncamento em `InstructionsMaxBytes` **com aviso**.
@@ -133,10 +135,10 @@ Os Passos 3 e 6 dependem da **spec de configuração**, ainda não escrita: cami
 ```
 Passo 1 (tipos e doutrina)
   └─ Passo 2 (Build, puro)
-       ├─ Passo 3 (instruções)      ⧗ depende da spec de configuração
+       ├─ Passo 3 (instruções)      → internal/config, Passo 3
        │    └─ Passo 4 (fixação do prefixo)
        ├─ Passo 5 (lembretes)
-       └─ Passo 6 (skills)          ⧗ depende da spec de configuração
+       └─ Passo 6 (skills)          → internal/config, Passo 3
             └─ Passo 7 (dump)
                  ├─ Passo 8 (contratos comportamentais)
                  └─ Passo 9 (invariantes)
@@ -150,7 +152,7 @@ Passo 1 (tipos e doutrina)
 - **Formulação de família virando regra de família** — começa como ajuste de fraseado e termina com duas famílias se comportando diferente. O teste do Passo 2 existe para pegar isso.
 - **Corpo de skill no índice** — cresce sem ninguém notar até o prefixo dobrar de tamanho.
 - **Instrução do usuário afrouxando segurança sem registro** — o descarte silencioso esconde tentativa que deveria ser visível.
-- **Caminho literal de arquivo de instrução** — antes da spec de configuração existir, vira refactor garantido. Use o localizador injetado.
+- **Caminho literal de arquivo de instrução** — acopla este pacote ao sistema de arquivos e destrói a pureza de `Build`. Use o localizador injetado.
 
 ## Changelog
 

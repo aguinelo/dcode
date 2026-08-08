@@ -1,0 +1,194 @@
+# Planning: Configuração e Descoberta de Arquivos
+
+> Contrato técnico. Use **EXATAMENTE** os nomes, campos e tipos definidos aqui.
+> Regra de negócio em `202608081203-configuration.r.spec.md`.
+
+## 1. Nível de estabilidade
+
+**`stable` desde a primeira versão publicada** para: layout de diretório, nomes de arquivo (`config.toml`, `AGENTS.md`, `DCODE.md`) e a cadeia de precedência.
+
+Usuário escreve esses arquivos à mão e os versiona. Mudar qualquer um quebra configuração existente e exige `changelog/` + major.
+
+O código de resolução (`internal/config`) é `experimental`.
+
+## 2. Layout de diretório
+
+Segue XDG Base Directory. Cada raiz tem ciclo de vida próprio (RN-1).
+
+| Raiz | Linux e BSD | macOS | Conteúdo |
+|---|---|---|---|
+| **config** | `$XDG_CONFIG_HOME/dcode`, ou `~/.config/dcode` | `~/Library/Application Support/dcode` | `config.toml`, `AGENTS.md`, `DCODE.md`, `skills/`, `commands/` |
+| **dados** | `$XDG_DATA_HOME/dcode`, ou `~/.local/share/dcode` | `~/Library/Application Support/dcode` | artefatos de longa vida |
+| **estado** | `$XDG_STATE_HOME/dcode`, ou `~/.local/state/dcode` | `~/Library/Application Support/dcode` | log de sessão, `profiles/`, socket |
+| **cache** | `$XDG_CACHE_HOME/dcode`, ou `~/.cache/dcode` | `~/Library/Caches/dcode` | consulta de versão, temporários |
+
+**Escape hatch (RN-1):** `DCODE_HOME` definido colapsa as quatro sob uma raiz:
+
+```
+$DCODE_HOME/
+  config.toml   AGENTS.md   DCODE.md
+  skills/   commands/   state/   cache/
+```
+
+> Sem `DCODE_HOME`, um usuário de macOS tem config, dados e estado no mesmo diretório do sistema — o próprio macOS não os separa. A distinção continua valendo no código, e é o que permite ao Linux separar de fato.
+
+**Criação:** cada raiz é criada sob demanda, com `0700`. O dcode nunca exige que o usuário crie estrutura.
+
+## 3. `config.toml`
+
+```toml
+# Todas as chaves são opcionais. Ausente = default do produto.
+# NENHUMA credencial aqui (RN-3).
+
+[model]
+name      = "MiniMax-M3"   # DCODE_MODEL
+transport = ""             # DCODE_TRANSPORT; vazio = preferido da família
+family    = ""             # DCODE_FAMILY;    vazio = resolvido pelo nome
+
+[sandbox]
+mode            = "workspace-write"  # DCODE_SANDBOX_MODE
+approval_policy = "on-request"       # DCODE_APPROVAL_POLICY
+allow_network   = false              # DCODE_ALLOW_NETWORK
+
+[limits]
+max_iterations = 0    # 0 = default da família
+max_turn_tokens = 0
+
+[behavior]
+instructions_enabled = true
+skills_enabled       = true
+reminders_enabled    = true
+
+[update]
+check   = true
+channel = "stable"
+```
+
+**Regra de nomeação, sem exceção:** toda chave TOML corresponde a exatamente uma variável de ambiente, por `DCODE_<SEÇÃO>_<CHAVE>` em maiúsculas — salvo quando a variável já foi declarada com outro nome na spec dona daquela chave, e nesse caso o mapeamento é explícito na tabela daquela spec.
+
+Chave desconhecida é **erro**, não aviso: erro de digitação em config silenciosamente ignorado é a classe de bug mais frustrante que existe.
+
+### 3.1 Recusa de credencial
+
+Chave cujo nome case com `(?i)(api[_-]?key|token|secret|password|credential)` faz a inicialização **falhar**, com erro indicando de onde a credencial deve vir (RN-3). Vale para qualquer seção, inclusive desconhecida.
+
+## 4. Arquivos de instrução
+
+| Arquivo | Escopo | Precedência no mesmo diretório |
+|---|---|---|
+| `AGENTS.md` | compartilhado entre ferramentas de agente (RN-4) | menor |
+| `DCODE.md` | específico do dcode | **maior** |
+
+Ambos são lidos e **empilhados**; `DCODE.md` aparece depois, na posição de maior peso.
+
+### 4.1 Algoritmo de descoberta
+
+Executado **uma vez, na criação da sessão** (RN-5):
+
+1. Raiz de config do usuário: `AGENTS.md`, depois `DCODE.md` → `SourceUser`.
+2. Da raiz do workspace até o diretório da sessão, **de cima para baixo**, no máximo `InstructionsMaxDepth` níveis: em cada um, `AGENTS.md` e depois `DCODE.md`.
+   - Nível igual à raiz do workspace → `SourceProject`.
+   - Níveis abaixo → `SourceDirectory`.
+3. Arquivo de requisitos do administrador, se houver → `SourceLocked`.
+
+A lista resultante alimenta a resolução de precedência da seção 4 de `202608080016-behavior-definition.p.spec.md`.
+
+**Fronteira:** a descoberta **nunca** sobe acima da raiz do workspace. Instrução fora do workspace só entra pela raiz de config do usuário — caminho explícito, não descoberta acidental.
+
+### 4.2 Instrução fora da cadeia (RN-6)
+
+```go
+// Package: internal/config
+
+// OutOfChain reporta arquivo de instrução em diretório tocado pela sessão
+// que não estava na cadeia congelada.
+func OutOfChain(touched string, chain []string) (path string, found bool)
+```
+
+Encontrado → emite `ReminderInstructionOutOfChain`, com o caminho e o conteúdo. Anexado, jamais no prefixo.
+
+> É o único mecanismo que satisfaz as duas restrições ao mesmo tempo: não ignora a instrução do usuário, e não quebra a imutabilidade do prefixo.
+
+## 5. Resolução de precedência
+
+```go
+type Source string
+
+const (
+    SourceLocked  Source = "locked"  // administrador
+    SourceFlag    Source = "flag"
+    SourceEnv     Source = "env"
+    SourceProject Source = "project" // <workspace>/.dcode/config.toml
+    SourceUser    Source = "user"    // <config>/config.toml
+    SourceDefault Source = "default"
+)
+
+type Value struct {
+    Key    string
+    Value  any
+    Source Source
+    Origin string // caminho de arquivo, nome de variável, ou "built-in"
+    Locked bool
+}
+
+// Resolve aplica a cadeia da RN-7. PURA sobre camadas já carregadas.
+func Resolve(layers []Layer) map[string]Value
+```
+
+`Origin` é o que torna RN-8 possível: `dcode config get <chave>` responde valor **e** procedência.
+
+**Travamento (RN-9):** chave presente na camada travada e também em camada inferior devolve o valor travado, `Locked: true`, e emite aviso nomeando o arquivo de travamento. Nunca silencioso.
+
+## 6. Comandos
+
+Arquivos markdown com frontmatter, em `<config>/commands/` e `<workspace>/.dcode/commands/`.
+
+```markdown
+---
+name: revisar
+description: revisa o diff atual contra as convenções do projeto
+---
+Revise o diff atual contra docs/conventions/, apontando apenas
+divergências concretas com arquivo e linha.
+```
+
+```go
+type Command struct {
+    Name        string
+    Description string
+    Body        string
+}
+
+// Expand devolve o texto da instrução. DETERMINÍSTICA e sem efeito
+// colateral: comando NÃO executa nada (RN-10).
+func Expand(c Command, args string) (string, error)
+```
+
+Invocado como `/<name>`, o corpo expandido entra no histórico **como mensagem do usuário** — é o que o usuário teria digitado, e é assim que ele deve ser tratado.
+
+Comando de projeto vence comando de usuário de mesmo nome. Colisão é registrada.
+
+> Comandos **embutidos** são superfície do cliente, não de configuração: quais existem é decisão de produto e pertence à spec do cliente. Aqui fica só o mecanismo de descoberta e expansão.
+
+## 7. Invariantes verificáveis
+
+- Cada raiz resolve para o caminho da tabela da seção 2, por plataforma.
+- `DCODE_HOME` definido colapsa as quatro raízes; nenhum caminho escapa dele.
+- Raiz inexistente é criada com `0700` no primeiro uso.
+- Chave desconhecida em `config.toml` é erro, não aviso.
+- Chave com nome de credencial faz a inicialização falhar, em qualquer seção (RN-3).
+- Toda chave TOML mapeia para exatamente uma variável de ambiente, e o mapeamento é bijetivo.
+- A cadeia de precedência da RN-7 é respeitada — uma asserção por par de camadas adjacentes.
+- Chave travada devolve o valor travado **e** emite aviso quando há tentativa de sobrescrita (RN-9).
+- `Resolve` é pura sobre camadas já carregadas.
+- Todo `Value` tem `Origin` não vazio (RN-8).
+- Descoberta nunca lê acima da raiz do workspace.
+- No mesmo diretório, `DCODE.md` aparece depois de `AGENTS.md` na lista resultante.
+- Descoberta é congelada na criação da sessão; arquivo criado depois não altera a cadeia (RN-5).
+- `OutOfChain` detecta instrução em diretório tocado e fora da cadeia, e o resultado vira lembrete anexado, nunca prefixo (RN-6).
+- `Expand` é determinística e não realiza I/O nem executa processo (RN-10).
+- Comando de projeto vence comando de usuário de mesmo nome, com registro da colisão.
+
+## 8. Changelog
+
+_Sem alterações desde a criação._
