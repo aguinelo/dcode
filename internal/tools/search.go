@@ -1,0 +1,266 @@
+package tools
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/aguinelo/dcode/internal/policy"
+)
+
+// ---------- glob ----------
+
+// Glob finds files by pattern.
+type Glob struct{}
+
+// GlobInput is the argument shape.
+type GlobInput struct {
+	Pattern string `json:"pattern"`
+	Path    string `json:"path,omitempty"`
+}
+
+func (Glob) Name() string { return "glob" }
+
+func (Glob) Description() string {
+	return "Find files by glob pattern, for example **/*.go or internal/**/test*.go. " +
+		"Results are sorted and ignore anything .gitignore excludes."
+}
+
+func (Glob) Schema() json.RawMessage {
+	return json.RawMessage(`{"type":"object","properties":{` +
+		`"pattern":{"type":"string","description":"Glob pattern; ** matches across directories."},` +
+		`"path":{"type":"string","description":"Root to search from; defaults to the workspace."}},` +
+		`"required":["pattern"]}`)
+}
+
+func (g Glob) Declare(input json.RawMessage) (policy.Request, error) {
+	var in GlobInput
+	if err := decode(g.Name(), input, &in); err != nil {
+		return policy.Request{}, err
+	}
+	return policy.Request{Tool: g.Name(), Paths: []policy.Access{{Path: g.root(in)}}}, nil
+}
+
+func (Glob) root(in GlobInput) string {
+	if in.Path != "" {
+		return in.Path
+	}
+	return "."
+}
+
+func (g Glob) Execute(_ context.Context, input json.RawMessage, s *State) (Result, error) {
+	var in GlobInput
+	if err := decode(g.Name(), input, &in); err != nil {
+		return err.(*ToolError).Result(), nil
+	}
+	re, terr := globToRegexp(g.Name(), in.Pattern)
+	if terr != nil {
+		return terr.Result(), nil
+	}
+	root, terr := resolvePath(g.Name(), s, g.root(in), false)
+	if terr != nil {
+		return terr.Result(), nil
+	}
+
+	matches, err := walkFiles(root, s.Limits.RespectGitignore, func(rel string) bool {
+		return re.MatchString(rel)
+	})
+	if err != nil {
+		return errf(g.Name(), CodeNotFound, "", "could not search %s: %v", in.Path, err).Result(), nil
+	}
+
+	// Alphabetical, never filesystem order: the latter varies by machine and
+	// would pass locally while breaking in CI.
+	sort.Strings(matches)
+
+	res := Result{}
+	if n := s.Limits.GlobMaxResults; n > 0 && len(matches) > n {
+		res.Truncated = true
+		res.Remaining = len(matches) - n
+		matches = matches[:n]
+	}
+	if len(matches) == 0 {
+		return Result{Output: fmt.Sprintf("no files match %q", in.Pattern)}, nil
+	}
+
+	res.Output = strings.Join(matches, "\n")
+	if res.Truncated {
+		res.Output += fmt.Sprintf("\n\n… %d more. Narrow the pattern.", res.Remaining)
+	}
+	return res, nil
+}
+
+// ---------- grep ----------
+
+// Grep searches file contents.
+type Grep struct{}
+
+// GrepInput is the argument shape.
+type GrepInput struct {
+	Pattern      string `json:"pattern"`
+	Path         string `json:"path,omitempty"`
+	Glob         string `json:"glob,omitempty"`
+	ContextLines int    `json:"context_lines,omitempty"`
+}
+
+func (Grep) Name() string { return "grep" }
+
+func (Grep) Description() string {
+	return "Search file contents with a regular expression. " +
+		"Output is path:line:text, sorted. Narrow with glob to search fewer files."
+}
+
+func (Grep) Schema() json.RawMessage {
+	return json.RawMessage(`{"type":"object","properties":{` +
+		`"pattern":{"type":"string","description":"Go regular expression."},` +
+		`"path":{"type":"string","description":"Root to search from."},` +
+		`"glob":{"type":"string","description":"Only search files matching this glob."},` +
+		`"context_lines":{"type":"integer","description":"Lines of context around each match."}},` +
+		`"required":["pattern"]}`)
+}
+
+func (g Grep) Declare(input json.RawMessage) (policy.Request, error) {
+	var in GrepInput
+	if err := decode(g.Name(), input, &in); err != nil {
+		return policy.Request{}, err
+	}
+	p := in.Path
+	if p == "" {
+		p = "."
+	}
+	return policy.Request{Tool: g.Name(), Paths: []policy.Access{{Path: p}}}, nil
+}
+
+func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Result, error) {
+	var in GrepInput
+	if err := decode(g.Name(), input, &in); err != nil {
+		return err.(*ToolError).Result(), nil
+	}
+	re, err := regexp.Compile(in.Pattern)
+	if err != nil {
+		// A bad pattern is the model's to fix, so the message says what broke
+		// rather than panicking or returning nothing.
+		return errf(g.Name(), CodeInvalidPattern,
+			"Escape any regex metacharacters you meant literally.",
+			"invalid regular expression: %v", err).Result(), nil
+	}
+
+	var fileRe *regexp.Regexp
+	if in.Glob != "" {
+		fileRe, _ = globToRegexpOrNil(in.Glob)
+	}
+
+	rootIn := in.Path
+	if rootIn == "" {
+		rootIn = "."
+	}
+	root, terr := resolvePath(g.Name(), s, rootIn, false)
+	if terr != nil {
+		return terr.Result(), nil
+	}
+
+	files, err := walkFiles(root, s.Limits.RespectGitignore, func(rel string) bool {
+		return fileRe == nil || fileRe.MatchString(rel)
+	})
+	if err != nil {
+		return errf(g.Name(), CodeNotFound, "", "could not search: %v", err).Result(), nil
+	}
+	sort.Strings(files)
+
+	type hit struct {
+		file string
+		line int
+		text string
+	}
+	var hits []hit
+	limit := s.Limits.GrepMaxMatches
+	truncated := false
+
+	for _, rel := range files {
+		raw, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil || !utf8.Valid(raw) {
+			continue
+		}
+		for i, line := range strings.Split(string(raw), "\n") {
+			if !re.MatchString(line) {
+				continue
+			}
+			if limit > 0 && len(hits) >= limit {
+				truncated = true
+				break
+			}
+			hits = append(hits, hit{rel, i + 1, line})
+		}
+		if truncated {
+			break
+		}
+	}
+
+	if len(hits) == 0 {
+		return Result{Output: fmt.Sprintf("no matches for %q", in.Pattern)}, nil
+	}
+
+	var b strings.Builder
+	for _, h := range hits {
+		text := h.text
+		if len(text) > 400 {
+			text = text[:400] + " …"
+		}
+		fmt.Fprintf(&b, "%s:%d:%s\n", h.file, h.line, text)
+	}
+	res := Result{Output: b.String()}
+	if truncated {
+		res.Truncated = true
+		res.Output += fmt.Sprintf("\n… stopped at %d matches. Narrow the pattern or the glob.\n", limit)
+	}
+	return res, nil
+}
+
+// ---------- walking ----------
+
+// walkFiles returns workspace-relative paths under root that keep matches true.
+//
+// Native Go rather than shelling out: it keeps the single static binary, and it
+// removes the question of whether to bundle a search tool or depend on one the
+// user may not have.
+func walkFiles(root string, respectGitignore bool, keep func(rel string) bool) ([]string, error) {
+	ig := loadIgnores(root, respectGitignore)
+	var out []string
+
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// One unreadable directory must not abort the whole search.
+			if d != nil && d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		rel, rerr := filepath.Rel(root, path)
+		if rerr != nil || rel == "." {
+			return nil
+		}
+		rel = filepath.ToSlash(rel)
+
+		if d.IsDir() {
+			if d.Name() == ".git" || ig.match(rel, true) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if ig.match(rel, false) {
+			return nil
+		}
+		if keep(rel) {
+			out = append(out, rel)
+		}
+		return nil
+	})
+	return out, err
+}

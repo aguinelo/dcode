@@ -1,0 +1,170 @@
+package sandbox
+
+import (
+	"context"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/aguinelo/dcode/internal/policy"
+)
+
+// canonical resolves symlinks in a path before it reaches a sandbox profile.
+//
+// Without this the boundary the kernel enforces differs from the one policy
+// evaluated: on macOS /var and /tmp are symlinks into /private, so a profile
+// naming the unresolved path grants nothing and every write fails with no
+// explanation. Falls back to the input when resolution is impossible, so a
+// workspace that does not exist yet still produces a usable profile.
+func canonical(p string) string {
+	if real, err := filepath.EvalSymlinks(p); err == nil {
+		return real
+	}
+	return p
+}
+
+// ---------- macOS: Apple Seatbelt ----------
+
+// seatbelt confines through sandbox-exec, which ships with macOS. Driving the
+// binary rather than calling sandbox_init through cgo is what keeps the static
+// binary and cross-compilation working.
+type seatbelt struct {
+	bin          string
+	allowNetwork bool
+}
+
+func (s *seatbelt) Name() string { return BackendSeatbelt }
+
+func (s *seatbelt) Available() error {
+	return lookPath(s.bin, "It ships with macOS; on other systems use a different backend.")
+}
+
+func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
+	profile, err := s.profile(workdir, mode)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.CommandContext(ctx, s.bin, "-p", profile, "sh", "-c", command)
+	cmd.Dir = workdir
+	return cmd, nil
+}
+
+// profile builds the Seatbelt policy.
+//
+// Deny by default, then grant the minimum: anything not named here is refused
+// by the kernel rather than by us.
+func (s *seatbelt) profile(workdir string, mode policy.SandboxMode) (string, error) {
+	if workdir == "" {
+		return "", fmt.Errorf("sandbox: workdir is required")
+	}
+	workdir = canonical(workdir)
+
+	var b strings.Builder
+	b.WriteString("(version 1)\n(deny default)\n")
+	// Reading is always allowed: refusing it would block the interpreter from
+	// loading before the command ever runs.
+	b.WriteString("(allow file-read*)\n")
+	b.WriteString("(allow process-exec)\n(allow process-fork)\n")
+	b.WriteString("(allow sysctl-read)\n(allow mach-lookup)\n")
+	b.WriteString("(allow signal (target self))\n")
+
+	switch mode {
+	case policy.ModeReadOnly:
+		// No file-write rule at all. Writes fail in the kernel.
+	case policy.ModeWorkspaceWrite:
+		fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", workdir)
+		// Temporary directories are where compilers and test runners stage
+		// work; refusing them makes ordinary builds fail in ways that look
+		// like the sandbox is broken rather than doing its job.
+		for _, p := range []string{"/tmp", "/private/tmp", "/private/var/tmp", "/dev"} {
+			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", p)
+		}
+	case policy.ModeFullAccess:
+		b.WriteString("(allow file-write*)\n")
+	default:
+		return "", fmt.Errorf("sandbox: unknown mode %q", mode)
+	}
+
+	if s.allowNetwork || mode == policy.ModeFullAccess {
+		b.WriteString("(allow network*)\n")
+	}
+	return b.String(), nil
+}
+
+// ---------- Linux: bubblewrap ----------
+
+// bubblewrap confines through unprivileged user namespaces.
+type bubblewrap struct {
+	bin          string
+	allowNetwork bool
+}
+
+func (b *bubblewrap) Name() string { return BackendBubblewrap }
+
+func (b *bubblewrap) Available() error {
+	if err := lookPath(b.bin, installHint); err != nil {
+		return err
+	}
+	// Presence is not enough: several distributions restrict unprivileged user
+	// namespaces, and the failure that produces is opaque. Probing here turns
+	// it into one clear message at startup rather than a confusing error on the
+	// first command.
+	probe := exec.Command(b.bin, "--ro-bind", "/", "/", "--dev", "/dev", "true")
+	if out, err := probe.CombinedOutput(); err != nil {
+		return fmt.Errorf("%w: %s cannot create a namespace here: %s\n%s",
+			ErrUnavailable, b.bin, strings.TrimSpace(string(out)), namespaceHint)
+	}
+	return nil
+}
+
+const installHint = "Install it with your package manager, for example: apt install bubblewrap."
+
+const namespaceHint = `Unprivileged user namespaces appear to be restricted.
+On Ubuntu 24.04 and later this is usually AppArmor; see
+/etc/apparmor.d/ and the kernel.apparmor_restrict_unprivileged_userns sysctl.`
+
+func (b *bubblewrap) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
+	args, err := b.args(workdir, mode)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, "sh", "-c", command)
+	cmd := exec.CommandContext(ctx, b.bin, args...)
+	cmd.Dir = workdir
+	return cmd, nil
+}
+
+func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, error) {
+	if workdir == "" {
+		return nil, fmt.Errorf("sandbox: workdir is required")
+	}
+	workdir = canonical(workdir)
+
+	args := []string{
+		"--ro-bind", "/", "/",
+		"--dev", "/dev",
+		"--proc", "/proc",
+		"--die-with-parent",
+		"--chdir", workdir,
+	}
+
+	switch mode {
+	case policy.ModeReadOnly:
+		// Everything stays read-only. A writable /tmp is still granted because
+		// too much ordinary tooling cannot start without one.
+		args = append(args, "--tmpfs", "/tmp")
+	case policy.ModeWorkspaceWrite:
+		args = append(args, "--bind", workdir, workdir, "--tmpfs", "/tmp")
+	case policy.ModeFullAccess:
+		args = []string{"--bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
+			"--die-with-parent", "--chdir", workdir}
+	default:
+		return nil, fmt.Errorf("sandbox: unknown mode %q", mode)
+	}
+
+	if !b.allowNetwork && mode != policy.ModeFullAccess {
+		args = append(args, "--unshare-net")
+	}
+	return args, nil
+}
