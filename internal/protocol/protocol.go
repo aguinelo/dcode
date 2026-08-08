@@ -1,0 +1,196 @@
+// Package protocol is the shared vocabulary between the dcode daemon and its
+// clients. It holds no logic and performs no I/O: both sides import it so the
+// wire contract has exactly one definition.
+//
+// Spec: docs/specs/architecture/client-server-protocol/202608072240-*.
+package protocol
+
+import (
+	"encoding/json"
+	"time"
+)
+
+// Version is the protocol version carried in the URL prefix.
+const Version = "v1"
+
+// EventType identifies the payload shape of an Event.
+type EventType string
+
+// Event types. Payload shapes are defined in section 5.1 of the planning spec.
+const (
+	EventSessionCreated   EventType = "session.created"
+	EventTurnStarted      EventType = "turn.started"
+	EventMessageDelta     EventType = "message.delta"
+	EventToolRequested    EventType = "tool.requested"
+	EventApprovalRequired EventType = "tool.approval_required"
+	EventApprovalResolved EventType = "tool.approval_resolved"
+	EventToolCompleted    EventType = "tool.completed"
+	EventTurnCompleted    EventType = "turn.completed"
+	EventPlanUpdated      EventType = "plan.updated"
+	EventSessionCompacted EventType = "session.compacted"
+	EventSessionError     EventType = "session.error"
+)
+
+// Event is the envelope every observable fact travels in. Seq is per session,
+// monotonic from 1, never reused and never gapped.
+//
+// At is the only non-deterministic field; golden comparisons zero it.
+type Event struct {
+	Seq       uint64          `json:"seq"`
+	SessionID string          `json:"session_id"`
+	Type      EventType       `json:"type"`
+	At        time.Time       `json:"at"`
+	Payload   json.RawMessage `json:"payload"`
+}
+
+// SessionState is the lifecycle state of a session.
+type SessionState string
+
+const (
+	SessionStateIdle    SessionState = "idle"
+	SessionStateRunning SessionState = "running"
+	SessionStateBlocked SessionState = "blocked"
+	SessionStateClosed  SessionState = "closed"
+)
+
+// Valid reports whether s is a state the server can be in.
+func (s SessionState) Valid() bool {
+	switch s {
+	case SessionStateIdle, SessionStateRunning, SessionStateBlocked, SessionStateClosed:
+		return true
+	}
+	return false
+}
+
+// Session is the server-owned session record. Clients hold no session state of
+// their own beyond scroll position, panel visibility and their input queue.
+type Session struct {
+	ID          string       `json:"id"`
+	State       SessionState `json:"state"`
+	Workspace   string       `json:"workspace"`
+	Model       string       `json:"model"`
+	SandboxMode string       `json:"sandbox_mode"`
+	CreatedAt   time.Time    `json:"created_at"`
+	LastSeq     uint64       `json:"last_seq"`
+}
+
+// CreateSessionRequest opens a session. Workspace must be absolute.
+type CreateSessionRequest struct {
+	Workspace   string `json:"workspace"`
+	Model       string `json:"model,omitempty"`
+	SandboxMode string `json:"sandbox_mode,omitempty"`
+}
+
+// SubmitTurnRequest submits user input. Rejected with turn_already_active if a
+// turn is already running: one turn per session.
+type SubmitTurnRequest struct {
+	Text string `json:"text"`
+}
+
+// ApprovalDecision is the user's answer to a boundary crossing.
+type ApprovalDecision string
+
+const (
+	ApprovalAllow        ApprovalDecision = "allow"
+	ApprovalAllowSession ApprovalDecision = "allow_session"
+	ApprovalDeny         ApprovalDecision = "deny"
+)
+
+// Valid reports whether d is a decision the server accepts.
+func (d ApprovalDecision) Valid() bool {
+	switch d {
+	case ApprovalAllow, ApprovalAllowSession, ApprovalDeny:
+		return true
+	}
+	return false
+}
+
+// ResolveApprovalRequest answers a pending approval. First writer wins.
+type ResolveApprovalRequest struct {
+	Decision ApprovalDecision `json:"decision"`
+}
+
+// ApprovalRequest is emitted when execution crosses the sandbox boundary. The
+// turn blocks until it is resolved or ExpiresAt passes, which denies.
+type ApprovalRequest struct {
+	ApprovalID      string    `json:"approval_id"`
+	TurnID          string    `json:"turn_id"`
+	ToolCallID      string    `json:"tool_call_id"`
+	Tool            string    `json:"tool"`
+	Command         string    `json:"command,omitempty"`
+	BoundaryCrossed string    `json:"boundary_crossed"`
+	ExpiresAt       time.Time `json:"expires_at"`
+}
+
+// PlanItem is one entry of the session plan, maintained by the plan tool.
+type PlanItem struct {
+	ID      int    `json:"id"`
+	Text    string `json:"text"`
+	Status  string `json:"status"`
+	Blocked string `json:"blocked,omitempty"`
+}
+
+// Plan item statuses.
+const (
+	PlanPending = "pending"
+	PlanActive  = "active"
+	PlanDone    = "done"
+	PlanBlocked = "blocked"
+)
+
+// PlanUpdated is the payload of EventPlanUpdated.
+type PlanUpdated struct {
+	Items []PlanItem `json:"items"`
+}
+
+// Turn stop reasons, carried in TurnCompleted.Reason.
+const (
+	StopDone          = "done"
+	StopInterrupted   = "interrupted"
+	StopMaxIterations = "max_iterations"
+	StopRepeatLoop    = "repeat_loop"
+	StopMaxTokens     = "max_tokens"
+	StopError         = "error"
+)
+
+// Payloads for the remaining event types.
+type (
+	// TurnStarted announces an accepted input.
+	TurnStarted struct {
+		TurnID string `json:"turn_id"`
+	}
+	// MessageDelta is a fragment of model text.
+	MessageDelta struct {
+		TurnID string `json:"turn_id"`
+		Text   string `json:"text"`
+	}
+	// ToolRequested announces a tool call before policy evaluation.
+	ToolRequested struct {
+		TurnID     string          `json:"turn_id"`
+		ToolCallID string          `json:"tool_call_id"`
+		Name       string          `json:"name"`
+		Input      json.RawMessage `json:"input"`
+	}
+	// ApprovalResolved records the decision that unblocked a turn.
+	ApprovalResolved struct {
+		ApprovalID string           `json:"approval_id"`
+		Decision   ApprovalDecision `json:"decision"`
+	}
+	// ToolCompleted carries the result of an execution.
+	ToolCompleted struct {
+		ToolCallID string `json:"tool_call_id"`
+		OK         bool   `json:"ok"`
+		Output     string `json:"output"`
+		Truncated  bool   `json:"truncated"`
+	}
+	// TurnCompleted ends a turn with one of the Stop* reasons.
+	TurnCompleted struct {
+		TurnID string `json:"turn_id"`
+		Reason string `json:"reason"`
+	}
+	// SessionCompacted records a context compaction.
+	SessionCompacted struct {
+		FromSeq uint64 `json:"from_seq"`
+		ToSeq   uint64 `json:"to_seq"`
+	}
+)

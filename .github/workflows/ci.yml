@@ -1,0 +1,41 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - run: go vet ./...
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+      - run: ./scripts/coverage.sh coverage.out
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - name: build sem cgo
+        run: CGO_ENABLED=0 go build -trimpath ./...
+      - name: nenhum cgo no nucleo
+        run: |
+          if grep -rn --include='*.go' '^import "C"' internal/ pkg/ cmd/ \
+             | grep -v '_cgo\.go'; then
+            echo "cgo fora do pacote isolado"; exit 1
+          fi
