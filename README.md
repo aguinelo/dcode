@@ -157,6 +157,8 @@ Implementation will live in `internal/` (everything that is not a public contrac
 | Sandbox and policy spec | written, `experimental` |
 | Tool suite spec | written, `experimental` |
 | Distribution spec | written, `stable` artifact contract |
+| Behavior definition spec | written, `stable` instruction contract |
+| Configuration spec | not started |
 | Implementation | **not started** |
 
 The first implementation milestone is the protocol type vocabulary — no server, no
