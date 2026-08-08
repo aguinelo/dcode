@@ -13,7 +13,7 @@ Este documento define **o que o protocolo precisa garantir**. O contrato técnic
 
 ## 2. Fronteira de determinismo
 
-> Seção presente em todo `.r.spec.md` deste projeto. Ver `docs/conventions/SDD-HARNESS.md`.
+> Seção presente em todo `.r.spec.md` deste projeto. Ver `docs/conventions/SDD-HARNESS.pt-BR.md`.
 
 Esta camada é **inteiramente determinística**. Não há mediação por modelo em nenhum ponto do protocolo: o servidor recebe entrada, emite eventos e responde a decisões de aprovação — tudo por regra explícita.
 

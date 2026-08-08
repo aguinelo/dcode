@@ -1,5 +1,7 @@
 # harness
 
+🇧🇷 [Versão em português](README.pt-BR.md)
+
 An agentic coding harness for the terminal, written in Go.
 
 > **Status: specification phase.** There is no implementation yet — this repository currently
@@ -128,10 +130,12 @@ Details in [`docs/conventions/SDD-HARNESS.md`](docs/conventions/SDD-HARNESS.md).
 
 ```
 docs/
-  conventions/
+  conventions/            bilingual — X.md is English, X.pt-BR.md is Portuguese
+    LANGUAGE.md           the bilingual policy itself
     SDD-HARNESS.md        how to apply spec-driven development to a harness
+    TESTING.md            TDD, bug reproduction rule, coverage gate
     GO-CODE-REVIEW.md     Go review checklist, including product-specific checks
-  specs/
+  specs/                  Portuguese only — see LANGUAGE.md section 3
     architecture/         cross-cutting specs (protocol, context, sandbox)
     domains/              feature specs
 ```
@@ -228,8 +232,24 @@ Full rules in [`docs/conventions/TESTING.md`](docs/conventions/TESTING.md).
 
 ### Language
 
-Specs are written in Portuguese (project convention); code, comments, commit messages
-and this README are in English.
+This project is bilingual. English is canonical and takes the bare filename; Portuguese
+is the translation and carries a `.pt-BR` suffix. The README and everything under
+`docs/conventions/` exist in both, cross-linked at the top.
+
+Two deliberate exceptions:
+
+**Specs are Portuguese only.** RPI makes `.r.spec.md` the absolute truth — if the code
+contradicts it, the code is wrong. That rule needs exactly one source of truth. Two
+copies of a spec will drift, and once they disagree there is no way to tell which one the
+code is supposed to satisfy. A drifted spec is worse than a missing one, because it looks
+authoritative.
+
+**Commits and code comments are English only.** Commit messages feed changelog tooling
+that assumes a single language, and bilingual bodies double the noise in `git log`
+without helping anyone who is already reading English code.
+
+A pull request that changes a bilingual document must update both versions in the same
+pull request. Full policy in [`docs/conventions/LANGUAGE.md`](docs/conventions/LANGUAGE.md).
 
 ---
 

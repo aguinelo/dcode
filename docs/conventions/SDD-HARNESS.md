@@ -1,93 +1,129 @@
-# SDD aplicado a um harness de agente
+# Spec-driven development applied to an agent harness
 
-> **Este documento não altera o RPI.** O protocolo canônico da ArcaSolucoes — 4 arquivos `.r`/`.p`/`.config`/`.i`, hierarquia `.r` > `.p`/`.config` > `.i`, nomenclatura por timestamp, sincronia spec↔código, changelog, tolerância zero a perda de dados — vale aqui integralmente e sem exceção.
+🇧🇷 [Versão em português](SDD-HARNESS.pt-BR.md)
+
+> **This document does not modify RPI.** The canonical ArcaSolucoes protocol — four
+> `.r`/`.p`/`.config`/`.i` files, the `.r` > `.p`/`.config` > `.i` precedence order,
+> timestamp naming, spec↔code synchrony, changelog, zero tolerance for data loss —
+> applies here in full and without exception.
 >
-> O que este guia faz é responder **como preencher esses 4 arquivos** quando o produto é um harness de agente, onde parte do comportamento é mediada por modelo. Nenhum artefato novo, nenhuma regra nova.
+> What this guide answers is **how to fill those four files** when the product is an
+> agent harness, where part of the behavior is mediated by a language model. No new
+> artifact, no new rule.
 
 ---
 
-## 1. O problema
+## 1. The problem
 
-A regra de ouro do `.p.spec.md` é *"use EXATAMENTE os nomes, campos e tipos definidos"*. Isso resolve contrato de API e modelo de dados. Não resolve isto:
+The golden rule of `.p.spec.md` is *"use exactly the names, fields and types defined"*.
+That settles API contracts and data models. It does not settle this:
 
-> "quando o `Edit` falha por match ambíguo, o agente relê o arquivo em vez de tentar de novo às cegas"
+> when an edit fails on an ambiguous match, the agent re-reads the file instead of
+> retrying blind
 
-É comportamento mediado por modelo. Não é schema, e não é verificável por asserção.
+That is model-mediated behavior. It is not a schema, and it is not verifiable by
+assertion.
 
-A tentação é criar um quinto arquivo para isso. **É a saída errada** — divergiria do protocolo compartilhado entre os repos e quebraria as ferramentas que auditam o RPI. A saída certa é reconhecer que um contrato comportamental com limiar **já é um contrato técnico**, e contrato técnico é exatamente o que o `.p` guarda.
+The temptation is to invent a fifth file for it. **That is the wrong way out** — it would
+diverge from the protocol shared across repositories and break the tooling that audits
+RPI. The right way out is to notice that a behavioral contract with a threshold **already
+is a technical contract**, and technical contracts are exactly what `.p` holds.
 
 ---
 
-## 2. Onde cada coisa entra
+## 2. Where each concern goes
 
-| Preocupação | Arquivo canônico | Por quê |
+| Concern | Canonical file | Why |
 |---|---|---|
-| Qual comportamento é determinístico e qual é mediado por modelo | `.r.spec.md` | É verdade de domínio sobre o que o sistema é. Contexto, não contrato. |
-| Cenários de comportamento com limiar | `.p.spec.md` | Um limiar é contrato técnico verificável. Mesmo estatuto de um schema. |
-| Modelo e versão contra os quais o limiar foi medido; limiares como constante | `.config.spec.md` | É definição de ambiente — muda por ambiente, igual a feature flag. |
-| Construir a suíte de eval e as fixtures | `.i.spec.md` | É passo de execução, com ordem e dependência. |
-| Nível de estabilidade de contrato público | `.p.spec.md` | É propriedade do contrato. O `changelog/` do RPI já dá a semântica de mudança. |
+| Which behavior is deterministic and which is model-mediated | `.r.spec.md` | It is domain truth about what the system is. Context, not contract. |
+| Behavior scenarios with thresholds | `.p.spec.md` | A threshold is a verifiable technical contract. Same standing as a schema. |
+| Model and version the threshold was measured against; thresholds as constants | `.config.spec.md` | It is environment definition — varies per environment, like a feature flag. |
+| Building the eval suite and its fixtures | `.i.spec.md` | It is an execution step, with order and dependencies. |
+| Stability level of a public contract | `.p.spec.md` | It is a property of the contract. RPI's `changelog/` already supplies the change semantics. |
 
 ---
 
-## 3. Fronteira de determinismo no `.r.spec.md`
+## 3. Determinism boundary in `.r.spec.md`
 
-Todo `.r.spec.md` deste projeto declara em qual regime o escopo dele opera:
+Every `.r.spec.md` in this project declares which regime its scope operates in:
 
-| Regime | Significado | Como se verifica |
+| Regime | Meaning | How it is verified |
 |---|---|---|
-| **Determinístico** | comportamento definido por regra explícita | asserção em `go test` |
-| **Mediado por modelo** | comportamento emerge da interação com o LLM | limiar estatístico sobre fixtures |
-| **Misto** | a spec cobre os dois; a seção diz **onde** fica a linha | ambos, separadamente |
+| **Deterministic** | behavior defined by explicit rule | assertion in `go test` |
+| **Model-mediated** | behavior emerges from interaction with the LLM | statistical threshold over fixtures |
+| **Mixed** | the spec covers both; the section says **where** the line falls | both, separately |
 
-Sem essa declaração, a revisão cobra o padrão errado do artefato errado — exige asserção de comportamento estatístico, ou aceita limiar onde cabia garantia.
+Without that declaration, review applies the wrong standard to the wrong artifact — it
+demands assertions for statistical behavior, or accepts a threshold where a guarantee was
+available.
 
-**Corolário de arquitetura:** empurrar comportamento para o lado determinístico é objetivo de design, não acidente. Se a montagem de contexto for função pura `(estado da sessão) → []Message`, ela é golden-testável com exatidão — e o append-only da ADR-03 já torna isso natural, porque o prefixo é função pura do histórico. Vale igual para dispatch de ferramenta, decisão de sandbox e parsing de tool-call.
+**Architectural corollary:** pushing behavior to the deterministic side is a design goal,
+not an accident. If context assembly is a pure function `(session state) → []Message`, it
+is exactly golden-testable — and the append-only decision (ADR-03) already makes that
+natural, because the prefix is a pure function of history. The same holds for tool
+dispatch, sandbox decisions and tool-call parsing.
 
 ---
 
-## 4. Contratos comportamentais no `.p.spec.md`
+## 4. Behavioral contracts in `.p.spec.md`
 
-Quando o `.r` classifica o escopo como mediado por modelo ou misto, o `.p` ganha uma seção **"Contratos comportamentais"** com tabela de cenário e limiar. É seção comum de `.p`, sujeita à mesma regra de ouro: os identificadores de cenário são nomes exatos, usados como tal no código e nas fixtures.
+When `.r` classifies the scope as model-mediated or mixed, `.p` gains a **"Behavioral
+contracts"** section with a scenario-and-threshold table. It is an ordinary `.p` section,
+subject to the same golden rule: scenario identifiers are exact names, used as such in
+code and fixtures.
 
-| ID | Cenário | Comportamento esperado | Limiar | Fixture |
+| ID | Scenario | Expected behavior | Threshold | Fixture |
 |---|---|---|---|---|
-| `edit-ambiguous` | `Edit` com match ambíguo | relê o arquivo, não faz retry cego | ≥ 95% | `testdata/evals/edit-ambiguous/` |
-| `path-missing` | caminho inexistente | erro explícito, sem inventar caminho | 100% | `testdata/evals/path-missing/` |
-| `compaction-long` | compactação em tarefa longa | tarefa corrente sobrevive ao corte | ≥ 98% | `testdata/evals/compaction-long/` |
+| `edit-ambiguous` | `Edit` with an ambiguous match | re-reads the file, no blind retry | ≥ 95% | `testdata/evals/edit-ambiguous/` |
+| `path-missing` | nonexistent path | explicit error, no invented path | 100% | `testdata/evals/path-missing/` |
+| `compaction-long` | compaction during a long task | current task survives the cut | ≥ 98% | `testdata/evals/compaction-long/` |
 
-**Regras de uso:**
+**Rules of use:**
 
-1. A verificação de um contrato comportamental é medição com limiar, nunca booleano.
-2. Limiar de 100% só é legítimo quando o comportamento é, na verdade, determinístico. Nesse caso questione se o cenário não pertence a outra seção do `.p`, verificável por asserção.
-3. Medição depende de modelo real e custa dinheiro: fica atrás de build tag ou `testing.Short()`, fora do `go test` padrão.
-4. Regressão abaixo do limiar é blocker de PR, igual a teste vermelho.
-5. **Rebaixar limiar no mesmo PR que o quebra é o antipadrão que esta seção existe para pegar.** Mudança de limiar é mudança de regra e exige entrada em `changelog/`, conforme a seção 6 do `RPI-SPEC-RULES.md`.
+1. Verifying a behavioral contract is measurement against a threshold, never a boolean.
+2. A 100% threshold is only legitimate when the behavior is in fact deterministic. In
+   that case, question whether the scenario belongs in another `.p` section, verifiable
+   by assertion.
+3. Measurement depends on a real model and costs money: it sits behind a build tag or
+   `testing.Short()`, outside the standard `go test` run.
+4. A regression below the threshold is a pull request blocker, same as a red test.
+5. **Lowering a threshold in the same pull request that broke it is the anti-pattern this
+   section exists to catch.** A threshold change is a rule change and requires a
+   `changelog/` entry, per section 6 of `RPI-SPEC-RULES.md`.
 
-O modelo e a versão contra os quais o limiar foi medido ficam no `.config.spec.md` — trocar de modelo invalida o limiar, não o cenário.
+The model and version a threshold was measured against live in `.config.spec.md` —
+switching models invalidates the threshold, not the scenario.
 
 ---
 
-## 5. Nível de estabilidade no `.p.spec.md`
+## 5. Stability level in `.p.spec.md`
 
-`sales-api` é interno: quebrar contrato é problema de coordenação. Aqui, três coisas são contrato com terceiros — **protocolo client-server**, **ABI de plugin** e **schema de config**.
+`sales-api` is internal: breaking a contract is a coordination problem. Here, three things
+are contracts with third parties — the **client-server protocol**, the **plugin ABI** and
+the **config schema**.
 
-Todo `.p.spec.md` que define contrato público declara o nível logo na primeira seção:
+Every `.p.spec.md` that defines a public contract declares its level in the first section:
 
-| Nível | Significado |
+| Level | Meaning |
 |---|---|
-| `experimental` | pode quebrar em qualquer versão, sem changelog |
-| `stable` | quebra exige entrada em `changelog/` + incremento de major |
-| `frozen` | não muda; só extensão aditiva |
+| `experimental` | may break in any version, without a changelog entry |
+| `stable` | breaking it requires a `changelog/` entry + major version bump |
+| `frozen` | does not change; additive extension only |
 
-O nível vale para a spec inteira, e um endpoint ou símbolo individual pode declarar nível próprio mais restritivo. Os critérios de promoção ficam escritos no `.i.spec.md` — não é decisão de momento.
+The level applies to the whole spec, and an individual endpoint or symbol may declare a
+more restrictive level of its own. Promotion criteria are written into `.i.spec.md` — it
+is not a spur-of-the-moment decision.
 
-Isso não cria mecanismo novo: o `changelog/` do RPI já é o registro de mudança de regra. A declaração apenas diz **quais** mudanças o exigem.
+This creates no new mechanism: RPI's `changelog/` is already the record of rule changes.
+The declaration only says **which** changes require one.
 
 ---
 
-## 6. Efeito nas ferramentas
+## 6. Effect on tooling
 
-Nenhum. As specs continuam sendo 4 arquivos `.spec.md` em `docs/specs/**` com timestamp compartilhado. A `embarca-pr-review` audita este projeto sem qualquer alteração — o que ela valida é a taxonomia, e a taxonomia está intacta.
+None. Specs remain four `.spec.md` files under `docs/specs/**` sharing a timestamp
+prefix. The `embarca-pr-review` skill audits this project with no modification — what it
+validates is the taxonomy, and the taxonomy is intact.
 
-O checklist de revisão específico de Go vive em `docs/conventions/GO-CODE-REVIEW.md`, neste repositório, como convenção do projeto.
+The Go-specific review checklist lives in `docs/conventions/GO-CODE-REVIEW.md`, in this
+repository, as a project convention.

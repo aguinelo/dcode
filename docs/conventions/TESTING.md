@@ -1,101 +1,131 @@
-# Convenção de testes
+# Testing convention
 
-Vale para todo código deste repositório. Um PR que viole qualquer regra aqui é bloqueado.
+🇧🇷 [Versão em português](TESTING.pt-BR.md)
+
+Applies to all code in this repository. A pull request that violates any rule here is
+blocked.
 
 ---
 
 ## 1. TDD
 
-Ciclo obrigatório para código novo: **vermelho → verde → refatorar.**
+Mandatory cycle for new code: **red → green → refactor.**
 
-1. Escreva o teste primeiro. Ele **deve** falhar.
-2. Verifique que ele falha **pelo motivo certo** — asserção quebrada, não erro de compilação nem typo no nome do arquivo. Teste que falha pelo motivo errado não é vermelho, é ruído.
-3. Escreva o mínimo de código para passar.
-4. Refatore com o teste verde como rede.
+1. Write the test first. It **must** fail.
+2. Verify it fails **for the right reason** — a broken assertion, not a compile error or
+   a typo in a filename. A test that fails for the wrong reason is not red, it is noise.
+3. Write the minimum code to make it pass.
+4. Refactor with the green test as a net.
 
-Estilo **London School (mock-first)** para código novo, conforme convenção da organização: as dependências da unidade sob teste são substituídas por dublês, e o que se verifica é a interação com os colaboradores. Isso mantém o teste rápido e a fronteira do módulo explícita.
+**London School (mock-first)** for new code, per organization convention: the
+dependencies of the unit under test are replaced by doubles, and what gets verified is
+the interaction with collaborators. This keeps tests fast and module boundaries explicit.
 
-Exceção deliberada: código de fronteira com o sistema operacional — sandbox, socket, PTY — é testado com o recurso real em `t.TempDir()`, não com mock. Mockar `syscall` testa o mock, não o comportamento.
-
----
-
-## 2. Bug exige teste de reprodução — antes da correção
-
-**Regra explícita, sem exceção:**
-
-1. Reproduza o bug em um teste. O teste **falha**.
-2. Confirme que ele falha exatamente pelo sintoma relatado.
-3. Só então corrija.
-4. O mesmo teste passa, sem ser alterado.
-
-O teste de reprodução entra **no mesmo commit ou PR** da correção. Um PR de `fix:` sem teste novo é bloqueado.
-
-### Por que a ordem importa
-
-Um teste escrito depois da correção não prova que reproduzia o bug — só que o código atual passa nele. Se ele nunca foi visto vermelho, não há evidência de que ele pegaria a regressão. Escrever antes é o que transforma o teste em rede de segurança em vez de decoração.
-
-### Regressão é permanente
-
-Teste de reprodução nunca é removido, nem "simplificado" em refatoração. Nomeie de forma rastreável — `TestEventLog_NoGapUnderConcurrentAppend_Issue42` — para que fique óbvio, anos depois, que aquele caso existe porque quebrou de verdade uma vez.
+Deliberate exception: code at the OS boundary — sandbox, socket, PTY — is tested against
+the real resource in `t.TempDir()`, not against a mock. Mocking `syscall` tests the mock,
+not the behavior.
 
 ---
 
-## 3. Gate de cobertura: 90%
+## 2. A bug requires a reproducing test — before the fix
 
-A CI falha abaixo de **90%** de cobertura de linha.
+**Explicit rule, no exceptions:**
+
+1. Reproduce the bug in a test. The test **fails**.
+2. Confirm it fails for exactly the reported symptom.
+3. Only then fix it.
+4. The same test passes, unmodified.
+
+The reproducing test ships in the **same commit or pull request** as the fix. A `fix:`
+pull request with no new test is blocked.
+
+### Why the order matters
+
+A test written after the fix does not prove it reproduced the bug — only that the current
+code passes it. If it was never seen red, there is no evidence it would catch the
+regression. Writing it first is what turns the test into a safety net instead of
+decoration.
+
+### Regressions are permanent
+
+A reproducing test is never removed, nor "simplified" during refactoring. Name it
+traceably — `TestEventLog_NoGapUnderConcurrentAppend_Issue42` — so that years later it is
+obvious that the case exists because something actually broke once.
+
+---
+
+## 3. Coverage gate: 90%
+
+CI fails below **90%** line coverage.
 
 ```bash
 go test -race -coverprofile=coverage.out ./...
 go tool cover -func=coverage.out
 ```
 
-### O denominador
+### The denominator
 
-Um gate sem denominador definido é ou inalcançável ou vazio. Aqui ele é explícito.
+A gate without a defined denominator is either unreachable or vacuous. Here it is
+explicit.
 
-**Entra na conta:** todo código determinístico em `internal/**` e `pkg/**`.
+**Counted:** all deterministic code in `internal/**` and `pkg/**`.
 
-**Fica fora, com justificativa:**
+**Excluded, with justification:**
 
-| Exclusão | Motivo |
+| Exclusion | Reason |
 |---|---|
-| Código gerado | não é autorado; testar gerador, não saída |
-| `cmd/**` — wiring de `main` | montagem de dependência, sem lógica; coberto por teste de fumaça |
-| Caminhos mediados por modelo, atrás de build tag | não é verificável por asserção — ver seção 4 |
-| Pacote de sandbox específico de SO, fora da plataforma do runner | não é executável ali; coberto na matriz de CI da plataforma correspondente |
+| Generated code | not authored; test the generator, not its output |
+| `cmd/**` — `main` wiring | dependency assembly, no logic; covered by a smoke test |
+| Model-mediated paths behind build tags | not verifiable by assertion — see section 4 |
+| OS-specific sandbox package, off its platform | not executable there; covered in that platform's CI matrix |
 
-Exclusão nova exige justificativa no PR. "Difícil de testar" não é justificativa — costuma ser sintoma de acoplamento, e a correção é o desenho, não a exceção.
+A new exclusion requires justification in the pull request. "Hard to test" is not a
+justification — it is usually a symptom of coupling, and the fix is the design, not the
+exemption.
 
-### O que o gate não prova
+### What the gate does not prove
 
-90% é **piso, não meta**. Ele pega arquivo sem teste nenhum; não prova correção.
+90% is a **floor, not a target.** It catches files with no tests at all; it does not
+prove correctness.
 
-A forma clássica de burlar é teste sem asserção — exercita a linha, não verifica nada, sobe o número. Na revisão, teste que chama função e não afirma nada sobre o resultado é achado, mesmo com a cobertura verde.
+The classic way to game it is a test with no assertions — it exercises the line, verifies
+nothing, and raises the number. In review, a test that calls a function and asserts
+nothing about the result is a finding, even when coverage is green.
 
-Cobertura de linha também não é cobertura de caso: 100% de linha com um único caminho feliz ignora todo erro. Table-driven com casos de borda vale mais que percentual.
-
----
-
-## 4. Comportamento mediado por modelo
-
-Não entra no gate, e a razão está na fronteira de determinismo declarada em cada `.r.spec.md` (ver `SDD-HARNESS.md`).
-
-Comportamento que emerge da interação com o LLM não é verificável por asserção. É medido por **limiar sobre fixtures**, declarado na seção de contratos comportamentais do `.p.spec.md` correspondente.
-
-- Fica atrás de build tag ou `testing.Short()` — depende de modelo real e custa dinheiro.
-- Regressão abaixo do limiar é blocker, igual a teste vermelho.
-- Rebaixar limiar no mesmo PR que o quebra exige entrada em `changelog/`, porque é mudança de regra.
-
-**O incentivo correto:** como este código fica fora do gate, existe pressão para empurrar comportamento para o lado determinístico — onde ele conta para a cobertura e é verificável com exatidão. Isso é intencional, e é o mesmo objetivo de arquitetura descrito em `SDD-HARNESS.md`.
+Line coverage is also not case coverage: 100% of lines through a single happy path
+ignores every error branch. Table-driven tests with edge cases are worth more than the
+percentage.
 
 ---
 
-## 5. Checklist de PR
+## 4. Model-mediated behavior
 
-- [ ] Código novo veio de teste que falhou primeiro.
-- [ ] `fix:` acompanha teste de reprodução que falhava antes da correção.
-- [ ] `go test -race ./...` limpo.
-- [ ] Cobertura ≥ 90% no denominador definido.
-- [ ] Nenhum teste novo sem asserção.
-- [ ] Exclusão de cobertura nova, se houver, justificada na descrição do PR.
-- [ ] Spec sincronizada, se o comportamento técnico mudou.
+Stays out of the gate, for the reason recorded in the determinism boundary that every
+`.r.spec.md` declares (see `SDD-HARNESS.md`).
+
+Behavior that emerges from interaction with the LLM is not verifiable by assertion. It is
+measured by a **threshold over fixtures**, declared in the behavioral contracts section
+of the corresponding `.p.spec.md`.
+
+- Sits behind a build tag or `testing.Short()` — it depends on a real model and costs
+  money.
+- A regression below the threshold is a blocker, same as a red test.
+- Lowering a threshold in the same pull request that broke it requires a `changelog/`
+  entry, because that is a rule change.
+
+**The incentive is intentional:** because this code is outside the gate, there is pressure
+to push behavior to the deterministic side — where it counts toward coverage and is
+exactly verifiable. That is the same architectural goal described in `SDD-HARNESS.md`.
+
+---
+
+## 5. Pull request checklist
+
+- [ ] New code came from a test that failed first.
+- [ ] `fix:` ships with a reproducing test that failed before the fix.
+- [ ] `go test -race ./...` is clean.
+- [ ] Coverage ≥ 90% over the defined denominator.
+- [ ] No new test without assertions.
+- [ ] Any new coverage exclusion is justified in the pull request description.
+- [ ] Spec kept in sync, if technical behavior changed.
+- [ ] Both language versions updated, if a bilingual document changed.

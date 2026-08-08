@@ -1,56 +1,98 @@
-# Checklist de revisão — Go (CLI / harness / daemon)
+# Code review checklist — Go (CLI / harness / daemon)
 
-Convenção deste repositório. Teste: `go test -race ./...`. Build principal: `CGO_ENABLED=0`.
-Dirs compartilhados: `internal/**`, `pkg/**`.
+🇧🇷 [Versão em português](GO-CODE-REVIEW.pt-BR.md)
 
-Checks reutilizáveis de alta taxa de acerto. Não é exaustivo; aplique o que couber ao diff.
+Convention of this repository. Tests: `go test -race ./...`. Main build: `CGO_ENABLED=0`.
+Shared directories: `internal/**`, `pkg/**`.
 
-## Concorrência (a maior fonte de bug em Go)
+Reusable, high-hit-rate checks. Not exhaustive; apply what fits the diff.
 
-- **Goroutine sem dono:** toda `go func()` precisa de caminho de término claro. Disparada sem `context`, `WaitGroup` ou canal de parada → vazamento. Pergunte: quem cancela isso?
-- **`context` como primeiro parâmetro:** função que faz I/O sem receber `ctx` não é cancelável. No caminho de turno do agente isso vira sessão que não morre no Ctrl-C → **blocker**.
-- **`ctx` ignorado:** receber `ctx` e nunca checar `ctx.Done()` nem passar adiante é pior que não receber — dá falsa garantia.
-- **Captura de variável de loop:** o clássico `for _, v := range` + `go func(){ use(v) }` em Go < 1.22. Confirme a versão em `go.mod` antes de apontar.
-- **Canal sem buffer em caminho de escrita:** produtor bloqueia se o consumidor sumiu. Em fluxo de eventos, sempre `select` com `ctx.Done()` no envio, nunca `ch <- x` cru.
-- **`sync.Mutex` copiado:** struct com mutex passada por valor. `go vet` pega — confirme que roda na CI.
-- **Data race:** mudança que introduz estado compartilhado sem lock exige `go test -race` na CI. Se o PR mexe em concorrência e a CI não roda `-race`, é achado de processo.
+## Concurrency (the largest source of bugs in Go)
 
-## Erros
+- **Ownerless goroutine:** every `go func()` needs a clear termination path. Launched
+  without a `context`, `WaitGroup` or stop channel → leak. Ask: who cancels this?
+- **`context` as the first parameter:** a function doing I/O without a `ctx` is not
+  cancelable. In the agent turn path that becomes a session that survives Ctrl-C →
+  **blocker**.
+- **Ignored `ctx`:** receiving `ctx` and never checking `ctx.Done()` nor passing it down
+  is worse than not receiving it — it gives a false guarantee.
+- **Loop variable capture:** the classic `for _, v := range` + `go func(){ use(v) }` on
+  Go < 1.22. Confirm the version in `go.mod` before flagging.
+- **Unbuffered channel on a write path:** the producer blocks if the consumer is gone. In
+  event streaming, always `select` with `ctx.Done()` on send, never a bare `ch <- x`.
+- **Copied `sync.Mutex`:** a struct with a mutex passed by value. `go vet` catches it —
+  confirm it runs in CI.
+- **Data race:** a change introducing shared state without a lock requires `go test -race`
+  in CI. If the pull request touches concurrency and CI does not run `-race`, that is a
+  process finding.
 
-- **`err` engolido:** `_ = f()` ou `if err != nil { return nil }` sem contexto. Em Go o erro é o contrato — descartar é perda de informação.
-- **Wrapping:** `fmt.Errorf("...: %w", err)` para preservar a cadeia. Sem `%w`, `errors.Is`/`errors.As` param de funcionar acima.
-- **Sentinela vs string:** comparar erro por `strings.Contains(err.Error(), ...)` → **sempre** achado. Deve ser `errors.Is` com sentinela exportada.
-- **`panic` em biblioteca:** aceitável só em erro de programação irrecuperável na inicialização. Em caminho de request ou de turno → blocker.
-- **`recover` sem re-log:** engolir panic silenciosamente esconde bug estrutural.
+## Errors
 
-## Recursos e I/O
+- **Swallowed `err`:** `_ = f()` or `if err != nil { return nil }` without context. In Go
+  the error is the contract — discarding it is information loss.
+- **Wrapping:** `fmt.Errorf("...: %w", err)` to preserve the chain. Without `%w`,
+  `errors.Is`/`errors.As` stop working upstream.
+- **Sentinel vs string:** comparing errors via `strings.Contains(err.Error(), ...)` is
+  **always** a finding. It must be `errors.Is` against an exported sentinel.
+- **`panic` in a library:** acceptable only for an unrecoverable programming error at
+  initialization. In a request or turn path → blocker.
+- **`recover` without re-logging:** silently swallowing a panic hides a structural bug.
 
-- **`defer` em laço:** `defer f.Close()` dentro de `for` só executa no fim da função — acumula descritores. Extrair para função ou fechar explicitamente.
-- **Body de HTTP não fechado:** `resp.Body.Close()` obrigatório mesmo em erro, e **ler até EOF** antes de fechar para reusar a conexão.
-- **Timeout ausente:** `http.Client{}` sem `Timeout` nunca desiste. Toda chamada externa (provider, MCP) precisa de timeout **e** de `ctx`.
-- **`io.ReadAll` em corpo não confiável:** resposta de provider ou saída de ferramenta sem limite → OOM. Use `io.LimitReader`.
+## Resources and I/O
 
-## Específico deste produto
+- **`defer` inside a loop:** `defer f.Close()` within `for` only runs at function exit —
+  descriptors accumulate. Extract to a function or close explicitly.
+- **Unclosed HTTP body:** `resp.Body.Close()` is mandatory even on error, and **read to
+  EOF** before closing to reuse the connection.
+- **Missing timeout:** `http.Client{}` without `Timeout` never gives up. Every external
+  call (provider, MCP) needs a timeout **and** a `ctx`.
+- **`io.ReadAll` on untrusted input:** a provider response or tool output without a limit
+  → OOM. Use `io.LimitReader`.
 
-- **Mutação de prefixo de contexto:** código que edita, reordena ou remove mensagem já enviada viola o append-only e invalida cache KV → **blocker**.
-- **Timestamp ou contador no prompt do sistema:** mesma consequência — invalida cache a cada turno.
-- **Schema de ferramenta montado tarde:** definição de tool que só existe após conectar MCP em runtime invalida o prefixo. Deve vir de cache de startup.
-- **Montagem de contexto deve ser função pura:** `(estado da sessão) → []Message` sem I/O e sem relógio dentro. É o que permite golden test exato — efeito colateral aí é achado de arquitetura, não de estilo.
-- **Alocação no caminho quente:** alocar por token ou por evento vira pressão de GC sob swarm. Se o PR mexe no loop de turno, pergunte: isso aloca por delta? Buscar reuso de buffer.
-- **`exec.Command` sem política:** execução fora da fronteira definida na spec de permissão → **blocker**. Deve passar pelo executor com política, nunca `exec` direto.
-- **cgo no núcleo:** `import "C"` fora do pacote isolado por build tag quebra binário estático e compilação cruzada. A CI valida `CGO_ENABLED=0` no build principal.
+## Specific to this product
 
-## SOLID / DRY / estrutura
+- **Context prefix mutation:** code that edits, reorders or removes an already-sent
+  message violates append-only and invalidates the KV cache → **blocker**.
+- **Timestamp or counter in the system prompt:** same consequence — invalidates the cache
+  every turn.
+- **Late-assembled tool schema:** a tool definition that only exists after connecting to
+  MCP at runtime invalidates the prefix. It must come from a startup cache.
+- **Context assembly must be a pure function:** `(session state) → []Message`, with no
+  I/O and no clock inside. That is what makes exact golden testing possible — a side
+  effect there is an architecture finding, not a style one.
+- **Hot-path allocation:** allocating per token or per event becomes GC pressure under
+  swarm. If the pull request touches the turn loop, ask: does this allocate per delta?
+  Look for buffer reuse.
+- **`exec.Command` without policy:** execution outside the boundary defined in the
+  permission spec → **blocker**. It must go through the policy-aware executor, never a
+  bare `exec`.
+- **cgo in the core:** `import "C"` outside the build-tag-isolated package breaks the
+  static binary and cross-compilation. CI validates `CGO_ENABLED=0` on the main build.
 
-- **Interface definida no produtor:** em Go a interface pertence ao **consumidor**. Pacote que exporta interface + única implementação junto → geralmente abstração prematura.
-- **Interface larga:** mais de 3–4 métodos costuma indicar responsabilidade misturada. Prefira interfaces pequenas e composição.
-- **`internal/` vs `pkg/`:** o que não é contrato público **deve** estar em `internal/`. Tipo exportado em `pkg/` vira compromisso de compatibilidade — confirme se foi intencional e se o `.p.spec.md` declara o nível de estabilidade.
-- **`any` em API pública:** perde a tipagem que é a razão de usar Go. Genéricos ou tipo concreto quase sempre cabem.
-- **Dependência global:** `var db *sql.DB` de pacote, singleton implícito, `init()` com efeito colateral → dificulta teste e esconde ordem de inicialização.
+## SOLID / DRY / structure
 
-## Testes
+- **Interface defined by the producer:** in Go, interfaces belong to the **consumer**. A
+  package exporting an interface alongside its single implementation is usually premature
+  abstraction.
+- **Wide interface:** more than 3–4 methods usually signals mixed responsibility. Prefer
+  small interfaces and composition.
+- **`internal/` vs `pkg/`:** anything that is not a public contract **must** live in
+  `internal/`. An exported type in `pkg/` becomes a compatibility commitment — confirm it
+  was intentional and that the `.p.spec.md` declares its stability level.
+- **`any` in a public API:** discards the typing that is the reason to use Go. Generics or
+  a concrete type almost always fit.
+- **Global dependency:** a package-level `var db *sql.DB`, an implicit singleton, an
+  `init()` with side effects → hurts testability and hides initialization order.
 
-- **Table-driven:** é o idioma da linguagem. Sequência de `t.Run` copiada com corpo idêntico → refatorar para tabela.
-- **Golden files:** mudança em saída serializada (evento, contexto montado, render de TUI) sem `testdata/` atualizado → cobertura ausente.
-- **`t.Parallel()` com estado compartilhado:** teste paralelo que escreve em variável de pacote ou no mesmo diretório temporário → flake.
-- **Teste que depende de rede ou de modelo real:** atrás de build tag ou `testing.Short()`. Comportamento mediado por modelo é medido por limiar na seção de contratos comportamentais do `.p.spec.md`, **não** no `go test` determinístico.
+## Tests
+
+- **Table-driven:** it is the idiom of the language. A run of copy-pasted `t.Run` calls
+  with identical bodies → refactor into a table.
+- **Golden files:** a change to serialized output (event, assembled context, TUI render)
+  without an updated `testdata/` means missing coverage.
+- **`t.Parallel()` with shared state:** a parallel test writing to a package variable or
+  the same temp directory → flake.
+- **Tests depending on the network or a real model:** behind a build tag or
+  `testing.Short()`. Model-mediated behavior is measured by threshold in the behavioral
+  contracts section of the relevant `.p.spec.md`, **not** in the deterministic `go test`
+  run.

@@ -5,7 +5,7 @@
 
 ## 1. Nível de estabilidade
 
-> Contrato público carrega nível declarado. Ver `docs/conventions/SDD-HARNESS.md`, seção 5.
+> Contrato público carrega nível declarado. Ver `docs/conventions/SDD-HARNESS.pt-BR.md`, seção 5.
 
 | Nível | Significado |
 |---|---|
