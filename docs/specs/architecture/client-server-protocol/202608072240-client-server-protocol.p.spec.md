@@ -109,7 +109,7 @@ type ResolveApprovalRequest struct {
 
 type Error struct {
     Code    string         `json:"code"`    // estável, legível por máquina
-    Message string         `json:"message"` // PT-BR, legível por humano
+    Message string         `json:"message"` // inglês, legível por humano — ver nota
     Details map[string]any `json:"details,omitempty"`
 }
 ```
@@ -140,6 +140,8 @@ type ApprovalRequest struct {
     ExpiresAt       time.Time `json:"expires_at"`
 }
 ```
+
+> **Idioma de `Error.Message`: inglês.** É string voltada ao usuário final de um projeto internacional, e a política de idioma (`docs/conventions/LANGUAGE.pt-BR.md`) trata as specs como documento interno — não como fonte do texto de produto. `Code` é o identificador estável para máquina; `Message` é o texto para humano. Localização, se um dia existir, se pendura em `Code`, nunca em `Message`.
 
 ## 6. Fluxo de aprovação
 

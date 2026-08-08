@@ -15,7 +15,9 @@ Este documento define **o que o protocolo precisa garantir**. O contrato técnic
 
 > Seção presente em todo `.r.spec.md` deste projeto. Ver `docs/conventions/SDD-HARNESS.pt-BR.md`.
 
-Esta camada é **inteiramente determinística**. Não há mediação por modelo em nenhum ponto do protocolo: o servidor recebe entrada, emite eventos e responde a decisões de aprovação — tudo por regra explícita.
+**Regime: determinístico.**
+
+Não há mediação por modelo em nenhum ponto do protocolo: o servidor recebe entrada, emite eventos e responde a decisões de aprovação — tudo por regra explícita.
 
 **Consequência para a revisão:** todo comportamento aqui é verificável por asserção em `go test`. O `.p.spec.md` desta spec **não** tem seção de contratos comportamentais, e usar limiar estatístico neste escopo seria erro de método.
 
