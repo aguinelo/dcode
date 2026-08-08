@@ -7,6 +7,8 @@
 ![Status](https://img.shields.io/badge/status-specification-orange)
 ![Specs](https://img.shields.io/badge/specs-10%20complete-success)
 
+<img src="docs/brand/mascot.svg" width="72" align="right" alt="dcode mascot">
+
 **Dreibox Code** — an agentic coding harness for the terminal, written in Go.
 
 > **Status: specification phase.** There is no implementation yet — this repository
@@ -285,6 +287,7 @@ docs/
     SDD-HARNESS.md        applying spec-driven development to a harness
     TESTING.md            TDD, bug reproduction rule, coverage gate
     GO-CODE-REVIEW.md     Go review checklist, with product-specific checks
+  brand/                  bilingual — mascot, logomark, palette, voxel maps
   specs/                  Portuguese only — see LANGUAGE.md section 3
     architecture/         cross-cutting specs
     domains/              feature specs
@@ -361,6 +364,15 @@ are English only**, because changelog tooling assumes a single language.
 Full policy in [`docs/conventions/LANGUAGE.md`](docs/conventions/LANGUAGE.md).
 
 ---
+
+## Brand
+
+The mascot is three stacked boxes; the logomark is a **D** built from the same three
+boxes. Its eye is the `⏺` that marks every execution line in the TUI, so the mark repeats
+itself on screen instead of being applied on top.
+
+Designed as three pieces that stack — the name becomes the object, and it prints without
+supports. Files, palette and voxel maps in [`docs/brand/`](docs/brand/).
 
 ## License
 

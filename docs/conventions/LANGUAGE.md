@@ -28,6 +28,7 @@ so a reader who lands on either one can switch.
 |---|---|---|
 | `README` | both | English |
 | `docs/conventions/**` | both | English |
+| `docs/brand/**` | both | English |
 | Issue and PR templates | both | English |
 | Code comments | English only | — |
 | Commit messages and PR titles | English only | — |

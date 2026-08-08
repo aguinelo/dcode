@@ -7,6 +7,8 @@
 ![Status](https://img.shields.io/badge/status-especifica%C3%A7%C3%A3o-orange)
 ![Specs](https://img.shields.io/badge/specs-10%20completas-success)
 
+<img src="docs/brand/mascot.svg" width="72" align="right" alt="mascote do dcode">
+
 **Dreibox Code** — um harness de codificação agêntico para o terminal, escrito em Go.
 
 > **Status: fase de especificação.** Ainda não há implementação — este repositório contém
@@ -283,6 +285,7 @@ docs/
     SDD-HARNESS.md        como aplicar SDD a um harness
     TESTING.md            TDD, regra de reprodução de bug, gate de cobertura
     GO-CODE-REVIEW.md     checklist de revisão de Go, com checks do produto
+  brand/                  bilíngue — mascote, logotipo, paleta, mapas de voxel
   specs/                  só português — ver LANGUAGE.md, seção 3
     architecture/         specs transversais
     domains/              specs de funcionalidade
@@ -361,6 +364,15 @@ comentários de código são só em inglês**, porque ferramenta de changelog as
 Política completa em [`docs/conventions/LANGUAGE.pt-BR.md`](docs/conventions/LANGUAGE.pt-BR.md).
 
 ---
+
+## Marca
+
+O mascote são três caixas empilhadas; o logotipo é um **D** construído com as mesmas três
+caixas. O olho dele é o `⏺` que marca cada linha de execução na TUI, então a marca se
+repete na tela em vez de ser aplicada por cima.
+
+Desenhado como três peças que encaixam — o nome vira o objeto, e imprime sem suporte.
+Arquivos, paleta e mapas de voxel em [`docs/brand/`](docs/brand/).
 
 ## Licença
 

@@ -28,6 +28,7 @@ título, para que quem chegar em qualquer um dos dois consiga trocar.
 |---|---|---|
 | `README` | ambos | inglês |
 | `docs/conventions/**` | ambos | inglês |
+| `docs/brand/**` | ambos | inglês |
 | Templates de issue e PR | ambos | inglês |
 | Comentários de código | só inglês | — |
 | Mensagens de commit e títulos de PR | só inglês | — |
