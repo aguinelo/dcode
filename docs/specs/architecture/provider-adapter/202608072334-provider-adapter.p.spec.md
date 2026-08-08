@@ -7,32 +7,85 @@
 
 **`experimental`.** Vive em `internal/provider` no MVP. Quando uma terceira família existir, avaliar promoção para `pkg/provider` como ponto de extensão público — aí passa a `stable` e ganha critério de promoção próprio.
 
-## 2. A interface
+## 2. Os dois eixos
+
+Um `Provider` é a **composição** de um transporte e uma família (RN-1). Nenhum dos dois é utilizável sozinho.
 
 ```go
 // Package: internal/provider
 
-type Provider interface {
-    // Name identifica a família, não o endpoint (RN-1).
-    Name() string
+// Transport é o formato de fio. Reusável entre famílias, não carrega
+// adaptação nem limiar.
+type Transport interface {
+    Name() string // "openai" | "anthropic"
 
-    // Window devolve o tamanho da janela de contexto do modelo em tokens (RN-7).
+    // Do envia a requisição já serializada pela família e devolve os
+    // eventos brutos do fio.
+    Do(ctx context.Context, wire WireRequest) (<-chan WireEvent, error)
+}
+
+// Family é a adaptação. Carrega os limiares dos contratos comportamentais
+// e os limites padrão do turno (RN-9).
+type Family interface {
+    Name() string // "minimax-m3" | "claude"
+
+    // Transports lista os formatos de fio compatíveis, o primeiro sendo o
+    // preferido. Uma família pode falar mais de um dialeto — é o caso do
+    // MiniMax M3, e a razão de os dois eixos existirem.
+    Transports() []string
+
+    // Models lista os prefixos de modelo que esta família reivindica.
+    Models() []string
+
     Window(model string) (int, error)
 
-    // Stream envia o contexto e devolve um canal de eventos.
-    // O canal fecha ao fim do turno do modelo ou ao cancelamento de ctx.
-    // Erro de transporte chega como StreamEvent do tipo EventError, não como
-    // retorno — o consumidor lê tudo por um caminho só.
+    // DefaultLimits são os limites de turno adequados a esta família (RN-9).
+    DefaultLimits() Limits
+
+    // Encode serializa o contexto neutro no corpo esperado pelo transporte.
+    Encode(req Request, transport string) (WireRequest, error)
+
+    // Decode traduz evento bruto em StreamEvent neutro, validando tool call
+    // contra o schema declarado (RN-8).
+    Decode(ev WireEvent, tools []contextpkg.ToolDef) (StreamEvent, error)
+}
+
+type Limits struct {
+    MaxIterations int // teto de iterações do loop para esta família
+    MaxOutputTokens int // 0 = default do provedor
+}
+
+// Provider é a composição. Construído pelo Registry, nunca à mão.
+type Provider interface {
+    Family() Family
+    Transport() Transport
+    Window(model string) (int, error)
+    Limits() Limits
     Stream(ctx context.Context, req Request) (<-chan StreamEvent, error)
 }
 
 type Request struct {
-    Model    string
-    Messages []contextpkg.Message // tipos neutros do dcode (RN-2)
-    Tools    []contextpkg.ToolDef
-    MaxTokens int // 0 = default do provedor
+    Model     string
+    Messages  []contextpkg.Message // tipos neutros do dcode (RN-2)
+    Tools     []contextpkg.ToolDef
+    MaxTokens int
 }
 ```
+
+> `Encode` recebe o transporte como parâmetro porque uma família que fala dois dialetos serializa diferente em cada um. É exatamente o ponto que um eixo só não expressaria.
+
+### 2.1 Famílias do MVP
+
+| Família | `Models()` | `Transports()` | `MaxIterations` |
+|---|---|---|---|
+| `minimax-m3` | `MiniMax-M3`, `minimax-m3` | `openai`, `anthropic` | **200** |
+| `claude` | `claude-` | `anthropic` | **50** |
+
+**Por que 200 para M3 e 50 para Claude.** O default de 50 foi dimensionado pelo caso de um refactor cruzando dez arquivos. M3 é treinado para horizonte longo — a MiniMax demonstrou uma execução com 1.959 tool calls — e 50 truncaria trabalho legítimo. O detector de repetição em 3 chamadas idênticas continua sendo o mecanismo real contra loop patológico; o teto é backstop, e backstop acompanha o horizonte do modelo.
+
+`minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
+
+**Família desconhecida não existe.** Modelo que não casa com nenhum `Models()` falha na criação da sessão, listando as famílias disponíveis. O escape hatch é explícito — `--family generic` — e emite aviso de que os limiares não foram medidos para aquele modelo.
 
 ## 3. Eventos de stream
 
@@ -107,16 +160,26 @@ func (e *ProviderError) Error() string
 | `provider` | sim | repete com recuo exponencial, até o teto |
 | `canceled` | não | encerra silenciosamente |
 
-## 5. Registro de famílias
+## 5. Registro e resolução
 
 ```go
 type Registry struct{ /* ... */ }
 
-func (r *Registry) Register(p Provider)
-func (r *Registry) Resolve(model string) (Provider, error)
+func (r *Registry) RegisterTransport(t Transport)
+func (r *Registry) RegisterFamily(f Family)
+
+// Resolve compõe o Provider: modelo → família → transporte.
+// transportOverride vazio usa o preferido da família.
+func (r *Registry) Resolve(model, transportOverride string) (Provider, error)
 ```
 
-Resolução por prefixo de nome de modelo, declarado por cada adaptador. Modelo desconhecido devolve erro explícito na criação da sessão — nunca cai em adaptador genérico por default, porque um default silencioso entrega tool-calling ruim sem sinal.
+Ordem de resolução:
+
+1. `model` casa com o `Models()` de exatamente uma família. Zero casamentos → erro listando as famílias disponíveis. Mais de um → erro de configuração; prefixos de família não podem se sobrepor.
+2. Transporte é o `transportOverride`, se dado, ou o primeiro de `Transports()`.
+3. Override que não está em `Transports()` da família → erro nomeando os compatíveis.
+
+Nunca cai em família genérica por default. O default silencioso é o que entrega tool-calling ruim sem sinal.
 
 ## 6. Contratos comportamentais
 
@@ -144,7 +207,11 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Tool call que não valida contra o schema nunca chega ao consumidor como `EventToolCall` (RN-8).
 - Todo teste da suíte padrão roda com a rede desligada (RN-4).
 - `RetryAfter > 0` apenas em `ErrClassRateLimit`.
+- Prefixos de `Models()` não se sobrepõem entre famílias; sobreposição é erro de inicialização.
+- `Resolve` com transporte fora de `Transports()` da família devolve erro nomeando os compatíveis.
+- A mesma família codificando para dois transportes distintos produz corpos distintos e ambos válidos — o teste que prova que os dois eixos são de fato ortogonais.
+- `Limits()` devolve o default da família quando a configuração não sobrescreve.
 
 ## 8. Changelog
 
-_Sem alterações desde a criação._
+- [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)

@@ -156,11 +156,22 @@ Implementation will live in `internal/` (everything that is not a public contrac
 | Agent loop spec | written, `experimental` |
 | Sandbox and policy spec | written, `experimental` |
 | Tool suite spec | written, `experimental` |
-| Distribution spec | not started |
+| Distribution spec | written, `stable` artifact contract |
 | Implementation | **not started** |
 
 The first implementation milestone is the protocol type vocabulary — no server, no
 I/O, just the shared types and their round-trip tests.
+
+**Models.** MiniMax M3 is the primary model and gets built and measured first; Claude
+follows, and is what proves the transport/family split is genuinely orthogonal. A
+*transport* is a wire format (`openai`, `anthropic`) and is reusable; a *family* is the
+adaptation layer and is what carries measured thresholds and per-model turn limits.
+"OpenAI-compatible" describes a wire format, never a behavior — an unknown model behind
+that endpoint inherits the wire, never another model's validated thresholds.
+
+**Self-hosting milestone.** A pull request to dcode written end to end by dcode, passing
+review and the 90% gate with no manual edits. It is the best eval the project has: its
+own test suite and review checklist become the fitness function.
 
 ---
 

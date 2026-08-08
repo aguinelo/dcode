@@ -155,11 +155,23 @@ que é).
 | Spec do loop do agente | escrita, `experimental` |
 | Spec de sandbox e política | escrita, `experimental` |
 | Spec do conjunto de ferramentas | escrita, `experimental` |
-| Spec de distribuição | não iniciada |
+| Spec de distribuição | escrita, contrato de artefato `stable` |
 | Implementação | **não iniciada** |
 
 O primeiro marco de implementação é o vocabulário de tipos do protocolo — sem servidor,
 sem I/O, só os tipos compartilhados e seus testes de ida e volta.
+
+**Modelos.** MiniMax M3 é o modelo principal e é construído e medido primeiro; Claude vem
+depois, e é o que prova que o split transporte/família é de fato ortogonal. *Transporte* é
+formato de fio (`openai`, `anthropic`) e é reusável; *família* é a camada de adaptação e é
+quem carrega os limiares medidos e os limites de turno por modelo. "OpenAI-compatible"
+descreve formato de fio, nunca comportamento — modelo desconhecido atrás desse endpoint
+herda o fio, jamais os limiares validados de outro modelo.
+
+**Marco de auto-hospedagem.** Um pull request ao dcode escrito de ponta a ponta pelo
+dcode, aprovado na revisão e passando o gate de 90%, sem edição manual. É a melhor eval
+que o projeto tem: a própria suíte de testes e o checklist de revisão viram função de
+aptidão.
 
 ---
 

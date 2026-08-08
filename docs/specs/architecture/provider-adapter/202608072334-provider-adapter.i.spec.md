@@ -9,15 +9,21 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 ## Ordem de execução
 
-### Passo 1 — Interface e tipos, sem implementação
+### Passo 1 — Os dois eixos, sem implementação
 
 `internal/provider/provider.go`
 
-- [ ] `Provider`, `Request`, `StreamEvent`, `StreamEventType`, `Usage`.
+- [ ] `Transport` e `Family` como interfaces separadas.
+- [ ] `Provider` como composição; `Limits`, `Request`, `WireRequest`, `WireEvent`.
+- [ ] `StreamEvent`, `StreamEventType`, `Usage`.
 - [ ] `ProviderError`, `ErrorClass` e constantes.
-- [ ] `Registry` com `Register` e `Resolve`.
+- [ ] `Registry` com `RegisterTransport`, `RegisterFamily` e `Resolve`.
 
-**Teste obrigatório:** modelo desconhecido devolve erro listando os prefixos suportados; nunca resolve para adaptador default.
+**Testes obrigatórios:**
+- Modelo desconhecido devolve erro listando as famílias disponíveis; nunca resolve para família default.
+- Prefixos de `Models()` sobrepostos entre famílias falham na inicialização.
+- Transporte fora de `Transports()` da família devolve erro nomeando os compatíveis.
+- `Limits()` devolve o default da família quando a config não sobrescreve.
 
 > Nenhuma chamada de rede neste passo. A interface existe antes da primeira implementação justamente para que a segunda família não force reescrita (ADR-05).
 
@@ -42,16 +48,39 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 > Este passo vem **antes** do primeiro adaptador real. É o que torna todo o resto testável sem rede (RN-4) e é a base do gate de cobertura. Construir o adaptador primeiro e o reprodutor depois inverte a ordem e gera código não testado.
 
-### Passo 4 — Primeiro adaptador de família
+### Passo 4 — Transporte `openai`
 
-`internal/provider/<família>/`
+`internal/provider/transport/openai/`
 
-- [ ] Tradução de `[]Message` para o formato de fio, com golden file.
-- [ ] Tradução de `[]ToolDef` para o schema de ferramenta da família.
-- [ ] Parsing do stream em `StreamEvent`, contra transcript gravado.
-- [ ] `Window` por modelo conhecido.
+- [ ] `Do` sobre HTTP com SSE; sem qualquer conhecimento de família.
+- [ ] Parsing do envelope bruto em `WireEvent`, contra transcript gravado.
+
+> O transporte não conhece prompt, schema de tool nem limiar. Se precisar de `if familia == X`, os eixos foram misturados.
+
+### Passo 5 — Família `minimax-m3`
+
+`internal/provider/family/minimaxm3/`
+
+**Primeira família implementada — é o modelo principal do projeto.**
+
+- [ ] `Models()`, `Transports()` devolvendo `["openai", "anthropic"]`, `Window`.
+- [ ] `DefaultLimits()` com `MaxIterations: 200`.
+- [ ] `Encode` para o transporte `openai`, com golden file.
+- [ ] `Decode` de `WireEvent` em `StreamEvent`.
 - [ ] Validação de tool call contra o schema declarado; falha vira `ErrClassToolSchema`, nunca `EventToolCall` (RN-8).
 - [ ] Filtro de nome de ferramenta fora do conjunto declarado.
+
+**Teste obrigatório:** `Usage.CacheReadTokens` preenchido quando o provedor informa — é a medida direta de que a ADR-03 está funcionando.
+
+### Passo 6 — Transporte `anthropic` e família `claude`
+
+`internal/provider/transport/anthropic/`, `internal/provider/family/claude/`
+
+- [ ] Transporte `anthropic`, mesmos testes do Passo 4.
+- [ ] Família `claude` com `Transports()` devolvendo `["anthropic"]` e `MaxIterations: 50`.
+- [ ] `Encode` do `minimax-m3` para o transporte `anthropic`.
+
+**O teste que justifica a arquitetura inteira:** a família `minimax-m3` codificando para `openai` e para `anthropic` produz corpos **distintos e ambos válidos**, sem duplicar adaptação nem limiar. Se este teste for difícil de escrever, os eixos não estão ortogonais de fato.
 
 **Testes obrigatórios:**
 - Todo stream termina em exatamente um `EventDone` ou um `EventError`.
@@ -59,7 +88,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 - Tool call malformada não chega ao consumidor.
 - `Usage.CacheReadTokens` é preenchido quando o provedor informa — é a medida direta de que a ADR-03 está funcionando.
 
-### Passo 5 — Classificação de erro e retry
+### Passo 7 — Classificação de erro e retry
 
 `internal/provider/retry.go`
 
@@ -70,7 +99,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 **Teste obrigatório:** um transcript por classe da tabela da seção 4 do `.p`, verificando a decisão de retry de cada uma.
 
-### Passo 6 — Guarda de credencial
+### Passo 8 — Guarda de credencial
 
 `internal/provider/secret_test.go`
 
@@ -78,7 +107,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 **Falha neste teste é blocker imediato.** Credencial em log é o tipo de vazamento que só se descobre depois de publicado.
 
-### Passo 7 — Contratos comportamentais
+### Passo 9 — Contratos comportamentais
 
 `internal/provider/evals/` — atrás de build tag `eval`.
 
@@ -89,7 +118,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 > Estes são os primeiros contratos comportamentais do projeto. Se um limiar não for atingível, o achado é sobre a família de modelo, não sobre o código — e a conclusão pode ser rebaixar o limiar **com** entrada em `changelog/`, ou não suportar aquela família.
 
-### Passo 8 — Invariantes
+### Passo 10 — Invariantes
 
 `internal/provider/invariants_test.go`
 
@@ -100,15 +129,19 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 ## Ordem de dependência
 
 ```
-Passo 1 (interface)
+Passo 1 (dois eixos)
   ├─ Passo 2 (guarda de fronteira)
-  └─ Passo 3 (transcript)      ← antes do adaptador real, não depois
-       └─ Passo 4 (família)
-            ├─ Passo 5 (erro e retry)
-            ├─ Passo 6 (guarda de credencial)
-            ├─ Passo 7 (contratos comportamentais)
-            └─ Passo 8 (invariantes)
+  └─ Passo 3 (transcript)          ← antes de qualquer adaptador real
+       └─ Passo 4 (transporte openai)
+            └─ Passo 5 (família minimax-m3)   ← 🎯 modelo principal, primeiro
+                 └─ Passo 6 (transporte anthropic + família claude)
+                      ├─ Passo 7 (erro e retry)
+                      ├─ Passo 8 (guarda de credencial)
+                      ├─ Passo 9 (contratos comportamentais)
+                      └─ Passo 10 (invariantes)
 ```
+
+> M3 vem primeiro por ser o modelo principal do projeto: é contra ele que os limiares são medidos primeiro. Claude entra no Passo 6 porque é o que **prova a abstração** — uma implementação nunca valida um eixo ortogonal.
 
 ## Fora deste componente
 
@@ -120,10 +153,12 @@ Passo 1 (interface)
 
 - **Canal que não fecha** — stream que termina sem `EventDone` nem `EventError` pendura o loop para sempre. Cobrir com transcript truncado no meio.
 - **Vazamento de tipo de SDK** — um `*sdk.Message` num campo exportado destrói a ADR-05 silenciosamente. É o que o Passo 2 impede.
+- **Transporte conhecendo família** — um `if familia == X` dentro do transporte colapsa os dois eixos de volta em um, e o sintoma só aparece na terceira família.
+- **Família assumindo um transporte só** — `Encode` que ignora o parâmetro de transporte funciona enquanto houver um dialeto e quebra em silêncio no segundo.
 - **Credencial em `%v`** — um `fmt.Errorf("request failed: %v", req)` com a chave dentro da struct vaza sem ninguém notar. O Passo 6 existe por isso.
 - **Retry em erro não idempotente** — repetir uma chamada que já teve efeito no lado do provedor duplica cobrança. Só repetir o que falhou antes de ser aceito.
 - **Transcript gravado com credencial dentro** — sanitizar no gravador, não na revisão. Transcript vai para `testdata/`, que é versionado e público.
 
 ## Changelog
 
-_Sem alterações desde a criação._
+- [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)

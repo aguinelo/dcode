@@ -34,17 +34,38 @@ O `.p.spec.md` tem seção de contratos comportamentais cobrindo apenas a quarta
 | US-2 | usuário | ver a resposta aparecendo enquanto é gerada | turno longo não parecer travado |
 | US-3 | desenvolvedor do dcode | rodar todo o teste sem tocar a rede | CI determinística, rápida e sem custo |
 | US-4 | desenvolvedor do dcode | adicionar uma família nova sem tocar o loop | a adaptação ficar contida |
+| US-6 | desenvolvedor do dcode | reusar um transporte já pronto ao adicionar família | modelo novo em fio conhecido não custar reimplementação |
+| US-7 | usuário | escolher o dialeto quando meu modelo fala mais de um | contornar bug de um lado do provedor sem trocar de modelo |
 | US-5 | usuário | entender por que uma chamada falhou | distinguir cota, rede, credencial e erro de schema |
 
 ## 4. Regras de negócio
 
-### RN-1 — Adaptação é por família, não por endpoint
-Uma família de modelo é o conjunto que compartilha formato de tool call, comportamento de streaming e convenções de prompt. Trocar `base_url` não cria família nova; trocar o formato de tool call, sim.
+### RN-1 — Transporte e família são eixos ortogonais
+São duas coisas diferentes, e confundi-las é o erro que faz um harness entregar tool-calling não medido fingindo que foi validado.
 
-Cada família tem seu adaptador. Um adaptador que precise de `if modelo == X` interno é sinal de que são duas famílias.
+| | Transporte | Família |
+|---|---|---|
+| O que é | formato de fio da requisição | prompt, schema de tool, estratégia de edição |
+| Exemplos | `openai`, `anthropic` | `minimax-m3`, `claude` |
+| Reusável entre? | sim, entre famílias | não |
+| Carrega limiar de contrato comportamental? | não | **sim** |
+| Define limites padrão do turno? | não | **sim** (RN-9) |
+
+**"OpenAI-compatible" é transporte, nunca família.** Um modelo desconhecido atrás de endpoint OpenAI-compatible herda apenas o formato de fio — jamais a adaptação nem os limiares medidos para outro modelo.
+
+O caso que prova a necessidade dos dois eixos é o MiniMax M3, que fala **os dois dialetos**, Anthropic-compatible e OpenAI-compatible. Com um eixo só, suportar ambos exigiria duplicar a família inteira.
+
+Uma família declara os transportes com que é compatível, em ordem de preferência. Um adaptador que precise de `if modelo == X` interno é sinal de que são duas famílias.
+
+### RN-9 — Limites padrão do turno são da família
+Modelo treinado para horizonte longo precisa de teto de iteração maior que modelo afinado para tarefas curtas. Um número global serve mal aos dois.
+
+Cada família declara seus limites padrão; a configuração do usuário sobrescreve. O loop consome esse default em vez de carregar um número fixo.
+
+Sem isso, o teto dimensionado para um modelo trunca trabalho legítimo de outro — e teto que trunca trabalho legítimo vira teto que o usuário desliga.
 
 ### RN-2 — O núcleo não conhece provedores
-O loop e o motor de contexto trabalham com os tipos neutros do dcode. Nenhum tipo específico de provedor vaza para fora deste pacote. Se vazar, a ADR-05 já foi perdida.
+O loop e o motor de contexto trabalham com os tipos neutros do dcode. Nenhum tipo específico de provedor — nem de transporte, nem de família — vaza para fora deste pacote. Se vazar, a ADR-05 já foi perdida.
 
 ### RN-3 — Streaming é obrigatório
 Toda chamada é em streaming. US-2 não é ajuste de interface: sem streaming não há como interromper um turno no meio, que é requisito do loop.
@@ -79,4 +100,4 @@ Executar tool call malformada com input adivinhado é como um agente corrompe ar
 
 ## 6. Changelog
 
-_Sem alterações desde a criação._
+- [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
