@@ -34,7 +34,7 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_DOCTRINE_STYLE` | string | vazio | Ajusta a seção de estilo da doutrina — tom e formato de saída. **Não** alcança `Doctrine.Safety` (RN-9). |
+| `DCODE_DOCTRINE_STYLE` | string | vazio | Ajusta a seção de estilo da doutrina — tom e formato de saída. **Não** alcança `Doctrine.Safety` (RN-10). |
 | `DCODE_DOCTRINE_DUMP` | booleano | `false` | Imprime o prompt montado e sai. Ferramenta de depuração e de auditoria: é como se verifica o que de fato vai ao modelo. |
 
 > `DCODE_DOCTRINE_DUMP` é também a resposta à pergunta "o que exatamente está indo para a LLM". Um harness que não permite inspecionar o próprio prompt pede confiança cega em um programa com acesso a shell.
@@ -43,7 +43,7 @@
 
 | Constante | Valor | Motivo |
 |---|---|---|
-| `Doctrine.Safety` sobrescrevível | **nunca** | RN-9; a fronteira real é estrutural, e o prompt não pode sugerir o contrário. |
+| `Doctrine.Safety` sobrescrevível | **nunca** | RN-10; a fronteira real é estrutural, e o prompt não pode sugerir o contrário. |
 | Ordem dos blocos do prefixo | seção 2 do `.p` | Alterar invalida o cache de toda sessão viva; é mudança de contrato. |
 | Lembrete anexado, nunca prefixado | sempre | RN-6; prefixar invalidaria o cache a cada emissão. |
 | Corpo de skill fora do prefixo | sempre | RN-7; carregar tudo é o caminho para prompt de dezenas de milhares de tokens pago em todo turno. |

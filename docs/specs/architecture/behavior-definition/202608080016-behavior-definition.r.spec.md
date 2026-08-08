@@ -23,6 +23,7 @@ Esta spec define as camadas, a ordem de montagem, a precedência em caso de conf
 | Emissão de lembrete a partir do estado | determinístico | asserção |
 | **Aderência do modelo à instrução** | **mediado por modelo** | limiar |
 | **Escolha de ferramenta dedicada sobre shell** | **mediado por modelo** | limiar |
+| **Profundidade de planejamento proporcional** | **mediado por modelo** | limiar |
 
 A montagem é totalmente determinística. O que não é: **se o modelo obedece.**
 
@@ -36,6 +37,8 @@ A montagem é totalmente determinística. O que não é: **se o modelo obedece.*
 | US-4 | usuário | que o agente saiba que um arquivo mudou embaixo dele | não agir sobre estado obsoleto |
 | US-5 | usuário | adicionar capacidade sem inflar o prompt de toda sessão | prompt grande custa em todo turno |
 | US-6 | autor de família | ajustar formulação ao modelo | mesma regra, fraseado diferente, resultado melhor |
+| US-7 | usuário | ver onde estamos numa tarefa longa | acompanhar sem reler o histórico |
+| US-8 | usuário | que tarefa pequena não vire cerimônia | ferramenta burocrática é ferramenta abandonada |
 
 ## 4. Regras de negócio
 
@@ -99,18 +102,36 @@ Duas famílias de modelo não respondem igual à mesma frase — uma prefere est
 
 A **regra** é única e vive nesta spec. A **formulação** é da família (ADR-05). Uma família que precise mudar a *regra*, e não só o fraseado, é sinal de que a regra está errada ou de que aquele modelo não é suportável.
 
-### RN-9 — Instrução do usuário nunca sobrescreve segurança
+### RN-9 — Planejamento é intrínseco, com profundidade proporcional
+Toda tarefa tem plano. Não é opcional nem acionado por comando: é comportamento do produto.
+
+O que **não** é fixo é a cerimônia. "Corrige esse typo" passando por descoberta, refinamento, plano e aprovação é absurdo, e é assim que uma ferramenta ganha fama de burocrática — a maioria das tarefas reais é pequena.
+
+| Tamanho | Plano | Aprovação |
+|---|---|---|
+| trivial | 1 item | automática |
+| médio | 3 a 5 itens | leve |
+| complexo | descoberta e refinamento completos | explícita |
+
+Quem decide a profundidade é o modelo, o que joga esta regra no regime mediado — daí o contrato comportamental correspondente.
+
+O plano é **dado estruturado**, produzido pela ferramenta `plan`, nunca prosa no meio da resposta. É o que permite ao cliente exibi-lo sem interpretar texto.
+
+**Plano vivo:** itens são adicionados, divididos e marcados como bloqueados durante a execução. Plano imutável força o agente a marcar como feito o que não fez, ou a travar. Realidade divergir de plano é o normal.
+
+### RN-10 — Instrução do usuário nunca sobrescreve segurança
 Instrução de projeto ajusta estilo, convenção e preferência. **Não** desliga a fronteira do sandbox, não remove a exigência de aprovação, não altera a invariante de leitura prévia.
 
 Instrução que tente isso é ignorada, e o fato é registrado — não silenciosamente descartado.
 
 ## 5. Fora de escopo
 
-- **Caminhos concretos dos arquivos de instrução na máquina do usuário** e formato da configuração — spec própria, ainda a escrever.
-- **Comandos internos** do cliente e como injetam instrução — mesma spec futura.
+- Caminhos concretos dos arquivos de instrução e formato da configuração — `202608081203-configuration`.
+- Comandos do cliente e como injetam instrução — `202608081203-configuration`, seção 6.
+- Exibição do plano — `202608081250-client-tui`.
 - Prompt de sub-agentes; não há sub-agentes no MVP.
 - Memória semântica entre sessões.
 
 ## 6. Changelog
 
-_Sem alterações desde a criação._
+- [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)

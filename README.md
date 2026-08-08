@@ -159,6 +159,7 @@ Implementation will live in `internal/` (everything that is not a public contrac
 | Distribution spec | written, `stable` artifact contract |
 | Behavior definition spec | written, `stable` instruction contract |
 | Configuration spec | written, `stable` layout and precedence |
+| TUI client spec | written, `stable` keys and commands |
 | Implementation | **not started** |
 
 The first implementation milestone is the protocol type vocabulary — no server, no

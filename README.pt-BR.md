@@ -158,6 +158,7 @@ que é).
 | Spec de distribuição | escrita, contrato de artefato `stable` |
 | Spec de definição de comportamento | escrita, contrato de instrução `stable` |
 | Spec de configuração | escrita, layout e precedência `stable` |
+| Spec do cliente TUI | escrita, atalhos e comandos `stable` |
 | Implementação | **não iniciada** |
 
 O primeiro marco de implementação é o vocabulário de tipos do protocolo — sem servidor,
