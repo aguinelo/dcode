@@ -71,7 +71,7 @@ Separar assim é o que permite o loop cumprir RN-7 antes de o sandbox existir, s
 `internal/sandbox/sandbox.go`
 
 - [ ] Interface `Sandbox` com `Wrap` e `Available`.
-- [ ] Seleção por `HARNESS_SANDBOX_BACKEND`, com `auto` decidindo pelo SO.
+- [ ] Seleção por `DCODE_SANDBOX_BACKEND`, com `auto` decidindo pelo SO.
 - [ ] `none` aceito **apenas** com `full-access`; qualquer outra combinação é erro de inicialização.
 
 **Teste obrigatório:** `Available()` falhando impede a criação da sessão. Nenhum caminho de código executa comando sem fronteira estabelecida (RN-3).
@@ -82,7 +82,7 @@ Separar assim é o que permite o loop cumprir RN-7 antes de o sandbox existir, s
 
 - [ ] Geração de perfil `sandbox-exec` a partir de workspace e modo.
 - [ ] Execução por `exec` do binário — **sem cgo**.
-- [ ] Perfil escrito em `HARNESS_SANDBOX_PROFILE_DIR`.
+- [ ] Perfil escrito em `DCODE_SANDBOX_PROFILE_DIR`.
 
 **Testes obrigatórios, executando de verdade:**
 - Em `read-only`, escrita no workspace falha pelo SO, não por verificação em Go.
@@ -104,7 +104,7 @@ Separar assim é o que permite o loop cumprir RN-7 antes de o sandbox existir, s
 
 ### Passo 7 — Governança e invariantes
 
-- [ ] Leitura de `HARNESS_REQUIREMENTS_FILE`; valores travados vencem ambiente e flag (RN-7).
+- [ ] Leitura de `DCODE_REQUIREMENTS_FILE`; valores travados vencem ambiente e flag (RN-7).
 - [ ] Um teste por linha da seção 6 do `.p.spec.md`.
 - [ ] Matriz de CI cobrindo macOS e Linux; pacote de backend fora da plataforma sai do denominador de cobertura.
 - [ ] `go test -race ./internal/policy/... ./internal/sandbox/...` limpo.

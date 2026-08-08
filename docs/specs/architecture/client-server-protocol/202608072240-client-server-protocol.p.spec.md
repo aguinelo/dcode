@@ -1,4 +1,4 @@
-# Planning: Protocolo Client-Server do Harness
+# Planning: Protocolo Client-Server do dcode
 
 > Contrato técnico. Use **EXATAMENTE** os nomes, campos e tipos definidos aqui.
 > Regra de negócio em `202608072240-client-server-protocol.r.spec.md`.

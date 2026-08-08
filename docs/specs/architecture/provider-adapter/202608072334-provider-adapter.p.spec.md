@@ -28,7 +28,7 @@ type Provider interface {
 
 type Request struct {
     Model    string
-    Messages []contextpkg.Message // tipos neutros do harness (RN-2)
+    Messages []contextpkg.Message // tipos neutros do dcode (RN-2)
     Tools    []contextpkg.ToolDef
     MaxTokens int // 0 = default do provedor
 }

@@ -1,11 +1,11 @@
-# Research: Protocolo Client-Server do Harness
+# Research: Protocolo Client-Server do dcode
 
-> Fonte da verdade de negócio para a camada de transporte entre o núcleo do harness (servidor) e suas superfícies (TUI, desktop, extensão de IDE).
+> Fonte da verdade de negócio para a camada de transporte entre o núcleo do dcode (servidor) e suas superfícies (TUI, desktop, extensão de IDE).
 > Decisão de arquitetura de origem: **ADR-04 — Arquitetura de processo**.
 
 ## 1. Contexto
 
-O harness é um agente de codificação de terminal. A ADR-04 decidiu **client-server desde o primeiro commit**: o núcleo roda como daemon local e o TUI é apenas um cliente sobre um protocolo estável.
+O dcode é um agente de codificação de terminal. A ADR-04 decidiu **client-server desde o primeiro commit**: o núcleo roda como daemon local e o TUI é apenas um cliente sobre um protocolo estável.
 
 O motivo não é elegância. É que retrofitar client-server em um monolito de TUI é reescrita, e três capacidades dependem disso: aplicativo desktop, extensão de IDE e execução remota. Nenhuma delas cabe em um monolito de terminal.
 
@@ -67,7 +67,7 @@ Uma sessão processa um turno por vez. Entrada nova durante turno em andamento �
 - Autenticação, autorização e transporte remoto (depende de RN-6; spec futura).
 - Protocolo de plugin e o ABI correspondente.
 - Formato de persistência do log em disco — aqui só o contrato de fio.
-- Protocolo entre harness e provider de modelo.
+- Protocolo entre dcode e provider de modelo.
 
 ## 6. Changelog
 

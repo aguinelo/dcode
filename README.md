@@ -1,8 +1,8 @@
-# harness
+# dcode
 
 🇧🇷 [Versão em português](README.pt-BR.md)
 
-An agentic coding harness for the terminal, written in Go.
+**Dreibox Code** — an agentic coding harness for the terminal, written in Go.
 
 > **Status: specification phase.** There is no implementation yet — this repository currently
 > contains architecture decisions and specs. Nothing here is installable or runnable.
@@ -151,9 +151,12 @@ Implementation will live in `internal/` (everything that is not a public contrac
 |---|---|
 | Architecture decisions | recorded |
 | Client-server protocol spec | written, `experimental` |
-| Context engine spec | not started |
-| Sandbox spec | not started |
-| Provider adapter spec | not started |
+| Context engine spec | written, `experimental` |
+| Provider adapter spec | written, `experimental` |
+| Agent loop spec | written, `experimental` |
+| Sandbox and policy spec | written, `experimental` |
+| Tool suite spec | written, `experimental` |
+| Distribution spec | not started |
 | Implementation | **not started** |
 
 The first implementation milestone is the protocol type vocabulary — no server, no
@@ -204,6 +207,9 @@ a `changelog/` entry and a major version bump.
 
 Commits that change technical behavior must keep the corresponding spec in sync —
 a spec is never allowed to go stale relative to the code.
+
+**Authorship.** Commits carry a single author and no co-author trailers. Every commit
+is attributable to one person; tooling that assisted does not get a byline.
 
 ### Testing
 

@@ -7,18 +7,18 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `HARNESS_COMPACT_AT` | fração | `0.80` | Fração da janela do modelo que dispara a compactação. Expresso em fração, não em contagem absoluta, porque o número certo muda por modelo e a fração não. Abaixo de `0.50` a compactação vira frequente e o cache deixa de render; acima de `0.95` não sobra folga para o turno em curso. |
-| `HARNESS_COMPACT_KEEP_TURNS` | inteiro | `4` | Turnos recentes preservados na íntegra além da regra obrigatória de RN-6. Reduzir aumenta a agressividade do corte; `0` mantém apenas o mínimo exigido pela regra de negócio. |
-| `HARNESS_COMPACT_ENABLED` | booleano | `true` | Desligar faz a sessão falhar ao atingir a janela em vez de compactar. Só use em depuração, quando compactar atrapalharia a reprodução de um bug. |
+| `DCODE_COMPACT_AT` | fração | `0.80` | Fração da janela do modelo que dispara a compactação. Expresso em fração, não em contagem absoluta, porque o número certo muda por modelo e a fração não. Abaixo de `0.50` a compactação vira frequente e o cache deixa de render; acima de `0.95` não sobra folga para o turno em curso. |
+| `DCODE_COMPACT_KEEP_TURNS` | inteiro | `4` | Turnos recentes preservados na íntegra além da regra obrigatória de RN-6. Reduzir aumenta a agressividade do corte; `0` mantém apenas o mínimo exigido pela regra de negócio. |
+| `DCODE_COMPACT_ENABLED` | booleano | `true` | Desligar faz a sessão falhar ao atingir a janela em vez de compactar. Só use em depuração, quando compactar atrapalharia a reprodução de um bug. |
 
-> `HARNESS_COMPACT_AT` é fração da janela **do modelo em uso**, resolvida pelo adaptador de provider. O motor de contexto não conhece modelos.
+> `DCODE_COMPACT_AT` é fração da janela **do modelo em uso**, resolvida pelo adaptador de provider. O motor de contexto não conhece modelos.
 
 ## 2. Estimativa
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `HARNESS_TOKEN_ESTIMATE_RATIO` | float | `3.5` | Caracteres por token na heurística de `Estimate`. Valor conservador para texto misto de código e português. Aumentar subestima e arrisca estourar a janela; diminuir compacta cedo demais. |
-| `HARNESS_TOKEN_ESTIMATE_MARGIN` | fração | `0.10` | Margem de segurança somada à estimativa, absorvendo o erro da heurística. |
+| `DCODE_TOKEN_ESTIMATE_RATIO` | float | `3.5` | Caracteres por token na heurística de `Estimate`. Valor conservador para texto misto de código e português. Aumentar subestima e arrisca estourar a janela; diminuir compacta cedo demais. |
+| `DCODE_TOKEN_ESTIMATE_MARGIN` | fração | `0.10` | Margem de segurança somada à estimativa, absorvendo o erro da heurística. |
 
 ## 3. Constantes não configuráveis
 

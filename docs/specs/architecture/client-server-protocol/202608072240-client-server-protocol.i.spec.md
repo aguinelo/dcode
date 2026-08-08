@@ -1,4 +1,4 @@
-# Implementing: Protocolo Client-Server do Harness
+# Implementing: Protocolo Client-Server do dcode
 
 > Siga a ordem dos passos. Se algum passo aqui contradisser o `.r.spec.md`, **pare** — o `.r` tem precedência.
 
@@ -23,7 +23,7 @@
 - [ ] `Append(ctx, sessionID, type, payload) (Event, error)` — atribui `Seq` sob lock, monotônico e sem lacunas.
 - [ ] `Replay(ctx, sessionID, from uint64) (iter.Seq[Event], error)` — devolve `events_expired` abaixo da retenção.
 - [ ] `Subscribe(ctx, sessionID, from uint64) (<-chan Event, error)` — reposição seguida de fluxo ao vivo, sem lacuna e sem duplicata na emenda.
-- [ ] Retenção conforme `HARNESS_EVENT_RETENTION`; transbordo para disco conforme `HARNESS_EVENT_SPILL`.
+- [ ] Retenção conforme `DCODE_EVENT_RETENTION`; transbordo para disco conforme `DCODE_EVENT_SPILL`.
 
 **Teste obrigatório:** 1000 escritas concorrentes produzem `Seq` de 1 a 1000, sem repetição nem lacuna, sob `go test -race`.
 
@@ -44,7 +44,7 @@
 
 `internal/server/`
 
-- [ ] Escutar em `HARNESS_SOCKET` com permissão `0700`; detectar e remover socket órfão.
+- [ ] Escutar em `DCODE_SOCKET` com permissão `0700`; detectar e remover socket órfão.
 - [ ] Encerramento limpo: remove o socket, drena SSE, aguarda turnos em andamento com prazo.
 - [ ] Endpoints de `Session` (criar, listar, detalhar, encerrar).
 - [ ] `GET /health` e `GET /version` — marcados `stable`, então travar o formato com golden file agora.
@@ -67,7 +67,7 @@
 
 - [ ] Emitir `tool.approval_required` ao cruzar fronteira; sessão vai a `blocked`.
 - [ ] `POST .../approvals/{id}` resolve; segunda chamada devolve `409` (RN-4).
-- [ ] Prazo de `HARNESS_APPROVAL_TIMEOUT` expira em **negação** (RN-5).
+- [ ] Prazo de `DCODE_APPROVAL_TIMEOUT` expira em **negação** (RN-5).
 - [ ] Aviso em nível `warn` no boot quando `danger-full-access` + `never`.
 
 **Teste obrigatório:** duas resoluções concorrentes — exatamente uma retorna `200`, exatamente uma retorna `409`.

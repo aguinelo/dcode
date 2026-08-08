@@ -74,7 +74,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 `internal/provider/secret_test.go`
 
-- [ ] Injeta chave sentinela em `HARNESS_API_KEY`, exercita erro de cada classe, e varre `ProviderError.Message`, log e evento em busca da sentinela (RN-6).
+- [ ] Injeta chave sentinela em `DCODE_API_KEY`, exercita erro de cada classe, e varre `ProviderError.Message`, log e evento em busca da sentinela (RN-6).
 
 **Falha neste teste é blocker imediato.** Credencial em log é o tipo de vazamento que só se descobre depois de publicado.
 
@@ -83,7 +83,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 `internal/provider/evals/` — atrás de build tag `eval`.
 
 - [ ] Fixture para `toolcall-schema-valid`, `toolcall-recover` e `no-phantom-tool`.
-- [ ] Executor que roda `HARNESS_EVAL_RUNS` vezes e compara com o limiar.
+- [ ] Executor que roda `DCODE_EVAL_RUNS` vezes e compara com o limiar.
 - [ ] Registro do modelo e versão medidos junto do resultado.
 - [ ] Não roda na suíte padrão nem na CI de PR.
 

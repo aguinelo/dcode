@@ -7,28 +7,28 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `HARNESS_MODEL` | string | — (obrigatório) | Identificador do modelo. O prefixo resolve a família no `Registry`. Modelo desconhecido falha na criação da sessão, com a lista de prefixos suportados no erro — nunca cai em adaptador genérico. |
-| `HARNESS_MODEL_WINDOW` | inteiro | `0` | Sobrescreve a janela informada pelo adaptador. `0` usa o valor do adaptador. Existe para modelo novo cuja janela o adaptador ainda não conhece; usar isso é sinal de que o adaptador precisa ser atualizado. |
-| `HARNESS_MAX_OUTPUT_TOKENS` | inteiro | `0` | Teto de tokens de saída por chamada ao modelo. `0` usa o default do provedor. Não confundir com o teto por turno, que vive no loop do agente. |
+| `DCODE_MODEL` | string | — (obrigatório) | Identificador do modelo. O prefixo resolve a família no `Registry`. Modelo desconhecido falha na criação da sessão, com a lista de prefixos suportados no erro — nunca cai em adaptador genérico. |
+| `DCODE_MODEL_WINDOW` | inteiro | `0` | Sobrescreve a janela informada pelo adaptador. `0` usa o valor do adaptador. Existe para modelo novo cuja janela o adaptador ainda não conhece; usar isso é sinal de que o adaptador precisa ser atualizado. |
+| `DCODE_MAX_OUTPUT_TOKENS` | inteiro | `0` | Teto de tokens de saída por chamada ao modelo. `0` usa o default do provedor. Não confundir com o teto por turno, que vive no loop do agente. |
 
 ## 2. Credenciais
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `HARNESS_API_KEY` | string | — | Credencial. Lida uma vez na inicialização. **Nunca** registrada, nunca em mensagem de erro, nunca em evento (RN-6). |
-| `HARNESS_BASE_URL` | URL | default da família | Endpoint alternativo — proxy corporativo, gateway, servidor compatível. Trocar isto **não** muda a família (RN-1). |
+| `DCODE_API_KEY` | string | — | Credencial. Lida uma vez na inicialização. **Nunca** registrada, nunca em mensagem de erro, nunca em evento (RN-6). |
+| `DCODE_BASE_URL` | URL | default da família | Endpoint alternativo — proxy corporativo, gateway, servidor compatível. Trocar isto **não** muda a família (RN-1). |
 
-> Cada adaptador também aceita a variável convencional da sua família, se existir. `HARNESS_API_KEY` tem precedência sobre ela, para que a configuração do harness seja sempre explícita e previsível.
+> Cada adaptador também aceita a variável convencional da sua família, se existir. `DCODE_API_KEY` tem precedência sobre ela, para que a configuração do dcode seja sempre explícita e previsível.
 
 ## 3. Rede e resiliência
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `HARNESS_REQUEST_TIMEOUT` | duração | `600s` | Timeout total de uma chamada em streaming. Generoso porque turno com raciocínio longo é legítimo; o corte real de sessão travada é a interrupção do usuário, não este valor. |
-| `HARNESS_CONNECT_TIMEOUT` | duração | `10s` | Timeout de estabelecimento de conexão. Curto: falha de conexão deve aparecer rápido. |
-| `HARNESS_MAX_RETRIES` | inteiro | `3` | Tentativas para classe de erro com `Retryable = true`. Não se aplica a `auth`, `quota` nem `bad_request`. |
-| `HARNESS_RETRY_BASE_DELAY` | duração | `1s` | Base do recuo exponencial. `rate_limit` ignora e usa `RetryAfter` do provedor. |
-| `HARNESS_RETRY_MAX_DELAY` | duração | `30s` | Teto de cada espera individual do recuo. |
+| `DCODE_REQUEST_TIMEOUT` | duração | `600s` | Timeout total de uma chamada em streaming. Generoso porque turno com raciocínio longo é legítimo; o corte real de sessão travada é a interrupção do usuário, não este valor. |
+| `DCODE_CONNECT_TIMEOUT` | duração | `10s` | Timeout de estabelecimento de conexão. Curto: falha de conexão deve aparecer rápido. |
+| `DCODE_MAX_RETRIES` | inteiro | `3` | Tentativas para classe de erro com `Retryable = true`. Não se aplica a `auth`, `quota` nem `bad_request`. |
+| `DCODE_RETRY_BASE_DELAY` | duração | `1s` | Base do recuo exponencial. `rate_limit` ignora e usa `RetryAfter` do provedor. |
+| `DCODE_RETRY_MAX_DELAY` | duração | `30s` | Teto de cada espera individual do recuo. |
 
 ## 4. Medição de contratos comportamentais
 
@@ -38,9 +38,9 @@ Registra contra o que os limiares foram medidos. Trocar qualquer valor aqui **in
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `HARNESS_EVAL_MODEL` | string | — | Modelo usado na medição. Registrado junto do resultado. |
-| `HARNESS_EVAL_RUNS` | inteiro | `20` | Execuções por cenário. Abaixo de `20` o intervalo de confiança fica largo demais para um limiar de 95%. |
-| `HARNESS_EVAL_ENABLED` | booleano | `false` | Eval depende de modelo real e custa dinheiro: fica atrás de build tag e desta chave. Nunca liga na suíte padrão (RN-4). |
+| `DCODE_EVAL_MODEL` | string | — | Modelo usado na medição. Registrado junto do resultado. |
+| `DCODE_EVAL_RUNS` | inteiro | `20` | Execuções por cenário. Abaixo de `20` o intervalo de confiança fica largo demais para um limiar de 95%. |
+| `DCODE_EVAL_ENABLED` | booleano | `false` | Eval depende de modelo real e custa dinheiro: fica atrás de build tag e desta chave. Nunca liga na suíte padrão (RN-4). |
 
 ## 5. Constantes não configuráveis
 

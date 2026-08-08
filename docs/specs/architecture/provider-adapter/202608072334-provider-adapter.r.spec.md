@@ -1,6 +1,6 @@
 # Research: Adaptador de Provider
 
-> Fonte da verdade de negócio para a camada entre o harness e os modelos de linguagem.
+> Fonte da verdade de negócio para a camada entre o dcode e os modelos de linguagem.
 > Decisão de arquitetura de origem: **ADR-05 — Agnóstico de provider, com camada de adaptação real**.
 
 ## 1. Contexto
@@ -32,8 +32,8 @@ O `.p.spec.md` tem seção de contratos comportamentais cobrindo apenas a quarta
 |---|---|---|---|
 | US-1 | usuário | usar o modelo que já pago | não trocar de assinatura para experimentar o harness |
 | US-2 | usuário | ver a resposta aparecendo enquanto é gerada | turno longo não parecer travado |
-| US-3 | desenvolvedor do harness | rodar todo o teste sem tocar a rede | CI determinística, rápida e sem custo |
-| US-4 | desenvolvedor do harness | adicionar uma família nova sem tocar o loop | a adaptação ficar contida |
+| US-3 | desenvolvedor do dcode | rodar todo o teste sem tocar a rede | CI determinística, rápida e sem custo |
+| US-4 | desenvolvedor do dcode | adicionar uma família nova sem tocar o loop | a adaptação ficar contida |
 | US-5 | usuário | entender por que uma chamada falhou | distinguir cota, rede, credencial e erro de schema |
 
 ## 4. Regras de negócio
@@ -44,7 +44,7 @@ Uma família de modelo é o conjunto que compartilha formato de tool call, compo
 Cada família tem seu adaptador. Um adaptador que precise de `if modelo == X` interno é sinal de que são duas famílias.
 
 ### RN-2 — O núcleo não conhece provedores
-O loop e o motor de contexto trabalham com os tipos neutros do harness. Nenhum tipo específico de provedor vaza para fora deste pacote. Se vazar, a ADR-05 já foi perdida.
+O loop e o motor de contexto trabalham com os tipos neutros do dcode. Nenhum tipo específico de provedor vaza para fora deste pacote. Se vazar, a ADR-05 já foi perdida.
 
 ### RN-3 — Streaming é obrigatório
 Toda chamada é em streaming. US-2 não é ajuste de interface: sem streaming não há como interromper um turno no meio, que é requisito do loop.
@@ -73,7 +73,7 @@ Executar tool call malformada com input adivinhado é como um agente corrompe ar
 ## 5. Fora de escopo
 
 - Roteamento entre múltiplos provedores por custo ou capacidade.
-- Cache de resposta do lado do harness — o cache que importa é o de prefixo, do lado do provedor.
+- Cache de resposta do lado do dcode — o cache que importa é o de prefixo, do lado do provedor.
 - Fine-tuning, embeddings e qualquer chamada que não seja completude de chat.
 - Contabilidade de custo em dinheiro.
 

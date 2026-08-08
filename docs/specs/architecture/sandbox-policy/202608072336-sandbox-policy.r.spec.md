@@ -68,7 +68,7 @@ Aprovar uma escrita fora do workspace não aprova as próximas. Aprovação de e
 Todo comando e toda ferramenta com efeito passam pelo avaliador de política antes de executar. Não existe caminho alternativo, nem em teste, nem em depuração.
 
 ### RN-7 — Política do administrador vence a do usuário
-Configuração travada por administrador não é sobrescrevível por variável de ambiente nem por flag. É o que torna o harness adotável em organização.
+Configuração travada por administrador não é sobrescrevível por variável de ambiente nem por flag. É o que torna o dcode adotável em organização.
 
 ## 5. Fora de escopo
 

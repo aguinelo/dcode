@@ -27,8 +27,8 @@ Isso é o caso exemplar do objetivo descrito em `docs/conventions/SDD-HARNESS.pt
 |---|---|---|---|
 | US-1 | usuário | pagar preço de cache na maioria dos turnos | custo e latência de sessão longa serem viáveis |
 | US-2 | usuário | continuar uma tarefa longa sem perder o fio | a janela de contexto não é o limite da tarefa |
-| US-3 | desenvolvedor do harness | reproduzir exatamente o contexto de um turno passado | depurar comportamento do agente sem adivinhação |
-| US-4 | desenvolvedor do harness | adicionar uma ferramenta sem invalidar cache de sessão viva | extensibilidade não pode custar performance |
+| US-3 | desenvolvedor do dcode | reproduzir exatamente o contexto de um turno passado | depurar comportamento do agente sem adivinhação |
+| US-4 | desenvolvedor do dcode | adicionar uma ferramenta sem invalidar cache de sessão viva | extensibilidade não pode custar performance |
 
 ## 4. Regras de negócio
 
