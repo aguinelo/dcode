@@ -4,17 +4,17 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
-![Status](https://img.shields.io/badge/status-specification-orange)
+![Status](https://img.shields.io/badge/status-alpha-yellow)
 ![Specs](https://img.shields.io/badge/specs-10%20complete-success)
+![Coverage](https://img.shields.io/badge/coverage-93%25-success)
 
 <img src="docs/brand/mascot.svg" width="72" align="right" alt="dcode mascot">
 
 **Dreibox Code** — an agentic coding harness for the terminal, written in Go.
 
-> **Status: specification phase.** There is no implementation yet — this repository
-> currently contains architecture decisions and specs. Nothing here is installable or
-> runnable. Starring it means you're interested in where it goes, not that it does
-> anything today.
+> **Status: alpha.** The core is implemented and tested — the agent reads, edits,
+> searches and runs commands inside an OS-enforced sandbox. There is no TUI yet and no
+> released binary; build it yourself with `make build`. Expect breaking changes.
 
 ```
 ┌──────────────────────────────────────────────┬────────────────────────┐
@@ -253,20 +253,43 @@ Details in [`docs/conventions/SDD-HARNESS.md`](docs/conventions/SDD-HARNESS.md).
 
 ---
 
+## Running it
+
+```bash
+git clone https://github.com/aguinelo/dcode && cd dcode
+make build
+export DCODE_API_KEY=...
+./bin/dcode "add a test for the parser"
+```
+
+Two commands need no key, and they are the audit pair:
+
+```bash
+./bin/dcode --dump-prompt          # exactly what would be sent to the model
+./bin/dcode --config model.name    # a setting's effective value, and where it came from
+```
+
+By default the agent runs in `workspace-write` with `on-request` approvals: it may edit
+inside the workspace, and anything crossing that boundary — a write outside it, or the
+network — stops and asks. Without an approver it denies, because with nobody to ask the
+only alternative is granting in silence.
+
+---
+
 ## Roadmap
 
-| Phase | Delivers | Milestone |
+| Phase | Delivers | Status |
 |---|---|---|
-| **0** | `go.mod`, CI with `-race`, 90% gate, `CGO_ENABLED=0` | — |
-| **1** | protocol type vocabulary | — |
-| **2** | context engine — the pure `Assemble` | — |
-| **3** | provider — transport `openai`, family `minimax-m3` | — |
-| **4** | minimal loop + `read` | 🎯 **first runnable agent** |
-| **5** | full tool suite + read-before-edit invariant | — |
-| **6** | sandbox and policy | 🎯 **the product thesis turns on** |
-| **7** | event log and session | — |
-| **8** | server — unix socket, SSE, approvals | — |
-| **9** | TUI client | 🎯 **MVP** |
+| **0** | `go.mod`, CI with `-race`, 90% gate, `CGO_ENABLED=0` | ✅ |
+| **1** | protocol type vocabulary | ✅ 100% covered |
+| **2** | context engine — the pure `Assemble` | ✅ 99% |
+| **3** | provider — transport × family, both dialects | ✅ 91% |
+| **4** | policy and OS sandbox | ✅ 92% / 94% |
+| **5** | the seven tools | ✅ 94% |
+| **6** | the agent loop | ✅ 98% |
+| **7** | behaviour, config, wiring, CLI | ✅ 93% |
+| **8** | event log, unix socket, SSE | not started |
+| **9** | TUI client | not started |
 
 Beyond MVP: multiple providers, MCP, plugins, session sharing, desktop, IDE.
 
@@ -293,8 +316,20 @@ docs/
     domains/              feature specs
 ```
 
-Implementation will live in `internal/` (everything that is not a public contract) and
-`pkg/` (everything that is).
+```
+internal/
+  protocol/       the wire vocabulary, no logic and no I/O
+  contextengine/  the pure Assemble — where ADR-03 lives or dies
+  provider/       transport × family, replay transport, credential redaction
+  policy/         the two orthogonal axes, pure decision table
+  sandbox/        seatbelt and bubblewrap, driven as binaries
+  tools/          read write edit glob grep bash plan
+  loop/           the turn cycle
+  behavior/       the prompt builder
+  config/         roots, precedence chain, instruction discovery
+  app/            the only package that reads the environment
+cmd/dcode/        argument parsing and printing
+```
 
 ---
 

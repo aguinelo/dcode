@@ -1,0 +1,512 @@
+// Package app wires the layers into a runnable agent.
+//
+// It is the only place that reads the environment and touches the outside
+// world on behalf of the core: everything below stays pure or injectable, which
+// is what keeps the rest exactly testable.
+package app
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/aguinelo/dcode/internal/behavior"
+	"github.com/aguinelo/dcode/internal/config"
+	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/provider"
+	"github.com/aguinelo/dcode/internal/sandbox"
+	"github.com/aguinelo/dcode/internal/tools"
+)
+
+// Options are the resolved settings for one session.
+type Options struct {
+	Workspace    string
+	Model        string
+	Transport    string
+	Family       string
+	APIKey       string
+	BaseURL      string
+	SandboxMode  policy.SandboxMode
+	Policy       policy.ApprovalPolicy
+	Backend      string
+	AllowNetwork bool
+	Parallel     int
+	Limits       loop.Limits
+	DumpPrompt   bool
+}
+
+// FromEnv resolves options from the environment, applying the precedence chain.
+func FromEnv(env func(string) string, workspace string) (Options, config.Resolved, error) {
+	layers := []config.Layer{
+		{Source: config.SourceDefault, Origin: "built-in", Values: map[string]string{
+			"model.name":            "MiniMax-M3",
+			"sandbox.mode":          string(policy.ModeWorkspaceWrite),
+			"sandbox.policy":        string(policy.PolicyOnRequest),
+			"sandbox.backend":       sandbox.BackendAuto,
+			"sandbox.allow_network": "false",
+			"limits.parallel":       "4",
+		}},
+	}
+
+	envValues := map[string]string{}
+	for key, name := range map[string]string{
+		"model.name":            "DCODE_MODEL",
+		"model.transport":       "DCODE_TRANSPORT",
+		"model.family":          "DCODE_FAMILY",
+		"model.base_url":        "DCODE_BASE_URL",
+		"sandbox.mode":          "DCODE_SANDBOX_MODE",
+		"sandbox.policy":        "DCODE_APPROVAL_POLICY",
+		"sandbox.backend":       "DCODE_SANDBOX_BACKEND",
+		"sandbox.allow_network": "DCODE_ALLOW_NETWORK",
+		"limits.max_iterations": "DCODE_MAX_ITERATIONS",
+		"limits.identical":      "DCODE_MAX_IDENTICAL_CALLS",
+		"limits.parallel":       "DCODE_TOOL_PARALLELISM",
+		"doctrine.dump":         "DCODE_DOCTRINE_DUMP",
+	} {
+		if v := env(name); v != "" {
+			envValues[key] = v
+		}
+	}
+	if len(envValues) > 0 {
+		layers = append(layers, config.Layer{
+			Source: config.SourceEnv, Origin: "environment", Values: envValues,
+		})
+	}
+
+	r := config.Resolve(layers)
+
+	mode, err := policy.ParseMode(r.String("sandbox.mode", string(policy.ModeWorkspaceWrite)))
+	if err != nil {
+		return Options{}, r, err
+	}
+	pol, err := policy.ParsePolicy(r.String("sandbox.policy", string(policy.PolicyOnRequest)))
+	if err != nil {
+		return Options{}, r, err
+	}
+
+	ws, err := filepath.Abs(workspace)
+	if err != nil {
+		return Options{}, r, err
+	}
+
+	return Options{
+		Workspace:    ws,
+		Model:        r.String("model.name", "MiniMax-M3"),
+		Transport:    r.String("model.transport", ""),
+		Family:       r.String("model.family", ""),
+		APIKey:       env("DCODE_API_KEY"),
+		BaseURL:      r.String("model.base_url", ""),
+		SandboxMode:  mode,
+		Policy:       pol,
+		Backend:      r.String("sandbox.backend", sandbox.BackendAuto),
+		AllowNetwork: r.Bool("sandbox.allow_network", false),
+		Parallel:     r.Int("limits.parallel", 4),
+		DumpPrompt:   r.Bool("doctrine.dump", false),
+		Limits: loop.Limits{
+			MaxIterations:     r.Int("limits.max_iterations", 0),
+			MaxIdenticalCalls: r.Int("limits.identical", 3),
+		},
+	}, r, nil
+}
+
+// Session is a wired agent ready to take turns.
+type Session struct {
+	Engine   *loop.Engine
+	Registry *tools.Registry
+	Prompt   string
+	Options  Options
+}
+
+// New wires a session.
+func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, error) {
+	resolver, err := policy.NewResolver(opts.Workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	// The sandbox is established before anything can run. Failing here is
+	// deliberate: a session that cannot confine its own commands should not
+	// start at all.
+	sb, err := sandbox.New(sandbox.Config{
+		Backend:      opts.Backend,
+		AllowNetwork: opts.AllowNetwork,
+	}, opts.SandboxMode)
+	if err != nil {
+		return nil, err
+	}
+
+	state := tools.NewState(resolver, tools.DefaultLimits())
+	registry := tools.NewRegistry(
+		tools.Read{}, tools.Write{}, tools.Edit{},
+		tools.Glob{}, tools.Grep{},
+		tools.Bash{
+			Runner:  sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
+			Workdir: opts.Workspace,
+			Timeout: 120 * time.Second,
+		},
+		tools.Plan{},
+	)
+
+	if opts.APIKey != "" {
+		provider.RegisterSecret(opts.APIKey)
+	}
+	p, err := buildProvider(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	instructions, err := loadInstructions(opts.Workspace)
+	if err != nil {
+		return nil, err
+	}
+	prompt := behaviorBuild(registry.Names(), instructions)
+
+	window, _ := p.Window(opts.Model)
+	ctxCfg := ce.DefaultConfig()
+	ctxCfg.Window = window
+
+	engine := loop.New(loop.Config{
+		Provider: p, Tools: registry, State: state,
+		Emitter: emitter, Approver: approver,
+		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
+		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
+		Summarise: summariser(p, opts.Model),
+	}, ce.Session{Instructions: prompt})
+
+	return &Session{Engine: engine, Registry: registry, Prompt: prompt, Options: opts}, nil
+}
+
+func buildProvider(opts Options) (provider.Provider, error) {
+	reg := provider.NewRegistry()
+	reg.RegisterTransport(NewHTTPTransport(provider.TransportOpenAI, opts.BaseURL, opts.APIKey))
+	reg.RegisterTransport(NewHTTPTransport(provider.TransportAnthropic, opts.BaseURL, opts.APIKey))
+	for _, f := range []provider.Family{provider.MiniMaxM3{}, provider.Claude{}} {
+		if err := reg.RegisterFamily(f); err != nil {
+			return nil, err
+		}
+	}
+	if opts.Family != "" {
+		return reg.ResolveFamily(opts.Family, opts.Transport)
+	}
+	return reg.Resolve(opts.Model, opts.Transport)
+}
+
+// summariser produces compaction text. It lives here rather than in the loop
+// because it needs a model call, which is what would drag I/O into the pure
+// layers below.
+func summariser(p provider.Provider, model string) func(context.Context, []ce.Message) (string, error) {
+	return func(ctx context.Context, span []ce.Message) (string, error) {
+		var b strings.Builder
+		for _, m := range span {
+			if m.Text != "" {
+				fmt.Fprintf(&b, "%s: %s\n", m.Role, m.Text)
+			}
+		}
+		req := provider.Request{
+			Model: model,
+			Messages: []ce.Message{
+				{Role: ce.RoleSystem, Text: "Summarise the exchange below. " +
+					"Keep the current task, decisions already made and file paths touched. " +
+					"Drop exploration that led nowhere. Be brief."},
+				{Role: ce.RoleUser, Text: b.String()},
+			},
+		}
+		ch, err := p.Stream(ctx, req)
+		if err != nil {
+			return "", err
+		}
+		var out strings.Builder
+		for ev := range ch {
+			if ev.Type == provider.EventTextDelta {
+				out.WriteString(ev.Text)
+			}
+		}
+		return out.String(), nil
+	}
+}
+
+// behaviorBuild renders a prompt from a tool set and instructions. Small
+// indirection so tests can assemble one without wiring a whole session.
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction) string {
+	return behavior.Build(behavior.Prompt{
+		Doctrine:     behavior.DefaultDoctrine(toolNames),
+		Tools:        toolNames,
+		Instructions: instructions,
+	})
+}
+
+func loadInstructions(workspace string) ([]behavior.Instruction, error) {
+	files, err := config.DiscoverInstructions(workspace, workspace, nil, 65536, 8)
+	if err != nil {
+		return nil, err
+	}
+	var out []behavior.Instruction
+	for _, f := range files {
+		src := behavior.SourceProject
+		if f.Source == "directory" {
+			src = behavior.SourceDirectory
+		}
+		out = append(out, behavior.Instruction{
+			Source: src, Scope: filepath.Base(filepath.Dir(f.Path)), Text: f.Text,
+		})
+	}
+	return out, nil
+}
+
+// ---------- HTTP transport ----------
+
+// HTTPTransport speaks a wire format over HTTP with SSE. It knows nothing about
+// families: a `if family == X` in here would collapse the two axes back into
+// one, and the symptom only shows up at the third family.
+type HTTPTransport struct {
+	name    string
+	baseURL string
+	apiKey  string
+	client  *http.Client
+}
+
+// NewHTTPTransport builds a transport for a wire format.
+func NewHTTPTransport(name, baseURL, apiKey string) *HTTPTransport {
+	if baseURL == "" {
+		baseURL = defaultBaseURL(name)
+	}
+	return &HTTPTransport{
+		name: name, baseURL: strings.TrimRight(baseURL, "/"), apiKey: apiKey,
+		client: &http.Client{Timeout: 10 * time.Minute},
+	}
+}
+
+func defaultBaseURL(name string) string {
+	switch name {
+	case provider.TransportAnthropic:
+		return "https://api.anthropic.com/v1"
+	default:
+		return "https://api.minimax.io/v1"
+	}
+}
+
+func (t *HTTPTransport) Name() string { return t.name }
+
+func (t *HTTPTransport) Do(ctx context.Context, wire provider.WireRequest) (<-chan provider.WireEvent, error) {
+	if t.apiKey == "" {
+		return nil, &provider.ProviderError{
+			Class:   provider.ErrClassAuth,
+			Message: "no API key. Set DCODE_API_KEY.",
+		}
+	}
+
+	path := "/chat/completions"
+	if t.name == provider.TransportAnthropic {
+		path = "/messages"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.baseURL+path,
+		bytes.NewReader(wire.Body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	if t.name == provider.TransportAnthropic {
+		req.Header.Set("x-api-key", t.apiKey)
+		req.Header.Set("anthropic-version", "2023-06-01")
+	} else {
+		req.Header.Set("Authorization", "Bearer "+t.apiKey)
+	}
+
+	resp, err := t.client.Do(req)
+	if err != nil {
+		// Sanitised because a transport error can echo the URL, and a URL can
+		// carry a key.
+		return nil, &provider.ProviderError{
+			Class:     provider.ErrClassTransport,
+			Message:   provider.Sanitize(err.Error()),
+			Retryable: true,
+		}
+	}
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
+		resp.Body.Close()
+		if pe := provider.ClassifyStatus(resp.StatusCode, string(body)); pe != nil {
+			return nil, pe
+		}
+	}
+
+	out := make(chan provider.WireEvent)
+	go func() {
+		defer close(out)
+		defer resp.Body.Close()
+
+		sc := bufio.NewScanner(resp.Body)
+		sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+		for sc.Scan() {
+			line := sc.Text()
+			if !strings.HasPrefix(line, "data:") {
+				continue
+			}
+			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			select {
+			case out <- provider.WireEvent{Data: []byte(data)}:
+			case <-ctx.Done():
+				return
+			}
+		}
+		if err := sc.Err(); err != nil {
+			select {
+			case out <- provider.WireEvent{Err: err}:
+			case <-ctx.Done():
+			}
+		}
+	}()
+	return out, nil
+}
+
+// ---------- console adapters ----------
+
+// ConsoleEmitter renders events for the development entry point.
+//
+// Deliberately minimal: it exists so the core can be exercised before the TUI,
+// and it holds no session state of its own, exactly like any other client.
+type ConsoleEmitter struct {
+	W       io.Writer
+	Verbose bool
+	inText  bool
+}
+
+// Emit writes one event.
+func (c *ConsoleEmitter) Emit(t protocol.EventType, payload any) {
+	switch t {
+	case protocol.EventMessageDelta:
+		if d, ok := payload.(protocol.MessageDelta); ok {
+			c.inText = true
+			fmt.Fprint(c.W, d.Text)
+		}
+	case protocol.EventToolRequested:
+		if d, ok := payload.(protocol.ToolRequested); ok {
+			c.newline()
+			fmt.Fprintf(c.W, "⏺ %s %s\n", d.Name, summariseInput(d.Input))
+		}
+	case protocol.EventToolCompleted:
+		if d, ok := payload.(protocol.ToolCompleted); ok {
+			// Errors expand, successes collapse: failure needs attention,
+			// success needs only confirmation.
+			if d.OK && !c.Verbose {
+				return
+			}
+			c.newline()
+			fmt.Fprintf(c.W, "  %s\n", indent(strings.TrimSpace(d.Output)))
+		}
+	case protocol.EventApprovalRequired:
+		if d, ok := payload.(protocol.ApprovalRequest); ok {
+			c.newline()
+			fmt.Fprintf(c.W, "\n⚠ approval needed — %s crosses %s\n", d.Tool, d.BoundaryCrossed)
+			if d.Command != "" {
+				fmt.Fprintf(c.W, "  %s\n", d.Command)
+			}
+		}
+	case protocol.EventPlanUpdated:
+		if d, ok := payload.(protocol.PlanUpdated); ok {
+			c.newline()
+			fmt.Fprintln(c.W, "\nPLAN")
+			for _, it := range loop.SortedPlan(d.Items) {
+				fmt.Fprintf(c.W, "  %s %d %s\n", planMark(it.Status), it.ID, it.Text)
+				if it.Status == protocol.PlanBlocked && it.Blocked != "" {
+					fmt.Fprintf(c.W, "      └ %s\n", it.Blocked)
+				}
+			}
+			fmt.Fprintln(c.W)
+		}
+	case protocol.EventSessionError:
+		if d, ok := payload.(protocol.Error); ok {
+			c.newline()
+			fmt.Fprintf(c.W, "\nerror [%s]: %s\n", d.Code, d.Message)
+		}
+	case protocol.EventTurnCompleted:
+		c.newline()
+	}
+}
+
+func (c *ConsoleEmitter) newline() {
+	if c.inText {
+		fmt.Fprintln(c.W)
+		c.inText = false
+	}
+}
+
+func planMark(status string) string {
+	switch status {
+	case protocol.PlanDone:
+		return "✓"
+	case protocol.PlanActive:
+		return "▸"
+	case protocol.PlanBlocked:
+		return "⊘"
+	}
+	return " "
+}
+
+func summariseInput(raw json.RawMessage) string {
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return ""
+	}
+	for _, k := range []string{"path", "pattern", "command"} {
+		if v, ok := m[k].(string); ok {
+			if len(v) > 60 {
+				v = v[:60] + "…"
+			}
+			return v
+		}
+	}
+	return ""
+}
+
+func indent(s string) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > 12 {
+		lines = append(lines[:12], fmt.Sprintf("… %d more lines", len(lines)-12))
+	}
+	return strings.Join(lines, "\n  ")
+}
+
+// ConsoleApprover asks on the terminal.
+type ConsoleApprover struct {
+	In  io.Reader
+	Out io.Writer
+}
+
+// Approve prompts and reads a decision. Anything other than an explicit yes is
+// a refusal: the safe answer must be the one that costs least effort.
+func (a *ConsoleApprover) Approve(_ context.Context, req protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
+	fmt.Fprintf(a.Out, "  [d] deny  [a] allow  [A] allow for the session  (default: deny) > ")
+	sc := bufio.NewScanner(a.In)
+	if !sc.Scan() {
+		return protocol.ApprovalDeny, nil
+	}
+	switch strings.TrimSpace(sc.Text()) {
+	case "a":
+		return protocol.ApprovalAllow, nil
+	case "A":
+		return protocol.ApprovalAllowSession, nil
+	default:
+		return protocol.ApprovalDeny, nil
+	}
+}
+
+// DenyAll refuses every crossing. Used for non-interactive runs, where there is
+// nobody to ask and granting in silence would be the only alternative.
+type DenyAll struct{}
+
+// Approve always denies.
+func (DenyAll) Approve(context.Context, protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
+	return protocol.ApprovalDeny, nil
+}

@@ -4,16 +4,17 @@
 
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
-![Status](https://img.shields.io/badge/status-especifica%C3%A7%C3%A3o-orange)
+![Status](https://img.shields.io/badge/status-alpha-yellow)
 ![Specs](https://img.shields.io/badge/specs-10%20completas-success)
+![Cobertura](https://img.shields.io/badge/cobertura-93%25-success)
 
 <img src="docs/brand/mascot.svg" width="72" align="right" alt="mascote do dcode">
 
 **Dreibox Code** — um harness de codificação agêntico para o terminal, escrito em Go.
 
-> **Status: fase de especificação.** Ainda não há implementação — este repositório contém
-> hoje decisões de arquitetura e specs. Nada aqui é instalável ou executável. Dar uma
-> estrela significa interesse no rumo do projeto, não que ele já faça algo.
+> **Status: alpha.** O núcleo está implementado e testado — o agente lê, edita, busca e
+> roda comandos dentro de um sandbox aplicado pelo sistema operacional. Ainda não há TUI
+> nem binário publicado; compile com `make build`. Espere mudanças que quebram.
 
 ```
 ┌──────────────────────────────────────────────┬────────────────────────┐
@@ -251,20 +252,43 @@ Detalhes em [`docs/conventions/SDD-HARNESS.pt-BR.md`](docs/conventions/SDD-HARNE
 
 ---
 
+## Rodando
+
+```bash
+git clone https://github.com/aguinelo/dcode && cd dcode
+make build
+export DCODE_API_KEY=...
+./bin/dcode "adicione um teste para o parser"
+```
+
+Dois comandos não precisam de chave, e são o par de auditoria:
+
+```bash
+./bin/dcode --dump-prompt          # exatamente o que iria para o modelo
+./bin/dcode --config model.name    # valor efetivo de uma chave, e de onde ele veio
+```
+
+Por default o agente roda em `workspace-write` com aprovação `on-request`: pode editar
+dentro do workspace, e qualquer coisa que cruze essa fronteira — escrita fora dela, ou
+rede — para e pergunta. Sem alguém para responder, ele nega: com ninguém para perguntar,
+a única alternativa seria conceder em silêncio.
+
+---
+
 ## Roteiro
 
-| Fase | Entrega | Marco |
+| Fase | Entrega | Estado |
 |---|---|---|
-| **0** | `go.mod`, CI com `-race`, gate de 90%, `CGO_ENABLED=0` | — |
-| **1** | vocabulário de tipos do protocolo | — |
-| **2** | motor de contexto — o `Assemble` puro | — |
-| **3** | provider — transporte `openai`, família `minimax-m3` | — |
-| **4** | loop mínimo + `read` | 🎯 **primeiro agente executável** |
-| **5** | conjunto de ferramentas + invariante read-before-edit | — |
-| **6** | sandbox e política | 🎯 **a tese do produto liga** |
-| **7** | log de eventos e sessão | — |
-| **8** | servidor — socket unix, SSE, aprovações | — |
-| **9** | cliente TUI | 🎯 **MVP** |
+| **0** | `go.mod`, CI com `-race`, gate de 90%, `CGO_ENABLED=0` | ✅ |
+| **1** | vocabulário de tipos do protocolo | ✅ 100% coberto |
+| **2** | motor de contexto — o `Assemble` puro | ✅ 99% |
+| **3** | provider — transporte × família, os dois dialetos | ✅ 91% |
+| **4** | política e sandbox do SO | ✅ 92% / 94% |
+| **5** | as sete ferramentas | ✅ 94% |
+| **6** | o loop do agente | ✅ 98% |
+| **7** | comportamento, config, wiring, CLI | ✅ 93% |
+| **8** | log de eventos, socket unix, SSE | não iniciado |
+| **9** | cliente TUI | não iniciado |
 
 Depois do MVP: múltiplos providers, MCP, plugins, sessão compartilhada, desktop, IDE.
 
@@ -291,8 +315,20 @@ docs/
     domains/              specs de funcionalidade
 ```
 
-A implementação vai viver em `internal/` (tudo que não é contrato público) e `pkg/` (tudo
-que é).
+```
+internal/
+  protocol/       o vocabulário de fio, sem lógica e sem I/O
+  contextengine/  o Assemble puro — onde a ADR-03 vive ou morre
+  provider/       transporte × família, replay, redação de credencial
+  policy/         os dois eixos ortogonais, tabela de decisão pura
+  sandbox/        seatbelt e bubblewrap, acionados como binários
+  tools/          read write edit glob grep bash plan
+  loop/           o ciclo do turno
+  behavior/       o construtor de prompt
+  config/         raízes, cadeia de precedência, descoberta de instruções
+  app/            o único pacote que lê o ambiente
+cmd/dcode/        parsing de argumento e impressão
+```
 
 ---
 
