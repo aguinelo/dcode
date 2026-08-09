@@ -124,6 +124,12 @@ type ApprovalRequest struct {
 	Command         string    `json:"command,omitempty"`
 	BoundaryCrossed string    `json:"boundary_crossed"`
 	ExpiresAt       time.Time `json:"expires_at"`
+	// Reason says why in a sentence, and Rule names the pattern that raised the
+	// question when one did. Consent to a rule nobody can see is consent to
+	// nothing, and Rule is also what an "allow for the session" answer is
+	// remembered against.
+	Reason string `json:"reason,omitempty"`
+	Rule   string `json:"rule,omitempty"`
 }
 
 // PlanItem is one entry of the session plan, maintained by the plan tool.

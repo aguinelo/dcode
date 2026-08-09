@@ -330,6 +330,22 @@ dentro do workspace, e qualquer coisa que cruze essa fronteira — escrita fora 
 rede — para e pergunta. Sem alguém para responder, ele nega: com ninguém para perguntar,
 a única alternativa seria conceder em silêncio.
 
+Dentro do workspace, uma lista curta de regras pergunta sobre o que é diferente **em
+natureza** do trabalho comum — escrever em `.git/**` (um hook roda no próximo commit,
+fora do sandbox) ou em `.dcode/**` (a configuração do próprio agente), e ler um segredo
+(que manda o conteúdo ao provedor do modelo). São **atenção, não contenção**: padrão de
+comando é contornado por `bash -c`, e quem contém de fato é o sandbox.
+
+```toml
+[rules]
+confirm_write   = [".git/**", ".dcode/**"]
+confirm_read    = [".env", "**/*.pem"]
+confirm_command = ["rm -rf*"]
+```
+
+Lista configurada substitui o default em vez de somar, e `dcode config
+rules.confirm_write` mostra o que está valendo e de onde veio.
+
 ### Configurando
 
 Tudo é opcional; os defaults são o produto. Os arquivos moram sob `$DCODE_HOME`, ou nos
