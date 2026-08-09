@@ -27,6 +27,13 @@ const (
 	StyleOK
 	StyleDanger // full-access, and nothing else
 	StyleCursor
+	// The three amber tones and the terracotta of the mark. They exist so the
+	// mascot renders as itself in the terminal; nothing else uses them, because
+	// the moment a second thing does, the eye stops being a marker.
+	StyleHighlight
+	StyleBody
+	StyleShadow
+	StyleEye
 )
 
 // Palette turns a role into an escape sequence.
@@ -50,6 +57,12 @@ var ansi = map[Style]string{
 	StyleOK:      "32",
 	StyleDanger:  "1;97;41", // white on red: the one thing that must not be missed
 	StyleCursor:  "7",       // reverse video, so it survives any theme
+
+	// Nearest 256-colour neighbours of #EFC066, #E0A030, #B87D1E and #A8452A.
+	StyleHighlight: "38;5;222",
+	StyleBody:      "38;5;179",
+	StyleShadow:    "38;5;136",
+	StyleEye:       "38;5;131",
 }
 
 // Apply wraps text in a role.

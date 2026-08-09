@@ -107,6 +107,7 @@ func HelpText(user config.CommandSet) string {
 		{"tab", "expand or collapse the selected entry"},
 		{"esc", "close the expansion, then the selection"},
 		{"^P", "show or hide the plan panel"},
+		{"^X", "remove the oldest queued message"},
 		{"^A ^E ^W ^U ^K", "start, end, delete word, clear, cut to end"},
 		{"^C", "interrupt the turn, or quit when idle"},
 		{"^D", "quit"},
@@ -181,4 +182,40 @@ func PlanText(m Model) string {
 		fmt.Fprintf(&b, "\n%s", s)
 	}
 	return strings.TrimRight(b.String(), "\n")
+}
+
+// ---------- completion ----------
+
+// Completion is one candidate for the `/` menu.
+type Completion struct {
+	Name        string
+	Args        string
+	Description string
+}
+
+// Complete lists the commands matching what has been typed.
+//
+// Only for a line that is a bare `/` prefix: once there is an argument the user
+// has chosen, and a menu that stays open is a menu in the way. Built-ins come
+// first because a user command can never shadow one, so offering them mixed
+// together would suggest a competition that does not exist.
+func Complete(input string, user config.CommandSet) []Completion {
+	if !strings.HasPrefix(input, "/") || strings.ContainsAny(input, " \t") {
+		return nil
+	}
+	prefix := strings.ToLower(input[1:])
+
+	var out []Completion
+	for _, b := range Builtins {
+		if strings.HasPrefix(b.Name, prefix) {
+			out = append(out, Completion{Name: b.Name, Args: b.Args, Description: b.Help})
+		}
+	}
+	for _, name := range user.Names() {
+		if isBuiltin(name) || !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		out = append(out, Completion{Name: name, Description: user.Commands[name].Description})
+	}
+	return out
 }

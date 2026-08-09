@@ -53,6 +53,12 @@ type Meta struct {
 	// successful command exits zero and zero is also the empty value.
 	ExitCode int
 	HasExit  bool
+	// Diff is the unified diff of a change, for a client to render.
+	//
+	// It never reaches the model: the model wrote the edit and already knows
+	// what it changed, so putting the diff in the history would pay tokens for
+	// something nobody reads. It rides on the event instead.
+	Diff string
 }
 
 // Tool is one capability.

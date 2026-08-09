@@ -143,3 +143,140 @@ func TestSessionList(t *testing.T) {
 		}
 	}
 }
+
+// ---------- the `/` menu ----------
+
+// The menu is a consequence of what is typed, never a mode the user has to
+// leave: once there is an argument the user has chosen.
+func TestCompleteOnlyOffersOnABarePrefix(t *testing.T) {
+	user := userCommands(config.Command{Name: "revisar", Description: "revisa o diff", Body: "x"})
+
+	if got := Complete("/", user); len(got) < len(Builtins) {
+		t.Errorf("a bare slash offers everything, got %d", len(got))
+	}
+	if got := Complete("/pl", user); len(got) != 1 || got[0].Name != "plan" {
+		t.Errorf("got %+v", got)
+	}
+	if got := Complete("/plan agora", user); got != nil {
+		t.Errorf("an argument means the choice is made, got %+v", got)
+	}
+	if got := Complete("texto normal", user); got != nil {
+		t.Errorf("got %+v", got)
+	}
+	if got := Complete("/zzz", user); got != nil {
+		t.Errorf("nothing matches, so nothing is offered: %+v", got)
+	}
+}
+
+// A user command can never shadow a built-in, so mixing them would suggest a
+// competition that does not exist.
+func TestCompleteListsBuiltinsFirstAndSkipsShadowed(t *testing.T) {
+	user := userCommands(
+		config.Command{Name: "revisar", Description: "revisa", Body: "x"},
+		config.Command{Name: "plan", Description: "sombreado", Body: "x"},
+	)
+	got := Complete("/", user)
+
+	var sawUser bool
+	for _, c := range got {
+		if c.Name == "revisar" {
+			sawUser = true
+		}
+		if !sawUser && !isBuiltin(c.Name) {
+			t.Errorf("built-ins come first, %q broke the order", c.Name)
+		}
+	}
+	if !sawUser {
+		t.Error("the user's own commands must be offered too")
+	}
+	// The shadowed name appears once — as the built-in.
+	var n int
+	for _, c := range got {
+		if c.Name == "plan" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("a shadowed name must not be offered twice, got %d", n)
+	}
+}
+
+func TestTheMenuFollowsTheLine(t *testing.T) {
+	user := userCommands()
+	m := NewModel("s", "/w", "m", "read-only")
+
+	m = m.SetInput("/pl").Refresh(user)
+	if len(m.Completions) != 1 {
+		t.Fatalf("got %+v", m.Completions)
+	}
+	m = m.SetInput("/plan tudo").Refresh(user)
+	if len(m.Completions) != 0 {
+		t.Errorf("the menu closes when the choice is made: %+v", m.Completions)
+	}
+}
+
+func TestTheMenuWrapsAtBothEnds(t *testing.T) {
+	m := NewModel("s", "/w", "m", "read-only").SetInput("/").Refresh(userCommands())
+	n := len(m.Completions)
+	if n < 3 {
+		t.Fatalf("setup: got %d candidates", n)
+	}
+
+	if got := m.MoveCompletion(-1); got.CompletionAt != n-1 {
+		t.Errorf("up from the first wraps to the last, got %d", got.CompletionAt)
+	}
+	m.CompletionAt = n - 1
+	if got := m.MoveCompletion(1); got.CompletionAt != 0 {
+		t.Errorf("down from the last wraps to the first, got %d", got.CompletionAt)
+	}
+}
+
+// The user's next keystroke is the argument; making them type the separator is
+// a small tax on every single use.
+func TestAcceptingACompletionLeavesASpaceOnlyWhenThereAreArguments(t *testing.T) {
+	m := NewModel("s", "/w", "m", "read-only").SetInput("/conf").Refresh(userCommands())
+	got := m.AcceptCompletion()
+	if got.Input != "/config " {
+		t.Errorf("a command taking an argument gets a space, got %q", got.Input)
+	}
+	if got.InputCursor != len([]rune(got.Input)) {
+		t.Errorf("the caret goes to the end, got %d", got.InputCursor)
+	}
+	if len(got.Completions) != 0 {
+		t.Error("accepting closes the menu")
+	}
+
+	m = NewModel("s", "/w", "m", "read-only").SetInput("/hel").Refresh(userCommands())
+	if got := m.AcceptCompletion(); got.Input != "/help" {
+		t.Errorf("a command without arguments needs no space, got %q", got.Input)
+	}
+	// Nothing to accept is a no-op rather than a panic.
+	empty := NewModel("s", "/w", "m", "read-only")
+	if got := empty.AcceptCompletion(); got.Input != "" {
+		t.Errorf("got %q", got.Input)
+	}
+}
+
+// Esc dismissed the menu for the line as it was, not for every line that
+// follows.
+func TestClosingTheMenuLastsUntilTheLineChanges(t *testing.T) {
+	user := userCommands()
+	m := NewModel("s", "/w", "m", "read-only").SetInput("/pl").Refresh(user)
+	if len(m.Completions) == 0 {
+		t.Fatal("setup")
+	}
+
+	m = m.CloseCompletions()
+	if len(m.Completions) != 0 {
+		t.Fatal("esc closes it")
+	}
+	m = m.Refresh(user)
+	if len(m.Completions) != 0 {
+		t.Error("and it stays closed while the line is unchanged")
+	}
+
+	m = m.Insert("a").Refresh(user)
+	if m.CompletionsOff {
+		t.Error("typing reopens it")
+	}
+}

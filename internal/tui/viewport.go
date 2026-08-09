@@ -17,6 +17,10 @@ func BodyHeight(m Model, g Geometry) int {
 	if m.workingVisible() {
 		h--
 	}
+	// The queue and the completion menu take their rows from the stream, or the
+	// last lines of output are drawn underneath the input.
+	h -= len(renderQueue(m, g))
+	h -= len(renderCompletions(m, g))
 	if h < 1 {
 		h = 1
 	}

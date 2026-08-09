@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -221,8 +222,13 @@ func TestDetailIsTruncatedWithAMark(t *testing.T) {
 	g := DefaultGeometry(80, 60)
 	g.DiffMaxLines = 5
 	got := Render(m, g)
-	if !strings.Contains(got, "truncated") {
-		t.Errorf("silent truncation reads as complete output:\n%s", got)
+	// How much is hidden and how to see it: "truncated" alone leaves the reader
+	// unable to judge whether it matters.
+	if !strings.Contains(got, "95 lines") {
+		t.Errorf("the hidden count must be stated:\n%s", got)
+	}
+	if !strings.Contains(got, "Tab") {
+		t.Errorf("and the way to see them:\n%s", got)
 	}
 }
 
@@ -415,7 +421,7 @@ func TestAHiddenPanelSaysHowToShowIt(t *testing.T) {
 	if !strings.Contains(got, "1 of 3") {
 		t.Errorf("the summary must survive the collapse: %q", got)
 	}
-	if !strings.Contains(got, "[^p]") {
+	if !strings.Contains(got, "^p") {
 		t.Errorf("the way to see the rest must be on screen: %q", got)
 	}
 }
@@ -433,5 +439,246 @@ func TestThePanelNarrowsOnANarrowTerminal(t *testing.T) {
 	}
 	if narrow.panelWidth() < 14 {
 		t.Errorf("but not so far that an item is unreadable: %d", narrow.panelWidth())
+	}
+}
+
+// ---------- the drop order in the status bar ----------
+
+// What the status bar gives up when the terminal narrows is a safety decision,
+// not a layout one. The sandbox mode is the only field where being wrong is
+// dangerous, so it is never what goes.
+func TestTheSandboxModeSurvivesEveryWidth(t *testing.T) {
+	for _, mode := range []string{"read-only", "workspace-write", "full-access"} {
+		m := NewModel("s", "/w", "MiniMax-M3", mode)
+		m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
+		m.Plan = modelWithPlan().Plan
+		m.InputTokens, m.Window = 34000, 100000
+
+		for _, w := range []int{40, 50, 60, 80, 100, 140} {
+			got := lines(Render(m, DefaultGeometry(w, 12)))[0]
+			want := mode
+			if mode == "full-access" {
+				want = "FULL-ACCESS"
+			}
+			if !strings.Contains(got, want) {
+				t.Errorf("%s at %d columns: the mode must survive, got %q", mode, w, got)
+			}
+			if visibleWidth(got) > w {
+				t.Errorf("%s at %d columns: the bar overflowed (%d cells)", mode, w, visibleWidth(got))
+			}
+		}
+	}
+}
+
+// The model name is the first thing given up, and the plan summary the last —
+// the counter is the field that tells the user work is still moving.
+func TestTheStatusBarDropsInAStatedOrder(t *testing.T) {
+	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write")
+	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
+	m.Plan = modelWithPlan().Plan
+	m.InputTokens, m.Window = 34000, 100000
+
+	// The panel is hidden, so the plan counter is in the bar — that is the only
+	// case where all three optional fields compete for the same line.
+	g := DefaultGeometry(140, 12)
+	g.PanelMode = PanelHidden
+	wide := lines(Render(m, g))[0]
+	for _, want := range []string{"MiniMax-M3", "ctx 34%", "1 of 3"} {
+		if !strings.Contains(wide, want) {
+			t.Fatalf("a wide terminal shows everything, %q missing from %q", want, wide)
+		}
+	}
+
+	// Narrow enough to lose the model name but keep the rest.
+	narrow := DefaultGeometry(56, 12)
+	narrow.PanelMode = PanelHidden
+	mid := lines(Render(m, narrow))[0]
+	if strings.Contains(mid, "MiniMax-M3") {
+		t.Errorf("the model name goes first: %q", mid)
+	}
+	if !strings.Contains(mid, "1 of 3") {
+		t.Errorf("the plan counter is the last to go: %q", mid)
+	}
+}
+
+// ---------- the panel takes a little more room when there is room ----------
+
+func TestThePanelGrowsOnAWideTerminalAndIsCapped(t *testing.T) {
+	narrow := DefaultGeometry(80, 24)
+	narrow.PanelMode = PanelShown
+	wide := DefaultGeometry(200, 24)
+
+	if narrow.panelWidth() >= DefaultGeometry(140, 24).panelWidth() {
+		t.Error("the panel must give ground on a narrow terminal")
+	}
+	if got := wide.panelWidth(); got != wide.PanelMaxWidth {
+		t.Errorf("a wide terminal should reach the ceiling, got %d", got)
+	}
+	// And never past it: past a point the panel is the interface and the stream
+	// is the sidebar.
+	if got := DefaultGeometry(400, 24).panelWidth(); got > 34 {
+		t.Errorf("got %d", got)
+	}
+}
+
+// ---------- the mascot wears the brand ----------
+
+func TestTheMascotIsColouredWithTheBrandPalette(t *testing.T) {
+	g := DefaultGeometry(100, 20)
+	g.Palette = Palette{Enabled: true}
+	got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only"), g)
+
+	for name, code := range map[string]string{
+		"highlight": ansi[StyleHighlight],
+		"body":      ansi[StyleBody],
+		"shadow":    ansi[StyleShadow],
+		"eye":       ansi[StyleEye],
+	} {
+		if !strings.Contains(got, "\x1b["+code+"m") {
+			t.Errorf("the %s tone is missing from the mark", name)
+		}
+	}
+	// The eye is the one terracotta in the whole interface.
+	if n := strings.Count(got, "\x1b["+ansi[StyleEye]+"m"); n != 1 {
+		t.Errorf("the eye must appear exactly once, got %d", n)
+	}
+	if n := widest(got); n > 100 {
+		t.Errorf("the mark overflowed: %d cells", n)
+	}
+}
+
+func TestTheEmptyStateStillWorksWithoutColour(t *testing.T) {
+	for _, unicode := range []bool{true, false} {
+		g := DefaultGeometry(100, 20)
+		g.Unicode = unicode
+		got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only"), g)
+		if strings.ContainsRune(got, 0x1b) {
+			t.Errorf("unicode=%v: monochrome must emit no escapes", unicode)
+		}
+		if !strings.Contains(got, "dcode") || !strings.Contains(got, "MiniMax-M3") {
+			t.Errorf("unicode=%v:\n%s", unicode, got)
+		}
+	}
+}
+
+// full-access has to be loud even on the splash, where a user is most likely to
+// be starting something without having checked how they started it.
+func TestTheEmptyStateShoutsFullAccess(t *testing.T) {
+	m := NewModel("s", "/w", "MiniMax-M3", "full-access")
+	if !strings.Contains(Render(m, DefaultGeometry(100, 20)), "FULL-ACCESS") {
+		t.Error("the splash must carry the warning too")
+	}
+}
+
+// ---------- tool lines stack into a column ----------
+
+// Ragged summaries are read one at a time, which is exactly what a wall of tool
+// calls must not be.
+func TestToolSummariesAlignIntoAColumn(t *testing.T) {
+	m := NewModel("s", "/w", "m", "read-only")
+	m.Entries = []Entry{
+		{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "240 lines"},
+		{Kind: KindTool, Tool: "grep", Target: "func validate", Summary: "18 matches in 4 files"},
+		{Kind: KindTool, Tool: "edit", Target: "internal/domain/validate.go", Summary: "+24 −2"},
+	}
+	rows := lines(Render(m, DefaultGeometry(110, 12)))
+
+	var cols []int
+	for _, r := range rows {
+		for _, s := range []string{"240 lines", "18 matches", "+24"} {
+			if i := strings.Index(r, s); i >= 0 {
+				cols = append(cols, visibleWidth(r[:i]))
+			}
+		}
+	}
+	if len(cols) != 3 {
+		t.Fatalf("expected three tool lines, found %d", len(cols))
+	}
+	for _, c := range cols[1:] {
+		if c != cols[0] {
+			t.Errorf("summaries must start in one column, got %v", cols)
+		}
+	}
+}
+
+// The end of a path is what identifies a file; the directories leading to it are
+// what everything in a repository has in common.
+func TestALongTargetIsShortenedFromTheFront(t *testing.T) {
+	got := ellipsis("internal/http/handler/very/deep/validate.go", 20)
+	if visibleWidth(got) > 20 {
+		t.Errorf("got %d cells: %q", visibleWidth(got), got)
+	}
+	if !strings.HasSuffix(got, "validate.go") {
+		t.Errorf("the identifying end must survive: %q", got)
+	}
+	if !strings.HasPrefix(got, "…") {
+		t.Errorf("the cut must be visible: %q", got)
+	}
+	// Short enough to fit is left alone.
+	if got := ellipsis("a.go", 20); got != "a.go" {
+		t.Errorf("got %q", got)
+	}
+}
+
+// ---------- the diff ----------
+
+func TestADiffShowsWithoutBeingAskedForAndExpandsOnTab(t *testing.T) {
+	diff := "@@ -1,3 +1,3 @@ x.go\n"
+	for i := 0; i < 30; i++ {
+		diff += fmt.Sprintf("+linha %d\n", i)
+	}
+	m := NewModel("s", "/w", "m", "read-only")
+	m.Entries = []Entry{{Kind: KindTool, Tool: "edit", Target: "x.go", Summary: "+30 −0", Diff: diff}}
+
+	g := DefaultGeometry(100, 60)
+	collapsed := Render(m, g)
+	if !strings.Contains(collapsed, "linha 0") {
+		t.Errorf("a diff is what gets reviewed, so some of it shows:\n%s", collapsed)
+	}
+	if strings.Contains(collapsed, "linha 25") {
+		t.Errorf("but not all of it, collapsed:\n%s", collapsed)
+	}
+	if !strings.Contains(collapsed, "Tab") {
+		t.Errorf("and the hint must say how to see the rest:\n%s", collapsed)
+	}
+
+	m.Entries[0].Expanded = true
+	if !strings.Contains(Render(m, g), "linha 25") {
+		t.Error("Tab must actually reveal more, or the hint is a lie")
+	}
+}
+
+// The diff wins over the raw output: the tool's prose says nothing a reviewer
+// needs.
+func TestTheDiffReplacesTheRawOutput(t *testing.T) {
+	m := NewModel("s", "/w", "m", "read-only")
+	m.Entries = []Entry{{
+		Kind: KindTool, Tool: "edit", Target: "x.go", Summary: "+1 −1",
+		Detail: "edited x.go (1 replacement)",
+		Diff:   "@@ -1 +1 @@ x.go\n-antes\n+depois",
+	}}
+	got := Render(m, DefaultGeometry(100, 20))
+	if !strings.Contains(got, "-antes") || !strings.Contains(got, "+depois") {
+		t.Errorf("got:\n%s", got)
+	}
+	if strings.Contains(got, "1 replacement") {
+		t.Errorf("the prose must give way to the diff:\n%s", got)
+	}
+}
+
+func TestDiffLinesAreColouredBySign(t *testing.T) {
+	g := DefaultGeometry(100, 20)
+	g.Palette = Palette{Enabled: true}
+	m := NewModel("s", "/w", "m", "read-only")
+	m.Entries = []Entry{{
+		Kind: KindTool, Tool: "edit", Target: "x.go",
+		Diff: "@@ -1 +1 @@ x.go\n-antes\n+depois",
+	}}
+	got := Render(m, g)
+	if !strings.Contains(got, "\x1b["+ansi[StyleAdded]+"m") {
+		t.Error("an added line must be green")
+	}
+	if !strings.Contains(got, "\x1b["+ansi[StyleRemoved]+"m") {
+		t.Error("a removed line must be red")
 	}
 }

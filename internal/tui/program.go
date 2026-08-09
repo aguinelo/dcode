@@ -246,6 +246,25 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p.onApprovalKey(k)
 	}
 
+	// The menu owns the arrows, Tab and Esc while it is open — and nothing
+	// else, so every other key keeps doing what it always does.
+	if len(p.model.Completions) > 0 {
+		switch k.String() {
+		case "up":
+			p.model = p.model.MoveCompletion(-1)
+			return p, nil
+		case "down":
+			p.model = p.model.MoveCompletion(1)
+			return p, nil
+		case "tab":
+			p.model = p.model.AcceptCompletion()
+			return p, nil
+		case "esc":
+			p.model = p.model.CloseCompletions()
+			return p, nil
+		}
+	}
+
 	switch k.String() {
 	case "ctrl+c":
 		// Interrupt before quit. Interrupting is what is wanted in the
@@ -277,6 +296,12 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "end":
 		p.model = p.model.ScrollToBottom(p.geo)
 		return p, nil
+	case "ctrl+x":
+		// The oldest goes: it is the one the user has had longest to change
+		// their mind about, and the one nearest the top of the list.
+		p.model = p.model.RemoveFromQueue(0)
+		return p, nil
+
 	case "ctrl+p":
 		// The panel toggle is a control key, not a letter. As a bare `p` it ate
 		// the first character of every message starting with one — "primeiro",
@@ -333,10 +358,10 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		p.model.InputCursor = len([]rune(p.model.Input))
 		return p, nil
 	case "ctrl+u":
-		p.model.Input, p.model.InputCursor = "", 0
+		p.model = p.model.SetInput("").Refresh(p.opts.Commands)
 		return p, nil
 	case "ctrl+w":
-		p.model = p.model.DeleteWord()
+		p.model = p.model.DeleteWord().Refresh(p.opts.Commands)
 		return p, nil
 	case "ctrl+k":
 		runes := []rune(p.model.Input)
@@ -346,10 +371,10 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 
 	case "backspace":
-		p.model = p.model.Backspace()
+		p.model = p.model.Backspace().Refresh(p.opts.Commands)
 		return p, nil
 	case "delete":
-		p.model = p.model.DeleteForward()
+		p.model = p.model.DeleteForward().Refresh(p.opts.Commands)
 		return p, nil
 
 	case "esc":
@@ -378,9 +403,9 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if s == "?" && p.model.Input == "" {
 			return p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "help"})
 		}
-		p.model = p.model.Insert(s)
+		p.model = p.model.Insert(s).Refresh(p.opts.Commands)
 	} else if k.String() == "space" {
-		p.model = p.model.Insert(" ")
+		p.model = p.model.Insert(" ").Refresh(p.opts.Commands)
 	}
 	return p, nil
 }
@@ -417,6 +442,7 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 	p.model = p.model.SetInput("")
+	p.model.Completions = nil
 	p.model = p.model.Remember(line)
 
 	r := ResolveInput(line, p.opts.Commands)

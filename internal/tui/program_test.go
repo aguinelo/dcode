@@ -886,3 +886,170 @@ func TestSendingRemembersTheLine(t *testing.T) {
 		t.Errorf("got %v", p.model.History)
 	}
 }
+
+// ---------- the `/` menu through the keyboard ----------
+
+func withCommands(t *testing.T) (*program, *fakeTransport) {
+	t.Helper()
+	return newProgram(t, func(o *Options) {
+		o.Commands = userCommands(config.Command{
+			Name: "revisar", Description: "revisa o diff", Body: "Revise.",
+		})
+	})
+}
+
+// The menu owns the arrows, Tab and Esc while it is open — and nothing else, so
+// every other key keeps doing what it always does.
+func TestTheMenuOpensOnSlashAndOwnsItsKeys(t *testing.T) {
+	p, tr := withCommands(t)
+
+	p.Update(key("/"))
+	if len(p.model.Completions) == 0 {
+		t.Fatal("typing / opens the menu")
+	}
+
+	first := p.model.Completions[p.model.CompletionAt].Name
+	p.Update(special(tea.KeyDown))
+	if p.model.Completions[p.model.CompletionAt].Name == first {
+		t.Error("down must move the highlight")
+	}
+	p.Update(special(tea.KeyUp))
+	if got := p.model.Completions[p.model.CompletionAt].Name; got != first {
+		t.Errorf("up must come back, got %q", got)
+	}
+
+	p.Update(special(tea.KeyTab))
+	if !strings.HasPrefix(p.model.Input, "/"+first) {
+		t.Errorf("tab completes the highlight, got %q", p.model.Input)
+	}
+	if len(p.model.Completions) != 0 {
+		t.Error("and closes the menu")
+	}
+	if len(tr.submits()) != 0 {
+		t.Error("completing is not sending")
+	}
+}
+
+func TestEscapeClosesTheMenuWithoutClearingTheLine(t *testing.T) {
+	p, _ := withCommands(t)
+	for _, r := range "/pl" {
+		p.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if len(p.model.Completions) == 0 {
+		t.Fatal("setup")
+	}
+
+	p.Update(special(tea.KeyEscape))
+	if len(p.model.Completions) != 0 {
+		t.Fatal("esc closes the menu")
+	}
+	if p.model.Input != "/pl" {
+		t.Errorf("and leaves the line alone, got %q", p.model.Input)
+	}
+	// A second escape now reaches the stream, as it always would.
+	p.model.Entries = []Entry{{Kind: KindTool, Detail: "x", Expanded: true}}
+	p.model.Cursor = 0
+	p.Update(special(tea.KeyEscape))
+	if p.model.Entries[0].Expanded {
+		t.Error("with the menu closed, esc goes back to closing the expansion")
+	}
+}
+
+// Deleting reopens it, because the line changed.
+func TestBackspaceReopensTheMenu(t *testing.T) {
+	p, _ := withCommands(t)
+	for _, r := range "/plan" {
+		p.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	p.Update(special(tea.KeyEscape))
+	p.Update(special(tea.KeyBackspace))
+	if len(p.model.Completions) == 0 {
+		t.Errorf("editing the line reopens the menu, input is %q", p.model.Input)
+	}
+}
+
+// Enter still sends. The menu must not swallow the one key that matters most.
+func TestEnterSendsWithTheMenuOpen(t *testing.T) {
+	p, tr := withCommands(t)
+	for _, r := range "/help" {
+		p.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	_, cmd := p.Update(special(tea.KeyEnter))
+	run(t, p, cmd)
+
+	if len(p.model.Completions) != 0 {
+		t.Error("sending closes the menu")
+	}
+	// /help is answered locally, so nothing reaches the daemon — but the line
+	// was consumed, which is the point.
+	if p.model.Input != "" {
+		t.Errorf("got %q", p.model.Input)
+	}
+	_ = tr
+}
+
+// ---------- the queue ----------
+
+// A message the user cannot take back is worse than one that was refused.
+func TestCtrlXRemovesTheOldestQueuedMessage(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.State = protocol.SessionStateRunning
+	run(t, p, typeLine(t, p, "primeira"))
+	run(t, p, typeLine(t, p, "segunda"))
+	if len(p.model.Queue) != 2 {
+		t.Fatalf("setup: %v", p.model.Queue)
+	}
+
+	p.Update(ctrl('x'))
+	if len(p.model.Queue) != 1 || p.model.Queue[0] != "segunda" {
+		t.Errorf("the oldest goes first, got %v", p.model.Queue)
+	}
+	p.Update(ctrl('x'))
+	p.Update(ctrl('x'))
+	if len(p.model.Queue) != 0 {
+		t.Errorf("emptying is a no-op past the end, got %v", p.model.Queue)
+	}
+}
+
+func TestTheQueueIsVisibleWithItsKey(t *testing.T) {
+	m := NewModel("s", "/w", "m", "read-only")
+	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
+	m, _ = m.Enqueue("depois roda o benchmark", 10)
+	m, _ = m.Enqueue("e atualiza o godoc", 10)
+
+	got := Render(m, DefaultGeometry(90, 14))
+	for _, want := range []string{"depois roda o benchmark", "e atualiza o godoc", "^X remove"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q missing from:\n%s", want, got)
+		}
+	}
+	// The key is stated once, not on every row.
+	if n := strings.Count(got, "^X remove"); n != 1 {
+		t.Errorf("the key must be stated once, got %d", n)
+	}
+}
+
+// The queue and the menu take their rows from the stream, or the last lines of
+// output are drawn underneath the input.
+func TestTheQueueAndMenuTakeRowsFromTheStream(t *testing.T) {
+	g := DefaultGeometry(90, 14)
+	plain := longStream(100)
+	base := BodyHeight(plain, g)
+
+	queued := plain
+	queued, _ = queued.Enqueue("um", 10)
+	queued, _ = queued.Enqueue("dois", 10)
+	if got := BodyHeight(queued, g); got != base-2 {
+		t.Errorf("two queued rows cost two stream rows, got %d want %d", got, base-2)
+	}
+
+	withMenu := plain.SetInput("/").Refresh(userCommands())
+	if BodyHeight(withMenu, g) >= base {
+		t.Error("the menu costs rows too")
+	}
+	for _, m := range []Model{queued, withMenu} {
+		if n := len(lines(Render(m, g))); n > 14 {
+			t.Errorf("the render must still fit the height, got %d lines", n)
+		}
+	}
+}

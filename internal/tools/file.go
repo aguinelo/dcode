@@ -182,9 +182,12 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 	}
 	written := countLines(in.Content)
 	meta := Meta{Files: 1, Lines: written, Added: written}
+	previous := ""
 	if verb == "replaced" {
-		meta.Added, meta.Removed = lineDelta(string(existing), in.Content)
+		previous = string(existing)
+		meta.Added, meta.Removed = lineDelta(previous, in.Content)
 	}
+	meta.Diff = UnifiedDiff(previous, in.Content, in.Path)
 	return Result{
 		Output: fmt.Sprintf("%s %s (%d bytes)", verb, in.Path, len(in.Content)),
 		Meta:   meta,
@@ -284,7 +287,10 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	return Result{
 		Output: fmt.Sprintf("edited %s (%d replacement(s), +%d −%d)",
 			in.Path, count, added, removed),
-		Meta: Meta{Files: 1, Added: added, Removed: removed},
+		Meta: Meta{
+			Files: 1, Added: added, Removed: removed,
+			Diff: UnifiedDiff(content, updated, in.Path),
+		},
 	}, nil
 }
 

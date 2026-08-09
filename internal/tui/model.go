@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
@@ -51,6 +52,10 @@ type Entry struct {
 	// Running marks a tool call that has not reported back yet, which is what
 	// the spinner attaches to.
 	Running bool
+	// Diff is the unified diff of a change. When present it is what the
+	// expansion shows: it is what gets reviewed, and the tool's prose summary
+	// says nothing a reviewer needs.
+	Diff string
 }
 
 // Model is the view state, derived entirely from the event log.
@@ -107,6 +112,17 @@ type Model struct {
 	// Draft holds what was typed before the user started browsing history, so
 	// coming back out of the history does not lose it.
 	Draft string
+
+	// Completions is the open `/` menu, with CompletionAt as the highlighted
+	// row. Empty means no menu — the menu is a consequence of what is typed,
+	// never a mode the user has to leave.
+	Completions  []Completion
+	CompletionAt int
+	// CompletionsOff suppresses the menu until the line changes, which is how
+	// Esc closes it without also clearing the line. Any edit revives it —
+	// dismissing the menu answered for the line as it was, not for every line
+	// that follows.
+	CompletionsOff bool
 
 	// turnStarted tracks whether a turn has ever run, so the empty state can
 	// disappear on the first one and never return.
@@ -192,6 +208,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 				continue
 			}
 			m.Entries[i].Detail = d.Output
+			m.Entries[i].Diff = d.Diff
 			m.Entries[i].IsError = !d.OK
 			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d)
 			m.Entries[i].Duration = time.Duration(d.DurationMS) * time.Millisecond
@@ -218,6 +235,14 @@ func (m Model) Apply(ev protocol.Event) Model {
 	case protocol.EventPlanUpdated:
 		var d protocol.PlanUpdated
 		if err := json.Unmarshal(ev.Payload, &d); err == nil {
+			// A newly blocked item is news, and the panel states it in three
+			// words. The stream is where it can be said in full, in the place
+			// the reader already is.
+			for _, note := range newlyBlocked(m.Plan, d.Items) {
+				m.Entries = append(m.Entries, Entry{
+					Kind: KindNote, Summary: note, Seq: ev.Seq, Expanded: true,
+				})
+			}
 			m.Plan = d.Items
 		}
 
@@ -446,6 +471,9 @@ func (m Model) Insert(s string) Model {
 	// Typing leaves the history: what is on the line is now the user's, not a
 	// recalled command they might still want back.
 	m.HistoryAt = -1
+	// And it reopens the menu: Esc dismissed the menu for the line as it was,
+	// not for every line that follows.
+	m.CompletionsOff = false
 	return m
 }
 
@@ -458,6 +486,7 @@ func (m Model) Backspace() Model {
 	}
 	m.Input = string(runes[:at-1]) + string(runes[at:])
 	m.InputCursor = at - 1
+	m.CompletionsOff = false
 	return m
 }
 
@@ -469,6 +498,7 @@ func (m Model) DeleteForward() Model {
 		return m
 	}
 	m.Input = string(runes[:at]) + string(runes[at+1:])
+	m.CompletionsOff = false
 	return m
 }
 
@@ -485,6 +515,7 @@ func (m Model) DeleteWord() Model {
 	}
 	m.Input = string(runes[:i]) + string(runes[at:])
 	m.InputCursor = i
+	m.CompletionsOff = false
 	return m
 }
 
@@ -552,4 +583,86 @@ func clampInt(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+// newlyBlocked reports items that became blocked in this update.
+//
+// Only the transition, never the state: an item that stays blocked would
+// otherwise announce itself on every plan update, and a message repeated
+// without new information is one the reader learns to skip.
+func newlyBlocked(before, after []protocol.PlanItem) []string {
+	was := make(map[int]string, len(before))
+	for _, it := range before {
+		was[it.ID] = it.Status
+	}
+	var out []string
+	for _, it := range after {
+		if it.Status != protocol.PlanBlocked || was[it.ID] == protocol.PlanBlocked {
+			continue
+		}
+		note := fmt.Sprintf("task %d blocked: %s", it.ID, it.Text)
+		if it.Blocked != "" {
+			note += " — " + it.Blocked
+		}
+		out = append(out, note)
+	}
+	return out
+}
+
+// ---------- the completion menu ----------
+
+// Refresh recomputes the menu from the current line.
+//
+// Derived rather than toggled: a menu with its own open/closed state drifts out
+// of step with the text the moment anything else edits the line.
+func (m Model) Refresh(user config.CommandSet) Model {
+	if m.CompletionsOff {
+		m.Completions = nil
+		return m
+	}
+	got := Complete(m.Input, user)
+	// The highlight resets whenever the candidate set changes, or it would
+	// point at a different command than the one it pointed at a keystroke ago.
+	if len(got) != len(m.Completions) {
+		m.CompletionAt = 0
+	}
+	m.Completions = got
+	if m.CompletionAt >= len(got) {
+		m.CompletionAt = 0
+	}
+	return m
+}
+
+// MoveCompletion walks the menu, wrapping at both ends.
+func (m Model) MoveCompletion(delta int) Model {
+	if n := len(m.Completions); n > 0 {
+		m.CompletionAt = ((m.CompletionAt+delta)%n + n) % n
+	}
+	return m
+}
+
+// AcceptCompletion puts the highlighted command on the line.
+//
+// A trailing space when the command takes arguments: the user's next keystroke
+// is the argument, and making them type the separator is a small tax on every
+// single use.
+func (m Model) AcceptCompletion() Model {
+	if len(m.Completions) == 0 {
+		return m
+	}
+	c := m.Completions[m.CompletionAt]
+	text := "/" + c.Name
+	if c.Args != "" {
+		text += " "
+	}
+	m = m.SetInput(text)
+	m.Completions = nil
+	return m
+}
+
+// CloseCompletions hides the menu until the line changes.
+func (m Model) CloseCompletions() Model {
+	m.Completions = nil
+	m.CompletionsOff = true
+	return m
 }

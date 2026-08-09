@@ -199,6 +199,10 @@ type (
 		ExitCode   int  `json:"exit_code,omitempty"`
 		HasExit    bool `json:"has_exit,omitempty"`
 		DurationMS int  `json:"duration_ms,omitempty"`
+
+		// Diff is the unified diff of a change. Present only for tools that
+		// modify a file, and never part of what the model was sent.
+		Diff string `json:"diff,omitempty"`
 	}
 	// TurnCompleted ends a turn with one of the Stop* reasons.
 	TurnCompleted struct {

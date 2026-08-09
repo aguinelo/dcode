@@ -593,3 +593,67 @@ M3's window is a million tokens, so five thousand tokens is zero percent in
 integer division and the meter never showed — precisely early in a long session,
 when it is most wanted. Below one percent it now says `ctx <1%` rather than
 rounding to nothing.
+
+---
+
+## Phase 12 — Adopting the design handoff
+
+The handoff in `docs/design_handoff_dcode_tui/` was itself derived from what we
+had already defined, so most of it was confirmation. The value was in three
+things it added and one thing it got wrong.
+
+### The diff is for the human, so it costs no tokens
+
+`edit` returned prose and the client showed that prose. The spec had said since
+day one that the diff is what gets reviewed.
+
+Tools now produce a unified diff that travels on the event and **never enters
+the history**: the model wrote the edit and already knows what changed, so a
+400-line diff in `Output` would be paid for on every subsequent turn of the
+session, for a reader who does not need it. Putting it beside the output rather
+than in it is what makes it free.
+
+Shown without being asked for, because it is the thing being reviewed — but as a
+preview, with `Tab` revealing the rest. The cut states how much is hidden and
+which key shows it; "truncated" alone leaves the reader unable to judge whether
+it matters.
+
+The diff is a small LCS with the common head and tail trimmed first, which is
+what keeps a one-line change in a large file from paying for the whole file. Two
+files with nothing in common degrade to a plain replacement rather than stalling
+the turn in a quadratic table.
+
+### Two orders, and they are not the same one
+
+The status bar reads model-then-mode and drops model-before-everything. Writing
+that as one list is how the mode ends up being what disappears — which is
+exactly what the handoff's own narrow-terminal mock did, dropping the sandbox
+indicator two sections after stating that it is the one field where being wrong
+is dangerous.
+
+We adopted the mock's layout and inverted what it gives up. The mode is not in
+the drop order at all; at 40 columns the bar is `✓ dcode  workspace-write` and
+nothing else.
+
+The first attempt had the loop iterating the wrong way and added the *least*
+important field first — caught by the test that asserts the model name goes
+before the plan counter.
+
+### The menu is a consequence, not a mode
+
+Command completion is derived from the line on every keystroke rather than
+toggled open and closed. A menu with its own state drifts out of step with the
+text the moment anything else edits the line. `Esc` suppresses it for the line as
+it is, and any edit revives it — the first version only revived on insertion, so
+backspacing left it dead, which a test caught.
+
+While open the menu owns four keys and no others. `Enter` in particular still
+sends: the menu must not swallow the one key that matters most.
+
+### Not adopted: the bubbles components
+
+The handoff states purity as a principle and then recommends `bubbles/viewport`
+and `textinput`, which hold their own mutable state. Our viewport and input are
+pure functions over the model, which is why forty tests for scrolling and line
+editing run with no terminal. The README says the spec wins where they diverge,
+and the spec is the purity.

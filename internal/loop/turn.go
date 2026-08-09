@@ -462,6 +462,7 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) (ce.Me
 		Added: res.Meta.Added, Removed: res.Meta.Removed,
 		ExitCode: res.Meta.ExitCode, HasExit: res.Meta.HasExit,
 		DurationMS: int(elapsed.Milliseconds()),
+		Diff:       res.Meta.Diff,
 	})
 	if ex.Call.Name == "plan" && !res.IsError {
 		e.emit(protocol.EventPlanUpdated, protocol.PlanUpdated{Items: e.cfg.State.Plan()})
