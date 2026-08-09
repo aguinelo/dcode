@@ -1,0 +1,204 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// KnownKeys is the whole configuration surface, mapping each `section.key` to
+// the one environment variable that carries it.
+//
+// The map is the schema. An unknown key is an error rather than a warning
+// because a typo that is silently ignored is the most frustrating class of
+// configuration bug there is: everything reports success and nothing changed.
+//
+// The mapping is bijective by contract — one key, one variable, in both
+// directions — which is what lets `dcode --config <key>` name a single origin.
+var KnownKeys = map[string]string{
+	"model.name":                    "DCODE_MODEL",
+	"model.transport":               "DCODE_TRANSPORT",
+	"model.family":                  "DCODE_FAMILY",
+	"model.base_url":                "DCODE_BASE_URL",
+	"sandbox.mode":                  "DCODE_SANDBOX_MODE",
+	"sandbox.approval_policy":       "DCODE_APPROVAL_POLICY",
+	"sandbox.allow_network":         "DCODE_ALLOW_NETWORK",
+	"sandbox.backend":               "DCODE_SANDBOX_BACKEND",
+	"limits.max_iterations":         "DCODE_MAX_ITERATIONS",
+	"limits.max_turn_tokens":        "DCODE_MAX_TURN_TOKENS",
+	"limits.identical":              "DCODE_MAX_IDENTICAL_CALLS",
+	"limits.parallel":               "DCODE_TOOL_PARALLELISM",
+	"behavior.instructions_enabled": "DCODE_BEHAVIOR_INSTRUCTIONS_ENABLED",
+	"behavior.skills_enabled":       "DCODE_BEHAVIOR_SKILLS_ENABLED",
+	"behavior.reminders_enabled":    "DCODE_BEHAVIOR_REMINDERS_ENABLED",
+	"update.check":                  "DCODE_UPDATE_CHECK",
+	"update.channel":                "DCODE_UPDATE_CHANNEL",
+	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
+}
+
+// EnvToKey inverts KnownKeys. Built once so the bijection can be asserted.
+var EnvToKey = func() map[string]string {
+	m := make(map[string]string, len(KnownKeys))
+	for k, v := range KnownKeys {
+		m[v] = k
+	}
+	return m
+}()
+
+// ConfigFileName is the file every root looks for.
+const ConfigFileName = "config.toml"
+
+// ParseTOML reads the configuration subset of TOML: sections, and keys whose
+// values are strings, booleans or integers.
+//
+// A full TOML parser is a dependency and a much larger surface than the file
+// documented in the spec. Every construct outside that subset is rejected by
+// name rather than ignored, so a user writing valid TOML that dcode does not
+// support is told so instead of watching it do nothing.
+func ParseTOML(data []byte, origin string) (map[string]string, error) {
+	values := map[string]string{}
+	section := ""
+
+	for i, raw := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(stripComment(raw))
+		if line == "" {
+			continue
+		}
+		where := fmt.Sprintf("%s:%d", origin, i+1)
+
+		if strings.HasPrefix(line, "[") {
+			if !strings.HasSuffix(line, "]") {
+				return nil, fmt.Errorf("%s: unterminated section header", where)
+			}
+			section = strings.TrimSpace(line[1 : len(line)-1])
+			if section == "" {
+				return nil, fmt.Errorf("%s: empty section name", where)
+			}
+			if strings.HasPrefix(section, "[") {
+				return nil, fmt.Errorf("%s: arrays of tables are not supported", where)
+			}
+			continue
+		}
+
+		eq := strings.IndexByte(line, '=')
+		if eq < 0 {
+			return nil, fmt.Errorf("%s: expected `key = value`", where)
+		}
+		name := strings.TrimSpace(line[:eq])
+		val, err := parseValue(strings.TrimSpace(line[eq+1:]))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", where, err)
+		}
+		if name == "" {
+			return nil, fmt.Errorf("%s: empty key", where)
+		}
+		if section == "" {
+			return nil, fmt.Errorf("%s: key %q sits outside any section", where, name)
+		}
+
+		key := section + "." + name
+		// The credential check runs before the unknown-key check, and on the
+		// key's own name rather than the resolved one, so a secret parked in a
+		// section dcode does not know about is still refused (RN-3).
+		if credentialKey.MatchString(name) {
+			return nil, credentialError(key, origin)
+		}
+		if _, ok := KnownKeys[key]; !ok {
+			return nil, fmt.Errorf("%s: unknown key %q.\nKnown keys:\n%s",
+				where, key, knownKeyList())
+		}
+		values[key] = val
+	}
+	return values, nil
+}
+
+// stripComment removes a trailing `#` comment, honouring quotes so a `#` inside
+// a string value survives.
+func stripComment(s string) string {
+	inQuote := false
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '"':
+			inQuote = !inQuote
+		case '#':
+			if !inQuote {
+				return s[:i]
+			}
+		}
+	}
+	return s
+}
+
+func parseValue(s string) (string, error) {
+	switch {
+	case s == "":
+		return "", fmt.Errorf("missing value")
+	case strings.HasPrefix(s, `"`):
+		if len(s) < 2 || !strings.HasSuffix(s, `"`) {
+			return "", fmt.Errorf("unterminated string")
+		}
+		return s[1 : len(s)-1], nil
+	case s == "true" || s == "false":
+		return s, nil
+	case strings.HasPrefix(s, "["), strings.HasPrefix(s, "{"):
+		return "", fmt.Errorf("arrays and inline tables are not supported")
+	default:
+		if _, err := strconv.ParseFloat(s, 64); err != nil {
+			return "", fmt.Errorf("value %q is not a string, a boolean or a number", s)
+		}
+		return s, nil
+	}
+}
+
+func knownKeyList() string {
+	keys := make([]string, 0, len(KnownKeys))
+	for k := range KnownKeys {
+		keys = append(keys, "  "+k)
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "\n")
+}
+
+// LoadFile reads a config.toml into a layer.
+//
+// A missing file is not an error: configuration is optional at every level, and
+// the default layer already answers every key.
+func LoadFile(path string, source Source) (Layer, bool, error) {
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return Layer{}, false, nil
+	}
+	if err != nil {
+		return Layer{}, false, err
+	}
+	values, err := ParseTOML(data, path)
+	if err != nil {
+		return Layer{}, false, err
+	}
+	return Layer{Source: source, Origin: path, Values: values}, true, nil
+}
+
+// FileLayers loads the user and project configuration files, in the order the
+// precedence chain expects them.
+func FileLayers(roots Roots, workspace string) ([]Layer, error) {
+	var out []Layer
+	for _, c := range []struct {
+		path   string
+		source Source
+	}{
+		{filepath.Join(roots.Config, ConfigFileName), SourceUser},
+		{filepath.Join(workspace, ".dcode", ConfigFileName), SourceProject},
+	} {
+		layer, ok, err := LoadFile(c.path, c.source)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, layer)
+		}
+	}
+	return out, nil
+}

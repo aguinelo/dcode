@@ -152,15 +152,16 @@ func newEngine(t *testing.T, p provider.Provider, reg *tools.Registry, mut ...fu
 	}
 	rec := newRecorder()
 	cfg := Config{
-		Provider: p,
-		Tools:    reg,
-		State:    tools.NewState(res, tools.DefaultLimits()),
-		Emitter:  rec,
-		Limits:   DefaultLimits(),
-		Mode:     policy.ModeWorkspaceWrite,
-		Policy:   policy.PolicyOnRequest,
-		Model:    "test-model",
-		Parallel: 4,
+		Provider:  p,
+		Tools:     reg,
+		State:     tools.NewState(res, tools.DefaultLimits()),
+		Emitter:   rec,
+		Limits:    DefaultLimits(),
+		Mode:      policy.ModeWorkspaceWrite,
+		Policy:    policy.PolicyOnRequest,
+		Model:     "test-model",
+		Parallel:  4,
+		Reminders: true,
 	}
 	for _, m := range mut {
 		m(&cfg)
@@ -354,8 +355,9 @@ func TestResultsAppendInEmissionOrderNotCompletionOrder(t *testing.T) {
 	}
 }
 
-// Parallel execution must be announced, and the note must be constant: any
-// interpolated value would put volatile data in the history and cost the cache.
+// Parallel execution must be announced through the reminder channel, and the
+// text must be constant: any interpolated value would put volatile data in the
+// history and cost the cache.
 func TestConcurrentExecutionIsAnnouncedWithAConstantNote(t *testing.T) {
 	reg := tools.NewRegistry(
 		slowTool{name: "one", delay: time.Millisecond, path: "a"},
@@ -374,7 +376,7 @@ func TestConcurrentExecutionIsAnnouncedWithAConstantNote(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, m := range e.Session().History {
-			if strings.Contains(m.Text, "dcode:note") {
+			if m.Reminder && strings.Contains(m.Text, "at the same time") {
 				notes = append(notes, m.Text)
 			}
 		}
@@ -403,7 +405,7 @@ func TestSequentialExecutionGetsNoNote(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, m := range e.Session().History {
-		if strings.Contains(m.Text, "dcode:note") {
+		if m.Reminder && strings.Contains(m.Text, "at the same time") {
 			t.Error("a single tool call is not concurrent and needs no note")
 		}
 	}

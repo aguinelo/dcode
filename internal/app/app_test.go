@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/policy"
@@ -18,7 +19,16 @@ import (
 	"github.com/aguinelo/dcode/internal/tools"
 )
 
+// envFrom builds a synthetic environment.
+//
+// DCODE_HOME is filled in when the case does not set it, pointing at a
+// directory that does not exist: option resolution now reads config.toml from
+// the user and project roots, and a test that inherited the developer's real
+// home would pass or fail depending on whose machine it ran on.
 func envFrom(m map[string]string) func(string) string {
+	if m["DCODE_HOME"] == "" && m["HOME"] == "" {
+		m["DCODE_HOME"] = filepath.Join(os.TempDir(), "dcode-no-such-home")
+	}
 	return func(k string) string { return m[k] }
 }
 
@@ -243,11 +253,11 @@ func wireSessionWith(t *testing.T, ws string, turns [][]string, approver loop.Ap
 
 func buildTestPrompt(t *testing.T, ws string, reg *tools.Registry) string {
 	t.Helper()
-	instructions, err := loadInstructions(ws)
+	instructions, _, err := loadInstructions(config.Roots{Config: filepath.Join(ws, ".absent")}, ws)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return behaviorBuild(reg.Names(), instructions)
+	return behaviorBuild(reg.Names(), instructions, nil)
 }
 
 // sequenced replays one recorded turn per call through the real family decoder,

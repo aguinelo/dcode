@@ -3,10 +3,13 @@ package loop
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/aguinelo/dcode/internal/behavior"
+	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -54,6 +57,18 @@ type Config struct {
 	// Summarise generates compaction text. Supplied by the caller because it
 	// needs a model call, which is what keeps the context engine pure.
 	Summarise func(ctx context.Context, msgs []ce.Message) (string, error)
+
+	// Skills are indexed in the prefix and loaded here, on trigger (RN-7).
+	Skills []behavior.Skill
+	// InstructionChain is the set of instruction files frozen at session
+	// creation. Anything found outside it becomes a reminder, never a prefix
+	// change (RN-6 of the configuration spec).
+	InstructionChain []string
+	// ReadFile backs the changed-on-disk check. Injected so the loop stays
+	// testable without a filesystem; nil disables the check.
+	ReadFile func(path string) (string, error)
+	// Reminders disables the appended-notice channel when false.
+	Reminders bool
 }
 
 // Outcome is how a turn ended.
@@ -69,6 +84,10 @@ type Engine struct {
 	cfg     Config
 	session ce.Session
 	turnSeq int
+	// seenDirs stops the same out-of-chain instruction being appended once per
+	// batch. Told once is guidance; told every batch is noise the model starts
+	// to discount.
+	seenDirs map[string]struct{}
 }
 
 // New builds an engine over an initial session.
@@ -77,7 +96,7 @@ func New(cfg Config, session ce.Session) *Engine {
 		cfg.Parallel = 4
 	}
 	cfg.Limits = cfg.Limits.withFamily(familyIterations(cfg.Provider))
-	return &Engine{cfg: cfg, session: session}
+	return &Engine{cfg: cfg, session: session, seenDirs: map[string]struct{}{}}
 }
 
 func familyIterations(p provider.Provider) int {
@@ -99,8 +118,18 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 
 	e.session.History = append(e.session.History, ce.Message{Role: ce.RoleUser, Text: input})
 
+	// Skill bodies are appended, never prefixed. The index in the prefix is
+	// what the model reads every turn; the body is only paid for in the turns
+	// that actually need it.
+	for _, s := range behavior.Match(input, e.cfg.Skills) {
+		e.session.History = append(e.session.History, ce.Message{
+			Role: ce.RoleUser, Text: behavior.RenderSkill(s), Reminder: true,
+		})
+	}
+
 	out := Outcome{TurnID: turnID}
 	var recent []ce.ToolCall
+	compacted := false
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -110,9 +139,11 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 		// Compaction is checked exactly once per iteration, here and nowhere
 		// else. A second check point is how compaction becomes incremental by
 		// accident, which invalidates the cache every turn.
+		before := summaryMark(e.session)
 		if err := e.maybeCompact(ctx); err != nil {
 			return e.finish(out, protocol.StopError), err
 		}
+		compacted = compacted || summaryMark(e.session) != before
 
 		msgs, err := ce.Assemble(e.session)
 		if err != nil {
@@ -157,8 +188,12 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 			return e.finish(out, protocol.StopRepeatLoop), nil
 		}
 
-		results := e.execute(ctx, turnID, calls)
+		results, batch := e.execute(ctx, turnID, calls)
 		e.session.History = append(e.session.History, results...)
+
+		batch.Compacted = compacted
+		compacted = false
+		e.session.History = append(e.session.History, e.reminders(batch)...)
 
 		out.Iterations++
 		if out.Iterations >= e.cfg.Limits.MaxIterations {
@@ -168,6 +203,15 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 			return e.finish(out, protocol.StopMaxTokens), nil
 		}
 	}
+}
+
+// summaryMark identifies the current summary, so a compaction that happened
+// during this turn can be told apart from one that happened before it.
+func summaryMark(s ce.Session) int {
+	if s.Summary == nil {
+		return -1
+	}
+	return s.Summary.UpToIdx
 }
 
 // stream consumes one model call.
@@ -226,7 +270,18 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 }
 
 // execute runs the calls and returns their results in emission order.
-func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall) []ce.Message {
+// batchFacts is what one batch of tool calls produced that the reminder
+// channel cares about. Collected here rather than inferred later: after the
+// results are in history there is no way to tell a denial from an ordinary
+// error.
+type batchFacts struct {
+	Parallel    int
+	Denied      []string
+	TouchedDirs []string
+	Compacted   bool
+}
+
+func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall) ([]ce.Message, batchFacts) {
 	execs := make([]Execution, 0, len(calls))
 	for i, c := range calls {
 		ex := Execution{Index: i, Call: c}
@@ -243,12 +298,19 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 	}
 
 	results := make([]ce.Message, len(execs))
-	groups := Schedule(execs, e.cfg.Parallel)
-	concurrent := false
+	denied := make([]string, len(execs))
+	facts := batchFacts{}
 
+	for _, ex := range execs {
+		for _, a := range ex.Declare.Paths {
+			facts.TouchedDirs = append(facts.TouchedDirs, filepath.Dir(a.Path))
+		}
+	}
+
+	groups := Schedule(execs, e.cfg.Parallel)
 	for _, g := range groups {
-		if len(g) > 1 {
-			concurrent = true
+		if len(g) > facts.Parallel {
+			facts.Parallel = len(g)
 		}
 		var wg sync.WaitGroup
 		for _, ex := range g {
@@ -258,27 +320,82 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 				// Results land at the emission index, never at completion
 				// order. That is what keeps history reproducible and
 				// golden-testable regardless of which call finished first.
-				results[ex.Index] = e.runOne(ctx, turnID, ex)
+				msg, refused := e.runOne(ctx, turnID, ex)
+				results[ex.Index] = msg
+				if refused {
+					denied[ex.Index] = ex.Call.Name
+				}
 			}(ex)
 		}
 		wg.Wait()
 	}
 
-	if concurrent {
-		// The model must not assume one tool finished before another started.
-		// The text is constant: interpolating anything here would put volatile
-		// data in the history and cost the cache.
-		results = append(results, ce.Message{Role: ce.RoleUser, Text: concurrentNote})
+	for _, name := range denied {
+		if name != "" {
+			facts.Denied = append(facts.Denied, name)
+		}
 	}
-	return results
+	return results, facts
 }
 
-const concurrentNote = "<dcode:note>Several tools ran at the same time. " +
-	"The results appear in the order they were requested, which is not the order they ran. " +
-	"Do not assume one finished before another started.</dcode:note>"
+// reminders renders the appended channel for one batch.
+//
+// The whole channel is optional, and switching it off leaves the loop otherwise
+// identical: nothing here changes what is permitted, only what the model is
+// told about what already happened.
+func (e *Engine) reminders(f batchFacts) []ce.Message {
+	if !e.cfg.Reminders {
+		return nil
+	}
+	st := behavior.SessionState{
+		DeniedTools:   f.Denied,
+		Compacted:     f.Compacted,
+		ParallelBatch: f.Parallel,
+	}
+	if e.cfg.ReadFile != nil {
+		st.ChangedFiles = e.cfg.State.ChangedSinceRead(e.cfg.ReadFile)
+	}
+	st.OutOfChain = e.outOfChain(f.TouchedDirs)
 
-// runOne evaluates policy, asks for approval if needed, and executes.
-func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) ce.Message {
+	var out []ce.Message
+	for _, r := range behavior.Emit(st) {
+		out = append(out, ce.Message{
+			Role: ce.RoleUser, Text: behavior.Render(r), Reminder: true,
+		})
+	}
+	return out
+}
+
+// outOfChain finds instruction files in directories this batch touched that
+// were not in the chain frozen at session creation.
+func (e *Engine) outOfChain(dirs []string) []behavior.OutOfChainInstruction {
+	if e.cfg.ReadFile == nil || len(dirs) == 0 {
+		return nil
+	}
+	var out []behavior.OutOfChainInstruction
+	for _, dir := range dirs {
+		if _, seen := e.seenDirs[dir]; seen {
+			continue
+		}
+		e.seenDirs[dir] = struct{}{}
+
+		path, found := config.OutOfChain(dir, e.cfg.InstructionChain)
+		if !found {
+			continue
+		}
+		text, err := e.cfg.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		out = append(out, behavior.OutOfChainInstruction{Path: path, Text: text})
+	}
+	return out
+}
+
+// runOne evaluates policy, asks for approval if needed, and executes. The
+// second return reports a refusal by the user, which is not the same thing as
+// an error and must not be reported as one.
+func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) (ce.Message, bool) {
 	fail := func(msg string) ce.Message {
 		return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 			ToolCallID: ex.Call.ID, Output: msg, IsError: true,
@@ -286,11 +403,11 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) ce.Mes
 	}
 
 	if ex.Err != nil {
-		return fail(ex.Err.Error())
+		return fail(ex.Err.Error()), false
 	}
 	tool, ok := e.cfg.Tools.Get(ex.Call.Name)
 	if !ok {
-		return fail(fmt.Sprintf("tool %q is not available", ex.Call.Name))
+		return fail(fmt.Sprintf("tool %q is not available", ex.Call.Name)), false
 	}
 
 	// Every execution passes through the evaluator. There is no alternative
@@ -299,16 +416,16 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) ce.Mes
 	if verdict.Decision == policy.DecisionEscalate {
 		d, err := e.askApproval(ctx, turnID, ex, verdict)
 		if err != nil || d == protocol.ApprovalDeny {
-			return fail(fmt.Sprintf("denied: %s", verdict.Reason))
+			return fail(fmt.Sprintf("denied: %s", verdict.Reason)), true
 		}
 	}
 	if verdict.Decision == policy.DecisionDeny {
-		return fail(fmt.Sprintf("not permitted: %s", verdict.Reason))
+		return fail(fmt.Sprintf("not permitted: %s", verdict.Reason)), false
 	}
 
 	res, err := tool.Execute(ctx, ex.Call.Input, e.cfg.State)
 	if err != nil {
-		return fail(err.Error())
+		return fail(err.Error()), false
 	}
 
 	e.emit(protocol.EventToolCompleted, protocol.ToolCompleted{
@@ -322,7 +439,7 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) ce.Mes
 	return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 		ToolCallID: ex.Call.ID, Output: res.Output,
 		IsError: res.IsError, Truncated: res.Truncated,
-	}}
+	}}, false
 }
 
 func (e *Engine) evaluate(req policy.Request) policy.Verdict {
