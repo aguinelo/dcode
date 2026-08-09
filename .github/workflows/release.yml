@@ -56,7 +56,8 @@ jobs:
           LDFLAGS="-s -w \
             -X github.com/aguinelo/dcode/internal/version.Version=${BARE} \
             -X github.com/aguinelo/dcode/internal/version.Commit=${COMMIT} \
-            -X github.com/aguinelo/dcode/internal/version.Date=${DATE}"
+            -X github.com/aguinelo/dcode/internal/version.Date=${DATE} \
+            -X github.com/aguinelo/dcode/internal/version.Source=release"
 
           mkdir -p dist
           for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do

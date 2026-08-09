@@ -17,6 +17,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/version"
 )
 
 func TestArtifactNameIsTheStableFormat(t *testing.T) {
@@ -311,6 +313,18 @@ func (failVerifier) Verify(context.Context, []byte, []byte, []byte) error {
 	return errors.New("signature did not verify")
 }
 
+// asRelease marks the running binary as published for the duration of a test.
+//
+// Every Apply test exercises the update of a release, so each has to say so —
+// the refusal is the default, and a test that did not declare its origin would
+// be testing the guard rather than the thing it means to test.
+func asRelease(t *testing.T) {
+	t.Helper()
+	old := version.Source
+	version.Source = version.SourceRelease
+	t.Cleanup(func() { version.Source = old })
+}
+
 func newUpdater(t *testing.T, f *fixture, target string, mut ...func(*Config)) *GitHub {
 	t.Helper()
 	cfg := Config{
@@ -356,6 +370,7 @@ func TestLatestSkipsAPrereleaseOnTheStableChannel(t *testing.T) {
 }
 
 func TestApplyReplacesTheBinaryOnlyAfterEveryCheckPasses(t *testing.T) {
+	asRelease(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("shell script fixtures are not portable to windows")
 	}
@@ -389,6 +404,7 @@ func TestApplyReplacesTheBinaryOnlyAfterEveryCheckPasses(t *testing.T) {
 
 // Every failure has to leave the machine with a working dcode on it.
 func TestApplyLeavesTheCurrentBinaryIntactOnEveryFailure(t *testing.T) {
+	asRelease(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("shell script fixtures are not portable to windows")
 	}
@@ -446,6 +462,7 @@ func TestApplyLeavesTheCurrentBinaryIntactOnEveryFailure(t *testing.T) {
 }
 
 func TestApplyRefusesABinaryThatDoesNotRun(t *testing.T) {
+	asRelease(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("shell script fixtures are not portable to windows")
 	}
@@ -563,6 +580,7 @@ func TestDefaultsAreFilledIn(t *testing.T) {
 }
 
 func TestApplyReportsAnUnreachableArtifactAndOrigin(t *testing.T) {
+	asRelease(t)
 	target := filepath.Join(t.TempDir(), "dcode")
 	if err := os.WriteFile(target, []byte("original"), 0o755); err != nil {
 		t.Fatal(err)
@@ -613,5 +631,68 @@ func TestWriteExecutableReportsAnUnwritableDestination(t *testing.T) {
 	}
 	if err := ExtractBinary("x.zip", zipOf(t, map[string]string{"dcode": "x"}), dest); err == nil {
 		t.Error("an unwritable destination must be reported")
+	}
+}
+
+// `update` must not replace a binary the release pipeline did not publish: a
+// build from the working tree is normally ahead of the last tag, so installing
+// the latest release is a downgrade wearing the word "update".
+func TestApplyRefusesToOverwriteALocalBuild(t *testing.T) {
+	old := version.Source
+	defer func() { version.Source = old }()
+
+	f := newFixture(t, "v1.2.3", false)
+	target := filepath.Join(t.TempDir(), "dcode")
+	if err := os.WriteFile(target, []byte("local"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	u := newUpdater(t, f, target)
+	rel, err := u.Latest(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	version.Source = version.SourceLocal
+	if err := u.Apply(context.Background(), rel); !errors.Is(err, ErrLocalBuild) {
+		t.Fatalf("got %v", err)
+	}
+	if got, _ := os.ReadFile(target); string(got) != "local" {
+		t.Errorf("the local binary was disturbed: %q", got)
+	}
+
+	// The refusal is the default, and only an explicit request lifts it — a
+	// guard whose default is off is decoration.
+	forced := NewGitHub(Config{
+		APIURL: f.server.URL + "/releases", BaseURL: f.server.URL + "/dl",
+		Verifier: &okVerifier{}, TargetPath: target, AllowLocalOverwrite: true,
+	})
+	if err := forced.Apply(context.Background(), rel); errors.Is(err, ErrLocalBuild) {
+		t.Error("--force must lift the refusal")
+	}
+}
+
+// A published release updates normally: the guard must not lock the ordinary
+// path shut.
+func TestApplyProceedsForAReleaseBuild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script fixtures are not portable to windows")
+	}
+	asRelease(t)
+
+	f := newFixture(t, "v1.2.3", false)
+	target := filepath.Join(t.TempDir(), "dcode")
+	writeScript(t, target, "echo 0.0.1")
+
+	u := newUpdater(t, f, target)
+	rel, err := u.Latest(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := u.Apply(context.Background(), rel); err != nil {
+		t.Fatalf("a release must update normally: %v", err)
+	}
+	if got, _ := os.ReadFile(target); !strings.Contains(string(got), "1.2.3") {
+		t.Errorf("the binary was not replaced:\n%s", got)
 	}
 }

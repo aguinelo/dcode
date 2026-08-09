@@ -11,12 +11,31 @@ import (
 	"strings"
 )
 
-// Injected via -ldflags at release time.
+// Injected via -ldflags at build time.
 var (
 	Version = ""
 	Commit  = ""
 	Date    = ""
+	// Source is how this binary was produced. Only the release pipeline sets
+	// it to SourceRelease; every other path leaves it as it found it.
+	//
+	// It is a separate variable rather than a shape inferred from Version
+	// because `update` refuses to overwrite a binary it did not publish, and a
+	// decision like that should not rest on parsing a string that anyone can
+	// pass on a command line.
+	Source = ""
 )
+
+// The two origins that matter. Anything else is a build we cannot account for,
+// and is treated as local — the cautious reading, since it is the one that
+// refuses to overwrite.
+const (
+	SourceRelease = "release"
+	SourceLocal   = "local"
+)
+
+// IsRelease reports whether the release pipeline produced this binary.
+func IsRelease() bool { return Source == SourceRelease }
 
 // Short returns the version alone.
 func Short() string {
@@ -41,6 +60,12 @@ func String() string {
 	}
 	if Date != "" {
 		fmt.Fprintf(&b, " built %s", Date)
+	}
+	// A local build says so. A binary that presents itself exactly like a
+	// published release is how a bug report costs an hour finding out it was
+	// never the published code.
+	if !IsRelease() {
+		b.WriteString(" · local build")
 	}
 	fmt.Fprintf(&b, "\n%s/%s, %s", runtime.GOOS, runtime.GOARCH, runtime.Version())
 	return b.String()
