@@ -158,12 +158,29 @@ func (a *approval) resolve(d protocol.ApprovalDecision) {
 	})
 }
 
+// grantKey is what an "allow for the session" answer is remembered against.
+//
+// The rule when a rule asked, so approving a write to `.git/config` covers
+// `.git/**` rather than that one file. Editing three files under a directory is
+// one decision, not three, and three prompts is how people learn to approve
+// without reading.
+//
+// Without a rule it stays the exact tool and command, which is the conservative
+// key: a shell command is opaque, and "the same kind of command" is not
+// something this can judge.
+func grantKey(req protocol.ApprovalRequest) string {
+	if req.Rule != "" {
+		return req.Tool + "\x00rule:" + req.Rule
+	}
+	return req.Tool + "\x00" + req.Command
+}
+
 // Approve is the loop's side of a boundary crossing: it registers the question
 // and blocks until a client answers or the deadline passes.
 func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, timeout time.Duration) (
 	protocol.ApprovalDecision, error,
 ) {
-	key := req.Tool + "\x00" + req.Command
+	key := grantKey(req)
 	s.mu.Lock()
 	if s.allowAll[key] {
 		s.mu.Unlock()

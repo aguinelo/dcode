@@ -86,6 +86,59 @@ Depois, a política filtra:
 
 > `untrusted` escalona a escrita no workspace, que `on-request` libera. É a diferença prática entre os dois.
 
+## 3.1 Regras: atenção, nunca contenção
+
+Dentro do workspace tudo é uniforme para o sandbox — e ele está certo: escrever
+em `src/` e em `.git/hooks/` é o mesmo tipo de escrita. **Não é o mesmo tipo de
+consequência**, e é para isso que servem as regras.
+
+```go
+type Rules struct {
+    ConfirmWrite   []string // caminhos que perguntam antes de escrever
+    ConfirmRead    []string // ler manda o conteúdo ao provedor do modelo
+    ConfirmCommand []string // comandos que pausam
+}
+```
+
+**Elas não contêm.** Padrão de comando é contornado sem esforço — `bash -c`, um
+alias, um script — e padrão de caminho só enxerga o caminho que a ferramenta
+declara. Quem contém é o sandbox. Ler regra como fronteira é a única forma de
+ficar pior do que não tê-las, e é por isso que as fronteiras se chamam
+`rule:write`, `rule:read` e `rule:command`: ninguém confunde com o que o SO
+aplicou.
+
+**Ordem e limites:**
+
+1. Containment decide primeiro. Regra só é avaliada sobre o que o sandbox já
+   permitiria — **nunca resgata** o que foi negado, ou a fronteira viraria
+   negociável por configuração.
+2. Regra só é avaliada onde alguém vai ser perguntado. Com `never` não há
+   pessoa, logo não há pergunta — e transformar pergunta impossível em negação
+   faria `never` ser **mais** restritivo que `on-request`, ao contrário do nome.
+3. Escrita antes de leitura: chamada que faz as duas é escrita, que tem a cauda
+   mais longa.
+4. Caminho fora do workspace não tem forma relativa e regra nenhuma o alcança —
+   containment já respondeu.
+
+**Padrão** curto de propósito. Cada entrada entra por ser diferente **em
+natureza** de um arquivo de código, não por ser importante:
+
+| Padrão | Por quê |
+|---|---|
+| `.git/**` | escrita em `hooks/` roda no próximo commit, **fora do sandbox**, como o usuário |
+| `.dcode/**` | configura o agente; agente que edita a própria configuração amplia o próprio alcance |
+| `.env`, `*.pem`, `id_rsa`, `.npmrc`… | **ler** manda o conteúdo ao provedor do modelo, para fora da máquina |
+
+Lista configurada **substitui** o default; quem escreveu uma lista disse o que
+quer que pergunte, e manter a nossa por baixo faria da configuração dele uma
+mentira. Lista vazia é como se diz "nada".
+
+**Escopo da aprovação:** `allow session` é lembrado contra a **regra que casou**,
+não contra o caminho exato. Editar três arquivos sob um diretório é uma decisão,
+não três — e três perguntas é como se aprende a aprovar sem ler. Sem regra, a
+chave continua sendo ferramenta + comando exato, que é o conservador: comando de
+shell é opaco, e "o mesmo tipo de comando" não é algo que isto saiba julgar.
+
 ## 4. Resolução de caminho
 
 ```go
@@ -136,7 +189,17 @@ type Sandbox interface {
 - Nenhuma execução ocorre sem `Evaluate` prévio (RN-6), verificado com avaliador espião no executor.
 - `Available()` falhando impede a criação da sessão; nenhum caminho executa sem fronteira.
 - Config travada por administrador não é sobrescrita por variável de ambiente nem por flag (RN-7).
+- Regra nunca transforma negação em pergunta.
+- Regra nunca é avaliada sob política `never`.
+- `never` é ao menos tão permissivo quanto `on-request` em tudo que regra toca.
+- Regra dispara em `full-access`: os eixos são ortogonais e regra vive no de aprovação.
+- Escrita é perguntada antes de leitura quando a mesma chamada faz as duas.
+- Regra escrita contra o workspace não alcança caminho fora dele.
+- A aprovação carrega o padrão que casou; consentir a regra que não se vê é consentir a nada.
+- `allow session` é chaveado pela regra quando houve regra, e pelo comando exato quando não houve.
+- Padrão em branco não casa com nada, e nunca com tudo.
+- As regras efetivas são inspecionáveis por `--config`, com procedência.
 
 ## 7. Changelog
 
-_Sem alterações desde a criação._
+- [202608091700 — Regras por caminho e por comando](changelog/202608091700-regras-por-caminho-e-comando.md)

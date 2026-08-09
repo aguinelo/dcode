@@ -65,6 +65,11 @@ func ParsePolicy(s string) (ApprovalPolicy, error) {
 type Access struct {
 	Path  string
 	Write bool
+	// Rel is the path relative to the workspace, filled by Resolve. Rules are
+	// written against it so a pattern reads the same on every machine and
+	// cannot be dodged by spelling the path absolutely. Empty when the path
+	// falls outside the workspace, where containment answers first anyway.
+	Rel string
 }
 
 // Request is what a tool declares it would do, before doing any of it.
@@ -88,8 +93,13 @@ const (
 type Boundary string
 
 const (
-	BoundaryNone           Boundary = ""
-	BoundaryNetwork        Boundary = "network"
+	BoundaryNone    Boundary = ""
+	BoundaryNetwork Boundary = "network"
+	// The rule boundaries are attention rather than containment, and are named
+	// so nobody reads a refused rule as a boundary the sandbox enforced.
+	BoundaryPathRuleWrite  Boundary = "rule:write"
+	BoundaryPathRuleRead   Boundary = "rule:read"
+	BoundaryCommandRule    Boundary = "rule:command"
 	BoundaryWorkspaceWrite Boundary = "workspace_write"
 	BoundaryFilesystemRead Boundary = "filesystem_read"
 	BoundaryFilesystemWrit Boundary = "filesystem_write"
@@ -100,6 +110,10 @@ type Verdict struct {
 	Decision Decision
 	Boundary Boundary
 	Reason   string
+	// Rule is the pattern that raised the question, when one did. It reaches
+	// the approval so the person can see *why* they are being asked, and it is
+	// what an "allow for the session" answer is remembered against.
+	Rule string
 }
 
 // Evaluate decides on a request. Pure: no I/O, no clock. Path resolution
@@ -108,9 +122,51 @@ type Verdict struct {
 // is the one that will be wrong.
 //
 // inWorkspace reports containment; the caller supplies it from Resolve.
-func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy, inWorkspace func(Access) bool) Verdict {
+func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy, rules Rules, inWorkspace func(Access) bool) Verdict {
 	v := evaluateMode(r, mode, inWorkspace)
+	// Only what the sandbox would have permitted anyway. A rule adds a
+	// question; it never grants one, and it never rescues something already
+	// denied — otherwise the boundary would be negotiable by configuration.
+	//
+	// And only where somebody is going to be asked. A rule is a request for a
+	// person's attention; with `never` there is no person, so there is no
+	// question — and turning an unaskable question into a denial would make
+	// `never` *more* restrictive than `on-request`, which is the opposite of
+	// what it says. The sandbox is untouched either way, and the sandbox is
+	// what contains.
+	if v.Decision == DecisionAllow && pol != PolicyNever {
+		if rv, ok := evaluateRules(r, rules); ok {
+			v = rv
+		}
+	}
 	return applyPolicy(v, pol)
+}
+
+// evaluateRules asks whether anything in this request is different in kind from
+// ordinary work. It runs after containment and only on what containment allowed.
+func evaluateRules(r Request, rules Rules) (Verdict, bool) {
+	if pattern, ok := rules.MatchCommand(r.Command); ok {
+		return Verdict{DecisionEscalate, BoundaryCommandRule,
+			"this command matches the rule " + pattern, pattern}, true
+	}
+	// Writes before reads: a call that does both is a write as far as the
+	// question is concerned, and the write is the one with the longer tail.
+	for _, write := range []bool{true, false} {
+		for _, a := range r.Paths {
+			if a.Write != write || a.Rel == "" {
+				continue
+			}
+			if pattern, ok := rules.MatchPath(a.Rel, write); ok {
+				boundary, what := BoundaryPathRuleWrite, "writing "
+				if !write {
+					boundary, what = BoundaryPathRuleRead, "reading "
+				}
+				return Verdict{DecisionEscalate, boundary,
+					what + a.Rel + " matches the rule " + pattern, pattern}, true
+			}
+		}
+	}
+	return Verdict{}, false
 }
 
 // evaluateMode applies the sandbox axis: what is physically possible.
@@ -121,9 +177,9 @@ func evaluateMode(r Request, mode SandboxMode, inWorkspace func(Access) bool) Ve
 
 	if r.Network {
 		if mode == ModeReadOnly {
-			return Verdict{DecisionDeny, BoundaryNetwork, "network is unavailable in read-only mode"}
+			return Verdict{Decision: DecisionDeny, Boundary: BoundaryNetwork, Reason: "network is unavailable in read-only mode"}
 		}
-		return Verdict{DecisionEscalate, BoundaryNetwork, "this would reach the network"}
+		return Verdict{Decision: DecisionEscalate, Boundary: BoundaryNetwork, Reason: "this would reach the network"}
 	}
 
 	// Writes are checked before reads: a call that both reads and writes is a
@@ -133,12 +189,10 @@ func evaluateMode(r Request, mode SandboxMode, inWorkspace func(Access) bool) Ve
 			continue
 		}
 		if mode == ModeReadOnly {
-			return Verdict{DecisionDeny, BoundaryFilesystemWrit,
-				"writing is unavailable in read-only mode"}
+			return Verdict{Decision: DecisionDeny, Boundary: BoundaryFilesystemWrit, Reason: "writing is unavailable in read-only mode"}
 		}
 		if !inWorkspace(a) {
-			return Verdict{DecisionEscalate, BoundaryFilesystemWrit,
-				"this would write outside the workspace"}
+			return Verdict{Decision: DecisionEscalate, Boundary: BoundaryFilesystemWrit, Reason: "this would write outside the workspace"}
 		}
 	}
 
@@ -146,12 +200,11 @@ func evaluateMode(r Request, mode SandboxMode, inWorkspace func(Access) bool) Ve
 		if a.Write || inWorkspace(a) {
 			continue
 		}
-		return Verdict{DecisionEscalate, BoundaryFilesystemRead,
-			"this would read outside the workspace"}
+		return Verdict{Decision: DecisionEscalate, Boundary: BoundaryFilesystemRead, Reason: "this would read outside the workspace"}
 	}
 
 	if hasWrite(r.Paths) {
-		return Verdict{DecisionAllow, BoundaryWorkspaceWrite, "writes inside the workspace"}
+		return Verdict{Decision: DecisionAllow, Boundary: BoundaryWorkspaceWrite, Reason: "writes inside the workspace"}
 	}
 	return Verdict{Decision: DecisionAllow, Reason: "reads inside the workspace"}
 }

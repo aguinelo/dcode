@@ -35,6 +35,9 @@ var KnownKeys = map[string]string{
 	"behavior.skills_enabled":       "DCODE_BEHAVIOR_SKILLS_ENABLED",
 	"behavior.reminders_enabled":    "DCODE_BEHAVIOR_REMINDERS_ENABLED",
 	"credential.backend":            "DCODE_CREDENTIAL_BACKEND",
+	"rules.confirm_write":           "DCODE_CONFIRM_WRITE",
+	"rules.confirm_read":            "DCODE_CONFIRM_READ",
+	"rules.confirm_command":         "DCODE_CONFIRM_COMMAND",
 	"update.check":                  "DCODE_UPDATE_CHECK",
 	"update.channel":                "DCODE_UPDATE_CHANNEL",
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
@@ -144,14 +147,48 @@ func parseValue(s string) (string, error) {
 		return s[1 : len(s)-1], nil
 	case s == "true" || s == "false":
 		return s, nil
-	case strings.HasPrefix(s, "["), strings.HasPrefix(s, "{"):
-		return "", fmt.Errorf("arrays and inline tables are not supported")
+	case strings.HasPrefix(s, "["):
+		// A list of patterns is genuinely a list, so the parser accepts one and
+		// carries it as a single value — the key-to-variable mapping stays
+		// bijective, which is what lets `--config` name one origin.
+		return parseStringArray(s)
+	case strings.HasPrefix(s, "{"):
+		return "", fmt.Errorf("inline tables are not supported")
 	default:
 		if _, err := strconv.ParseFloat(s, 64); err != nil {
 			return "", fmt.Errorf("value %q is not a string, a boolean or a number", s)
 		}
 		return s, nil
 	}
+}
+
+// parseStringArray reads `["a", "b"]` into `a,b`.
+func parseStringArray(s string) (string, error) {
+	if !strings.HasSuffix(s, "]") {
+		return "", fmt.Errorf("unterminated array")
+	}
+	body := strings.TrimSpace(s[1 : len(s)-1])
+	if body == "" {
+		return "", nil
+	}
+	var out []string
+	for _, part := range strings.Split(body, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if !strings.HasPrefix(part, `"`) || !strings.HasSuffix(part, `"`) || len(part) < 2 {
+			return "", fmt.Errorf("an array may only hold quoted strings, got %s", part)
+		}
+		item := part[1 : len(part)-1]
+		if strings.Contains(item, ",") {
+			// The separator is what joins them back, so an item carrying one
+			// would come out as two.
+			return "", fmt.Errorf("a list item cannot contain a comma: %q", item)
+		}
+		out = append(out, item)
+	}
+	return strings.Join(out, ","), nil
 }
 
 func knownKeyList() string {

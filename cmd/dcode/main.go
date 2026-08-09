@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
@@ -91,8 +92,15 @@ func loadOptions(ws string) (app.Options, config.Resolved, error) {
 func printConfig(r config.Resolved, key string) error {
 	v, ok := r.Get(key)
 	if !ok {
+		// The whole surface, not only what happens to be resolved: a key with
+		// no value set is exactly the one someone is looking for here.
 		fmt.Printf("%s is not set\n\nKnown keys:\n", key)
-		for _, k := range r.Keys() {
+		names := make([]string, 0, len(config.KnownKeys))
+		for k := range config.KnownKeys {
+			names = append(names, k)
+		}
+		sort.Strings(names)
+		for _, k := range names {
 			fmt.Printf("  %s\n", k)
 		}
 		return nil

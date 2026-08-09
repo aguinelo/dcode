@@ -68,6 +68,8 @@ type Config struct {
 	// ReadFile backs the changed-on-disk check. Injected so the loop stays
 	// testable without a filesystem; nil disables the check.
 	ReadFile func(path string) (string, error)
+	// Rules are the patterns that ask a question the sandbox cannot.
+	Rules policy.Rules
 	// Reminders disables the appended-notice channel when false.
 	Reminders bool
 	// Now is the clock used to time tool calls. Nil means the real one.
@@ -489,7 +491,7 @@ func (e *Engine) evaluate(req policy.Request) policy.Verdict {
 		}
 		resolved.Paths = append(resolved.Paths, acc)
 	}
-	return policy.Evaluate(resolved, e.cfg.Mode, e.cfg.Policy, resolver.InWorkspace)
+	return policy.Evaluate(resolved, e.cfg.Mode, e.cfg.Policy, e.cfg.Rules, resolver.InWorkspace)
 }
 
 func (e *Engine) askApproval(ctx context.Context, turnID string, ex Execution, v policy.Verdict) (
@@ -502,6 +504,8 @@ func (e *Engine) askApproval(ctx context.Context, turnID string, ex Execution, v
 		Tool:            ex.Call.Name,
 		Command:         ex.Declare.Command,
 		BoundaryCrossed: string(v.Boundary),
+		Reason:          v.Reason,
+		Rule:            v.Rule,
 	}
 	e.emit(protocol.EventApprovalRequired, req)
 

@@ -52,7 +52,19 @@ func (r *Resolver) Resolve(path string, write bool) (Access, error) {
 	if err != nil {
 		return Access{}, err
 	}
-	return Access{Path: real, Write: write}, nil
+	a := Access{Path: real, Write: write}
+	// The workspace-relative form, for rules to be written against. Computed
+	// here because this is the one place that knows both the boundary and the
+	// resolved path, and a second computation elsewhere would eventually
+	// disagree with this one about what is inside.
+	if rel, err := filepath.Rel(r.Workspace, real); err == nil &&
+		rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		if rel == "." {
+			rel = ""
+		}
+		a.Rel = filepath.ToSlash(rel)
+	}
+	return a, nil
 }
 
 // InWorkspace reports containment by path component, never by string prefix.

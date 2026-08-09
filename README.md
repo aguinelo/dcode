@@ -331,6 +331,22 @@ inside the workspace, and anything crossing that boundary — a write outside it
 network — stops and asks. Without an approver it denies, because with nobody to ask the
 only alternative is granting in silence.
 
+Inside the workspace a short list of rules asks about the things that are different in
+*kind* from ordinary work — writing `.git/**` (a hook runs on the next commit, outside the
+sandbox) or `.dcode/**` (the agent's own configuration), and reading a secret (which sends
+it to the model provider). They are **attention, not containment**: a command pattern is
+avoided by `bash -c`, and what actually contains the agent is the sandbox.
+
+```toml
+[rules]
+confirm_write   = [".git/**", ".dcode/**"]
+confirm_read    = [".env", "**/*.pem"]
+confirm_command = ["rm -rf*"]
+```
+
+A configured list replaces the default rather than adding to it, and `dcode config
+rules.confirm_write` shows what is in force and where it came from.
+
 ### Configuring it
 
 Everything is optional; the defaults are the product. Files live under `$DCODE_HOME`, or

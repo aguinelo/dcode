@@ -54,6 +54,9 @@ type Options struct {
 	// CredentialFrom records where the key came from, so `dcode config` can
 	// answer "which one is this" without ever printing it.
 	CredentialFrom string
+	// Rules ask a question the sandbox cannot, for paths and commands that are
+	// different in kind from ordinary work.
+	Rules policy.Rules
 	// CredentialBackend selects the store. Empty chooses.
 	//
 	// Configuration rather than a per-command flag: a flag on the command that
@@ -64,6 +67,7 @@ type Options struct {
 
 // FromEnv resolves options from the environment, applying the precedence chain.
 func FromEnv(env func(string) string, workspace string) (Options, config.Resolved, error) {
+	defaults := policy.DefaultRules()
 	layers := []config.Layer{
 		{Source: config.SourceDefault, Origin: "built-in", Values: map[string]string{
 			"model.name":              "MiniMax-M3",
@@ -72,6 +76,12 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 			"sandbox.backend":         sandbox.BackendAuto,
 			"sandbox.allow_network":   "false",
 			"limits.parallel":         "4",
+			// The rules live here rather than only in code, so `--config` can
+			// show them with an origin. A rule that governs behaviour and
+			// cannot be inspected is the gap the audit pair exists to close.
+			"rules.confirm_write":   policy.JoinList(defaults.ConfirmWrite),
+			"rules.confirm_read":    policy.JoinList(defaults.ConfirmRead),
+			"rules.confirm_command": policy.JoinList(defaults.ConfirmCommand),
 		}},
 	}
 
@@ -134,6 +144,7 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 		Parallel:          r.Int("limits.parallel", 4),
 		DumpPrompt:        r.Bool("doctrine.dump", false),
 		CredentialBackend: r.String("credential.backend", ""),
+		Rules:             resolveRules(r),
 		Limits: loop.Limits{
 			MaxIterations:     r.Int("limits.max_iterations", 0),
 			MaxIdenticalCalls: r.Int("limits.identical", 3),
@@ -148,6 +159,20 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 		opts.APIKey, opts.CredentialFrom = secret, from
 	}
 	return opts, r, nil
+}
+
+// resolveRules reads the rule lists from the resolved configuration.
+//
+// The defaults are a layer like any other, so a configured list *replaces*
+// them: someone who writes a list has said what they want asked about, and
+// quietly keeping ours underneath would make their configuration a lie. The
+// empty list is how you say "nothing", and it has to be expressible.
+func resolveRules(r config.Resolved) policy.Rules {
+	return policy.Rules{
+		ConfirmWrite:   policy.SplitList(r.String("rules.confirm_write", "")),
+		ConfirmRead:    policy.SplitList(r.String("rules.confirm_read", "")),
+		ConfirmCommand: policy.SplitList(r.String("rules.confirm_command", "")),
+	}
 }
 
 // LookupCredential reads the stored key for these options.
@@ -259,6 +284,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Emitter: emitter, Approver: approver,
 		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
 		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
+		Rules:            opts.Rules,
 		Summarise:        summariser(p, opts.Model),
 		Skills:           skills,
 		InstructionChain: chain,
