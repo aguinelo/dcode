@@ -265,3 +265,158 @@ both.
 
 One answers "what exactly goes to the model", the other "where did this setting
 come from". Without them support conversations end at "it works on my machine".
+
+---
+
+## Phase 8 — Sessions, the daemon and the client
+
+### The event log is the session, and the session is server-side
+
+A client holds one number: the last sequence it saw. Everything else — history,
+plan, pending approvals — lives in the daemon. That is what makes reattaching
+indistinguishable from having watched the session live, and it is why the TUI
+can be killed mid-turn without losing anything.
+
+### `dcode tui` embeds a daemon when none is running
+
+The client always speaks the protocol; whether the daemon is in this process or
+another is a deployment detail, not a second code path. A single binary that
+just works was not worth a second, untested execution path — so there is only
+one, and `dcode serve` merely moves it.
+
+The embedded daemon binds a private socket rather than the default one. Two
+terminals opened without a shared daemon would otherwise race to bind the same
+address, and the loser would fail to start for a reason the user cannot act on.
+
+### The socket path is deliberately short
+
+A Unix socket is capped near 104 bytes on macOS, and the XDG state directory
+alone can exhaust that. `$XDG_RUNTIME_DIR/dcode.sock` when it exists, otherwise
+`$TMPDIR/dcode-<uid>.sock` — the uid keeps two users on one machine apart.
+
+### The workspace is validated where it enters
+
+`CreateSessionRequest.Workspace` is the one field a remote client fully
+controls, and it anchors every boundary the session will enforce. A path that is
+not an existing directory is refused at creation with `workspace_invalid`,
+rather than at the first tool call — by which point the user has started waiting
+and the failure looks like the tool's rather than the request's.
+
+### Each session gets its own sandbox, resolver and provider
+
+A session is the unit of confinement. Sharing any of it across sessions would
+let one workspace's boundary apply to another.
+
+### `/clear` opens a new session rather than wiping the view
+
+Context is server-side and append-only, so there is no way to unsay something to
+the model. Clearing the screen while the model still remembers would be a lie
+about what it knows.
+
+`/model` works the same way and for the same reason: the system prompt is part
+of the prefix, and the prefix cannot be rewritten (ADR-03).
+
+---
+
+## Phase 9 — Configuration, behaviour channels and distribution
+
+### `config.toml` is parsed by a small strict reader, not a TOML library
+
+The documented file is sections and scalar values. A full parser is both a
+dependency and a much larger surface than the file needs, and every construct
+outside the subset — arrays, inline tables, arrays of tables — is rejected by
+name rather than ignored. A user writing valid TOML that dcode does not support
+is told so instead of watching it do nothing.
+
+### `KnownKeys` is the schema, and the key-to-variable mapping is bijective
+
+One key, one environment variable, in both directions, asserted by a test. It is
+what lets `--config <key>` name a single origin, and it makes a key that exists
+in the file but not in the environment impossible to introduce by accident.
+
+The credential check runs *before* the unknown-key check, on the key's own name.
+An unknown section is exactly where a secret would otherwise slip through.
+
+### `sandbox.policy` was renamed to `sandbox.approval_policy`
+
+The internal resolution key now matches the name the user writes in the file.
+Two names for one setting is how `--config` starts answering a question nobody
+asked.
+
+### The parallel-execution note moved into the reminder channel
+
+It was loose text appended to the tool results. The behaviour spec puts it in
+the reminder channel, which is where it belongs: appended, never prefixed,
+constant per kind, and marked so the model does not read it as the user
+speaking.
+
+### `Message.Reminder` marks the channel on the wire
+
+Reminders ride the user role because that is the only channel every provider
+accepts mid-conversation. The flag is what lets a client refuse to render one as
+something the user said, and the `<system-reminder>` wrapper is what lets the
+model tell them apart.
+
+### Skill triggers are matched deterministically
+
+An explicit `triggers:` list is matched as a phrase; without one, the
+`when_to_use` line is matched on its significant words and two distinct hits are
+required. A single common word would drag a skill into a task that merely
+mentioned it in passing. The determinism is what keeps a replayed session
+byte-identical to the live one — whether the model then *uses* the loaded body
+is the model-mediated part, and that is what the eval threshold measures.
+
+### `when_to_use` is capped at 120 characters
+
+The index line is paid for on every turn of every session. A skill that
+describes itself in a paragraph charges every session for a context most of them
+never enter. A skill without the line is refused outright: unindexed, the model
+never learns it exists.
+
+### Built-in commands beat user commands, and the shadowing is reported
+
+The moment a user file could redefine `/config`, no advice about dcode would be
+true of any particular installation. The collision is reported as a note rather
+than swallowed, because the override that did not happen is exactly what would
+otherwise be spent an afternoon on.
+
+### `Expand` does no I/O and runs nothing
+
+A command that could read a file or run a process would be a second, undeclared
+tool surface with none of the sandbox or approval machinery pointed at it. The
+boundary would be bypassed by a markdown file.
+
+### `/init` is a turn, not a template
+
+What belongs in DCODE.md depends on what the repository already says about
+itself, and only reading it can answer that.
+
+### The updater fails closed when it cannot verify
+
+No cosign, no install. "Installed, but unverified" is the worst of both worlds:
+the user ends up with a binary and the impression that it went fine. Shelling
+out to cosign rather than linking sigstore means the verification path is the
+same one a user can run by hand to reproduce the result.
+
+### `Apply` stages beside the target and checks the binary runs first
+
+The staging directory sits next to the binary so the final step is a rename
+within one filesystem — across filesystems a rename is a copy, and an
+interrupted copy leaves a machine with no working dcode on it. Running
+`--version` on the candidate before the swap is what stops a working binary
+being replaced by one that does not run on that machine.
+
+### The version notice never enters the model's context
+
+`CheckedAt` changes between turns. In the prefix it would invalidate the whole
+cached prompt for the sake of a line the user reads once (ADR-03). A network
+failure is silent by contract: the stale answer stands, and no exit code
+changes.
+
+### Fixed: `wrap` did not break a word wider than its column
+
+A path or stack frame longer than the plan panel was emitted whole, and the
+terminal wrapped it — which destroys the fixed layout the panel exists to hold.
+Found by the width invariant test, reproduced by
+`TestWrapBreaksAWordWiderThanTheColumn`, then fixed. The regression test asserts
+both that no line exceeds the column and that breaking loses no characters.

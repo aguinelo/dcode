@@ -253,26 +253,77 @@ Details in [`docs/conventions/SDD-HARNESS.md`](docs/conventions/SDD-HARNESS.md).
 
 ---
 
+## Installing
+
+```bash
+# from source
+go install github.com/aguinelo/dcode/cmd/dcode@latest
+
+# or the install script — verifies the release signature and the checksum,
+# and installs nothing if either fails
+curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
+```
+
+`dcode update` installs a newer release on request, and never on its own. It verifies the
+signature and the checksum, checks that the downloaded binary actually runs, and only then
+swaps it — so every failure leaves the working binary untouched.
+
 ## Running it
 
 ```bash
-git clone https://github.com/aguinelo/dcode && cd dcode
-make build
 export DCODE_API_KEY=...
-./bin/dcode "add a test for the parser"
+
+dcode                              # the terminal interface
+dcode "add a test for the parser"  # one task, one exit code — for scripts and CI
+dcode serve                        # the daemon, for clients that outlive one terminal
+dcode tui --socket /path/to.sock   # attach a client to a running daemon
 ```
+
+`dcode tui` attaches to a daemon when one answers and otherwise starts its own in-process.
+The client speaks the protocol either way — the embedded daemon is a deployment detail,
+not a second code path — so a session that outgrows one terminal moves to `dcode serve`
+without the client changing anything.
 
 Two commands need no key, and they are the audit pair:
 
 ```bash
-./bin/dcode --dump-prompt          # exactly what would be sent to the model
-./bin/dcode --config model.name    # a setting's effective value, and where it came from
+dcode --dump-prompt          # exactly what would be sent to the model
+dcode --config model.name    # a setting's effective value, and where it came from
 ```
 
 By default the agent runs in `workspace-write` with `on-request` approvals: it may edit
 inside the workspace, and anything crossing that boundary — a write outside it, or the
 network — stops and asks. Without an approver it denies, because with nobody to ask the
 only alternative is granting in silence.
+
+### Configuring it
+
+Everything is optional; the defaults are the product. Files live under `$DCODE_HOME`, or
+the XDG directories when it is unset.
+
+```
+$DCODE_HOME/
+  config.toml     settings — never credentials, which come from the environment
+  AGENTS.md       instructions shared with other agent tools
+  DCODE.md        instructions for dcode alone; wins where they disagree
+  commands/       your own /commands — markdown with frontmatter
+  skills/         guidance loaded only when its trigger fires
+```
+
+A workspace carries the same set under `<workspace>/.dcode/`, and its values win. An
+unknown key in `config.toml` is an error rather than a warning: a typo that is silently
+ignored is the most frustrating configuration bug there is.
+
+### Inside the interface
+
+`/help` lists everything. `/plan` shows the plan in full, `/config <key>` answers where a
+setting came from, `/model <name>` and `/clear` open a fresh session — the system prompt
+is part of the prefix, and the prefix cannot be rewritten. `/init` writes DCODE.md for the
+repository from what is already in it.
+
+Typing while a turn is running queues the message; the queue drains as one turn when the
+session goes idle. `^C` interrupts the turn rather than quitting. In the approval modal,
+Enter denies.
 
 ---
 
@@ -287,9 +338,11 @@ only alternative is granting in silence.
 | **4** | policy and OS sandbox | ✅ 92% / 94% |
 | **5** | the seven tools | ✅ 94% |
 | **6** | the agent loop | ✅ 98% |
-| **7** | behaviour, config, wiring, CLI | ✅ 93% |
-| **8** | event log, unix socket, SSE | not started |
-| **9** | TUI client | not started |
+| **7** | behaviour, config, wiring, CLI | ✅ 91% |
+| **8** | event log, unix socket, SSE, reference client | ✅ 95% / 92% / 93% |
+| **9** | TUI client, commands, skills, reminders, distribution | ✅ 95% / 96% / 92% |
+
+Every package is above the 90% gate; the suite runs under `-race`.
 
 Beyond MVP: multiple providers, MCP, plugins, session sharing, desktop, IDE.
 
@@ -326,9 +379,15 @@ internal/
   tools/          read write edit glob grep bash plan
   loop/           the turn cycle
   behavior/       the prompt builder
-  config/         roots, precedence chain, instruction discovery
+  config/         roots, precedence chain, config.toml, commands, instructions
+  session/        the append-only event log, approvals, the session manager
+  server/         the daemon: unix socket, protocol routes, SSE
+  tui/            the terminal client — a pure reducer and a pure renderer
+  update/         signature and checksum verification, atomic binary swap
   app/            the only package that reads the environment
+pkg/client/       the reference client, and the first consumer of the protocol
 cmd/dcode/        argument parsing and printing
+install.sh        verifies before it installs, or installs nothing
 ```
 
 ---

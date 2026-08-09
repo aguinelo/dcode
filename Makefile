@@ -10,8 +10,11 @@ test:
 race:
 	$(GO) test -race $(PKGS)
 
+# -coverpkg counts code exercised from another package's tests. pkg/client is
+# driven entirely by the server integration tests, and per-package coverage
+# would report it as untested while the assertions that matter run through it.
 cover:
-	$(GO) test -race -coverprofile=$(COVER) -covermode=atomic $(PKGS)
+	$(GO) test -race -coverprofile=$(COVER) -covermode=atomic -coverpkg=./... $(PKGS)
 	@./scripts/coverage.sh $(COVER)
 
 lint:
