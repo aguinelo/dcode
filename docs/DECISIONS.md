@@ -657,3 +657,46 @@ and `textinput`, which hold their own mutable state. Our viewport and input are
 pure functions over the model, which is why forty tests for scrolling and line
 editing run with no terminal. The README says the spec wins where they diverge,
 and the spec is the purity.
+
+### Fixed: bash asked for consent to a crossing the sandbox already prevented
+
+Reported from use: every `bash` command stopped and asked, including `go build`.
+
+The tool declared `Network: true` unconditionally — "a shell command is opaque,
+declaring the worst case is the only honest answer". The reasoning was right and
+the conclusion was wrong, because the worst case is bounded by the sandbox that
+will run the command, and outside `full-access` a confining sandbox is
+guaranteed to exist (`BackendNone` is refused in every other mode).
+
+Measured before changing anything:
+
+| Configuration | Write outside the workspace | Network |
+|---|---|---|
+| `workspace-write`, `allow_network=false` | blocked by the OS | blocked by the OS |
+| `workspace-write`, `allow_network=true` | blocked by the OS | reachable |
+
+So with the default configuration the prompt claimed a network crossing that
+could not happen. Approving granted nothing — the command still could not
+resolve a host — and denying stopped the whole command rather than its network
+access. The user was answering a question that was not the one on screen, which
+is worse than not asking: it teaches that the prompt means something it does not.
+
+`Bash.Declare` now declares network only when the sandbox was built to permit
+it. The consequences line up with what each mode already promises:
+
+- `workspace-write` with the network shut: no prompt, and the command is still
+  confined to the workspace with no network — by the OS, which is what was
+  holding the line all along.
+- `workspace-write` with the network open: every command asks, and now the
+  question is true — the approval really is the only thing in the way.
+- `read-only`: unchanged, still denied.
+- `full-access`: unchanged, nothing is asked.
+
+The end-to-end test that asserted "a network crossing must be refused when
+nobody approves it" was kept and moved to the configuration where a crossing
+exists. A second test pins the other half: with the network shut, nothing is
+refused *and* nothing gets through.
+
+What did not change: a shell command still declares that it writes, in every
+configuration. That is the part the sandbox cannot decide for us, because
+writing inside the workspace is exactly what `workspace-write` grants.

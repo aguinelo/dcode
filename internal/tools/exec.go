@@ -25,6 +25,12 @@ type Bash struct {
 	Runner  Runner
 	Workdir string
 	Timeout time.Duration
+	// AllowNetwork mirrors what the sandbox was built to permit.
+	//
+	// It belongs here because Declare has to state what is possible, and what
+	// is possible is a property of the sandbox that will run the command — not
+	// of the command, which is opaque either way.
+	AllowNetwork bool
 }
 
 // BashInput is the argument shape.
@@ -54,13 +60,19 @@ func (b Bash) Declare(input json.RawMessage) (policy.Request, error) {
 	if err := decode(b.Name(), input, &in); err != nil {
 		return policy.Request{}, err
 	}
-	// A shell command is opaque: it could touch anything and reach the
-	// network. Declaring the worst case is the only honest answer, and it is
-	// what makes the loop serialise it against everything else.
+	// A shell command is opaque, so the worst case is what gets declared — but
+	// the worst case is bounded by the sandbox that will run it, and outside
+	// full-access a confining sandbox is guaranteed to exist.
+	//
+	// Declaring a crossing the mechanism already prevents is a false alarm, not
+	// honesty: it asked for consent to reach the network on every command, in a
+	// configuration where the network was blocked at the OS level. Approving
+	// granted nothing and denying stopped the whole command, so the answer never
+	// did what the question said.
 	return policy.Request{
 		Tool:    b.Name(),
 		Command: in.Command,
-		Network: true,
+		Network: b.AllowNetwork,
 		Paths:   []policy.Access{{Path: ".", Write: true}},
 	}, nil
 }

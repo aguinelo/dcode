@@ -166,12 +166,18 @@ func TestEditWithoutReadIsRefusedThroughTheWholeStack(t *testing.T) {
 
 // Nothing reaches the network without consent, and with nobody to ask the
 // answer is no.
-func TestNetworkAccessIsDeniedWithoutApproval(t *testing.T) {
+// Nothing reaches the network without consent — but consent is only asked for
+// when there is a crossing to consent to.
+//
+// With the network open at the sandbox, a shell command really can reach out,
+// so the approval is the only thing standing in the way and a refusal must stop
+// it before it runs.
+func TestNetworkAccessIsDeniedWithoutApprovalWhenTheNetworkIsOpen(t *testing.T) {
 	ws := t.TempDir()
-	sess := wireSessionWith(t, ws, [][]string{
+	sess := wireSessionNet(t, ws, [][]string{
 		{frameToolCall("c1", "bash", `{"command":"curl https://example.com"}`), "[DONE]"},
 		{frameText("Understood, no network."), "[DONE]"},
-	}, DenyAll{})
+	}, DenyAll{}, true)
 
 	if _, err := sess.Engine.Run(context.Background(), "fetch a page"); err != nil {
 		t.Fatal(err)
@@ -185,6 +191,40 @@ func TestNetworkAccessIsDeniedWithoutApproval(t *testing.T) {
 	}
 	if !refused {
 		t.Error("a network crossing must be refused when nobody approves it")
+	}
+}
+
+// Regression: with the network shut at the sandbox there is no crossing, so the
+// command is not gated on one — and it still cannot reach the network, because
+// the OS is what stops it rather than the prompt.
+//
+// The old behaviour asked on every single command and the answer changed
+// nothing: approving still could not resolve a host, and denying stopped the
+// whole command rather than its network access.
+func TestAShellCommandIsNotGatedOnACrossingTheSandboxPrevents(t *testing.T) {
+	ws := t.TempDir()
+	sess := wireSessionWith(t, ws, [][]string{
+		{frameToolCall("c1", "bash", `{"command":"curl -sS -m 5 https://example.com"}`), "[DONE]"},
+		{frameText("The network is unavailable here."), "[DONE]"},
+	}, DenyAll{})
+
+	if _, err := sess.Engine.Run(context.Background(), "fetch a page"); err != nil {
+		t.Fatal(err)
+	}
+
+	var result string
+	for _, m := range sess.Engine.Session().History {
+		if m.ToolResult != nil {
+			result = m.ToolResult.Output
+		}
+	}
+	if strings.Contains(strings.ToLower(result), "denied") {
+		t.Errorf("nothing was crossed, so nothing should have been refused: %q", result)
+	}
+	// And the network is still unreachable — which is the invariant that
+	// actually matters, and it is the OS that holds it.
+	if strings.Contains(result, "<!doctype") || strings.Contains(result, "<html") {
+		t.Errorf("the network must remain unreachable: %q", result)
 	}
 }
 
@@ -218,13 +258,19 @@ func wireSession(t *testing.T, ws string, turns [][]string) *Session {
 }
 
 func wireSessionWith(t *testing.T, ws string, turns [][]string, approver loop.Approver) *Session {
+	return wireSessionNet(t, ws, turns, approver, false)
+}
+
+// wireSessionNet wires a session with the network open or shut, which is the
+// axis that decides whether there is a crossing to consent to at all.
+func wireSessionNet(t *testing.T, ws string, turns [][]string, approver loop.Approver, net bool) *Session {
 	t.Helper()
 
 	resolver, err := policy.NewResolver(ws)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sb, err := sandbox.New(sandbox.Config{}, policy.ModeWorkspaceWrite)
+	sb, err := sandbox.New(sandbox.Config{AllowNetwork: net}, policy.ModeWorkspaceWrite)
 	if err != nil {
 		// Without a real boundary the end-to-end assertion would be testing
 		// nothing, so skipping is the honest outcome.
@@ -234,7 +280,10 @@ func wireSessionWith(t *testing.T, ws string, turns [][]string, approver loop.Ap
 	state := tools.NewState(resolver, tools.DefaultLimits())
 	registry := tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{}, tools.Glob{}, tools.Grep{},
-		tools.Bash{Runner: sandbox.Runner{Sandbox: sb, Mode: policy.ModeWorkspaceWrite}, Workdir: ws},
+		tools.Bash{
+			Runner:  sandbox.Runner{Sandbox: sb, Mode: policy.ModeWorkspaceWrite},
+			Workdir: ws, AllowNetwork: net,
+		},
 		tools.Plan{},
 	)
 
