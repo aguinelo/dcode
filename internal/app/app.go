@@ -47,6 +47,8 @@ type Options struct {
 	DumpPrompt   bool
 	// Reminders switches the appended-notice channel on.
 	Reminders bool
+	// ShowReasoning forwards the model's thinking to clients.
+	ShowReasoning bool
 	// Env is how the session reaches the environment. Carried on Options rather
 	// than read from the process, so a daemon serving several workspaces is not
 	// forced to share one view of it.
@@ -79,9 +81,17 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 			// The rules live here rather than only in code, so `--config` can
 			// show them with an origin. A rule that governs behaviour and
 			// cannot be inspected is the gap the audit pair exists to close.
-			"rules.confirm_write":   policy.JoinList(defaults.ConfirmWrite),
-			"rules.confirm_read":    policy.JoinList(defaults.ConfirmRead),
-			"rules.confirm_command": policy.JoinList(defaults.ConfirmCommand),
+			// Every default that governs behaviour lives here rather than only
+			// in the code that reads it, so `--config` answers with a value and
+			// an origin. A setting that cannot be inspected is one nobody can
+			// reason about when it surprises them.
+			"behavior.instructions_enabled": "true",
+			"behavior.skills_enabled":       "true",
+			"behavior.reminders_enabled":    "true",
+			"behavior.show_reasoning":       "true",
+			"rules.confirm_write":           policy.JoinList(defaults.ConfirmWrite),
+			"rules.confirm_read":            policy.JoinList(defaults.ConfirmRead),
+			"rules.confirm_command":         policy.JoinList(defaults.ConfirmCommand),
 		}},
 	}
 
@@ -131,6 +141,7 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 	opts := Options{
 		Env:               env,
 		Reminders:         r.Bool("behavior.reminders_enabled", true),
+		ShowReasoning:     r.Bool("behavior.show_reasoning", true),
 		Workspace:         ws,
 		Model:             r.String("model.name", "MiniMax-M3"),
 		Transport:         r.String("model.transport", ""),
@@ -290,6 +301,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		InstructionChain: chain,
 		ReadFile:         readFileText,
 		Reminders:        opts.Reminders,
+		ShowReasoning:    opts.ShowReasoning,
 	}, ce.Session{Instructions: prompt})
 
 	return &Session{

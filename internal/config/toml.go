@@ -34,6 +34,7 @@ var KnownKeys = map[string]string{
 	"behavior.instructions_enabled": "DCODE_BEHAVIOR_INSTRUCTIONS_ENABLED",
 	"behavior.skills_enabled":       "DCODE_BEHAVIOR_SKILLS_ENABLED",
 	"behavior.reminders_enabled":    "DCODE_BEHAVIOR_REMINDERS_ENABLED",
+	"behavior.show_reasoning":       "DCODE_SHOW_REASONING",
 	"credential.backend":            "DCODE_CREDENTIAL_BACKEND",
 	"rules.confirm_write":           "DCODE_CONFIRM_WRITE",
 	"rules.confirm_read":            "DCODE_CONFIRM_READ",

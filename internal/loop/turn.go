@@ -70,6 +70,8 @@ type Config struct {
 	ReadFile func(path string) (string, error)
 	// Rules are the patterns that ask a question the sandbox cannot.
 	Rules policy.Rules
+	// ShowReasoning forwards the model's thinking to clients.
+	ShowReasoning bool
 	// Reminders disables the appended-notice channel when false.
 	Reminders bool
 	// Now is the clock used to time tool calls. Nil means the real one.
@@ -255,14 +257,19 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 				TurnID: turnID, Text: ev.Text,
 			})
 		case provider.EventReasoningDelta:
-			// Deliberately dropped. Reasoning is not the assistant's answer:
-			// appending it to the history would make the model read its own
-			// thinking back as something it said out loud, and it would be
-			// paid for on every subsequent turn of the session.
+			// Forwarded, never appended. The history is the one place this must
+			// not reach: a model that reads its own thinking back as something
+			// it said out loud starts defending it, and it would be paid for on
+			// every subsequent turn of the session.
 			//
-			// It is not forwarded to clients either — there is no protocol
-			// event for it, and inventing one to show thinking is a feature,
-			// not part of fixing the leak.
+			// Switchable because on a tool-calling turn the thinking runs five
+			// to ten times the size of the answer, and it shares the session's
+			// event budget with everything worth replaying.
+			if e.cfg.ShowReasoning {
+				e.emit(protocol.EventMessageReasoning, protocol.MessageReasoning{
+					TurnID: turnID, Text: ev.Text,
+				})
+			}
 
 		case provider.EventToolCall:
 			calls = append(calls, *ev.ToolCall)
