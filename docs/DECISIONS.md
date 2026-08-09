@@ -420,3 +420,70 @@ terminal wrapped it — which destroys the fixed layout the panel exists to hold
 Found by the width invariant test, reproduced by
 `TestWrapBreaksAWordWiderThanTheColumn`, then fixed. The regression test asserts
 both that no line exceeds the column and that breaking loses no characters.
+
+---
+
+## Phase 10 — What the first real model call found
+
+Everything before this was verified against recorded transcripts. The first turn
+against a live MiniMax-M3 found two defects in minutes, and both were in the gap
+between frames — the one place a hand-written fixture never looks.
+
+### A frame is not a unit of meaning
+
+`Family.Decode(ev, tools)` claimed decoding was a pure function of one event.
+The wire disagrees: a tool call's name arrives in one frame and its arguments in
+the next. The decoder emitted on the first fragment, where `arguments` is still
+`""`, so every tool ran with no input and answered "field is required" — three
+times over, until the repeat guard ended the turn having done nothing.
+
+`Decode` became `NewDecoder(tools) Decoder`, stateful and single-use, returning
+zero or more events per frame. Both were forced: zero when a frame carried only
+a fragment, several when the end of a stream flushes the calls it assembled.
+
+The assembly lives in the family rather than in the pump because *how* a call is
+split is dialect-specific — `index` within `tool_calls` for OpenAI, content
+blocks with `input_json_delta` for Anthropic. Putting it in the pump would make
+the pump know both formats, which is exactly the coupling the transport × family
+split exists to prevent.
+
+The Anthropic decoder had the same defect in its own shape and was fixed with
+it, before anything ran against that dialect.
+
+### The flush has to be idempotent
+
+MiniMax repeats `finish_reason` — twice in the captured stream. Emitting on each
+would run every tool a second time.
+
+### Reasoning is not the answer
+
+M3 sends its thinking twice: once in `reasoning`, once in `content` wrapped in
+`<think>` markers. Reading `content` printed the thinking to the user and, worse,
+appended it to the history as the assistant's own words, where it would be paid
+for on every later turn and read back as something it had said out loud.
+
+A frame carrying `reasoning` is a thinking frame. Its `content` is not an answer.
+
+Reasoning is dropped by the loop rather than forwarded: there is no protocol
+event for it, and inventing one so a client can show thinking is a feature, not
+part of fixing the leak. `EventReasoningDelta` stops at the provider boundary so
+the information exists when that feature is wanted.
+
+### A frame of pure framing produces nothing
+
+The model closes its reasoning with `\n</think>\n\n</think>` — markers and
+newlines, nothing else. Stripping the markers alone left three blank lines at the
+top of every answer, so a frame that was only framing is dropped whole. Content
+with no marker keeps its whitespace: that is how a paragraph break arrives.
+
+### The fixtures were not realistic, and that is what hid this
+
+Two tests fed a single-frame stream with no terminator — something the wire never
+produces. Under the corrected decoder they failed, because validation now happens
+where it belongs: at the end of the stream. The fix was to make the fixtures
+terminate the way a real stream does.
+
+The real capture is now committed at
+`internal/provider/testdata/minimax-m3-toolcall.sse`. It is worth more than the
+tests written against it: every hand-made approximation of this stream was
+passing.

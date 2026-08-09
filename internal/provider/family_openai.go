@@ -47,8 +47,8 @@ func (f MiniMaxM3) Encode(req Request, transport string) (WireRequest, error) {
 	return WireRequest{}, fmt.Errorf("family %s: unsupported transport %q", f.Name(), transport)
 }
 
-func (f MiniMaxM3) Decode(ev WireEvent, tools []ce.ToolDef) (StreamEvent, error) {
-	return decodeOpenAI(ev, tools)
+func (f MiniMaxM3) NewDecoder(tools []ce.ToolDef) Decoder {
+	return &openAIDecoder{tools: tools}
 }
 
 // Claude is the second family. It exists to prove the axes are orthogonal: one
@@ -72,8 +72,8 @@ func (f Claude) Encode(req Request, transport string) (WireRequest, error) {
 	return encodeAnthropic(req)
 }
 
-func (Claude) Decode(ev WireEvent, tools []ce.ToolDef) (StreamEvent, error) {
-	return decodeAnthropic(ev, tools)
+func (Claude) NewDecoder(tools []ce.ToolDef) Decoder {
+	return &anthropicDecoder{tools: tools}
 }
 
 // ---------- OpenAI dialect ----------
@@ -86,8 +86,12 @@ type oaMessage struct {
 }
 
 type oaToolCall struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
+	ID   string `json:"id"`
+	Type string `json:"type"`
+	// Index is how fragments of the same call are matched across frames. It is
+	// the only thing that keeps two parallel calls from merging into one
+	// unparseable blob.
+	Index    int `json:"index"`
 	Function struct {
 		Name      string `json:"name"`
 		Arguments string `json:"arguments"`
@@ -150,7 +154,12 @@ func encodeOpenAI(req Request) (WireRequest, error) {
 type oaChunk struct {
 	Choices []struct {
 		Delta struct {
-			Content   string       `json:"content"`
+			Content string `json:"content"`
+			// Reasoning is the model's thinking. MiniMax-M3 sends it here AND
+			// repeats it in Content wrapped in <think> markers, so a frame
+			// carrying Reasoning is a thinking frame and its Content is not an
+			// answer.
+			Reasoning string       `json:"reasoning"`
 			ToolCalls []oaToolCall `json:"tool_calls"`
 		} `json:"delta"`
 		FinishReason *string `json:"finish_reason"`
@@ -164,49 +173,159 @@ type oaChunk struct {
 	} `json:"usage"`
 }
 
-func decodeOpenAI(ev WireEvent, tools []ce.ToolDef) (StreamEvent, error) {
+// openAIDecoder assembles one stream in the OpenAI dialect.
+//
+// It exists because a frame is not a unit of meaning here: a tool call's name
+// arrives in one frame and its arguments across several more, and the call is
+// only whole once the stream reports it finished.
+type openAIDecoder struct {
+	tools []ce.ToolDef
+
+	// pending holds partial calls keyed by the wire index, and order records
+	// the indices as they first appeared so the calls are emitted in the order
+	// the model asked for them rather than in map order.
+	pending map[int]*partialCall
+	order   []int
+
+	flushed bool
+}
+
+type partialCall struct {
+	id   string
+	name string
+	args strings.Builder
+}
+
+func (d *openAIDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 	data := strings.TrimSpace(string(ev.Data))
 	if data == "" {
-		return StreamEvent{}, nil
+		return nil, nil
 	}
 	if data == "[DONE]" {
-		return StreamEvent{Type: EventDone}, nil
+		out, err := d.flush()
+		return append(out, StreamEvent{Type: EventDone}), err
 	}
 
 	var c oaChunk
 	if err := json.Unmarshal([]byte(data), &c); err != nil {
-		return StreamEvent{}, &ProviderError{
+		return nil, &ProviderError{
 			Class:   ErrClassProvider,
 			Message: "malformed stream frame: " + sanitize(err.Error()),
 		}
 	}
 
 	if c.Usage != nil {
-		return StreamEvent{Type: EventDone, Usage: &Usage{
+		out, err := d.flush()
+		return append(out, StreamEvent{Type: EventDone, Usage: &Usage{
 			InputTokens:     c.Usage.PromptTokens,
 			OutputTokens:    c.Usage.CompletionTokens,
 			CacheReadTokens: c.Usage.PromptTokensDetails.CachedTokens,
-		}}, nil
+		}}), err
 	}
 	if len(c.Choices) == 0 {
-		return StreamEvent{}, nil
+		return nil, nil
 	}
 
 	ch := c.Choices[0]
+	var out []StreamEvent
+
 	for _, tc := range ch.Delta.ToolCalls {
-		call, err := validateToolCall(tc.ID, tc.Function.Name, tc.Function.Arguments, tools)
-		if err != nil {
-			return StreamEvent{}, err
-		}
-		return StreamEvent{Type: EventToolCall, ToolCall: call}, nil
+		d.absorb(tc)
 	}
-	if ch.Delta.Content != "" {
-		return StreamEvent{Type: EventTextDelta, Text: ch.Delta.Content}, nil
+
+	// A frame carrying reasoning is a thinking frame. Its Content repeats the
+	// same text with <think> markers around it, so reading Content here would
+	// put the model's thinking in its own mouth.
+	if ch.Delta.Reasoning != "" {
+		out = append(out, StreamEvent{Type: EventReasoningDelta, Text: ch.Delta.Reasoning})
+	} else if text, ok := answerText(ch.Delta.Content); ok {
+		out = append(out, StreamEvent{Type: EventTextDelta, Text: text})
 	}
+
 	if ch.FinishReason != nil {
-		return StreamEvent{Type: EventDone}, nil
+		flushed, err := d.flush()
+		out = append(out, flushed...)
+		if err != nil {
+			return out, err
+		}
+		out = append(out, StreamEvent{Type: EventDone})
 	}
-	return StreamEvent{}, nil
+	return out, nil
+}
+
+// absorb folds one fragment into the call it belongs to.
+func (d *openAIDecoder) absorb(tc oaToolCall) {
+	if d.pending == nil {
+		d.pending = map[int]*partialCall{}
+	}
+	p, seen := d.pending[tc.Index]
+	if !seen {
+		p = &partialCall{}
+		d.pending[tc.Index] = p
+		d.order = append(d.order, tc.Index)
+	}
+	// Later frames carry only the fragment, so nothing already known is
+	// overwritten with an empty string.
+	if tc.ID != "" {
+		p.id = tc.ID
+	}
+	if tc.Function.Name != "" {
+		p.name = tc.Function.Name
+	}
+	p.args.WriteString(tc.Function.Arguments)
+}
+
+// flush emits the assembled calls, once.
+//
+// Once, because a provider may repeat finish_reason — MiniMax does — and a
+// second emission would run every tool twice.
+func (d *openAIDecoder) flush() ([]StreamEvent, error) {
+	if d.flushed || len(d.order) == 0 {
+		return nil, nil
+	}
+	d.flushed = true
+
+	var out []StreamEvent
+	for _, idx := range d.order {
+		p := d.pending[idx]
+		args := p.args.String()
+		if strings.TrimSpace(args) == "" {
+			// An empty object is what a no-argument tool looks like on the
+			// wire; validation still has to agree with the schema.
+			args = "{}"
+		}
+		call, err := validateToolCall(p.id, p.name, args, d.tools)
+		if err != nil {
+			// Returning what was already assembled keeps the earlier calls
+			// visible; the error ends the turn either way.
+			return out, err
+		}
+		out = append(out, StreamEvent{Type: EventToolCall, ToolCall: call})
+	}
+	return out, nil
+}
+
+// answerText strips the framing MiniMax leaves in Content and reports whether
+// anything worth showing is left.
+//
+// The model closes its reasoning with a frame of pure markers and newlines —
+// `\n</think>\n\n</think>`, twice over in practice. Stripping alone would turn
+// that into three blank lines at the top of every answer, so a frame that was
+// nothing but framing is dropped entirely.
+func answerText(s string) (string, bool) {
+	stripped := s
+	for _, marker := range []string{"<think>", "</think>"} {
+		stripped = strings.ReplaceAll(stripped, marker, "")
+	}
+	if stripped == s {
+		// No markers, so the content is the model's own — including any
+		// whitespace it meant to send.
+		return s, s != ""
+	}
+	if strings.TrimSpace(stripped) == "" {
+		return "", false
+	}
+	return stripped, true
 }
 
 // ---------- Anthropic dialect ----------
@@ -296,7 +415,10 @@ func encodeAnthropic(req Request) (WireRequest, error) {
 }
 
 type anEvent struct {
-	Type         string `json:"type"`
+	Type string `json:"type"`
+	// Index identifies the content block a delta belongs to. Tool calls and
+	// text share one numbering, which is why the decoder keys on it.
+	Index        int `json:"index"`
 	ContentBlock *struct {
 		Type  string          `json:"type"`
 		ID    string          `json:"id"`
@@ -306,6 +428,11 @@ type anEvent struct {
 	Delta *struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
+		// PartialJSON carries a tool call's arguments, a fragment per frame.
+		// The input on content_block_start is always an empty object.
+		PartialJSON string `json:"partial_json"`
+		// Thinking is the reasoning channel of this dialect.
+		Thinking string `json:"thinking"`
 	} `json:"delta"`
 	Usage *struct {
 		InputTokens              int `json:"input_tokens"`
@@ -315,35 +442,60 @@ type anEvent struct {
 	} `json:"usage"`
 }
 
-func decodeAnthropic(ev WireEvent, tools []ce.ToolDef) (StreamEvent, error) {
+// anthropicDecoder assembles one stream in the Anthropic dialect.
+//
+// Same reason as the OpenAI one, different shape: a tool call opens with an
+// empty input object and its arguments follow as input_json_delta fragments,
+// so the call only exists once its block closes.
+type anthropicDecoder struct {
+	tools []ce.ToolDef
+
+	pending map[int]*partialCall
+	order   []int
+	flushed bool
+}
+
+func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 	data := strings.TrimSpace(string(ev.Data))
 	if data == "" {
-		return StreamEvent{}, nil
+		return nil, nil
 	}
 
 	var e anEvent
 	if err := json.Unmarshal([]byte(data), &e); err != nil {
-		return StreamEvent{}, &ProviderError{
+		return nil, &ProviderError{
 			Class:   ErrClassProvider,
 			Message: "malformed stream frame: " + sanitize(err.Error()),
 		}
 	}
 
 	switch e.Type {
-	case "content_block_delta":
-		if e.Delta != nil && e.Delta.Text != "" {
-			return StreamEvent{Type: EventTextDelta, Text: e.Delta.Text}, nil
-		}
 	case "content_block_start":
 		if e.ContentBlock != nil && e.ContentBlock.Type == "tool_use" {
-			call, err := validateToolCall(
-				e.ContentBlock.ID, e.ContentBlock.Name, string(e.ContentBlock.Input), tools)
-			if err != nil {
-				return StreamEvent{}, err
-			}
-			return StreamEvent{Type: EventToolCall, ToolCall: call}, nil
+			// Opened, not complete: the arguments are still coming.
+			d.open(e.Index, e.ContentBlock.ID, e.ContentBlock.Name)
 		}
+
+	case "content_block_delta":
+		if e.Delta == nil {
+			return nil, nil
+		}
+		if e.Delta.PartialJSON != "" {
+			d.append(e.Index, e.Delta.PartialJSON)
+			return nil, nil
+		}
+		if e.Delta.Thinking != "" {
+			return []StreamEvent{{Type: EventReasoningDelta, Text: e.Delta.Thinking}}, nil
+		}
+		if e.Delta.Text != "" {
+			return []StreamEvent{{Type: EventTextDelta, Text: e.Delta.Text}}, nil
+		}
+
 	case "message_delta", "message_stop":
+		out, err := d.flush()
+		if err != nil {
+			return out, err
+		}
 		se := StreamEvent{Type: EventDone}
 		if e.Usage != nil {
 			se.Usage = &Usage{
@@ -353,9 +505,48 @@ func decodeAnthropic(ev WireEvent, tools []ce.ToolDef) (StreamEvent, error) {
 				CacheWriteTokens: e.Usage.CacheCreationInputTokens,
 			}
 		}
-		return se, nil
+		return append(out, se), nil
 	}
-	return StreamEvent{}, nil
+	return nil, nil
+}
+
+func (d *anthropicDecoder) open(index int, id, name string) {
+	if d.pending == nil {
+		d.pending = map[int]*partialCall{}
+	}
+	if _, seen := d.pending[index]; seen {
+		return
+	}
+	d.pending[index] = &partialCall{id: id, name: name}
+	d.order = append(d.order, index)
+}
+
+func (d *anthropicDecoder) append(index int, fragment string) {
+	if p, ok := d.pending[index]; ok {
+		p.args.WriteString(fragment)
+	}
+}
+
+func (d *anthropicDecoder) flush() ([]StreamEvent, error) {
+	if d.flushed || len(d.order) == 0 {
+		return nil, nil
+	}
+	d.flushed = true
+
+	var out []StreamEvent
+	for _, idx := range d.order {
+		p := d.pending[idx]
+		args := p.args.String()
+		if strings.TrimSpace(args) == "" {
+			args = "{}"
+		}
+		call, err := validateToolCall(p.id, p.name, args, d.tools)
+		if err != nil {
+			return out, err
+		}
+		out = append(out, StreamEvent{Type: EventToolCall, ToolCall: call})
+	}
+	return out, nil
 }
 
 // ---------- shared validation ----------

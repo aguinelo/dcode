@@ -680,3 +680,45 @@ func TestCancelClassEndsQuietly(t *testing.T) {
 		t.Error("a deliberate cancellation should not be reported as a failure")
 	}
 }
+
+// Reasoning must never reach the history.
+//
+// A model that reads its own thinking back as something it said out loud
+// starts defending it, and the text would be paid for on every subsequent turn
+// of the session.
+func TestReasoningNeverEntersTheHistory(t *testing.T) {
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{
+			{Type: provider.EventReasoningDelta, Text: "Let me think about deleting everything."},
+			{Type: provider.EventTextDelta, Text: "Pronto."},
+			done(),
+		},
+	}}
+	e, rec := newEngine(t, p, tools.NewRegistry())
+	if _, err := e.Run(context.Background(), "oi"); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, m := range e.Session().History {
+		if strings.Contains(m.Text, "deleting everything") {
+			t.Fatalf("reasoning reached the history: %q", m.Text)
+		}
+	}
+	// The answer itself survives.
+	var found bool
+	for _, m := range e.Session().History {
+		if m.Role == ce.RoleAssistant && strings.Contains(m.Text, "Pronto") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("the answer must still be recorded")
+	}
+	// And nothing was streamed to the client either: the deltas the client saw
+	// carry the answer and nothing else.
+	if d, ok := rec.last[protocol.EventMessageDelta].(protocol.MessageDelta); ok {
+		if strings.Contains(d.Text, "deleting everything") {
+			t.Errorf("reasoning was streamed to the client: %q", d.Text)
+		}
+	}
+}

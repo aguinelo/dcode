@@ -240,6 +240,16 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 			e.emit(protocol.EventMessageDelta, protocol.MessageDelta{
 				TurnID: turnID, Text: ev.Text,
 			})
+		case provider.EventReasoningDelta:
+			// Deliberately dropped. Reasoning is not the assistant's answer:
+			// appending it to the history would make the model read its own
+			// thinking back as something it said out loud, and it would be
+			// paid for on every subsequent turn of the session.
+			//
+			// It is not forwarded to clients either — there is no protocol
+			// event for it, and inventing one to show thinking is a feature,
+			// not part of fixing the leak.
+
 		case provider.EventToolCall:
 			calls = append(calls, *ev.ToolCall)
 			e.emit(protocol.EventToolRequested, protocol.ToolRequested{

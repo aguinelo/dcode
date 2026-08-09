@@ -134,8 +134,12 @@ func TestCancelClosesChannelWithCanceled(t *testing.T) {
 
 // A tool the model invented must never reach the loop.
 func TestUndeclaredToolNeverReachesTheLoop(t *testing.T) {
+	// The stream terminates, as a real one always does: a call is only whole
+	// once the model says it has finished emitting it, so that is where the
+	// schema check happens.
 	r, _ := registry(t,
-		`{"choices":[{"delta":{"tool_calls":[{"id":"c1","function":{"name":"rm_rf","arguments":"{}"}}]}}]}`)
+		`{"choices":[{"delta":{"tool_calls":[{"id":"c1","function":{"name":"rm_rf","arguments":"{}"},"index":0}]}}]}`,
+		`{"choices":[{"finish_reason":"tool_calls","delta":{}}]}`)
 	p, _ := r.Resolve("MiniMax-M3", "")
 	ch, _ := p.Stream(context.Background(), request())
 	evs := drain(t, ch)
@@ -157,7 +161,8 @@ func TestUndeclaredToolNeverReachesTheLoop(t *testing.T) {
 
 func TestMalformedToolArgumentsNeverReachTheLoop(t *testing.T) {
 	r, _ := registry(t,
-		`{"choices":[{"delta":{"tool_calls":[{"id":"c1","function":{"name":"read","arguments":"{not json"}}]}}]}`)
+		`{"choices":[{"delta":{"tool_calls":[{"id":"c1","function":{"name":"read","arguments":"{not json"},"index":0}]}}]}`,
+		`{"choices":[{"finish_reason":"tool_calls","delta":{}}]}`)
 	p, _ := r.Resolve("MiniMax-M3", "")
 	evs := drain(t, mustStream(t, p))
 

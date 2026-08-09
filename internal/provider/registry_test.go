@@ -176,45 +176,86 @@ func TestRegistryNamesAreSorted(t *testing.T) {
 }
 
 func TestAnthropicDecode(t *testing.T) {
-	fam := Claude{}
 	for _, tc := range []struct {
 		name  string
 		frame string
 		want  StreamEventType
 	}{
 		{"text delta", `{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}`, EventTextDelta},
-		{"tool use", `{"type":"content_block_start","content_block":{"type":"tool_use","id":"c1","name":"read","input":{}}}`, EventToolCall},
+		{"thinking", `{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"hmm"}}`, EventReasoningDelta},
+		// A tool block only *opens* here; its arguments are still to come, so
+		// nothing is emitted until the message ends.
+		{"tool use opens", `{"type":"content_block_start","content_block":{"type":"tool_use","id":"c1","name":"read","input":{}}}`, ""},
 		{"message stop", `{"type":"message_stop"}`, EventDone},
 		{"ping is ignored", `{"type":"ping"}`, ""},
 		{"empty frame", ``, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ev, err := fam.Decode(WireEvent{Data: []byte(tc.frame)}, tools())
+			dec := Claude{}.NewDecoder(tools())
+			got, err := dec.Decode(WireEvent{Data: []byte(tc.frame)})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if ev.Type != tc.want {
-				t.Errorf("got %q want %q", ev.Type, tc.want)
+			if tc.want == "" {
+				if len(got) != 0 {
+					t.Errorf("want nothing, got %+v", got)
+				}
+				return
+			}
+			if len(got) != 1 || got[0].Type != tc.want {
+				t.Errorf("got %+v want %q", got, tc.want)
 			}
 		})
 	}
 }
 
+// The Anthropic dialect splits a call the same way, in its own shape: the block
+// opens empty and the arguments follow as input_json_delta.
+func TestAnthropicToolCallIsAssembledFromItsFragments(t *testing.T) {
+	dec := Claude{}.NewDecoder(tools())
+	var out []StreamEvent
+	for _, frame := range []string{
+		`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"c1","name":"read","input":{}}}`,
+		`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":"}}`,
+		`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"\"a.go\"}"}}`,
+		`{"type":"content_block_stop","index":0}`,
+		`{"type":"message_stop"}`,
+	} {
+		got, err := dec.Decode(WireEvent{Data: []byte(frame)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, got...)
+	}
+
+	var calls []*ce.ToolCall
+	for _, ev := range out {
+		if ev.Type == EventToolCall {
+			calls = append(calls, ev.ToolCall)
+		}
+	}
+	if len(calls) != 1 {
+		t.Fatalf("want one call, got %d", len(calls))
+	}
+	if !strings.Contains(string(calls[0].Input), "a.go") {
+		t.Errorf("the arguments were lost between frames: %s", calls[0].Input)
+	}
+}
+
 func TestAnthropicUsageCarriesCacheTokens(t *testing.T) {
-	ev, err := (Claude{}).Decode(WireEvent{Data: []byte(
-		`{"type":"message_delta","usage":{"input_tokens":100,"output_tokens":9,"cache_read_input_tokens":80}}`)},
-		tools())
+	got, err := Claude{}.NewDecoder(tools()).Decode(WireEvent{Data: []byte(
+		`{"type":"message_delta","usage":{"input_tokens":100,"output_tokens":9,"cache_read_input_tokens":80}}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ev.Usage == nil || ev.Usage.CacheReadTokens != 80 {
-		t.Errorf("cache read tokens must survive decoding: %+v", ev.Usage)
+	if len(got) != 1 || got[0].Usage == nil || got[0].Usage.CacheReadTokens != 80 {
+		t.Errorf("cache read tokens must survive decoding: %+v", got)
 	}
 }
 
 func TestMalformedFrameIsAProviderError(t *testing.T) {
 	for _, fam := range []Family{MiniMaxM3{}, Claude{}} {
-		_, err := fam.Decode(WireEvent{Data: []byte(`{"broken`)}, tools())
+		_, err := fam.NewDecoder(tools()).Decode(WireEvent{Data: []byte(`{"broken`)})
 		if err == nil {
 			t.Fatalf("%s: a malformed frame must be an error", fam.Name())
 		}
@@ -491,8 +532,12 @@ func (f fakeFamily) Encode(Request, string) (WireRequest, error) {
 	}
 	return WireRequest{Body: json.RawMessage(`{}`)}, nil
 }
-func (f fakeFamily) Decode(WireEvent, []ce.ToolDef) (StreamEvent, error) {
-	return StreamEvent{Type: EventDone}, nil
+func (f fakeFamily) NewDecoder([]ce.ToolDef) Decoder { return fakeDecoder{} }
+
+type fakeDecoder struct{}
+
+func (fakeDecoder) Decode(WireEvent) ([]StreamEvent, error) {
+	return []StreamEvent{{Type: EventDone}}, nil
 }
 
 func TestCanceledEventReportsDeadline(t *testing.T) {

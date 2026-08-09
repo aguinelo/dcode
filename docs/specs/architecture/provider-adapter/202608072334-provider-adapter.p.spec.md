@@ -45,9 +45,23 @@ type Family interface {
     // Encode serializa o contexto neutro no corpo esperado pelo transporte.
     Encode(req Request, transport string) (WireRequest, error)
 
-    // Decode traduz evento bruto em StreamEvent neutro, validando tool call
-    // contra o schema declarado (RN-8).
-    Decode(ev WireEvent, tools []contextpkg.ToolDef) (StreamEvent, error)
+    // NewDecoder cria o decoder de UM stream.
+    //
+    // Decodificar não pode ser função pura de um frame: os argumentos de uma
+    // tool call chegam partidos entre frames, e a call só existe inteira
+    // quando o stream diz que terminou. Como ela é partida é específico do
+    // dialeto, então o decoder pertence à família.
+    NewDecoder(tools []contextpkg.ToolDef) Decoder
+}
+
+// Decoder traduz os frames brutos de um stream em eventos neutros, validando
+// tool call contra o schema declarado (RN-8).
+//
+// Com estado e de uso único: um por stream, nunca compartilhado. Devolve zero
+// ou mais eventos por frame — zero quando o frame trouxe só um fragmento,
+// vários quando o fim do stream libera as calls que estavam sendo montadas.
+type Decoder interface {
+    Decode(ev WireEvent) ([]StreamEvent, error)
 }
 
 type Limits struct {
@@ -211,7 +225,14 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - `Resolve` com transporte fora de `Transports()` da família devolve erro nomeando os compatíveis.
 - A mesma família codificando para dois transportes distintos produz corpos distintos e ambos válidos — o teste que prova que os dois eixos são de fato ortogonais.
 - `Limits()` devolve o default da família quando a configuração não sobrescreve.
+- Tool call cujos argumentos chegam partidos entre frames é montada inteira antes de ser emitida.
+- Duas tool calls paralelas no mesmo stream saem como duas calls, cada uma com seus argumentos.
+- `finish_reason` repetido não emite a mesma call duas vezes.
+- Call que o stream não terminou de emitir vira erro `tool_schema`, nunca execução.
+- Raciocínio nunca aparece em evento de texto nem no histórico (RN-10).
+- Frame que só carrega marcador de raciocínio e espaço em branco não produz evento algum.
 
 ## 8. Changelog
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
+- [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md)
