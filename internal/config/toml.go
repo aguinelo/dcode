@@ -34,6 +34,7 @@ var KnownKeys = map[string]string{
 	"behavior.instructions_enabled": "DCODE_BEHAVIOR_INSTRUCTIONS_ENABLED",
 	"behavior.skills_enabled":       "DCODE_BEHAVIOR_SKILLS_ENABLED",
 	"behavior.reminders_enabled":    "DCODE_BEHAVIOR_REMINDERS_ENABLED",
+	"credential.backend":            "DCODE_CREDENTIAL_BACKEND",
 	"update.check":                  "DCODE_UPDATE_CHECK",
 	"update.channel":                "DCODE_UPDATE_CHANNEL",
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",

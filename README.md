@@ -301,6 +301,24 @@ The client speaks the protocol either way — the embedded daemon is a deploymen
 not a second code path — so a session that outgrows one terminal moves to `dcode serve`
 without the client changing anything.
 
+### The credential
+
+```bash
+dcode login                    # read from a prompt that does not echo
+dcode login --family claude    # a second key, for another family
+dcode config                   # what is stored, masked, and where from
+dcode login --reveal           # print it in full, on purpose
+```
+
+The key is never taken as an argument — an argument lands in shell history and is
+visible in `ps`. It is stored in the OS keychain where there is one and in a `0600`
+file where there is not, one credential per model family, chosen by
+`credential.backend` so that what writes and what reads always agree.
+`DCODE_API_KEY` still wins over anything stored.
+
+`config.toml` refuses anything shaped like a secret, in any section, because that
+file is meant to be versioned and synced.
+
 Two commands need no key, and they are the audit pair:
 
 ```bash

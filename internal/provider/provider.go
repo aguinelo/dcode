@@ -326,14 +326,26 @@ func (r *Registry) resolveWith(fam Family, transportOverride string) (Provider, 
 // would be unreachable code, and unreachable code that looks like a safety net
 // is worse than none.
 func (r *Registry) familyFor(model string) Family {
-	for _, f := range r.families {
+	f, _ := FamilyFor(model, r.families)
+	return f
+}
+
+// FamilyFor reports which family claims a model.
+//
+// Exported because a caller may need the family *before* a provider exists —
+// resolving a credential, for one, since the credential is what the transport
+// is built with. Two implementations of this matching would eventually disagree
+// about which key a model uses, which is a failure with no visible symptom
+// until an auth error.
+func FamilyFor(model string, families []Family) (Family, bool) {
+	for _, f := range families {
 		for _, p := range f.Models() {
 			if strings.HasPrefix(model, p) {
-				return f
+				return f, true
 			}
 		}
 	}
-	return nil
+	return nil, false
 }
 
 // FamilyNames lists registered families, sorted for a stable error message.

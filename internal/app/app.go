@@ -21,6 +21,7 @@ import (
 	"github.com/aguinelo/dcode/internal/behavior"
 	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/credential"
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -50,6 +51,15 @@ type Options struct {
 	// than read from the process, so a daemon serving several workspaces is not
 	// forced to share one view of it.
 	Env func(string) string `json:"-"`
+	// CredentialFrom records where the key came from, so `dcode config` can
+	// answer "which one is this" without ever printing it.
+	CredentialFrom string
+	// CredentialBackend selects the store. Empty chooses.
+	//
+	// Configuration rather than a per-command flag: a flag on the command that
+	// writes, and nothing on the commands that read, stores the secret
+	// somewhere nothing looks for it.
+	CredentialBackend string
 }
 
 // FromEnv resolves options from the environment, applying the precedence chain.
@@ -108,26 +118,59 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 		return Options{}, r, err
 	}
 
-	return Options{
-		Env:          env,
-		Reminders:    r.Bool("behavior.reminders_enabled", true),
-		Workspace:    ws,
-		Model:        r.String("model.name", "MiniMax-M3"),
-		Transport:    r.String("model.transport", ""),
-		Family:       r.String("model.family", ""),
-		APIKey:       env("DCODE_API_KEY"),
-		BaseURL:      r.String("model.base_url", ""),
-		SandboxMode:  mode,
-		Policy:       pol,
-		Backend:      r.String("sandbox.backend", sandbox.BackendAuto),
-		AllowNetwork: r.Bool("sandbox.allow_network", false),
-		Parallel:     r.Int("limits.parallel", 4),
-		DumpPrompt:   r.Bool("doctrine.dump", false),
+	opts := Options{
+		Env:               env,
+		Reminders:         r.Bool("behavior.reminders_enabled", true),
+		Workspace:         ws,
+		Model:             r.String("model.name", "MiniMax-M3"),
+		Transport:         r.String("model.transport", ""),
+		Family:            r.String("model.family", ""),
+		APIKey:            env("DCODE_API_KEY"),
+		BaseURL:           r.String("model.base_url", ""),
+		SandboxMode:       mode,
+		Policy:            pol,
+		Backend:           r.String("sandbox.backend", sandbox.BackendAuto),
+		AllowNetwork:      r.Bool("sandbox.allow_network", false),
+		Parallel:          r.Int("limits.parallel", 4),
+		DumpPrompt:        r.Bool("doctrine.dump", false),
+		CredentialBackend: r.String("credential.backend", ""),
 		Limits: loop.Limits{
 			MaxIterations:     r.Int("limits.max_iterations", 0),
 			MaxIdenticalCalls: r.Int("limits.identical", 3),
 		},
-	}, r, nil
+	}
+	if opts.APIKey != "" {
+		opts.CredentialFrom = "DCODE_API_KEY"
+	} else {
+		// The environment wins because it is explicit and scoped to one
+		// invocation; the store is what makes the ordinary case not require it.
+		secret, from := LookupCredential(roots, opts)
+		opts.APIKey, opts.CredentialFrom = secret, from
+	}
+	return opts, r, nil
+}
+
+// LookupCredential reads the stored key for these options.
+//
+// A failure is silent on purpose: the store not being reachable is not a reason
+// to refuse to start, and the turn that needs the key reports a clear auth error
+// with a message that says where to set it.
+func LookupCredential(roots config.Roots, opts Options) (secret, from string) {
+	name := CredentialName(opts)
+	if name == "" {
+		return "", ""
+	}
+	store, err := credential.Open(credential.Options{
+		StateDir: roots.State, Backend: opts.CredentialBackend,
+	})
+	if err != nil {
+		return "", ""
+	}
+	v, err := store.Get(name)
+	if err != nil || v == "" {
+		return "", ""
+	}
+	return v, store.Where()
 }
 
 // Session is a wired agent ready to take turns.
@@ -229,11 +272,31 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	}, nil
 }
 
+// Families are the adaptations this build supports, in registration order.
+func Families() []provider.Family {
+	return []provider.Family{provider.MiniMaxM3{}, provider.Claude{}}
+}
+
+// CredentialName is the name a model's credential is stored under.
+//
+// The family rather than the model: `MiniMax-M3` and a later `MiniMax-M4` reach
+// the same account at the same provider, and asking someone to store the same
+// key twice is asking them to forget one of them.
+func CredentialName(opts Options) string {
+	if opts.Family != "" {
+		return opts.Family
+	}
+	if f, ok := provider.FamilyFor(opts.Model, Families()); ok {
+		return f.Name()
+	}
+	return ""
+}
+
 func buildProvider(opts Options) (provider.Provider, error) {
 	reg := provider.NewRegistry()
 	reg.RegisterTransport(NewHTTPTransport(provider.TransportOpenAI, opts.BaseURL, opts.APIKey))
 	reg.RegisterTransport(NewHTTPTransport(provider.TransportAnthropic, opts.BaseURL, opts.APIKey))
-	for _, f := range []provider.Family{provider.MiniMaxM3{}, provider.Claude{}} {
+	for _, f := range Families() {
 		if err := reg.RegisterFamily(f); err != nil {
 			return nil, err
 		}

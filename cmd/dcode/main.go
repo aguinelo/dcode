@@ -38,6 +38,10 @@ func dispatch(args []string) error {
 			return runTUI(args[1:])
 		case "update":
 			return runUpdate(args[1:])
+		case "login":
+			return runLogin(args[1:])
+		case "config":
+			return runConfig(args[1:])
 		case "help", "--help", "-h":
 			usage()
 			return nil
@@ -108,6 +112,8 @@ Usage:
   dcode [flags] <task>       run one task and exit
   dcode serve [flags]        run the daemon
   dcode tui [flags]          open the terminal interface
+  dcode login [flags]        store the model credential, read without echo
+  dcode config [key]         the effective configuration and where it came from
   dcode update [flags]       install the latest release
 
 Examples:
@@ -120,7 +126,7 @@ Examples:
 Run a subcommand with --help for its flags.
 
 Environment:
-  DCODE_API_KEY            model credential (required to run a task)
+  DCODE_API_KEY            model credential; overrides anything stored
   DCODE_MODEL              model name (default MiniMax-M3)
   DCODE_TRANSPORT          wire format: openai or anthropic
   DCODE_SANDBOX_MODE       read-only, workspace-write or full-access
