@@ -30,6 +30,35 @@ type Result struct {
 	Code      string
 	Truncated bool
 	Remaining int
+
+	// Meta is what a client needs to render the call in one line without
+	// parsing Output.
+	//
+	// Parsing prose to rebuild a number the tool already knew is how a UI
+	// silently breaks when the wording changes. The tool states it once.
+	Meta Meta
+}
+
+// Meta is the structured account of what a tool call did. Every field is
+// optional: a tool reports what applies to it and leaves the rest zero.
+type Meta struct {
+	// Lines read, or matched, or written.
+	Lines int
+	// Files touched or matched.
+	Files int
+	// Added and Removed are line counts for an edit or a write.
+	Added   int
+	Removed int
+	// ExitCode of a command. Meaningful only when HasExit is set, because a
+	// successful command exits zero and zero is also the empty value.
+	ExitCode int
+	HasExit  bool
+	// Diff is the unified diff of a change, for a client to render.
+	//
+	// It never reaches the model: the model wrote the edit and already knows
+	// what it changed, so putting the diff in the history would pay tokens for
+	// something nobody reads. It rides on the event instead.
+	Diff string
 }
 
 // Tool is one capability.

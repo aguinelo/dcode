@@ -91,6 +91,15 @@ Se a resposta contém tool call que não valida contra o schema declarado, ela *
 
 Executar tool call malformada com input adivinhado é como um agente corrompe arquivo. Não há caso em que valha o risco.
 
+**Uma call parcial é malformada.** Frame não é unidade de significado: os argumentos chegam partidos, e uma call emitida antes do fim do stream chega à ferramenta sem input. Isso não é erro do modelo, e tratá-lo como erro do modelo esconde o defeito no adaptador — o sintoma é a ferramenta respondendo *"campo obrigatório ausente"* para toda chamada.
+
+### RN-10 — Raciocínio não é resposta
+O pensamento do modelo viaja em canal próprio e **nunca** entra no histórico.
+
+Um modelo que lê o próprio raciocínio de volta como algo que disse em voz alta passa a defendê-lo em vez de reconsiderar. E o texto seria pago em todo turno seguinte da sessão, o que contraria a ADR-03 diretamente.
+
+Família que manda o raciocínio duplicado no campo de conteúdo é o caso comum, não a exceção: quem monta a resposta precisa distinguir os dois, e na dúvida o texto é raciocínio.
+
 ## 5. Fora de escopo
 
 - Roteamento entre múltiplos provedores por custo ou capacidade.
@@ -101,3 +110,4 @@ Executar tool call malformada com input adivinhado é como um agente corrompe ar
 ## 6. Changelog
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
+- [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md) — nova RN-10.

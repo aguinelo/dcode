@@ -30,6 +30,11 @@ type Message struct {
 	Text       string      `json:"text,omitempty"`
 	ToolCalls  []ToolCall  `json:"tool_calls,omitempty"`
 	ToolResult *ToolResult `json:"tool_result,omitempty"`
+	// Reminder marks a message the harness appended rather than the user
+	// typing it. It rides on the user role because that is the only channel
+	// every provider accepts mid-conversation, but a client must never render
+	// it as something the user said.
+	Reminder bool `json:"reminder,omitempty"`
 }
 
 // ToolCall is a model request to run a tool.

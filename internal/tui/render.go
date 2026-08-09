@@ -1,0 +1,856 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/mattn/go-runewidth"
+)
+
+// PanelMode is how the plan panel decides whether to show.
+type PanelMode int
+
+const (
+	// PanelAuto lets the width decide. The default, because it answers the
+	// case the user has not thought about.
+	PanelAuto PanelMode = iota
+	// PanelShown and PanelHidden are the user having thought about it.
+	PanelShown
+	PanelHidden
+)
+
+// Geometry is the terminal size and the layout knobs.
+type Geometry struct {
+	Width  int
+	Height int
+
+	PanelWidth         int
+	PanelMinWidth      int
+	PanelMaxWidth      int
+	PanelMinTotalWidth int
+	PanelMode          PanelMode
+
+	// DiffPreviewLines is how much of a diff shows without asking. A diff is
+	// what gets reviewed, so some of it is always visible — but a whole-file
+	// rewrite must not bury the conversation it belongs to.
+	DiffPreviewLines int
+	DiffMaxLines     int
+	// CompletionRows is how many candidates the `/` menu shows at once.
+	CompletionRows int
+	Unicode        bool
+	Palette        Palette
+}
+
+// DefaultGeometry returns the documented defaults.
+func DefaultGeometry(w, h int) Geometry {
+	return Geometry{
+		Width: w, Height: h,
+		PanelWidth: 24, PanelMinWidth: 16, PanelMaxWidth: 34, PanelMinTotalWidth: 100,
+		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5, Unicode: true,
+	}
+}
+
+// ShowPanel reports whether the plan panel is drawn.
+//
+// Responsive by default: at 80 columns a 24-wide panel leaves 56 for the
+// stream, and a diff in 56 columns is bad. But responsiveness answers the case
+// where the user never noticed the window got narrow — and a keypress *is* the
+// user noticing, so an explicit choice wins over the default at any width.
+//
+// No plan means no panel in every mode: an empty panel is worse than none.
+func (g Geometry) ShowPanel(hasPlan bool) bool {
+	if !hasPlan {
+		return false
+	}
+	switch g.PanelMode {
+	case PanelShown:
+		return true
+	case PanelHidden:
+		return false
+	}
+	return g.Width >= g.PanelMinTotalWidth
+}
+
+// panelWidth is how wide the panel actually draws.
+//
+// It gives ground before it disappears: asked for on a narrow terminal, it
+// shrinks rather than taking the room the stream needs. Below its own minimum
+// an item is unreadable, so that is the floor.
+func (g Geometry) panelWidth() int {
+	w := g.PanelWidth
+	if w <= 0 {
+		w = 24
+	}
+	floor := g.PanelMinWidth
+	if floor <= 0 {
+		floor = 16
+	}
+	// A quarter of the screen, between the floor and the ceiling. It gives
+	// ground first on a narrow terminal — the panel holds short lines and the
+	// stream holds diffs — and takes a little more on a wide one, where a plan
+	// item was being cut for no reason.
+	if quarter := g.Width / 4; quarter > w {
+		w = quarter
+	}
+	ceiling := g.PanelMaxWidth
+	if ceiling <= 0 {
+		ceiling = 34
+	}
+	if w > ceiling {
+		w = ceiling
+	}
+	if q := g.Width / 4; w > q {
+		w = q
+	}
+	if w < floor {
+		w = floor
+	}
+	return w
+}
+
+// StreamWidth is the columns available to the stream.
+func (g Geometry) StreamWidth(showPanel bool) int {
+	if !showPanel {
+		return g.Width
+	}
+	w := g.Width - g.panelWidth() - 1
+	if w < 20 {
+		return 20
+	}
+	return w
+}
+
+// marks carries the glyphs for a status, with an ASCII fallback.
+type marks struct{ pending, active, done, blocked, bullet string }
+
+// glyphs returns the mark set.
+//
+// The ASCII fallback must keep blocked and done *distinguishable*. If they
+// collapse to the same character, a blocked item reads as finished, which is
+// the worst possible error in this panel.
+func glyphs(unicode bool) marks {
+	if unicode {
+		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺"}
+	}
+	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*"}
+}
+
+// Render draws the whole screen. Pure over model and geometry, which is what
+// allows exact golden tests with no TTY anywhere.
+func Render(m Model, g Geometry) string {
+	if g.Width <= 0 || g.Height <= 0 {
+		return ""
+	}
+	showPanel := g.ShowPanel(len(m.Plan) > 0)
+
+	var b strings.Builder
+	b.WriteString(renderStatus(m, g, showPanel))
+	b.WriteString("\n")
+
+	body := StreamLines(m, g)
+	visible, top, total, height := Window(m, g, body)
+
+	var panel []string
+	if showPanel {
+		panel = renderPanel(m, g)
+	}
+
+	streamW := g.StreamWidth(showPanel)
+	for i := 0; i < height; i++ {
+		left := ""
+		if i < len(visible) {
+			left = visible[i]
+		}
+		if !showPanel {
+			b.WriteString(left)
+			b.WriteString("\n")
+			continue
+		}
+		right := ""
+		if i < len(panel) {
+			right = panel[i]
+		}
+		b.WriteString(padStyled(left, streamW))
+		b.WriteString("│")
+		b.WriteString(clip(right, g.panelWidth()))
+		b.WriteString("\n")
+	}
+
+	if m.workingVisible() {
+		b.WriteString(renderWorking(m, g))
+		b.WriteString("\n")
+	}
+	for _, l := range renderQueue(m, g) {
+		b.WriteString(l)
+		b.WriteString("\n")
+	}
+	for _, l := range renderCompletions(m, g) {
+		b.WriteString(l)
+		b.WriteString("\n")
+	}
+	b.WriteString(renderInput(m, g, ScrollHint(m, g, top, total, height)))
+
+	if m.Pending != nil {
+		return overlay(b.String(), renderApproval(*m.Pending, g), g)
+	}
+	return b.String()
+}
+
+// StreamLines renders the whole stream, not just what fits.
+//
+// Everything, because the window is taken from it afterwards: rendering only
+// the tail is what made scrolling impossible, since there was nothing above the
+// screen to scroll back to.
+func StreamLines(m Model, g Geometry) []string {
+	w := g.StreamWidth(g.ShowPanel(len(m.Plan) > 0))
+	if m.ShowEmptyState() {
+		return emptyState(m, g, w)
+	}
+	return renderStream(m, g, w)
+}
+
+// renderStatus is the always-visible bar.
+//
+// What it drops when the terminal is narrow is a safety decision, not a layout
+// one. The order below is deliberate and the sandbox mode is never in it: it is
+// the only field where being wrong is dangerous, so a narrow terminal loses the
+// model name before it loses the mode.
+func renderStatus(m Model, g Geometry, showPanel bool) string {
+	gl := glyphs(g.Unicode)
+	p := g.Palette
+
+	state, stateStyle := gl.done, StyleOK
+	switch m.State {
+	case protocol.SessionStateRunning:
+		state, stateStyle = Spinner(m.Frame, g.Unicode), StyleAccent
+	case protocol.SessionStateBlocked:
+		state, stateStyle = "!", StyleWarn
+	}
+
+	// The sandbox mode is not information, it is a safety indicator. full-access
+	// is always loud, and it changes the *text* rather than only the colour so
+	// it survives a monochrome terminal.
+	mode := p.Apply(StyleDim, m.Sandbox)
+	if m.Sandbox == "full-access" {
+		mode = p.Apply(StyleDanger, " !! FULL-ACCESS !! ")
+	}
+
+	// Two orders, and they are not the same one. Reading order puts the model
+	// beside the name; drop order gives the model up first. Conflating them is
+	// how the mode ends up being what disappears.
+	type field struct {
+		text string
+		// drop is the order fields are given up in as the terminal narrows.
+		// Zero means never: the mode is a safety indicator, not a field.
+		drop int
+	}
+
+	fields := []field{
+		{p.Apply(stateStyle, state) + " " + p.Apply(StyleBold, "dcode"), 0},
+		{p.Apply(StyleDim, m.Model), 3},
+		{mode, 0},
+	}
+	if label := ContextLabel(m.InputTokens, m.Window); label != "" {
+		fields = append(fields, field{p.Apply(ContextStyle(m.ContextPct), label), 2})
+	}
+	if !showPanel {
+		// A collapsed panel that says nothing is indistinguishable from a
+		// broken one, and the key that brings it back is documented only inside
+		// the panel that is not on screen.
+		if s := m.PlanSummary(); s != "" {
+			fields = append(fields, field{p.Apply(StyleDim, s+" · ^p"), 1})
+		}
+	}
+
+	render := func(fs []field) string {
+		parts := make([]string, 0, len(fs))
+		for _, f := range fs {
+			parts = append(parts, f.text)
+		}
+		return strings.Join(parts, "  ")
+	}
+
+	// Drop the least important field still present until the line fits.
+	for visibleWidth(render(fields)) > g.Width {
+		worst, at := 0, -1
+		for i, f := range fields {
+			if f.drop > worst {
+				worst, at = f.drop, i
+			}
+		}
+		if at < 0 {
+			break // only undroppable fields left; clipping takes it from here
+		}
+		fields = append(fields[:at], fields[at+1:]...)
+	}
+	line := render(fields)
+	return clipStyled(line, g.Width)
+}
+
+func renderStream(m Model, g Geometry, w int) []string {
+	gl := glyphs(g.Unicode)
+	p := g.Palette
+	var out []string
+
+	for i, e := range m.Entries {
+		selected := i == m.Cursor
+		cursor := "  "
+		if selected {
+			cursor = p.Apply(StyleAccent, "> ")
+		}
+
+		switch e.Kind {
+		case KindAssistant:
+			for _, line := range wrap(e.Summary, w-2) {
+				out = append(out, "  "+line)
+			}
+
+		case KindTool:
+			out = append(out, clipStyled(renderToolLine(e, cursor, gl, p, w), w))
+			// The diff is what gets reviewed, so it wins over the raw output
+			// and shows without being asked for. Collapsed it is a preview;
+			// Tab reveals the rest, which is what makes the hint honest.
+			if body := e.Diff; body != "" {
+				limit := g.DiffPreviewLines
+				if e.Expanded {
+					limit = g.DiffMaxLines
+				}
+				out = append(out, detailLines(body, w, g, limit)...)
+			} else if e.Expanded && e.Detail != "" {
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
+			}
+
+		case KindError:
+			head := cursor + p.Apply(StyleError, "! "+e.Summary)
+			out = append(out, clipStyled(head, w))
+			if e.Expanded && e.Detail != "" {
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
+			}
+
+		case KindNote:
+			for j, line := range wrap(e.Summary, w-4) {
+				prefix := "  ~ "
+				if j > 0 {
+					prefix = "    "
+				}
+				out = append(out, clipStyled(p.Apply(StyleDim, prefix+line), w))
+			}
+
+		case KindUser:
+			for j, line := range wrap(e.Summary, w-2) {
+				prefix := "> "
+				if j > 0 {
+					prefix = "  "
+				}
+				out = append(out, clipStyled(p.Apply(StyleBold, prefix+line), w))
+			}
+		}
+	}
+	return out
+}
+
+// Column widths for a tool call. Fixed, because the point of the line is that
+// the summaries stack into a column the eye can run down — ragged summaries are
+// read one at a time, which is exactly what a wall of tool calls must not be.
+const (
+	toolNameWidth   = 6
+	toolTargetWidth = 26
+)
+
+// renderToolLine is the one-line form of a call: what ran, on what, how it went
+// and how long it took.
+func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
+	bullet := p.Apply(StyleAccent, gl.bullet)
+	if e.IsError {
+		bullet = p.Apply(StyleError, gl.bullet)
+	}
+
+	// The target gives ground first when the terminal is narrow: the tool name
+	// and the summary are short and load-bearing, a path is neither.
+	targetW := toolTargetWidth
+	if room := w - len(cursor) - toolNameWidth - 24; room < targetW {
+		targetW = room
+	}
+	if targetW < 8 {
+		targetW = 8
+	}
+	target := ellipsis(e.Target, targetW)
+
+	head := fmt.Sprintf("%s%s %-*s %-*s",
+		cursor, bullet, toolNameWidth, e.Tool, targetW, target)
+
+	switch {
+	case e.Running:
+		// No summary yet, and saying nothing reads as finished-with-no-output.
+		head += " " + p.Apply(StyleDim, "…")
+	case e.Summary != "":
+		style := StyleDim
+		if e.IsError {
+			style = StyleError
+		}
+		head += " " + p.Apply(style, e.Summary)
+	}
+	// Only when it was slow enough to be worth a glance. Every call carrying a
+	// duration turns the column into noise nobody reads.
+	if d := FormatDuration(e.Duration); d != "" && e.Duration >= 500*time.Millisecond {
+		head += "  " + p.Apply(StyleDim, d)
+	}
+	return strings.TrimRight(head, " ")
+}
+
+// ellipsis shortens the middle of a path, keeping the end.
+//
+// The end is the part that identifies a file; the directories leading to it are
+// what everything in a repository has in common.
+func ellipsis(s string, w int) string {
+	if w <= 0 || clipWidth(s) <= w {
+		return s
+	}
+	if w <= 2 {
+		return clip(s, w)
+	}
+	tail := runewidth.Truncate(reverse(s), w-1, "")
+	return "…" + reverse(tail)
+}
+
+func reverse(s string) string {
+	r := []rune(s)
+	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return string(r)
+}
+
+// detailLines renders expanded output, colouring it as a diff when it looks
+// like one. The diff is what gets reviewed, so it is the one place where colour
+// is doing work rather than decorating.
+func detailLines(detail string, w int, g Geometry, limit int) []string {
+	lines := strings.Split(strings.TrimRight(detail, "\n"), "\n")
+	hidden := 0
+	if limit > 0 && len(lines) > limit {
+		hidden = len(lines) - limit
+		lines = lines[:limit]
+	}
+	out := make([]string, 0, len(lines)+1)
+	for _, l := range lines {
+		body := g.Palette.Apply(DiffStyle(l), l)
+		out = append(out, clipStyled("    │ "+body, w))
+	}
+	if hidden > 0 {
+		// How much is hidden and how to see it. "truncated" alone leaves the
+		// reader unable to judge whether it matters.
+		mark := "⋯"
+		if !g.Unicode {
+			mark = "..."
+		}
+		note := fmt.Sprintf("    %s %s · Tab expande", mark, plural(hidden, "line", "lines"))
+		out = append(out, clipStyled(g.Palette.Apply(StyleDim, note), w))
+	}
+	return out
+}
+
+// renderPanel draws the plan.
+func renderPanel(m Model, g Geometry) []string {
+	gl := glyphs(g.Unicode)
+	w := g.panelWidth()
+	out := []string{clip(" PLAN", w), ""}
+
+	for _, it := range m.Plan {
+		mark := gl.pending
+		switch it.Status {
+		case protocol.PlanActive:
+			mark = gl.active
+		case protocol.PlanDone:
+			mark = gl.done
+		case protocol.PlanBlocked:
+			mark = gl.blocked
+		}
+		out = append(out, clip(fmt.Sprintf(" %s %d %s", mark, it.ID, it.Text), w))
+		if it.Status == protocol.PlanBlocked && it.Blocked != "" {
+			// A block with no visible cause is worse than no block at all.
+			for _, line := range wrap(it.Blocked, w-6) {
+				out = append(out, clip("     "+line, w))
+			}
+		}
+	}
+
+	out = append(out, "")
+	if s := m.PlanSummary(); s != "" {
+		out = append(out, clip(" "+s, w))
+	}
+	out = append(out, "", clip(" [^p] hide panel", w))
+	return out
+}
+
+// renderWorking is the line Claude Code taught everyone to expect: something is
+// happening, this is how long it has been happening, and this is how to stop it.
+//
+// Without it a long turn is indistinguishable from a hung one, and the user's
+// only move is to kill the process.
+func renderWorking(m Model, g Geometry) string {
+	p := g.Palette
+	parts := []string{p.Apply(StyleAccent, Spinner(m.Frame, g.Unicode))}
+
+	verb := "working"
+	for i := len(m.Entries) - 1; i >= 0; i-- {
+		if m.Entries[i].Running {
+			verb = m.Entries[i].Tool
+			if tgt := m.Entries[i].Target; tgt != "" {
+				verb += " " + tgt
+			}
+			break
+		}
+	}
+	parts = append(parts, p.Apply(StyleBold, verb))
+
+	if !m.TurnStartedAt.IsZero() && !m.Now.IsZero() {
+		if d := m.Now.Sub(m.TurnStartedAt); d > 0 {
+			parts = append(parts, p.Apply(StyleDim, FormatDuration(d)))
+		}
+	}
+	if tk := humanTokens(m.OutputTokens); tk != "" {
+		parts = append(parts, p.Apply(StyleDim, tk+" tok"))
+	}
+	// The way out belongs next to the thing you want out of.
+	parts = append(parts, p.Apply(StyleDim, "^C interrupts"))
+
+	return clipStyled(strings.Join(parts, "  "), g.Width)
+}
+
+func renderInput(m Model, g Geometry, hint string) string {
+	p := g.Palette
+	prompt := "> "
+	if len(m.Queue) > 0 {
+		prompt = fmt.Sprintf("(%d queued) > ", len(m.Queue))
+	}
+
+	line := prompt + m.Input
+	// The caret is drawn rather than left to the terminal: the input sits on a
+	// line the renderer owns, and a hardware cursor would be wherever the last
+	// write left it.
+	if p.Enabled {
+		line = prompt + renderCaret(m, p)
+	}
+	if hint == "" {
+		return clipStyled(line, g.Width)
+	}
+
+	// The hint is right-aligned so it never moves as you type.
+	room := g.Width - clipWidth(prompt+m.Input) - 1
+	if room < clipWidth(hint) {
+		return clipStyled(line, g.Width)
+	}
+	pad := strings.Repeat(" ", room-clipWidth(hint)+1)
+	return clipStyled(line+pad+p.Apply(StyleDim, hint), g.Width)
+}
+
+// renderCaret marks where typing will land.
+func renderCaret(m Model, p Palette) string {
+	runes := []rune(m.Input)
+	at := m.InputCursor
+	if at < 0 {
+		at = 0
+	}
+	if at > len(runes) {
+		at = len(runes)
+	}
+	if at == len(runes) {
+		return string(runes) + p.Apply(StyleCursor, " ")
+	}
+	return string(runes[:at]) + p.Apply(StyleCursor, string(runes[at])) + string(runes[at+1:])
+}
+
+// renderApproval is the modal.
+//
+// The screen it takes over is deliberate: as a line in the stream it would
+// scroll past during a long turn and be approved unread. It is also the only
+// moment the user *must* read, so it gets more care than the rest.
+func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
+	w := g.Width - 8
+	if w > 60 {
+		w = 60
+	}
+	if w < 24 {
+		w = 24
+	}
+
+	lines := []string{
+		"┌─ Approval needed " + strings.Repeat("─", maxInt(0, w-19)) + "┐",
+		"│" + pad("", w) + "│",
+		"│" + pad("  "+req.Tool+" crosses: "+req.BoundaryCrossed, w) + "│",
+	}
+	if req.Command != "" {
+		// The rendered command, never a description. Asking for consent to
+		// "access the network" without showing what runs is asking blind.
+		lines = append(lines, "│"+pad("", w)+"│")
+		for _, l := range wrap(req.Command, w-6) {
+			lines = append(lines, "│"+pad("    "+l, w)+"│")
+		}
+	}
+	lines = append(lines,
+		"│"+pad("", w)+"│",
+		// Deny first and as the default: the safe action is the one that costs
+		// least effort. The capital A is harder to press by accident, which is
+		// right for the option with the largest consequence.
+		"│"+pad("  [d] deny   [a] allow   [A] whole session", w)+"│",
+		"│"+pad("  Enter denies.", w)+"│",
+		"│"+pad("", w)+"│",
+		"└"+strings.Repeat("─", w)+"┘",
+	)
+	return lines
+}
+
+// overlay centres the modal over the screen and blocks nothing else from being
+// drawn beneath it.
+func overlay(screen string, modal []string, g Geometry) string {
+	rows := strings.Split(strings.TrimRight(screen, "\n"), "\n")
+	top := (len(rows) - len(modal)) / 2
+	if top < 0 {
+		top = 0
+	}
+	for i, ml := range modal {
+		r := top + i
+		if r >= len(rows) {
+			break
+		}
+		left := (g.Width - runewidth.StringWidth(ml)) / 2
+		if left < 0 {
+			left = 0
+		}
+		rows[r] = clip(strings.Repeat(" ", left)+ml, g.Width)
+	}
+	return strings.Join(rows, "\n") + "\n"
+}
+
+// emptyState draws the mascot and the essentials.
+//
+// It is the test that the identity belongs to the product: a mark that cannot
+// render in its own terminal is external decoration.
+func emptyState(m Model, g Geometry, w int) []string {
+	p := g.Palette
+
+	// Each row carries the role its voxels have in the brand: lit face, front
+	// face, shaded face. The eye is the one terracotta in the whole interface.
+	type row struct {
+		text  string
+		style Style
+	}
+	art := []row{
+		{"    ▄▄▄▄", StyleHighlight},
+		{"    █", StyleBody}, // the eye row is assembled below
+		{"    ████", StyleBody},
+		{"  ▄▄▄▄▄▄▄▄", StyleHighlight},
+		{"  ████████", StyleBody},
+		{"▄▄▄▄▄▄▄▄▄▄▄▄", StyleHighlight},
+		{"████████████", StyleBody},
+		{" ▀▀      ▀▀ ", StyleShadow},
+	}
+	if !g.Unicode {
+		art = []row{
+			{"    ####", StyleHighlight},
+			{"    #", StyleBody},
+			{"    ####", StyleBody},
+			{"  ########", StyleHighlight},
+			{"  ########", StyleBody},
+			{"############", StyleHighlight},
+			{"############", StyleBody},
+			{" ##      ## ", StyleShadow},
+		}
+	}
+
+	// The eye row is the only one that mixes roles.
+	eye, body := "▀▀", "█"
+	if !g.Unicode {
+		eye, body = "oo", "#"
+	}
+	eyeRow := p.Apply(StyleBody, "    "+body) +
+		p.Apply(StyleEye, eye) + p.Apply(StyleBody, body)
+
+	info := []string{
+		"",
+		p.Apply(StyleBold, "dcode"),
+		"",
+		p.Apply(StyleDim, m.Model),
+		p.Apply(StyleDim, m.Sandbox),
+		"",
+		p.Apply(StyleDim, "? help    ^C interrupt"),
+	}
+	if m.Sandbox == "full-access" {
+		info[4] = p.Apply(StyleDanger, " !! FULL-ACCESS !! ")
+	}
+
+	out := []string{""}
+	for i, r := range art {
+		left := p.Apply(r.style, r.text)
+		if i == 1 {
+			left = eyeRow
+		}
+		right := ""
+		if i < len(info) {
+			right = info[i]
+		}
+		out = append(out, clipStyled("  "+padStyled(left, 14)+"  "+right, w))
+	}
+	return out
+}
+
+// ---------- width-aware helpers ----------
+//
+// Every one of these measures display cells rather than bytes. Byte width
+// breaks on accents and on CJK, and the failure only shows with non-ASCII
+// input — which is exactly what a Portuguese-speaking user types.
+
+func clip(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	if runewidth.StringWidth(s) <= w {
+		return s
+	}
+	return runewidth.Truncate(s, w, "")
+}
+
+func pad(s string, w int) string {
+	d := w - runewidth.StringWidth(s)
+	if d <= 0 {
+		return clip(s, w)
+	}
+	return s + strings.Repeat(" ", d)
+}
+
+func wrap(s string, w int) []string {
+	if w <= 0 {
+		return []string{""}
+	}
+	var out []string
+	for _, para := range strings.Split(s, "\n") {
+		if para == "" {
+			out = append(out, "")
+			continue
+		}
+		var line strings.Builder
+		for _, word := range strings.Fields(para) {
+			// A word wider than the column has to be broken, not merely placed
+			// on a line of its own: a path or a stack frame longer than the
+			// panel would otherwise overflow and wrap in the terminal, which is
+			// what destroys the fixed layout the panel depends on.
+			for runewidth.StringWidth(word) > w {
+				if line.Len() > 0 {
+					out = append(out, line.String())
+					line.Reset()
+				}
+				head := runewidth.Truncate(word, w, "")
+				out = append(out, head)
+				word = word[len(head):]
+			}
+			if word == "" {
+				continue
+			}
+			switch {
+			case line.Len() == 0:
+				line.WriteString(word)
+			case runewidth.StringWidth(line.String())+1+runewidth.StringWidth(word) <= w:
+				line.WriteString(" ")
+				line.WriteString(word)
+			default:
+				out = append(out, line.String())
+				line.Reset()
+				line.WriteString(word)
+			}
+		}
+		if line.Len() > 0 {
+			out = append(out, line.String())
+		}
+	}
+	if len(out) == 0 {
+		return []string{""}
+	}
+	return out
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// renderQueue lists what is waiting to be sent.
+//
+// Visible and removable: a message the user typed and cannot see is a message
+// they will type again, and one they cannot take back is worse than one that
+// was refused.
+func renderQueue(m Model, g Geometry) []string {
+	if len(m.Queue) == 0 {
+		return nil
+	}
+	p := g.Palette
+	mark := "⇥"
+	if !g.Unicode {
+		mark = ">>"
+	}
+
+	out := make([]string, 0, len(m.Queue))
+	for i, text := range m.Queue {
+		row := fmt.Sprintf("%s %d %s", p.Apply(StyleDim, mark), i+1, text)
+		if i == 0 {
+			// The key goes on the first row only: repeated on every row it is
+			// noise, and absent it is a feature nobody finds.
+			row += "  " + p.Apply(StyleDim, "^X remove")
+		}
+		out = append(out, clipStyled(p.Apply(StyleDim, row), g.Width))
+	}
+	return out
+}
+
+// renderCompletions draws the `/` menu above the input.
+func renderCompletions(m Model, g Geometry) []string {
+	if len(m.Completions) == 0 {
+		return nil
+	}
+	p := g.Palette
+
+	visible := m.Completions
+	shown := g.CompletionRows
+	if shown <= 0 {
+		shown = 5
+	}
+	// A window around the highlight, so walking past the end keeps moving.
+	from := 0
+	if len(visible) > shown {
+		from = m.CompletionAt - shown/2
+		if from < 0 {
+			from = 0
+		}
+		if from > len(visible)-shown {
+			from = len(visible) - shown
+		}
+		visible = visible[from : from+shown]
+	}
+
+	out := make([]string, 0, len(visible)+1)
+	for i, c := range visible {
+		name := "/" + c.Name
+		if c.Args != "" {
+			name += " " + c.Args
+		}
+		row := fmt.Sprintf("  %-22s %s", name, c.Description)
+		if from+i == m.CompletionAt {
+			out = append(out, clipStyled(p.Apply(StyleCursor, padStyled(row, g.Width)), g.Width))
+			continue
+		}
+		out = append(out, clipStyled("  "+p.Apply(StyleAccent, name)+
+			strings.Repeat(" ", maxInt(1, 22-clipWidth(name)))+
+			p.Apply(StyleDim, c.Description), g.Width))
+	}
+
+	footer := fmt.Sprintf("  %d de %d · ↑↓ navegar · ⇥ completar · esc fechar",
+		m.CompletionAt+1, len(m.Completions))
+	if !g.Unicode {
+		footer = fmt.Sprintf("  %d de %d · up/down navegar · tab completar · esc fechar",
+			m.CompletionAt+1, len(m.Completions))
+	}
+	return append(out, clipStyled(p.Apply(StyleDim, footer), g.Width))
+}

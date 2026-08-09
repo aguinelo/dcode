@@ -19,8 +19,11 @@ ruvector.db-*
 /bin/
 /dist/
 *.test
-*.out
-coverage.*
+# Ancorados à raiz: sem a barra inicial o padrão casa em qualquer profundidade,
+# e foi assim que `scripts/coverage.sh` — o gate de cobertura — ficou fora do
+# repositório sem ninguém notar, com o CI chamando um arquivo inexistente.
+/*.out
+/coverage.*
 
 # Sistema operacional
 .DS_Store

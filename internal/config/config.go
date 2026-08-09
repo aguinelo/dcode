@@ -237,11 +237,17 @@ func CheckNoCredentials(values map[string]string, origin string) error {
 		return nil
 	}
 	sort.Strings(found)
+	return credentialError(strings.Join(found, ", "), origin)
+}
+
+// credentialError says where the credential should have come from. An error
+// that only refuses leaves the user with no way forward.
+func credentialError(keys, origin string) error {
 	return fmt.Errorf(
 		"config: %s contains what looks like a credential (%s). "+
 			"Credentials come from the environment, never from a config file — "+
 			"this file is meant to be versioned and synced. Set DCODE_API_KEY instead",
-		origin, strings.Join(found, ", "))
+		origin, keys)
 }
 
 // ---------- instruction discovery ----------

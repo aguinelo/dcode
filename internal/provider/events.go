@@ -14,9 +14,14 @@ type StreamEventType string
 
 const (
 	EventTextDelta StreamEventType = "text_delta"
-	EventToolCall  StreamEventType = "tool_call"
-	EventDone      StreamEventType = "done"
-	EventError     StreamEventType = "error"
+	// EventReasoningDelta carries the model's thinking, which is not its
+	// answer. A client may show it; it never enters the history, because a
+	// model that reads its own reasoning back as something it said out loud
+	// starts defending it.
+	EventReasoningDelta StreamEventType = "reasoning_delta"
+	EventToolCall       StreamEventType = "tool_call"
+	EventDone           StreamEventType = "done"
+	EventError          StreamEventType = "error"
 )
 
 // StreamEvent is the neutral event the loop consumes.

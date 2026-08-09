@@ -424,16 +424,19 @@ func TestDeclareTouchesNothing(t *testing.T) {
 
 // bash is opaque, so it must declare the worst case: anything, plus network.
 // Anything less would let the loop run it in parallel with a conflicting call.
-func TestBashDeclaresTheWorstCase(t *testing.T) {
-	req, err := (Bash{}).Declare(json.RawMessage(`{"command":"rm -rf /"}`))
+// A shell command is opaque, so the worst case is what gets declared — bounded
+// by the sandbox that will run it, because a crossing the mechanism already
+// prevents is a false alarm rather than honesty.
+func TestBashDeclaresTheWorstCaseTheSandboxAllows(t *testing.T) {
+	req, err := (Bash{AllowNetwork: true}).Declare(json.RawMessage(`{"command":"rm -rf /"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !req.Network {
-		t.Error("a shell command could reach the network and must say so")
+		t.Error("with the network open a shell command could reach it and must say so")
 	}
 	if len(req.Paths) == 0 || !req.Paths[0].Write {
-		t.Error("a shell command could write and must say so")
+		t.Error("a shell command could write and must say so, in every configuration")
 	}
 	if req.Command == "" {
 		t.Error("the rendered command must reach the approval prompt")

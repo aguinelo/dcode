@@ -100,7 +100,7 @@ func (r Read) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	}
 
 	remaining := len(lines) - end
-	res := Result{Output: b.String()}
+	res := Result{Output: b.String(), Meta: Meta{Lines: end - start, Files: 1}}
 	if remaining > 0 {
 		res.Truncated = true
 		res.Remaining = remaining
@@ -180,7 +180,18 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 	if err == nil {
 		verb = "replaced"
 	}
-	return Result{Output: fmt.Sprintf("%s %s (%d bytes)", verb, in.Path, len(in.Content))}, nil
+	written := countLines(in.Content)
+	meta := Meta{Files: 1, Lines: written, Added: written}
+	previous := ""
+	if verb == "replaced" {
+		previous = string(existing)
+		meta.Added, meta.Removed = lineDelta(previous, in.Content)
+	}
+	meta.Diff = UnifiedDiff(previous, in.Content, in.Path)
+	return Result{
+		Output: fmt.Sprintf("%s %s (%d bytes)", verb, in.Path, len(in.Content)),
+		Meta:   meta,
+	}, nil
 }
 
 // ---------- edit ----------
@@ -273,8 +284,14 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	s.MarkRead(abs, updated, 0)
 
 	added, removed := lineDelta(content, updated)
-	return Result{Output: fmt.Sprintf("edited %s (%d replacement(s), +%d −%d)",
-		in.Path, count, added, removed)}, nil
+	return Result{
+		Output: fmt.Sprintf("edited %s (%d replacement(s), +%d −%d)",
+			in.Path, count, added, removed),
+		Meta: Meta{
+			Files: 1, Added: added, Removed: removed,
+			Diff: UnifiedDiff(content, updated, in.Path),
+		},
+	}, nil
 }
 
 // ---------- shared ----------

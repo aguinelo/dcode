@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/provider"
@@ -314,7 +315,7 @@ func TestLoadInstructionsPicksUpBothFileNames(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(ws, "DCODE.md"), []byte("SPECIFIC-RULE"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := loadInstructions(ws)
+	got, _, err := loadInstructions(config.Roots{Config: filepath.Join(ws, ".absent")}, ws)
 	if err != nil {
 		t.Fatal(err)
 	}

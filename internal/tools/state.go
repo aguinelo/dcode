@@ -3,6 +3,7 @@ package tools
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"sort"
 	"sync"
 
 	"github.com/aguinelo/dcode/internal/policy"
@@ -125,4 +126,33 @@ func (s *State) setPlan(items []protocol.PlanItem) {
 func hashOf(content string) string {
 	sum := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(sum[:])
+}
+
+// ChangedSinceRead reports files whose content on disk no longer matches what
+// the model was shown.
+//
+// The reader is injected so the check is testable without a filesystem, and so
+// the caller decides what "on disk" means. A file that has become unreadable is
+// not reported as changed: it is a different failure, and the tool that touches
+// it next will say so precisely.
+func (s *State) ChangedSinceRead(read func(path string) (string, error)) []string {
+	s.mu.Lock()
+	snapshot := make(map[string]string, len(s.files))
+	for path, st := range s.files {
+		snapshot[path] = st.hash
+	}
+	s.mu.Unlock()
+
+	var changed []string
+	for path, hash := range snapshot {
+		current, err := read(path)
+		if err != nil {
+			continue
+		}
+		if hashOf(current) != hash {
+			changed = append(changed, path)
+		}
+	}
+	sort.Strings(changed)
+	return changed
 }

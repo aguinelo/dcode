@@ -252,26 +252,77 @@ Detalhes em [`docs/conventions/SDD-HARNESS.pt-BR.md`](docs/conventions/SDD-HARNE
 
 ---
 
+## Instalando
+
+```bash
+# do fonte
+go install github.com/aguinelo/dcode/cmd/dcode@latest
+
+# ou pelo script — verifica a assinatura do release e o checksum,
+# e não instala nada se qualquer um dos dois falhar
+curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
+```
+
+`dcode update` instala uma versão nova sob demanda, e nunca sozinho. Verifica a
+assinatura e o checksum, confere que o binário baixado de fato executa, e só então troca —
+de modo que qualquer falha deixa o binário atual intacto.
+
 ## Rodando
 
 ```bash
-git clone https://github.com/aguinelo/dcode && cd dcode
-make build
 export DCODE_API_KEY=...
-./bin/dcode "adicione um teste para o parser"
+
+dcode                                # a interface de terminal
+dcode "adicione um teste para o parser"  # uma tarefa, um código de saída — script e CI
+dcode serve                          # o daemon, para clientes que vivem mais que um terminal
+dcode tui --socket /caminho/do.sock  # conecta um cliente a um daemon em execução
 ```
+
+`dcode tui` conecta a um daemon quando algum responde, e caso contrário sobe o seu próprio
+no mesmo processo. O cliente fala o protocolo dos dois jeitos — o daemon embutido é
+detalhe de implantação, não um segundo caminho de código — então uma sessão que cresce
+além de um terminal migra para `dcode serve` sem o cliente mudar nada.
 
 Dois comandos não precisam de chave, e são o par de auditoria:
 
 ```bash
-./bin/dcode --dump-prompt          # exatamente o que iria para o modelo
-./bin/dcode --config model.name    # valor efetivo de uma chave, e de onde ele veio
+dcode --dump-prompt          # exatamente o que iria para o modelo
+dcode --config model.name    # valor efetivo de uma chave, e de onde ele veio
 ```
 
 Por default o agente roda em `workspace-write` com aprovação `on-request`: pode editar
 dentro do workspace, e qualquer coisa que cruze essa fronteira — escrita fora dela, ou
 rede — para e pergunta. Sem alguém para responder, ele nega: com ninguém para perguntar,
 a única alternativa seria conceder em silêncio.
+
+### Configurando
+
+Tudo é opcional; os defaults são o produto. Os arquivos moram sob `$DCODE_HOME`, ou nos
+diretórios XDG quando ela não está definida.
+
+```
+$DCODE_HOME/
+  config.toml     configuração — nunca credencial, que vem do ambiente
+  AGENTS.md       instruções compartilhadas com outras ferramentas de agente
+  DCODE.md        instruções só do dcode; vence onde houver divergência
+  commands/       seus próprios /comandos — markdown com frontmatter
+  skills/         orientação carregada apenas quando o gatilho bate
+```
+
+Um workspace carrega o mesmo conjunto em `<workspace>/.dcode/`, e os valores dele vencem.
+Chave desconhecida no `config.toml` é erro, não aviso: erro de digitação silenciosamente
+ignorado é a classe de bug de configuração mais frustrante que existe.
+
+### Dentro da interface
+
+`/help` lista tudo. `/plan` mostra o plano completo, `/config <chave>` responde de onde
+uma configuração veio, `/model <nome>` e `/clear` abrem sessão nova — o system prompt faz
+parte do prefixo, e o prefixo não se reescreve. `/init` escreve o DCODE.md do repositório
+a partir do que já existe nele.
+
+Digitar durante um turno enfileira a mensagem; a fila é enviada como um único turno quando
+a sessão volta a ficar ociosa. `^C` interrompe o turno em vez de sair. No modal de
+aprovação, Enter nega.
 
 ---
 
@@ -286,9 +337,11 @@ a única alternativa seria conceder em silêncio.
 | **4** | política e sandbox do SO | ✅ 92% / 94% |
 | **5** | as sete ferramentas | ✅ 94% |
 | **6** | o loop do agente | ✅ 98% |
-| **7** | comportamento, config, wiring, CLI | ✅ 93% |
-| **8** | log de eventos, socket unix, SSE | não iniciado |
-| **9** | cliente TUI | não iniciado |
+| **7** | comportamento, config, wiring, CLI | ✅ 91% |
+| **8** | log de eventos, socket unix, SSE, cliente de referência | ✅ 95% / 92% / 93% |
+| **9** | cliente TUI, comandos, skills, lembretes, distribuição | ✅ 95% / 96% / 92% |
+
+Todo pacote está acima do gate de 90%; a suíte roda sob `-race`.
 
 Depois do MVP: múltiplos providers, MCP, plugins, sessão compartilhada, desktop, IDE.
 
@@ -325,9 +378,15 @@ internal/
   tools/          read write edit glob grep bash plan
   loop/           o ciclo do turno
   behavior/       o construtor de prompt
-  config/         raízes, cadeia de precedência, descoberta de instruções
+  config/         raízes, cadeia de precedência, config.toml, comandos, instruções
+  session/        o log de eventos append-only, aprovações, o gerenciador de sessão
+  server/         o daemon: socket unix, rotas do protocolo, SSE
+  tui/            o cliente de terminal — um redutor puro e um renderizador puro
+  update/         verificação de assinatura e checksum, troca atômica do binário
   app/            o único pacote que lê o ambiente
+pkg/client/       o cliente de referência, e o primeiro consumidor do protocolo
 cmd/dcode/        parsing de argumento e impressão
+install.sh        verifica antes de instalar, ou não instala
 ```
 
 ---

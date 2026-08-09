@@ -62,6 +62,25 @@ type Transport interface {
 	Do(ctx context.Context, wire WireRequest) (<-chan WireEvent, error)
 }
 
+// Decoder turns one stream's raw frames into neutral events.
+//
+// It is stateful and single-use: one per stream, never shared. Decode returns
+// zero or more events for a frame — zero when the frame only carried a
+// fragment, several when the end of the stream flushes calls that were being
+// assembled.
+type Decoder interface {
+	Decode(ev WireEvent) ([]StreamEvent, error)
+
+	// Close reports what the end of the stream means.
+	//
+	// A dialect can finish a message and then keep talking: the OpenAI one
+	// repeats finish_reason and attaches the token usage to the last frame, so
+	// terminating on the first finish throws the accounting away. The decoder
+	// therefore holds the terminal event until the transport says there is
+	// nothing more coming.
+	Close() []StreamEvent
+}
+
 // Family is the adaptation layer.
 type Family interface {
 	Name() string
@@ -75,9 +94,13 @@ type Family interface {
 	// dialects serializes differently into each. That parameter is exactly
 	// what a single-axis design could not express.
 	Encode(req Request, transport string) (WireRequest, error)
-	// Decode turns a raw frame into a neutral event, validating tool calls
-	// against the declared schema.
-	Decode(ev WireEvent, tools []ce.ToolDef) (StreamEvent, error)
+	// NewDecoder builds a decoder for one stream.
+	//
+	// Decoding cannot be a pure function of one frame: a tool call's arguments
+	// arrive split across frames, so the whole call only exists once the stream
+	// says it is finished. The decoder is what holds that partial state, and it
+	// belongs to the family because how a call is split is dialect-specific.
+	NewDecoder(tools []ce.ToolDef) Decoder
 }
 
 // Request is the neutral call. Only contextengine types cross this boundary.
@@ -121,14 +144,17 @@ func (c *composed) Stream(ctx context.Context, req Request) (<-chan StreamEvent,
 	}
 
 	out := make(chan StreamEvent, 16)
-	go c.pump(ctx, raw, req.Tools, out)
+	// One decoder per stream: it holds the half-assembled tool calls, and
+	// sharing it between streams would splice one turn's arguments into
+	// another's.
+	go c.pump(ctx, raw, c.family.NewDecoder(req.Tools), out)
 	return out, nil
 }
 
 // pump translates raw frames into neutral events and guarantees the terminal
 // invariant: exactly one EventDone or EventError, never both, never neither.
 // A stream that ends without a terminal event hangs the loop forever.
-func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, tools []ce.ToolDef, out chan<- StreamEvent) {
+func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, out chan<- StreamEvent) {
 	defer close(out)
 
 	terminal := false
@@ -154,8 +180,16 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, tools []ce.To
 			return
 		case wev, open := <-raw:
 			if !open {
-				// The transport closed without saying why. Treat it as a
-				// truncated stream rather than a clean finish: a silent
+				// The decoder gets the last word: a dialect that ends by
+				// simply stopping still finished cleanly, and only it knows
+				// whether what it saw amounts to a complete message.
+				for _, ev := range dec.Close() {
+					if !emit(ev) {
+						return
+					}
+				}
+				// Otherwise the transport closed without saying why. Treat it
+				// as a truncated stream rather than a clean finish: a silent
 				// success here would hand the loop a half-formed turn.
 				if !terminal {
 					emit(errorEvent(&ProviderError{
@@ -170,19 +204,21 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, tools []ce.To
 				emit(errorEvent(classify(wev.Err)))
 				return
 			}
-			ev, err := c.family.Decode(wev, tools)
+			evs, err := dec.Decode(wev)
 			if err != nil {
 				emit(errorEvent(classify(err)))
 				return
 			}
-			if ev.Type == "" {
-				continue // frame carried nothing the loop cares about
-			}
-			if !emit(ev) {
-				return
-			}
-			if terminal {
-				return
+			for _, ev := range evs {
+				if ev.Type == "" {
+					continue // frame carried nothing the loop cares about
+				}
+				if !emit(ev) {
+					return
+				}
+				if terminal {
+					return
+				}
 			}
 		}
 	}

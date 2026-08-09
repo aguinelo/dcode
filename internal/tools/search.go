@@ -90,6 +90,7 @@ func (g Glob) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 		return Result{Output: fmt.Sprintf("no files match %q", in.Pattern)}, nil
 	}
 
+	res.Meta = Meta{Files: len(matches)}
 	res.Output = strings.Join(matches, "\n")
 	if res.Truncated {
 		res.Output += fmt.Sprintf("\n\n… %d more. Narrow the pattern.", res.Remaining)
@@ -215,7 +216,13 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 		}
 		fmt.Fprintf(&b, "%s:%d:%s\n", h.file, h.line, text)
 	}
-	res := Result{Output: b.String()}
+	// Distinct files, counted here because the hit type is local to this
+	// function: "18 matches in 4 files" is what reads at a glance.
+	distinct := map[string]struct{}{}
+	for _, h := range hits {
+		distinct[h.file] = struct{}{}
+	}
+	res := Result{Output: b.String(), Meta: Meta{Lines: len(hits), Files: len(distinct)}}
 	if truncated {
 		res.Truncated = true
 		res.Output += fmt.Sprintf("\n… stopped at %d matches. Narrow the pattern or the glob.\n", limit)

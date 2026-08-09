@@ -1,0 +1,106 @@
+name: release
+
+# Triggered by a tag, with no manual step: a release that needs someone to
+# remember something is a release that eventually ships unsigned.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  # Keyless signing takes an ephemeral OIDC identity, so there is no long-lived
+  # private key anywhere — which would otherwise be the highest-value item in
+  # the entire repository.
+  id-token: write
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: bubblewrap (linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - run: go vet ./...
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
+      - run: ./scripts/coverage.sh coverage.out
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: sigstore/cosign-installer@v3
+
+      - name: build every platform
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          BARE="${VERSION#v}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          DATE="$(git log -1 --format=%cI)"
+          LDFLAGS="-s -w \
+            -X github.com/aguinelo/dcode/internal/version.Version=${BARE} \
+            -X github.com/aguinelo/dcode/internal/version.Commit=${COMMIT} \
+            -X github.com/aguinelo/dcode/internal/version.Date=${DATE}"
+
+          mkdir -p dist
+          for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64; do
+            GOOS="${target%/*}"; GOARCH="${target#*/}"
+            out="dist/dcode"
+            [ "$GOOS" = "windows" ] && out="dist/dcode.exe"
+            CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+              go build -trimpath -ldflags "$LDFLAGS" -o "$out" ./cmd/dcode
+
+            if [ "$GOOS" = "windows" ]; then
+              (cd dist && zip -q "dcode_${BARE}_windows_${GOARCH}.zip" dcode.exe && rm dcode.exe)
+            else
+              (cd dist && tar -czf "dcode_${BARE}_${GOOS}_${GOARCH}.tar.gz" dcode && rm dcode)
+            fi
+          done
+
+      - name: checksums
+        run: cd dist && sha256sum dcode_* > checksums.txt && cat checksums.txt
+
+      # The checksums file is what gets signed: one signature for the whole
+      # release, while verification stays per-artifact through the hashes.
+      - name: sign the checksums
+        run: |
+          cd dist
+          cosign sign-blob --yes \
+            --output-signature checksums.txt.sig \
+            --output-certificate checksums.txt.pem \
+            checksums.txt
+
+      - name: verify what we are about to publish
+        run: |
+          cd dist
+          cosign verify-blob \
+            --certificate checksums.txt.pem \
+            --signature checksums.txt.sig \
+            --certificate-identity-regexp '^https://github.com/aguinelo/dcode/' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            checksums.txt
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            dist/*

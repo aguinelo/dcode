@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -43,36 +44,44 @@ type Options struct {
 	Parallel     int
 	Limits       loop.Limits
 	DumpPrompt   bool
+	// Reminders switches the appended-notice channel on.
+	Reminders bool
+	// Env is how the session reaches the environment. Carried on Options rather
+	// than read from the process, so a daemon serving several workspaces is not
+	// forced to share one view of it.
+	Env func(string) string `json:"-"`
 }
 
 // FromEnv resolves options from the environment, applying the precedence chain.
 func FromEnv(env func(string) string, workspace string) (Options, config.Resolved, error) {
 	layers := []config.Layer{
 		{Source: config.SourceDefault, Origin: "built-in", Values: map[string]string{
-			"model.name":            "MiniMax-M3",
-			"sandbox.mode":          string(policy.ModeWorkspaceWrite),
-			"sandbox.policy":        string(policy.PolicyOnRequest),
-			"sandbox.backend":       sandbox.BackendAuto,
-			"sandbox.allow_network": "false",
-			"limits.parallel":       "4",
+			"model.name":              "MiniMax-M3",
+			"sandbox.mode":            string(policy.ModeWorkspaceWrite),
+			"sandbox.approval_policy": string(policy.PolicyOnRequest),
+			"sandbox.backend":         sandbox.BackendAuto,
+			"sandbox.allow_network":   "false",
+			"limits.parallel":         "4",
 		}},
 	}
 
+	// Files come before the environment: the chain is default < user file <
+	// project file < environment < flag < locked, and Resolve orders by source
+	// rather than by position, so loading order here only has to be complete.
+	roots, err := config.DiscoverRoots(env)
+	if err != nil {
+		return Options{}, config.Resolved{}, err
+	}
+	fileLayers, err := config.FileLayers(roots, workspace)
+	if err != nil {
+		return Options{}, config.Resolved{}, err
+	}
+	layers = append(layers, fileLayers...)
+
+	// The key-to-variable mapping lives in one place, so a key that exists in
+	// the file and not in the environment (or the reverse) is impossible.
 	envValues := map[string]string{}
-	for key, name := range map[string]string{
-		"model.name":            "DCODE_MODEL",
-		"model.transport":       "DCODE_TRANSPORT",
-		"model.family":          "DCODE_FAMILY",
-		"model.base_url":        "DCODE_BASE_URL",
-		"sandbox.mode":          "DCODE_SANDBOX_MODE",
-		"sandbox.policy":        "DCODE_APPROVAL_POLICY",
-		"sandbox.backend":       "DCODE_SANDBOX_BACKEND",
-		"sandbox.allow_network": "DCODE_ALLOW_NETWORK",
-		"limits.max_iterations": "DCODE_MAX_ITERATIONS",
-		"limits.identical":      "DCODE_MAX_IDENTICAL_CALLS",
-		"limits.parallel":       "DCODE_TOOL_PARALLELISM",
-		"doctrine.dump":         "DCODE_DOCTRINE_DUMP",
-	} {
+	for key, name := range config.KnownKeys {
 		if v := env(name); v != "" {
 			envValues[key] = v
 		}
@@ -89,7 +98,7 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 	if err != nil {
 		return Options{}, r, err
 	}
-	pol, err := policy.ParsePolicy(r.String("sandbox.policy", string(policy.PolicyOnRequest)))
+	pol, err := policy.ParsePolicy(r.String("sandbox.approval_policy", string(policy.PolicyOnRequest)))
 	if err != nil {
 		return Options{}, r, err
 	}
@@ -100,6 +109,8 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 	}
 
 	return Options{
+		Env:          env,
+		Reminders:    r.Bool("behavior.reminders_enabled", true),
 		Workspace:    ws,
 		Model:        r.String("model.name", "MiniMax-M3"),
 		Transport:    r.String("model.transport", ""),
@@ -125,6 +136,8 @@ type Session struct {
 	Registry *tools.Registry
 	Prompt   string
 	Options  Options
+	// ContextWindow is what the provider reports for this model.
+	ContextWindow int
 }
 
 // New wires a session.
@@ -153,6 +166,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			Runner:  sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
 			Workdir: opts.Workspace,
 			Timeout: 120 * time.Second,
+			// The same value the sandbox was built with, so what the tool
+			// declares and what the mechanism enforces cannot disagree.
+			AllowNetwork: opts.AllowNetwork,
 		},
 		tools.Plan{},
 	)
@@ -165,11 +181,31 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		return nil, err
 	}
 
-	instructions, err := loadInstructions(opts.Workspace)
+	env := opts.Env
+	if env == nil {
+		env = os.Getenv
+	}
+	roots, err := config.DiscoverRoots(env)
 	if err != nil {
 		return nil, err
 	}
-	prompt := behaviorBuild(registry.Names(), instructions)
+	instructions, chain, err := loadInstructions(roots, opts.Workspace)
+	if err != nil {
+		return nil, err
+	}
+
+	// Skills are indexed in the prefix and loaded on trigger. Discovery happens
+	// once, here: a skill file written mid-session must not change the prefix,
+	// because the prefix is what the cache is keyed on.
+	skills, err := behavior.LoadSkills([]string{
+		filepath.Join(roots.Config, behavior.SkillsDirName),
+		filepath.Join(opts.Workspace, ".dcode", behavior.SkillsDirName),
+	}, 256<<10)
+	if err != nil {
+		return nil, err
+	}
+
+	prompt := behaviorBuild(registry.Names(), instructions, behavior.Index(skills))
 
 	window, _ := p.Window(opts.Model)
 	ctxCfg := ce.DefaultConfig()
@@ -180,10 +216,17 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Emitter: emitter, Approver: approver,
 		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
 		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
-		Summarise: summariser(p, opts.Model),
+		Summarise:        summariser(p, opts.Model),
+		Skills:           skills,
+		InstructionChain: chain,
+		ReadFile:         readFileText,
+		Reminders:        opts.Reminders,
 	}, ce.Session{Instructions: prompt})
 
-	return &Session{Engine: engine, Registry: registry, Prompt: prompt, Options: opts}, nil
+	return &Session{
+		Engine: engine, Registry: registry, Prompt: prompt, Options: opts,
+		ContextWindow: window,
+	}, nil
 }
 
 func buildProvider(opts Options) (provider.Provider, error) {
@@ -237,30 +280,67 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction) string {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry) string {
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(toolNames),
 		Tools:        toolNames,
 		Instructions: instructions,
+		SkillIndex:   index,
 	})
 }
 
-func loadInstructions(workspace string) ([]behavior.Instruction, error) {
+// loadInstructions builds the frozen instruction chain.
+//
+// It returns the paths as well as the instructions: the chain is what later
+// tells an instruction the session never loaded from one it deliberately
+// ranked, and only the paths can answer that.
+func loadInstructions(roots config.Roots, workspace string) ([]behavior.Instruction, []string, error) {
+	var (
+		out   []behavior.Instruction
+		chain []string
+	)
+
+	// The user's own root first, and lowest. It is the only place an
+	// instruction from outside the workspace may enter, and it enters by an
+	// explicit path rather than by discovery.
+	for _, name := range config.InstructionNames {
+		path := filepath.Join(roots.Config, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		chain = append(chain, path)
+		out = append(out, behavior.Instruction{
+			Source: behavior.SourceUser, Text: string(data),
+		})
+	}
+
 	files, err := config.DiscoverInstructions(workspace, workspace, nil, 65536, 8)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	var out []behavior.Instruction
 	for _, f := range files {
 		src := behavior.SourceProject
 		if f.Source == "directory" {
 			src = behavior.SourceDirectory
 		}
+		chain = append(chain, f.Path)
 		out = append(out, behavior.Instruction{
 			Source: src, Scope: filepath.Base(filepath.Dir(f.Path)), Text: f.Text,
 		})
 	}
-	return out, nil
+	return out, chain, nil
+}
+
+// readFileText backs the changed-on-disk check and out-of-chain discovery. It
+// is the one filesystem hook the loop keeps, injected rather than called
+// directly so the loop stays testable without a disk.
+func readFileText(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 // ---------- HTTP transport ----------
