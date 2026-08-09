@@ -68,9 +68,38 @@ channel = "stable"
 
 Chave desconhecida é **erro**, não aviso: erro de digitação em config silenciosamente ignorado é a classe de bug mais frustrante que existe.
 
-### 3.1 Recusa de credencial
+### 3.1 Recusa de credencial, e onde a credencial mora
 
 Chave cujo nome case com `(?i)(api[_-]?key|token|secret|password|credential)` faz a inicialização **falhar**, com erro indicando de onde a credencial deve vir (RN-3). Vale para qualquer seção, inclusive desconhecida.
+
+**Recusar o lugar errado sem oferecer o lugar certo não protege ninguém** — move o segredo para o perfil do shell ou para uma linha colada, que é onde ninguém controla e ninguém audita.
+
+```go
+// Package: internal/credential
+
+type Store interface {
+    Where() string // descreve o armazenamento a uma pessoa
+    Get(name string) (string, error)
+    Set(name, secret string) error
+    Delete(name string) error
+    List() ([]string, error)
+}
+```
+
+**Uma credencial por família**, não por modelo: `MiniMax-M3` e um futuro `MiniMax-M4` alcançam a mesma conta no mesmo provedor. É o que faz `/model` trocar de família de fato, em vez de reusar uma chave que não pode funcionar.
+
+**Backend:** keychain onde existir (`security`, `secret-tool`), arquivo `0600` na raiz de estado onde não existir. O fallback não é conveniência — servidor headless não tem secret service, e recusar ali empurraria o segredo de volta para o ambiente.
+
+A escolha é **configuração** (`credential.backend`), nunca flag do comando que escreve: flag em quem grava e nada em quem lê arquiva o segredo onde nada procura.
+
+**Precedência:** `DCODE_API_KEY` vence a store. O ambiente é explícito e vale para uma invocação; a store é o que dispensa exportar variável no caso comum.
+
+### 3.2 Como a credencial entra e como aparece
+
+- **Nunca como argumento.** Argumento entra no histórico do shell e é visível em `ps` para toda a máquina enquanto o comando roda. A entrada é prompt sem eco, ou pipe.
+- **Exibição mascarada por padrão**, com início, fim e impressão digital de 8 hex. É o bastante para reconhecer a chave e para pegar colagem da conta errada, e nunca o bastante para usar. Segredo curto é ocultado por inteiro — mostrar metade não é máscara.
+- **Revelação é explícita e separada** (`dcode login --reveal`). Recuperar uma chave guardada é necessidade real, e recusar só empurra para pior; mas a tela de configuração vai para screenshot, screen share, scrollback e gravação, então revelar é escolha tomada uma vez e não default de toda consulta.
+- Arquivo legível por outros é **recusado com o comando que corrige**. Segredo que o grupo lê não é segredo guardado, e seguir em frente o reportaria como bem guardado.
 
 ## 4. Arquivos de instrução
 
@@ -177,6 +206,14 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 - Raiz inexistente é criada com `0700` no primeiro uso.
 - Chave desconhecida em `config.toml` é erro, não aviso.
 - Chave com nome de credencial faz a inicialização falhar, em qualquer seção (RN-3).
+- A credencial nunca aparece no prompt do sistema nem no histórico enviado ao modelo.
+- A credencial nunca é aceita como argumento de linha de comando.
+- Exibição padrão é mascarada; o valor só sai por comando explícito de revelação.
+- Máscara de segredo curto não revela caractere algum do original.
+- Impressão digital é estável para o mesmo segredo e diferente entre segredos.
+- Arquivo de credenciais é escrito `0600` e recusado na leitura se estiver mais aberto.
+- Quem escreve e quem lê resolvem o mesmo backend a partir de `credential.backend`.
+- Nome de credencial fora de `[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}` é recusado antes de alcançar linha de comando.
 - Toda chave TOML mapeia para exatamente uma variável de ambiente, e o mapeamento é bijetivo.
 - A cadeia de precedência da RN-7 é respeitada — uma asserção por par de camadas adjacentes.
 - Chave travada devolve o valor travado **e** emite aviso quando há tentativa de sobrescrita (RN-9).
@@ -191,4 +228,4 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 
 ## 8. Changelog
 
-_Sem alterações desde a criação._
+- [202608091500 — Armazenamento de credencial](changelog/202608091500-armazenamento-de-credencial.md)

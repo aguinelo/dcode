@@ -300,6 +300,24 @@ no mesmo processo. O cliente fala o protocolo dos dois jeitos — o daemon embut
 detalhe de implantação, não um segundo caminho de código — então uma sessão que cresce
 além de um terminal migra para `dcode serve` sem o cliente mudar nada.
 
+### A credencial
+
+```bash
+dcode login                    # lê num prompt sem eco
+dcode login --family claude    # uma segunda chave, para outra família
+dcode config                   # o que está guardado, mascarado, e de onde vem
+dcode login --reveal           # imprime por extenso, de propósito
+```
+
+A chave nunca é aceita como argumento — argumento entra no histórico do shell e
+aparece no `ps`. Fica no keychain do SO onde houver e em arquivo `0600` onde não
+houver, uma credencial por família de modelo, escolhida por `credential.backend`
+para que quem escreve e quem lê sempre concordem. `DCODE_API_KEY` continua
+vencendo o que estiver guardado.
+
+O `config.toml` recusa qualquer coisa com cara de segredo, em qualquer seção,
+porque esse arquivo é feito para ser versionado e sincronizado.
+
 Dois comandos não precisam de chave, e são o par de auditoria:
 
 ```bash
