@@ -21,12 +21,15 @@ func runUpdate(args []string) error {
 	var (
 		check   = fs.Bool("check", false, "report whether a newer version exists and exit")
 		channel = fs.String("channel", "", "stable or prerelease (default: $DCODE_RELEASE_CHANNEL, else stable)")
+		force   = fs.Bool("force", false, "replace a local build with a published release, even if that is older")
 	)
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr,
 			"dcode update — install the latest release\n\n"+
 				"The signature and the checksum are both verified; either failing aborts\n"+
-				"and leaves the current binary untouched.\n\nFlags:\n")
+				"and leaves the current binary untouched.\n\n"+
+				"A local build is refused: it is normally ahead of the last tag, so\n"+
+				"replacing it would be a downgrade. Use `make install` to rebuild.\n\nFlags:\n")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -39,10 +42,19 @@ func runUpdate(args []string) error {
 	}
 
 	u := update.NewGitHub(update.Config{
-		APIURL:  os.Getenv("DCODE_UPDATE_URL"),
-		Channel: ch,
-		Pin:     os.Getenv("DCODE_PIN_VERSION"),
+		APIURL:              os.Getenv("DCODE_UPDATE_URL"),
+		Channel:             ch,
+		Pin:                 os.Getenv("DCODE_PIN_VERSION"),
+		AllowLocalOverwrite: *force,
 	})
+
+	// Before the network, not after: if the answer is a refusal either way,
+	// asking GitHub first spends a round trip to report the wrong reason —
+	// "no release found" when the real answer is "this binary is not ours to
+	// replace". Apply refuses again, which is where the guarantee lives.
+	if !*check && !*force && !version.IsRelease() {
+		return update.ErrLocalBuild
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

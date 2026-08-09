@@ -1,8 +1,28 @@
-.PHONY: test race cover lint build clean tidy check
+.PHONY: test race cover lint build install install-fast uninstall clean tidy check
 
 GO      ?= go
 PKGS    := ./...
 COVER   := coverage.out
+MODULE  := github.com/aguinelo/dcode/internal/version
+
+# Onde `make install` põe o binário. Mesmo default do install.sh, e gravável
+# pelo usuário — instalar não deve pedir privilégio.
+DCODE_INSTALL_DIR ?= $(HOME)/.local/bin
+
+# A versão de um build local diz que é local, no próprio texto. Um binário que
+# se apresenta igual a um release publicado é como um relato de bug vira uma
+# hora perdida descobrindo que nunca era o código publicado.
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+GIT_DIRTY  := $(shell git diff --quiet HEAD 2>/dev/null || echo .dirty)
+GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+BASE_VER   := $(if $(GIT_TAG),$(GIT_TAG),0.0.0)
+VERSION    := $(BASE_VER)-dev+$(GIT_COMMIT)$(GIT_DIRTY)
+BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+LDFLAGS := -X $(MODULE).Version=$(VERSION) \
+           -X $(MODULE).Commit=$(GIT_COMMIT) \
+           -X $(MODULE).Date=$(BUILD_DATE) \
+           -X $(MODULE).Source=local
 
 test:
 	$(GO) test $(PKGS)
@@ -22,7 +42,31 @@ lint:
 	@gofmt -l . | grep -v '^$$' && { echo "gofmt: arquivos não formatados acima"; exit 1; } || true
 
 build:
-	CGO_ENABLED=0 $(GO) build -trimpath -o bin/dcode ./cmd/dcode
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/dcode ./cmd/dcode
+
+# Instala o build local no PATH. Depende de `check` de propósito: instalar algo
+# que não passou no gate é como um defeito local vira "o dcode quebrou".
+install: check
+	@mkdir -p "$(DCODE_INSTALL_DIR)"
+	@install -m 0755 bin/dcode "$(DCODE_INSTALL_DIR)/dcode"
+	@echo "instalado: $$("$(DCODE_INSTALL_DIR)/dcode" --version | head -1)"
+	@echo "em:        $(DCODE_INSTALL_DIR)/dcode"
+	@case ":$$PATH:" in \
+	  *":$(DCODE_INSTALL_DIR):"*) ;; \
+	  *) echo ""; echo "  $(DCODE_INSTALL_DIR) não está no PATH. Adicione:"; \
+	     echo "  export PATH=\"$(DCODE_INSTALL_DIR):\$$PATH\"" ;; \
+	esac
+
+# Instala sem rodar o gate. Para o laço de edição, onde a suíte já rodou há
+# trinta segundos e rodar de novo é só espera.
+install-fast: build
+	@mkdir -p "$(DCODE_INSTALL_DIR)"
+	@install -m 0755 bin/dcode "$(DCODE_INSTALL_DIR)/dcode"
+	@echo "instalado (sem gate): $$("$(DCODE_INSTALL_DIR)/dcode" --version | head -1)"
+
+uninstall:
+	@rm -f "$(DCODE_INSTALL_DIR)/dcode"
+	@echo "removido: $(DCODE_INSTALL_DIR)/dcode"
 
 tidy:
 	$(GO) mod tidy

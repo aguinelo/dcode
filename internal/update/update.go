@@ -27,6 +27,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/aguinelo/dcode/internal/version"
 )
 
 // Release is one published version and everything needed to install it.
@@ -340,6 +342,10 @@ type Config struct {
 	Pin string
 	// GOOS and GOARCH override the platform, for tests.
 	GOOS, GOARCH string
+	// AllowLocalOverwrite lets a caller replace a binary the release pipeline
+	// did not publish. Only the explicit `--force` sets it: the default has to
+	// be the refusal, or the guard is decoration.
+	AllowLocalOverwrite bool
 }
 
 // GitHub is the released-artifact updater.
@@ -439,8 +445,23 @@ func (g *GitHub) Latest(ctx context.Context) (Release, error) {
 	return rel, nil
 }
 
+// ErrLocalBuild is returned when the running binary was not published by the
+// release pipeline.
+//
+// Refusing is the useful answer rather than the cautious one: a build from the
+// working tree is normally *ahead* of the last tag, so replacing it with the
+// latest release is a downgrade wearing the word "update". And a binary we did
+// not publish is one we cannot reason about at all.
+var ErrLocalBuild = errors.New(
+	"this is a local build, not a published release, so `update` would replace it " +
+		"with something older. Rebuild with `make install`, or install a release " +
+		"with the install script")
+
 // Apply installs a release over the current binary.
 func (g *GitHub) Apply(ctx context.Context, r Release) error {
+	if !g.cfg.AllowLocalOverwrite && !version.IsRelease() {
+		return ErrLocalBuild
+	}
 	if g.cfg.Pin != "" && strings.TrimPrefix(g.cfg.Pin, "v") != strings.TrimPrefix(r.Version, "v") {
 		return fmt.Errorf(
 			"update: this installation is pinned to %s by DCODE_PIN_VERSION, so it will not move to %s",

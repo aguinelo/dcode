@@ -267,6 +267,23 @@ curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
 assinatura e o checksum, confere que o binário baixado de fato executa, e só então troca —
 de modo que qualquer falha deixa o binário atual intacto.
 
+### Do fonte, para trabalhar no próprio dcode
+
+```bash
+make install          # roda o gate e instala em ~/.local/bin
+make install-fast     # pula o gate, para o laço de edição
+make uninstall
+```
+
+`DCODE_INSTALL_DIR` escolhe outro lugar. Um build local diz que é local na própria
+versão — `0.0.0-dev+a91f2c4.dirty` — porque um binário que se apresenta igual a um release
+publicado é como um relato de bug vira uma hora perdida descobrindo que nunca era o código
+publicado.
+
+Pelo mesmo motivo o `dcode update` recusa substituir um build local: ele costuma estar
+**à frente** da última tag, então instalar o release mais recente seria um downgrade
+vestindo a palavra "atualizar". `--force` levanta a recusa.
+
 ## Rodando
 
 ```bash

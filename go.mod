@@ -2,6 +2,15 @@ module github.com/aguinelo/dcode
 
 go 1.25.0
 
+// A versão que compila e, sobretudo, que mede.
+//
+// Go instrumenta cobertura com granularidade diferente entre versões: o mesmo
+// commit deu 3141 blocos em 1.26.5 e 3340 em 1.25.0, e o gate fechou 94% de um
+// lado e 88% do outro. Um gate cujo número depende da máquina não é um gate.
+// A diretiva `go` acima segue sendo o mínimo de linguagem; esta fixa a
+// ferramenta, e o CI a lê do mesmo arquivo.
+toolchain go1.26.5
+
 require (
 	charm.land/bubbletea/v2 v2.0.8
 	github.com/charmbracelet/x/term v0.2.2
