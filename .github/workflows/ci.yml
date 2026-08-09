@@ -15,6 +15,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      # The sandbox is the security floor, so CI has to exercise it rather than
+      # skip past it: without bubblewrap every test that needs a real boundary
+      # skips, and a skipped boundary test reads as a passing one.
+      - name: bubblewrap (linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

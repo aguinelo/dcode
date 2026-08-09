@@ -11,6 +11,7 @@ import (
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/pkg/client"
 )
 
@@ -75,6 +76,7 @@ func daemonFor(t *testing.T, ws string) (*Daemon, *client.Client, context.Cancel
 		t.Fatal(err)
 	}
 	base.SandboxMode = policy.ModeReadOnly
+	requireSandbox(t, base)
 
 	d := NewDaemon(DaemonOptions{
 		SocketPath: filepath.Join(dir, "d.sock"),
@@ -297,6 +299,7 @@ func TestDaemonBuildHonoursTheRequestedModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	base.SandboxMode = policy.ModeReadOnly
+	requireSandbox(t, base)
 
 	d := NewDaemon(DaemonOptions{SocketPath: "/tmp/unused.sock", Base: base})
 	sess, err := d.build(protocol.CreateSessionRequest{Workspace: ws, Model: "claude-sonnet"})
@@ -330,6 +333,8 @@ func TestDaemonRefusesAnUnusableWorkspace(t *testing.T) {
 	}
 	d := NewDaemon(DaemonOptions{SocketPath: "/tmp/unused.sock", Base: base})
 
+	// No requireSandbox here on purpose: the workspace is rejected before a
+	// sandbox is ever built, and that is exactly what this asserts.
 	for name, path := range map[string]string{
 		"empty":     "",
 		"relative":  "relative/path",
@@ -345,5 +350,20 @@ func TestDaemonRefusesAnUnusableWorkspace(t *testing.T) {
 		if !ok || pe.Code != protocol.CodeWorkspaceInvalid {
 			t.Errorf("%s: the code is what a client branches on, got %v", name, err)
 		}
+	}
+}
+
+// requireSandbox skips when the machine has no confining mechanism.
+//
+// Without a real boundary a daemon test asserts nothing — a session that cannot
+// confine its own commands refuses to start, by design. Skipping is the honest
+// outcome, and it matches what the end-to-end wiring tests already do.
+func requireSandbox(t *testing.T, opts Options) {
+	t.Helper()
+	if _, err := sandbox.New(sandbox.Config{
+		Backend:      opts.Backend,
+		AllowNetwork: opts.AllowNetwork,
+	}, opts.SandboxMode); err != nil {
+		t.Skipf("no sandbox available: %v", err)
 	}
 }
