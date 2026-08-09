@@ -104,7 +104,9 @@ func runTUI(args []string) error {
 
 	w, h := terminalSize()
 	geo := tui.DefaultGeometry(w, h)
-	geo.PanelHidden = *noPanel
+	if *noPanel {
+		geo.PanelMode = tui.PanelHidden
+	}
 	geo.Unicode = supportsUnicode(os.Getenv)
 
 	return tui.Run(ctx, tui.Options{

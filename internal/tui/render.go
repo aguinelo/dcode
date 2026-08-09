@@ -8,14 +8,27 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+// PanelMode is how the plan panel decides whether to show.
+type PanelMode int
+
+const (
+	// PanelAuto lets the width decide. The default, because it answers the
+	// case the user has not thought about.
+	PanelAuto PanelMode = iota
+	// PanelShown and PanelHidden are the user having thought about it.
+	PanelShown
+	PanelHidden
+)
+
 // Geometry is the terminal size and the layout knobs.
 type Geometry struct {
 	Width  int
 	Height int
 
 	PanelWidth         int
+	PanelMinWidth      int
 	PanelMinTotalWidth int
-	PanelHidden        bool
+	PanelMode          PanelMode
 
 	DiffMaxLines int
 	Unicode      bool
@@ -25,22 +38,56 @@ type Geometry struct {
 func DefaultGeometry(w, h int) Geometry {
 	return Geometry{
 		Width: w, Height: h,
-		PanelWidth: 24, PanelMinTotalWidth: 100,
+		PanelWidth: 24, PanelMinWidth: 16, PanelMinTotalWidth: 100,
 		DiffMaxLines: 40, Unicode: true,
 	}
 }
 
-// ShowPanel reports whether the plan panel fits and is wanted.
+// ShowPanel reports whether the plan panel is drawn.
 //
-// Responsive before configurable: at 80 columns a 24-wide panel leaves 56 for
-// the stream, and a diff in 56 columns is bad. Configuration answers a
-// preference; responsiveness answers the case where the user never noticed the
-// window got narrow.
+// Responsive by default: at 80 columns a 24-wide panel leaves 56 for the
+// stream, and a diff in 56 columns is bad. But responsiveness answers the case
+// where the user never noticed the window got narrow — and a keypress *is* the
+// user noticing, so an explicit choice wins over the default at any width.
+//
+// No plan means no panel in every mode: an empty panel is worse than none.
 func (g Geometry) ShowPanel(hasPlan bool) bool {
-	if g.PanelHidden || !hasPlan {
+	if !hasPlan {
+		return false
+	}
+	switch g.PanelMode {
+	case PanelShown:
+		return true
+	case PanelHidden:
 		return false
 	}
 	return g.Width >= g.PanelMinTotalWidth
+}
+
+// panelWidth is how wide the panel actually draws.
+//
+// It gives ground before it disappears: asked for on a narrow terminal, it
+// shrinks rather than taking the room the stream needs. Below its own minimum
+// an item is unreadable, so that is the floor.
+func (g Geometry) panelWidth() int {
+	w := g.PanelWidth
+	if w <= 0 {
+		w = 24
+	}
+	floor := g.PanelMinWidth
+	if floor <= 0 {
+		floor = 16
+	}
+	// A quarter of the screen, never more. At 80 columns that trades four
+	// panel cells for four stream cells, which is the right way round: the
+	// panel holds short lines and the stream holds diffs.
+	if quarter := g.Width / 4; w > quarter {
+		w = quarter
+	}
+	if w < floor {
+		w = floor
+	}
+	return w
 }
 
 // StreamWidth is the columns available to the stream.
@@ -48,7 +95,7 @@ func (g Geometry) StreamWidth(showPanel bool) int {
 	if !showPanel {
 		return g.Width
 	}
-	w := g.Width - g.PanelWidth - 1
+	w := g.Width - g.panelWidth() - 1
 	if w < 20 {
 		return 20
 	}
@@ -121,7 +168,7 @@ func Render(m Model, g Geometry) string {
 		}
 		b.WriteString(pad(clip(left, streamW), streamW))
 		b.WriteString("│")
-		b.WriteString(clip(right, g.PanelWidth))
+		b.WriteString(clip(right, g.panelWidth()))
 		b.WriteString("\n")
 	}
 
@@ -157,8 +204,11 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 		parts = append(parts, fmt.Sprintf("ctx %d%%", m.ContextPct))
 	}
 	if !showPanel {
+		// A collapsed panel that says nothing is indistinguishable from a
+		// broken one, and the key that brings it back is only documented
+		// inside the panel itself.
 		if s := m.PlanSummary(); s != "" {
-			parts = append(parts, s)
+			parts = append(parts, s, "[p] plan")
 		}
 	}
 	return clip(strings.Join(parts, "  "), g.Width)
@@ -221,7 +271,7 @@ func detailLines(detail string, w, max int) []string {
 // renderPanel draws the plan.
 func renderPanel(m Model, g Geometry) []string {
 	gl := glyphs(g.Unicode)
-	w := g.PanelWidth
+	w := g.panelWidth()
 	out := []string{clip(" PLAN", w), ""}
 
 	for _, it := range m.Plan {

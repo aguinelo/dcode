@@ -80,7 +80,7 @@ func TestPanelCollapsesOnANarrowTerminalAndTheSummaryMoves(t *testing.T) {
 func TestPanelHidesWhenAskedAndWhenThereIsNoPlan(t *testing.T) {
 	m := modelWithPlan()
 	g := DefaultGeometry(120, 24)
-	g.PanelHidden = true
+	g.PanelMode = PanelHidden
 	if strings.Contains(Render(m, g), "PLAN") {
 		t.Error("the user asked for it hidden")
 	}
@@ -347,5 +347,84 @@ func TestWrapBreaksAWordWiderThanTheColumn(t *testing.T) {
 		if joined != tc.word {
 			t.Errorf("%s: reassembled to %q, want %q", tc.name, joined, tc.word)
 		}
+	}
+}
+
+// Regression: an explicit request must beat the responsive default.
+//
+// The panel hides itself below 100 columns, which is right as a default — but
+// it also made `p` do nothing on an 80-column terminal, so the feature was
+// unreachable exactly where someone would go looking for the key. Responsive
+// answers the case where the user never noticed the window got narrow; a
+// keypress is the user noticing.
+func TestTheUserCanForceThePanelOnANarrowTerminal(t *testing.T) {
+	m := modelWithPlan()
+
+	auto := DefaultGeometry(80, 24)
+	if auto.ShowPanel(true) {
+		t.Fatal("80 columns hides the panel by default")
+	}
+
+	forced := auto
+	forced.PanelMode = PanelShown
+	if !forced.ShowPanel(true) {
+		t.Error("asking for the panel must show it, whatever the width")
+	}
+	got := Render(m, forced)
+	if !strings.Contains(got, "PLAN") {
+		t.Errorf("the forced panel must render:\n%s", got)
+	}
+	if n := widest(got); n > 80 {
+		t.Errorf("the forced panel must still fit: %d cells", n)
+	}
+	// The stream cannot be squeezed to nothing to make room.
+	if forced.StreamWidth(true) < 30 {
+		t.Errorf("the stream keeps a usable width, got %d", forced.StreamWidth(true))
+	}
+
+	// And hiding it on a wide terminal must still work.
+	hidden := DefaultGeometry(140, 24)
+	hidden.PanelMode = PanelHidden
+	if hidden.ShowPanel(true) {
+		t.Error("asking for it hidden must hide it")
+	}
+}
+
+// No plan, no panel — in any mode. There is nothing to show.
+func TestNoPlanMeansNoPanelEvenWhenForced(t *testing.T) {
+	g := DefaultGeometry(140, 24)
+	g.PanelMode = PanelShown
+	if g.ShowPanel(false) {
+		t.Error("an empty panel is worse than no panel")
+	}
+}
+
+// A hidden panel with a live plan must announce itself, or the user cannot tell
+// a collapsed panel from a broken one.
+func TestAHiddenPanelSaysHowToShowIt(t *testing.T) {
+	m := modelWithPlan()
+	got := lines(Render(m, DefaultGeometry(80, 24)))[0]
+
+	if !strings.Contains(got, "1 of 3") {
+		t.Errorf("the summary must survive the collapse: %q", got)
+	}
+	if !strings.Contains(got, "[p]") {
+		t.Errorf("the way to see the rest must be on screen: %q", got)
+	}
+}
+
+// The panel narrows before it disappears: at 80 columns a 24-wide panel would
+// leave too little for the stream.
+func TestThePanelNarrowsOnANarrowTerminal(t *testing.T) {
+	wide := DefaultGeometry(140, 24)
+	narrow := DefaultGeometry(80, 24)
+	narrow.PanelMode = PanelShown
+
+	if narrow.panelWidth() >= wide.panelWidth() {
+		t.Errorf("the panel must give ground first: %d at 80, %d at 140",
+			narrow.panelWidth(), wide.panelWidth())
+	}
+	if narrow.panelWidth() < 14 {
+		t.Errorf("but not so far that an item is unreadable: %d", narrow.panelWidth())
 	}
 }

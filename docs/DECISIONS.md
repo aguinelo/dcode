@@ -487,3 +487,33 @@ The real capture is now committed at
 `internal/provider/testdata/minimax-m3-toolcall.sse`. It is worth more than the
 tests written against it: every hand-made approximation of this stream was
 passing.
+
+### Fixed: the plan panel was unreachable on an ordinary terminal
+
+Reported from use: the panel never appeared. It was two things at once.
+
+The panel hides itself below 100 columns, which is a sound default — but a
+standard terminal is 80, so most people would never see it. Worse, `p` only
+flipped a `PanelHidden` boolean, and the width check ran *after* it, so pressing
+the key on an 80-column terminal did nothing. The feature was unreachable
+exactly where someone would go looking for the key.
+
+The spec already said the right thing — RN-5: "the user's explicit preference
+takes precedence over the automatic one in both directions." The code was not
+implementing it, so no rule changed and there is no changelog entry; the
+contract gained the detail that makes the rule expressible.
+
+A boolean cannot express it. From `auto` there is no flag to flip, so the mode
+is three-valued: auto, shown, hidden. Responsiveness answers the case where the
+user never noticed the window got narrow; a keypress is the user noticing.
+
+Two smaller consequences, both found by writing the failing test first:
+
+- **The panel narrows before it disappears.** Its width is capped at a quarter
+  of the screen with a floor of 16. At 80 columns that trades four panel cells
+  for four stream cells, which is the right way round — the panel holds short
+  lines and the stream holds diffs.
+- **A collapsed panel announces itself.** The status bar carries the counter and
+  the key that brings it back. Collapsed in silence is indistinguishable from
+  broken, and the key was documented only inside the panel that was not on
+  screen.

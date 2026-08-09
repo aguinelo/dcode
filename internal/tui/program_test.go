@@ -358,13 +358,28 @@ func TestCursorMovementAndExpansion(t *testing.T) {
 // `p` toggles the panel only when it is not being typed into a message.
 func TestPToggleOnlyAppliesToAnEmptyInput(t *testing.T) {
 	p, _ := newProgram(t)
+	p.model.Plan = modelWithPlan().Plan
+
+	// The panel is showing at 100 columns, so the first press hides it.
 	p.Update(key("p"))
-	if !p.geo.PanelHidden {
+	if p.geo.ShowPanel(true) {
 		t.Error("p on an empty line hides the panel")
 	}
 	p.Update(key("p"))
-	if p.geo.PanelHidden {
+	if !p.geo.ShowPanel(true) {
 		t.Error("and shows it again")
+	}
+
+	// On a terminal too narrow for the default, the key still works: an
+	// explicit request beats the responsive default.
+	narrow, _ := newProgram(t, func(o *Options) { o.Geometry = DefaultGeometry(80, 24) })
+	narrow.model.Plan = modelWithPlan().Plan
+	if narrow.geo.ShowPanel(true) {
+		t.Fatal("80 columns hides it by default")
+	}
+	narrow.Update(key("p"))
+	if !narrow.geo.ShowPanel(true) {
+		t.Error("pressing p on a narrow terminal must show the panel anyway")
 	}
 
 	p.Update(key("x"))

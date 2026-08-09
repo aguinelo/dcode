@@ -251,8 +251,17 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	if s := k.String(); len(s) == 1 {
 		// `p` toggles the panel only when it is not being typed into a message.
+		//
+		// It sets an explicit mode rather than flipping a flag, because from
+		// `auto` there is no flag to flip: the user pressing the key on a
+		// narrow terminal means "show it anyway", and the responsive default
+		// must not veto that.
 		if s == "p" && p.model.Input == "" {
-			p.geo.PanelHidden = !p.geo.PanelHidden
+			if p.geo.ShowPanel(len(p.model.Plan) > 0) {
+				p.geo.PanelMode = PanelHidden
+			} else {
+				p.geo.PanelMode = PanelShown
+			}
 			return p, nil
 		}
 		p.model.Input += s
