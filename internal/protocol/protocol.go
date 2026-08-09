@@ -18,9 +18,15 @@ type EventType string
 
 // Event types. Payload shapes are defined in section 5.1 of the planning spec.
 const (
-	EventSessionCreated   EventType = "session.created"
-	EventTurnStarted      EventType = "turn.started"
-	EventMessageDelta     EventType = "message.delta"
+	EventSessionCreated EventType = "session.created"
+	EventTurnStarted    EventType = "turn.started"
+	EventMessageDelta   EventType = "message.delta"
+	// EventMessageReasoning carries the model's thinking, which is not its
+	// answer. It is an event so a client can show it and so replaying a session
+	// looks like having watched it — but it never enters the history the model
+	// is sent, because a model that reads its own reasoning back as something
+	// it said out loud starts defending it.
+	EventMessageReasoning EventType = "message.reasoning"
 	EventToolRequested    EventType = "tool.requested"
 	EventApprovalRequired EventType = "tool.approval_required"
 	EventApprovalResolved EventType = "tool.approval_resolved"
@@ -168,6 +174,11 @@ type (
 	// TurnStarted announces an accepted input.
 	TurnStarted struct {
 		TurnID string `json:"turn_id"`
+	}
+	// MessageReasoning is a fragment of the model's thinking.
+	MessageReasoning struct {
+		TurnID string `json:"turn_id"`
+		Text   string `json:"text"`
 	}
 	// MessageDelta is a fragment of model text.
 	MessageDelta struct {

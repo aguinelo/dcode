@@ -694,7 +694,7 @@ func TestReasoningNeverEntersTheHistory(t *testing.T) {
 			done(),
 		},
 	}}
-	e, rec := newEngine(t, p, tools.NewRegistry())
+	e, rec := newEngine(t, p, tools.NewRegistry(), func(c *Config) { c.ShowReasoning = true })
 	if _, err := e.Run(context.Background(), "oi"); err != nil {
 		t.Fatal(err)
 	}
@@ -703,6 +703,13 @@ func TestReasoningNeverEntersTheHistory(t *testing.T) {
 		if strings.Contains(m.Text, "deleting everything") {
 			t.Fatalf("reasoning reached the history: %q", m.Text)
 		}
+	}
+
+	// Forwarded to the client, though: showing it is the whole point, and the
+	// history is the one place it must not reach.
+	if d, ok := rec.last[protocol.EventMessageReasoning].(protocol.MessageReasoning); !ok ||
+		!strings.Contains(d.Text, "deleting everything") {
+		t.Error("the thinking must reach the client")
 	}
 	// The answer itself survives.
 	var found bool
@@ -714,11 +721,36 @@ func TestReasoningNeverEntersTheHistory(t *testing.T) {
 	if !found {
 		t.Error("the answer must still be recorded")
 	}
-	// And nothing was streamed to the client either: the deltas the client saw
-	// carry the answer and nothing else.
+	// And it never arrives as an answer: the two are different events, and a
+	// client that confused them would show thinking as something the model
+	// said out loud.
 	if d, ok := rec.last[protocol.EventMessageDelta].(protocol.MessageDelta); ok {
 		if strings.Contains(d.Text, "deleting everything") {
-			t.Errorf("reasoning was streamed to the client: %q", d.Text)
+			t.Errorf("reasoning was streamed as an answer: %q", d.Text)
 		}
+	}
+}
+
+// Thinking runs five to ten times the size of the answer on a tool-calling
+// turn, and it shares the session's event budget with everything worth
+// replaying — so it has to be switchable.
+func TestReasoningIsNotForwardedWhenSwitchedOff(t *testing.T) {
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{
+			{Type: provider.EventReasoningDelta, Text: "pensando alto"},
+			{Type: provider.EventTextDelta, Text: "pronto"},
+			done(),
+		},
+	}}
+	e, rec := newEngine(t, p, tools.NewRegistry(), func(c *Config) { c.ShowReasoning = false })
+	if _, err := e.Run(context.Background(), "oi"); err != nil {
+		t.Fatal(err)
+	}
+	if rec.count(protocol.EventMessageReasoning) != 0 {
+		t.Error("nothing should have been forwarded")
+	}
+	// And the turn is otherwise unchanged.
+	if d, ok := rec.last[protocol.EventMessageDelta].(protocol.MessageDelta); !ok || d.Text != "pronto" {
+		t.Errorf("the answer must still arrive: %+v", rec.last[protocol.EventMessageDelta])
 	}
 }

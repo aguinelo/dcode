@@ -367,6 +367,14 @@ ignored is the most frustrating configuration bug there is.
 
 ### Inside the interface
 
+While the model thinks, the last few lines of its reasoning stream dimmed on
+screen — the only answer to "is it going somewhere sensible". Once it acts, that
+collapses to `✻ thought for 4.2s · Tab`, because on a tool-calling turn the
+thinking runs five to ten times the length of the answer and would bury the
+result it led to. It never enters the history the model is sent.
+`behavior.show_reasoning = false` turns it off.
+
+
 `/help` lists everything. `/plan` shows the plan in full, `/config <key>` answers where a
 setting came from, `/model <name>` and `/clear` open a fresh session — the system prompt
 is part of the prefix, and the prefix cannot be rewritten. `/init` writes DCODE.md for the

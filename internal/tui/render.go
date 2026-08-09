@@ -39,8 +39,11 @@ type Geometry struct {
 	DiffMaxLines     int
 	// CompletionRows is how many candidates the `/` menu shows at once.
 	CompletionRows int
-	Unicode        bool
-	Palette        Palette
+	// ThoughtLines is how much of a live thought stays on screen. Enough to
+	// read where it is going, not enough to push the work off the top.
+	ThoughtLines int
+	Unicode      bool
+	Palette      Palette
 }
 
 // DefaultGeometry returns the documented defaults.
@@ -48,7 +51,8 @@ func DefaultGeometry(w, h int) Geometry {
 	return Geometry{
 		Width: w, Height: h,
 		PanelWidth: 24, PanelMinWidth: 16, PanelMaxWidth: 34, PanelMinTotalWidth: 100,
-		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5, Unicode: true,
+		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
+		ThoughtLines: 4, Unicode: true,
 	}
 }
 
@@ -123,7 +127,7 @@ func (g Geometry) StreamWidth(showPanel bool) int {
 }
 
 // marks carries the glyphs for a status, with an ASCII fallback.
-type marks struct{ pending, active, done, blocked, bullet string }
+type marks struct{ pending, active, done, blocked, bullet, thought string }
 
 // glyphs returns the mark set.
 //
@@ -132,9 +136,9 @@ type marks struct{ pending, active, done, blocked, bullet string }
 // the worst possible error in this panel.
 func glyphs(unicode bool) marks {
 	if unicode {
-		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺"}
+		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻"}
 	}
-	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*"}
+	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~"}
 }
 
 // Render draws the whole screen. Pure over model and geometry, which is what
@@ -329,6 +333,9 @@ func renderStream(m Model, g Geometry, w int) []string {
 				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
 			}
 
+		case KindReasoning:
+			out = append(out, renderThought(e, cursor, gl, g)...)
+
 		case KindNote:
 			for j, line := range wrap(e.Summary, w-4) {
 				prefix := "  ~ "
@@ -358,6 +365,47 @@ const (
 	toolNameWidth   = 6
 	toolTargetWidth = 26
 )
+
+// renderThought draws the model thinking.
+//
+// Open, it streams: the tail of it, dim, because while the model is working
+// this is the most informative thing on the screen and the only answer to "is
+// it doing something sensible". Closed, it is one line — thinking runs several
+// times the length of the answer, and left expanded it buries the result it
+// was leading to.
+func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
+	p := g.Palette
+	w := g.StreamWidth(g.ShowPanel(true))
+
+	if !e.Closed && !e.Expanded {
+		lines := wrap(strings.TrimSpace(e.Summary), w-4)
+		if n := g.ThoughtLines; n > 0 && len(lines) > n {
+			// The tail, not the head: what it is thinking now is what matters,
+			// the same reason the stream follows its own end.
+			lines = lines[len(lines)-n:]
+		}
+		out := make([]string, 0, len(lines))
+		for _, l := range lines {
+			out = append(out, clipStyled(p.Apply(StyleDim, "  │ "+l), w))
+		}
+		return out
+	}
+
+	head := cursor + p.Apply(StyleDim, gl.thought+" thought")
+	if d := FormatDuration(e.Duration); d != "" {
+		head += p.Apply(StyleDim, " for "+d)
+	}
+	if !e.Expanded {
+		head += p.Apply(StyleDim, " · Tab")
+		return []string{clipStyled(head, w)}
+	}
+
+	out := []string{clipStyled(head, w)}
+	for _, l := range wrap(strings.TrimSpace(e.Summary), w-4) {
+		out = append(out, clipStyled(p.Apply(StyleDim, "  │ "+l), w))
+	}
+	return out
+}
 
 // renderToolLine is the one-line form of a call: what ran, on what, how it went
 // and how long it took.

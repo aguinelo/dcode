@@ -366,6 +366,14 @@ ignorado é a classe de bug de configuração mais frustrante que existe.
 
 ### Dentro da interface
 
+Enquanto o modelo pensa, as últimas linhas do raciocínio passam esmaecidas na
+tela — é a única resposta para "ele está indo para um lugar sensato". Quando ele
+age, aquilo colapsa em `✻ thought for 4.2s · Tab`, porque em turno com
+ferramenta o pensamento roda de cinco a dez vezes o tamanho da resposta e
+enterraria o resultado a que levou. Nunca entra no histórico enviado ao modelo.
+`behavior.show_reasoning = false` desliga.
+
+
 `/help` lista tudo. `/plan` mostra o plano completo, `/config <chave>` responde de onde
 uma configuração veio, `/model <nome>` e `/clear` abrem sessão nova — o system prompt faz
 parte do prefixo, e o prefixo não se reescreve. `/init` escreve o DCODE.md do repositório

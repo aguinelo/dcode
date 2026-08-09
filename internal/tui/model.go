@@ -35,6 +35,8 @@ const (
 	KindTool      Kind = "tool"
 	KindError     Kind = "error"
 	KindNote      Kind = "note"
+	// KindReasoning is the model thinking, which is not the model answering.
+	KindReasoning Kind = "reasoning"
 )
 
 // Entry is one line of the stream, with its detail available on demand.
@@ -56,6 +58,11 @@ type Entry struct {
 	// expansion shows: it is what gets reviewed, and the tool's prose summary
 	// says nothing a reviewer needs.
 	Diff string
+	// StartedAt and Closed belong to a thought: it streams live while open and
+	// collapses to one line once the turn moves on, because thinking runs
+	// several times the length of the answer and would otherwise bury it.
+	StartedAt time.Time
+	Closed    bool
 }
 
 // Model is the view state, derived entirely from the event log.
@@ -171,6 +178,23 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.State = protocol.SessionStateRunning
 		m.TurnStartedAt = m.Now
 
+	case protocol.EventMessageReasoning:
+		var d protocol.MessageReasoning
+		if err := json.Unmarshal(ev.Payload, &d); err != nil {
+			break
+		}
+		// Appended to the open thought, the same way text is: thinking arrives
+		// in fragments and reads as thinking only when it flows.
+		if n := len(m.Entries); n > 0 && m.Entries[n-1].Kind == KindReasoning &&
+			!m.Entries[n-1].Closed {
+			m.Entries = append([]Entry(nil), m.Entries...)
+			m.Entries[n-1].Summary += d.Text
+		} else {
+			m.Entries = append(m.Entries, Entry{
+				Kind: KindReasoning, Summary: d.Text, Seq: ev.Seq, StartedAt: m.Now,
+			})
+		}
+
 	case protocol.EventMessageDelta:
 		var d protocol.MessageDelta
 		if err := json.Unmarshal(ev.Payload, &d); err != nil {
@@ -178,6 +202,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 		// Text streams in fragments; appending to the open assistant entry is
 		// what makes it feel alive rather than arriving in one block.
+		m = m.closeThought()
 		if n := len(m.Entries); n > 0 && m.Entries[n-1].Kind == KindAssistant {
 			m.Entries = append([]Entry(nil), m.Entries...)
 			m.Entries[n-1].Summary += d.Text
@@ -192,6 +217,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		if err := json.Unmarshal(ev.Payload, &d); err != nil {
 			break
 		}
+		m = m.closeThought()
 		m.Entries = append(m.Entries, Entry{
 			Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
 			Summary: "", Running: true, Seq: ev.Seq,
@@ -261,6 +287,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 
 	case protocol.EventTurnCompleted:
+		m = m.closeThought()
 		var d protocol.TurnCompleted
 		_ = json.Unmarshal(ev.Payload, &d)
 		if d.Usage != nil {
@@ -664,5 +691,24 @@ func (m Model) AcceptCompletion() Model {
 func (m Model) CloseCompletions() Model {
 	m.Completions = nil
 	m.CompletionsOff = true
+	return m
+}
+
+// closeThought collapses the thought in progress, if there is one.
+//
+// A thought closes when the turn moves on — the first answer fragment, the
+// first tool call, the end of the turn. Live it is the most informative thing
+// on screen; once the model has acted, it is scratch work sitting in front of
+// the result.
+func (m Model) closeThought() Model {
+	n := len(m.Entries)
+	if n == 0 || m.Entries[n-1].Kind != KindReasoning || m.Entries[n-1].Closed {
+		return m
+	}
+	m.Entries = append([]Entry(nil), m.Entries...)
+	m.Entries[n-1].Closed = true
+	if !m.Entries[n-1].StartedAt.IsZero() && !m.Now.IsZero() {
+		m.Entries[n-1].Duration = m.Now.Sub(m.Entries[n-1].StartedAt)
+	}
 	return m
 }
