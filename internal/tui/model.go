@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 )
@@ -45,6 +46,11 @@ type Entry struct {
 	IsError  bool
 	Expanded bool
 	Seq      uint64
+	// Duration is how long the tool took, as the daemon measured it.
+	Duration time.Duration
+	// Running marks a tool call that has not reported back yet, which is what
+	// the spinner attaches to.
+	Running bool
 }
 
 // Model is the view state, derived entirely from the event log.
@@ -66,12 +72,41 @@ type Model struct {
 
 	LastSeq uint64
 
+	// Window is the model's context window, so a token count can become a
+	// percentage. Zero means the daemon did not report one.
+	Window int
+
+	// TurnStartedAt is when the running turn began, measured by the client.
+	// Elapsed time is client-local on purpose: it must tick between events,
+	// and a server-sent timestamp would only be right at the instant it
+	// arrived.
+	TurnStartedAt time.Time
+	// Frame advances on every animation tick. Render stays pure by reading it
+	// rather than a clock.
+	Frame int
+	// Now is the clock the view was rendered against, for elapsed time.
+	Now time.Time
+
 	// Client-local state. Nothing here is session state (RN-11).
-	Cursor      int
-	ScrollTop   int
-	PanelHidden bool
-	Queue       []string
-	Input       string
+	Cursor    int
+	ScrollTop int
+	// Follow keeps the newest output on screen. It turns off the moment the
+	// user scrolls up — reading something while the stream pushes it away is
+	// the single most irritating thing a live log can do — and back on when
+	// they return to the bottom.
+	Follow bool
+	Queue  []string
+	Input  string
+	// InputCursor is the caret position within Input, in runes.
+	InputCursor int
+	// History is what the user has sent, newest last, with HistoryAt as the
+	// position being browsed. Client-local: it is what this person typed at
+	// this terminal, not session state.
+	History   []string
+	HistoryAt int
+	// Draft holds what was typed before the user started browsing history, so
+	// coming back out of the history does not lose it.
+	Draft string
 
 	// turnStarted tracks whether a turn has ever run, so the empty state can
 	// disappear on the first one and never return.
@@ -84,6 +119,7 @@ func NewModel(sessionID, workspace, model, sandbox string) Model {
 	return Model{
 		SessionID: sessionID, Workspace: workspace, Model: model,
 		Sandbox: sandbox, State: protocol.SessionStateIdle, Cursor: -1,
+		Follow: true, HistoryAt: -1,
 	}
 }
 
@@ -108,6 +144,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		if err := json.Unmarshal(ev.Payload, &s); err == nil {
 			m.SessionID, m.Workspace = s.ID, s.Workspace
 			m.Model, m.Sandbox, m.State = s.Model, s.SandboxMode, s.State
+			m.Window = s.ContextWindow
 		}
 
 	case protocol.EventTurnStarted:
@@ -116,6 +153,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.turnStarted = true
 		m.activeTurn = d.TurnID
 		m.State = protocol.SessionStateRunning
+		m.TurnStartedAt = m.Now
 
 	case protocol.EventMessageDelta:
 		var d protocol.MessageDelta
@@ -140,7 +178,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 		m.Entries = append(m.Entries, Entry{
 			Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
-			Summary: "…", Seq: ev.Seq,
+			Summary: "", Running: true, Seq: ev.Seq,
 		})
 
 	case protocol.EventToolCompleted:
@@ -150,12 +188,14 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 		m.Entries = append([]Entry(nil), m.Entries...)
 		for i := len(m.Entries) - 1; i >= 0; i-- {
-			if m.Entries[i].Kind != KindTool || m.Entries[i].Summary != "…" {
+			if m.Entries[i].Kind != KindTool || !m.Entries[i].Running {
 				continue
 			}
 			m.Entries[i].Detail = d.Output
 			m.Entries[i].IsError = !d.OK
 			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d)
+			m.Entries[i].Duration = time.Duration(d.DurationMS) * time.Millisecond
+			m.Entries[i].Running = false
 			// Errors open, successes stay collapsed: failure needs attention,
 			// success needs only confirmation.
 			m.Entries[i].Expanded = !d.OK
@@ -196,8 +236,21 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 
 	case protocol.EventTurnCompleted:
+		var d protocol.TurnCompleted
+		_ = json.Unmarshal(ev.Payload, &d)
+		if d.Usage != nil {
+			m.InputTokens = d.Usage.InputTokens
+			m.OutputTokens = d.Usage.OutputTokens
+			m.CacheTokens = d.Usage.CacheReadTokens
+			// The input of the last turn is what the context currently costs,
+			// which is the number a person can act on.
+			if m.Window > 0 {
+				m.ContextPct = 100 * d.Usage.InputTokens / m.Window
+			}
+		}
 		m.State = protocol.SessionStateIdle
 		m.activeTurn = ""
+		m.TurnStartedAt = time.Time{}
 	}
 	return m
 }
@@ -297,30 +350,206 @@ func targetOf(raw json.RawMessage) string {
 	return ""
 }
 
-// summariseResult renders the one-line form of a completed tool call. `go test`
-// produces two hundred lines; what the user needs to see is "12 passed".
+// summariseResult renders the one-line form of a completed tool call.
+//
+// It reads the metadata the tool reported rather than parsing the output. `go
+// test` prints two hundred lines; what the user needs on screen is "12 passed",
+// and rebuilding that by matching prose breaks the day the wording changes.
 func summariseResult(tool string, d protocol.ToolCompleted) string {
-	first := strings.TrimSpace(d.Output)
-	if i := strings.IndexByte(first, '\n'); i >= 0 {
-		first = first[:i]
-	}
 	if !d.OK {
-		if first == "" {
-			first = "failed"
+		if s := firstLine(d.Output); s != "" {
+			return s
 		}
-		return first
+		return "failed"
 	}
+
 	switch tool {
-	case "bash":
-		return first
-	case "read", "edit", "write", "glob", "grep", "plan":
-		if first == "" {
-			return "ok"
+	case "read":
+		if d.Lines > 0 {
+			s := fmt.Sprintf("%d lines", d.Lines)
+			if d.Truncated {
+				s += " (truncated)"
+			}
+			return s
 		}
-		return first
+	case "edit":
+		return fmt.Sprintf("+%d −%d", d.Added, d.Removed)
+	case "write":
+		if d.Removed == 0 && d.Added > 0 {
+			return fmt.Sprintf("created, %d lines", d.Added)
+		}
+		return fmt.Sprintf("+%d −%d", d.Added, d.Removed)
+	case "glob":
+		return plural(d.Files, "file", "files")
+	case "grep":
+		if d.Lines == 0 {
+			return "no matches"
+		}
+		return fmt.Sprintf("%s in %s",
+			plural(d.Lines, "match", "matches"), plural(d.Files, "file", "files"))
+	case "bash":
+		if d.HasExit {
+			if d.ExitCode == 0 {
+				return "exit 0"
+			}
+			return fmt.Sprintf("exit %d", d.ExitCode)
+		}
 	}
-	if first == "" {
-		return "ok"
+	if s := firstLine(d.Output); s != "" {
+		return s
 	}
-	return first
+	return "ok"
+}
+
+func firstLine(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[:i]
+	}
+	return s
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}
+
+// FormatDuration renders a tool's elapsed time the way a reader scans it:
+// milliseconds while it is fast enough not to notice, seconds once it is not.
+func FormatDuration(d time.Duration) string {
+	switch {
+	case d <= 0:
+		return ""
+	case d < time.Second:
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	case d < time.Minute:
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	default:
+		return fmt.Sprintf("%dm%02ds", int(d.Minutes()), int(d.Seconds())%60)
+	}
+}
+
+// ---------- the input line ----------
+//
+// Editing lives on the model rather than in the key handler so it is testable
+// without a terminal, and so the caret and the text can never disagree about
+// where they are.
+
+// Insert types text at the caret.
+func (m Model) Insert(s string) Model {
+	runes := []rune(m.Input)
+	at := clampInt(m.InputCursor, 0, len(runes))
+	m.Input = string(runes[:at]) + s + string(runes[at:])
+	m.InputCursor = at + len([]rune(s))
+	// Typing leaves the history: what is on the line is now the user's, not a
+	// recalled command they might still want back.
+	m.HistoryAt = -1
+	return m
+}
+
+// Backspace deletes before the caret.
+func (m Model) Backspace() Model {
+	runes := []rune(m.Input)
+	at := clampInt(m.InputCursor, 0, len(runes))
+	if at == 0 {
+		return m
+	}
+	m.Input = string(runes[:at-1]) + string(runes[at:])
+	m.InputCursor = at - 1
+	return m
+}
+
+// DeleteForward deletes under the caret.
+func (m Model) DeleteForward() Model {
+	runes := []rune(m.Input)
+	at := clampInt(m.InputCursor, 0, len(runes))
+	if at >= len(runes) {
+		return m
+	}
+	m.Input = string(runes[:at]) + string(runes[at+1:])
+	return m
+}
+
+// DeleteWord removes the word before the caret, trailing spaces included.
+func (m Model) DeleteWord() Model {
+	runes := []rune(m.Input)
+	at := clampInt(m.InputCursor, 0, len(runes))
+	i := at
+	for i > 0 && runes[i-1] == ' ' {
+		i--
+	}
+	for i > 0 && runes[i-1] != ' ' {
+		i--
+	}
+	m.Input = string(runes[:i]) + string(runes[at:])
+	m.InputCursor = i
+	return m
+}
+
+// SetInput replaces the line and puts the caret at its end.
+func (m Model) SetInput(s string) Model {
+	m.Input = s
+	m.InputCursor = len([]rune(s))
+	return m
+}
+
+// ---------- input history ----------
+
+// Remember records a sent line. Consecutive duplicates are collapsed: pressing
+// up twice should reach two different commands, not the same one again.
+func (m Model) Remember(text string) Model {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return m
+	}
+	if n := len(m.History); n > 0 && m.History[n-1] == text {
+		m.HistoryAt = -1
+		return m
+	}
+	m.History = append(append([]string(nil), m.History...), text)
+	m.HistoryAt = -1
+	return m
+}
+
+// HistoryPrev walks back through what was sent.
+func (m Model) HistoryPrev() Model {
+	if len(m.History) == 0 {
+		return m
+	}
+	if m.HistoryAt < 0 {
+		// Entering the history keeps whatever was being typed, so leaving it
+		// again does not silently discard a half-written message.
+		m.Draft = m.Input
+		m.HistoryAt = len(m.History)
+	}
+	if m.HistoryAt == 0 {
+		return m
+	}
+	m.HistoryAt--
+	return m.SetInput(m.History[m.HistoryAt])
+}
+
+// HistoryNext walks forward, and past the newest entry returns the draft.
+func (m Model) HistoryNext() Model {
+	if m.HistoryAt < 0 {
+		return m
+	}
+	m.HistoryAt++
+	if m.HistoryAt >= len(m.History) {
+		m.HistoryAt = -1
+		return m.SetInput(m.Draft)
+	}
+	return m.SetInput(m.History[m.HistoryAt])
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }

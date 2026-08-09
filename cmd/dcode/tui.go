@@ -108,12 +108,14 @@ func runTUI(args []string) error {
 		geo.PanelMode = tui.PanelHidden
 	}
 	geo.Unicode = supportsUnicode(os.Getenv)
+	geo.Palette = tui.Palette{Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)}
 
 	return tui.Run(ctx, tui.Options{
 		SessionID: sess.ID,
 		Workspace: sess.Workspace,
 		Model:     sess.Model,
 		Sandbox:   sess.SandboxMode,
+		Window:    sess.ContextWindow,
 		Transport: c,
 		Geometry:  geo,
 		Commands:  commands,

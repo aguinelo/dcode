@@ -517,3 +517,79 @@ Two smaller consequences, both found by writing the failing test first:
   the key that brings it back. Collapsed in silence is indistinguishable from
   broken, and the key was documented only inside the panel that was not on
   screen.
+
+---
+
+## Phase 11 — The interface
+
+Three things the user asked for — scrolling, a processing indicator, navigation
+— turned out to be mostly debt: the spec already promised `PgUp`/`PgDn`, `Esc`,
+`?` and an animated indicator, and none of them existed. The gap between spec
+and code was the work.
+
+### Rendering everything, then taking a window from it
+
+The renderer only ever produced the tail, which is why scrolling was impossible:
+there was nothing above the screen to scroll back to. `StreamLines` now renders
+the whole stream and `Window` takes the visible slice, both pure over the model.
+Scroll position is clamped rather than trusted, because content grows underneath
+it — a position valid one event ago can be past the end now.
+
+Following is the default and stops the moment the user scrolls up. Reading
+something while the stream pushes it off the screen is the single most
+irritating thing a live log can do. It resumes at the bottom, because that is
+what going there means.
+
+### Fixed: a letter was a shortcut
+
+`p` toggled the panel on an empty line, so typing "primeiro" produced "rimeiro".
+Found by a test that typed a word rather than a character. The rule that came
+out of it — a letter is never a shortcut on a line the user types into — is now
+RN-16, and the toggle is `Ctrl+P`.
+
+`?` stays, as punctuation and as the convention every pager already uses.
+
+### Elapsed time is the client's, the tool's duration is the daemon's
+
+The turn timer must advance between events, and a server timestamp is only right
+at the instant it arrives — so the client measures it. A tool's duration is the
+opposite: the client cannot see when execution began, only when the events
+arrived, so the daemon measures it and sends it. It is measured around `Execute`
+alone, because the wait for an approval is the user's time and folding it in
+would make every gated call look slow.
+
+### Colour is roles, and monochrome emits nothing
+
+The palette maps roles, not colours: a caller asking for "red" has already
+decided something the theme should decide. Two invariants make it removable —
+styling never changes measured width, and a disabled palette emits no escapes at
+all, not even a reset. The second was a real defect: `clipStyled` appended a
+reset unconditionally, so a `NO_COLOR` user got escape bytes in plain output and
+every width measurement counted them.
+
+### Summaries come from metadata, not from prose
+
+`read → 240 lines`, `edit → +24 −2`, `bash → exit 1` are in the spec and were
+being approximated from the first line of output. The tools now report what they
+did, and the protocol carries it. Rebuilding those numbers by matching text
+breaks the day the wording changes — in every client at once.
+
+### The usage was never arriving, for two separate reasons
+
+First, the OpenAI dialect reports `"usage": null` on every frame unless the
+request opts in with `stream_options.include_usage`. Every provider speaking
+that dialect is silent by default.
+
+Second, and only visible once the first was fixed: MiniMax attaches the usage to
+a **final frame that repeats `finish_reason`**, and never sends `[DONE]`.
+Terminating on the first finish threw the accounting away. `Decoder` gained
+`Close()` so the terminal event waits until the transport says nothing more is
+coming — while a stream that stops mid-message still reports a truncation rather
+than a clean finish.
+
+### The context meter disappeared on a large window
+
+M3's window is a million tokens, so five thousand tokens is zero percent in
+integer division and the meter never showed — precisely early in a long session,
+when it is most wanted. Below one percent it now says `ctx <1%` rather than
+rounding to nothing.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 )
@@ -311,5 +312,117 @@ func TestSummariseResultFallsBackToOK(t *testing.T) {
 	)
 	if m.Entries[0].Summary != "failed" {
 		t.Errorf("got %q", m.Entries[0].Summary)
+	}
+}
+
+// The one-line summary comes from what the tool reported, not from parsing its
+// prose. Rebuilding these numbers by matching text breaks the day the wording
+// changes, and every client would have to reimplement the same parsing.
+func TestToolSummariesComeFromTheMetadata(t *testing.T) {
+	for name, tc := range map[string]struct {
+		tool string
+		done protocol.ToolCompleted
+		want string
+	}{
+		"read":           {"read", protocol.ToolCompleted{OK: true, Lines: 240}, "240 lines"},
+		"read truncated": {"read", protocol.ToolCompleted{OK: true, Lines: 2000, Truncated: true}, "2000 lines (truncated)"},
+		"edit":           {"edit", protocol.ToolCompleted{OK: true, Added: 24, Removed: 2}, "+24 −2"},
+		"write new":      {"write", protocol.ToolCompleted{OK: true, Added: 120}, "created, 120 lines"},
+		"write replace":  {"write", protocol.ToolCompleted{OK: true, Added: 120, Removed: 118}, "+120 −118"},
+		"glob":           {"glob", protocol.ToolCompleted{OK: true, Files: 18}, "18 files"},
+		"glob one":       {"glob", protocol.ToolCompleted{OK: true, Files: 1}, "1 file"},
+		"grep":           {"grep", protocol.ToolCompleted{OK: true, Lines: 18, Files: 4}, "18 matches in 4 files"},
+		"grep none":      {"grep", protocol.ToolCompleted{OK: true}, "no matches"},
+		"bash ok":        {"bash", protocol.ToolCompleted{OK: true, HasExit: true}, "exit 0"},
+		"bash failed":    {"bash", protocol.ToolCompleted{OK: true, HasExit: true, ExitCode: 1}, "exit 1"},
+		// A failure says what went wrong, whatever the tool.
+		"failure":                     {"read", protocol.ToolCompleted{Output: "no such file\nstack"}, "no such file"},
+		"failure with nothing to say": {"read", protocol.ToolCompleted{}, "failed"},
+		// A tool with no metadata still gets a usable line rather than a blank.
+		"unknown tool":  {"custom", protocol.ToolCompleted{OK: true, Output: "pronto\nmais"}, "pronto"},
+		"unknown empty": {"custom", protocol.ToolCompleted{OK: true}, "ok"},
+	} {
+		if got := summariseResult(tc.tool, tc.done); got != tc.want {
+			t.Errorf("%s: got %q want %q", name, got, tc.want)
+		}
+	}
+}
+
+// A call that is still running shows that it is, and one that took long enough
+// to notice says how long. Every call carrying a duration turns the column into
+// noise nobody reads.
+func TestTheStreamShowsRunningStateAndSlowCalls(t *testing.T) {
+	m := NewModel("s", "/w", "m", "read-only")
+	m.Entries = []Entry{
+		{Kind: KindTool, Tool: "bash", Target: "go test", Running: true},
+		{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "12 lines", Duration: 30 * time.Millisecond},
+		{Kind: KindTool, Tool: "bash", Target: "go build", Summary: "exit 0", Duration: 4 * time.Second},
+	}
+	got := Render(m, DefaultGeometry(100, 12))
+
+	if !strings.Contains(got, "4.0s") {
+		t.Errorf("a slow call must say so:\n%s", got)
+	}
+	if strings.Contains(got, "30ms") {
+		t.Errorf("a fast call must not clutter the column:\n%s", got)
+	}
+}
+
+// The duration the daemon measured is what the client shows: the client cannot
+// see when the tool actually started.
+func TestDurationComesFromTheEvent(t *testing.T) {
+	m := apply(t, NewModel("", "", "", ""),
+		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: "bash"}),
+		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{
+			OK: true, HasExit: true, DurationMS: 1500,
+		}),
+	)
+	if m.Entries[0].Duration != 1500*time.Millisecond {
+		t.Errorf("got %v", m.Entries[0].Duration)
+	}
+	if m.Entries[0].Running {
+		t.Error("a completed call is not running")
+	}
+}
+
+// The context meter needs a denominator: "12400 tokens" answers nothing.
+func TestContextPercentNeedsTheWindow(t *testing.T) {
+	withWindow := apply(t, NewModel("", "", "", ""),
+		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ContextWindow: 100000}),
+		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
+			Usage: &protocol.Usage{InputTokens: 34000, OutputTokens: 800},
+		}),
+	)
+	if withWindow.ContextPct != 34 {
+		t.Errorf("got %d%%", withWindow.ContextPct)
+	}
+	if !strings.Contains(Render(withWindow, DefaultGeometry(100, 10)), "ctx 34%") {
+		t.Error("the meter must be on the status bar")
+	}
+
+	// A large window is where the meter matters most early on, and it is
+	// exactly where integer division erases it.
+	big := apply(t, NewModel("", "", "", ""),
+		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ContextWindow: 1_000_000}),
+		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
+			Usage: &protocol.Usage{InputTokens: 5200},
+		}),
+	)
+	if got := Render(big, DefaultGeometry(100, 10)); !strings.Contains(got, "ctx <1%") {
+		t.Errorf("a small fraction of a big window must still show:\n%s", got)
+	}
+
+	// Without a window there is no percentage to state, and inventing one
+	// would be worse than saying nothing.
+	noWindow := apply(t, NewModel("", "", "", ""),
+		ev(t, 1, protocol.EventTurnCompleted, protocol.TurnCompleted{
+			Usage: &protocol.Usage{InputTokens: 34000},
+		}),
+	)
+	if noWindow.ContextPct != 0 {
+		t.Errorf("got %d%%", noWindow.ContextPct)
+	}
+	if strings.Contains(Render(noWindow, DefaultGeometry(100, 10)), "ctx") {
+		t.Error("no window, no meter")
 	}
 }

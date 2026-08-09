@@ -19,6 +19,9 @@ type Session struct {
 	Model     string
 	Mode      string
 	CreatedAt time.Time
+	// ContextWindow is the model's window, so a client can turn a token count
+	// into the percentage a person can act on.
+	ContextWindow int
 
 	Log    *EventLog
 	engine *loop.Engine
@@ -60,6 +63,7 @@ func (s *Session) Describe() protocol.Session {
 	return protocol.Session{
 		ID: s.ID, State: state, Workspace: s.Workspace, Model: s.Model,
 		SandboxMode: s.Mode, CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
+		ContextWindow: s.ContextWindow,
 	}
 }
 

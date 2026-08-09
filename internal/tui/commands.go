@@ -102,13 +102,16 @@ func HelpText(user config.CommandSet) string {
 	b.WriteString("Keys\n")
 	for _, k := range [][2]string{
 		{"enter", "send (queues while a turn is running)"},
-		{"↑ ↓", "move through the stream"},
+		{"↑ ↓", "history on an empty line, otherwise move through the stream"},
+		{"PgUp/PgDn", "scroll · Home and End jump to either end"},
 		{"tab", "expand or collapse the selected entry"},
-		{"p", "show or hide the plan panel"},
+		{"esc", "close the expansion, then the selection"},
+		{"^P", "show or hide the plan panel"},
+		{"^A ^E ^W ^U ^K", "start, end, delete word, clear, cut to end"},
 		{"^C", "interrupt the turn, or quit when idle"},
 		{"^D", "quit"},
 	} {
-		fmt.Fprintf(&b, "  %-8s %s\n", k[0], k[1])
+		fmt.Fprintf(&b, "  %-16s %s\n", k[0], k[1])
 	}
 
 	b.WriteString("\nCommands\n")

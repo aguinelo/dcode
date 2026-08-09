@@ -70,6 +70,15 @@ type Transport interface {
 // assembled.
 type Decoder interface {
 	Decode(ev WireEvent) ([]StreamEvent, error)
+
+	// Close reports what the end of the stream means.
+	//
+	// A dialect can finish a message and then keep talking: the OpenAI one
+	// repeats finish_reason and attaches the token usage to the last frame, so
+	// terminating on the first finish throws the accounting away. The decoder
+	// therefore holds the terminal event until the transport says there is
+	// nothing more coming.
+	Close() []StreamEvent
 }
 
 // Family is the adaptation layer.
@@ -171,8 +180,16 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, 
 			return
 		case wev, open := <-raw:
 			if !open {
-				// The transport closed without saying why. Treat it as a
-				// truncated stream rather than a clean finish: a silent
+				// The decoder gets the last word: a dialect that ends by
+				// simply stopping still finished cleanly, and only it knows
+				// whether what it saw amounts to a complete message.
+				for _, ev := range dec.Close() {
+					if !emit(ev) {
+						return
+					}
+				}
+				// Otherwise the transport closed without saying why. Treat it
+				// as a truncated stream rather than a clean finish: a silent
 				// success here would hand the loop a half-formed turn.
 				if !terminal {
 					emit(errorEvent(&ProviderError{

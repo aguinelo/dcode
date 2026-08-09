@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/mattn/go-runewidth"
@@ -32,6 +33,7 @@ type Geometry struct {
 
 	DiffMaxLines int
 	Unicode      bool
+	Palette      Palette
 }
 
 // DefaultGeometry returns the documented defaults.
@@ -124,41 +126,27 @@ func Render(m Model, g Geometry) string {
 		return ""
 	}
 	showPanel := g.ShowPanel(len(m.Plan) > 0)
-	streamW := g.StreamWidth(showPanel)
 
 	var b strings.Builder
 	b.WriteString(renderStatus(m, g, showPanel))
 	b.WriteString("\n")
 
-	bodyH := g.Height - 2
-	if bodyH < 1 {
-		bodyH = 1
-	}
-
-	var body []string
-	if m.ShowEmptyState() {
-		body = emptyState(m, g, streamW)
-	} else {
-		body = renderStream(m, g, streamW)
-	}
+	body := StreamLines(m, g)
+	visible, top, total, height := Window(m, g, body)
 
 	var panel []string
 	if showPanel {
 		panel = renderPanel(m, g)
 	}
 
-	// Show the tail: during a turn the newest output is what matters.
-	if len(body) > bodyH {
-		body = body[len(body)-bodyH:]
-	}
-
-	for i := 0; i < bodyH; i++ {
+	streamW := g.StreamWidth(showPanel)
+	for i := 0; i < height; i++ {
 		left := ""
-		if i < len(body) {
-			left = body[i]
+		if i < len(visible) {
+			left = visible[i]
 		}
 		if !showPanel {
-			b.WriteString(clip(left, g.Width))
+			b.WriteString(left)
 			b.WriteString("\n")
 			continue
 		}
@@ -166,13 +154,17 @@ func Render(m Model, g Geometry) string {
 		if i < len(panel) {
 			right = panel[i]
 		}
-		b.WriteString(pad(clip(left, streamW), streamW))
+		b.WriteString(padStyled(left, streamW))
 		b.WriteString("│")
 		b.WriteString(clip(right, g.panelWidth()))
 		b.WriteString("\n")
 	}
 
-	b.WriteString(renderInput(m, g))
+	if m.workingVisible() {
+		b.WriteString(renderWorking(m, g))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderInput(m, g, ScrollHint(m, g, top, total, height)))
 
 	if m.Pending != nil {
 		return overlay(b.String(), renderApproval(*m.Pending, g), g)
@@ -180,90 +172,159 @@ func Render(m Model, g Geometry) string {
 	return b.String()
 }
 
+// StreamLines renders the whole stream, not just what fits.
+//
+// Everything, because the window is taken from it afterwards: rendering only
+// the tail is what made scrolling impossible, since there was nothing above the
+// screen to scroll back to.
+func StreamLines(m Model, g Geometry) []string {
+	w := g.StreamWidth(g.ShowPanel(len(m.Plan) > 0))
+	if m.ShowEmptyState() {
+		return emptyState(m, g, w)
+	}
+	return renderStream(m, g, w)
+}
+
 // renderStatus is the always-visible bar.
 func renderStatus(m Model, g Geometry, showPanel bool) string {
 	gl := glyphs(g.Unicode)
-	state := gl.done
+	p := g.Palette
+
+	state, stateStyle := gl.done, StyleOK
 	switch m.State {
 	case protocol.SessionStateRunning:
-		state = gl.active
+		state, stateStyle = Spinner(m.Frame, g.Unicode), StyleAccent
 	case protocol.SessionStateBlocked:
-		state = "!"
+		state, stateStyle = "!", StyleWarn
+	}
+
+	parts := []string{
+		p.Apply(stateStyle, state) + " " + p.Apply(StyleBold, "dcode"),
+		p.Apply(StyleDim, m.Model),
 	}
 
 	// The sandbox mode is not information, it is a safety indicator: the one
 	// piece of state where being wrong is dangerous. full-access is always
-	// loud, and must survive with colour switched off.
-	mode := m.Sandbox
-	if mode == "full-access" {
-		mode = "!! FULL-ACCESS !!"
+	// loud, and must survive with colour switched off — which is why it also
+	// changes the text and not only the colour.
+	if m.Sandbox == "full-access" {
+		parts = append(parts, p.Apply(StyleDanger, " !! FULL-ACCESS !! "))
+	} else {
+		parts = append(parts, p.Apply(StyleDim, m.Sandbox))
 	}
 
-	parts := []string{state + " dcode", m.Model, mode}
-	if m.ContextPct > 0 {
-		parts = append(parts, fmt.Sprintf("ctx %d%%", m.ContextPct))
+	if label := ContextLabel(m.InputTokens, m.Window); label != "" {
+		parts = append(parts, p.Apply(ContextStyle(m.ContextPct), label))
 	}
 	if !showPanel {
 		// A collapsed panel that says nothing is indistinguishable from a
 		// broken one, and the key that brings it back is only documented
 		// inside the panel itself.
 		if s := m.PlanSummary(); s != "" {
-			parts = append(parts, s, "[p] plan")
+			parts = append(parts, p.Apply(StyleDim, s), p.Apply(StyleDim, "[^p] plan"))
 		}
 	}
-	return clip(strings.Join(parts, "  "), g.Width)
+	return clipStyled(strings.Join(parts, "  "), g.Width)
 }
 
 func renderStream(m Model, g Geometry, w int) []string {
 	gl := glyphs(g.Unicode)
+	p := g.Palette
 	var out []string
 
 	for i, e := range m.Entries {
+		selected := i == m.Cursor
 		cursor := "  "
-		if i == m.Cursor {
-			cursor = "> "
+		if selected {
+			cursor = p.Apply(StyleAccent, "> ")
 		}
+
 		switch e.Kind {
 		case KindAssistant:
 			for _, line := range wrap(e.Summary, w-2) {
 				out = append(out, "  "+line)
 			}
+
 		case KindTool:
-			head := fmt.Sprintf("%s%s %-6s %s", cursor, gl.bullet, e.Tool, e.Target)
-			if e.Summary != "" && e.Summary != "…" {
-				head += "  " + e.Summary
-			}
-			out = append(out, clip(head, w))
+			out = append(out, clipStyled(renderToolLine(e, cursor, gl, p), w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g.DiffMaxLines)...)
+				out = append(out, detailLines(e.Detail, w, g)...)
 			}
+
 		case KindError:
-			out = append(out, clip(cursor+"! "+e.Summary, w))
+			head := cursor + p.Apply(StyleError, "! "+e.Summary)
+			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g.DiffMaxLines)...)
+				out = append(out, detailLines(e.Detail, w, g)...)
 			}
+
 		case KindNote:
-			out = append(out, clip("  ~ "+e.Summary, w))
+			for j, line := range wrap(e.Summary, w-4) {
+				prefix := "  ~ "
+				if j > 0 {
+					prefix = "    "
+				}
+				out = append(out, clipStyled(p.Apply(StyleDim, prefix+line), w))
+			}
+
 		case KindUser:
-			out = append(out, clip("> "+e.Summary, w))
+			for j, line := range wrap(e.Summary, w-2) {
+				prefix := "> "
+				if j > 0 {
+					prefix = "  "
+				}
+				out = append(out, clipStyled(p.Apply(StyleBold, prefix+line), w))
+			}
 		}
 	}
 	return out
 }
 
-func detailLines(detail string, w, max int) []string {
+// renderToolLine is the one-line form of a call: what ran, on what, how it went
+// and how long it took.
+func renderToolLine(e Entry, cursor string, gl marks, p Palette) string {
+	bullet := p.Apply(StyleAccent, gl.bullet)
+	if e.IsError {
+		bullet = p.Apply(StyleError, gl.bullet)
+	}
+	head := fmt.Sprintf("%s%s %-6s %s", cursor, bullet, e.Tool, e.Target)
+
+	switch {
+	case e.Running:
+		// No summary yet, and saying nothing reads as finished-with-no-output.
+		head += "  " + p.Apply(StyleDim, "…")
+	case e.Summary != "":
+		style := StyleDim
+		if e.IsError {
+			style = StyleError
+		}
+		head += "  " + p.Apply(style, e.Summary)
+	}
+	// Only when it was slow enough to be worth a glance. Every call carrying a
+	// duration turns the column into noise nobody reads.
+	if d := FormatDuration(e.Duration); d != "" && e.Duration >= 500*time.Millisecond {
+		head += "  " + p.Apply(StyleDim, d)
+	}
+	return head
+}
+
+// detailLines renders expanded output, colouring it as a diff when it looks
+// like one. The diff is what gets reviewed, so it is the one place where colour
+// is doing work rather than decorating.
+func detailLines(detail string, w int, g Geometry) []string {
 	lines := strings.Split(strings.TrimRight(detail, "\n"), "\n")
 	truncated := false
-	if max > 0 && len(lines) > max {
+	if max := g.DiffMaxLines; max > 0 && len(lines) > max {
 		lines = lines[:max]
 		truncated = true
 	}
 	out := make([]string, 0, len(lines)+1)
 	for _, l := range lines {
-		out = append(out, clip("    │ "+l, w))
+		body := g.Palette.Apply(DiffStyle(l), l)
+		out = append(out, clipStyled("    │ "+body, w))
 	}
 	if truncated {
-		out = append(out, clip("    │ … output truncated", w))
+		out = append(out, clipStyled(g.Palette.Apply(StyleDim, "    │ … output truncated"), w))
 	}
 	return out
 }
@@ -297,15 +358,86 @@ func renderPanel(m Model, g Geometry) []string {
 	if s := m.PlanSummary(); s != "" {
 		out = append(out, clip(" "+s, w))
 	}
-	out = append(out, "", clip(" [p] hide panel", w))
+	out = append(out, "", clip(" [^p] hide panel", w))
 	return out
 }
 
-func renderInput(m Model, g Geometry) string {
-	if len(m.Queue) > 0 {
-		return clip(fmt.Sprintf("(%d queued) > %s", len(m.Queue), m.Input), g.Width)
+// renderWorking is the line Claude Code taught everyone to expect: something is
+// happening, this is how long it has been happening, and this is how to stop it.
+//
+// Without it a long turn is indistinguishable from a hung one, and the user's
+// only move is to kill the process.
+func renderWorking(m Model, g Geometry) string {
+	p := g.Palette
+	parts := []string{p.Apply(StyleAccent, Spinner(m.Frame, g.Unicode))}
+
+	verb := "working"
+	for i := len(m.Entries) - 1; i >= 0; i-- {
+		if m.Entries[i].Running {
+			verb = m.Entries[i].Tool
+			if tgt := m.Entries[i].Target; tgt != "" {
+				verb += " " + tgt
+			}
+			break
+		}
 	}
-	return clip("> "+m.Input, g.Width)
+	parts = append(parts, p.Apply(StyleBold, verb))
+
+	if !m.TurnStartedAt.IsZero() && !m.Now.IsZero() {
+		if d := m.Now.Sub(m.TurnStartedAt); d > 0 {
+			parts = append(parts, p.Apply(StyleDim, FormatDuration(d)))
+		}
+	}
+	if tk := humanTokens(m.OutputTokens); tk != "" {
+		parts = append(parts, p.Apply(StyleDim, tk+" tok"))
+	}
+	// The way out belongs next to the thing you want out of.
+	parts = append(parts, p.Apply(StyleDim, "^C interrupts"))
+
+	return clipStyled(strings.Join(parts, "  "), g.Width)
+}
+
+func renderInput(m Model, g Geometry, hint string) string {
+	p := g.Palette
+	prompt := "> "
+	if len(m.Queue) > 0 {
+		prompt = fmt.Sprintf("(%d queued) > ", len(m.Queue))
+	}
+
+	line := prompt + m.Input
+	// The caret is drawn rather than left to the terminal: the input sits on a
+	// line the renderer owns, and a hardware cursor would be wherever the last
+	// write left it.
+	if p.Enabled {
+		line = prompt + renderCaret(m, p)
+	}
+	if hint == "" {
+		return clipStyled(line, g.Width)
+	}
+
+	// The hint is right-aligned so it never moves as you type.
+	room := g.Width - clipWidth(prompt+m.Input) - 1
+	if room < clipWidth(hint) {
+		return clipStyled(line, g.Width)
+	}
+	pad := strings.Repeat(" ", room-clipWidth(hint)+1)
+	return clipStyled(line+pad+p.Apply(StyleDim, hint), g.Width)
+}
+
+// renderCaret marks where typing will land.
+func renderCaret(m Model, p Palette) string {
+	runes := []rune(m.Input)
+	at := m.InputCursor
+	if at < 0 {
+		at = 0
+	}
+	if at > len(runes) {
+		at = len(runes)
+	}
+	if at == len(runes) {
+		return string(runes) + p.Apply(StyleCursor, " ")
+	}
+	return string(runes[:at]) + p.Apply(StyleCursor, string(runes[at])) + string(runes[at+1:])
 }
 
 // renderApproval is the modal.

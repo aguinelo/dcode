@@ -43,8 +43,9 @@ func globTool() []ce.ToolDef {
 	}}
 }
 
-// decodeAll runs a whole fixture through one decoder, the way a real stream
-// arrives.
+// decodeAll runs a whole fixture through one decoder and then closes it, which
+// is exactly the lifecycle the pump drives. Leaving out the close is how a
+// helper stops modelling the thing it is testing.
 func decodeAll(t *testing.T, f Family, evs []WireEvent, tools []ce.ToolDef) []StreamEvent {
 	t.Helper()
 	dec := f.NewDecoder(tools)
@@ -56,7 +57,7 @@ func decodeAll(t *testing.T, f Family, evs []WireEvent, tools []ce.ToolDef) []St
 		}
 		out = append(out, got...)
 	}
-	return out
+	return append(out, dec.Close()...)
 }
 
 // Regression: a tool call's arguments arrive across frames, keyed by index.
@@ -158,12 +159,11 @@ func TestTheFixtureEndsWithExactlyOneTerminalEvent(t *testing.T) {
 			terminals++
 		}
 	}
-	if terminals == 0 {
-		t.Fatal("the stream never terminates")
+	// Exactly one: the fixture repeats finish_reason, and emitting on each
+	// would let a turn continue past its end — or run every tool twice.
+	if terminals != 1 {
+		t.Fatalf("want exactly one terminal event, got %d", terminals)
 	}
-	// The fixture repeats finish_reason, which a real provider does. The
-	// decoder may report it more than once; the pump is what collapses it to
-	// one, and that invariant is asserted where the pump lives.
 	if got[len(got)-1].Type != EventDone {
 		t.Errorf("the last event must be terminal, got %s", got[len(got)-1].Type)
 	}
@@ -294,5 +294,124 @@ func TestAnswerText(t *testing.T) {
 		if got != tc.want || ok != tc.ok {
 			t.Errorf("%q: got (%q, %v) want (%q, %v)", tc.in, got, ok, tc.want, tc.ok)
 		}
+	}
+}
+
+// Regression: the OpenAI dialect reports `"usage": null` on every frame unless
+// the request opts in, so the context meter had no numerator and the cache
+// saving was invisible. It is opt-in in the dialect, which means every provider
+// speaking it stays silent by default.
+func TestTheOpenAIRequestAsksForUsage(t *testing.T) {
+	wire, err := MiniMaxM3{}.Encode(Request{Model: "MiniMax-M3"}, TransportOpenAI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		StreamOptions *struct {
+			IncludeUsage bool `json:"include_usage"`
+		} `json:"stream_options"`
+	}
+	if err := json.Unmarshal(wire.Body, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.StreamOptions == nil || !body.StreamOptions.IncludeUsage {
+		t.Fatalf("usage must be requested: %s", wire.Body)
+	}
+}
+
+// And when it arrives, it reaches the loop rather than being dropped with the
+// frame that carried it.
+func TestUsageFromTheFinalFrameIsReported(t *testing.T) {
+	evs := []WireEvent{
+		{Data: []byte(`{"choices":[{"delta":{"content":"oi"}}]}`)},
+		{Data: []byte(`{"choices":[],"usage":{"prompt_tokens":180,"completion_tokens":20,` +
+			`"prompt_tokens_details":{"cached_tokens":120}}}`)},
+	}
+	got := decodeAll(t, MiniMaxM3{}, evs, nil)
+
+	last := got[len(got)-1]
+	if last.Type != EventDone || last.Usage == nil {
+		t.Fatalf("got %+v", last)
+	}
+	if last.Usage.InputTokens != 180 || last.Usage.OutputTokens != 20 {
+		t.Errorf("got %+v", last.Usage)
+	}
+	// The cache read is the only direct evidence that append-only context is
+	// paying for itself.
+	if last.Usage.CacheReadTokens != 120 {
+		t.Errorf("got %+v", last.Usage)
+	}
+}
+
+// Regression: the usage rides on a frame that repeats finish_reason, so
+// terminating on the first finish threw the token accounting away — and with no
+// numerator the context meter never appeared at all.
+//
+// This dialect also never sends [DONE], which is why the decoder cannot simply
+// wait for one.
+func TestUsageSurvivesARepeatedFinishReason(t *testing.T) {
+	evs := frames(t, "testdata/minimax-m3-usage.sse")
+	dec := MiniMaxM3{}.NewDecoder(nil)
+
+	var got []StreamEvent
+	for _, ev := range evs {
+		out, err := dec.Decode(ev)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, out...)
+	}
+	got = append(got, dec.Close()...)
+
+	var terminals []StreamEvent
+	for _, ev := range got {
+		if ev.Type == EventDone {
+			terminals = append(terminals, ev)
+		}
+	}
+	if len(terminals) != 1 {
+		t.Fatalf("exactly one terminal event, got %d", len(terminals))
+	}
+	if terminals[0].Usage == nil {
+		t.Fatal("the usage must survive to the terminal event")
+	}
+	if terminals[0].Usage.InputTokens == 0 || terminals[0].Usage.OutputTokens == 0 {
+		t.Errorf("got %+v", terminals[0].Usage)
+	}
+	// The cache read is the only direct evidence that append-only context is
+	// paying for itself.
+	if terminals[0].Usage.CacheReadTokens == 0 {
+		t.Errorf("the cached tokens must survive: %+v", terminals[0].Usage)
+	}
+}
+
+// A stream that stops after reporting a finish is complete, even with no
+// trailing usage frame and no [DONE].
+func TestCloseTerminatesAFinishedStream(t *testing.T) {
+	dec := MiniMaxM3{}.NewDecoder(nil)
+	if _, err := dec.Decode(WireEvent{
+		Data: []byte(`{"choices":[{"finish_reason":"stop","delta":{"content":"oi"}}]}`)}); err != nil {
+		t.Fatal(err)
+	}
+	got := dec.Close()
+	if len(got) != 1 || got[0].Type != EventDone {
+		t.Fatalf("got %+v", got)
+	}
+	// And only once.
+	if again := dec.Close(); len(again) != 0 {
+		t.Errorf("got %+v", again)
+	}
+}
+
+// A stream cut off mid-message is a truncation, not a clean finish: a silent
+// success would hand the loop a half-formed turn.
+func TestCloseDoesNotInventAnEndingForATruncatedStream(t *testing.T) {
+	dec := MiniMaxM3{}.NewDecoder(nil)
+	if _, err := dec.Decode(WireEvent{
+		Data: []byte(`{"choices":[{"delta":{"content":"meio"}}]}`)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := dec.Close(); len(got) != 0 {
+		t.Errorf("got %+v", got)
 	}
 }

@@ -72,6 +72,10 @@ type Session struct {
 	SandboxMode string       `json:"sandbox_mode"`
 	CreatedAt   time.Time    `json:"created_at"`
 	LastSeq     uint64       `json:"last_seq"`
+	// ContextWindow is the model's window in tokens. The client needs it to
+	// turn a token count into the percentage a person can act on; without it,
+	// "12400 tokens" answers nothing.
+	ContextWindow int `json:"context_window,omitempty"`
 }
 
 // CreateSessionRequest opens a session. Workspace must be absolute.
@@ -182,11 +186,36 @@ type (
 		OK         bool   `json:"ok"`
 		Output     string `json:"output"`
 		Truncated  bool   `json:"truncated"`
+
+		// What the call did, stated once by the tool that knows.
+		//
+		// A client that parses Output to rebuild these numbers breaks silently
+		// the day the wording changes, and every client has to reimplement the
+		// same parsing. All optional: a tool reports what applies to it.
+		Lines      int  `json:"lines,omitempty"`
+		Files      int  `json:"files,omitempty"`
+		Added      int  `json:"added,omitempty"`
+		Removed    int  `json:"removed,omitempty"`
+		ExitCode   int  `json:"exit_code,omitempty"`
+		HasExit    bool `json:"has_exit,omitempty"`
+		DurationMS int  `json:"duration_ms,omitempty"`
 	}
 	// TurnCompleted ends a turn with one of the Stop* reasons.
 	TurnCompleted struct {
 		TurnID string `json:"turn_id"`
 		Reason string `json:"reason"`
+		// Usage is what the turn cost. Absent when the provider did not report
+		// it, which is why it is a pointer: zero tokens and unknown tokens are
+		// different facts and a client shows them differently.
+		Usage *Usage `json:"usage,omitempty"`
+	}
+
+	// Usage is the token accounting for a turn.
+	Usage struct {
+		InputTokens      int `json:"input_tokens"`
+		OutputTokens     int `json:"output_tokens"`
+		CacheReadTokens  int `json:"cache_read_tokens,omitempty"`
+		CacheWriteTokens int `json:"cache_write_tokens,omitempty"`
 	}
 	// SessionCompacted records a context compaction.
 	SessionCompacted struct {

@@ -113,10 +113,24 @@ type oaRequest struct {
 	Tools     []oaTool    `json:"tools,omitempty"`
 	Stream    bool        `json:"stream"`
 	MaxTokens int         `json:"max_tokens,omitempty"`
+	// StreamOptions asks for the final usage frame.
+	//
+	// Without it the dialect reports `"usage": null` on every frame and never
+	// sends a total, so the context meter has no numerator and the cache
+	// saving is invisible. It is opt-in in the dialect, which means every
+	// provider speaking it is silent by default.
+	StreamOptions *oaStreamOptions `json:"stream_options,omitempty"`
+}
+
+type oaStreamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
 }
 
 func encodeOpenAI(req Request) (WireRequest, error) {
-	body := oaRequest{Model: req.Model, Stream: true, MaxTokens: req.MaxTokens}
+	body := oaRequest{
+		Model: req.Model, Stream: true, MaxTokens: req.MaxTokens,
+		StreamOptions: &oaStreamOptions{IncludeUsage: true},
+	}
 
 	for _, m := range req.Messages {
 		om := oaMessage{Role: string(m.Role), Content: m.Text}
@@ -188,6 +202,11 @@ type openAIDecoder struct {
 	order   []int
 
 	flushed bool
+	// finished records a finish_reason seen without usage attached, so the
+	// terminal event can wait for the frame that carries it.
+	finished bool
+	// terminated records that the terminal event has already gone out.
+	terminated bool
 }
 
 type partialCall struct {
@@ -203,7 +222,7 @@ func (d *openAIDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 	}
 	if data == "[DONE]" {
 		out, err := d.flush()
-		return append(out, StreamEvent{Type: EventDone}), err
+		return append(out, d.terminal(nil)...), err
 	}
 
 	var c oaChunk
@@ -216,11 +235,11 @@ func (d *openAIDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 
 	if c.Usage != nil {
 		out, err := d.flush()
-		return append(out, StreamEvent{Type: EventDone, Usage: &Usage{
+		return append(out, d.terminal(&Usage{
 			InputTokens:     c.Usage.PromptTokens,
 			OutputTokens:    c.Usage.CompletionTokens,
 			CacheReadTokens: c.Usage.PromptTokensDetails.CachedTokens,
-		}}), err
+		})...), err
 	}
 	if len(c.Choices) == 0 {
 		return nil, nil
@@ -248,9 +267,30 @@ func (d *openAIDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		if err != nil {
 			return out, err
 		}
-		out = append(out, StreamEvent{Type: EventDone})
+		// Finished, but not necessarily over: the usage rides on a later frame
+		// that repeats this one. Terminating here is what threw the token
+		// accounting away.
+		d.finished = true
 	}
 	return out, nil
+}
+
+// terminal emits the single end-of-stream event, at most once.
+func (d *openAIDecoder) terminal(u *Usage) []StreamEvent {
+	if d.terminated {
+		return nil
+	}
+	d.terminated = true
+	return []StreamEvent{{Type: EventDone, Usage: u}}
+}
+
+// Close ends a stream that simply stopped. Only a stream that reported a finish
+// counts as complete; anything else is a truncation, and the pump says so.
+func (d *openAIDecoder) Close() []StreamEvent {
+	if !d.finished {
+		return nil
+	}
+	return d.terminal(nil)
 }
 
 // absorb folds one fragment into the call it belongs to.
@@ -450,10 +490,15 @@ type anEvent struct {
 type anthropicDecoder struct {
 	tools []ce.ToolDef
 
-	pending map[int]*partialCall
-	order   []int
-	flushed bool
+	pending    map[int]*partialCall
+	order      []int
+	flushed    bool
+	terminated bool
 }
+
+// Close is a no-op for this dialect: message_stop is explicit, so a stream that
+// ends without one really was truncated.
+func (d *anthropicDecoder) Close() []StreamEvent { return nil }
 
 func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 	data := strings.TrimSpace(string(ev.Data))
@@ -496,6 +541,10 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		if err != nil {
 			return out, err
 		}
+		if d.terminated {
+			return out, nil
+		}
+		d.terminated = true
 		se := StreamEvent{Type: EventDone}
 		if e.Usage != nil {
 			se.Usage = &Usage{

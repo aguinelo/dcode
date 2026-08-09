@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -32,6 +33,9 @@ type Options struct {
 	Workspace string
 	Model     string
 	Sandbox   string
+	// Window is the model's context window, so a token count can become the
+	// percentage a person can act on.
+	Window    int
 	Transport Transport
 	Geometry  Geometry
 	QueueMax  int
@@ -47,6 +51,10 @@ type Options struct {
 	// Notice is the passive version check. It runs off the critical path and
 	// its failure is silent by contract.
 	Notice func(context.Context) string
+
+	// Now is the clock for elapsed time. Injected so a test can assert an
+	// exact duration instead of sleeping for one.
+	Now func() time.Time
 }
 
 type program struct {
@@ -86,6 +94,8 @@ func Run(ctx context.Context, opts Options) error {
 		ctx:   runCtx,
 	}
 	p.cancel = cancel
+	p.model.Window = opts.Window
+	p.model.Now = p.now()
 	p.attach(opts.SessionID)
 
 	// A user command that shadows a built-in is reported rather than obeyed:
@@ -120,11 +130,28 @@ type noteMsg string
 type switchedMsg struct{ session protocol.Session }
 
 func (p *program) Init() tea.Cmd {
-	cmds := []tea.Cmd{p.waitForEvent()}
+	cmds := []tea.Cmd{p.waitForEvent(), p.tick()}
 	if p.opts.Notice != nil {
 		cmds = append(cmds, p.checkVersion())
 	}
 	return tea.Batch(cmds...)
+}
+
+// tickInterval is the animation rate: fast enough to read as motion, slow
+// enough that an idle session is not repainting ten times a second.
+const tickInterval = 120 * time.Millisecond
+
+type tickMsg time.Time
+
+func (p *program) tick() tea.Cmd {
+	return tea.Tick(tickInterval, func(t time.Time) tea.Msg { return tickMsg(t) })
+}
+
+func (p *program) now() time.Time {
+	if p.opts.Now != nil {
+		return p.opts.Now()
+	}
+	return time.Now()
 }
 
 func (p *program) checkVersion() tea.Cmd {
@@ -162,6 +189,15 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.geo.Width, p.geo.Height = msg.Width, msg.Height
 		return p, nil
 
+	case tickMsg:
+		p.model.Now = p.now()
+		// The frame only advances while something is running: an idle screen
+		// that keeps repainting burns a laptop battery for no information.
+		if p.model.State == protocol.SessionStateRunning {
+			p.model.Frame++
+		}
+		return p, p.tick()
+
 	case noteMsg:
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: string(msg)})
 		return p, nil
@@ -176,6 +212,7 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return p, p.waitForEvent()
 
 	case eventMsg:
+		p.model.Now = p.now()
 		p.model = p.model.Apply(protocol.Event(msg))
 		// The queue drains when the session goes idle: the protocol refuses a
 		// concurrent turn, so waiting here is what turns a refusal into a
@@ -224,50 +261,151 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return p.onEnter()
 
-	case "backspace":
-		if n := len(p.model.Input); n > 0 {
-			p.model.Input = p.model.Input[:n-1]
+	// ---------- scrolling ----------
+	//
+	// These never depend on what is in the input line: a key that sometimes
+	// scrolls and sometimes types is a key nobody trusts.
+	case "pgup":
+		p.model = p.model.ScrollBy(-PageSize(p.model, p.geo), p.geo)
+		return p, nil
+	case "pgdown":
+		p.model = p.model.ScrollBy(PageSize(p.model, p.geo), p.geo)
+		return p, nil
+	case "home":
+		p.model = p.model.ScrollToTop()
+		return p, nil
+	case "end":
+		p.model = p.model.ScrollToBottom(p.geo)
+		return p, nil
+	case "ctrl+p":
+		// The panel toggle is a control key, not a letter. As a bare `p` it ate
+		// the first character of every message starting with one — "primeiro",
+		// "please", "por favor" — which is the exact failure the rest of this
+		// switch is written to avoid.
+		if p.geo.ShowPanel(len(p.model.Plan) > 0) {
+			p.geo.PanelMode = PanelHidden
+		} else {
+			p.geo.PanelMode = PanelShown
 		}
 		return p, nil
 
+	case "shift+up", "ctrl+up":
+		p.model = p.model.ScrollBy(-1, p.geo)
+		return p, nil
+	case "shift+down", "ctrl+down":
+		p.model = p.model.ScrollBy(1, p.geo)
+		return p, nil
+
+	// ---------- the disputed arrows ----------
+	//
+	// Empty input means the user is reaching for what they typed before; input
+	// with text means they are working on the stream. It is the reading that
+	// costs nothing to be wrong about: with text on the line, history would
+	// destroy what they were writing.
 	case "up":
-		if p.model.Cursor > 0 {
-			p.model.Cursor--
-		} else if p.model.Cursor < 0 && len(p.model.Entries) > 0 {
-			p.model.Cursor = len(p.model.Entries) - 1
+		if p.model.Input == "" && len(p.model.History) > 0 && p.model.Cursor < 0 {
+			p.model = p.model.HistoryPrev()
+			return p, nil
+		}
+		return p.moveCursor(-1)
+	case "down":
+		if p.model.HistoryAt >= 0 {
+			p.model = p.model.HistoryNext()
+			return p, nil
+		}
+		return p.moveCursor(1)
+
+	// ---------- line editing ----------
+	case "left":
+		if p.model.InputCursor > 0 {
+			p.model.InputCursor--
+		}
+		return p, nil
+	case "right":
+		if p.model.InputCursor < len([]rune(p.model.Input)) {
+			p.model.InputCursor++
+		}
+		return p, nil
+	case "ctrl+a":
+		p.model.InputCursor = 0
+		return p, nil
+	case "ctrl+e":
+		p.model.InputCursor = len([]rune(p.model.Input))
+		return p, nil
+	case "ctrl+u":
+		p.model.Input, p.model.InputCursor = "", 0
+		return p, nil
+	case "ctrl+w":
+		p.model = p.model.DeleteWord()
+		return p, nil
+	case "ctrl+k":
+		runes := []rune(p.model.Input)
+		if p.model.InputCursor <= len(runes) {
+			p.model.Input = string(runes[:p.model.InputCursor])
 		}
 		return p, nil
 
-	case "down":
-		if p.model.Cursor >= 0 && p.model.Cursor < len(p.model.Entries)-1 {
-			p.model.Cursor++
+	case "backspace":
+		p.model = p.model.Backspace()
+		return p, nil
+	case "delete":
+		p.model = p.model.DeleteForward()
+		return p, nil
+
+	case "esc":
+		// Closes the expansion first, then the selection. Escape means "back
+		// out of what I opened", and the outermost thing opened is the last
+		// thing it should abandon.
+		if p.model.Cursor >= 0 && p.model.Cursor < len(p.model.Entries) &&
+			p.model.Entries[p.model.Cursor].Expanded {
+			p.model = p.model.ToggleAt(p.model.Cursor)
+			return p, nil
 		}
+		p.model.Cursor = -1
 		return p, nil
 
 	case "tab":
 		p.model = p.model.ToggleAt(p.model.Cursor)
+		p.model = p.model.EnsureCursorVisible(p.geo)
 		return p, nil
 	}
 
 	if s := k.String(); len(s) == 1 {
-		// `p` toggles the panel only when it is not being typed into a message.
-		//
-		// It sets an explicit mode rather than flipping a flag, because from
-		// `auto` there is no flag to flip: the user pressing the key on a
-		// narrow terminal means "show it anyway", and the responsive default
-		// must not veto that.
-		if s == "p" && p.model.Input == "" {
-			if p.geo.ShowPanel(len(p.model.Plan) > 0) {
-				p.geo.PanelMode = PanelHidden
-			} else {
-				p.geo.PanelMode = PanelShown
-			}
-			return p, nil
+		// `?` opens help only as the first character of an empty line. It is
+		// the convention every pager and monitor already uses, and a message
+		// that opens with a question mark is rare enough to be worth the trade
+		// — unlike a letter, which is not.
+		if s == "?" && p.model.Input == "" {
+			return p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "help"})
 		}
-		p.model.Input += s
+		p.model = p.model.Insert(s)
 	} else if k.String() == "space" {
-		p.model.Input += " "
+		p.model = p.model.Insert(" ")
 	}
+	return p, nil
+}
+
+// moveCursor walks the stream and keeps the selection on screen.
+func (p *program) moveCursor(delta int) (tea.Model, tea.Cmd) {
+	n := len(p.model.Entries)
+	if n == 0 {
+		return p, nil
+	}
+	switch {
+	case p.model.Cursor < 0:
+		// Entering the stream from the input starts at the newest entry, which
+		// is what the user is looking at.
+		p.model.Cursor = n - 1
+	default:
+		p.model.Cursor += delta
+	}
+	if p.model.Cursor < 0 {
+		p.model.Cursor = 0
+	}
+	if p.model.Cursor >= n {
+		p.model.Cursor = n - 1
+	}
+	p.model = p.model.EnsureCursorVisible(p.geo)
 	return p, nil
 }
 
@@ -278,7 +416,8 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 	if line == "" {
 		return p, nil
 	}
-	p.model.Input = ""
+	p.model = p.model.SetInput("")
+	p.model = p.model.Remember(line)
 
 	r := ResolveInput(line, p.opts.Commands)
 	switch r.Kind {

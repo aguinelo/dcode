@@ -119,6 +119,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 
 	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
 		appSession.Engine, log, time.Now)
+	sess.ContextWindow = appSession.ContextWindow
 	return sess, nil
 }
 

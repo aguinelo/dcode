@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/behavior"
 	"github.com/aguinelo/dcode/internal/config"
@@ -69,6 +70,8 @@ type Config struct {
 	ReadFile func(path string) (string, error)
 	// Reminders disables the appended-notice channel when false.
 	Reminders bool
+	// Now is the clock used to time tool calls. Nil means the real one.
+	Now func() time.Time
 }
 
 // Outcome is how a turn ended.
@@ -88,6 +91,15 @@ type Engine struct {
 	// batch. Told once is guidance; told every batch is noise the model starts
 	// to discount.
 	seenDirs map[string]struct{}
+}
+
+// now is the engine's clock. Injectable so a test can assert a duration without
+// waiting for one.
+func (e *Engine) now() time.Time {
+	if e.cfg.Now != nil {
+		return e.cfg.Now()
+	}
+	return time.Now()
 }
 
 // New builds an engine over an initial session.
@@ -433,7 +445,12 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) (ce.Me
 		return fail(fmt.Sprintf("not permitted: %s", verdict.Reason)), false
 	}
 
+	// Measured around Execute only: the wait for an approval is the user's
+	// time, not the tool's, and folding it in would make every gated call look
+	// slow.
+	started := e.now()
 	res, err := tool.Execute(ctx, ex.Call.Input, e.cfg.State)
+	elapsed := e.now().Sub(started)
 	if err != nil {
 		return fail(err.Error()), false
 	}
@@ -441,6 +458,10 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) (ce.Me
 	e.emit(protocol.EventToolCompleted, protocol.ToolCompleted{
 		ToolCallID: ex.Call.ID, OK: !res.IsError,
 		Output: res.Output, Truncated: res.Truncated,
+		Lines: res.Meta.Lines, Files: res.Meta.Files,
+		Added: res.Meta.Added, Removed: res.Meta.Removed,
+		ExitCode: res.Meta.ExitCode, HasExit: res.Meta.HasExit,
+		DurationMS: int(elapsed.Milliseconds()),
 	})
 	if ex.Call.Name == "plan" && !res.IsError {
 		e.emit(protocol.EventPlanUpdated, protocol.PlanUpdated{Items: e.cfg.State.Plan()})
@@ -545,9 +566,18 @@ func (e *Engine) applyCompaction(ctx context.Context, plan ce.CompactionPlan) er
 
 func (e *Engine) finish(out Outcome, reason string) Outcome {
 	out.Reason = reason
-	e.emit(protocol.EventTurnCompleted, protocol.TurnCompleted{
-		TurnID: out.TurnID, Reason: reason,
-	})
+	ev := protocol.TurnCompleted{TurnID: out.TurnID, Reason: reason}
+	// Absent rather than zero when the provider said nothing: unknown tokens
+	// and no tokens are different facts, and a client shows them differently.
+	if out.Usage != (provider.Usage{}) {
+		ev.Usage = &protocol.Usage{
+			InputTokens:      out.Usage.InputTokens,
+			OutputTokens:     out.Usage.OutputTokens,
+			CacheReadTokens:  out.Usage.CacheReadTokens,
+			CacheWriteTokens: out.Usage.CacheWriteTokens,
+		}
+	}
+	e.emit(protocol.EventTurnCompleted, ev)
 	return out
 }
 

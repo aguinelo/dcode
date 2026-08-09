@@ -540,6 +540,8 @@ func (fakeDecoder) Decode(WireEvent) ([]StreamEvent, error) {
 	return []StreamEvent{{Type: EventDone}}, nil
 }
 
+func (fakeDecoder) Close() []StreamEvent { return nil }
+
 func TestCanceledEventReportsDeadline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()

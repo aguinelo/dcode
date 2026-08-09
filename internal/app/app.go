@@ -136,6 +136,8 @@ type Session struct {
 	Registry *tools.Registry
 	Prompt   string
 	Options  Options
+	// ContextWindow is what the provider reports for this model.
+	ContextWindow int
 }
 
 // New wires a session.
@@ -218,7 +220,10 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Reminders:        opts.Reminders,
 	}, ce.Session{Instructions: prompt})
 
-	return &Session{Engine: engine, Registry: registry, Prompt: prompt, Options: opts}, nil
+	return &Session{
+		Engine: engine, Registry: registry, Prompt: prompt, Options: opts,
+		ContextWindow: window,
+	}, nil
 }
 
 func buildProvider(opts Options) (provider.Provider, error) {

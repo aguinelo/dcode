@@ -356,16 +356,19 @@ func TestCursorMovementAndExpansion(t *testing.T) {
 }
 
 // `p` toggles the panel only when it is not being typed into a message.
-func TestPToggleOnlyAppliesToAnEmptyInput(t *testing.T) {
+// Regression: as a bare `p`, the panel toggle ate the first character of every
+// message beginning with one — "primeiro", "please", "por favor". A letter can
+// never be a shortcut on a line the user types into.
+func TestThePanelToggleIsAControlKeyAndNeverEatsALetter(t *testing.T) {
 	p, _ := newProgram(t)
 	p.model.Plan = modelWithPlan().Plan
 
 	// The panel is showing at 100 columns, so the first press hides it.
-	p.Update(key("p"))
+	p.Update(ctrl('p'))
 	if p.geo.ShowPanel(true) {
-		t.Error("p on an empty line hides the panel")
+		t.Error("ctrl+p hides the panel")
 	}
-	p.Update(key("p"))
+	p.Update(ctrl('p'))
 	if !p.geo.ShowPanel(true) {
 		t.Error("and shows it again")
 	}
@@ -377,15 +380,18 @@ func TestPToggleOnlyAppliesToAnEmptyInput(t *testing.T) {
 	if narrow.geo.ShowPanel(true) {
 		t.Fatal("80 columns hides it by default")
 	}
-	narrow.Update(key("p"))
+	narrow.Update(ctrl('p'))
 	if !narrow.geo.ShowPanel(true) {
-		t.Error("pressing p on a narrow terminal must show the panel anyway")
+		t.Error("ctrl+p on a narrow terminal must show the panel anyway")
 	}
 
-	p.Update(key("x"))
-	p.Update(key("p"))
-	if p.model.Input != "xp" {
-		t.Errorf("p mid-word is a letter, got %q", p.model.Input)
+	// And every bare letter reaches the line, first character included.
+	typing, _ := newProgram(t)
+	for _, r := range "primeiro" {
+		typing.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if typing.model.Input != "primeiro" {
+		t.Errorf("a letter must never be swallowed, got %q", typing.model.Input)
 	}
 }
 
@@ -667,5 +673,216 @@ func TestUnknownMessagesAreIgnored(t *testing.T) {
 	p, _ := newProgram(t)
 	if _, cmd := p.Update(struct{ x int }{1}); cmd != nil {
 		t.Errorf("got %v", cmd)
+	}
+}
+
+// ---------- scrolling and navigation through the keyboard ----------
+
+func withStream(t *testing.T, n int) (*program, *fakeTransport) {
+	t.Helper()
+	p, tr := newProgram(t, func(o *Options) { o.Geometry = DefaultGeometry(80, 12) })
+	p.model = longStream(n)
+	p.model.Follow = true
+	return p, tr
+}
+
+// A key that sometimes scrolls and sometimes types is a key nobody trusts, so
+// these never depend on what is in the input line.
+func TestScrollKeysWorkWhateverIsTyped(t *testing.T) {
+	for _, input := range []string{"", "meio escrito"} {
+		p, _ := withStream(t, 100)
+		p.model = p.model.SetInput(input)
+
+		p.Update(special(tea.KeyPgUp))
+		if p.model.Follow {
+			t.Errorf("input %q: PgUp must scroll", input)
+		}
+		before := p.model.ScrollTop
+
+		p.Update(special(tea.KeyPgDown))
+		if p.model.ScrollTop <= before && !p.model.Follow {
+			t.Errorf("input %q: PgDown must come back", input)
+		}
+
+		p.Update(special(tea.KeyHome))
+		if p.model.ScrollTop != 0 {
+			t.Errorf("input %q: Home goes to the beginning, got %d", input, p.model.ScrollTop)
+		}
+		p.Update(special(tea.KeyEnd))
+		if !p.model.Follow {
+			t.Errorf("input %q: End resumes following", input)
+		}
+		// And the line was never touched.
+		if p.model.Input != input {
+			t.Errorf("scrolling must not edit the line: %q", p.model.Input)
+		}
+	}
+}
+
+// Empty input means the user is reaching for what they typed before; input with
+// text means they are working on the stream. Getting it wrong the other way
+// would destroy what they were writing.
+func TestArrowsAreContextSensitive(t *testing.T) {
+	p, tr := newProgram(t)
+	run(t, p, typeLine(t, p, "primeiro comando"))
+	if len(tr.submits()) != 1 {
+		t.Fatal("setup failed")
+	}
+
+	// Empty line: up recalls.
+	p.Update(special(tea.KeyUp))
+	if p.model.Input != "primeiro comando" {
+		t.Fatalf("up on an empty line must recall, got %q", p.model.Input)
+	}
+	p.Update(special(tea.KeyDown))
+	if p.model.Input != "" {
+		t.Errorf("down must return to the empty line, got %q", p.model.Input)
+	}
+
+	// With text on the line, up moves the cursor in the stream instead.
+	p.model = p.model.SetInput("escrevendo")
+	p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: "a"})
+	p.Update(special(tea.KeyUp))
+	if p.model.Input != "escrevendo" {
+		t.Errorf("history must not eat what is being written: %q", p.model.Input)
+	}
+	if p.model.Cursor < 0 {
+		t.Error("with text on the line, up moves in the stream")
+	}
+}
+
+func TestEnteringTheStreamStartsAtTheNewestEntry(t *testing.T) {
+	p, _ := withStream(t, 20)
+	p.model.Cursor = -1
+	p.model.History = nil
+
+	p.Update(special(tea.KeyUp))
+	if p.model.Cursor != len(p.model.Entries)-1 {
+		t.Errorf("got %d, want the last entry", p.model.Cursor)
+	}
+	// And the selection is on screen.
+	if !strings.Contains(Render(p.model, p.geo), "linha 19") {
+		t.Error("the selected entry must be visible")
+	}
+}
+
+// Escape backs out of what was opened, innermost first.
+func TestEscapeClosesTheExpansionThenTheSelection(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Entries = []Entry{{Kind: KindTool, Tool: "read", Detail: "x", Expanded: true}}
+	p.model.Cursor = 0
+
+	p.Update(special(tea.KeyEscape))
+	if p.model.Entries[0].Expanded {
+		t.Fatal("escape must close the expansion first")
+	}
+	if p.model.Cursor != 0 {
+		t.Fatal("and keep the selection")
+	}
+	p.Update(special(tea.KeyEscape))
+	if p.model.Cursor != -1 {
+		t.Error("a second escape drops the selection")
+	}
+}
+
+func TestLineEditingKeys(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model = p.model.SetInput("um dois tres")
+
+	p.Update(ctrl('a'))
+	if p.model.InputCursor != 0 {
+		t.Errorf("ctrl+a goes to the start, got %d", p.model.InputCursor)
+	}
+	p.Update(ctrl('e'))
+	if p.model.InputCursor != 12 {
+		t.Errorf("ctrl+e goes to the end, got %d", p.model.InputCursor)
+	}
+	p.Update(special(tea.KeyLeft))
+	if p.model.InputCursor != 11 {
+		t.Errorf("got %d", p.model.InputCursor)
+	}
+	p.Update(special(tea.KeyRight))
+	if p.model.InputCursor != 12 {
+		t.Errorf("got %d", p.model.InputCursor)
+	}
+	p.Update(ctrl('w'))
+	if p.model.Input != "um dois " {
+		t.Errorf("ctrl+w deletes a word, got %q", p.model.Input)
+	}
+	p.Update(ctrl('u'))
+	if p.model.Input != "" || p.model.InputCursor != 0 {
+		t.Errorf("ctrl+u clears the line, got %q", p.model.Input)
+	}
+
+	p.model = p.model.SetInput("cortar aqui")
+	p.model.InputCursor = 7
+	p.Update(ctrl('k'))
+	if p.model.Input != "cortar " {
+		t.Errorf("ctrl+k cuts to the end, got %q", p.model.Input)
+	}
+	p.model = p.model.SetInput("abc")
+	p.model.InputCursor = 0
+	p.Update(special(tea.KeyDelete))
+	if p.model.Input != "bc" {
+		t.Errorf("delete removes under the caret, got %q", p.model.Input)
+	}
+}
+
+// `?` is a shortcut on an empty line and a character everywhere else: a key
+// that eats what you type is worse than one you have to reach for.
+func TestQuestionMarkOpensHelpOnlyOnAnEmptyLine(t *testing.T) {
+	p, _ := newProgram(t)
+	p.Update(key("?"))
+	if len(p.model.Entries) == 0 || p.model.Entries[0].Kind != KindNote {
+		t.Fatalf("? on an empty line opens help, got %+v", p.model.Entries)
+	}
+
+	p2, _ := newProgram(t)
+	p2.model = p2.model.SetInput("porque")
+	p2.Update(key("?"))
+	if p2.model.Input != "porque?" {
+		t.Errorf("mid-word it is a character, got %q", p2.model.Input)
+	}
+}
+
+// An idle screen that keeps repainting burns a battery for no information.
+func TestTheFrameOnlyAdvancesWhileRunning(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.State = protocol.SessionStateIdle
+	p.Update(tickMsg(time.Unix(1, 0)))
+	if p.model.Frame != 0 {
+		t.Errorf("an idle session must not animate, got frame %d", p.model.Frame)
+	}
+
+	p.model.State = protocol.SessionStateRunning
+	p.Update(tickMsg(time.Unix(2, 0)))
+	if p.model.Frame != 1 {
+		t.Errorf("got frame %d", p.model.Frame)
+	}
+	// The tick reschedules itself, or the animation stops after one frame.
+	if _, cmd := p.Update(tickMsg(time.Unix(3, 0))); cmd == nil {
+		t.Error("the tick must reschedule")
+	}
+}
+
+func TestElapsedTimeComesFromTheInjectedClock(t *testing.T) {
+	now := time.Unix(1000, 0)
+	p, _ := newProgram(t, func(o *Options) { o.Now = func() time.Time { return now } })
+
+	p.Update(eventMsg(ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1"})))
+	now = time.Unix(1042, 0)
+	p.Update(tickMsg(now))
+
+	if !strings.Contains(Render(p.model, p.geo), "42.0s") {
+		t.Errorf("the turn's elapsed time must show:\n%s", Render(p.model, p.geo))
+	}
+}
+
+// A sent line joins the history so it can be recalled.
+func TestSendingRemembersTheLine(t *testing.T) {
+	p, _ := newProgram(t)
+	run(t, p, typeLine(t, p, "lembrar disso"))
+	if len(p.model.History) != 1 || p.model.History[0] != "lembrar disso" {
+		t.Errorf("got %v", p.model.History)
 	}
 }

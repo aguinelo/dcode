@@ -112,7 +112,20 @@ func (b Bash) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 	if strings.TrimSpace(body) == "" {
 		body = "(no output)"
 	}
-	return Result{Output: fmt.Sprintf("exit %d\n%s", code, body)}, nil
+	return Result{
+		Output: fmt.Sprintf("exit %d\n%s", code, body),
+		Meta:   Meta{ExitCode: code, HasExit: true, Lines: countLines(out)},
+	}, nil
+}
+
+// countLines counts non-empty output lines, which is what a reader means by
+// "how much did that print".
+func countLines(s string) int {
+	s = strings.TrimRight(s, "\n")
+	if s == "" {
+		return 0
+	}
+	return strings.Count(s, "\n") + 1
 }
 
 func clamp(s string, max int) string {

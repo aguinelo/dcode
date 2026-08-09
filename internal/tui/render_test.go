@@ -10,10 +10,13 @@ import (
 
 func lines(s string) []string { return strings.Split(strings.TrimRight(s, "\n"), "\n") }
 
+// widest measures display cells, which is what "fits the terminal" means.
+// Counting the bytes of an escape sequence would report a coloured line as
+// wider than the monochrome one that renders identically.
 func widest(s string) int {
 	w := 0
 	for _, l := range lines(s) {
-		if n := runewidth.StringWidth(l); n > w {
+		if n := visibleWidth(l); n > w {
 			w = n
 		}
 	}
@@ -289,15 +292,19 @@ func TestStreamWidthNeverGoesBelowAUsableMinimum(t *testing.T) {
 func TestContextPercentAppearsWhenKnown(t *testing.T) {
 	m := NewModel("s", "/w", "m", "read-only")
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
-	m.ContextPct = 62
-	if !strings.Contains(lines(Render(m, DefaultGeometry(120, 10)))[0], "ctx 62%") {
-		t.Errorf("got %q", lines(Render(m, DefaultGeometry(120, 10)))[0])
+	// The meter is derived from the tokens and the window, not from a
+	// percentage set by hand: two fields that can disagree eventually do.
+	m.InputTokens, m.Window, m.ContextPct = 62000, 100000, 62
+	if got := lines(Render(m, DefaultGeometry(120, 10)))[0]; !strings.Contains(got, "ctx 62%") {
+		t.Errorf("got %q", got)
 	}
 }
 
 func TestStatusReflectsTheSessionState(t *testing.T) {
 	for state, want := range map[protocol.SessionState]string{
-		protocol.SessionStateRunning: "▸",
+		// Running animates: a static glyph cannot tell a long turn from a hung
+		// one, which is the whole question the user is asking the screen.
+		protocol.SessionStateRunning: Spinner(0, true),
 		protocol.SessionStateBlocked: "!",
 		protocol.SessionStateIdle:    "✓",
 	} {
@@ -408,7 +415,7 @@ func TestAHiddenPanelSaysHowToShowIt(t *testing.T) {
 	if !strings.Contains(got, "1 of 3") {
 		t.Errorf("the summary must survive the collapse: %q", got)
 	}
-	if !strings.Contains(got, "[p]") {
+	if !strings.Contains(got, "[^p]") {
 		t.Errorf("the way to see the rest must be on screen: %q", got)
 	}
 }
