@@ -12,6 +12,50 @@
 - Keep files under 500 lines
 - Validate input at system boundaries
 
+## Working agreement — branches, staging, CI
+
+Every rule below exists because it was broken, and each names the failure so it
+can be recognised before it repeats rather than after.
+
+### One theme, one branch, one PR
+
+- A theme is what fits in a PR title **without the word "and"**. If the title
+  needs an "and", it is two branches.
+- Before starting work whose title would not fit the open PR, cut a new branch
+  from an updated `main`. Continuing on the open branch because it is already
+  checked out is how a PR reaches 11 commits and 17k lines — unreviewable, and
+  merged on trust rather than on reading.
+- A defect found while doing something else gets **its own branch**, unless
+  fixing it is what unblocks the current work. "It was right there" is not a
+  reason to widen a PR.
+- Repeated approval to continue (`segue`, `pode ir`) grants **the work**, never
+  the branch. Ask which branch, or start a new one.
+
+### Stage explicitly
+
+- **Never `git add -A` or `git add .`.** Stage named paths. A 41KB HTML mock
+  entered a PR unnoticed exactly this way.
+- Run `git status` before committing and account for **every** listed file. A
+  file you cannot explain is a file that does not belong in the commit.
+
+### A push is not finished until CI is read
+
+- After every push, check CI (`gh pr checks`). A push whose result was never
+  read is a push that was never finished.
+- **Never report green from a local run alone.** `make check` passing locally
+  and CI passing are different claims. When they disagree it is usually because
+  the working tree and the repository differ — which is precisely the failure
+  local runs cannot see.
+- Never merge a red PR, and never merge without having read the checks.
+
+### What the build depends on must be in the repository
+
+- After creating a file the build, the gate or CI depends on, verify it is
+  actually tracked: `git check-ignore -v <path>` and `git ls-files <path>`.
+- `.gitignore` patterns without a leading `/` match at **any depth**.
+  `coverage.*` swallowed `scripts/coverage.sh`, so the coverage gate never ran
+  in CI while every local run reported it green.
+
 ## Ruflo Capability Brain & Implementation Loop
 
 Ruflo is the coordination ledger and policy decision point. Claude Code is the
