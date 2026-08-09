@@ -625,6 +625,13 @@ func TestListenRefusesWithoutAPathAndReportsAStaleOne(t *testing.T) {
 	if err := srv2.Listen(); err != nil {
 		t.Fatalf("a stale socket must be replaced, got %v", err)
 	}
+	// Closed through Cleanup rather than left to the collector. A
+	// *net.UnixListener unlinks its socket file when it closes, and its
+	// finaliser runs as soon as nothing references it — so an unheld listener
+	// deletes the very file the next assertion is about, and the test fails
+	// only sometimes, and only on the machine that collected first.
+	t.Cleanup(func() { srv2.listener.Close() })
+
 	if srv2.Addr() != sock {
 		t.Errorf("got %q", srv2.Addr())
 	}
