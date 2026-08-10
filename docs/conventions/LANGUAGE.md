@@ -4,6 +4,15 @@
 
 This project is bilingual: English and Brazilian Portuguese. This document is the rule.
 
+**This governs who contributes, not who uses.** Repository artefacts — code,
+comments, commits, specs — follow the rules below. The language a *user* sees in
+the terminal is a separate decision, made in RN-19 of `202608081250-client-tui`:
+the interface follows the user's language, while text the model reads (tool
+descriptions, tool errors, the doctrine) stays in English because it is
+behaviour surface and the behavioural thresholds were measured in English.
+
+Two different audiences. Neither rule constrains the other.
+
 ---
 
 ## 1. File naming
