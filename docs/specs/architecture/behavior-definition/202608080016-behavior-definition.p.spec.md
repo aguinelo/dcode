@@ -151,6 +151,10 @@ const (
     ReminderCompacted       ReminderKind = "compacted"
     ReminderToolsParallel   ReminderKind = "tools_parallel"
 
+    // RN-6.1 de context-engine. UM tipo, três textos escolhidos pela faixa —
+    // a regra é uma; o que muda é o quanto resta.
+    ReminderContextBudget   ReminderKind = "context_budget"
+
     // RN-13. Emitidos a partir do estado de verificação, que é fato.
     ReminderVerificationStale       ReminderKind = "verification_stale"
     ReminderVerificationFailed      ReminderKind = "verification_failed"
@@ -260,3 +264,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
 - [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
 - [202608102000 — Verificação antes da afirmação](changelog/202608102000-verificacao-antes-da-afirmacao.md)
+- [202608102200 — Orçamento de contexto realimentado](../context-engine/changelog/202608102200-orcamento-de-contexto-realimentado.md)

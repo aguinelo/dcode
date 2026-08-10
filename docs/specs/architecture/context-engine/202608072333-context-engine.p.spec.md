@@ -116,6 +116,28 @@ type CompactionPlan struct {
 func Estimate(msgs []Message) int
 ```
 
+```go
+// Fraction é quanto da janela o contexto montado ocupa, em [0,1]. É a mesma
+// conta que Plan já faz, exposta (RN-6.1).
+func Fraction(s Session, cfg Config) float64
+
+// Band é a faixa já anunciada ao modelo. Vive no estado da sessão para que a
+// emissão seja por BORDA e o emissor de lembrete continue puro.
+type Band int
+
+const (
+    BandNone Band = iota
+    Band60
+    Band80
+    Band92
+)
+
+// BandFor é pura.
+func BandFor(f float64) Band
+```
+
+O limiar mais alto é **menor** que `CompactAt`, senão o aviso chega junto com o corte.
+
 Aproximação por heurística de caracteres, com margem conservadora. Precisão exata não é necessária: o gatilho é uma fração da janela e a margem absorve o erro. O que **é** necessário é determinismo — a mesma entrada sempre estima o mesmo valor, senão o golden test da compactação fica instável.
 
 ## 7. Invariantes verificáveis
@@ -131,8 +153,14 @@ Cada linha é caso de teste obrigatório.
 - `Plan` nunca devolve `ToIdx` que separe `RoleAssistant` com `ToolCalls` dos seus `RoleTool`.
 - `Plan` nunca inclui a última `RoleUser` nem nada posterior a ela no trecho compactado (RN-6).
 - `Estimate` é determinística para a mesma entrada.
+- `Fraction` e `BandFor` são determinísticas para a mesma entrada.
+- `BandFor` é monotônica: fração maior nunca devolve faixa menor.
+- O limiar mais alto de `Band` é estritamente menor que `CompactAt` — asserção sobre as constantes.
+- Nenhuma saída de `Assemble` contém a fração nem a faixa (RN-2) — varredura.
+- Travessia de faixa emite **uma vez**; permanecer acima do limiar não reemite.
+- Compactação rearma a faixa anunciada; subir de novo emite de novo.
 - `Assemble` não realiza I/O: verificado por teste que falha se o pacote importar `os`, `net` ou `time` fora de tipos.
 
 ## 8. Changelog
 
-_Sem alterações desde a criação._
+- [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)

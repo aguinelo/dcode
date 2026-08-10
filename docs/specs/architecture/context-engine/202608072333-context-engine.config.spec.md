@@ -20,6 +20,15 @@
 | `DCODE_TOKEN_ESTIMATE_RATIO` | float | `3.5` | Caracteres por token na heurística de `Estimate`. Valor conservador para texto misto de código e português. Aumentar subestima e arrisca estourar a janela; diminuir compacta cedo demais. |
 | `DCODE_TOKEN_ESTIMATE_MARGIN` | fração | `0.10` | Margem de segurança somada à estimativa, absorvendo o erro da heurística. |
 
+## 2.1 Orçamento realimentado (RN-6.1)
+
+| Variável | Tipo | Default | Uso |
+|---|---|---|---|
+| `DCODE_BUDGET_NOTICE` | booleano | `true` | Liga o aviso de ocupação da janela ao modelo. Desligar devolve o comportamento anterior: o único sinal passa a ser o aviso **pós**-compactação. |
+| `DCODE_BUDGET_BANDS` | lista | `0.60,0.80,0.92` | Frações que disparam o aviso, na travessia para cima. Todas devem ser menores que `DCODE_COMPACT_AT` — aviso que chega junto com o corte não serve para nada, e a inicialização recusa uma lista que viole isso. |
+
+> **Não há chave para emitir por nível.** Repetir o aviso enquanto a fração estiver acima do limiar custa em todo turno e produz habituação: aviso que aparece sempre deixa de ser lido. A emissão é por borda, e rearma na compactação.
+
 ## 3. Constantes não configuráveis
 
 Fixas em código, documentadas porque afetam comportamento observável.
@@ -29,7 +38,10 @@ Fixas em código, documentadas porque afetam comportamento observável.
 | Ordem das seções do prefixo | tabela 4 do `.p` | Alterar invalida cache de toda sessão viva; é mudança de contrato, não de config. |
 | Fronteira de corte da compactação | turno completo | Corte no meio de um par assistant/tool produz histórico inválido para o provedor. |
 | Preservação da última `RoleUser` | sempre | RN-6 é regra de negócio, não ajuste. |
+| Fração e faixa fora do prefixo | sempre | RN-2; número volátil no prefixo invalida o cache em todo turno. |
+| Aviso de orçamento por borda | sempre | RN-6.1; por nível custa sempre e produz habituação. |
+| Limiar mais alto abaixo de `CompactAt` | sempre | RN-6.1; aviso simultâneo ao corte é aviso inútil. |
 
 ## 4. Changelog
 
-_Sem alterações desde a criação._
+- [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)
