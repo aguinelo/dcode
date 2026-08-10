@@ -103,12 +103,40 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 - Índice acima do teto trunca e avisa.
 - Carregar corpo não altera o prefixo.
 
+### Passo 6.5 — Sobreposição de doutrina
+
+> Acrescentado por [202608101800](changelog/202608101800-doutrina-editavel-por-camada.md). Depende do Passo 1 e do Passo 2; independente dos Passos 3, 5 e 6.
+
+`internal/behavior/doctrine_overlay.go`
+
+- [ ] `DoctrineOverlay` com exatamente três campos: `Identity`, `Style`, `ToolsMore`. **`Safety` não é campo** — é a trava (RN-12).
+- [ ] `Doctrine.Apply(o DoctrineOverlay) Doctrine`, pura. `ToolsMore` concatena; nunca substitui.
+- [ ] `LoadDoctrineOverlay(dir string, maxBytes int)` — **um** diretório, nunca uma lista (RN-11).
+- [ ] `Notice` para: truncamento por teto, nome de arquivo não reconhecido, `safety.md` presente.
+
+**Testes obrigatórios**, um por invariante da seção 8 do `.p`:
+
+- [ ] `Apply(o).Safety == DefaultDoctrine().Safety` para toda entrada, incluindo a tabela de casos hostis.
+- [ ] `Apply(o).ToolPolicy` tem `DefaultDoctrine().ToolPolicy` como **prefixo**, sempre.
+- [ ] Os três arquivos em `<workspace>/.dcode/doctrine/` produzem prompt **byte-idêntico** ao default.
+- [ ] `safety.md` na raiz do usuário não muda nada **e** produz `Notice`.
+- [ ] Truncamento produz `Notice`; nenhum caminho trunca em silêncio.
+
+`internal/app/app.go`
+
+- [ ] Resolver a sobreposição junto de instruções e skills, **uma vez**, na criação da sessão (RN-5).
+- [ ] Passar **apenas** `roots.Config` — a raiz do usuário. Contraste deliberado com `LoadSkills`, logo acima, que recebe duas raízes.
+
+> A tentação aqui é reaproveitar a lista de raízes que já está montada duas linhas acima, para skills. Fazer isso abre exatamente o vetor que a RN-11 fecha, e o teste de workspace acima existe para pegá-lo.
+
 ### Passo 7 — `DCODE_DOCTRINE_DUMP`
 
 `cmd/dcode/dump.go`
 
 - [ ] Imprime o prompt montado e sai.
 - [ ] Saída idêntica ao que seria enviado ao modelo — sem reformatação de conveniência.
+- [ ] Marca a `Origin` de cada uma das quatro seções; `Safety` é sempre `builtin`.
+- [ ] Lista os `Notice` acumulados na resolução da sobreposição.
 
 > É a ferramenta de auditoria do produto. Um harness que não deixa inspecionar o próprio prompt pede confiança cega em um programa com acesso a shell. Também é o que torna depurável qualquer contrato comportamental que falhe.
 
@@ -138,6 +166,7 @@ Passo 1 (tipos e doutrina)
        ├─ Passo 3 (instruções)      → internal/config, Passo 3
        │    └─ Passo 4 (fixação do prefixo)
        ├─ Passo 5 (lembretes)
+       ├─ Passo 6.5 (sobreposição)  → internal/config, Passo 3
        └─ Passo 6 (skills)          → internal/config, Passo 3
             └─ Passo 7 (dump)
                  ├─ Passo 8 (contratos comportamentais)
@@ -153,7 +182,11 @@ Passo 1 (tipos e doutrina)
 - **Corpo de skill no índice** — cresce sem ninguém notar até o prefixo dobrar de tamanho.
 - **Instrução do usuário afrouxando segurança sem registro** — o descarte silencioso esconde tentativa que deveria ser visível.
 - **Caminho literal de arquivo de instrução** — acopla este pacote ao sistema de arquivos e destrói a pureza de `Build`. Use o localizador injetado.
+- **`Safety` protegido por condicional em vez de por tipo** — um `if` se remove num refactor sem quebrar compilação, e o teste que o cobria pode ser removido junto. A ausência do campo em `DoctrineOverlay` é o que não compila.
+- **Sobreposição lendo a mesma lista de raízes das skills** — está duas linhas acima no mesmo arquivo e é a colagem mais provável. Abre o vetor da RN-11 inteiro.
+- **`ToolsMore` substituindo em vez de acrescentar** — passa despercebido enquanto o arquivo do usuário for parecido com o texto embarcado, e só aparece como alucinação de ferramenta muito depois.
+- **Truncar sobreposição em silêncio** — o usuário acredita que a regra está valendo. É o mesmo defeito já previsto para arquivo de instrução, e o teto menor aqui torna-o mais provável.
 
 ## Changelog
 
-_Sem alterações desde a criação._
+- [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
