@@ -4,6 +4,15 @@
 
 Este projeto é bilíngue: inglês e português do Brasil. Este documento é a regra.
 
+**Isto governa quem contribui, não quem usa.** Artefato de repositório — código,
+comentário, commit, spec — segue as regras abaixo. O idioma que o *usuário* vê no
+terminal é decisão separada, tomada na RN-19 de `202608081250-client-tui`: a
+interface segue o idioma dele, enquanto o texto que o modelo lê — descrição de
+ferramenta, erro de ferramenta, doutrina — permanece em inglês por ser superfície
+de comportamento, e porque os limiares comportamentais foram medidos em inglês.
+
+Dois públicos distintos. Nenhuma das regras restringe a outra.
+
 ---
 
 ## 1. Nomenclatura de arquivo
