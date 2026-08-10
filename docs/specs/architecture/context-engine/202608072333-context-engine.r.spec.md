@@ -73,6 +73,8 @@ Três restrições decidem a forma, e todas vêm de regras que já existem:
 
 O limiar mais alto fica **abaixo** do gatilho de compactação. Aviso que chega junto com o corte não serve para nada.
 
+> A leitura exploratória é o maior consumidor deste orçamento, e é descartável assim que a pergunta foi respondida. A saída é delegá-la — RN-11 de `202608072335-agent-loop` — para que o custo fique na janela de quem leu.
+
 ### RN-7 — O contexto é reconstruível
 Dado o histórico da sessão, a montagem produz o mesmo resultado em qualquer momento e em qualquer máquina. Não há estado escondido, nem dependência de relógio, nem de ordem de map.
 
@@ -88,3 +90,4 @@ Dado o histórico da sessão, a montagem produz o mesmo resultado em qualquer mo
 ## 6. Changelog
 
 - [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)
+- [202608102500 — Delegação somente-leitura](../agent-loop/changelog/202608102500-delegacao-somente-leitura.md)
