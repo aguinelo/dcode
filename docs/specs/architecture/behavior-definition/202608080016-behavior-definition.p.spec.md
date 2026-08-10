@@ -41,6 +41,30 @@ type Doctrine struct {
     Style      string // tom e formato de saída
 }
 
+// DoctrineOverlay é o que a configuração DO USUÁRIO pode mudar na camada base
+// (RN-11). Campo vazio deixa o texto embarcado intacto.
+//
+// Safety NÃO está aqui, e é essa ausência que é a garantia (RN-12): não há
+// caminho para fechar porque não há caminho. Trava por tipo, não por condicional.
+type DoctrineOverlay struct {
+    Identity  string // substitui
+    Style     string // substitui
+    ToolsMore string // ACRESCENTA a ToolPolicy; nunca substitui
+}
+
+// Apply devolve a doutrina com a sobreposição aplicada. Pura.
+func (d Doctrine) Apply(o DoctrineOverlay) Doctrine
+
+// Origin diz de onde veio cada seção do prompt montado. Existe para a auditoria:
+// sobreposição invisível é pior que imutabilidade (RN-12).
+type Origin string
+
+const (
+    OriginBuiltin  Origin = "builtin"
+    OriginReplaced Origin = "replaced"
+    OriginAppended Origin = "appended"
+)
+
 type Instruction struct {
     Source   InstructionSource
     Scope    string // caminho ao qual se aplica; vazio = global
@@ -74,6 +98,28 @@ func Build(p Prompt, family provider.Family) (string, error)
 ```
 
 `Build` recebe a família porque a **formulação** é dela (RN-8) — mas o conjunto de regras vem de `Prompt`, que é idêntico entre famílias.
+
+## 3.1 Sobreposição de doutrina
+
+Carregador, com o mesmo desenho de teto e aviso de `LoadSkills`:
+
+```go
+func LoadDoctrineOverlay(dir string, maxBytes int) (DoctrineOverlay, []Notice, error)
+```
+
+O parâmetro é **um** diretório, não uma lista. O contraste com `LoadSkills(dirs []string, ...)` é deliberado: skill vem de duas raízes, sobreposição de doutrina vem de uma (RN-11). O tipo singular diz isso melhor que comentário, e a raiz do workspace nunca chega a ser argumento.
+
+| Arquivo | Seção | Efeito |
+|---|---|---|
+| `identity.md` | `Identity` | substitui |
+| `style.md` | `Style` | substitui |
+| `tools.md` | `ToolPolicy` | acrescenta |
+
+Qual arquivo existe decide qual seção muda. **Como** ela muda é fixo por seção e não é configurável — não há arquivo que substitua `ToolPolicy`, e não há nome de arquivo que alcance `Safety`.
+
+`Notice` cobre os três casos que não podem ser silenciosos: arquivo truncado por exceder o teto, nome de arquivo não reconhecido, e `safety.md` presente — este último registrado explicitamente, pelo mesmo motivo da RN-10.
+
+A resolução acontece **uma vez, na criação da sessão** (RN-5). Arquivo de doutrina escrito no meio da sessão não altera o prefixo, pelo mesmo motivo que instrução tardia não altera.
 
 ## 4. Precedência entre instruções
 
@@ -174,7 +220,16 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Texto de lembrete é idêntico entre emissões do mesmo `Kind` com os mesmos dados.
 - Índice de skill contém apenas uma linha por skill; nenhum corpo (RN-7).
 - Duas famílias distintas produzem prompts distintos a partir do **mesmo** `Prompt` — e ambos contêm todas as regras de `Doctrine.Safety`.
+- `Apply` é pura, e `Apply(DoctrineOverlay{})` devolve a doutrina embarcada inalterada.
+- Para **qualquer** `DoctrineOverlay`, `Apply(o).Safety == DefaultDoctrine().Safety`, byte a byte.
+- Para qualquer `o`, `Apply(o).ToolPolicy` **contém** `DefaultDoctrine().ToolPolicy` como prefixo — acrescentar nunca remove (RN-12).
+- Sobreposição colocada sob a raiz do **workspace** não altera o prompt: montagem byte-idêntica à default (RN-11). Verificado com os três nomes de arquivo em `<workspace>/.dcode/doctrine/`.
+- `safety.md` presente na raiz do usuário não altera o prompt **e** produz `Notice`.
+- Truncamento por teto produz `Notice`; nenhum caminho trunca em silêncio.
+- Sobreposição resolvida após a criação da sessão não altera o prefixo (RN-5); não há caminho de código para isso.
+- A auditoria do prompt reporta `Origin` para as quatro seções, e `Safety` é sempre `OriginBuiltin`.
 
 ## 9. Changelog
 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
+- [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)

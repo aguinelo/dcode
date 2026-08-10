@@ -124,6 +124,29 @@ Instrução de projeto ajusta estilo, convenção e preferência. **Não** desli
 
 Instrução que tente isso é ignorada, e o fato é registrado — não silenciosamente descartado.
 
+### RN-11 — A pergunta é quem pode mudar, não o que pode mudar
+A doutrina base tem quatro seções, e apenas uma delas — `Safety` — tem motivo próprio para ser imutável. Identidade e estilo não são superfície de ataque: ninguém é atacado pela reescrita do próprio tom de saída.
+
+O que separa corretamente as seções é a **origem**. Configuração da raiz do usuário é a voz de quem é dono da máquina. Arquivo dentro do workspace veio junto com código que pode ter sido clonado de qualquer lugar, e **não é o usuário** — ainda que tenha o mesmo nome de arquivo.
+
+Por isso a sobreposição de doutrina vem de **uma única raiz**, a do usuário. Não é preferência de desenho: um `.dcode/doctrine/identity.md` num repositório clonado redefiniria quem o agente pensa que é antes de qualquer instrução ser lida, que é o vetor da RN-10 por outra porta.
+
+### RN-12 — Substituir e acrescentar são permissões distintas, decididas por seção
+Cada seção declara **como** pode mudar, e isso não é escolha de quem configura.
+
+| Seção | Substituir | Acrescentar | Motivo |
+|---|---|---|---|
+| `Identity` | sim | sim | preferência do dono da máquina |
+| `Style` | sim | sim | idem |
+| `ToolPolicy` | **não** | sim | descreve máquina que existe; declarar ferramenta inexistente faz o modelo chamar o que não há |
+| `Safety` | **nunca** | **nunca** | RN-10 |
+
+`Safety` não aceita nem apêndice porque acrescentar ao fim é funcionalmente substituir: o texto acrescentado pode dizer "ignore o acima". Seção que aceita apêndice não tem trava — tem trava que se contorna escrevendo mais um parágrafo.
+
+A trava é **estrutural, não condicional**: `Safety` não é campo do tipo de sobreposição. Pela RN-2, regra que vira invariante de código sai do texto e passa a ser verificável por asserção; trava por convenção quebra no primeiro refactor, trava por tipo não compila.
+
+Sobreposição aplicada é **sempre visível** — a auditoria do prompt marca a origem de cada seção. Substituição invisível seria pior que a imutabilidade que ela substitui, porque removeria a única forma de saber o que foi ao modelo.
+
 ## 5. Fora de escopo
 
 - Caminhos concretos dos arquivos de instrução e formato da configuração — `202608081203-configuration`.
@@ -135,3 +158,4 @@ Instrução que tente isso é ignorada, e o fato é registrado — não silencio
 ## 6. Changelog
 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
+- [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
