@@ -60,6 +60,19 @@ A compactação é o **único** momento em que o prefixo muda, e por isso é eve
 ### RN-6 — Compactação preserva a tarefa corrente
 Um resumo que perde o que o usuário pediu torna o agente inútil no exato momento em que a tarefa ficou longa o bastante para importar. A tarefa em andamento e as decisões já tomadas sobrevivem ao corte; detalhe de exploração descartada, não.
 
+### RN-6.1 — O agente sabe quanto do orçamento gastou, antes de acabar
+A fração da janela é calculada a cada iteração para decidir a compactação. Esse número **chega ao modelo**, e não só depois do corte.
+
+Hoje o único sinal é o aviso de compactação — passado. É o aluno descobrindo que a folha acabou ao ser interrompido: nunca a tempo de anotar o que precisava sobreviver, fechar o que estava aberto, ou dizer que a tarefa não cabe.
+
+Três restrições decidem a forma, e todas vêm de regras que já existem:
+
+- **Nunca no prefixo** (RN-1, RN-2). Número volátil ali invalidaria o cache em todo turno — pagar o prompt inteiro sempre, para economizar contexto. Vai pelo canal de lembrete.
+- **Por faixa, não por valor exato.** Texto de lembrete é constante por tipo; valor mudando a cada turno gera texto sempre novo e quebra a reconstrutibilidade da RN-7.
+- **Por borda, nunca por nível.** Emitir enquanto estiver acima do limiar repete o aviso em todo turno: custo crescente e, pior, habituação — aviso que aparece sempre deixa de ser lido. Emite na travessia, **rearma na compactação**, porque voltar a subir depois do corte é informação nova.
+
+O limiar mais alto fica **abaixo** do gatilho de compactação. Aviso que chega junto com o corte não serve para nada.
+
 ### RN-7 — O contexto é reconstruível
 Dado o histórico da sessão, a montagem produz o mesmo resultado em qualquer momento e em qualquer máquina. Não há estado escondido, nem dependência de relógio, nem de ordem de map.
 
@@ -74,4 +87,4 @@ Dado o histórico da sessão, a montagem produz o mesmo resultado em qualquer mo
 
 ## 6. Changelog
 
-_Sem alterações desde a criação._
+- [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)
