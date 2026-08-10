@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/update"
 	"github.com/aguinelo/dcode/internal/version"
@@ -20,7 +22,7 @@ func runUpdate(args []string) error {
 	fs := flag.NewFlagSet("dcode update", flag.ContinueOnError)
 	var (
 		check   = fs.Bool("check", false, "report whether a newer version exists and exit")
-		channel = fs.String("channel", "", "stable or prerelease (default: $DCODE_RELEASE_CHANNEL, else stable)")
+		channel = fs.String("channel", "", "stable or prerelease (default: update.channel or $DCODE_UPDATE_CHANNEL, else stable)")
 		force   = fs.Bool("force", false, "replace a local build with a published release, even if that is older")
 	)
 	fs.Usage = func() {
@@ -36,9 +38,14 @@ func runUpdate(args []string) error {
 		return err
 	}
 
+	// The flag wins, then the ordinary configuration chain — which is what
+	// makes `update.channel` in a config file reach this command at all.
 	ch := *channel
 	if ch == "" {
-		ch = os.Getenv("DCODE_RELEASE_CHANNEL")
+		ch = updateSetting("update.channel", "")
+	}
+	if ch == "" {
+		ch = legacyChannel()
 	}
 
 	u := update.NewGitHub(update.Config{
@@ -103,7 +110,7 @@ func noticePath(env func(string) string) (string, error) {
 // It never blocks anything and never fails: a network problem returns whatever
 // was cached, which may be nothing at all.
 func versionNotice(ctx context.Context) string {
-	if !update.ParseBool(os.Getenv("DCODE_UPDATE_CHECK"), true) {
+	if !update.ParseBool(updateSetting("update.check", "true"), true) {
 		return ""
 	}
 	path, err := noticePath(os.Getenv)
@@ -112,9 +119,39 @@ func versionNotice(ctx context.Context) string {
 	}
 	u := update.NewGitHub(update.Config{
 		APIURL:  os.Getenv("DCODE_UPDATE_URL"),
-		Channel: os.Getenv("DCODE_RELEASE_CHANNEL"),
+		Channel: cmp.Or(updateSetting("update.channel", ""), legacyChannel()),
 	})
 	interval := update.ParseInterval(os.Getenv("DCODE_UPDATE_CHECK_INTERVAL"))
 	n := update.Check(ctx, u, path, version.Short(), time.Now(), interval)
 	return n.Message()
 }
+
+// updateSetting reads one key through the ordinary configuration chain.
+//
+// The update paths are not a session, so they have no resolved Options to read
+// from. Reading os.Getenv directly instead is what made `update.channel` a
+// declared key that no config file could ever reach: the key mapped to one
+// variable name and the code read another, and nothing crossed the two.
+//
+// A failure here is not worth reporting — configuration that cannot be
+// resolved means there is no workspace to speak of, and the update path must
+// never be what blocks the binary from running.
+func updateSetting(key, def string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return def
+	}
+	r, err := app.Resolve(os.Getenv, wd)
+	if err != nil {
+		return def
+	}
+	return r.String(key, def)
+}
+
+// legacyChannel reads the variable this command used before `update.channel`
+// reached it through configuration.
+//
+// Kept as a fallback rather than removed: it was the only spelling that
+// worked, so it is the one people who set a channel at all are using, and
+// dropping it would move them back to stable without a word.
+func legacyChannel() string { return os.Getenv("DCODE_RELEASE_CHANNEL") }

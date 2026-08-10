@@ -215,6 +215,8 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 - Quem escreve e quem lê resolvem o mesmo backend a partir de `credential.backend`.
 - Nome de credencial fora de `[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}` é recusado antes de alcançar linha de comando.
 - Toda chave TOML mapeia para exatamente uma variável de ambiente, e o mapeamento é bijetivo.
+- **Toda** chave em `KnownKeys` é lida por alguém: ou tem campo em `app.Options`, atribuído por `FromEnv` via acessor `r.{Bool,String,Int}` para aquela chave, ou está declarada como não pertencente a uma sessão **com o motivo**, e nesse caso algum comando a lê por esse nome. Toda atribuição de `Options.<campo>` que precise chegar a `loop.Config` é feita na construção do engine em `app.New`.
+- A verificação parte de `KnownKeys`, **não** da tabela de fiação. Partir da tabela é o que deixou quatro chaves declaradas, aceitas pelo esquema, exibidas com origem por `dcode config` — e lidas por ninguém: sem linha na tabela não havia asserção, logo não havia falha. Verificado por `internal/app/wiring_test.go`, que falha quando uma chave é adicionada sem completar a cadeia nem declarar por que não a completa.
 - A cadeia de precedência da RN-7 é respeitada — uma asserção por par de camadas adjacentes.
 - Chave travada devolve o valor travado **e** emite aviso quando há tentativa de sobrescrita (RN-9).
 - `Resolve` é pura sobre camadas já carregadas.
@@ -229,3 +231,4 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 ## 8. Changelog
 
 - [202608091500 — Armazenamento de credencial](changelog/202608091500-armazenamento-de-credencial.md)
+- [202608101700 — Atravessamento de camadas de configuração](changelog/202608101700-atravessamento-de-camadas-de-configuracao.md)

@@ -49,6 +49,13 @@ type Options struct {
 	Reminders bool
 	// ShowReasoning forwards the model's thinking to clients.
 	ShowReasoning bool
+	// Instructions switches the reading of AGENTS.md and DCODE.md on. Off runs
+	// on the shipped doctrine alone, which is how one tells whether a behaviour
+	// comes from the user's instructions or from the product.
+	Instructions bool
+	// Skills switches progressive disclosure on. Off removes the index from the
+	// prefix, and no body is ever loaded.
+	Skills bool
 	// Env is how the session reaches the environment. Carried on Options rather
 	// than read from the process, so a daemon serving several workspaces is not
 	// forced to share one view of it.
@@ -69,6 +76,20 @@ type Options struct {
 
 // FromEnv resolves options from the environment, applying the precedence chain.
 func FromEnv(env func(string) string, workspace string) (Options, config.Resolved, error) {
+	r, err := Resolve(env, workspace)
+	if err != nil {
+		return Options{}, config.Resolved{}, err
+	}
+	return fromResolved(r, env, workspace)
+}
+
+// Resolve builds the configuration chain and nothing else.
+//
+// Split out from FromEnv because commands that are not a session — `update` is
+// the one today — still have to read configuration through the same chain. A
+// command reading os.Getenv directly is how `update.channel` came to be a
+// declared key that a config file could never reach.
+func Resolve(env func(string) string, workspace string) (config.Resolved, error) {
 	defaults := policy.DefaultRules()
 	layers := []config.Layer{
 		{Source: config.SourceDefault, Origin: "built-in", Values: map[string]string{
@@ -100,11 +121,11 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 	// rather than by position, so loading order here only has to be complete.
 	roots, err := config.DiscoverRoots(env)
 	if err != nil {
-		return Options{}, config.Resolved{}, err
+		return config.Resolved{}, err
 	}
 	fileLayers, err := config.FileLayers(roots, workspace)
 	if err != nil {
-		return Options{}, config.Resolved{}, err
+		return config.Resolved{}, err
 	}
 	layers = append(layers, fileLayers...)
 
@@ -122,8 +143,11 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 		})
 	}
 
-	r := config.Resolve(layers)
+	return config.Resolve(layers), nil
+}
 
+// fromResolved turns a resolved chain into Options.
+func fromResolved(r config.Resolved, env func(string) string, workspace string) (Options, config.Resolved, error) {
 	mode, err := policy.ParseMode(r.String("sandbox.mode", string(policy.ModeWorkspaceWrite)))
 	if err != nil {
 		return Options{}, r, err
@@ -142,6 +166,8 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 		Env:               env,
 		Reminders:         r.Bool("behavior.reminders_enabled", true),
 		ShowReasoning:     r.Bool("behavior.show_reasoning", true),
+		Instructions:      r.Bool("behavior.instructions_enabled", true),
+		Skills:            r.Bool("behavior.skills_enabled", true),
 		Workspace:         ws,
 		Model:             r.String("model.name", "MiniMax-M3"),
 		Transport:         r.String("model.transport", ""),
@@ -159,6 +185,7 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 		Limits: loop.Limits{
 			MaxIterations:     r.Int("limits.max_iterations", 0),
 			MaxIdenticalCalls: r.Int("limits.identical", 3),
+			MaxTurnTokens:     r.Int("limits.max_turn_tokens", 0),
 		},
 	}
 	if opts.APIKey != "" {
@@ -166,6 +193,10 @@ func FromEnv(env func(string) string, workspace string) (Options, config.Resolve
 	} else {
 		// The environment wins because it is explicit and scoped to one
 		// invocation; the store is what makes the ordinary case not require it.
+		roots, err := config.DiscoverRoots(env)
+		if err != nil {
+			return Options{}, r, err
+		}
 		secret, from := LookupCredential(roots, opts)
 		opts.APIKey, opts.CredentialFrom = secret, from
 	}
@@ -268,20 +299,29 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	if err != nil {
 		return nil, err
 	}
-	instructions, chain, err := loadInstructions(roots, opts.Workspace)
-	if err != nil {
-		return nil, err
+	// Off leaves the chain empty rather than skipping the call, so everything
+	// downstream sees the same shape either way.
+	var instructions []behavior.Instruction
+	var chain []string
+	if opts.Instructions {
+		instructions, chain, err = loadInstructions(roots, opts.Workspace)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Skills are indexed in the prefix and loaded on trigger. Discovery happens
 	// once, here: a skill file written mid-session must not change the prefix,
 	// because the prefix is what the cache is keyed on.
-	skills, err := behavior.LoadSkills([]string{
-		filepath.Join(roots.Config, behavior.SkillsDirName),
-		filepath.Join(opts.Workspace, ".dcode", behavior.SkillsDirName),
-	}, 256<<10)
-	if err != nil {
-		return nil, err
+	var skills []behavior.Skill
+	if opts.Skills {
+		skills, err = behavior.LoadSkills([]string{
+			filepath.Join(roots.Config, behavior.SkillsDirName),
+			filepath.Join(opts.Workspace, ".dcode", behavior.SkillsDirName),
+		}, 256<<10)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	prompt := behaviorBuild(registry.Names(), instructions, behavior.Index(skills))

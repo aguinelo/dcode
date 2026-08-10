@@ -40,7 +40,7 @@ var KnownKeys = map[string]string{
 	"rules.confirm_read":            "DCODE_CONFIRM_READ",
 	"rules.confirm_command":         "DCODE_CONFIRM_COMMAND",
 	"update.check":                  "DCODE_UPDATE_CHECK",
-	"update.channel":                "DCODE_UPDATE_CHANNEL",
+	"update.channel":                "DCODE_UPDATE_CHANNEL", // DCODE_RELEASE_CHANNEL still works as a fallback
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
 }
 
