@@ -89,6 +89,41 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 > Migrar aqui a nota de execução concorrente da seção 4.3 de `202608072335-agent-loop.p.spec.md`. Ela é lembrete, não texto solto no resultado da ferramenta — e centralizar impede que uma segunda formulação apareça mais tarde.
 
+### Passo 5.5 — Estado de verificação
+
+> Acrescentado por [202608102000](changelog/202608102000-verificacao-antes-da-afirmacao.md). Depende do Passo 5; independente dos Passos 3, 6 e 7.
+
+`internal/behavior/verification.go`
+
+- [ ] `Verification` e os três `ReminderKind` novos.
+- [ ] Derivação **pura** a partir do registro de escrita e do registro de execução da sessão. Sem julgamento, sem heurística sobre o texto do modelo.
+- [ ] Uma frase acrescentada a `Doctrine.Style` — e só ela; nenhuma outra seção muda.
+
+**Testes obrigatórios:**
+- Edição sem execução posterior → `stale`.
+- Execução do comando após a última edição, saída zero → `passed`.
+- Execução com saída diferente de zero → `failed`, mesmo tendo rodado.
+- Sessão só de leitura → `clean`, e **nenhum** lembrete de verificação emitido.
+- Mudança sem comando configurado → `unavailable`.
+- Nenhum lembrete de verificação aparece no prefixo — varredura de `Build`.
+
+`internal/loop` — a condição do passo 4 da RN-1 de `agent-loop`:
+
+- [ ] Sem tool call, com `stale` ou `failed`, e ainda não forçado neste turno → anexa lembrete e volta ao passo 2.
+- [ ] Forçado **uma vez por turno**; persistindo, encerra com `StopUnverified`.
+- [ ] `unavailable` **não** força continuação.
+
+**Testes obrigatórios:**
+- A continuação dispara exatamente uma vez, nunca duas — asserção contra o laço patológico.
+- `StopUnverified` não é tratado como erro em nenhum caminho.
+- `unavailable` encerra sem forçar.
+
+`internal/tui` — o selo:
+
+- [ ] Estado de verificação exibido ao fim do turno.
+
+> O selo é **a garantia**. A frase da doutrina e os contratos comportamentais são reforço: o texto do modelo pode afirmar sucesso, e o selo o contradiz. Se o selo não for exibido, esta mudança inteira volta a depender de o modelo obedecer.
+
 ### Passo 6 — Índice de skills
 
 `internal/behavior/skills.go`
@@ -128,7 +163,6 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 - [ ] Passar **apenas** `roots.Config` — a raiz do usuário. Contraste deliberado com `LoadSkills`, logo acima, que recebe duas raízes.
 
 > A tentação aqui é reaproveitar a lista de raízes que já está montada duas linhas acima, para skills. Fazer isso abre exatamente o vetor que a RN-11 fecha, e o teste de workspace acima existe para pegá-lo.
-
 ### Passo 7 — `DCODE_DOCTRINE_DUMP`
 
 `cmd/dcode/dump.go`
@@ -181,6 +215,10 @@ Passo 1 (tipos e doutrina)
 - **Formulação de família virando regra de família** — começa como ajuste de fraseado e termina com duas famílias se comportando diferente. O teste do Passo 2 existe para pegar isso.
 - **Corpo de skill no índice** — cresce sem ninguém notar até o prefixo dobrar de tamanho.
 - **Instrução do usuário afrouxando segurança sem registro** — o descarte silencioso esconde tentativa que deveria ser visível.
+- **Estado de verificação inferido do texto do modelo** — "ele disse que rodou" não é fato. A derivação é do registro de execução, ou o selo não vale nada.
+- **Continuação forçada sem teto** — projeto cuja verificação nunca passa gira até o teto de iterações, e o usuário paga por isso sem entender.
+- **`StopUnverified` tratado como erro** — é estado honesto de trabalho entregue sem conferência. Virando erro, a saída fácil passa a ser desligar a checagem.
+- **Verificação disparando em tarefa de leitura** — queima turno respondendo "o que essa função faz", e duas semanas assim é uma ferramenta desinstalada.
 - **Caminho literal de arquivo de instrução** — acopla este pacote ao sistema de arquivos e destrói a pureza de `Build`. Use o localizador injetado.
 - **`Safety` protegido por condicional em vez de por tipo** — um `if` se remove num refactor sem quebrar compilação, e o teste que o cobria pode ser removido junto. A ausência do campo em `DoctrineOverlay` é o que não compila.
 - **Sobreposição lendo a mesma lista de raízes das skills** — está duas linhas acima no mesmo arquivo e é a colagem mais provável. Abre o vetor da RN-11 inteiro.
@@ -190,3 +228,4 @@ Passo 1 (tipos e doutrina)
 ## Changelog
 
 - [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
+- [202608102000 — Verificação antes da afirmação](changelog/202608102000-verificacao-antes-da-afirmacao.md)

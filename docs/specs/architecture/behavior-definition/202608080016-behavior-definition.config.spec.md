@@ -30,6 +30,18 @@
 | `DCODE_REMINDERS_ENABLED` | booleano | `true` | Liga o canal de lembrete. Desligar é apenas para depuração: sem ele o agente age sobre estado obsoleto e não sabe disso. |
 | `DCODE_REMINDER_KINDS` | lista | todos | Restringe os tipos emitidos. Existe para isolar qual lembrete causa um comportamento observado. |
 
+## 3.1 Verificação (RN-13)
+
+| Variável | Tipo | Default | Uso |
+|---|---|---|---|
+| `DCODE_VERIFY_COMMAND` | string | vazio | O comando que **conta** como verificação. Explícito porque "rodou algum bash" contaria um `ls`. Vazio produz estado `unavailable` quando há mudança — o produto diz que não sabe conferir, em vez de fingir que conferiu. |
+| `DCODE_VERIFY_TIMEOUT` | duração | `10m` | Teto de execução. Verificação que não termina não é verificação, e travar o turno é pior que relatar o estouro. |
+| `DCODE_VERIFY_FORCE_TURN` | booleano | `true` | Continua o turno quando a verificação está `stale` ou `failed`. Desligar devolve o comportamento antigo — turno termina, lembrete não é cobrado, e o selo passa a ser a única defesa. |
+
+> O comando vem da config ou do arquivo de instrução **específico**, revisado por uma pessoa. **Nunca** de formato compartilhado de terceiro: ele passaria a ser executado a cada turno, que é a RN-6.1 de `202608081203-configuration` violada em laço.
+
+> `/init` propõe o valor de `DCODE_VERIFY_COMMAND` a partir de comando **sondado** — ver `202608101900`. A tradução descobre como se verifica; a RN-13 cobra o uso.
+
 ## 4. Doutrina
 
 | Variável | Tipo | Default | Uso |
@@ -58,7 +70,11 @@ Os arquivos da sobreposição, e o efeito de cada um, estão na seção 3.1 do `
 | Corpo de skill fora do prefixo | sempre | RN-7; carregar tudo é o caminho para prompt de dezenas de milhares de tokens pago em todo turno. |
 | Prefixo montado uma vez por sessão | sempre | RN-5; instrução tardia invalidaria o prefixo inteiro. |
 | Precedência da seção 4 do `.p` | sempre | Instrução mais específica vence; travada vence tudo. |
+| Estado de verificação derivado de fato | sempre | RN-13; se dependesse de julgamento, o selo do cliente não valeria nada. |
+| Continuação forçada dispara no máximo uma vez por turno | sempre | RN-13; sem teto, projeto cuja verificação não roda gira até o teto de iterações. |
+| Comando de verificação vindo de formato compartilhado | **nunca** | RN-13; seria execução de instrução de terceiro a cada turno. |
 
 ## 6. Changelog
 
 - [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
+- [202608102000 — Verificação antes da afirmação](changelog/202608102000-verificacao-antes-da-afirmacao.md)
