@@ -34,6 +34,15 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 
 > `DCODE_INSTRUCTIONS_PATH`, `DCODE_INSTRUCTIONS_MAX_BYTES` e `DCODE_INSTRUCTIONS_MAX_DEPTH` são declaradas em `202608080016-behavior-definition.config.spec.md`, seção 1. Esta spec fornece os **defaults** que lá estavam pendentes.
 
+## 3.1 Tradução e reindex
+
+| Variável | Tipo | Default | Uso |
+|---|---|---|---|
+| `DCODE_INSTRUCTION_NOTICE` | booleano | `true` | Avisa, no início da sessão, quando há instrução compartilhada não traduzida ou origem divergente (RN-6.2). Desligar silencia o aviso; **não** muda o que é lido. |
+| `DCODE_INSTRUCTION_FOREIGN` | lista | `AGENTS.md` | Arquivos tratados como **formato compartilhado** — candidatos a tradução, e origem do digest do reindex. `DCODE.md` nunca entra: é o destino, não a origem. |
+
+> Não há chave para desligar a verificação de ferramenta nem a de comando. Gerar `DCODE.md` sem conferir produziria exatamente o arquivo que esta mudança existe para evitar, com a aparência de ter sido conferido.
+
 ## 4. Diagnóstico
 
 | Variável | Tipo | Default | Uso |
@@ -52,9 +61,13 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 | Cadeia congelada na criação da sessão | sempre | RN-5; instrução tardia invalidaria o prefixo inteiro. |
 | Instrução fora da cadeia vira lembrete | sempre | RN-6; a única saída que não ignora o usuário nem quebra a imutabilidade. |
 | Comando não executa nada | sempre | RN-10; execução fora do avaliador de política está proibida pela spec de sandbox. |
+| Comando citado em arquivo de instrução **nunca é executado para verificação** | sempre | RN-6.1; o arquivo pode ter vindo de repositório clonado, e sondar por presença de arquivo responde a mesma pergunta sem rodar nada de terceiro. |
+| Descarte na tradução é registrado no arquivo gerado | sempre | RN-6.1; sem o registro ninguém distingue descarte correto de descarte de regra legítima. |
+| Reindex nunca sobrescreve o arquivo gerado | sempre | RN-6.2; ele pertence ao usuário a partir da geração, e sobrescrever apaga edição manual sem aviso. |
+| Instrução não traduzida avisa, nunca bloqueia | sempre | RN-6.2; portão que trava vira portão atravessado no automático. |
 | Permissão `0700` nas raízes criadas | sempre | Config e estado contêm instruções e histórico do usuário. |
 | Travamento é visível | sempre | RN-9; ignorar em silêncio faz o usuário achar que a mudança funcionou. |
 
 ## 6. Changelog
 
-_Sem alterações desde a criação._
+- [202608101900 — Tradução de instruções de terceiros](changelog/202608101900-traducao-de-instrucoes-de-terceiros.md)
