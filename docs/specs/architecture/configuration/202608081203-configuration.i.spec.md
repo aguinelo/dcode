@@ -115,6 +115,33 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 > A guarda de importação existe porque a tentação de fazer comando executar algo aparece cedo. Execução fora do avaliador de política está proibida pela RN-6 da spec de sandbox, e comando não abre exceção.
 
+### Passo 7.5 — Tradução e reindex
+
+> Acrescentado por [202608101900](changelog/202608101900-traducao-de-instrucoes-de-terceiros.md). Depende do Passo 3; independente dos Passos 5, 6 e 7.
+
+`internal/config/translate.go` — a verificação, que é código, não prompt:
+
+- [ ] `VerifyTools(text string, have []string) []Finding` — ferramenta citada conferida contra o registro do produto. Fato, não julgamento.
+- [ ] `ProbeCommands(text string, fs fs.FS) []Finding` — comando citado conferido por **presença de arquivo** (`package.json`, `go.mod`, `Makefile`).
+- [ ] `SourceDigest(files []string) string` — digest das origens, gravado no `DCODE.md` gerado.
+- [ ] `Diverged(dcodeMD string, fs fs.FS) ([]string, bool)` — nomeia **quais** arquivos mudaram desde a geração.
+
+**Testes obrigatórios:**
+- Guarda de importação: `translate.go` **não** importa `os/exec`. Comando de origem nunca é executado (RN-6.1).
+- `VerifyTools` acusa ferramenta ausente do registro e não acusa ferramenta presente.
+- `ProbeCommands` acusa `npm run build` sem `package.json` e não acusa com ele.
+- `Diverged` devolve o nome do arquivo alterado, não só um booleano — o aviso precisa dizer **o que** mudou (RN-6.2).
+- Nenhum caminho escreve por cima de `DCODE.md` existente.
+
+`internal/tui/commands.go`:
+
+- [ ] `InitPrompt` reescrito: traduzir, não resumir. Exige a seção de descarte no arquivo gerado.
+- [ ] Aviso de início de sessão pelo canal de **lembrete**, nunca no prefixo.
+
+> A guarda de importação é o mesmo desenho do Passo 7, e pelo mesmo motivo: "só rodo pra ver se funciona" é a tentação óbvia, e aqui ela executa instrução de repositório de terceiro dentro do workspace.
+
+> `InitPrompt` é turno de modelo e portanto mediado. A verificação **não** está nele: roda sobre o resultado, em código. Prompt pedindo para conferir não é conferência.
+
 ### Passo 8 — Invariantes
 
 `internal/config/invariants_test.go`
@@ -146,7 +173,11 @@ Passo 1 (raízes)
 - **Cadeia recalculada por turno** — invalida o prefixo e anula a ADR-03 sem erro visível.
 - **`Expand` chamando `os/exec`** — cria segunda superfície de execução fora da política. A guarda de importação do Passo 7 existe para isso.
 - **Config sem `Origin`** — inviabiliza RN-8, e o suporte perde a única ferramenta que resolve "no meu funciona".
+- **Verificação escrita como instrução no `InitPrompt`** — pedir ao modelo que confira não é conferir. A verificação é código que roda sobre o resultado, ou não existe.
+- **Reindex regenerando sozinho** — apaga a edição manual que o usuário fez no `DCODE.md` depois da geração, e some sem erro. Detecta, nomeia o arquivo, propõe.
+- **`Diverged` devolvendo só booleano** — produz o aviso inútil "algo mudou". O usuário precisa do nome para saber se importa.
+- **Aviso de instrução não traduzida virando bloqueio** — torna o produto inutilizável em repositório recém-clonado, que é o caso mais comum de todos.
 
 ## Changelog
 
-_Sem alterações desde a criação._
+- [202608101900 — Tradução de instruções de terceiros](changelog/202608101900-traducao-de-instrucoes-de-terceiros.md)

@@ -78,6 +78,26 @@ Descartar em silêncio faria o agente violar convenção que o usuário escreveu
 
 A saída é o terceiro canal: **lembrete anexado**. Direciona o comportamento sem tocar o prefixo — exatamente o problema para o qual aquele canal existe.
 
+### RN-6.1 — Instrução compartilhada é traduzida no setup, nunca filtrada em execução
+A RN-4 é certa e tem um efeito colateral: nome de arquivo compartilhado significa que **quem escreveu primeiro vence**, inclusive tendo escrito para outra ferramenta. O resultado observado é um prompt dominado por instrução que descreve máquina inexistente.
+
+Filtrar por assunto em tempo de execução exigiria julgamento semântico, a cada turno, automático e invisível — e descartaria regra legítima do usuário em silêncio. **Filtro que erra calado é pior que filtro nenhum.**
+
+A tradução acontece **uma vez, no setup**, e produz arquivo que uma pessoa revisa antes de valer. O erro passa a ser visível, revisável e único.
+
+Três obrigações decorrem, e nenhuma é opcional:
+
+- **Ferramenta citada é conferida contra o registro do produto**, e comando citado é conferido por **sonda de arquivo**. Ambos são fato, não julgamento.
+- **Comando de arquivo de instrução nunca é executado para verificação.** O arquivo pode ter vindo de repositório clonado, e verificar executando é executar instrução de desconhecido dentro do workspace.
+- **O que foi descartado é registrado com o motivo**, no arquivo gerado. Mesma exigência da RN-10 de `behavior-definition`, e pelo mesmo motivo: descarte invisível é descarte que ninguém audita.
+
+### RN-6.2 — Instrução não traduzida avisa; nunca bloqueia
+Havendo arquivo de instrução não escrito para o dcode e não havendo o específico, a sessão começa avisando, **com o número medido**.
+
+Exigir setup antes de responder uma pergunta em repositório recém-clonado é a ferramenta burocrática da RN-9 de `behavior-definition`, e portão que trava vira portão que se atravessa no automático. O aviso basta porque o problema não é o produto não saber decidir — é o usuário não saber que está acontecendo.
+
+**Reindex detecta, avisa o que mudou, e propõe.** O arquivo gerado guarda o digest das origens; divergiu, avisa nomeando o arquivo. Regenerar automaticamente destrói a edição manual que o usuário fez depois — e o arquivo específico é, por desenho, dele a partir da geração.
+
 ### RN-7 — Uma única cadeia de precedência, para tudo
 ```
 config travada por administrador  ← vence tudo
@@ -112,4 +132,4 @@ Comando que executasse ação direta seria uma segunda superfície de execução
 
 ## 6. Changelog
 
-_Sem alterações desde a criação._
+- [202608101900 — Tradução de instruções de terceiros](changelog/202608101900-traducao-de-instrucoes-de-terceiros.md)
