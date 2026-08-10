@@ -39,6 +39,7 @@ A montagem é totalmente determinística. O que não é: **se o modelo obedece.*
 | US-6 | autor de família | ajustar formulação ao modelo | mesma regra, fraseado diferente, resultado melhor |
 | US-7 | usuário | ver onde estamos numa tarefa longa | acompanhar sem reler o histórico |
 | US-8 | usuário | que tarefa pequena não vire cerimônia | ferramenta burocrática é ferramenta abandonada |
+| US-9 | usuário | nunca receber "pronto" sobre trabalho que não foi conferido | relato falso custa mais que turno a mais |
 
 ## 4. Regras de negócio
 
@@ -146,6 +147,23 @@ Cada seção declara **como** pode mudar, e isso não é escolha de quem configu
 A trava é **estrutural, não condicional**: `Safety` não é campo do tipo de sobreposição. Pela RN-2, regra que vira invariante de código sai do texto e passa a ser verificável por asserção; trava por convenção quebra no primeiro refactor, trava por tipo não compila.
 
 Sobreposição aplicada é **sempre visível** — a auditoria do prompt marca a origem de cada seção. Substituição invisível seria pior que a imutabilidade que ela substitui, porque removeria a única forma de saber o que foi ao modelo.
+### RN-13 — Se não rodou, não diga que funciona
+Trabalho que mudou arquivo e não foi verificado **não é relatado como funcionando**. Essa é a regra; o resto é como aplicá-la.
+
+Nada nesta doutrina exigia conferência: `verifiable` em `Identity` qualifica o tipo de passo preferido, não obriga a nada. O estrago não é quebrar — é **quebrar e relatar sucesso**, porque um turno que termina em "pronto" sem nada executado é indistinguível, para quem lê, de um turno verificado.
+
+Aplicada em três camadas, e a garantia é a primeira:
+
+1. **Estado de verificação do turno**, derivado de fato — houve edição, o comando de verificação rodou depois dela, e com que código de saída. **O cliente exibe esse estado.** É o que sobrevive a um modelo que afirme sucesso em prosa: o texto pode mentir, o selo não.
+2. **O turno não termina** com mudança não verificada ou verificação falha: o lembrete é anexado e o ciclo continua, uma vez. Persistindo, termina em estado honesto de não verificado — que não é erro.
+3. **Uma frase na doutrina.** Metade barata, custo zero de turno, e evita o pior estrago, que é a afirmação falsa.
+
+Duas coisas que a regra **não** é:
+
+- Não é "sempre rode os testes". Verificação se liga a **ter mudado algo**; disparar em tarefa de leitura queima turno e a ferramenta é desinstalada (US-8, RN-9).
+- Não é sobre o comando existir. Não havendo comando conhecido, a obrigação vira **dizer o que não pôde ser verificado** — nunca fingir que conferiu.
+
+O comando de verificação vem de configuração ou de arquivo específico revisado por uma pessoa, **nunca de formato compartilhado de terceiro** — ele passaria a ser executado a cada turno, que é a RN-6.1 de `202608081203-configuration` violada em laço.
 
 ## 5. Fora de escopo
 
@@ -159,3 +177,4 @@ Sobreposição aplicada é **sempre visível** — a auditoria do prompt marca a
 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
 - [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
+- [202608102000 — Verificação antes da afirmação](changelog/202608102000-verificacao-antes-da-afirmacao.md)
