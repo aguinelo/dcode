@@ -235,8 +235,34 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		return p.onKey(msg)
+
+	case tea.PasteMsg:
+		// A terminal with bracketed paste sends the whole block as one message
+		// rather than as a burst of key presses, so without this case a paste
+		// fell through and vanished — nothing on screen changed, which reads as
+		// a broken terminal rather than a missing case.
+		//
+		// The modal swallows it like any other input: it is the one moment the
+		// user has to read, and a paste is not consent.
+		if p.model.Pending != nil {
+			return p, nil
+		}
+		p.model = p.model.Insert(flattenPaste(msg.Content)).Refresh(p.opts.Commands)
+		return p, nil
 	}
 	return p, nil
+}
+
+// flattenPaste turns a pasted block into something a one-line input can hold.
+//
+// Pasted text routinely carries newlines — a stack trace, a diff, a log — and
+// the input is a single row. Letting them through would break the render, and
+// treating each as Enter would send one turn per line and lose the last. A
+// space keeps the words apart and keeps every line.
+func flattenPaste(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	return strings.ReplaceAll(s, "\n", " ")
 }
 
 func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {

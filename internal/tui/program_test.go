@@ -1053,3 +1053,65 @@ func TestTheQueueAndMenuTakeRowsFromTheStream(t *testing.T) {
 		}
 	}
 }
+
+// Regression: pasting did nothing at all.
+//
+// A terminal with bracketed paste sends the whole block as one PasteMsg rather
+// than as a burst of key presses, and Update only handled key presses — so the
+// paste fell through to the default case and was dropped in silence. Nothing on
+// screen changed, which reads as a broken terminal rather than a missing case.
+func TestPastingInsertsTheText(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model = p.model.SetInput("antes ")
+
+	p.Update(tea.PasteMsg{Content: "texto colado"})
+	if p.model.Input != "antes texto colado" {
+		t.Fatalf("got %q", p.model.Input)
+	}
+	if p.model.InputCursor != len([]rune(p.model.Input)) {
+		t.Errorf("the caret follows the paste, got %d", p.model.InputCursor)
+	}
+}
+
+// A pasted block routinely carries newlines — a stack trace, a diff, a log.
+// Each one would otherwise be an Enter, so a three-line paste would send three
+// turns and lose the last line.
+func TestAMultiLinePasteDoesNotSendAnything(t *testing.T) {
+	p, tr := newProgram(t)
+	p.Update(tea.PasteMsg{Content: "primeira\nsegunda\nterceira"})
+
+	if len(tr.submits()) != 0 {
+		t.Fatalf("pasting is not sending, got %v", tr.submits())
+	}
+	if !strings.Contains(p.model.Input, "primeira") || !strings.Contains(p.model.Input, "terceira") {
+		t.Errorf("no line may be lost: %q", p.model.Input)
+	}
+	// The line is one line: the input is a single row, and a raw newline in it
+	// would break the render rather than show a paragraph.
+	if strings.ContainsRune(p.model.Input, '\n') {
+		t.Errorf("a newline must not survive into a one-line input: %q", p.model.Input)
+	}
+}
+
+// The modal is the one moment the user has to read, and a paste is not consent.
+func TestPastingIsIgnoredWhileTheModalIsOpen(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.Pending = &protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash"}
+
+	p.Update(tea.PasteMsg{Content: "qualquer coisa"})
+	if p.model.Input != "" {
+		t.Errorf("the modal swallows a paste too, got %q", p.model.Input)
+	}
+	if len(tr.resolved) != 0 {
+		t.Errorf("and it certainly does not answer, got %v", tr.resolved)
+	}
+}
+
+// A paste is an edit, so the completion menu follows it like any other.
+func TestPastingASlashOpensTheMenu(t *testing.T) {
+	p, _ := withCommands(t)
+	p.Update(tea.PasteMsg{Content: "/pl"})
+	if len(p.model.Completions) == 0 {
+		t.Errorf("got input %q with no menu", p.model.Input)
+	}
+}
