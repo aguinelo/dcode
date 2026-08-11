@@ -215,7 +215,9 @@ func TestRandomUint32Varies(t *testing.T) {
 
 func TestResolveRootsAndHelpers(t *testing.T) {
 	home := t.TempDir()
-	roots, err := ResolveRoots(envFrom(map[string]string{"DCODE_HOME": home}))
+	// The discovery itself, not a one-line wrapper over it: the wrapper added
+	// a name to the package surface and nothing else.
+	roots, err := config.DiscoverRoots(envFrom(map[string]string{"DCODE_HOME": home}))
 	if err != nil {
 		t.Fatal(err)
 	}

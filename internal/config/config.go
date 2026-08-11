@@ -225,20 +225,6 @@ var credentialKey = regexp.MustCompile(`(?i)(api[_-]?key|token|secret|password|c
 // The check runs over every key including unknown sections, because an unknown
 // section is exactly where a secret would slip through unnoticed. Config is
 // meant to be versioned and synced, which is what makes this the most common
-// leak there is.
-func CheckNoCredentials(values map[string]string, origin string) error {
-	var found []string
-	for k := range values {
-		if credentialKey.MatchString(k) {
-			found = append(found, k)
-		}
-	}
-	if len(found) == 0 {
-		return nil
-	}
-	sort.Strings(found)
-	return credentialError(strings.Join(found, ", "), origin)
-}
 
 // credentialError says where the credential should have come from. An error
 // that only refuses leaves the user with no way forward.

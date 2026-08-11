@@ -34,7 +34,12 @@ func RegisterSecret(v string) {
 	secrets = append(secrets, v)
 }
 
-// ClearSecrets drops every registered secret. Test-only in practice.
+// ClearSecrets drops every registered secret.
+//
+// It exists for tests, including tests in other packages — which is why it is
+// exported rather than unexported beside them. A running process registers the
+// credential once and has no reason to forget it, so nothing in production
+// calls this and nothing should.
 func ClearSecrets() {
 	secretsMu.Lock()
 	defer secretsMu.Unlock()

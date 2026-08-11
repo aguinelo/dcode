@@ -258,19 +258,22 @@ func TestEnsureCreatesOwnerOnly(t *testing.T) {
 func TestCredentialsAreRefusedIncludingInUnknownSections(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		keys map[string]string
+		doc  string
 	}{
-		{"api key", map[string]string{"model.api_key": "sk-x"}},
-		{"apikey", map[string]string{"provider.apikey": "sk-x"}},
-		{"api-key", map[string]string{"x.api-key": "sk-x"}},
-		{"token", map[string]string{"auth.token": "t"}},
-		{"secret", map[string]string{"whatever.secret": "s"}},
-		{"password", map[string]string{"db.password": "p"}},
-		{"unknown section", map[string]string{"totally.unknown.api_key": "sk-x"}},
-		{"uppercase", map[string]string{"model.API_KEY": "sk-x"}},
+		{"api key", "[model]\napi_key = \"sk-x\"\n"},
+		{"apikey", "[provider]\napikey = \"sk-x\"\n"},
+		{"api-key", "[x]\napi-key = \"sk-x\"\n"},
+		{"token", "[auth]\ntoken = \"t\"\n"},
+		{"secret", "[whatever]\nsecret = \"s\"\n"},
+		{"password", "[db]\npassword = \"p\"\n"},
+		{"unknown section", "[totally-unknown]\napi_key = \"sk-x\"\n"},
+		{"uppercase", "[model]\nAPI_KEY = \"sk-x\"\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := CheckNoCredentials(tc.keys, "config.toml")
+			// Through the live parser rather than a private copy of the rule.
+			// A test that exercises its own implementation of a guarantee
+			// agrees with itself, which is the one thing a test must not do.
+			_, err := ParseSections(tc.doc, "config.toml")
 			if err == nil {
 				t.Fatal("a credential-shaped key must be refused")
 			}
@@ -282,10 +285,7 @@ func TestCredentialsAreRefusedIncludingInUnknownSections(t *testing.T) {
 }
 
 func TestOrdinaryKeysAreAccepted(t *testing.T) {
-	err := CheckNoCredentials(map[string]string{
-		"model.name": "MiniMax-M3", "sandbox.mode": "workspace-write",
-		"limits.max_iterations": "50",
-	}, "config.toml")
+	_, err := ParseSections("[model]\nname = \"MiniMax-M3\"\n\n[sandbox]\nmode = \"workspace-write\"\n", "config.toml")
 	if err != nil {
 		t.Errorf("ordinary configuration must pass: %v", err)
 	}
