@@ -10,8 +10,6 @@
 | `DCODE_MODEL` | string | `MiniMax-M3` | Identificador do modelo. O prefixo resolve a **família** no `Registry`. Modelo desconhecido falha na criação da sessão, com a lista de famílias disponíveis no erro — nunca cai em família genérica. |
 | `DCODE_TRANSPORT` | enum | vazio | Sobrescreve o formato de fio: `openai` ou `anthropic`. Vazio usa o preferido da família. Valor fora de `Transports()` da família falha nomeando os compatíveis. Existe para contornar bug de um lado do provedor sem trocar de modelo. |
 | `DCODE_FAMILY` | string | vazio | Força a família, ignorando a resolução por prefixo. `generic` é o escape hatch para modelo não suportado: funciona, mas **emite aviso de que os limiares de contrato comportamental não foram medidos** para ele. |
-| `DCODE_MODEL_WINDOW` | inteiro | `0` | Sobrescreve a janela informada pelo adaptador. `0` usa o valor do adaptador. Existe para modelo novo cuja janela o adaptador ainda não conhece; usar isso é sinal de que o adaptador precisa ser atualizado. |
-| `DCODE_MAX_OUTPUT_TOKENS` | inteiro | `0` | Teto de tokens de saída por chamada ao modelo. `0` usa o default da família, e só então o do provedor. Não confundir com o teto por turno, que vive no loop do agente. |
 
 ## 2. Credenciais
 
@@ -26,11 +24,6 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_REQUEST_TIMEOUT` | duração | `600s` | Timeout total de uma chamada em streaming. Generoso porque turno com raciocínio longo é legítimo; o corte real de sessão travada é a interrupção do usuário, não este valor. |
-| `DCODE_CONNECT_TIMEOUT` | duração | `10s` | Timeout de estabelecimento de conexão. Curto: falha de conexão deve aparecer rápido. |
-| `DCODE_MAX_RETRIES` | inteiro | `3` | Tentativas para classe de erro com `Retryable = true`. Não se aplica a `auth`, `quota` nem `bad_request`. |
-| `DCODE_RETRY_BASE_DELAY` | duração | `1s` | Base do recuo exponencial. `rate_limit` ignora e usa `RetryAfter` do provedor. |
-| `DCODE_RETRY_MAX_DELAY` | duração | `30s` | Teto de cada espera individual do recuo. |
 
 ## 4. Medição de contratos comportamentais
 

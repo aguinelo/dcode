@@ -10,22 +10,17 @@
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_SANDBOX_BACKEND` | enum | `auto` | `auto`, `seatbelt`, `bubblewrap`, `none`. `auto` escolhe pelo sistema operacional. `none` **só é aceito** junto de `DCODE_SANDBOX_MODE=full-access` — em qualquer outro modo é erro de inicialização, porque prometeria fronteira que não existe (RN-3). |
-| `DCODE_SANDBOX_BIN` | caminho | vazio | Caminho do binário do mecanismo. Vazio procura no `PATH`. Existe para instalação fora do padrão, não para substituir por outro programa. |
-| `DCODE_SANDBOX_PROFILE_DIR` | caminho | `$DCODE_STATE_DIR/profiles` | Onde os perfis gerados são escritos. Perfil é gerado por sessão a partir do workspace e do modo. |
 
 ## 2. Rede
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_ALLOW_NETWORK` | booleano | `false` | Concede rede sem escalonar, dentro do sandbox. Equivale a tratar rede como dentro da fronteira. Ligar reduz atrito e reduz segurança — é exatamente o trade-off que a ADR-02 torna explícito em vez de escondido. |
-| `DCODE_NETWORK_ALLOWLIST` | lista | vazio | Hosts permitidos sem escalonar, mesmo com `DCODE_ALLOW_NETWORK=false`. Vazio não permite nenhum. Aplicado pelo perfil do sandbox quando o mecanismo suporta; onde não suportar, a sessão falha na criação em vez de ignorar a lista. |
 
 ## 3. Governança
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_REQUIREMENTS_FILE` | caminho | vazio | Arquivo de política travada por administrador. Valores definidos aqui **não** são sobrescrevíveis por variável de ambiente nem por flag (RN-7). Ausente, não há travamento. |
-| `DCODE_ALLOW_FULL_ACCESS` | booleano | `true` | Quando `false`, `full-access` é recusado mesmo se pedido. Só faz sentido no arquivo de requisitos — em variável de ambiente, quem pode mudar a variável pode mudar esta também. |
 
 > O arquivo de requisitos é o análogo do `requirements.toml` do Codex, elogiado na ADR-02 como o que torna o dcode adotável em organização. Separar config de usuário de config travada é o ponto inteiro.
 
@@ -33,7 +28,6 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_SANDBOX_TRACE` | booleano | `false` | Registra cada `Verdict` em nível `debug`: operação, caminho resolvido, fronteira, decisão. Verboso; para entender por que algo foi negado. |
 
 ## 5. Constantes não configuráveis
 
