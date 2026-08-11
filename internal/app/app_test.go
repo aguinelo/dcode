@@ -307,7 +307,11 @@ func buildTestPrompt(t *testing.T, ws string, reg *tools.Registry) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return behaviorBuild(reg.Names(), instructions, nil, behavior.DoctrineOverlay{})
+	prompt, err := behaviorBuild(reg.Names(), instructions, nil, behavior.DoctrineOverlay{}, "minimax-m3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return prompt
 }
 
 // sequenced replays one recorded turn per call through the real family decoder,

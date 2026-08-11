@@ -78,13 +78,27 @@ type Prompt struct {
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
-func Build(p Prompt) string {
+func Build(p Prompt, f Formulation) (string, error) {
+	if f == nil {
+		f = FormulationFor("")
+	}
+	// An agent with no identity is not a degraded agent, it is an
+	// unpredictable one. Failing here makes the misconfiguration visible at
+	// assembly rather than as strange behaviour three turns later — the same
+	// reason Assemble rejects empty instructions.
+	if strings.TrimSpace(p.Doctrine.Identity) == "" {
+		return "", fmt.Errorf("behavior: the doctrine has no identity; refusing to assemble a prompt without one")
+	}
+	if strings.TrimSpace(p.Doctrine.Safety) == "" {
+		return "", fmt.Errorf("behavior: the doctrine has no safety section; refusing to assemble a prompt without one")
+	}
+
 	var b strings.Builder
 
-	writeSection(&b, "", p.Doctrine.Identity)
-	writeSection(&b, "## Safety", p.Doctrine.Safety)
-	writeSection(&b, "## Using tools", p.Doctrine.ToolPolicy)
-	writeSection(&b, "## Style", p.Doctrine.Style)
+	writeBlock(&b, f, "", p.Doctrine.Identity)
+	writeBlock(&b, f, "Safety", p.Doctrine.Safety)
+	writeBlock(&b, f, "Using tools", p.Doctrine.ToolPolicy)
+	writeBlock(&b, f, "Style", p.Doctrine.Style)
 
 	if len(p.SkillIndex) > 0 {
 		entries := make([]SkillIndexEntry, len(p.SkillIndex))
@@ -96,13 +110,13 @@ func Build(p Prompt) string {
 		for _, e := range entries {
 			fmt.Fprintf(&s, "\n- **%s** — %s", e.Name, e.WhenToUse)
 		}
-		writeSection(&b, "## Skills", s.String())
+		writeBlock(&b, f, "Skills", s.String())
 	}
 
 	if rendered := renderInstructions(p.Instructions); rendered != "" {
-		writeSection(&b, "## Project instructions", rendered)
+		writeBlock(&b, f, "Project instructions", rendered)
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return strings.TrimRight(b.String(), "\n"), nil
 }
 
 // renderInstructions stacks instructions from least to most authority.
@@ -136,20 +150,22 @@ func renderInstructions(in []Instruction) string {
 	return b.String()
 }
 
-func writeSection(b *strings.Builder, heading, body string) {
-	if strings.TrimSpace(body) == "" {
-		// An empty section contributes nothing at all — not an empty heading,
-		// which would still be a byte difference against a session without it.
+// writeBlock appends one titled block, worded by the family.
+//
+// The rule about what goes in is here; the family decides only how it is
+// delimited (RN-8).
+func writeBlock(b *strings.Builder, f Formulation, title, body string) {
+	// An empty section contributes nothing at all — not an empty heading,
+	// which would still be a byte difference against a session without it.
+	rendered := f.Section(title, strings.TrimSpace(body))
+	if rendered == "" {
 		return
 	}
 	if b.Len() > 0 {
-		b.WriteString("\n\n")
+		b.WriteString("\n")
 	}
-	if heading != "" {
-		b.WriteString(heading)
-		b.WriteString("\n\n")
-	}
-	b.WriteString(strings.TrimSpace(body))
+	b.WriteString(strings.TrimRight(rendered, "\n"))
+	b.WriteString("\n")
 }
 
 // DefaultDoctrine is the shipped base layer.
