@@ -119,3 +119,101 @@ func TestTheHintNamesEveryKeyAndTheCount(t *testing.T) {
 		}
 	}
 }
+
+// Copy mode existed and showed nothing. `Contains` was written to say which
+// rendered lines are inside the selection, and had no caller: the user pressed
+// keys, a selection moved, and the screen looked identical.
+//
+// That is worse than not having copy mode. Without it the answer is "select
+// with the mouse, it does not work here"; with an invisible selection the answer
+// is "press some keys and hope", and the only way to find out what was taken is
+// to paste it somewhere else.
+func TestCopyModeShowsWhichLinesAreSelected(t *testing.T) {
+	m := NewModel("s1", "/w", "m", "workspace-write", En)
+	for i := 0; i < 6; i++ {
+		m.Entries = append(m.Entries, Entry{Kind: KindAssistant, Summary: "LINE-" + string(rune('A'+i))})
+	}
+	g := DefaultGeometry(100, 30)
+
+	plain := Render(m, g)
+
+	m.Copy = CopyState{Active: true, Anchor: 0, Head: 1}
+	selected := Render(m, g)
+
+	if selected == plain {
+		t.Fatal("opening a selection changed nothing on screen; the user is dragging " +
+			"something they cannot see")
+	}
+	// Moving the selection has to move what is highlighted, or the first
+	// difference was just the mode indicator.
+	m.Copy = CopyState{Active: true, Anchor: 3, Head: 4}
+	moved := Render(m, g)
+	if moved == selected {
+		t.Error("moving the selection changed nothing; only the mode is being shown")
+	}
+}
+
+// The highlight is decoration, and decoration must not reach the clipboard.
+// What is pasted is what the person meant to copy, not what the terminal drew
+// around it.
+func TestTheHighlightNeverReachesTheClipboard(t *testing.T) {
+	lines := []string{"first line", "second line", "third line"}
+	got := CopyText(lines, CopyState{Active: true, Anchor: 0, Head: 1})
+	if got != "first line\nsecond line" {
+		t.Errorf("copied %q", got)
+	}
+	if strings.Contains(got, "\x1b") {
+		t.Errorf("an escape sequence reached the clipboard: %q", got)
+	}
+}
+
+// A monochrome terminal has no colour to highlight with, so the selection has
+// to be visible some other way. Marking it only by colour means copy mode does
+// not work at all where colour is off.
+func TestTheSelectionIsVisibleWithoutColour(t *testing.T) {
+	m := NewModel("s1", "/w", "m", "workspace-write", En)
+	for i := 0; i < 4; i++ {
+		m.Entries = append(m.Entries, Entry{Kind: KindAssistant, Summary: "LINE"})
+	}
+	g := DefaultGeometry(100, 30)
+	g.Palette = Palette{} // no colour at all
+
+	// Both renders are IN copy mode, differing only in which lines are chosen.
+	// Comparing against copy mode being closed would pass on the gutter merely
+	// existing, which says nothing about whether the selection can be seen.
+	m.Copy = CopyState{Active: true, Anchor: 0, Head: 0}
+	first := Render(m, g)
+	m.Copy = CopyState{Active: true, Anchor: 2, Head: 2}
+	second := Render(m, g)
+
+	if first == second {
+		t.Error("with colour off the selection is invisible; copy mode would not work " +
+			"on a terminal that has none")
+	}
+}
+
+// The gutter borrows a cell rather than adding one. Adding would push every
+// line one past the terminal, wrapping it — and the stable layout the alternate
+// screen buys is exactly what copy mode exists to compensate for.
+func TestTheGutterNeverPushesALinePastTheTerminal(t *testing.T) {
+	m := modelWithPlan()
+	m.Entries = append(m.Entries, Entry{
+		Kind: KindTool, Tool: "bash", Target: strings.Repeat("long-path/", 20),
+		Summary: strings.Repeat("output ", 30), Expanded: true,
+		Detail: strings.Repeat("detail line\n", 5),
+	})
+	m.Copy = CopyState{Active: true, Anchor: 1, Head: 3}
+
+	for _, w := range []int{40, 60, 80, 100, 200} {
+		for _, unicode := range []bool{true, false} {
+			g := DefaultGeometry(w, 24)
+			g.Unicode = unicode
+			out := Render(m, g)
+			for _, line := range strings.Split(out, "\n") {
+				if n := visibleWidth(line); n > w {
+					t.Fatalf("width %d, unicode %v: a line is %d cells wide:\n%q", w, unicode, n, line)
+				}
+			}
+		}
+	}
+}

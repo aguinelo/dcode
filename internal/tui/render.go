@@ -116,6 +116,24 @@ func (g Geometry) panelWidth() int {
 }
 
 // StreamWidth is the columns available to the stream.
+// copyGutterWidth is the cell copy mode borrows from the stream, and the reason
+// it is borrowed rather than added: growing the line would push it past the
+// terminal, and the layout the alternate screen buys is the thing copy mode is
+// compensating for in the first place.
+const copyGutterWidth = 2
+
+// copyGutter marks one line as inside or outside the selection.
+func copyGutter(c CopyState, line int, g Geometry) string {
+	mark := "▌"
+	if !g.Unicode {
+		mark = ">"
+	}
+	if !c.Contains(line) {
+		return "  "
+	}
+	return g.Palette.Apply(StyleAccent, mark) + " "
+}
+
 func (g Geometry) StreamWidth(showPanel bool) int {
 	if !showPanel {
 		return g.Width
@@ -167,6 +185,13 @@ func Render(m Model, g Geometry) string {
 		left := ""
 		if i < len(visible) {
 			left = visible[i]
+		}
+		// While copy mode is open, every line carries a gutter: a marker where
+		// it is selected, a space where it is not. A selection shown only in
+		// colour is no selection on a terminal without any, and the gutter is
+		// on every line so the text does not shift as the selection moves.
+		if m.Copy.Active {
+			left = copyGutter(m.Copy, top+i, g) + clipStyled(left, streamW-copyGutterWidth)
 		}
 		if !showPanel {
 			b.WriteString(left)
