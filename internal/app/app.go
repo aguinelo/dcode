@@ -71,6 +71,13 @@ type Options struct {
 	DoneFile string
 	// MaxStallCycles is how many cycles without progress end a turn.
 	MaxStallCycles int
+	// Delegate switches the read-only delegation tool on. Off removes it from
+	// the registry; nothing else changes.
+	Delegate bool
+	// DelegateMaxIterations caps a child turn.
+	DelegateMaxIterations int
+	// DelegateMaxResultBytes caps the child's report.
+	DelegateMaxResultBytes int
 	// InstructionNotice switches the session-start warning about untranslated
 	// instruction files on. It warns; it never blocks.
 	InstructionNotice bool
@@ -219,20 +226,23 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 	}
 
 	opts := Options{
-		Env:               env,
-		Reminders:         r.Bool("behavior.reminders_enabled", true),
-		ShowReasoning:     r.Bool("behavior.show_reasoning", true),
-		Instructions:      r.Bool("behavior.instructions_enabled", true),
-		Skills:            r.Bool("behavior.skills_enabled", true),
-		EditEchoDiff:      r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
-		SymbolMaxMatches:  r.Int("tools.symbol_max_matches", 200),
-		BudgetNotice:      r.Bool("budget.notice", true),
-		VerifyCommand:     r.String("verify.command", ""),
-		DoneTimeout:       parseDuration(r.String("done.timeout", "10m"), 10*time.Minute),
-		DoneEnabled:       r.Bool("done.enabled", true),
-		DoneFile:          r.String("done.file", ""),
-		MaxStallCycles:    r.Int("limits.max_stall_cycles", 2),
-		InstructionNotice: r.Bool("instruction.notice", true),
+		Env:                    env,
+		Reminders:              r.Bool("behavior.reminders_enabled", true),
+		ShowReasoning:          r.Bool("behavior.show_reasoning", true),
+		Instructions:           r.Bool("behavior.instructions_enabled", true),
+		Skills:                 r.Bool("behavior.skills_enabled", true),
+		EditEchoDiff:           r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
+		SymbolMaxMatches:       r.Int("tools.symbol_max_matches", 200),
+		BudgetNotice:           r.Bool("budget.notice", true),
+		VerifyCommand:          r.String("verify.command", ""),
+		DoneTimeout:            parseDuration(r.String("done.timeout", "10m"), 10*time.Minute),
+		DoneEnabled:            r.Bool("done.enabled", true),
+		DoneFile:               r.String("done.file", ""),
+		MaxStallCycles:         r.Int("limits.max_stall_cycles", 2),
+		Delegate:               r.Bool("delegate.enabled", true),
+		DelegateMaxIterations:  r.Int("delegate.max_iterations", 20),
+		DelegateMaxResultBytes: r.Int("delegate.max_result_bytes", 8192),
+		InstructionNotice:      r.Bool("instruction.notice", true),
 		InstructionForeign: r.String("instruction.foreign",
 			strings.Join(ForeignDefault, ",")),
 		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
@@ -351,7 +361,11 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	toolLimits.EditEchoDiff = opts.EditEchoDiff
 	toolLimits.SymbolMaxMatches = opts.SymbolMaxMatches
 	state := tools.NewState(resolver, toolLimits)
-	registry := tools.NewRegistry(
+	// explore is registered as a pointer because its delegator is the engine,
+	// which does not exist yet: the registry is what the engine is built with.
+	// The knot is tied after, and it is the only one of its kind here.
+	explore := &tools.Explore{}
+	toolset := []tools.Tool{
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{}, tools.Symbol{},
 		tools.Bash{
@@ -363,7 +377,11 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			AllowNetwork: opts.AllowNetwork,
 		},
 		tools.Plan{},
-	)
+	}
+	if opts.Delegate {
+		toolset = append(toolset, explore)
+	}
+	registry := tools.NewRegistry(toolset...)
 
 	if opts.APIKey != "" {
 		provider.RegisterSecret(opts.APIKey)
@@ -442,21 +460,27 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Emitter: emitter, Approver: approver,
 		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
 		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
-		BudgetNotice:     opts.BudgetNotice,
-		Done:             doneSet,
-		DoneEnabled:      opts.DoneEnabled,
-		MaxStallCycles:   opts.MaxStallCycles,
-		DoneTimeout:      opts.DoneTimeout,
-		RunCriterion:     criterionRunner(sb, opts),
-		WrittenPaths:     state.Written,
-		Rules:            opts.Rules,
-		Summarise:        summariser(p, opts.Model),
-		Skills:           skills,
-		InstructionChain: chain,
-		ReadFile:         readFileText,
-		Reminders:        opts.Reminders,
-		ShowReasoning:    opts.ShowReasoning,
+		BudgetNotice:           opts.BudgetNotice,
+		DelegateMaxIterations:  opts.DelegateMaxIterations,
+		DelegateMaxResultBytes: opts.DelegateMaxResultBytes,
+		Done:                   doneSet,
+		DoneEnabled:            opts.DoneEnabled,
+		MaxStallCycles:         opts.MaxStallCycles,
+		DoneTimeout:            opts.DoneTimeout,
+		RunCriterion:           criterionRunner(sb, opts),
+		WrittenPaths:           state.Written,
+		Rules:                  opts.Rules,
+		Summarise:              summariser(p, opts.Model),
+		Skills:                 skills,
+		InstructionChain:       chain,
+		ReadFile:               readFileText,
+		Reminders:              opts.Reminders,
+		ShowReasoning:          opts.ShowReasoning,
 	}, ce.Session{Instructions: prompt})
+
+	// The knot: the tool needed the engine, and the engine needed the registry
+	// the tool is in. Tied here, once, where both exist.
+	explore.Delegator = engine
 
 	notice := ""
 	if opts.InstructionNotice {

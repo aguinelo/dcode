@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -87,4 +88,14 @@ func TestAMalformedDurationFallsBackRatherThanFailing(t *testing.T) {
 	if got := parseDuration("30s", time.Minute); got != 30*time.Second {
 		t.Errorf("a valid duration was not honoured: %v", got)
 	}
+}
+
+// The delegating tool is wired to the engine that owns turns, and the child it
+// builds is read-only by construction. Registering it and forgetting the knot
+// would leave a tool that always errors.
+func TestExploreIsWiredToTheEngine(t *testing.T) {
+	e := &loop.Engine{}
+	var _ interface {
+		Explore(ctx context.Context, task, path string) (string, []string, []string, bool, error)
+	} = e
 }

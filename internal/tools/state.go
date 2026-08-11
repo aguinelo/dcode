@@ -108,6 +108,25 @@ func (s *State) CheckEditable(path, current string) *ToolError {
 }
 
 // WasRead reports whether path has been read this session.
+// ReadPaths returns the workspace-relative paths this session opened, sorted.
+//
+// It is what a delegated turn hands back beside its conclusion: it does not
+// prove the child understood, but it proves it looked, and it turns "trust me"
+// into something a person can spot-check.
+func (s *State) ReadPaths() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]string, 0, len(s.files))
+	for p := range s.files {
+		if rel, err := filepath.Rel(s.Resolver.Workspace, p); err == nil {
+			p = rel
+		}
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // MarkWritten records that a tool changed path.
 //
 // Separate from MarkRead on purpose. MarkRead is also called right after a
