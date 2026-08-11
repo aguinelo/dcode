@@ -250,3 +250,25 @@ func TestEveryVerificationStateIsReachable(t *testing.T) {
 		}
 	}
 }
+
+// The seal is a function of two records, and the client shows it as a fact
+// about the turn. If it could vary between two evaluations of the same records,
+// it would be a fact about when it was asked instead — and a person comparing
+// what they saw with what the transcript says would find them disagreeing with
+// no way to tell which was wrong.
+func TestTheSealIsAFunctionOfTheRecordsAndNothingElse(t *testing.T) {
+	rep := Report{States: map[string]CriterionState{
+		"tests": CriterionMet, "lint": CriterionMet, "vet": CriterionUnavailable,
+	}}
+	first := VerificationOf(rep, true, false)
+	for i := 0; i < 50; i++ {
+		if got := VerificationOf(rep, true, false); got != first {
+			t.Fatalf("run %d gave %v, first gave %v — the seal reads something outside its arguments", i, got, first)
+		}
+	}
+	// Map iteration order is the realistic way a seal derived from a report
+	// would start varying: several states, one of them decisive.
+	if first != VerificationUnavailable {
+		t.Fatalf("seal = %v; with an unavailable criterion present the answer is fixed regardless of iteration order", first)
+	}
+}
