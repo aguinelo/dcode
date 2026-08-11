@@ -152,10 +152,6 @@ type Engine struct {
 	// delegated is what child turns cost, debited from this turn. Without it
 	// the parent's ceiling is fiction.
 	delegated provider.Usage
-	// timing is when each call of the current batch really ran, by emission
-	// index. Guarded because the batch runs concurrently.
-	timingMu sync.Mutex
-	timing   map[int][2]time.Time
 }
 
 // now is the engine's clock. Injectable so a test can assert a duration without
@@ -569,7 +565,6 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 	// The real order, kept on the execution rather than only folded into a
 	// duration: which of two concurrent calls actually went first is a fact a
 	// duration cannot answer.
-	e.recordTiming(ex.Index, started, finished)
 	if err != nil {
 		return fail(err.Error()), false
 	}
@@ -581,6 +576,8 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 		Added: res.Meta.Added, Removed: res.Meta.Removed,
 		ExitCode: res.Meta.ExitCode, HasExit: res.Meta.HasExit,
 		DurationMS: int(elapsed.Milliseconds()),
+		StartedAt:  started,
+		FinishedAt: finished,
 		Diff:       res.Meta.Diff,
 	})
 	if ex.Call.Name == "plan" && !res.IsError {
@@ -957,33 +954,4 @@ func (e *Engine) sleep(ctx context.Context, d time.Duration) bool {
 	case <-ctx.Done():
 		return false
 	}
-}
-
-// recordTiming stores when a call actually ran.
-//
-// Kept beside the batch rather than on the copy runOne received, because that
-// copy is a value and the goroutine that has it is the only one that could
-// write to it — which is precisely why the fact would otherwise be lost.
-func (e *Engine) recordTiming(index int, started, finished time.Time) {
-	e.timingMu.Lock()
-	defer e.timingMu.Unlock()
-	if e.timing == nil {
-		e.timing = map[int][2]time.Time{}
-	}
-	e.timing[index] = [2]time.Time{started, finished}
-}
-
-// Timing returns when each call of the last batch ran, by emission index.
-//
-// The emission order is what history is appended in, and RN-3 says the two are
-// deliberately different. This is the only place the real order survives, and
-// it is what a log needs to answer "what actually happened first".
-func (e *Engine) Timing() map[int][2]time.Time {
-	e.timingMu.Lock()
-	defer e.timingMu.Unlock()
-	out := make(map[int][2]time.Time, len(e.timing))
-	for k, v := range e.timing {
-		out[k] = v
-	}
-	return out
 }

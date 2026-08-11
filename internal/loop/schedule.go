@@ -3,7 +3,6 @@ package loop
 import (
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
-	"time"
 )
 
 // ToolExecution pairs a tool call with its position in the model's emission and
@@ -23,13 +22,6 @@ type ToolExecution struct {
 	// Err is a declaration failure; such a call is scheduled alone so its
 	// error reaches the model in the right position.
 	Err error
-	// StartedAt and FinishedAt are the REAL execution order, which is not the
-	// emission order when calls run together. Carried on the value rather than
-	// computed inline at the event, so the actual order is inspectable — the
-	// spec asks for it "para o log", and a duration alone cannot answer which
-	// of two concurrent calls went first.
-	StartedAt  time.Time
-	FinishedAt time.Time
 }
 
 // Group is a set of executions that may run concurrently.

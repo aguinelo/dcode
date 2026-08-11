@@ -251,6 +251,20 @@ type (
 		HasExit    bool `json:"has_exit,omitempty"`
 		DurationMS int  `json:"duration_ms,omitempty"`
 
+		// StartedAt and FinishedAt are the REAL execution order (RN-3.3).
+		//
+		// A duration cannot answer which of two concurrent calls went first,
+		// and results arrive in emission order rather than the order they ran.
+		// A client showing a batch has a person looking at it, and "which of
+		// these happened first" is a reasonable thing for them to ask.
+		//
+		// They live HERE and never in the context sent to the model: a
+		// timestamp in the prefix would make two runs of the same session
+		// differ, which ADR-03 forbids. The event is a person's window; the
+		// context is not.
+		StartedAt  time.Time `json:"started_at,omitempty"`
+		FinishedAt time.Time `json:"finished_at,omitempty"`
+
 		// Diff is the unified diff of a change. Present only for tools that
 		// modify a file, and never part of what the model was sent.
 		Diff string `json:"diff,omitempty"`

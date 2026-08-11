@@ -91,6 +91,7 @@ type recorder struct {
 	mu     sync.Mutex
 	events []protocol.EventType
 	last   map[protocol.EventType]any
+	all    []any
 }
 
 func newRecorder() *recorder {
@@ -102,6 +103,10 @@ func (r *recorder) Emit(t protocol.EventType, payload any) {
 	defer r.mu.Unlock()
 	r.events = append(r.events, t)
 	r.last[t] = payload
+	// Every payload, not only the most recent of each kind: a batch emits two
+	// completions and keeping one would hide exactly what a concurrency test
+	// needs to see.
+	r.all = append(r.all, payload)
 }
 
 func (r *recorder) count(t protocol.EventType) int {
@@ -780,7 +785,7 @@ func TestReasoningIsNotForwardedWhenSwitchedOff(t *testing.T) {
 // concurrent calls actually went first, which is the question a log is for.
 func TestTheRealExecutionOrderSurvivesTheBatch(t *testing.T) {
 	reg := tools.NewRegistry(tools.Read{}, tools.Glob{})
-	e, _ := newEngine(t, &scriptedProvider{turns: [][]provider.StreamEvent{
+	e, rec := newEngine(t, &scriptedProvider{turns: [][]provider.StreamEvent{
 		{
 			call("c1", "glob", `{"pattern":"**/*.go"}`),
 			call("c2", "glob", `{"pattern":"**/*.md"}`),
@@ -793,17 +798,27 @@ func TestTheRealExecutionOrderSurvivesTheBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	timing := e.Timing()
-	if len(timing) != 2 {
-		t.Fatalf("timing has %d entries, want one per call", len(timing))
+	// Read from the events, which is where the spec says the times live and
+	// now the only place that holds them. A second copy on the engine was one
+	// more thing that could disagree with what a client was shown.
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	seen := 0
+	for _, ev := range rec.all {
+		c, ok := ev.(protocol.ToolCompleted)
+		if !ok {
+			continue
+		}
+		seen++
+		if c.StartedAt.IsZero() || c.FinishedAt.IsZero() {
+			t.Errorf("%s ran and the event says nothing about when", c.ToolCallID)
+		}
+		if c.FinishedAt.Before(c.StartedAt) {
+			t.Errorf("%s finished before it started", c.ToolCallID)
+		}
 	}
-	for i, pair := range timing {
-		if pair[0].IsZero() || pair[1].IsZero() {
-			t.Errorf("call %d has no start or finish recorded", i)
-		}
-		if pair[1].Before(pair[0]) {
-			t.Errorf("call %d finished before it started", i)
-		}
+	if seen != 2 {
+		t.Fatalf("%d completions recorded, want one per call", seen)
 	}
 }
 
@@ -1109,5 +1124,98 @@ func TestWithoutTheHookTheTurnIsUnchanged(t *testing.T) {
 	e, _ := newEngine(t, p, reg)
 	if _, err := e.Run(context.Background(), "go"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Two calls that ran together arrive in emission order, which is not the order
+// they actually ran in. A duration cannot answer which went first — subtracting
+// it from nothing gives nothing — so the client showing a concurrent batch has
+// no way to say what really happened.
+//
+// The spec is explicit that these live in the EVENT and never in the context
+// sent to the model: a timestamp in the prefix would make two runs of the same
+// session differ. The client is a person's window, and a person asking "which
+// of these was first" is asking a reasonable question.
+func TestTheEventCarriesWhenACallActuallyRan(t *testing.T) {
+	reg := tools.NewRegistry(
+		slowTool{name: "slow", delay: 40 * time.Millisecond, path: "a"},
+		slowTool{name: "fast", delay: time.Millisecond, path: "b"},
+	)
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "slow", `{}`), call("c2", "fast", `{}`), done()},
+		{text("both ran"), done()},
+	}}
+	e, rec := newEngine(t, p, reg)
+
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	var completed []protocol.ToolCompleted
+	for _, ev := range rec.all {
+		if c, ok := ev.(protocol.ToolCompleted); ok {
+			completed = append(completed, c)
+		}
+	}
+	if len(completed) != 2 {
+		t.Fatalf("got %d completions, want 2", len(completed))
+	}
+	for _, c := range completed {
+		if c.StartedAt.IsZero() || c.FinishedAt.IsZero() {
+			t.Fatalf("%s carries no times: %+v", c.ToolCallID, c)
+		}
+		if c.FinishedAt.Before(c.StartedAt) {
+			t.Errorf("%s finished before it started", c.ToolCallID)
+		}
+	}
+
+	// Found by id, not by position: the events arrive in COMPLETION order,
+	// while the results are appended in emission order. That mismatch is the
+	// whole reason a client needs the times — position answers a different
+	// question from the one being asked.
+	byID := map[string]protocol.ToolCompleted{}
+	for _, c := range completed {
+		byID[c.ToolCallID] = c
+	}
+	slow, fast := byID["c1"], byID["c2"]
+
+	// The second call finished first. A duration alone could not say that, and
+	// the order the results were appended in says the opposite.
+	if !fast.FinishedAt.Before(slow.FinishedAt) {
+		t.Errorf("the times do not record the real order: slow finished %v, fast %v",
+			slow.FinishedAt, fast.FinishedAt)
+	}
+	// And they overlapped, which is what "ran together" means.
+	if !fast.StartedAt.Before(slow.FinishedAt) {
+		t.Error("the two calls did not overlap; the times describe a sequence")
+	}
+}
+
+// The same guarantee from the other side: what the model is sent still carries
+// no clock. The event is a person's window; the context is not.
+func TestTheTimesReachTheClientAndNotTheModel(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "one", delay: time.Millisecond, path: "a"})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "one", `{}`), done()},
+		{text("done"), done()},
+	}}
+	e, _ := newEngine(t, p, reg)
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+
+	msgs, err := ce.Assemble(e.Session())
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(msgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock := regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}`)
+	if m := clock.FindString(string(encoded)); m != "" {
+		t.Errorf("a timestamp reached the model: %q", m)
 	}
 }
