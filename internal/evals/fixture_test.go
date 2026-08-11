@@ -15,6 +15,7 @@ func TestEveryShippedFixtureLoads(t *testing.T) {
 		"toolcall-schema-valid", "toolcall-recover", "no-phantom-tool",
 		"notices-wrong-replacement",
 		"records-before-compaction", "warns-when-task-exceeds-budget",
+		"no-budget-noise-when-low",
 		"runs-verification-after-change", "reports-failure-honestly",
 		"states-what-was-not-verified", "no-verification-on-read-only",
 		"fixes-cause-not-measure", "states-unmet-on-stall", "no-dod-on-read-only",
