@@ -11,7 +11,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 ### Passo 1 — Resolução de raízes
 
-`internal/config/paths.go`
+`internal/config/config.go`
 
 - [ ] Quatro raízes por plataforma, conforme a tabela da seção 2 do `.p`.
 - [ ] `DCODE_HOME` colapsa todas; nenhum caminho escapa.
@@ -27,7 +27,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 ### Passo 2 — `config.toml` e recusa de credencial
 
-`internal/config/file.go`
+`internal/config/toml.go`
 
 - [ ] Parsing TOML mapeado no esquema da seção 3 do `.p`.
 - [ ] Chave desconhecida é erro quando `ConfigStrict`.
@@ -44,7 +44,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 ### Passo 3 — Descoberta de instruções
 
-`internal/config/discover.go`
+`internal/config/config.go`
 
 - [ ] Algoritmo da seção 4.1 do `.p`, de cima para baixo.
 - [ ] `AGENTS.md` antes de `DCODE.md` no mesmo diretório.
@@ -62,7 +62,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 ### Passo 4 — Congelamento e instrução fora da cadeia
 
-`internal/config/chain.go`
+`internal/config/config.go`
 
 - [ ] Cadeia resolvida na criação da sessão e congelada (RN-5).
 - [ ] `OutOfChain` detectando instrução em diretório tocado e fora da cadeia.
@@ -77,7 +77,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 ### Passo 5 — Cadeia de precedência
 
-`internal/config/resolve.go`
+`internal/config/config.go`
 
 - [ ] `Source`, `Value`, `Layer`, `Resolve` puro.
 - [ ] Ordem exata da RN-7.

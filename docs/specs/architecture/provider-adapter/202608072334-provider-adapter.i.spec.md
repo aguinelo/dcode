@@ -29,7 +29,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 ### Passo 2 — Guarda de fronteira
 
-`internal/provider/boundary_test.go`
+`internal/provider/provider_test.go`
 
 - [ ] Teste que falha se qualquer tipo específico de provedor for exportado do pacote (RN-2).
 - [ ] Teste que falha se pacote fora de `internal/provider` importar SDK de provedor.
@@ -101,7 +101,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 ### Passo 8 — Guarda de credencial
 
-`internal/provider/secret_test.go`
+`internal/provider/provider_test.go`
 
 - [ ] Injeta chave sentinela em `DCODE_API_KEY`, exercita erro de cada classe, e varre `ProviderError.Message`, log e evento em busca da sentinela (RN-6).
 

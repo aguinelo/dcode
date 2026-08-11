@@ -56,7 +56,7 @@
 
 ### Passo 5 — Fluxo SSE
 
-`internal/server/events.go`
+`internal/server/server.go`
 
 - [ ] `GET /sessions/{id}/events?from=` com `id:` = `Seq` e `data:` = `Event`.
 - [ ] Comentário `: ping` a cada 20s.
@@ -67,7 +67,7 @@
 
 ### Passo 6 — Ciclo de aprovação
 
-`internal/server/approvals.go` + `internal/sandbox/`
+`internal/session/session.go` + `internal/sandbox/`
 
 - [ ] Emitir `tool.approval_required` ao cruzar fronteira; sessão vai a `blocked`.
 - [ ] `POST .../approvals/{id}` resolve; segunda chamada devolve `409` (RN-4).
