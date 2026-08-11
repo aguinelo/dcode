@@ -18,9 +18,6 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_CONFIG_FILE` | caminho | `$DCODE_CONFIG_DIR/config.toml` | Sobrescreve o caminho do arquivo do usuário. Arquivo inexistente **não** é erro — config é opcional por inteiro. |
-| `DCODE_PROJECT_CONFIG` | caminho | `<workspace>/.dcode/config.toml` | Config do projeto. Vence a do usuário, perde para ambiente e flag. |
-| `DCODE_CONFIG_STRICT` | booleano | `true` | Chave desconhecida é erro. Desligar transforma em aviso — só para migrar entre versões, nunca como estado permanente: erro de digitação silenciosamente ignorado é a classe de bug mais frustrante que existe. |
 
 ## 3. Descoberta de instruções
 
@@ -28,9 +25,6 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_INSTRUCTION_FILES` | lista | `AGENTS.md,DCODE.md` | Nomes procurados em cada nível, **na ordem**: o último tem maior precedência no mesmo diretório. Reordenar muda quem vence; remover `AGENTS.md` abre mão da compatibilidade entre ferramentas (RN-4). |
-| `DCODE_SKILLS_DIR` | caminho | `$DCODE_CONFIG_DIR/skills` | Raiz de skills do usuário. Skills de projeto ficam em `<workspace>/.dcode/skills`, sempre consideradas. |
-| `DCODE_COMMANDS_DIR` | caminho | `$DCODE_CONFIG_DIR/commands` | Raiz de comandos do usuário. Comandos de projeto ficam em `<workspace>/.dcode/commands` e vencem os do usuário no caso de nome igual. |
 
 > `DCODE_INSTRUCTIONS_PATH`, `DCODE_INSTRUCTIONS_MAX_BYTES` e `DCODE_INSTRUCTIONS_MAX_DEPTH` são declaradas em `202608080016-behavior-definition.config.spec.md`, seção 1. Esta spec fornece os **defaults** que lá estavam pendentes.
 
@@ -47,7 +41,6 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_CONFIG_TRACE` | booleano | `false` | Registra, em `debug`, cada chave resolvida com valor, camada e origem. Verboso; use quando um valor efetivo não bate com o esperado. |
 
 > O caminho normal para isso é `dcode config get <chave>`, que responde valor **e** procedência (RN-8). O `TRACE` é para quando se quer a resolução inteira de uma vez.
 

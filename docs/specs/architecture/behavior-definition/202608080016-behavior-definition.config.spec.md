@@ -9,17 +9,11 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_INSTRUCTIONS_ENABLED` | booleano | `true` | Liga a leitura de arquivos de instrução. Desligar roda só com a doutrina base — útil para isolar se um comportamento vem da instrução do usuário ou do produto. |
-| `DCODE_INSTRUCTIONS_MAX_BYTES` | inteiro | `65536` | Teto por arquivo de instrução. Excedido, trunca e **avisa** — instrução truncada em silêncio faz o usuário achar que a regra está valendo quando não está. |
-| `DCODE_INSTRUCTIONS_MAX_DEPTH` | inteiro | `8` | Níveis de diretório percorridos acima do workspace na descoberta. Limita o custo em monorepo profundo. |
-| `DCODE_INSTRUCTIONS_PATH` | caminho | vazio | Sobrescreve a descoberta e usa um arquivo específico. Vazio usa a descoberta definida em `202608081203-configuration.p.spec.md`, seção 4.1. |
 
 ## 2. Skills
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_SKILLS_ENABLED` | booleano | `true` | Liga o disclosure progressivo. Desligar remove o índice do prefixo e nenhum corpo é carregado. |
-| `DCODE_SKILLS_MAX_INDEX` | inteiro | `64` | Máximo de skills no índice. Cada entrada custa uma linha no prefixo de **todo turno**; acima disso o índice compete por atenção com a tarefa. |
 
 > `DCODE_SKILLS_DIR` é declarada em `202608081203-configuration.config.spec.md`, seção 3, junto das demais raízes de descoberta.
 
@@ -27,8 +21,6 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_REMINDERS_ENABLED` | booleano | `true` | Liga o canal de lembrete. Desligar é apenas para depuração: sem ele o agente age sobre estado obsoleto e não sabe disso. |
-| `DCODE_REMINDER_KINDS` | lista | todos | Restringe os tipos emitidos. Existe para isolar qual lembrete causa um comportamento observado. |
 
 ## 3.1 Verificação (RN-13)
 
