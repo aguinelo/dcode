@@ -3,7 +3,9 @@
 > Nenhuma variável de ambiente nova no código sem estar aqui.
 > Precedência: **config travada por administrador** > flag > variável de ambiente > arquivo de config > default.
 
-> `DCODE_SANDBOX_MODE`, `DCODE_APPROVAL_POLICY` e `DCODE_APPROVAL_TIMEOUT` são declaradas em `202608072240-client-server-protocol.config.spec.md`, seção 3, porque o protocolo as expõe em `CreateSessionRequest`. Esta spec **não** as redeclara — ela define o comportamento que elas controlam.
+> `DCODE_SANDBOX_MODE` e `DCODE_APPROVAL_POLICY` são declaradas em `202608072240-client-server-protocol.config.spec.md`, seção 3, porque o protocolo as expõe em `CreateSessionRequest`. Esta spec **não** as redeclara — ela define o comportamento que elas controlam.
+>
+> `DCODE_APPROVAL_TIMEOUT` **não existe** como variável: o teto de aprovação é a flag `-approval-timeout` do daemon, e a chave foi removida em `202608110900` por nunca ter sido lida.
 
 ## 1. Mecanismo de sandbox
 
@@ -21,12 +23,13 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
+| `DCODE_CONFIRM_WRITE` | lista | `.git/**`, `.env*`, `.dcode/**`, arquivos de lock | Caminhos cuja **escrita** pede confirmação mesmo dentro do workspace. Não é contenção — é atenção: são coisas que parecem workspace e não são de mexer. |
+| `DCODE_CONFIRM_READ` | lista | `.env*`, `**/*_rsa`, `**/credentials*` | Caminhos cuja **leitura** pede confirmação. |
+| `DCODE_CONFIRM_COMMAND` | lista | `rm -rf`, `git push`, `curl … \| sh` | Comandos que pedem confirmação. Regra que casa texto de comando é regra que se contorna sem querer — por isso ela só **escalona** o que já era permitido, e nunca resgata o que foi negado. |
 
 > O arquivo de requisitos é o análogo do `requirements.toml` do Codex, elogiado na ADR-02 como o que torna o dcode adotável em organização. Separar config de usuário de config travada é o ponto inteiro.
 
-| `DCODE_CONFIRM_WRITE` | lista | `.git/**`, `.env*`, `.dcode/**`, arquivos de lock | Caminhos cuja **escrita** pede confirmação mesmo dentro do workspace. Não é contenção — é atenção: são coisas que parecem workspace e não são de mexer. |
-| `DCODE_CONFIRM_READ` | lista | `.env*`, `**/*_rsa`, `**/credentials*` | Caminhos cuja **leitura** pede confirmação. |
-| `DCODE_CONFIRM_COMMAND` | lista | `rm -rf`, `git push`, `curl … | sh` | Comandos que pedem confirmação. Regra que casa texto de comando é regra que se contorna sem querer — por isso ela só **escalona** o que já era permitido, e nunca resgata o que foi negado. |
+
 ## 4. Diagnóstico
 
 | Variável | Tipo | Default | Uso |

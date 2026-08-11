@@ -9,30 +9,32 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-
 | `DCODE_BEHAVIOR_INSTRUCTIONS_ENABLED` | booleano | `true` | Liga a leitura de `AGENTS.md` e `DCODE.md`. Desligar roda só com a doutrina embarcada — é como se isola se um comportamento vem da instrução do usuário ou do produto. |
 
 > O prefixo `BEHAVIOR_` casa com a seção `behavior.*` do `config.toml`, e a bijeção entre chave e variável é asserção de teste. A spec declarava `DCODE_INSTRUCTIONS_ENABLED` e o código sempre implementou este nome; o nome documentado é que estava errado. Mesmo precedente de `sandbox.policy` → `sandbox.approval_policy`: o nome interno passou a ser o que o usuário escreve, não o contrário.
+
 ## 2. Skills
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-
-> `DCODE_SKILLS_DIR` é declarada em `202608081203-configuration.config.spec.md`, seção 3, junto das demais raízes de descoberta.
-
 | `DCODE_BEHAVIOR_SKILLS_ENABLED` | booleano | `true` | Liga a divulgação progressiva. Desligar tira o índice do prefixo, e nenhum corpo de skill é carregado. |
+
+> `DCODE_SKILLS_DIR` **não existe**. O diretório de skills é derivado da raiz de configuração; a chave foi removida em `202608110900` por nunca ter sido lida.
+
+
 ## 3. Lembretes
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-
 | `DCODE_BEHAVIOR_REMINDERS_ENABLED` | booleano | `true` | Liga o canal anexado. Desligar remove todo lembrete — inclusive o de arquivo alterado em disco, que é o que impede editar a partir de conteúdo que o modelo não tem mais. |
 | `DCODE_SHOW_REASONING` | booleano | `true` | Encaminha o raciocínio do modelo aos clientes. Ele **nunca** entra no histórico: é evento de exibição, não contexto. |
+
 ## 3.1 Verificação (RN-13)
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_VERIFY_COMMAND` | string | vazio | O comando que **conta** como verificação. Explícito porque "rodou algum bash" contaria um `ls`. Vazio produz estado `unavailable` quando há mudança — o produto diz que não sabe conferir, em vez de fingir que conferiu. |
+
 > **`DCODE_VERIFY_TIMEOUT` e `DCODE_VERIFY_FORCE_TURN` foram removidas**, e pelo motivo que o próprio `202608102100` dá: *"os dois mecanismos não coexistem"*. A verificação é a lista unitária da definição de pronto, então o teto por critério é `DCODE_DONE_TIMEOUT` e a chave que liga a reentrada é `DCODE_DONE_ENABLED`. Manter as duas seria manter duas formas de ajustar a mesma coisa — exatamente o que a remoção de `DCODE_DOCTRINE_STYLE` evitou.
 >
 > `DCODE_VERIFY_COMMAND` **fica**: ela não duplica nada. É o que nomeia o critério único, e é o valor que o `/init` propõe a partir de comando sondado.
