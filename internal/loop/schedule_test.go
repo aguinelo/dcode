@@ -13,8 +13,8 @@ import (
 	"github.com/aguinelo/dcode/internal/tools"
 )
 
-func exec(idx int, tool string, paths ...policy.Access) Execution {
-	return Execution{
+func exec(idx int, tool string, paths ...policy.Access) ToolExecution {
+	return ToolExecution{
 		Index:   idx,
 		Call:    ce.ToolCall{ID: "c", Name: tool},
 		Declare: policy.Request{Tool: tool, Paths: paths},
@@ -27,7 +27,7 @@ func wr(p string) policy.Access { return policy.Access{Path: p, Write: true} }
 // Reads of different paths are exactly where parallelism is both safe and worth
 // having, so they must end up together.
 func TestIndependentReadsShareAGroup(t *testing.T) {
-	groups := Schedule([]Execution{
+	groups := Schedule([]ToolExecution{
 		exec(0, "read", rd("a.go")),
 		exec(1, "read", rd("b.go")),
 		exec(2, "read", rd("c.go")),
@@ -40,11 +40,11 @@ func TestIndependentReadsShareAGroup(t *testing.T) {
 func TestConflictingPathsAreSeparated(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		execs []Execution
+		execs []ToolExecution
 	}{
-		{"two writes to the same path", []Execution{exec(0, "edit", wr("a.go")), exec(1, "edit", wr("a.go"))}},
-		{"read and write of the same path", []Execution{exec(0, "read", rd("a.go")), exec(1, "edit", wr("a.go"))}},
-		{"write then read of the same path", []Execution{exec(0, "edit", wr("a.go")), exec(1, "read", rd("a.go"))}},
+		{"two writes to the same path", []ToolExecution{exec(0, "edit", wr("a.go")), exec(1, "edit", wr("a.go"))}},
+		{"read and write of the same path", []ToolExecution{exec(0, "read", rd("a.go")), exec(1, "edit", wr("a.go"))}},
+		{"write then read of the same path", []ToolExecution{exec(0, "edit", wr("a.go")), exec(1, "read", rd("a.go"))}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			groups := Schedule(tc.execs, 4)
@@ -56,7 +56,7 @@ func TestConflictingPathsAreSeparated(t *testing.T) {
 }
 
 func TestWritesToDifferentPathsCanShareAGroup(t *testing.T) {
-	groups := Schedule([]Execution{
+	groups := Schedule([]ToolExecution{
 		exec(0, "edit", wr("a.go")),
 		exec(1, "edit", wr("b.go")),
 	}, 4)
@@ -68,12 +68,12 @@ func TestWritesToDifferentPathsCanShareAGroup(t *testing.T) {
 // A shell command is opaque: it could touch anything, so nothing can be proven
 // safe alongside it.
 func TestSystemCommandsAlwaysRunAlone(t *testing.T) {
-	sys := Execution{
+	sys := ToolExecution{
 		Index:   1,
 		Call:    ce.ToolCall{Name: "bash"},
 		Declare: policy.Request{Tool: "bash", Command: "rm -rf build", Network: true},
 	}
-	groups := Schedule([]Execution{
+	groups := Schedule([]ToolExecution{
 		exec(0, "read", rd("a.go")),
 		sys,
 		exec(2, "read", rd("b.go")),
@@ -94,11 +94,11 @@ func TestSystemCommandsAlwaysRunAlone(t *testing.T) {
 }
 
 func TestTwoSystemCommandsNeverOverlap(t *testing.T) {
-	mk := func(i int) Execution {
-		return Execution{Index: i, Call: ce.ToolCall{Name: "bash"},
+	mk := func(i int) ToolExecution {
+		return ToolExecution{Index: i, Call: ce.ToolCall{Name: "bash"},
 			Declare: policy.Request{Tool: "bash", Command: "echo"}}
 	}
-	groups := Schedule([]Execution{mk(0), mk(1)}, 4)
+	groups := Schedule([]ToolExecution{mk(0), mk(1)}, 4)
 	if len(groups) != 2 {
 		t.Errorf("got %v", shape(groups))
 	}
@@ -107,15 +107,15 @@ func TestTwoSystemCommandsNeverOverlap(t *testing.T) {
 // A declaration failure says nothing about what the call would touch, so
 // nothing can be scheduled alongside it.
 func TestADeclarationFailureRunsAlone(t *testing.T) {
-	bad := Execution{Index: 1, Call: ce.ToolCall{Name: "x"}, Err: context.Canceled}
-	groups := Schedule([]Execution{exec(0, "read", rd("a")), bad, exec(2, "read", rd("b"))}, 4)
+	bad := ToolExecution{Index: 1, Call: ce.ToolCall{Name: "x"}, Err: context.Canceled}
+	groups := Schedule([]ToolExecution{exec(0, "read", rd("a")), bad, exec(2, "read", rd("b"))}, 4)
 	if len(groups) != 3 {
 		t.Errorf("got %v", shape(groups))
 	}
 }
 
 func TestParallelismLimitIsRespected(t *testing.T) {
-	var execs []Execution
+	var execs []ToolExecution
 	for i := 0; i < 10; i++ {
 		execs = append(execs, exec(i, "read", rd(string(rune('a'+i))+".go")))
 	}
@@ -131,7 +131,7 @@ func TestParallelismLimitIsRespected(t *testing.T) {
 }
 
 func TestZeroParallelismSerialises(t *testing.T) {
-	groups := Schedule([]Execution{
+	groups := Schedule([]ToolExecution{
 		exec(0, "read", rd("a")), exec(1, "read", rd("b")),
 	}, 0)
 	if len(groups) != 2 {
@@ -140,7 +140,7 @@ func TestZeroParallelismSerialises(t *testing.T) {
 }
 
 func TestScheduleIsDeterministic(t *testing.T) {
-	execs := []Execution{
+	execs := []ToolExecution{
 		exec(0, "read", rd("a")), exec(1, "edit", wr("a")),
 		exec(2, "read", rd("b")), exec(3, "read", rd("c")),
 	}
@@ -153,7 +153,7 @@ func TestScheduleIsDeterministic(t *testing.T) {
 }
 
 func TestScheduleKeepsEmissionOrder(t *testing.T) {
-	execs := []Execution{
+	execs := []ToolExecution{
 		exec(0, "read", rd("a")), exec(1, "edit", wr("a")), exec(2, "read", rd("b")),
 	}
 	var seen []int

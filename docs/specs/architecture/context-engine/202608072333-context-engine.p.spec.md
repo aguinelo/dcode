@@ -113,7 +113,7 @@ type CompactionPlan struct {
 
 ```go
 // Estimate é aproximada e determinística. Não chama tokenizador de rede.
-func Estimate(msgs []Message) int
+func Estimate(msgs []Message, cfg Config) int
 ```
 
 ```go
@@ -133,8 +133,13 @@ const (
 )
 
 // BandFor é pura.
-func BandFor(f float64) Band
+func BandFor(f, compactAt float64) Band
 ```
+
+> **Correção de assinatura.** `Estimate` recebe `Config` porque a heurística — caracteres por token e margem — é configuração, e lê-la de um global tornaria a função impura e a compactação não reproduzível.
+>
+> `BandFor` recebe `compactAt` porque as faixas são fração do **orçamento**, não da janela, e o orçamento acaba onde a compactação começa. Ver a nota no `.config`: presas à janela, duas das três seriam inalcançáveis.
+
 
 O limiar mais alto é **menor** que `CompactAt`, senão o aviso chega junto com o corte.
 

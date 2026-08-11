@@ -3,11 +3,18 @@ package loop
 import (
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
+	"time"
 )
 
-// Execution pairs a tool call with its position in the model's emission and
+// ToolExecution pairs a tool call with its position in the model's emission and
 // what it declared it would touch.
-type Execution struct {
+// ToolExecution is one call, from the model's emission to its result.
+//
+// Named as the .p spec names it. The code called it ToolExecution, which was a
+// different name for the same contract in a document whose first line is "use
+// exactly these names" — someone following it literally wrote code that did not
+// compile, and concluded the spec was decorative.
+type ToolExecution struct {
 	// Index is the position the model emitted it at. Results are appended in
 	// this order regardless of which finishes first.
 	Index   int
@@ -16,10 +23,17 @@ type Execution struct {
 	// Err is a declaration failure; such a call is scheduled alone so its
 	// error reaches the model in the right position.
 	Err error
+	// StartedAt and FinishedAt are the REAL execution order, which is not the
+	// emission order when calls run together. Carried on the value rather than
+	// computed inline at the event, so the actual order is inspectable — the
+	// spec asks for it "para o log", and a duration alone cannot answer which
+	// of two concurrent calls went first.
+	StartedAt  time.Time
+	FinishedAt time.Time
 }
 
 // Group is a set of executions that may run concurrently.
-type Group []Execution
+type Group []ToolExecution
 
 // Schedule splits calls into groups that are safe to run together.
 //
@@ -36,7 +50,7 @@ type Group []Execution
 //
 // Parallelism is kept for reads and searches, which is where it is both safe
 // and where the wall-clock gain actually is.
-func Schedule(execs []Execution, maxParallel int) []Group {
+func Schedule(execs []ToolExecution, maxParallel int) []Group {
 	if maxParallel <= 0 {
 		maxParallel = 1
 	}
@@ -67,7 +81,7 @@ func Schedule(execs []Execution, maxParallel int) []Group {
 }
 
 // mustRunAlone reports calls that can never share a group.
-func mustRunAlone(e Execution) bool {
+func mustRunAlone(e ToolExecution) bool {
 	// A declaration failure carries no information about what it would touch,
 	// so nothing can be proven safe alongside it.
 	if e.Err != nil {
@@ -86,7 +100,7 @@ func mustRunAlone(e Execution) bool {
 	return false
 }
 
-func conflictsWithAny(e Execution, group Group) bool {
+func conflictsWithAny(e ToolExecution, group Group) bool {
 	for _, other := range group {
 		if conflicts(e, other) {
 			return true
@@ -97,7 +111,7 @@ func conflictsWithAny(e Execution, group Group) bool {
 
 // conflicts reports whether two calls touch the same path in a way that makes
 // concurrent execution racy.
-func conflicts(a, b Execution) bool {
+func conflicts(a, b ToolExecution) bool {
 	for _, pa := range a.Declare.Paths {
 		for _, pb := range b.Declare.Paths {
 			if pa.Path != pb.Path {

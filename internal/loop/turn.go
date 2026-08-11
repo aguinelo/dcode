@@ -142,6 +142,10 @@ type Engine struct {
 	// delegated is what child turns cost, debited from this turn. Without it
 	// the parent's ceiling is fiction.
 	delegated provider.Usage
+	// timing is when each call of the current batch really ran, by emission
+	// index. Guarded because the batch runs concurrently.
+	timingMu sync.Mutex
+	timing   map[int][2]time.Time
 }
 
 // now is the engine's clock. Injectable so a test can assert a duration without
@@ -398,9 +402,9 @@ type batchFacts struct {
 }
 
 func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall) ([]ce.Message, batchFacts) {
-	execs := make([]Execution, 0, len(calls))
+	execs := make([]ToolExecution, 0, len(calls))
 	for i, c := range calls {
-		ex := Execution{Index: i, Call: c}
+		ex := ToolExecution{Index: i, Call: c}
 		tool, ok := e.cfg.Tools.Get(c.Name)
 		if !ok {
 			ex.Err = fmt.Errorf("tool %q is not available; available: %s",
@@ -431,7 +435,7 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 		var wg sync.WaitGroup
 		for _, ex := range g {
 			wg.Add(1)
-			go func(ex Execution) {
+			go func(ex ToolExecution) {
 				defer wg.Done()
 				// Results land at the emission index, never at completion
 				// order. That is what keeps history reproducible and
@@ -512,7 +516,7 @@ func (e *Engine) outOfChain(dirs []string) []behavior.OutOfChainInstruction {
 // runOne evaluates policy, asks for approval if needed, and executes. The
 // second return reports a refusal by the user, which is not the same thing as
 // an error and must not be reported as one.
-func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) (ce.Message, bool) {
+func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (ce.Message, bool) {
 	fail := func(msg string) ce.Message {
 		return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 			ToolCallID: ex.Call.ID, Output: msg, IsError: true,
@@ -545,7 +549,12 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex Execution) (ce.Me
 	// slow.
 	started := e.now()
 	res, err := tool.Execute(ctx, ex.Call.Input, e.cfg.State)
-	elapsed := e.now().Sub(started)
+	finished := e.now()
+	elapsed := finished.Sub(started)
+	// The real order, kept on the execution rather than only folded into a
+	// duration: which of two concurrent calls actually went first is a fact a
+	// duration cannot answer.
+	e.recordTiming(ex.Index, started, finished)
 	if err != nil {
 		return fail(err.Error()), false
 	}
@@ -587,7 +596,7 @@ func (e *Engine) evaluate(req policy.Request) policy.Verdict {
 	return policy.Evaluate(resolved, e.cfg.Mode, e.cfg.Policy, e.cfg.Rules, resolver.InWorkspace)
 }
 
-func (e *Engine) askApproval(ctx context.Context, turnID string, ex Execution, v policy.Verdict) (
+func (e *Engine) askApproval(ctx context.Context, turnID string, ex ToolExecution, v policy.Verdict) (
 	protocol.ApprovalDecision, error,
 ) {
 	req := protocol.ApprovalRequest{
@@ -906,4 +915,33 @@ func (e *Engine) sleep(ctx context.Context, d time.Duration) bool {
 	case <-ctx.Done():
 		return false
 	}
+}
+
+// recordTiming stores when a call actually ran.
+//
+// Kept beside the batch rather than on the copy runOne received, because that
+// copy is a value and the goroutine that has it is the only one that could
+// write to it — which is precisely why the fact would otherwise be lost.
+func (e *Engine) recordTiming(index int, started, finished time.Time) {
+	e.timingMu.Lock()
+	defer e.timingMu.Unlock()
+	if e.timing == nil {
+		e.timing = map[int][2]time.Time{}
+	}
+	e.timing[index] = [2]time.Time{started, finished}
+}
+
+// Timing returns when each call of the last batch ran, by emission index.
+//
+// The emission order is what history is appended in, and RN-3 says the two are
+// deliberately different. This is the only place the real order survives, and
+// it is what a log needs to answer "what actually happened first".
+func (e *Engine) Timing() map[int][2]time.Time {
+	e.timingMu.Lock()
+	defer e.timingMu.Unlock()
+	out := make(map[int][2]time.Time, len(e.timing))
+	for k, v := range e.timing {
+		out[k] = v
+	}
+	return out
 }
