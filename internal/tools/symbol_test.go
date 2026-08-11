@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -201,4 +202,54 @@ func TestAnUnknownKindIsRefused(t *testing.T) {
 	if !strings.Contains(res.Output, "def") {
 		t.Errorf("the error does not say what the valid kinds are:\n%s", res.Output)
 	}
+}
+
+func TestSymbolDescribesItselfAndDeclaresARead(t *testing.T) {
+	var sy Symbol
+	if sy.Name() != "symbol" {
+		t.Error("wrong name")
+	}
+	d := sy.Description()
+	// The description is the high-precision layer, read at the moment of the
+	// decision — so it has to say the thing that separates this from grep.
+	for _, want := range []string{"never a regular expression", "ParseTOML", "def", "ref"} {
+		if !strings.Contains(d, want) {
+			t.Errorf("the description does not carry %q:\n%s", want, d)
+		}
+	}
+	if len(sy.Schema()) == 0 {
+		t.Error("no schema")
+	}
+
+	in := mustJSONSymbol(t, SymbolInput{Name: "Parse", Path: "sub"})
+	req, err := sy.Declare(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(req.Paths) != 1 || req.Paths[0].Write {
+		t.Fatalf("declared %+v, want a single read", req.Paths)
+	}
+	bare, _ := sy.Declare(mustJSONSymbol(t, SymbolInput{Name: "Parse"}))
+	if bare.Paths[0].Path != "." {
+		t.Errorf("path = %q, want the workspace root", bare.Paths[0].Path)
+	}
+}
+
+func TestKindNounNamesEachKind(t *testing.T) {
+	for kind, want := range map[string]string{
+		KindDef: "declaration", KindRef: "use", KindAny: "occurrence",
+	} {
+		if got := kindNoun(kind); got != want {
+			t.Errorf("kindNoun(%q) = %q, want %q", kind, got, want)
+		}
+	}
+}
+
+func mustJSONSymbol(t *testing.T, in SymbolInput) json.RawMessage {
+	t.Helper()
+	b, err := json.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

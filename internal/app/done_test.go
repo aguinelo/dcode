@@ -2,9 +2,12 @@ package app
 
 import (
 	"context"
+	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/sandbox"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,4 +101,42 @@ func TestExploreIsWiredToTheEngine(t *testing.T) {
 	var _ interface {
 		Explore(ctx context.Context, task, path string) (string, []string, []string, bool, error)
 	} = e
+}
+
+// A criterion command goes through the sandbox, not around it. It comes from
+// configuration a person reviewed — which is why it may run at all, since
+// RN-6.1 forbids running one read from a shared instruction file — but
+// "reviewed" is not "unconfined".
+func TestACriterionRunsInsideTheSandbox(t *testing.T) {
+	sb, err := sandbox.New(sandbox.Config{Backend: sandbox.BackendAuto}, policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Skipf("no sandbox available here: %v", err)
+	}
+	ws := t.TempDir()
+	run := criterionRunner(sb, Options{
+		Workspace:   ws,
+		SandboxMode: policy.ModeWorkspaceWrite,
+		DoneTimeout: 30 * time.Second,
+	})
+
+	code, out, err := run(context.Background(), "printf ok")
+	if err != nil {
+		t.Fatalf("a trivial command failed to run: %v", err)
+	}
+	if code != 0 {
+		t.Errorf("exit = %d, want 0 (output %q)", code, out)
+	}
+	if !strings.Contains(out, "ok") {
+		t.Errorf("output = %q", out)
+	}
+
+	// A non-zero exit is a verdict, not a failure to run: the criterion is
+	// unmet, and Check must be able to tell the two apart.
+	code, _, err = run(context.Background(), "exit 3")
+	if err != nil {
+		t.Fatalf("a failing command reported an error rather than its code: %v", err)
+	}
+	if code != 3 {
+		t.Errorf("exit = %d, want 3", code)
+	}
 }
