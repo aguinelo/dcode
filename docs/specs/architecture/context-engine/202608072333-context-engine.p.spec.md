@@ -152,7 +152,7 @@ Cada linha é caso de teste obrigatório.
 - `Assemble` chamada duas vezes com a mesma `Session` produz slices byte-a-byte idênticos.
 - Anexar uma mensagem a `History` não altera nenhum byte do prefixo previamente produzido (RN-1). Verificado comparando o prefixo comum antes e depois.
 - Nenhuma saída de `Assemble` contém dígito de timestamp, contador ou ID de sessão (RN-2).
-- Alterar `Session.Tools` após a criação é erro; a sessão não expõe caminho para isso (RN-3).
+- Nada altera `Session.Tools` depois da criação (RN-3) — varredura do repositório. O campo é público, então a garantia é um guarda, não o tipo: as definições ficam no prefixo cacheado, e mudá-las no meio da sessão faz todo turno seguinte pagar o prompt inteiro de novo, em silêncio.
 - A ordem das seções é sempre a da tabela 4, para qualquer combinação de campos presentes ou ausentes.
 - `Summary == nil` produz saída sem qualquer marcador de resumo.
 - `Plan` nunca devolve `ToIdx` que separe `RoleAssistant` com `ToolCalls` dos seus `RoleTool`.
