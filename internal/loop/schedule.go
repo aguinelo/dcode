@@ -50,7 +50,12 @@ type Group []ToolExecution
 //
 // Parallelism is kept for reads and searches, which is where it is both safe
 // and where the wall-clock gain actually is.
-func Schedule(execs []ToolExecution, maxParallel int) []Group {
+// needsApproval, when supplied, reports the calls that must run alone because
+// the user will be asked about them. It is a predicate rather than a field
+// because only the engine can evaluate a verdict, and a scheduler that demanded
+// one would put policy inside a function whose whole job is ordering. Nil means
+// the caller has nothing to say, and the grouping is what it always was.
+func Schedule(execs []ToolExecution, maxParallel int, needsApproval func(ToolExecution) bool) []Group {
 	if maxParallel <= 0 {
 		maxParallel = 1
 	}
@@ -66,7 +71,10 @@ func Schedule(execs []ToolExecution, maxParallel int) []Group {
 	}
 
 	for _, e := range execs {
-		if mustRunAlone(e) {
+		// The fourth row of table 4.2. A user's decision is sequential by
+		// nature: two questions asked at once are two questions asked about work
+		// already in flight, and the client can only show one of them.
+		if mustRunAlone(e) || (needsApproval != nil && needsApproval(e)) {
 			flush()
 			groups = append(groups, Group{e})
 			continue

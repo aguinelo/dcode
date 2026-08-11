@@ -429,7 +429,12 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 		}
 	}
 
-	groups := Schedule(execs, e.cfg.Parallel)
+	// The verdict decides the grouping, not just the outcome: a call the user
+	// will be asked about runs alone (table 4.2). Evaluating here as well as in
+	// runOne is free — evaluate is pure — and keeps policy out of the scheduler.
+	groups := Schedule(execs, e.cfg.Parallel, func(ex ToolExecution) bool {
+		return e.evaluate(ex.Declare).Decision == policy.DecisionEscalate
+	})
 	for _, g := range groups {
 		if len(g) > facts.Parallel {
 			facts.Parallel = len(g)
