@@ -31,7 +31,7 @@ func canonical(p string) string {
 // binary and cross-compilation working.
 type seatbelt struct {
 	bin          string
-	allowNetwork bool
+	allowNetwork func() bool
 }
 
 func (s *seatbelt) Name() string { return BackendSeatbelt }
@@ -86,18 +86,25 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode) (string, err
 		return "", fmt.Errorf("sandbox: unknown mode %q", mode)
 	}
 
-	if s.allowNetwork || mode == policy.ModeFullAccess {
+	if permits(s.allowNetwork) || mode == policy.ModeFullAccess {
 		b.WriteString("(allow network*)\n")
 	}
 	return b.String(), nil
 }
+
+// permits asks a boundary decision, treating an absent one as no.
+//
+// A nil decision must neither panic nor open. Both would be bad here and in
+// opposite ways: a crash takes down a session over a wiring mistake, and a
+// silent yes grants what nobody was asked about.
+func permits(decide func() bool) bool { return decide != nil && decide() }
 
 // ---------- Linux: bubblewrap ----------
 
 // bubblewrap confines through unprivileged user namespaces.
 type bubblewrap struct {
 	bin          string
-	allowNetwork bool
+	allowNetwork func() bool
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -163,7 +170,7 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, er
 		return nil, fmt.Errorf("sandbox: unknown mode %q", mode)
 	}
 
-	if !b.allowNetwork && mode != policy.ModeFullAccess {
+	if !permits(b.allowNetwork) && mode != policy.ModeFullAccess {
 		args = append(args, "--unshare-net")
 	}
 	return args, nil

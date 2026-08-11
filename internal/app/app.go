@@ -337,6 +337,10 @@ type Session struct {
 	DoctrineNotice []behavior.Notice
 	// ContextWindow is what the provider reports for this model.
 	ContextWindow int
+	// Standing is what the user has already permitted. Carried on the session
+	// so the daemon attaches the same record the sandbox is asking, rather than
+	// loading a second copy that could answer differently.
+	Standing *StandingGrants
 }
 
 // New wires a session.
@@ -346,12 +350,30 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		return nil, err
 	}
 
+	// What the user has already permitted. Loaded before the sandbox, because
+	// the sandbox asks it per command: a grant given at the first crossing has
+	// to take effect for that crossing, not after a restart.
+	grantEnv := opts.Env
+	if grantEnv == nil {
+		grantEnv = os.Getenv
+	}
+	grantRoots, err := config.DiscoverRoots(grantEnv)
+	if err != nil {
+		return nil, err
+	}
+	standing, err := NewStandingGrants(grantRoots.Config, opts.Workspace)
+	if err != nil {
+		return nil, err
+	}
+
 	// The sandbox is established before anything can run. Failing here is
 	// deliberate: a session that cannot confine its own commands should not
 	// start at all.
 	sb, err := sandbox.New(sandbox.Config{
-		Backend:      opts.Backend,
-		AllowNetwork: opts.AllowNetwork,
+		Backend: opts.Backend,
+		// Configuration says yes, or the user did — and the second can happen
+		// while the session is running.
+		AllowNetwork: func() bool { return opts.AllowNetwork || standing.NetworkNow() },
 	}, opts.SandboxMode)
 	if err != nil {
 		return nil, err
@@ -519,6 +541,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 	return &Session{
 		Engine: engine, Registry: registry, Prompt: prompt, Options: opts,
+		Standing:       standing,
 		Notice:         notice,
 		ContextWindow:  window,
 		Origins:        overlay.Origins(),

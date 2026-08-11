@@ -271,7 +271,7 @@ func wireSessionNet(t *testing.T, ws string, turns [][]string, approver loop.App
 	if err != nil {
 		t.Fatal(err)
 	}
-	sb, err := sandbox.New(sandbox.Config{AllowNetwork: net}, policy.ModeWorkspaceWrite)
+	sb, err := sandbox.New(sandbox.Config{AllowNetwork: func() bool { return net }}, policy.ModeWorkspaceWrite)
 	if err != nil {
 		// Without a real boundary the end-to-end assertion would be testing
 		// nothing, so skipping is the honest outcome.

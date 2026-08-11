@@ -114,7 +114,7 @@ func TestSeatbeltNetworkIsDeniedUnlessGranted(t *testing.T) {
 		t.Errorf("network must be denied by default:\n%s", p)
 	}
 
-	granted := &seatbelt{bin: "sandbox-exec", allowNetwork: true}
+	granted := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return true }}
 	p, _ = granted.profile("/w", policy.ModeWorkspaceWrite)
 	if !strings.Contains(p, "(allow network") {
 		t.Errorf("network should be granted when configured:\n%s", p)
@@ -141,7 +141,7 @@ func TestBubblewrapUnsharesTheNetworkUnlessGranted(t *testing.T) {
 		t.Errorf("network must be removed by default: %v", args)
 	}
 
-	b.allowNetwork = true
+	b.allowNetwork = func() bool { return true }
 	args, _ = b.args("/w", policy.ModeWorkspaceWrite)
 	if contains(args, "--unshare-net") {
 		t.Errorf("network should stay when granted: %v", args)
@@ -305,5 +305,62 @@ func TestDefaultBackendPerPlatform(t *testing.T) {
 		if got != "unsupported" {
 			t.Errorf("got %q", got)
 		}
+	}
+}
+
+// The permission can arrive mid-session: the user is asked at the first
+// crossing and answers "this project". A boundary decided once, at
+// construction, would leave that answer with no effect until a restart — the
+// user grants it, the command fails anyway, and the only reading available to
+// them is that granting did not work.
+func TestTheNetworkDecisionIsAskedPerCommandNotOncePerSession(t *testing.T) {
+	granted := false
+	s := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return granted }}
+
+	before, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(before, "(allow network") {
+		t.Fatal("the network was open before anyone granted it")
+	}
+
+	granted = true
+
+	after, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(after, "(allow network") {
+		t.Error("a grant made during the session had no effect on the next command")
+	}
+}
+
+// A wiring mistake must not open a boundary, and must not crash a session
+// either. Both are bad, in opposite directions: a silent yes grants what nobody
+// was asked about, and a panic takes down the session over a nil field.
+func TestAnAbsentNetworkDecisionIsRefusedRatherThanAssumed(t *testing.T) {
+	s := &seatbelt{bin: "sandbox-exec"} // nothing wired
+	profile, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(profile, "(allow network") {
+		t.Error("an unwired decision was read as permission")
+	}
+
+	b := &bubblewrap{bin: "bwrap"}
+	args, err := b.args("/w", policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var isolated bool
+	for _, a := range args {
+		if a == "--unshare-net" {
+			isolated = true
+		}
+	}
+	if !isolated {
+		t.Error("an unwired decision left the network shared")
 	}
 }
