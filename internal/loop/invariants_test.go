@@ -1,0 +1,59 @@
+package loop
+
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/aguinelo/dcode/internal/specguard"
+)
+
+// The policy invariant is asserted in internal/tools, where the two halves of
+// it live: every tool declares a request the evaluator can rule on, and the
+// loop has exactly one place a tool runs. Re-stating it here would give two
+// places to keep in step.
+var loopDirs = []string{".", filepath.Join("..", "tools")}
+
+var loopInvariants = map[string]string{
+	"anexados em ordem de `Index`":                "TestResultsAppendInEmissionOrderNotCompletionOrder",
+	"nunca se sobrepõem no tempo":                 "TestConflictingPathsAreSeparated",
+	"comando de sistema executa concorrentemente": "TestTwoSystemCommandsNeverOverlap",
+	"sem passar pelo avaliador":                   "TestEveryToolPassesThroughPolicy",
+	"Nenhum timestamp, contagem ou ID":            "TestConcurrentExecutionIsAnnouncedWithAConstantNote",
+	"insensível à ordem de chaves":                "TestIsRepeatIgnoresKeyOrder",
+	"mesma ferramenta com input diferente":        "TestIsRepeatDistinguishesDifferentInputs",
+	"Interrupção em qualquer fase":                "TestInterruptEndsTheTurnCleanly",
+	"efeito no disco anexa o resultado":           "TestAnInterruptedTurnRecordsWhatWasAlreadyWritten",
+	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
+	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
+	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
+
+	// Definition of done.
+	"usa a reentrada da RN-10":         "TestNoProgressEndsTheTurnAsIncomplete",
+	"não percorrem nenhum caminho":     "TestAnUnfinishedTurnIsAStateAndNotAnError",
+	"encolher estritamente":            "TestProgressedRequiresTheUnmetSetToShrinkStrictly",
+	"encerra em `StopIncomplete`":      "TestNoProgressEndsTheTurnAsIncomplete",
+	"não provoca reentrada":            "TestChangedWithNothingAbleToCheckEndsUnverified",
+	"Mudança em caminho de `Protected": "TestWritingATestFileIsSurfaced",
+
+	// Delegation.
+	"construído em `ModeReadOnly`":  "TestTheChildIsReadOnlyEvenWithAWritingToolInReach",
+	"**não contém** `explore`":      "TestTheChildCannotDelegateAgain",
+	"nunca chega ao aprovador":      "TestTheChildIsReadOnlyEvenWithAWritingToolInReach",
+	"aparece no relatório do filho": "TestTheResultCarriesWhereItLookedAndWhatItCouldNotRead",
+	"debitados do orçamento do pai": "TestChildTokensAreDebitedFromTheParent",
+	"acima do teto declara":         "TestALongReportIsCutAndSaysSo",
+}
+
+func TestEveryInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "agent-loop", loopDirs, loopInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("agent-loop: %s", f)
+	}
+}

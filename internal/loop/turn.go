@@ -18,17 +18,6 @@ import (
 	"github.com/aguinelo/dcode/internal/tools"
 )
 
-// Phase is where a turn currently is.
-type Phase string
-
-const (
-	PhaseAssembling Phase = "assembling"
-	PhaseStreaming  Phase = "streaming"
-	PhaseExecuting  Phase = "executing"
-	PhaseBlocked    Phase = "blocked"
-	PhaseDone       Phase = "done"
-)
-
 // Approver resolves a boundary crossing. Returning deny on timeout is the
 // implementation's responsibility, not the loop's: with nobody to ask, the
 // alternative to denying would be granting in silence.
