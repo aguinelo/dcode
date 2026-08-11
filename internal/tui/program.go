@@ -465,15 +465,25 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
-	if s := k.String(); len(s) == 1 {
+	// The text the keypress produced, which is the terminal's answer to "what
+	// did the person type". It was `len(k.String()) == 1` before, and len on a
+	// string counts BYTES: every accented character is two or three of them in
+	// UTF-8, so "á", "ç" and "ã" all failed that test and were dropped in
+	// silence. Someone typing Portuguese watched "não" arrive as "no", which
+	// reverses it, with nothing anywhere reporting a lost letter.
+	//
+	// Taking the text also means a paste arrives whole rather than as a run of
+	// single characters the old branch would have rejected for being longer
+	// than one byte.
+	if text := k.Text; text != "" {
 		// `?` opens help only as the first character of an empty line. It is
 		// the convention every pager and monitor already uses, and a message
 		// that opens with a question mark is rare enough to be worth the trade
 		// — unlike a letter, which is not.
-		if s == "?" && p.model.Input == "" {
+		if text == "?" && p.model.Input == "" {
 			return p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "help"})
 		}
-		p.model = p.model.Insert(s).Refresh(p.opts.Commands)
+		p.model = p.model.Insert(text).Refresh(p.opts.Commands)
 	} else if k.String() == "space" {
 		p.model = p.model.Insert(" ").Refresh(p.opts.Commands)
 	}
