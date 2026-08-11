@@ -31,6 +31,7 @@ type Limits struct {
 	ReadMaxLineLength int
 	GlobMaxResults    int
 	GrepMaxMatches    int
+	SymbolMaxMatches  int
 	MaxToolOutput     int
 	RespectGitignore  bool
 	RequireReadBefore bool
@@ -47,6 +48,7 @@ func DefaultLimits() Limits {
 		ReadMaxLineLength: 2000,
 		GlobMaxResults:    1000,
 		GrepMaxMatches:    200,
+		SymbolMaxMatches:  200,
 		MaxToolOutput:     256 * 1024,
 		RespectGitignore:  true,
 		RequireReadBefore: true,

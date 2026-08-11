@@ -71,6 +71,7 @@ var wiringTable = []configOption{
 	{"Rules", "rules.confirm_command", "String", "Rules"},
 
 	{"EditEchoDiff", "tools.edit_echo_diff", "String", ""},
+	{"SymbolMaxMatches", "tools.symbol_max_matches", "Int", ""},
 
 	{"DumpPrompt", "doctrine.dump", "Bool", ""},
 	{"DoctrineOverlay", "doctrine.enabled", "Bool", ""},

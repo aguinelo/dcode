@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -43,10 +44,13 @@ func TestNewWiresAWorkingSession(t *testing.T) {
 	if s.Engine == nil || s.Registry == nil {
 		t.Fatal("the session is not fully wired")
 	}
-	// All seven tools, or the agent is missing a capability the doctrine
-	// already promises the model it has.
-	if got := len(s.Registry.Names()); got != 7 {
-		t.Errorf("want 7 tools, got %d: %v", got, s.Registry.Names())
+	// Every tool, or the agent is missing a capability the doctrine already
+	// promises the model it has. The names are asserted rather than the count:
+	// a count tells you a tool went missing, not which one.
+	want := []string{"bash", "edit", "glob", "grep", "plan", "read", "symbol", "write"}
+	got := s.Registry.Names()
+	if !slices.Equal(got, want) {
+		t.Errorf("tools = %v, want %v", got, want)
 	}
 	if s.Prompt == "" {
 		t.Error("the prompt should be assembled at wiring time")
