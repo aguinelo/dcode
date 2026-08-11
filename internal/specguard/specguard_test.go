@@ -44,7 +44,7 @@ const spec = `# Fam
 func TestAClaimedInvariantWithARealTestIsSilent(t *testing.T) {
 	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\nfunc TestOrdered(t *testing.T) {}\n")
 
-	got, err := Check(root, "fam", dir, map[string]string{
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
 		"escrita é atômica": "TestAtomic",
 		"é ordenado":        "TestOrdered",
 	})
@@ -60,7 +60,7 @@ func TestAClaimedInvariantWithARealTestIsSilent(t *testing.T) {
 func TestAnUnclaimedInvariantIsReported(t *testing.T) {
 	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\n")
 
-	got, err := Check(root, "fam", dir, map[string]string{"escrita é atômica": "TestAtomic"})
+	got, err := Check(root, "fam", []string{dir}, map[string]string{"escrita é atômica": "TestAtomic"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestAnUnclaimedInvariantIsReported(t *testing.T) {
 func TestAClaimNamingAMissingTestIsReported(t *testing.T) {
 	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\nfunc TestOrdered(t *testing.T) {}\n")
 
-	got, err := Check(root, "fam", dir, map[string]string{
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
 		"escrita é atômica": "TestAtomic",
 		"é ordenado":        "TestSortedStably", // renamed away
 	})
@@ -92,7 +92,7 @@ func TestAClaimNamingAMissingTestIsReported(t *testing.T) {
 func TestAClaimMatchesTheWholeTestName(t *testing.T) {
 	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\nfunc TestOrderedAndStable(t *testing.T) {}\n")
 
-	got, err := Check(root, "fam", dir, map[string]string{
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
 		"escrita é atômica": "TestAtomic",
 		"é ordenado":        "TestOrdered",
 	})
@@ -143,7 +143,7 @@ func TestAMissingSpecIsAnError(t *testing.T) {
 
 func TestAnUnreadableTestDirectoryIsAnError(t *testing.T) {
 	root := mustRoot(t, spec)
-	if _, err := Check(root, "fam", filepath.Join(root, "absent"), nil); err == nil {
+	if _, err := Check(root, "fam", []string{filepath.Join(root, "absent")}, nil); err == nil {
 		t.Fatal("a missing test directory passed silently")
 	}
 }
@@ -155,7 +155,7 @@ func TestALongInvariantIsShortenedForReading(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	got, err := Check(root, "fam", dir, nil)
+	got, err := Check(root, "fam", []string{dir}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,4 +180,40 @@ func mustRoot(t *testing.T, spec string) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+// A spec family is not a Go package. The configuration family asserts its
+// credential invariants in internal/credential; the protocol family asserts its
+// approval-event invariants where the events are emitted. Without this, those
+// lines read as unclaimed because their test sits one package over — and the
+// obvious fix would be to duplicate the test, which is what the mapping exists
+// to avoid.
+func TestAClaimMayNameATestInASiblingPackage(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\n")
+	sibling := filepath.Join(root, "other")
+	if err := os.MkdirAll(sibling, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sibling, "b_test.go"),
+		[]byte("package b\n\nfunc TestOrdered(t *testing.T) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	mapping := map[string]string{"escrita é atômica": "TestAtomic", "é ordenado": "TestOrdered"}
+
+	got, err := Check(root, "fam", []string{dir}, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("with one directory the sibling's test must not be found; got %v", got)
+	}
+
+	got, err = Check(root, "fam", []string{dir, sibling}, mapping)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("with both directories the mapping is complete; got %v", got)
+	}
 }

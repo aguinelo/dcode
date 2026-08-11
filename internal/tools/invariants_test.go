@@ -58,7 +58,7 @@ func checkInvariants(t *testing.T, family string, mapping map[string]string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := specguard.Check(root, family, ".", mapping)
+	findings, err := specguard.Check(root, family, []string{"."}, mapping)
 	if err != nil {
 		t.Fatal(err)
 	}

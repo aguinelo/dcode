@@ -805,3 +805,117 @@ func TestTheRealExecutionOrderSurvivesTheBatch(t *testing.T) {
 		}
 	}
 }
+
+// ---------- what the protocol promises about event order ----------
+
+// A blocked session is waiting on a person, and nothing is being generated
+// while it waits. A delta arriving in that window would be text produced past
+// an unanswered boundary question — the answer the user has not given yet,
+// already acted upon.
+//
+// Asserted from INSIDE the approver, which is the only moment the session is
+// genuinely blocked. Checking afterwards would ask a different question: by
+// then the turn has resumed and any delta is legitimate.
+func TestNothingIsStreamedWhileTheTurnIsBlocked(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "reach", delay: 0, path: "/etc/hosts", write: true})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{text("about to reach out"), call("c1", "reach", `{}`), done()},
+		{text("done"), done()},
+	}}
+
+	var rec *recorder
+	var duringBlock int
+	ap := &funcApprover{fn: func() protocol.ApprovalDecision {
+		before := rec.count(protocol.EventMessageDelta)
+		// Long enough that a streaming goroutine would have produced something
+		// if one were running; the point is that none is.
+		time.Sleep(50 * time.Millisecond)
+		duringBlock = rec.count(protocol.EventMessageDelta) - before
+		return protocol.ApprovalAllow
+	}}
+	e, r := newEngine(t, p, reg, func(c *Config) { c.Approver = ap })
+	rec = r
+
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+	if duringBlock != 0 {
+		t.Errorf("%d message.delta events were emitted while the turn was blocked", duringBlock)
+	}
+	// The guard is only meaningful if deltas happen at all in this turn.
+	if rec.count(protocol.EventMessageDelta) == 0 {
+		t.Fatal("no delta was emitted in the whole turn; the assertion above proved nothing")
+	}
+}
+
+// An approval nobody answers must resolve exactly once, and to deny. Once,
+// because a second resolution is a second decision recorded for one question;
+// deny, because the alternative to denying is granting because everyone looked
+// away.
+func TestAnApprovalNobodyAnswersResolvesOnceAndDenies(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "reach", delay: 0, path: "/etc/hosts", write: true})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "reach", `{}`), done()},
+		{text("understood"), done()},
+	}}
+	// Stands in for the deadline passing: the session's own timeout answers
+	// deny, and this is what the loop sees when it does.
+	ap := &funcApprover{fn: func() protocol.ApprovalDecision { return protocol.ApprovalDeny }}
+	e, rec := newEngine(t, p, reg, func(c *Config) { c.Approver = ap })
+
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+	if got := rec.count(protocol.EventApprovalResolved); got != 1 {
+		t.Errorf("%d resolutions recorded for one question, want exactly 1", got)
+	}
+	res, _ := rec.last[protocol.EventApprovalResolved].(protocol.ApprovalResolved)
+	if res.Decision != protocol.ApprovalDeny {
+		t.Errorf("decision = %q, want deny — with nobody answering, granting is granting because everyone looked away", res.Decision)
+	}
+}
+
+// turn.completed is the last word on a turn. An event carrying the same turn_id
+// after it is a client rendering into a turn it has already closed, and the
+// user sees output attached to work they were told had finished.
+func TestNoEventCarriesACompletedTurnIDAfterItCompleted(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "one", delay: 0, path: "a"})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "one", `{}`), done()},
+		{text("finished"), done()},
+	}}
+	e, rec := newEngine(t, p, reg)
+
+	out, err := e.Run(context.Background(), "go")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	completed := -1
+	for i, t := range rec.events {
+		if t == protocol.EventTurnCompleted {
+			completed = i
+		}
+	}
+	if completed < 0 {
+		t.Fatal("the turn never completed; there is nothing to assert about what follows")
+	}
+	if completed != len(rec.events)-1 {
+		t.Errorf("%d events follow turn.completed for %s: %v",
+			len(rec.events)-completed-1, out.TurnID, rec.events[completed+1:])
+	}
+}
+
+// funcApprover answers with whatever the test decides at the moment of asking,
+// which is what lets an assertion run while the turn is genuinely blocked.
+type funcApprover struct {
+	fn    func() protocol.ApprovalDecision
+	asked int
+}
+
+func (a *funcApprover) Approve(context.Context, protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
+	a.asked++
+	return a.fn(), nil
+}

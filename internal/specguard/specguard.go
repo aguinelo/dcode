@@ -26,18 +26,29 @@ type Findings []string
 // Check reports every invariant of family that no test claims, and every claim
 // naming a test that does not exist.
 //
-// specRoot is the repository root; testDir is the directory whose `_test.go`
-// files are searched. mapping keys are fragments matched against the invariant
-// line — a fragment, not the whole line, because the lines carry markup and
-// rule references that churn without the invariant changing.
-func Check(specRoot, family, testDir string, mapping map[string]string) (Findings, error) {
+// specRoot is the repository root; testDirs are the directories whose
+// `_test.go` files are searched. Several, because a spec family is not a Go
+// package: the configuration family's invariants about credentials are asserted
+// in internal/credential, and the protocol family's invariants about approval
+// events are asserted where the events are emitted. Listing the directories
+// keeps that visible instead of letting an invariant read as unclaimed because
+// its test sits one package over.
+//
+// mapping keys are fragments matched against the invariant line — a fragment,
+// not the whole line, because the lines carry markup and rule references that
+// churn without the invariant changing.
+func Check(specRoot, family string, testDirs []string, mapping map[string]string) (Findings, error) {
 	lines, err := Invariants(specRoot, family)
 	if err != nil {
 		return nil, err
 	}
-	src, err := testSource(testDir)
-	if err != nil {
-		return nil, err
+	var src string
+	for _, dir := range testDirs {
+		part, err := testSource(dir)
+		if err != nil {
+			return nil, err
+		}
+		src += part
 	}
 
 	var out Findings

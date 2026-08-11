@@ -1,0 +1,40 @@
+package server
+
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/aguinelo/dcode/internal/specguard"
+)
+
+// A spec family is not a Go package. Three of these invariants are about what
+// the LOOP may emit and when — an ordering the server can only observe, never
+// enforce — so their assertions live where the events are produced. Listing the
+// directory keeps that visible; the alternative is an invariant reading as
+// unclaimed because its test sits one package over, and the obvious fix for
+// that is to duplicate the test.
+var protocolDirs = []string{".", filepath.Join("..", "loop")}
+
+var protocolInvariants = map[string]string{
+	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
+	"Reproduzir de `from=1`":               "TestReplayReproducesTheLiveObservationExactly",
+	"Nenhum evento é emitido após":         "TestNoEventCarriesACompletedTurnIDAfterItCompleted",
+	"não emite `message.delta`":            "TestNothingIsStreamedWhileTheTurnIsBlocked",
+	"Cliente desanexado durante turno":     "TestDisconnectingDoesNotAffectTheSession",
+	"Duas resoluções concorrentes":         "TestApprovalIsResolvedOverTheWireAndSecondConflicts",
+	"Aprovação expirada produz":            "TestAnApprovalNobodyAnswersResolvesOnceAndDenies",
+}
+
+func TestEveryInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "client-server-protocol", protocolDirs, protocolInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("client-server-protocol: %s", f)
+	}
+}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -664,4 +665,81 @@ func TestListenSetsOwnerOnlyPermissions(t *testing.T) {
 	if perm := fi.Mode().Perm(); perm&0o077 != 0 {
 		t.Errorf("the socket is reachable by others: %v", perm)
 	}
+}
+
+// collect drains n events or fails.
+func collect(t *testing.T, events <-chan protocol.Event, errs <-chan error, n int) []protocol.Event {
+	t.Helper()
+	var out []protocol.Event
+	deadline := time.After(8 * time.Second)
+	for len(out) < n {
+		select {
+		case ev, open := <-events:
+			if !open {
+				t.Fatalf("stream closed after %d of %d events", len(out), n)
+			}
+			out = append(out, ev)
+		case err := <-errs:
+			t.Fatalf("stream error: %v", err)
+		case <-deadline:
+			t.Fatalf("only saw %d of %d events", len(out), n)
+		}
+	}
+	return out
+}
+
+// The invariant the sibling test was named for and never asserted: it observed
+// the stream once and checked the numbering was contiguous, which is a weaker
+// claim than replay reproducing the live observation.
+//
+// The two are the same journal read twice, and that is precisely what makes the
+// bug it guards against invisible: a payload that renders live from state the
+// server still has, and renders differently on replay when that state is gone,
+// looks correct every time anyone watches it happen.
+func TestReplayReproducesTheLiveObservationExactly(t *testing.T) {
+	c, mgr := newDaemon(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	s, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sess, err := mgr.Get(s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	live, liveErrs := c.Subscribe(ctx, s.ID, 1)
+	for i := 0; i < 4; i++ {
+		sess.Emit(protocol.EventMessageDelta, protocol.MessageDelta{TurnID: "t1", Text: "live"})
+	}
+	observed := collect(t, live, liveErrs, 5) // session.created + 4
+
+	rep, repErrs := c.Subscribe(ctx, s.ID, 1)
+	replayed := collect(t, rep, repErrs, 5)
+
+	if len(observed) != len(replayed) {
+		t.Fatalf("live saw %d events, replay %d", len(observed), len(replayed))
+	}
+	for i := range observed {
+		a, b := observed[i], replayed[i]
+		if a.Seq != b.Seq || a.Type != b.Type || a.SessionID != b.SessionID {
+			t.Errorf("event %d differs: live %s/%d, replay %s/%d", i, a.Type, a.Seq, b.Type, b.Seq)
+			continue
+		}
+		if string(mustJSON(t, a.Payload)) != string(mustJSON(t, b.Payload)) {
+			t.Errorf("event %d (%s) has a different payload on replay:\n live: %s\nreplay: %s",
+				i, a.Type, mustJSON(t, a.Payload), mustJSON(t, b.Payload))
+		}
+	}
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
