@@ -117,8 +117,12 @@ func newProgram(t *testing.T, opts ...func(*Options)) (*program, *fakeTransport)
 }
 
 // key builds a printable keypress.
+//
+// Code is the FIRST RUNE, not the first byte. `rune(s[0])` on "á" takes half of
+// a two-byte character and produces a rune that is not the one typed — which is
+// how a test helper can quietly stop representing the thing it is named after.
 func key(s string) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: rune(s[0]), Text: s}
+	return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
 }
 
 func special(code rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: code} }
@@ -1113,5 +1117,85 @@ func TestPastingASlashOpensTheMenu(t *testing.T) {
 	p.Update(tea.PasteMsg{Content: "/pl"})
 	if len(p.model.Completions) == 0 {
 		t.Errorf("got input %q with no menu", p.model.Input)
+	}
+}
+
+// Typing Portuguese produced Portuguese with the accents missing, silently.
+//
+// The insertion path asked `len(k.String()) == 1`, and len on a string counts
+// BYTES: "á", "ç" and "ã" are two bytes each in UTF-8, so every accented
+// character failed the test and was dropped on the floor. Nothing reported it —
+// the letter simply did not appear, and the sentence that reached the model was
+// not the sentence that was typed.
+//
+// The cost is not cosmetic. "não" becomes "no", which reverses it.
+func TestAccentedCharactersReachTheInput(t *testing.T) {
+	p, _ := newProgram(t)
+
+	for _, s := range []string{"n", "ã", "o", " ", "é", " ", "ç", "ã", "o"} {
+		p.onKey(key(s))
+	}
+	if got := p.model.Input; got != "não ção" && got != "não é ção" {
+		t.Errorf("input = %q, want the accented text that was typed", got)
+	}
+}
+
+// Every letter Portuguese needs, plus the ones the other languages the
+// interface ships in need. A table because the failure was per-character: the
+// ASCII ones always worked, which is why it looked like the input was "mostly"
+// fine.
+func TestEveryAccentedLetterSurvivesBeingTyped(t *testing.T) {
+	for _, r := range []string{
+		"á", "à", "â", "ã", "ä", "é", "ê", "í", "ó", "ô", "õ", "ú", "ü", "ç",
+		"Á", "Ã", "Ç", "É", "Ô",
+		"ñ", "ß", "ø", "å", "€", "—", "…",
+	} {
+		p, _ := newProgram(t)
+		p.onKey(key(r))
+		if got := p.model.Input; got != r {
+			t.Errorf("typing %q produced %q", r, got)
+		}
+	}
+}
+
+// `?` opens help only as the first character of an empty line, and that rule is
+// about the character rather than its byte count. An accented letter must not
+// inherit the special case, and `?` must keep it.
+func TestTheHelpShortcutStillOnlyFiresOnAnEmptyLine(t *testing.T) {
+	p, _ := newProgram(t)
+	p.onKey(key("?"))
+	if p.model.Input != "" {
+		t.Errorf("? on an empty line typed a character instead of opening help: %q", p.model.Input)
+	}
+
+	p, _ = newProgram(t)
+	p.onKey(key("á"))
+	p.onKey(key("?"))
+	if got := p.model.Input; got != "á?" {
+		t.Errorf("input = %q; ? mid-line is a character, not a shortcut", got)
+	}
+}
+
+// Taking the keypress's text widens what counts as typing, so the other half
+// has to hold: a key that produces no text types nothing. Otherwise the fix for
+// dropped letters becomes stray characters from arrows and function keys.
+func TestAKeyThatProducesNoTextTypesNothing(t *testing.T) {
+	p, _ := newProgram(t)
+	for _, code := range []rune{tea.KeyUp, tea.KeyDown, tea.KeyLeft, tea.KeyRight, tea.KeyEsc} {
+		p.onKey(special(code))
+	}
+	if got := p.model.Input; got != "" {
+		t.Errorf("navigation keys typed %q", got)
+	}
+}
+
+// A paste arrives as one keypress carrying many characters. The old branch
+// rejected anything longer than a byte, so pasting a path or an error message
+// put nothing on the line at all.
+func TestAPasteArrivesWhole(t *testing.T) {
+	p, _ := newProgram(t)
+	p.onKey(key("corrigir o parser de configuração"))
+	if got := p.model.Input; got != "corrigir o parser de configuração" {
+		t.Errorf("input = %q", got)
 	}
 }
