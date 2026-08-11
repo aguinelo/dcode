@@ -362,7 +362,7 @@ func requireSandbox(t *testing.T, opts Options) {
 	t.Helper()
 	if _, err := sandbox.New(sandbox.Config{
 		Backend:      opts.Backend,
-		AllowNetwork: opts.AllowNetwork,
+		AllowNetwork: func() bool { return opts.AllowNetwork },
 	}, opts.SandboxMode); err != nil {
 		t.Skipf("no sandbox available: %v", err)
 	}

@@ -49,9 +49,19 @@ const (
 
 // Config selects and tunes a backend.
 type Config struct {
-	Backend      string
-	Binary       string
-	AllowNetwork bool
+	Backend string
+	Binary  string
+	// AllowNetwork is asked once per command rather than read once per session.
+	//
+	// The permission can arrive mid-session: the user is asked at the first
+	// crossing and answers "this project". A boundary decided at construction
+	// would leave that answer with no effect until a restart — the user grants
+	// it, the command fails anyway, and the only reading available to them is
+	// that the permission did not work.
+	//
+	// Nil means denied, which is the reading that holds when nobody said
+	// otherwise.
+	AllowNetwork func() bool
 	ProfileDir   string
 }
 
@@ -76,12 +86,19 @@ func New(cfg Config, mode policy.SandboxMode) (Sandbox, error) {
 		return &noneSandbox{}, nil
 	}
 
+	// Nil is denied. A boundary that opens because nobody wired a decision is
+	// the wrong direction to be wrong in.
+	allow := cfg.AllowNetwork
+	if allow == nil {
+		allow = func() bool { return false }
+	}
+
 	var s Sandbox
 	switch backend {
 	case BackendSeatbelt:
-		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: cfg.AllowNetwork}
+		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow}
 	case BackendBubblewrap:
-		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: cfg.AllowNetwork}
+		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown backend %q; valid: %s, %s, %s, %s",
 			backend, BackendAuto, BackendSeatbelt, BackendBubblewrap, BackendNone)

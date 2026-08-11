@@ -947,16 +947,16 @@ func TestACrossingAlreadyPermittedIsNotAskedAboutAgain(t *testing.T) {
 	}
 }
 
-// A standing answer is recorded, and only a standing one. "Allow once" means
-// once, and writing it down would turn a momentary decision into a permanent
-// one behind the user's back.
-func TestOnlyAStandingAnswerIsWrittenDown(t *testing.T) {
+// Every granting answer reaches the record, and refusals do not. Which of them
+// outlives the session is the record's decision, not this package's: an "allow
+// once" still has to open the boundary for the command being asked about.
+func TestEveryGrantingAnswerReachesTheRecordAndRefusalsDoNot(t *testing.T) {
 	for _, c := range []struct {
 		answer protocol.ApprovalDecision
 		kept   bool
 	}{
-		{protocol.ApprovalAllow, false},
-		{protocol.ApprovalAllowSession, false},
+		{protocol.ApprovalAllow, true},
+		{protocol.ApprovalAllowSession, true},
 		{protocol.ApprovalAllowProject, true},
 		{protocol.ApprovalAllowAlways, true},
 		{protocol.ApprovalDeny, false},
@@ -979,7 +979,7 @@ func TestOnlyAStandingAnswerIsWrittenDown(t *testing.T) {
 			}
 
 			if kept := len(st.remembered) > 0; kept != c.kept {
-				t.Errorf("remembered = %v, want %v for %q", kept, c.kept, c.answer)
+				t.Errorf("forwarded = %v, want %v for %q", kept, c.kept, c.answer)
 			}
 		})
 	}

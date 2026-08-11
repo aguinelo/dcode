@@ -23,6 +23,22 @@ type StandingGrants struct {
 
 	mu     sync.Mutex
 	grants config.Grants
+	// open is a grant that lasts only as long as this process. An "allow once"
+	// has to open the boundary for the command being asked about — approving
+	// something that then fails anyway is the worst of both answers — and it
+	// must not survive a restart, because that is what "once" means.
+	open bool
+}
+
+// NetworkNow reports whether the network is permitted at this moment.
+//
+// Asked per command rather than read once, because the answer can arrive
+// mid-session: the user is asked at the first crossing and says yes. A boundary
+// fixed at startup would leave that answer with no effect until a restart.
+func (s *StandingGrants) NetworkNow() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.open || s.grants.Network(s.Workspace)
 }
 
 // NewStandingGrants loads what the user has already permitted.
@@ -69,11 +85,20 @@ func (s *StandingGrants) Granted(req protocol.ApprovalRequest) protocol.Approval
 // answered; losing the file costs them being asked again next time, which is
 // the safe direction to fail in.
 func (s *StandingGrants) Remember(req protocol.ApprovalRequest, d protocol.ApprovalDecision) error {
-	if !rememberable(req) || !d.Remembered() {
+	if !rememberable(req) || !d.Grants() {
 		return nil
 	}
 
 	s.mu.Lock()
+	// Every granting answer opens the boundary now. Approving a command that
+	// then fails anyway is the worst of both answers: the user consented and
+	// got a refusal, with nothing explaining which of the two applied.
+	s.open = true
+
+	if !d.Remembered() {
+		s.mu.Unlock()
+		return nil
+	}
 	switch d {
 	case protocol.ApprovalAllowAlways:
 		s.grants = s.grants.GrantNetworkAlways()

@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/config"
@@ -125,5 +126,84 @@ func TestAnUnreadableRecordRefusesToStart(t *testing.T) {
 	}
 	if _, err := NewStandingGrants(root, t.TempDir()); err == nil {
 		t.Error("a corrupt record started a session anyway")
+	}
+}
+
+// The record is loaded before the sandbox is built, and a record nobody can
+// read stops the session there. Starting one that silently permits more than
+// the user agreed to is worse than refusing to start.
+func TestASessionRefusesToStartOnAnUnreadableRecord(t *testing.T) {
+	home := t.TempDir()
+	ws := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, config.GrantsFile), []byte("]["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := New(Options{
+		Workspace:   ws,
+		Model:       "MiniMax-M3",
+		SandboxMode: policy.ModeWorkspaceWrite,
+		Policy:      policy.PolicyOnRequest,
+		Backend:     "none",
+		Env: func(k string) string {
+			if k == "DCODE_HOME" {
+				return home
+			}
+			return ""
+		},
+	}, nil, nil)
+	if err == nil {
+		t.Fatal("a session started on a record nobody can read")
+	}
+	if !strings.Contains(err.Error(), config.GrantsFile) {
+		t.Errorf("the failure does not name what could not be read: %v", err)
+	}
+}
+
+// The sandbox asks this per command, so it has to answer what is true NOW: a
+// grant made at the first crossing must open the boundary for that crossing.
+// Approving something that then fails anyway is the worst of both answers — the
+// user consented and got a refusal, with nothing saying which applied.
+func TestAGrantOpensTheBoundaryForTheCommandBeingAskedAbout(t *testing.T) {
+	s, err := NewStandingGrants(t.TempDir(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.NetworkNow() {
+		t.Fatal("the network was open before anyone was asked")
+	}
+
+	// "Once" opens it now and is not written down.
+	if err := s.Remember(netReq(), protocol.ApprovalAllow); err != nil {
+		t.Fatal(err)
+	}
+	if !s.NetworkNow() {
+		t.Error("an approval that was granted left the boundary shut")
+	}
+}
+
+// A refusal opens nothing, which is the half that would be easy to lose while
+// making the other half work.
+func TestARefusalLeavesTheBoundaryShut(t *testing.T) {
+	s, _ := NewStandingGrants(t.TempDir(), t.TempDir())
+	if err := s.Remember(netReq(), protocol.ApprovalDeny); err != nil {
+		t.Fatal(err)
+	}
+	if s.NetworkNow() {
+		t.Error("saying no opened the network")
+	}
+}
+
+// A grant recorded in a previous session answers without anyone being asked.
+func TestAPreviouslyRecordedGrantAnswersOnItsOwn(t *testing.T) {
+	root, ws := t.TempDir(), t.TempDir()
+	first, _ := NewStandingGrants(root, ws)
+	if err := first.Remember(netReq(), protocol.ApprovalAllowProject); err != nil {
+		t.Fatal(err)
+	}
+
+	next, _ := NewStandingGrants(root, ws)
+	if !next.NetworkNow() {
+		t.Error("the recorded grant did not reach the next session")
 	}
 }

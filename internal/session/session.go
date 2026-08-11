@@ -266,11 +266,15 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, tim
 			s.allowAll[key] = true
 			s.mu.Unlock()
 		}
-		// An answer meant to outlive the session is written down. A failure to
-		// write it must not cancel the decision: the user answered, the answer
-		// applies now, and what is lost is only that they will be asked again
-		// next time — which is the safe direction to fail in.
-		if d.Remembered() && s.Standing != nil {
+		// Every granting answer is forwarded, not only the standing ones. An
+		// "allow once" still has to take effect for the command being asked
+		// about, and only the layer that owns the record knows which answers
+		// outlive the session and which merely open it.
+		//
+		// A failure to write must not cancel the decision: the user answered,
+		// the answer applies now, and what is lost is that they will be asked
+		// again next time — the safe direction to fail in.
+		if d.Grants() && s.Standing != nil {
 			_ = s.Standing.Remember(req, d)
 		}
 		return d, nil
