@@ -83,6 +83,9 @@ var wiringTable = []configOption{
 var nonSession = map[string]string{
 	"update.check":   "read by the update path, which is not a session",
 	"update.channel": "read by the update path, which is not a session",
+	"eval.enabled":   "read by the eval harness, which measures the product rather than running it",
+	"eval.model":     "read by the eval harness, which measures the product rather than running it",
+	"eval.runs":      "read by the eval harness, which measures the product rather than running it",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.
@@ -125,15 +128,15 @@ func TestEveryKnownKeyIsAccountedFor(t *testing.T) {
 // TestNonSessionKeysAreReadSomewhere is the other half of the escape hatch.
 //
 // A key excused from the wiring table still has to be read by something. The
-// check looks for the key spelling in the command sources, because that is
-// where a non-session key is consumed and it is the cheapest honest proof
-// that the excuse is not just an excuse.
+// check looks for the key spelling in the sources of every consumer that is
+// not a session, because that is the cheapest honest proof that the excuse is
+// not just an excuse.
 //
 // This is the assertion that would have caught update.channel: the key mapped
 // to DCODE_UPDATE_CHANNEL, the code read DCODE_RELEASE_CHANNEL, and nothing
 // anywhere compared the two spellings.
 func TestNonSessionKeysAreReadSomewhere(t *testing.T) {
-	src := readCommandSources(t)
+	src := readNonSessionSources(t)
 	for key := range nonSession {
 		if !strings.Contains(src, `"`+key+`"`) {
 			t.Errorf("%q is excused from the wiring table as %q, but no command "+
@@ -142,28 +145,42 @@ func TestNonSessionKeysAreReadSomewhere(t *testing.T) {
 	}
 }
 
-// readCommandSources concatenates the non-test Go sources under cmd/dcode.
-func readCommandSources(t *testing.T) string {
+// nonSessionDirs are the places a key excused from the wiring table may be
+// consumed. Each one is a consumer that is not a session: the command layer,
+// and the eval harness that measures the product rather than running it.
+//
+// Adding a directory here widens the escape hatch, so the list stays short and
+// each entry names something that genuinely reads configuration.
+var nonSessionDirs = [][]string{
+	{"..", "..", "cmd", "dcode"},
+	{"..", "evals"},
+}
+
+// readNonSessionSources concatenates the non-test Go sources of every consumer
+// that is allowed to claim a non-session key.
+func readNonSessionSources(t *testing.T) string {
 	t.Helper()
-	dir := filepath.Join("..", "..", "cmd", "dcode")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read %s: %v", dir, err)
-	}
 	var b strings.Builder
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(dir, name))
+	for _, parts := range nonSessionDirs {
+		dir := filepath.Join(parts...)
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
+			t.Fatalf("read %s: %v", dir, err)
 		}
-		b.Write(data)
+		for _, e := range entries {
+			name := e.Name()
+			if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil {
+				t.Fatalf("read %s: %v", name, err)
+			}
+			b.Write(data)
+		}
 	}
 	if b.Len() == 0 {
-		t.Fatal("no command sources found; the guard would pass vacuously")
+		t.Fatal("no consumer sources found; the guard would pass vacuously")
 	}
 	return b.String()
 }

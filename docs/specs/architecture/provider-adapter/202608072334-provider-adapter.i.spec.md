@@ -109,12 +109,27 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 
 ### Passo 9 — Contratos comportamentais
 
-`internal/provider/evals/` — atrás de build tag `eval`.
+`internal/evals/` — a parte que alcança modelo atrás de build tag `eval`.
 
-- [ ] Fixture para `toolcall-schema-valid`, `toolcall-recover` e `no-phantom-tool`.
-- [ ] Executor que roda `DCODE_EVAL_RUNS` vezes e compara com o limiar.
-- [ ] Registro do modelo e versão medidos junto do resultado.
-- [ ] Não roda na suíte padrão nem na CI de PR.
+> **Era `internal/provider/evals/`.** Não pode ser: o cenário precisa de um
+> transporte de verdade, e o transporte HTTP vive em `internal/app`, que importa
+> `internal/provider`. Um pacote de eval sob `provider` fecharia o ciclo. Como
+> `internal/evals` é folha — ninguém a importa —, ela pode importar as duas, e é
+> onde os contratos das demais specs também vão morar.
+
+- [x] Fixture para `toolcall-schema-valid`, `toolcall-recover` e `no-phantom-tool`.
+- [x] Executor que roda `DCODE_EVAL_RUNS` vezes e compara com o limiar.
+- [x] Registro do modelo e versão medidos junto do resultado.
+- [x] Não roda na suíte padrão nem na CI de PR.
+- [x] `Measure` fica **fora** da build tag. Ela recebe a tentativa como função e
+      não alcança modelo nenhum, então é testável na suíte normal — e decidir se
+      um limiar foi cumprido é exatamente o que não pode depender de medição.
+- [x] Erro de transporte não é veredito. Uma execução que falhou em medir conta
+      em `Errors`, e resultado com erro **nunca** é `Met`: queda de rede lida
+      como regressão de comportamento é o erro que este pacote existe para
+      impedir.
+- [x] `make eval` roda; `make eval-build` só compila, e é o que impede a suíte
+      apodrecer em silêncio enquanto o código que ela mede muda por baixo.
 
 > Estes são os primeiros contratos comportamentais do projeto. Se um limiar não for atingível, o achado é sobre a família de modelo, não sobre o código — e a conclusão pode ser rebaixar o limiar **com** entrada em `changelog/`, ou não suportar aquela família.
 

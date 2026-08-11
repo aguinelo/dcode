@@ -113,6 +113,11 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			"rules.confirm_write":           policy.JoinList(defaults.ConfirmWrite),
 			"rules.confirm_read":            policy.JoinList(defaults.ConfirmRead),
 			"rules.confirm_command":         policy.JoinList(defaults.ConfirmCommand),
+			// Eval is off by default because it runs a real model and costs
+			// money. The default is stated here rather than only in the
+			// harness so `--config eval.enabled` answers with an origin.
+			"eval.enabled": "false",
+			"eval.runs":    "20",
 		}},
 	}
 

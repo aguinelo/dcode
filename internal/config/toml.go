@@ -42,6 +42,13 @@ var KnownKeys = map[string]string{
 	"update.check":                  "DCODE_UPDATE_CHECK",
 	"update.channel":                "DCODE_UPDATE_CHANNEL", // DCODE_RELEASE_CHANNEL still works as a fallback
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
+	// The eval keys are read by the measurement harness, never by the product.
+	// They live in the same schema anyway: a key that governs behaviour and
+	// cannot be inspected with `--config` is the gap the audit pair closes,
+	// and "behaviour" here includes what the thresholds were measured against.
+	"eval.enabled": "DCODE_EVAL_ENABLED",
+	"eval.model":   "DCODE_EVAL_MODEL",
+	"eval.runs":    "DCODE_EVAL_RUNS",
 }
 
 // EnvToKey inverts KnownKeys. Built once so the bijection can be asserted.

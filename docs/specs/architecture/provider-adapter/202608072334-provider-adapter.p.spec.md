@@ -116,7 +116,7 @@ const (
 type StreamEvent struct {
     Type      StreamEventType
     Text      string                // EventTextDelta
-    ToolCall  *contextpkg.ToolCall  // EventToolCall, já validado contra schema
+    ToolCall  *contextpkg.ToolCall  // EventToolCall, já validado (ver abaixo)
     Usage     *Usage                // EventDone
     Err       *ProviderError        // EventError
 }
@@ -130,6 +130,12 @@ type Usage struct {
 ```
 
 > `CacheReadTokens` não é telemetria decorativa. É a única medida direta de que o contexto append-only está funcionando. Se ele ficar próximo de zero em sessão longa, o motor de contexto regrediu.
+
+> **O que "validado" quer dizer, exatamente.** `validateToolCall` confere **duas** coisas antes de a chamada chegar ao laço: que o nome está no conjunto declarado, e que os argumentos são JSON válido. Ela **não** confere o JSON Schema da ferramenta.
+>
+> A distinção não é acadêmica. É a diferença entre recusar `delete_file` — que é o que o limiar de `no-phantom-tool` mede, e é garantia estrutural — e garantir que `record_release` veio com o objeto aninhado preenchido, que **não** é garantido em lugar nenhum. Um cenário de `toolcall-schema-valid` que confiasse nesta linha mediria "o modelo devolveu JSON", pergunta que `{}` responde.
+>
+> Por isso o juiz daquele cenário decodifica a estrutura e exige os campos obrigatórios por conta própria. Validar schema no adaptador é decisão em aberto, não dívida escondida: custaria uma dependência de JSON Schema num projeto que escreveu o próprio leitor de TOML para não ter uma.
 
 **Ordem garantida:** zero ou mais `EventTextDelta` e `EventToolCall` intercalados, terminados por exatamente **um** `EventDone` ou **um** `EventError`. Nunca ambos, nunca nenhum.
 

@@ -700,3 +700,75 @@ refused *and* nothing gets through.
 What did not change: a shell command still declares that it writes, in every
 configuration. That is the part the sandbox cannot decide for us, because
 writing inside the workspace is exactly what `workspace-write` grants.
+
+---
+
+## Phase 10 — Measuring the behavioural contracts
+
+### The eval package is `internal/evals`, not `internal/provider/evals`
+
+The spec placed it under the provider. It cannot go there: a scenario needs a
+real transport, the HTTP transport lives in `internal/app`, and `app` imports
+`provider` — so an eval package under `provider` closes the cycle.
+
+`internal/evals` is a leaf that nothing imports, which is what lets it reach
+both. It is also where the contracts of every other spec will land, so the
+scenarios of one product live in one place rather than scattered by whichever
+package happens to be measured.
+
+### `Measure` sits outside the build tag
+
+It takes the attempt as a function and reaches no model, so it belongs in the
+ordinary suite. Deciding whether a threshold was met is exactly the judgement
+that must not itself depend on a paid, flaky, once-in-a-while measurement.
+
+What stays behind the tag is only the three scenarios, because only they open a
+connection.
+
+### A failure to measure is not a verdict
+
+`Attempt` returns `(bool, error)` and the two are different questions. The bool
+is what the model did; the error means the run never happened. A result with
+any error is `Sound() == false` and can never be `Met()`, however good the rate
+of the runs that did complete.
+
+Collapsing them is the failure mode that matters: a flaky network would read as
+a behavioural regression, someone would go looking for it in the prompt, and
+the threshold would eventually be lowered to make the noise stop.
+
+### Errored runs stay in the denominator
+
+`Rate` divides by the runs attempted, not by the runs that completed. Dividing
+by completions would let a scenario that failed nineteen times out of twenty
+report the one success as 100%.
+
+### The adapter validates declaration and JSON, never the schema
+
+Found while writing `toolcall-schema-valid`. `validateToolCall` checks that the
+tool name was declared and that the arguments parse as JSON; the tool's schema
+is not applied. The spec said "já validado contra schema" and now says what the
+code does.
+
+The consequence is concrete: the judge for that scenario decodes the nested
+structure itself and asserts the required fields, because trusting the adapter
+would have measured "the model returned JSON" — a question `{}` answers.
+
+`no-phantom-tool` is unaffected and its 100% threshold remains legitimate: the
+declared-name check is real, and that is precisely the thing the threshold
+measures.
+
+### The non-session escape hatch grew a second directory, not a weaker rule
+
+`TestNonSessionKeysAreReadSomewhere` proved a key was read by grepping
+`cmd/dcode`. The eval keys are read by `internal/evals`, so the guard now reads
+both directories — and still fails if a key is excused and spelled differently
+where it is consumed, which is the property that caught `update.channel`.
+
+Widening the search beats excusing the keys outright: an escape hatch nobody
+checks is the hole the whole file exists to close.
+
+### `make eval-build` exists because a tagged test rots in silence
+
+Nothing in `make check` compiles a file behind the `eval` tag, so the scenarios
+would drift out of sync with the code they measure and nobody would learn until
+the next paid run. `go vet -tags eval` costs a second and makes that impossible.

@@ -1,0 +1,206 @@
+// Package evals measures the behavioural contracts declared in the `.p` specs.
+//
+// A behavioural contract is not verifiable by assertion. It is a rate over
+// repeated runs against a real model, compared with a threshold — the regime
+// every `.r.spec.md` in this project declares for itself. That is why this
+// package sits outside the coverage denominator and why everything that
+// reaches a model is behind the `eval` build tag: measuring costs money, and a
+// suite that costs money is a suite nobody runs.
+//
+// What lives here without the tag is the arithmetic, and it is here rather
+// than beside the tagged code on purpose. Deciding whether a measurement met
+// its threshold is exactly the kind of thing that must not itself be measured.
+package evals
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/aguinelo/dcode/internal/version"
+)
+
+// DefaultRuns is how many times a scenario runs when nothing says otherwise.
+//
+// Twenty is the floor the provider spec justifies: below it the confidence
+// interval is wider than the distance between the thresholds being checked, so
+// a smaller number does not measure faster, it measures nothing.
+const DefaultRuns = 20
+
+// Reader is the slice of resolved configuration this package needs.
+//
+// An interface rather than *config.Resolved because the harness has no business
+// knowing where a value came from, and because a fake is then three lines.
+type Reader interface {
+	Bool(key string, def bool) bool
+	String(key, def string) string
+	Int(key string, def int) int
+}
+
+// Config is what a measurement run needs to know about itself.
+type Config struct {
+	Enabled bool
+	Model   string
+	Runs    int
+}
+
+// FromReader pulls the three eval keys out of resolved configuration.
+//
+// A run count at or below zero falls back to the default rather than erroring:
+// the value arrives from a file a human typed, and refusing to measure is a
+// worse answer to `runs = 0` than measuring the standard number of times.
+func FromReader(r Reader) Config {
+	runs := r.Int("eval.runs", DefaultRuns)
+	if runs <= 0 {
+		runs = DefaultRuns
+	}
+	return Config{
+		Enabled: r.Bool("eval.enabled", false),
+		Model:   r.String("eval.model", ""),
+		Runs:    runs,
+	}
+}
+
+// Unavailable reports why a measurement cannot run, or "" if it can.
+//
+// A reason rather than a boolean because this is what a skipped test prints,
+// and "eval skipped" tells nobody which of the two knobs was missing.
+func (c Config) Unavailable() string {
+	if !c.Enabled {
+		return "eval is off: set eval.enabled (DCODE_EVAL_ENABLED=true). It runs a real model and costs money, which is why it is never on by default."
+	}
+	if c.Model == "" {
+		return "no eval model: set eval.model (DCODE_EVAL_MODEL). A threshold belongs to a model, so a measurement that cannot name one measures nothing."
+	}
+	return ""
+}
+
+// Result is one scenario measured.
+//
+// Model and Build travel with the number because a threshold belongs to a
+// model, not to a scenario: the same fixture against a different model is a
+// different measurement, and a result quoted without them cannot be compared
+// with anything.
+type Result struct {
+	ID        string
+	Threshold float64
+	Runs      int
+	Passed    int
+	Errors    int
+	Model     string
+	Build     string
+}
+
+// Rate is the share of runs that behaved as contracted.
+//
+// Errored runs are in the denominator on purpose: a run that could not be
+// measured is not a run that behaved.
+func (r Result) Rate() float64 {
+	if r.Runs <= 0 {
+		return 0
+	}
+	return float64(r.Passed) / float64(r.Runs)
+}
+
+// Sound reports whether the measurement is worth comparing at all.
+//
+// A run that errored failed to measure the model, which is a different thing
+// from the model failing the contract — a network blip must never be readable
+// as a behavioural regression. Zero runs is the same class of non-answer.
+func (r Result) Sound() bool {
+	return r.Runs > 0 && r.Errors == 0
+}
+
+// Met reports whether the contract held.
+//
+// An unsound measurement never counts as met. The alternative is a green
+// result whose evidence is missing, which is the one outcome worse than red.
+func (r Result) Met() bool {
+	if !r.Sound() {
+		return false
+	}
+	return r.Rate() >= r.Threshold
+}
+
+// String renders the result as one line, always carrying the run count.
+//
+// The count is not decoration. "97%" is not a finding; "97% over 20 runs of
+// MiniMax-M3" is, and printing them apart is how the first gets quoted.
+func (r Result) String() string {
+	var b strings.Builder
+	verdict := "MET"
+	if !r.Met() {
+		verdict = "NOT MET"
+	}
+	fmt.Fprintf(&b, "%-32s %s  %.1f%% of %d runs (threshold %.1f%%)",
+		r.ID, verdict, r.Rate()*100, r.Runs, r.Threshold*100)
+	if r.Errors > 0 {
+		fmt.Fprintf(&b, " — %d run(s) errored, measurement unsound", r.Errors)
+	}
+	if r.Model != "" {
+		fmt.Fprintf(&b, " · model %s", r.Model)
+	}
+	if r.Build != "" {
+		fmt.Fprintf(&b, " · build %s", r.Build)
+	}
+	return b.String()
+}
+
+// Attempt is one run of a scenario against a real model.
+//
+// The two return values are deliberately different questions. The bool is the
+// verdict — did the model behave as the contract says. The error means the run
+// could not be measured at all, which is a transport problem and not a verdict.
+// Collapsing them would let a flaky network read as a behavioural regression,
+// and that is the one misreading this whole package exists to prevent.
+type Attempt func(ctx context.Context) (bool, error)
+
+// Measure runs a scenario cfg.Runs times and reports the rate.
+//
+// It never stops early. A contract at 90% is *expected* to fail one run in ten,
+// so exiting on the first failure would make every threshold below 100%
+// unmeasurable — and the thresholds below 100% are the reason this exists.
+//
+// Measure takes an Attempt rather than reaching for a model itself, which is
+// what keeps it outside the build tag and inside the test suite.
+func Measure(ctx context.Context, cfg Config, id string, threshold float64, attempt Attempt) Result {
+	r := Result{
+		ID:        id,
+		Threshold: threshold,
+		Runs:      cfg.Runs,
+		Model:     cfg.Model,
+		Build:     version.Short(),
+	}
+	for i := 0; i < cfg.Runs; i++ {
+		ok, err := attempt(ctx)
+		switch {
+		case err != nil:
+			r.Errors++
+		case ok:
+			r.Passed++
+		}
+	}
+	return r
+}
+
+// Report renders a set of results, worst first.
+//
+// Worst first because the reason to read this output at all is to find what
+// regressed, and a met contract at the top of a long list is noise.
+func Report(rs []Result) string {
+	sorted := make([]Result, len(rs))
+	copy(sorted, rs)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		a, b := sorted[i], sorted[j]
+		if a.Met() != b.Met() {
+			return !a.Met()
+		}
+		return a.Rate()-a.Threshold < b.Rate()-b.Threshold
+	})
+	lines := make([]string, 0, len(sorted))
+	for _, r := range sorted {
+		lines = append(lines, r.String())
+	}
+	return strings.Join(lines, "\n")
+}
