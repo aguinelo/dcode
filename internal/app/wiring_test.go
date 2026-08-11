@@ -71,6 +71,9 @@ var wiringTable = []configOption{
 	{"Rules", "rules.confirm_command", "String", "Rules"},
 
 	{"DumpPrompt", "doctrine.dump", "Bool", ""},
+	{"DoctrineOverlay", "doctrine.enabled", "Bool", ""},
+	{"DoctrineDir", "doctrine.dir", "String", ""},
+	{"DoctrineMaxBytes", "doctrine.max_bytes", "Int", ""},
 }
 
 // nonSession names the KnownKeys entries that deliberately do not reach

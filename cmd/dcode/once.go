@@ -68,6 +68,7 @@ func runOnce(args []string) error {
 	// access.
 	if opts.DumpPrompt {
 		fmt.Println(session.Prompt)
+		fmt.Print(app.DoctrineAudit(session))
 		return nil
 	}
 
