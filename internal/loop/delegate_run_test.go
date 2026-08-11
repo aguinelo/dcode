@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/tools"
 )
@@ -206,4 +208,82 @@ func TestTheRealSleepReturnsAndIsInterruptible(t *testing.T) {
 	if e.sleep(ctx, time.Hour) {
 		t.Error("a cancelled context waited an hour")
 	}
+}
+
+// The child's read-only mode is the structural half of RN-11, and the test that
+// stood for it asserted a string constant's spelling. That is not the claim: a
+// child built with the parent's mode would pass that too.
+//
+// Two locks stand between a delegated turn and a write: its registry has no
+// writing tool, and its mode refuses one. Defence in depth is only real if each
+// layer is verified ALONE, so this deliberately defeats the outer lock — the
+// writing tool is allowed into the child's registry for the duration — and
+// asserts the inner one still holds.
+func TestTheChildIsReadOnlyEvenWithAWritingToolInReach(t *testing.T) {
+	readOnlyTools["scribble"] = true
+	t.Cleanup(func() { delete(readOnlyTools, "scribble") })
+
+	ws := t.TempDir()
+	res, err := policy.NewResolver(ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spy := &countingApprover{}
+	e := New(Config{
+		Provider: &scriptedProvider{turns: [][]provider.StreamEvent{
+			{call("c1", "scribble", `{}`), done()},
+			{text("could not write"), done()},
+		}},
+		Tools:                  tools.NewRegistry(tools.Read{}, scribble{dir: ws}),
+		State:                  tools.NewState(res, tools.DefaultLimits()),
+		Emitter:                newRecorder(),
+		Approver:               spy,
+		Limits:                 DefaultLimits(),
+		Mode:                   policy.ModeWorkspaceWrite, // the PARENT may write
+		Policy:                 policy.PolicyOnRequest,
+		Model:                  "m",
+		Parallel:               4,
+		DelegateMaxIterations:  5,
+		DelegateMaxResultBytes: 8192,
+	}, ce.Session{Instructions: "You are dcode."})
+
+	if _, err := e.Delegate(context.Background(), "look around", "", DelegateLimits{MaxIterations: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(ws, "scribbled.txt")); err == nil {
+		t.Error("the child wrote to the workspace; its mode is read-only and no input can produce another")
+	}
+	// And it was refused rather than escalated. Consent given to the parent is
+	// not consent for the child, and a user who asked one question must not be
+	// interrupted by N they did not ask.
+	if spy.asked != 0 {
+		t.Errorf("the delegated turn asked for approval %d times; a read-only child has nothing to ask about", spy.asked)
+	}
+}
+
+// scribble genuinely writes when it runs, which is what makes the assertion
+// above about the mode rather than about a tool that never touched the disk.
+type scribble struct{ dir string }
+
+func (scribble) Name() string            { return "scribble" }
+func (scribble) Description() string     { return "writes a file" }
+func (scribble) Schema() json.RawMessage { return json.RawMessage(`{"type":"object"}`) }
+
+func (s scribble) Declare(json.RawMessage) (policy.Request, error) {
+	return policy.Request{Tool: "scribble", Paths: []policy.Access{{Path: "scribbled.txt", Write: true}}}, nil
+}
+
+func (s scribble) Execute(context.Context, json.RawMessage, *tools.State) (tools.Result, error) {
+	if err := os.WriteFile(filepath.Join(s.dir, "scribbled.txt"), []byte("x"), 0o644); err != nil {
+		return tools.Result{}, err
+	}
+	return tools.Result{Output: "wrote it"}, nil
+}
+
+// countingApprover fails the test by being used at all.
+type countingApprover struct{ asked int }
+
+func (a *countingApprover) Approve(context.Context, protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
+	a.asked++
+	return protocol.ApprovalAllow, nil
 }

@@ -919,3 +919,113 @@ func (a *funcApprover) Approve(context.Context, protocol.ApprovalRequest) (proto
 	a.asked++
 	return a.fn(), nil
 }
+
+// StopUnverified and StopIncomplete are STATES, not errors, and the difference
+// decides an incentive. Reported as failure, the easy way out of a red run
+// becomes switching the check off — so the loop would exist to prevent a false
+// report and would produce an unchecked project instead.
+func TestAnUnfinishedTurnIsAStateAndNotAnError(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		cfg    func(*Config)
+		reason string
+	}{
+		{"nothing could check the change", func(c *Config) {
+			c.DoneEnabled = true
+			c.Done = DoneSet{Criteria: []Criterion{{Name: "verify", Command: ""}}}
+			c.WrittenPaths = func() []string { return []string{"a.go"} }
+		}, protocol.StopUnverified},
+		{"no progress on an unmet criterion", func(c *Config) {
+			c.DoneEnabled = true
+			c.MaxStallCycles = 1
+			c.Done = DoneSet{Criteria: []Criterion{{Name: "verify", Command: "make check"}}}
+			c.WrittenPaths = func() []string { return []string{"a.go"} }
+			c.RunCriterion = func(context.Context, string) (int, string, error) { return 1, "", nil }
+		}, protocol.StopIncomplete},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			reg := tools.NewRegistry(slowTool{name: "one", delay: 0, path: "a"})
+			p := &scriptedProvider{turns: [][]provider.StreamEvent{
+				{call("c1", "one", `{}`), done()},
+				{text("all set"), done()},
+				{text("still all set"), done()},
+				{text("really"), done()},
+			}}
+			e, rec := newEngine(t, p, reg, c.cfg)
+
+			out, err := e.Run(context.Background(), "go")
+			if err != nil {
+				t.Fatalf("%v came back as an error: %v", c.reason, err)
+			}
+			if out.Reason != c.reason {
+				t.Fatalf("reason = %q, want %q", out.Reason, c.reason)
+			}
+			if n := rec.count(protocol.EventSessionError); n != 0 {
+				t.Errorf("%d session errors were emitted; this is the product being honest, not failing", n)
+			}
+			if rec.count(protocol.EventTurnCompleted) != 1 {
+				t.Error("an unfinished turn still completes exactly once")
+			}
+		})
+	}
+}
+
+// Compaction costs a model call, and that call must not spend the iteration
+// budget the user's work is measured against. Otherwise a long session silently
+// gets fewer turns than its ceiling says, and the ceiling stops meaning what it
+// reads as.
+//
+// Measured by difference: the same script, the same history, run once where
+// nothing compacts and once where everything does.
+func TestSummarisingDoesNotSpendAnIteration(t *testing.T) {
+	run := func(t *testing.T, window int) (Outcome, int) {
+		t.Helper()
+		reg := tools.NewRegistry(tools.Read{})
+		p := &scriptedProvider{turns: [][]provider.StreamEvent{
+			{call("c1", "read", `{"path":"a.go"}`), done()},
+			{call("c2", "read", `{"path":"a.go"}`), done()},
+			{text("done"), done()},
+		}}
+		long := ce.Session{Instructions: "You are dcode."}
+		for i := 0; i < 40; i++ {
+			long.History = append(long.History,
+				ce.Message{Role: ce.RoleUser, Text: strings.Repeat("q ", 40)},
+				ce.Message{Role: ce.RoleAssistant, Text: strings.Repeat("a ", 40)},
+			)
+		}
+		ws := t.TempDir()
+		res, err := policy.NewResolver(ws)
+		if err != nil {
+			t.Fatal(err)
+		}
+		summarised := 0
+		e := New(Config{
+			Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits()),
+			Emitter: newRecorder(), Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
+			Policy: policy.PolicyOnRequest, Model: "m",
+			CtxConfig: ce.Config{CompactAt: 0.5, KeepTurns: 2, Window: window},
+			Summarise: func(context.Context, []ce.Message) (string, error) {
+				summarised++
+				return "earlier: we looked at some files", nil
+			},
+		}, long)
+		out, err := e.Run(context.Background(), "continue")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out, summarised
+	}
+
+	base, never := run(t, 1_000_000)
+	if never != 0 {
+		t.Fatalf("the control run compacted %d times; it is meant to be the case where nothing does", never)
+	}
+	out, summarised := run(t, 500)
+	if summarised == 0 {
+		t.Fatal("nothing was summarised; the comparison below would prove nothing")
+	}
+	if out.Iterations != base.Iterations {
+		t.Errorf("the same work took %d iterations with compaction and %d without; "+
+			"the summary call is spending the user's budget", out.Iterations, base.Iterations)
+	}
+}
