@@ -118,7 +118,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 > onde os contratos das demais specs também vão morar.
 
 - [x] Fixture para `toolcall-schema-valid`, `toolcall-recover` e `no-phantom-tool`.
-- [x] Executor que roda `DCODE_EVAL_RUNS` vezes e compara com o limiar.
+- [x] Executor que roda `DCODE_EVAL_RUNS` vezes e compara com o limiar. Um executor para **todos** os contratos, nao um por spec: `Contracts` liga cada ID ao seu juizo, e duas guardas impedem fixture sem juizo e juizo sem fixture.
 - [x] Registro do modelo e versão medidos junto do resultado.
 - [x] Não roda na suíte padrão nem na CI de PR.
 - [x] `Measure` fica **fora** da build tag. Ela recebe a tentativa como função e

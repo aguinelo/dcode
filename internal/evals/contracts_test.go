@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -89,6 +90,89 @@ func TestEveryFixtureExplainsWhatItMeasures(t *testing.T) {
 		}
 		if !strings.Contains(body, "limiar") {
 			t.Errorf("%s: the note does not state the threshold, so a reader cannot tell what passing means", e.Name())
+		}
+	}
+}
+
+// Thirty of thirty-five fixtures were inert: declared with a threshold and a
+// path, loaded by a test that checked only that they load, and measured by
+// nothing. A threshold nobody runs is not a weak measurement, it is a claim.
+func TestEveryFixtureHasAJudge(t *testing.T) {
+	entries, err := os.ReadDir(FixtureRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		c, ok := ContractByID(e.Name())
+		if !ok {
+			t.Errorf("%s has material and no judge: it would load, pass the fixture test, and measure nothing", e.Name())
+			continue
+		}
+		if c.Judge == nil {
+			t.Errorf("%s is in the table with a nil judge", e.Name())
+		}
+		if c.Rounds < 1 {
+			t.Errorf("%s asks for %d rounds", e.Name(), c.Rounds)
+		}
+		if c.Rounds > 1 && c.Inject == "" {
+			t.Errorf("%s runs %d rounds and injects nothing between them, so the extra rounds see no new input",
+				e.Name(), c.Rounds)
+		}
+	}
+}
+
+// The other direction: a judge for material that does not exist measures
+// nothing and hides that it does.
+func TestEveryJudgeHasItsFixture(t *testing.T) {
+	for _, c := range Contracts {
+		if _, err := LoadFixture(FixtureRoot, c.ID); err != nil {
+			t.Errorf("%s is judged and its material does not load: %v", c.ID, err)
+		}
+	}
+}
+
+// The threshold is written in two places — the spec table and the contract
+// table — so the spec cannot be edited into disagreement with what runs.
+func TestTheThresholdsAgreeWithTheSpecs(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	specs, err := filepath.Glob(filepath.Join(root, "docs", "specs", "architecture", "*", "*.p.spec.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := map[string]float64{}
+	row := regexp.MustCompile("(?m)^\\| `([a-z][a-z0-9-]*)` \\|[^|]*\\|[^|]*\\|\\s*\\**≥?\\s*([0-9]+)%\\**\\s*\\|")
+	for _, spec := range specs {
+		data, err := os.ReadFile(spec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range row.FindAllStringSubmatch(string(data), -1) {
+			pct, err := strconv.Atoi(m[2])
+			if err != nil {
+				continue
+			}
+			declared[m[1]] = float64(pct) / 100
+		}
+	}
+	if len(declared) == 0 {
+		t.Fatal("no thresholds parsed from the specs; the pattern has drifted and the guard measures nothing")
+	}
+
+	for _, c := range Contracts {
+		want, ok := declared[c.ID]
+		if !ok {
+			continue // declared only in a changelog; the fixture guard covers it
+		}
+		if c.Threshold != want {
+			t.Errorf("%s: the spec says %.0f%% and the runner uses %.0f%%",
+				c.ID, want*100, c.Threshold*100)
 		}
 	}
 }
