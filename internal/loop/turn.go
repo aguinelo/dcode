@@ -74,6 +74,9 @@ type Config struct {
 	ShowReasoning bool
 	// Reminders disables the appended-notice channel when false.
 	Reminders bool
+	// Backoff is how long to wait after a retryable provider error. The zero
+	// value uses the shipped policy.
+	Backoff provider.Backoff
 	// BudgetNotice switches the occupancy warning on. Off leaves the
 	// post-compaction notice as the only signal, which is what it was before.
 	BudgetNotice bool
@@ -102,6 +105,10 @@ type Config struct {
 	// WrittenPaths reports what the session has written, for the protected-path
 	// check. Nil disables it.
 	WrittenPaths func() []string
+	// Sleep is how the loop waits out a backoff. Injectable for the same reason
+	// Now is: a test that asserts retry behaviour should not spend fifteen
+	// seconds proving it. Nil means the real one.
+	Sleep func(ctx context.Context, d time.Duration) bool
 	// Now is the clock used to time tool calls. Nil means the real one.
 	Now func() time.Time
 }
@@ -187,6 +194,7 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 	var recent []ce.ToolCall
 	compacted := false
 	stall := 0
+	attempts := 0
 	var unmet []string
 
 	for {
@@ -226,6 +234,23 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 					continue
 				}
 				return e.finish(out, protocol.StopError), perr
+			case provider.DecisionWait, provider.DecisionRetry:
+				// Both were falling through to abort, so a rate limit or a
+				// dropped connection ended the turn — with the work already
+				// done in it lost, and nothing said about why waiting was not
+				// tried.
+				attempts++
+				d, ok := e.cfg.Backoff.Wait(attempts, perr)
+				if !ok {
+					e.emit(protocol.EventSessionError, protocol.Error{
+						Code: string(perr.Class), Message: perr.Message,
+					})
+					return e.finish(out, protocol.StopError), perr
+				}
+				if !e.sleep(ctx, d) {
+					return e.finishInterrupted(out), nil
+				}
+				continue
 			default:
 				e.emit(protocol.EventSessionError, protocol.Error{
 					Code: string(perr.Class), Message: perr.Message,
@@ -860,4 +885,25 @@ func (e *Engine) finishInterrupted(out Outcome) Outcome {
 		})
 	}
 	return e.finish(out, protocol.StopInterrupted)
+}
+
+// sleep waits, and reports whether the wait completed.
+//
+// Interruptible, because RN-5 says every waiting point is one: a user who asked
+// to stop should not have to sit through a backoff they cannot see.
+func (e *Engine) sleep(ctx context.Context, d time.Duration) bool {
+	if e.cfg.Sleep != nil {
+		return e.cfg.Sleep(ctx, d)
+	}
+	if d <= 0 {
+		return true
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
