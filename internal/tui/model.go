@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
@@ -37,6 +38,12 @@ const (
 	KindNote      Kind = "note"
 	// KindReasoning is the model thinking, which is not the model answering.
 	KindReasoning Kind = "reasoning"
+	// KindCompletion is what was and was not checked when the turn ended.
+	//
+	// Its own kind rather than a note, because it is the one line on screen the
+	// model's prose cannot contradict: the text may claim success, the seal is
+	// derived from what actually ran.
+	KindCompletion Kind = "completion"
 )
 
 // Entry is one line of the stream, with its detail available on demand.
@@ -75,7 +82,13 @@ type Model struct {
 
 	Entries []Entry
 	Plan    []protocol.PlanItem
-	Pending *protocol.ApprovalRequest
+	// Verification is the seal of the last completed turn. Empty when the turn
+	// had no definition of done.
+	//
+	// It is the guarantee that outlives a model claiming success in prose: the
+	// text can lie, this is derived from what actually ran.
+	Verification string
+	Pending      *protocol.ApprovalRequest
 
 	InputTokens  int
 	OutputTokens int
@@ -300,11 +313,70 @@ func (m Model) Apply(ev protocol.Event) Model {
 				m.ContextPct = 100 * d.Usage.InputTokens / m.Window
 			}
 		}
+		if e, ok := completionEntry(d.Completion); ok {
+			m.Entries = append(m.Entries, e)
+		}
+		m.Verification = ""
+		if d.Completion != nil {
+			m.Verification = d.Completion.Verification
+		}
 		m.State = protocol.SessionStateIdle
 		m.activeTurn = ""
 		m.TurnStartedAt = time.Time{}
 	}
 	return m
+}
+
+// completionEntry renders what the turn ended knowing.
+//
+// Nothing is shown when there was no definition of done: a line saying
+// "nothing to check" on every turn is a line that stops being read, and it
+// would drown the turns where there IS something to say.
+func completionEntry(c *protocol.Completion) (Entry, bool) {
+	if c == nil {
+		return Entry{}, false
+	}
+	// A clean turn changed nothing, so there was nothing to verify and nothing
+	// worth a line.
+	if c.Verification == string(loop.VerificationClean) {
+		return Entry{}, false
+	}
+
+	summary := completionSummary(c)
+	var detail strings.Builder
+	for _, group := range []struct {
+		label string
+		names []string
+	}{
+		{"met", c.Met},
+		{"not met", c.Unmet},
+		{"could not be checked", c.Unavailable},
+	} {
+		if len(group.names) > 0 {
+			fmt.Fprintf(&detail, "%-22s %s\n", group.label, strings.Join(group.names, ", "))
+		}
+	}
+	if len(c.TouchedProtected) > 0 {
+		// Never folded into the detail silently. Changing what measures the
+		// work is sometimes right and always worth seeing.
+		fmt.Fprintf(&detail, "%-22s %s\n", "measurement changed", strings.Join(c.TouchedProtected, ", "))
+	}
+	return Entry{Kind: KindCompletion, Summary: summary, Detail: strings.TrimRight(detail.String(), "\n")}, true
+}
+
+func completionSummary(c *protocol.Completion) string {
+	switch c.Verification {
+	case string(loop.VerificationPassed):
+		return fmt.Sprintf("verified — %d %s passed", len(c.Met), plural(len(c.Met), "check", "checks"))
+	case string(loop.VerificationFailed):
+		return "NOT verified — " + strings.Join(c.Unmet, ", ") + " did not pass"
+	case string(loop.VerificationUnavailable):
+		return "not verified — nothing here could check this"
+	case string(loop.VerificationStale):
+		return "not verified — files changed after the last check"
+	default:
+		return "verification " + c.Verification
+	}
 }
 
 // ToggleAt expands or collapses one entry.

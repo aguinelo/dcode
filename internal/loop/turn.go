@@ -636,6 +636,9 @@ func (e *Engine) finish(out Outcome, reason string) Outcome {
 			CacheWriteTokens: out.Usage.CacheWriteTokens,
 		}
 	}
+	if c := e.completion(); c != nil {
+		ev.Completion = c
+	}
 	e.emit(protocol.EventTurnCompleted, ev)
 	return out
 }
@@ -785,4 +788,21 @@ func (e *Engine) Report() Report { return e.lastReport }
 // Verification is the single-criterion seal for the client.
 func (e *Engine) Verification() Verification {
 	return VerificationOf(e.lastReport, len(e.written()) > 0)
+}
+
+// completion is what the client shows instead of trusting the prose.
+//
+// Nil when there was no definition of done, which is a different fact from
+// "checked and everything passed" and has to read differently on screen.
+func (e *Engine) completion() *protocol.Completion {
+	if len(e.lastReport.States) == 0 {
+		return nil
+	}
+	return &protocol.Completion{
+		Verification:     string(e.Verification()),
+		Met:              e.lastReport.Names(CriterionMet),
+		Unmet:            e.lastReport.Names(CriterionUnmet),
+		Unavailable:      e.lastReport.Names(CriterionUnavailable),
+		TouchedProtected: e.lastReport.TouchedProtected,
+	}
 }

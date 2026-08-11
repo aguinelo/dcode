@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/mattn/go-runewidth"
 )
@@ -256,6 +257,13 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 		{p.Apply(StyleDim, m.Model), 3},
 		{mode, 0},
 	}
+	// The seal is undroppable, for the same reason the sandbox mode is: it is
+	// not information about the session, it is the one thing on screen that a
+	// model claiming success in prose cannot contradict. A field that vanishes
+	// on a narrow terminal is a guarantee that vanishes on a narrow terminal.
+	if label, style := VerificationLabel(m.Verification); label != "" {
+		fields = append(fields, field{p.Apply(style, label), 0})
+	}
 	if label := ContextLabel(m.InputTokens, m.Window); label != "" {
 		fields = append(fields, field{p.Apply(ContextStyle(m.ContextPct), label), 2})
 	}
@@ -328,6 +336,23 @@ func renderStream(m Model, g Geometry, w int) []string {
 
 		case KindError:
 			head := cursor + p.Apply(StyleError, "! "+e.Summary)
+			out = append(out, clipStyled(head, w))
+			if e.Expanded && e.Detail != "" {
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
+			}
+
+		case KindCompletion:
+			// The one line the model's prose cannot contradict. Styled by what
+			// actually ran, and the failing states say so in the words as well
+			// as in the colour.
+			style := StyleOK
+			mark := gl.done
+			if strings.HasPrefix(e.Summary, "NOT verified") {
+				style, mark = StyleError, "!"
+			} else if strings.HasPrefix(e.Summary, "not verified") {
+				style, mark = StyleWarn, "?"
+			}
+			head := cursor + p.Apply(style, mark+" "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
 				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
@@ -901,4 +926,26 @@ func renderCompletions(m Model, g Geometry) []string {
 			m.CompletionAt+1, len(m.Completions))
 	}
 	return append(out, clipStyled(p.Apply(StyleDim, footer), g.Width))
+}
+
+// VerificationLabel is the seal shown on the status line.
+//
+// Short enough to survive beside everything else, and worded so the failing
+// states read as failing without colour: a monochrome terminal, a screenshot in
+// a bug report, and a colour-blind reader all have to get the same answer.
+func VerificationLabel(v string) (string, Style) {
+	switch v {
+	case string(loop.VerificationPassed):
+		return "verified", StyleOK
+	case string(loop.VerificationFailed):
+		return "NOT VERIFIED", StyleDanger
+	case string(loop.VerificationStale):
+		return "unverified", StyleWarn
+	case string(loop.VerificationUnavailable):
+		return "unverified", StyleWarn
+	default:
+		// Clean, or no definition of done. Nothing changed, so there is nothing
+		// to claim either way, and a permanent label would stop being read.
+		return "", StyleDim
+	}
 }

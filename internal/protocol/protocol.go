@@ -236,6 +236,29 @@ type (
 		// it, which is why it is a pointer: zero tokens and unknown tokens are
 		// different facts and a client shows them differently.
 		Usage *Usage `json:"usage,omitempty"`
+		// Completion is what was and was not checked. Absent when the turn had
+		// no definition of done, which is why it is a pointer: "nothing to
+		// check" and "checked, all met" are different facts.
+		//
+		// It travels on the wire because it is the guarantee that survives a
+		// model claiming success in prose. The text can lie; this cannot.
+		Completion *Completion `json:"completion,omitempty"`
+	}
+
+	// Completion is the state of the done criteria when a turn ended.
+	Completion struct {
+		// Verification is the single-criterion seal: clean, passed, failed,
+		// stale or unavailable.
+		Verification string `json:"verification"`
+		// Met and Unmet name the criteria, so a client can show which.
+		Met   []string `json:"met,omitempty"`
+		Unmet []string `json:"unmet,omitempty"`
+		// Unavailable are criteria that could not be run at all. Different from
+		// unmet, and shown differently: nothing was learned about them.
+		Unavailable []string `json:"unavailable,omitempty"`
+		// TouchedProtected are paths that are part of how the work is measured
+		// and were written this turn. Never omitted when present.
+		TouchedProtected []string `json:"touched_protected,omitempty"`
 	}
 
 	// Usage is the token accounting for a turn.
