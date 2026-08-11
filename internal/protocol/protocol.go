@@ -167,6 +167,13 @@ const (
 	StopRepeatLoop    = "repeat_loop"
 	StopMaxTokens     = "max_tokens"
 	StopError         = "error"
+	// StopUnverified and StopIncomplete are RESULTS, not errors. They are the
+	// honest state of work delivered without a check having passed.
+	//
+	// Treating them as failure would create exactly the wrong incentive: the
+	// easy way out becomes switching the checking off.
+	StopUnverified = "unverified"
+	StopIncomplete = "incomplete"
 )
 
 // Payloads for the remaining event types.

@@ -16,6 +16,8 @@ const (
 	ReminderToolsParallel         ReminderKind = "tools_parallel"
 	ReminderInstructionOutOfChain ReminderKind = "instruction_out_of_chain"
 	ReminderContextBudget         ReminderKind = "context_budget"
+	ReminderUnmetCriteria         ReminderKind = "unmet_criteria"
+	ReminderProtectedTouched      ReminderKind = "protected_touched"
 )
 
 // BudgetBand is how full the context is, as announced to the model.
@@ -87,6 +89,12 @@ type SessionState struct {
 	ParallelBatch int
 	// OutOfChain are instruction files discovered after the chain was frozen.
 	OutOfChain []OutOfChainInstruction
+	// UnmetCriteria are the names of the done criteria still not met. Set only
+	// when the turn is being asked to continue because of them.
+	UnmetCriteria []string
+	// ProtectedTouched are paths that ARE the measurement and were written this
+	// turn. Surfaced, never counted as progress in silence.
+	ProtectedTouched []string
 	// BudgetCrossed is the occupancy band to announce, set only on the turn the
 	// band is crossed upward. BudgetNone announces nothing.
 	//
@@ -137,6 +145,28 @@ func Emit(s SessionState) []Reminder {
 			Text: "Those tools ran at the same time, so their results do not " +
 				"describe a sequence. Do not read one as having happened before " +
 				"another, and do not infer that one caused the next.",
+		})
+	}
+
+	if len(s.UnmetCriteria) > 0 {
+		names := uniqueSorted(s.UnmetCriteria)
+		out = append(out, Reminder{
+			Kind: ReminderUnmetCriteria,
+			Text: "You changed files and this is not done yet: " +
+				strings.Join(names, ", ") + " did not pass. Fix the cause. " +
+				"Do not weaken the check to make it pass, and do not report " +
+				"success — if you cannot get there, say what is left.",
+		})
+	}
+
+	if len(s.ProtectedTouched) > 0 {
+		paths := uniqueSorted(s.ProtectedTouched)
+		out = append(out, Reminder{
+			Kind: ReminderProtectedTouched,
+			Text: "You changed files that are part of how this work is checked: " +
+				strings.Join(paths, ", ") + ". That is sometimes the right thing " +
+				"to do, and it is being recorded either way. Say why you changed " +
+				"them.",
 		})
 	}
 

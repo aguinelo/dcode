@@ -74,6 +74,12 @@ var wiringTable = []configOption{
 	{"SymbolMaxMatches", "tools.symbol_max_matches", "Int", ""},
 	{"BudgetNotice", "budget.notice", "Bool", "BudgetNotice"},
 
+	{"VerifyCommand", "verify.command", "String", ""},
+	{"DoneTimeout", "done.timeout", "String", "DoneTimeout"},
+	{"DoneEnabled", "done.enabled", "Bool", "DoneEnabled"},
+	{"DoneFile", "done.file", "String", ""},
+	{"MaxStallCycles", "limits.max_stall_cycles", "Int", "MaxStallCycles"},
+
 	{"DumpPrompt", "doctrine.dump", "Bool", ""},
 	{"DoctrineOverlay", "doctrine.enabled", "Bool", ""},
 	{"DoctrineDir", "doctrine.dir", "String", ""},
