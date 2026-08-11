@@ -1,9 +1,11 @@
 package tools
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -26,27 +28,86 @@ type ignoreRule struct {
 	dirOnly bool
 }
 
-type ignoreSet struct {
-	rules []ignoreRule
+// scopedRules are the rules from one .gitignore, and the directory they apply
+// under.
+//
+// Scoped because a rule in docs/.gitignore is written relative to docs/ and
+// means nothing outside it: `*.draft` there hides docs/notes.draft and must not
+// touch src/notes.draft.
+type scopedRules struct {
+	// prefix is the directory, workspace-relative, with a trailing slash. Empty
+	// for the root file.
+	prefix string
+	rules  []ignoreRule
 }
 
-// loadIgnores reads .gitignore from root. Nested ignore files are not walked:
-// the cost is one more read per directory on every search, and the gain over a
-// root-level file is small for a workspace.
+type ignoreSet struct {
+	scopes []scopedRules
+}
+
+// loadIgnores collects every .gitignore under root, ordered shallowest first.
+//
+// Nested files used to be skipped, on the reasoning that the gain over a
+// root-level file was small. A parity test against git says otherwise, and the
+// tool-suite spec named this exact case — "precedência de arquivos aninhados" —
+// as one of the hard ones. Two real files in a normal repository were wrong:
+// docs/.gitignore un-ignoring one path and hiding another, with dcode
+// disagreeing with git in both directions.
+//
+// Disagreeing by hiding a file git shows is the failure DECISIONS.md rules out,
+// because a search that silently omits something is not recoverable by the
+// person reading it.
+//
+// The cost is one directory walk before the search, which is the same walk the
+// search is about to do anyway.
 func loadIgnores(root string, enabled bool) *ignoreSet {
 	set := &ignoreSet{}
 	if !enabled {
 		return set
 	}
-	raw, err := os.ReadFile(filepath.Join(root, ".gitignore"))
-	if err != nil {
-		return set
-	}
-	for _, line := range strings.Split(string(raw), "\n") {
-		if r, ok := parseIgnoreLine(line); ok {
-			set.rules = append(set.rules, r)
+
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
 		}
-	}
+		if d.IsDir() {
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Name() != ".gitignore" {
+			return nil
+		}
+		rel, err := filepath.Rel(root, filepath.Dir(path))
+		if err != nil {
+			return nil
+		}
+		prefix := ""
+		if rel != "." {
+			prefix = filepath.ToSlash(rel) + "/"
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		sc := scopedRules{prefix: prefix}
+		for _, line := range strings.Split(string(raw), "\n") {
+			if r, ok := parseIgnoreLine(line); ok {
+				sc.rules = append(sc.rules, r)
+			}
+		}
+		if len(sc.rules) > 0 {
+			set.scopes = append(set.scopes, sc)
+		}
+		return nil
+	})
+
+	// Shallowest first, so a deeper file has the last word — which is how git
+	// resolves the two disagreeing.
+	sort.SliceStable(set.scopes, func(i, j int) bool {
+		return strings.Count(set.scopes[i].prefix, "/") < strings.Count(set.scopes[j].prefix, "/")
+	})
 	return set
 }
 
@@ -84,7 +145,27 @@ func parseIgnoreLine(line string) (ignoreRule, bool) {
 // resolves a negation after a broad exclusion.
 func (s *ignoreSet) match(rel string, isDir bool) bool {
 	ignored := false
-	for _, r := range s.rules {
+	for _, sc := range s.scopes {
+		// A scoped file only speaks about what is under it, and its rules are
+		// written relative to it.
+		if sc.prefix != "" && !strings.HasPrefix(rel, sc.prefix) {
+			continue
+		}
+		local := strings.TrimPrefix(rel, sc.prefix)
+		if v, ok := matchScope(sc.rules, local, isDir); ok {
+			ignored = v
+		}
+	}
+	return ignored
+}
+
+// matchScope applies one file's rules, reporting whether any of them decided.
+//
+// The second return matters: a scope that says nothing must leave a shallower
+// decision standing, and a scope that says "not ignored" through a negation
+// must overturn one. Collapsing the two into a bool loses the difference.
+func matchScope(rules []ignoreRule, rel string, isDir bool) (ignored, decided bool) {
+	for _, r := range rules {
 		m := r.re.FindStringSubmatch(rel)
 		if m == nil {
 			continue
@@ -98,9 +179,9 @@ func (s *ignoreSet) match(rel string, isDir bool) bool {
 				continue // the path is the directory itself, and it is a file
 			}
 		}
-		ignored = !r.negate
+		ignored, decided = !r.negate, true
 	}
-	return ignored
+	return ignored, decided
 }
 
 // compileGlob turns a glob into a regexp.
