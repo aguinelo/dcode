@@ -264,6 +264,14 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 	if label, style := VerificationLabel(m.Verification, m.Lang); label != "" {
 		fields = append(fields, field{p.Apply(style, label), 0})
 	}
+	if m.Copy.Active {
+		// While copying, the status line says what is selected and how to get
+		// out. A mode with no visible way out is a mode people force-quit the
+		// program to escape.
+		fields = append(fields, field{p.Apply(StyleAccent, CopyHint(m.Copy, m.Lang)), 0})
+	} else if m.Flash != "" {
+		fields = append(fields, field{p.Apply(StyleDim, m.Flash), 1})
+	}
 	if label := ContextLabel(m.InputTokens, m.Window); label != "" {
 		fields = append(fields, field{p.Apply(ContextStyle(m.ContextPct), label), 2})
 	}

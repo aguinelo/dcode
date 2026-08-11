@@ -84,6 +84,12 @@ type Model struct {
 	Plan    []protocol.PlanItem
 	// Lang is the interface language, resolved once when the client starts.
 	Lang Lang
+	// Copy is the selection while copy mode is open. The alternate screen costs
+	// the terminal's own selection, and RN-1 says it has to be given back.
+	Copy CopyState
+	// Flash is a one-line notice shown until the next keystroke, for things
+	// that happen and leave no other trace — a copy landing, for instance.
+	Flash string
 	// Verification is the seal of the last completed turn. Empty when the turn
 	// had no definition of done.
 	//

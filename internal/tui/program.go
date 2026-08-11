@@ -278,6 +278,39 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// The menu owns the arrows, Tab and Esc while it is open — and nothing
 	// else, so every other key keeps doing what it always does.
 	if len(p.model.Completions) > 0 {
+		// Copy mode owns the keyboard while it is open, and nothing else does. A
+		// mode that lets other keys through is a mode people leave by accident,
+		// halfway through a selection.
+		if p.model.Copy.Active {
+			last := len(p.renderedStream()) - 1
+			switch k.String() {
+			case "up", "k":
+				p.model = p.model.ExtendCopy(-1, last)
+				return p, nil
+			case "down", "j":
+				p.model = p.model.ExtendCopy(1, last)
+				return p, nil
+			case "y", "enter":
+				text := CopyText(p.renderedStream(), p.model.Copy)
+				t := Text(p.model.Lang)
+				if text == "" {
+					p.model.Flash = t.CopyEmpty
+					p.model = p.model.LeaveCopy()
+					return p, nil
+				}
+				p.model.Flash = t.CopyDone
+				p.model = p.model.LeaveCopy()
+				// Written straight to the terminal: the clipboard is the
+				// terminal's, not the program's, and OSC 52 is what reaches it
+				// over ssh and inside tmux.
+				return p, tea.Printf("%s", OSC52(text))
+			case "esc", "q", "ctrl+c":
+				p.model = p.model.LeaveCopy()
+				return p, nil
+			}
+			return p, nil
+		}
+
 		switch k.String() {
 		case "up":
 			p.model = p.model.MoveCompletion(-1)
@@ -405,6 +438,14 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "delete":
 		p.model = p.model.DeleteForward().Refresh(p.opts.Commands)
 		return p, nil
+
+	case "v":
+		// The debt RN-1 took on: the alternate screen costs the terminal's own
+		// selection, and this is it given back.
+		if p.model.Input == "" {
+			p.model = p.model.EnterCopy(len(p.renderedStream()) - 1)
+			return p, nil
+		}
 
 	case "esc":
 		// Closes the expansion first, then the selection. Escape means "back
@@ -677,4 +718,15 @@ func (p *program) View() tea.View {
 	// native scroll-back and mouse selection - is accepted deliberately.
 	v.AltScreen = true
 	return v
+}
+
+// renderedStream is the stream as lines, undecorated enough to be copied.
+//
+// Rendered rather than stored: what a person wants to copy is what they can
+// see, including the wrapping, and reconstructing that from the entries would
+// be a second renderer to keep in step with the first.
+func (p *program) renderedStream() []string {
+	g := p.geo
+	g.Width = max(20, g.Width)
+	return renderStream(p.model, g, g.Width)
 }
