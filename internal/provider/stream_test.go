@@ -257,7 +257,15 @@ func TestATruncatedToolCallIsAnErrorRatherThanAnEmptyCall(t *testing.T) {
 		}
 	}
 	if lastErr == nil {
-		t.Error("the truncation must be reported, not swallowed")
+		t.Fatal("the truncation must be reported, not swallowed")
+	}
+	// Classed, not merely non-nil. The class is what the loop branches on: a
+	// tool_schema error is fed back to the model to correct itself, and a
+	// transport error is retried against the provider. Reporting the wrong one
+	// retries the wrong thing.
+	pe, ok := lastErr.(*ProviderError)
+	if !ok || pe.Class != ErrClassToolSchema {
+		t.Errorf("truncation reported as %v, want class %v", lastErr, ErrClassToolSchema)
 	}
 }
 

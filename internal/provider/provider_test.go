@@ -124,11 +124,21 @@ func TestCancelClosesChannelWithCanceled(t *testing.T) {
 	// Whatever was already buffered may still arrive; what matters is that the
 	// channel closes rather than leaking the goroutine.
 	done := make(chan struct{})
-	go func() { drain(t, ch); close(done) }()
+	var got []StreamEvent
+	go func() { got = drain(t, ch); close(done) }()
 	select {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("channel did not close after cancellation")
+	}
+
+	// And that the reason travels. A stream that simply stops is
+	// indistinguishable from one that finished, so the caller cannot tell a
+	// cancelled turn from a complete one — which is the difference between
+	// "the user interrupted" and "the model had nothing more to say".
+	last := got[len(got)-1]
+	if last.Type != EventError || last.Err == nil || last.Err.Class != ErrClassCanceled {
+		t.Errorf("the stream ended with %v / %+v; want an EventError classed %v", last.Type, last.Err, ErrClassCanceled)
 	}
 }
 
