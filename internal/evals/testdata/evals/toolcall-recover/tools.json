@@ -1,0 +1,24 @@
+[
+  {
+    "name": "read",
+    "description": "Read a file from the workspace.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Path to the file, relative to the workspace root."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "First line to read, 1-indexed."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "How many lines to read."
+        }
+      },
+      "required": ["path"]
+    }
+  }
+]

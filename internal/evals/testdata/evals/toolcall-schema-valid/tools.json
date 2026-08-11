@@ -1,0 +1,40 @@
+[
+  {
+    "name": "record_release",
+    "description": "Record a release and the artifacts it shipped.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "release": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "Semantic version, without a leading v."
+            },
+            "artifacts": {
+              "type": "array",
+              "description": "Every artifact the release shipped.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "os": {
+                    "type": "string",
+                    "description": "Target in os/arch form, e.g. linux/amd64."
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "Hex digest, 64 characters."
+                  }
+                },
+                "required": ["os", "sha256"]
+              }
+            }
+          },
+          "required": ["version", "artifacts"]
+        }
+      },
+      "required": ["release"]
+    }
+  }
+]
