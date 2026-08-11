@@ -463,3 +463,74 @@ func TestPlanNeverCrossesABoundary(t *testing.T) {
 		}
 	}
 }
+
+// The schema tells the model "Lines of context around each match" and Execute
+// never read the field. A tool description is a behaviour surface (RN-3), so
+// this was not a missing feature — it was the product lying to the only reader
+// it has. The model asks for context, plans on having it, gets bare match lines
+// and re-reads the file, spending the window the parameter existed to save.
+func TestGrepReturnsTheContextItAdvertises(t *testing.T) {
+	s, ws := setup(t)
+	writeFileT(t, ws, "pay.go", strings.Join([]string{
+		"package pay",       // 1
+		"",                  // 2
+		"func before() {",   // 3
+		"\treturn",          // 4
+		"}",                 // 5
+		"",                  // 6
+		"func Validate() {", // 7
+		"\tcheck()",         // 8
+		"}",                 // 9
+	}, "\n"))
+
+	res := run(t, Grep{}, s, GrepInput{Pattern: "Validate", ContextLines: 2})
+
+	// The match itself, with its own line number.
+	if !strings.Contains(res.Output, "pay.go:7:func Validate() {") {
+		t.Fatalf("the match line is missing:\n%s", res.Output)
+	}
+	// Two lines either side, each numbered, so the model can cite what it saw.
+	for _, want := range []string{"pay.go:5", "pay.go:6", "pay.go:8", "pay.go:9"} {
+		if !strings.Contains(res.Output, want) {
+			t.Errorf("context line %s is missing:\n%s", want, res.Output)
+		}
+	}
+	// And not more than asked: context that quietly grows is a window nobody
+	// budgeted for.
+	if strings.Contains(res.Output, "pay.go:4") || strings.Contains(res.Output, "pay.go:3") {
+		t.Errorf("more context than requested:\n%s", res.Output)
+	}
+}
+
+// Zero is the default and must mean what it always meant, or every existing
+// caller silently starts paying for context it never asked for.
+func TestGrepWithoutContextIsUnchanged(t *testing.T) {
+	s, ws := setup(t)
+	writeFileT(t, ws, "a.go", "package a\n\nfunc Validate() {}\n")
+
+	res := run(t, Grep{}, s, GrepInput{Pattern: "Validate"})
+	if strings.Contains(res.Output, "a.go:1") || strings.Contains(res.Output, "a.go:2") {
+		t.Errorf("context appeared without being asked for:\n%s", res.Output)
+	}
+	if !strings.Contains(res.Output, "a.go:3:func Validate() {}") {
+		t.Errorf("the match itself is missing:\n%s", res.Output)
+	}
+}
+
+// Context is bounded like everything else here. A generous number against a
+// common pattern would otherwise return the file, which is the one outcome the
+// match-limit exists to prevent.
+func TestGrepContextIsCapped(t *testing.T) {
+	s, ws := setup(t)
+	var lines []string
+	for i := 0; i < 200; i++ {
+		lines = append(lines, "filler")
+	}
+	lines[100] = "needle"
+	writeFileT(t, ws, "big.txt", strings.Join(lines, "\n"))
+
+	res := run(t, Grep{}, s, GrepInput{Pattern: "needle", ContextLines: 5000})
+	if n := strings.Count(res.Output, "big.txt:"); n > GrepMaxContextLines*2+1 {
+		t.Errorf("%d lines returned for one match; context is not capped", n)
+	}
+}
