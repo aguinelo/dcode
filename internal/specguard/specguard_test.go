@@ -3,6 +3,7 @@ package specguard
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -216,4 +217,59 @@ func TestAClaimMayNameATestInASiblingPackage(t *testing.T) {
 	if len(got) != 0 {
 		t.Fatalf("with both directories the mapping is complete; got %v", got)
 	}
+}
+
+// Every path a `.i` spec names as a file must exist.
+//
+// Fifty-four did not. A package was renamed, files were merged, tests were
+// consolidated — and each time, the step naming the old path stayed as written.
+// Nothing checked, so the drift accumulated quietly.
+//
+// A step naming a file nobody can open is worse than a step with no file at
+// all: it reads as a location, so the next person looks there, finds nothing,
+// and reconstructs from the code the mapping the spec was supposed to carry.
+var fileExtensions = map[string]bool{
+	".go": true, ".md": true, ".sh": true, ".toml": true,
+	".yml": true, ".yaml": true, ".json": true, ".txt": true,
+}
+
+func TestEveryFileNamedByAnImplementationSpecExists(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	specs, err := filepath.Glob(filepath.Join(root, "docs", "specs", "architecture", "*", "*.i.spec.md"))
+	if err != nil || len(specs) == 0 {
+		t.Fatalf("no .i specs found (%v); the guard would pass vacuously", err)
+	}
+
+	// Backticked paths under a directory the repository actually has. Anything
+	// else in backticks is a type, a command or a config key, and this is not
+	// the guard for those.
+	path := regexp.MustCompile("`((?:internal|cmd|pkg|scripts|docs)/[A-Za-z0-9_./-]+)`")
+	checked := 0
+	for _, spec := range specs {
+		data, err := os.ReadFile(spec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range path.FindAllStringSubmatch(string(data), -1) {
+			named := m[1]
+			// Only files, and only by a known extension. A directory named in
+			// prose is a location rather than a claim that something is there,
+			// and `internal/policy.Glob` is a function.
+			if !fileExtensions[filepath.Ext(named)] {
+				continue
+			}
+			checked++
+			if _, err := os.Stat(filepath.Join(root, named)); err != nil {
+				t.Errorf("%s names %s, which is not in the repository",
+					filepath.Base(spec), named)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no path was checked; the guard would pass vacuously")
+	}
+	t.Logf("%d paths checked across %d specs", checked, len(specs))
 }
