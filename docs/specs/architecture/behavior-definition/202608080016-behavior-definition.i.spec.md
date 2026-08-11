@@ -21,7 +21,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 ### Passo 1 — Tipos e doutrina
 
-`internal/behavior/types.go`
+`internal/behavior/behavior.go`
 
 - [ ] `Doctrine`, `Instruction`, `InstructionSource`, `SkillIndexEntry`, `Prompt`.
 - [ ] Texto inicial da doutrina base, com `Safety` numa seção própria e isolada.
@@ -32,7 +32,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 ### Passo 2 — `Build`, puro
 
-`internal/behavior/build.go`
+`internal/behavior/behavior.go`
 
 - [ ] Ordem dos blocos exatamente conforme a seção 2 do `.p`.
 - [ ] Bloco ausente é omitido por inteiro, sem marcador vazio.
@@ -47,7 +47,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 ### Passo 3 — Descoberta e precedência de instruções
 
-`internal/behavior/instructions.go`
+`internal/behavior/behavior.go`
 
 - [ ] Localizador **injetado por interface**, implementado por `internal/config`.
 - [ ] Resolução de precedência conforme a seção 4 do `.p`.
@@ -65,7 +65,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 ### Passo 4 — Fixação do prefixo
 
-`internal/behavior/session.go`
+`internal/behavior/behavior.go`
 
 - [ ] Prefixo resolvido na criação da sessão e congelado (RN-5).
 - [ ] Nenhum caminho de código permite adicionar instrução depois.
@@ -74,7 +74,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 ### Passo 5 — Canal de lembrete
 
-`internal/behavior/reminder.go`
+`internal/behavior/reminders.go`
 
 - [ ] `Reminder`, `ReminderKind` e `Emit` puro.
 - [ ] Texto constante por `Kind`, interpolando só dados já presentes no histórico.
@@ -93,7 +93,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 > Acrescentado por [202608102000](changelog/202608102000-verificacao-antes-da-afirmacao.md). Depende do Passo 5; independente dos Passos 3, 6 e 7.
 
-`internal/behavior/verification.go`
+`internal/loop/done.go`
 
 - [ ] `Verification` e os três `ReminderKind` novos.
 - [ ] Derivação **pura** a partir do registro de escrita e do registro de execução da sessão. Sem julgamento, sem heurística sobre o texto do modelo.
@@ -168,7 +168,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 > A tentação aqui é reaproveitar a lista de raízes que já está montada duas linhas acima, para skills. Fazer isso abre exatamente o vetor que a RN-11 fecha, e o teste de workspace acima existe para pegá-lo.
 ### Passo 7 — `DCODE_DOCTRINE_DUMP`
 
-`cmd/dcode/dump.go`
+`cmd/dcode/once.go`
 
 - [ ] Imprime o prompt montado e sai.
 - [ ] Saída idêntica ao que seria enviado ao modelo — sem reformatação de conveniência.

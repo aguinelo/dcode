@@ -7,7 +7,7 @@
 
 ### Passo 1 — Tipos, sem lógica
 
-`internal/context/types.go`
+`internal/contextengine/types.go`
 
 - [ ] `Role` e constantes; `Message`, `ToolCall`, `ToolResult`, `ToolDef`, `Summary`, `Session`.
 - [ ] Testes de ida e volta de JSON com golden em `testdata/`.
@@ -16,7 +16,7 @@
 
 ### Passo 2 — `Estimate`
 
-`internal/context/estimate.go`
+`internal/contextengine/compaction.go`
 
 - [ ] Heurística por caracteres com razão e margem do `.config`.
 - [ ] Determinística: mesma entrada, mesmo valor.
@@ -27,7 +27,7 @@
 
 ### Passo 3 — `Assemble`
 
-`internal/context/assemble.go`
+`internal/contextengine/assemble.go`
 
 - [ ] Ordem de seções exatamente conforme tabela 4 do `.p`.
 - [ ] `Summary == nil` omite a seção por completo, sem marcador.
@@ -41,7 +41,7 @@
 
 ### Passo 4 — Guarda de pureza
 
-`internal/context/purity_test.go`
+`internal/contextengine/contextengine_test.go`
 
 - [ ] Teste que falha se o pacote importar `os`, `net`, `time` (fora de tipo), `math/rand` ou `syscall`.
 
@@ -49,7 +49,7 @@
 
 ### Passo 5 — `Plan`
 
-`internal/context/compaction.go`
+`internal/contextengine/compaction.go`
 
 - [ ] Gatilho por `CompactAt` × janela.
 - [ ] `ToIdx` sempre em fronteira de turno completo.
@@ -63,7 +63,7 @@
 
 ### Passo 6 — Invariantes
 
-`internal/context/invariants_test.go`
+`internal/contextengine/contextengine_test.go`
 
 - [ ] Um teste por linha da seção 7 do `.p.spec.md`.
 - [ ] `go test -race ./internal/context/...` limpo.

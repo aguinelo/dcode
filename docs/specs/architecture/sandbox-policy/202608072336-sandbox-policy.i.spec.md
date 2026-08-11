@@ -20,7 +20,7 @@ Separar assim é o que permite o loop cumprir RN-7 antes de o sandbox existir, s
 
 ### Passo 1 — Tipos e tabela de decisão
 
-`internal/policy/types.go`
+`internal/policy/policy.go`
 
 - [ ] `SandboxMode`, `ApprovalPolicy`, `Request`, `Access`, `Decision`, `Verdict`.
 - [ ] Constantes com os nomes exatos do `.p` — são `stable`, aparecem em config de usuário.
@@ -29,7 +29,7 @@ Separar assim é o que permite o loop cumprir RN-7 antes de o sandbox existir, s
 
 ### Passo 2 — `Evaluate`, puro
 
-`internal/policy/evaluate.go`
+`internal/policy/policy.go`
 
 - [ ] Tabela de modo (15 células) e filtro de política (12 células) da seção 3.1 do `.p`.
 - [ ] Sem I/O, sem relógio.
