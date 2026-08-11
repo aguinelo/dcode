@@ -604,7 +604,9 @@ func renderInput(m Model, g Geometry, hint string) string {
 	p := g.Palette
 	prompt := "> "
 	if len(m.Queue) > 0 {
-		prompt = fmt.Sprintf("(%d queued) > ", len(m.Queue))
+		// The word was already translated; the renderer wrote the English by
+		// hand three lines from the catalogue that had it.
+		prompt = fmt.Sprintf("(%d %s) > ", len(m.Queue), Text(m.Lang).Queued)
 	}
 
 	line := prompt + m.Input

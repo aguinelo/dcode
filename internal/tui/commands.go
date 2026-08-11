@@ -136,6 +136,19 @@ func HelpText(user config.CommandSet, lang Lang) string {
 		fmt.Fprintf(&b, "  %-16s %s\n", k[0], k[1])
 	}
 
+	// The keys that answer an approval. They appear on the modal itself, which
+	// is the moment they are needed — and that is exactly why they belong here
+	// too: someone reading /help to learn the tool should not have to trigger a
+	// boundary crossing to discover how to answer one.
+	b.WriteString("\n" + t.HelpApprovals + "\n")
+	for _, k := range [][2]string{
+		{"a", t.ApprovalAllowOnce},
+		{"A", t.ApprovalAllowSession},
+		{"d / esc / enter", t.ApprovalDeny},
+	} {
+		fmt.Fprintf(&b, "  %-16s %s\n", k[0], k[1])
+	}
+
 	b.WriteString("\n" + t.HelpCommands + "\n")
 	for _, c := range Builtins {
 		args, help := builtinText(c.Name, t)

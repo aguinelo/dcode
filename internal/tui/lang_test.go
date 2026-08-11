@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"github.com/aguinelo/dcode/internal/protocol"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -62,7 +65,7 @@ func TestEveryDeclaredLanguageCoversEveryString(t *testing.T) {
 
 func TestAnUndeclaredLanguageGetsTheFallbackNotAnEmptyScreen(t *testing.T) {
 	s := Text(Lang("de"))
-	if s.EmptyHint == "" {
+	if s.HelpKeys == "" {
 		t.Fatal("an undeclared language produced a blank interface, which is worse than the wrong language")
 	}
 	if s != Text(Fallback) {
@@ -136,6 +139,111 @@ func TestTheUsageBlockIsTranslatedAndKeepsItsVerbSlot(t *testing.T) {
 		}
 		if !strings.Contains(u, "DCODE_LANG") {
 			t.Errorf("%s: the language key is not discoverable from the help that documents the others", lang)
+		}
+	}
+}
+
+// Every string in the catalogue is shown somewhere.
+//
+// A translated string nobody renders is the interface's version of a config key
+// nobody reads: it looks like the product speaks the language, and a translator
+// spends time on a sentence that will never reach a screen. Five of these had
+// accumulated — one of them while the renderer wrote the English by hand three
+// lines away.
+//
+// The other direction is covered by the existing completeness test: every
+// language must define every field.
+func TestEveryStringInTheCatalogueIsRenderedSomewhere(t *testing.T) {
+	fset := token.NewFileSet()
+	var fields []string
+	f, err := parser.ParseFile(fset, "lang.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		ts, ok := n.(*ast.TypeSpec)
+		if !ok || ts.Name.Name != "Strings" {
+			return true
+		}
+		st, ok := ts.Type.(*ast.StructType)
+		if !ok {
+			return false
+		}
+		for _, fl := range st.Fields.List {
+			for _, name := range fl.Names {
+				fields = append(fields, name.Name)
+			}
+		}
+		return false
+	})
+	if len(fields) == 0 {
+		t.Fatal("no fields were read from Strings; the guard would pass vacuously")
+	}
+
+	// Everything in the package except the catalogue itself. A field mentioned
+	// only where it is declared and translated is not rendered anywhere.
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var src string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") ||
+			e.Name() == "lang.go" || strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		src += string(data)
+	}
+
+	for _, name := range fields {
+		if !regexp.MustCompile(`\.` + name + `\b`).MatchString(src) {
+			t.Errorf("Strings.%s is translated in every language and rendered nowhere; "+
+				"a sentence that cannot reach a screen is a sentence someone translated for nothing", name)
+		}
+	}
+}
+
+// The queued-input prompt is the one place the renderer wrote English by hand
+// while the catalogue three files over already had the word. A pt-BR user
+// watched their own input pile up behind a label in someone else's language.
+func TestTheQueuedPromptSpeaksTheResolvedLanguage(t *testing.T) {
+	m := NewModel("s1", "/w", "m", "workspace-write", PtBR)
+	m.State = protocol.SessionStateRunning
+	m.Queue = []string{"primeiro", "segundo"}
+
+	out := Render(m, DefaultGeometry(100, 30))
+	if !strings.Contains(out, Text(PtBR).Queued) {
+		t.Errorf("the prompt does not use the resolved language:\n%s", out)
+	}
+	if strings.Contains(out, "queued") && Text(PtBR).Queued != "queued" {
+		t.Errorf("the English word survived in a pt-BR interface:\n%s", out)
+	}
+
+	m.Lang = En
+	if out := Render(m, DefaultGeometry(100, 30)); !strings.Contains(out, Text(En).Queued) {
+		t.Errorf("English lost its own word:\n%s", out)
+	}
+}
+
+// /help had a fourth section prepared and never printed. The approval keys were
+// discoverable only by triggering a boundary crossing, which is a poor way to
+// learn what pressing A does.
+func TestHelpDocumentsHowToAnswerAnApproval(t *testing.T) {
+	for _, lang := range Languages() {
+		txt := Text(lang)
+		out := HelpText(userCommands(), lang)
+		if !strings.Contains(out, txt.HelpApprovals) {
+			t.Errorf("%s: /help has no approvals section:\n%s", lang, out)
+			continue
+		}
+		for _, want := range []string{txt.ApprovalAllowOnce, txt.ApprovalAllowSession, txt.ApprovalDeny} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s: /help does not say %q", lang, want)
+			}
 		}
 	}
 }
