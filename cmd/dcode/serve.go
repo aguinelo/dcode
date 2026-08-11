@@ -51,6 +51,7 @@ func runServe(args []string) error {
 	}
 
 	d := app.NewDaemon(app.DaemonOptions{
+		Log:             func(msg string) { fmt.Fprintln(os.Stderr, msg) },
 		SocketPath:      path,
 		MaxSessions:     *maxSessions,
 		EventRetention:  *retention,
