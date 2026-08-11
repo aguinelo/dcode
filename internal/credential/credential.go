@@ -261,6 +261,10 @@ func between(s, open, close string) string {
 type secretTool struct {
 	bin string
 	run func(string, ...string) ([]byte, error)
+	// runIn is the same for a command that reads from stdin. Separate because
+	// the ONE method that bypassed the injection point was Set — the one that
+	// handles the secret, and therefore the one most worth being able to test.
+	runIn func(stdin, name string, args ...string) ([]byte, error)
 }
 
 func (s *secretTool) Where() string { return "libsecret keyring" }
@@ -282,10 +286,12 @@ func (s *secretTool) Set(name, secret string) error {
 	}
 	// secret-tool reads the value from stdin, so it never reaches a command
 	// line — unlike the macOS backend, which has no such form.
-	cmd := exec.Command(s.bin, "store", "--label", service+": "+name,
-		"service", service, "account", name)
-	cmd.Stdin = strings.NewReader(secret)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	run := s.runIn
+	if run == nil {
+		run = runWithStdin
+	}
+	if out, err := run(secret, s.bin, "store", "--label", service+": "+name,
+		"service", service, "account", name); err != nil {
 		return fmt.Errorf("credential: keyring refused the write: %s", strings.TrimSpace(string(out)))
 	}
 	return nil
@@ -446,4 +452,14 @@ func (f *fileStore) write(all map[string]string) error {
 		return err
 	}
 	return os.Rename(tmp.Name(), f.path)
+}
+
+// runWithStdin executes a command that reads its input from stdin.
+//
+// The secret goes down the pipe and never onto a command line, where it would
+// be visible to anything that can list processes.
+func runWithStdin(stdin, name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Stdin = strings.NewReader(stdin)
+	return cmd.CombinedOutput()
 }
