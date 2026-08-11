@@ -82,7 +82,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 - [ ] `Source`, `Value`, `Layer`, `Resolve` puro.
 - [ ] Ordem exata da RN-7.
 - [ ] `Origin` preenchido em todo `Value`.
-- [ ] Travada devolve o valor travado, `Locked: true` e **aviso** na tentativa de sobrescrita.
+- [x] Travada devolve o valor travado, `Locked: true` e **aviso** na tentativa de sobrescrita.
 
 **Testes obrigatórios:**
 - Uma asserção por par de camadas adjacentes — cinco pares.
