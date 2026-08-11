@@ -198,6 +198,18 @@ func (d DoneSet) TouchedProtected(written []string) []string {
 	return out
 }
 
+// Names returns the criteria in a given state, sorted.
+func (r Report) Names(want CriterionState) []string {
+	var out []string
+	for name, st := range r.States {
+		if st == want {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // String renders the report for a person.
 func (r Report) String() string {
 	if len(r.States) == 0 {
