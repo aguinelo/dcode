@@ -191,7 +191,7 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 
 	for {
 		if err := ctx.Err(); err != nil {
-			return e.finish(out, protocol.StopInterrupted), nil
+			return e.finishInterrupted(out), nil
 		}
 
 		// Compaction is checked exactly once per iteration, here and nowhere
@@ -752,6 +752,16 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (st
 
 	now := rep.Unmet()
 	if len(now) == 0 {
+		// Nothing is unmet, but that is not the same as everything having been
+		// checked. Files changed and no criterion could run, so the turn
+		// delivered work nobody confirmed — and ending it as StopDone is
+		// precisely the false claim RN-9 exists to prevent.
+		//
+		// It does not force another iteration. There is nothing to run, and
+		// insisting only produces a second guess; what it forces is saying so.
+		if VerificationOf(rep, true) == VerificationUnavailable {
+			return protocol.StopUnverified, nil
+		}
 		return protocol.StopDone, nil
 	}
 
@@ -819,4 +829,35 @@ func (e *Engine) completion() *protocol.Completion {
 		Unavailable:      e.lastReport.Names(CriterionUnavailable),
 		TouchedProtected: e.lastReport.TouchedProtected,
 	}
+}
+
+// finishInterrupted ends a turn the user stopped, without letting the history
+// lie about the disk.
+//
+// RN-5 is explicit that a tool already under way when the interruption arrives
+// either finishes or is cancelled, but that its result is appended anyway if it
+// produced an effect — a history that lies about what happened on disk is worse
+// than an incomplete one.
+//
+// The tools that write do finish: they take the context and ignore it, because
+// a half-applied edit is worse than a slow one. `bash` is the case that does
+// not, and a cancelled command can leave the disk changed while its result says
+// it failed. So the turn records what the SESSION wrote, which is a fact
+// neither the tool result nor the model can contradict.
+func (e *Engine) finishInterrupted(out Outcome) Outcome {
+	if written := e.written(); len(written) > 0 && e.cfg.Reminders {
+		e.session.History = append(e.session.History, ce.Message{
+			Role:     ce.RoleUser,
+			Reminder: true,
+			Text: behavior.Render(behavior.Reminder{
+				Kind: behavior.ReminderInterrupted,
+				Text: "The turn was interrupted. These files were changed before " +
+					"it stopped: " + strings.Join(written, ", ") +
+					". Some of that work may be half-done. Check the state of " +
+					"those files before continuing, and do not assume the last " +
+					"thing you tried either succeeded or failed.",
+			}),
+		})
+	}
+	return e.finish(out, protocol.StopInterrupted)
 }
