@@ -98,6 +98,16 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             checksums.txt
 
+      # Derivada do checksums.txt que acabou de ser assinado, nunca escrita a
+      # mao: o SHA-256 na formula e o do artefato assinado por construcao. Uma
+      # formula com digest digitado passa em todo teste local, instala em todo
+      # lugar, e um dia aponta para um binario que ninguem assinou.
+      - name: generate the homebrew formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          scripts/formula.sh "$VERSION" dist/checksums.txt > dist/dcode.rb
+          cat dist/dcode.rb
+
       - name: publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -106,3 +116,23 @@ jobs:
             --title "${{ github.ref_name }}" \
             --generate-notes \
             dist/*
+
+      # O tap so e atualizado se existir. Sem o segredo, a formula continua
+      # anexada ao release e instalavel por URL — um canal a menos, nunca um
+      # release quebrado por causa de um repositorio que ninguem criou.
+      - name: update the homebrew tap
+        if: env.TAP_TOKEN != ''
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          GH_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/aguinelo/homebrew-dcode.git" tap
+          mkdir -p tap/Formula
+          cp dist/dcode.rb tap/Formula/dcode.rb
+          cd tap
+          git config user.name  "dcode release"
+          git config user.email "noreply@github.com"
+          git add Formula/dcode.rb
+          git commit -m "dcode $VERSION"
+          git push
