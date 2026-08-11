@@ -26,7 +26,6 @@ package config
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io/fs"
 	"regexp"
 	"sort"
@@ -202,18 +201,6 @@ func fileDigest(fsys fs.FS, name string) string {
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])[:12]
-}
-
-// SourceDigest hashes a set of instruction files as one value.
-func SourceDigest(fsys fs.FS, files []string) string {
-	names := append([]string(nil), files...)
-	sort.Strings(names)
-
-	h := sha256.New()
-	for _, n := range names {
-		fmt.Fprintf(h, "%s=%s;", n, fileDigest(fsys, n))
-	}
-	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
 // RenderDigest is the marker line to embed in a generated DCODE.md.

@@ -57,9 +57,8 @@ func TestRoundTrip(t *testing.T) {
 			{ID: 2, Text: "run", Status: PlanBlocked, Blocked: "missing dep"},
 		}})
 	})
-	t.Run("error with details", func(t *testing.T) {
-		roundTrip(t, Error{Code: CodeTurnAlreadyActive, Message: "busy",
-			Details: map[string]any{"turn_id": "t1"}})
+	t.Run("error", func(t *testing.T) {
+		roundTrip(t, Error{Code: CodeTurnAlreadyActive, Message: "busy"})
 	})
 }
 

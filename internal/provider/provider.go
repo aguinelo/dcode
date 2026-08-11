@@ -33,8 +33,7 @@ import (
 // model: a model trained for long-horizon loops needs a higher iteration cap
 // than one tuned for short tasks, and one global number serves both badly.
 type Limits struct {
-	MaxIterations   int
-	MaxOutputTokens int
+	MaxIterations int
 }
 
 // WireRequest is a family-serialized request, opaque to the transport beyond
