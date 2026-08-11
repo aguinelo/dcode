@@ -53,7 +53,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 - [ ] Resolução de precedência conforme a seção 4 do `.p`.
 - [ ] Empilhamento, não substituição: menor autoridade primeiro.
 - [ ] Truncamento em `InstructionsMaxBytes` **com aviso**.
-- [ ] Instrução que afrouxa segurança é descartada e registrada em `warn`.
+- [x] Instrução que tenta afrouxar segurança é **registrada**. Não é descartada: o resto do arquivo é legítimo, e jogar fora um arquivo inteiro por uma frase é a falha de filtro silencioso que este projeto recusa em todo lugar. A garantia é estrutural e está noutro lugar — o sandbox é aplicado pelo sistema operacional, aprovação é consentimento, e `Safety` não é campo da sobreposição. O que faltava era a tentativa ser **visível**..
 
 **Testes obrigatórios:**
 - Uma asserção por par de fontes conflitantes da tabela de precedência.

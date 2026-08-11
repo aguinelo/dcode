@@ -449,7 +449,16 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		return nil, err
 	}
 
-	prompt := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay)
+	// RN-10's second half. The instruction is not modified and not dropped —
+	// the rest of it is legitimate, and discarding a whole file over one
+	// sentence is the silent-filter failure refused everywhere else. What
+	// changes is that the attempt is now visible.
+	safetyNotices := behavior.SafetyClaims(instructions)
+
+	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts))
+	if err != nil {
+		return nil, err
+	}
 
 	window, _ := p.Window(opts.Model)
 	ctxCfg := ce.DefaultConfig()
@@ -493,7 +502,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Notice:         notice,
 		ContextWindow:  window,
 		Origins:        overlay.Origins(),
-		DoctrineNotice: overlayNotices,
+		DoctrineNotice: append(overlayNotices, safetyNotices...),
 	}, nil
 }
 
@@ -502,11 +511,14 @@ func Families() []provider.Family {
 	return []provider.Family{provider.MiniMaxM3{}, provider.Claude{}}
 }
 
-// CredentialName is the name a model's credential is stored under.
+// CredentialName is the family this model belongs to.
 //
-// The family rather than the model: `MiniMax-M3` and a later `MiniMax-M4` reach
-// the same account at the same provider, and asking someone to store the same
-// key twice is asking them to forget one of them.
+// It also names the credential store, which is why it is called that: the
+// family rather than the model, because `MiniMax-M3` and a later `MiniMax-M4`
+// reach the same account at the same provider.
+//
+// It answers the prompt's question too — RN-8 puts the FORMULATION with the
+// family — and the same resolution serves both because it is the same fact.
 func CredentialName(opts Options) string {
 	if opts.Family != "" {
 		return opts.Family
@@ -568,13 +580,13 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay) string {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string) (string, error) {
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(toolNames).Apply(overlay),
 		Tools:        toolNames,
 		Instructions: instructions,
 		SkillIndex:   index,
-	})
+	}, behavior.FormulationFor(family))
 }
 
 // loadInstructions builds the frozen instruction chain.

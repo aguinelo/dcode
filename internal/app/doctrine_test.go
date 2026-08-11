@@ -104,9 +104,15 @@ func TestWorkspaceDoctrineFilesLeaveThePromptByteIdentical(t *testing.T) {
 		t.Errorf("notices from a workspace that should never have been read: %v", notices)
 	}
 
-	tools := []string{"read", "write"}
-	withHostileWorkspace := behaviorBuild(tools, nil, nil, overlay)
-	plain := behaviorBuild(tools, nil, nil, behavior.DoctrineOverlay{})
+	toolNames := []string{"read", "write"}
+	withHostileWorkspace, err := behaviorBuild(toolNames, nil, nil, overlay, "minimax-m3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, err := behaviorBuild(toolNames, nil, nil, behavior.DoctrineOverlay{}, "minimax-m3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if withHostileWorkspace != plain {
 		t.Fatal("a doctrine directory inside the workspace changed the prompt")
 	}
