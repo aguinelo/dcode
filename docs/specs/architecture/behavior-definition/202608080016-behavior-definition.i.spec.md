@@ -129,7 +129,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 `internal/behavior/skills.go`
 
 - [ ] Índice com **uma linha** por skill; nenhum corpo no prefixo.
-- [ ] Teto de `SkillsMaxIndex`.
+- [x] Teto do índice em `DefaultMaxIndex` (64), com a contagem do que ficou de fora.
 - [ ] Corpo anexado quando o gatilho bate.
 - [ ] Descoberta pelo mesmo localizador injetado do Passo 3.
 

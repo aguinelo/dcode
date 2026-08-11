@@ -408,6 +408,14 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		if err != nil {
 			return nil, err
 		}
+		// An instruction from the administrator's locked file is marked as
+		// such. Without the mark, the precedence table had a top row nothing
+		// could ever occupy.
+		for i := range instructions {
+			if instructions[i].Source == behavior.SourceLocked {
+				instructions[i].Locked = true
+			}
+		}
 	}
 
 	// Skills are indexed in the prefix and loaded on trigger. Discovery happens

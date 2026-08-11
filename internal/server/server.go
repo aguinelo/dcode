@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/session"
 	"github.com/aguinelo/dcode/internal/version"
@@ -40,6 +41,14 @@ type Config struct {
 	Build       Builder
 	PingEvery   time.Duration
 	MaxSessions int
+	// DefaultMode and DefaultPolicy are what a session gets when the request
+	// does not say. They are here so the boundary warning can be raised once,
+	// at boot, rather than on every session that inherits them.
+	DefaultMode   policy.SandboxMode
+	DefaultPolicy policy.ApprovalPolicy
+	// Log receives operational notices. Nil silences them, which is what a
+	// test wants and what a daemon must not do.
+	Log func(string)
 }
 
 // Server serves the protocol.
@@ -55,6 +64,13 @@ func New(cfg Config) *Server {
 	if cfg.PingEvery <= 0 {
 		cfg.PingEvery = 20 * time.Second
 	}
+	// The combination that leaves nothing between the agent and the machine.
+	// Warned rather than refused: someone running a throwaway container wants
+	// exactly this. What it must not do is happen quietly.
+	if w := policy.BoundaryWarning(cfg.DefaultMode, cfg.DefaultPolicy); w != "" && cfg.Log != nil {
+		cfg.Log("warn: " + w)
+	}
+
 	s := &Server{cfg: cfg, mux: http.NewServeMux()}
 	s.routes()
 	s.http = &http.Server{Handler: s.mux, ReadHeaderTimeout: 10 * time.Second}
