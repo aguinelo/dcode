@@ -144,23 +144,26 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 
 `internal/behavior/doctrine_overlay.go`
 
-- [ ] `DoctrineOverlay` com exatamente três campos: `Identity`, `Style`, `ToolsMore`. **`Safety` não é campo** — é a trava (RN-12).
-- [ ] `Doctrine.Apply(o DoctrineOverlay) Doctrine`, pura. `ToolsMore` concatena; nunca substitui.
-- [ ] `LoadDoctrineOverlay(dir string, maxBytes int)` — **um** diretório, nunca uma lista (RN-11).
-- [ ] `Notice` para: truncamento por teto, nome de arquivo não reconhecido, `safety.md` presente.
+- [x] `DoctrineOverlay` com exatamente três campos: `Identity`, `Style`, `ToolsMore`. **`Safety` não é campo** — é a trava (RN-12).
+- [x] `Doctrine.Apply(o DoctrineOverlay) Doctrine`, pura. `ToolsMore` concatena; nunca substitui.
+- [x] `LoadDoctrineOverlay(dir string, maxBytes int)` — **um** diretório, nunca uma lista (RN-11).
+- [x] `Notice` para: truncamento por teto, nome de arquivo não reconhecido, `safety.md` presente.
+- [x] `SectionOrigins` e `DoctrineOverlay.Origins()`. `Safety` é `OriginBuiltin` sem passar por condicional: não há campo que o mude.
 
 **Testes obrigatórios**, um por invariante da seção 8 do `.p`:
 
-- [ ] `Apply(o).Safety == DefaultDoctrine().Safety` para toda entrada, incluindo a tabela de casos hostis.
-- [ ] `Apply(o).ToolPolicy` tem `DefaultDoctrine().ToolPolicy` como **prefixo**, sempre.
-- [ ] Os três arquivos em `<workspace>/.dcode/doctrine/` produzem prompt **byte-idêntico** ao default.
-- [ ] `safety.md` na raiz do usuário não muda nada **e** produz `Notice`.
-- [ ] Truncamento produz `Notice`; nenhum caminho trunca em silêncio.
+- [x] `Apply(o).Safety == DefaultDoctrine().Safety` para toda entrada, incluindo a tabela de casos hostis.
+- [x] `Apply(o).ToolPolicy` tem `DefaultDoctrine().ToolPolicy` como **prefixo**, sempre.
+- [x] Os três arquivos em `<workspace>/.dcode/doctrine/` produzem prompt **byte-idêntico** ao default.
+- [x] `safety.md` na raiz do usuário não muda nada **e** produz `Notice`.
+- [x] Truncamento produz `Notice`; nenhum caminho trunca em silêncio.
+- [x] Ordem dos `Notice` estável entre execuções — lista de aviso que embaralha é lista que ninguém consegue diffar.
 
 `internal/app/app.go`
 
-- [ ] Resolver a sobreposição junto de instruções e skills, **uma vez**, na criação da sessão (RN-5).
-- [ ] Passar **apenas** `roots.Config` — a raiz do usuário. Contraste deliberado com `LoadSkills`, logo acima, que recebe duas raízes.
+- [x] Resolver a sobreposição junto de instruções e skills, **uma vez**, na criação da sessão (RN-5).
+- [x] Passar **apenas** `roots.Config` — a raiz do usuário. Contraste deliberado com `LoadSkills`, logo acima, que recebe duas raízes.
+- [x] A decisão do diretório sai numa função própria, `doctrineDir(override string, roots config.Roots)`. O workspace **não é parâmetro dela**: não há ramo que possa alcançá-lo porque não há argumento. Mesma forma de trava da RN-12, um nível acima.
 
 > A tentação aqui é reaproveitar a lista de raízes que já está montada duas linhas acima, para skills. Fazer isso abre exatamente o vetor que a RN-11 fecha, e o teste de workspace acima existe para pegá-lo.
 ### Passo 7 — `DCODE_DOCTRINE_DUMP`

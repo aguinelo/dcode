@@ -56,6 +56,16 @@ type Options struct {
 	// Skills switches progressive disclosure on. Off removes the index from the
 	// prefix, and no body is ever loaded.
 	Skills bool
+	// DoctrineOverlay switches the reading of the user's doctrine/ directory
+	// on. Off runs on the shipped doctrine alone, which is how one tells
+	// whether a behaviour comes from the user's overlay or from the product.
+	DoctrineOverlay bool
+	// DoctrineDir overrides where the overlay is read from. Empty means
+	// doctrine/ under the user's config root — never the workspace (RN-11).
+	DoctrineDir string
+	// DoctrineMaxBytes caps each overlay file. Smaller than the instruction
+	// cap because this is the base layer, paid on every turn of every session.
+	DoctrineMaxBytes int
 	// Env is how the session reaches the environment. Carried on Options rather
 	// than read from the process, so a daemon serving several workspaces is not
 	// forced to share one view of it.
@@ -118,6 +128,11 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			// harness so `--config eval.enabled` answers with an origin.
 			"eval.enabled": "false",
 			"eval.runs":    "20",
+			// The overlay is read by default; without files it changes nothing.
+			// The cap is smaller than the instruction cap because this is the
+			// base layer, paid on every turn of every session.
+			"doctrine.enabled":   "true",
+			"doctrine.max_bytes": "16384",
 		}},
 	}
 
@@ -173,6 +188,9 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		ShowReasoning:     r.Bool("behavior.show_reasoning", true),
 		Instructions:      r.Bool("behavior.instructions_enabled", true),
 		Skills:            r.Bool("behavior.skills_enabled", true),
+		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
+		DoctrineDir:       r.String("doctrine.dir", ""),
+		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
 		Workspace:         ws,
 		Model:             r.String("model.name", "MiniMax-M3"),
 		Transport:         r.String("model.transport", ""),
@@ -251,6 +269,12 @@ type Session struct {
 	Registry *tools.Registry
 	Prompt   string
 	Options  Options
+	// Origins is where each doctrine section came from, and Notices is what
+	// the overlay loader refused to do silently. Both exist for the audit:
+	// an invisible replacement would be worse than the immutability it
+	// replaces (RN-12).
+	Origins        behavior.SectionOrigins
+	DoctrineNotice []behavior.Notice
 	// ContextWindow is what the provider reports for this model.
 	ContextWindow int
 }
@@ -329,7 +353,24 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		}
 	}
 
-	prompt := behaviorBuild(registry.Names(), instructions, behavior.Index(skills))
+	// The doctrine overlay is resolved once, here, like the instruction chain
+	// and for the same reason (RN-5): a doctrine file written mid-session must
+	// not change the prefix, because the prefix is what the cache is keyed on.
+	//
+	// The user's config root is the only argument. The workspace root never
+	// becomes one — a cloned repository must not be able to redefine who the
+	// agent thinks it is (RN-11).
+	var overlay behavior.DoctrineOverlay
+	var overlayNotices []behavior.Notice
+	if opts.DoctrineOverlay {
+		overlay, overlayNotices, err = behavior.LoadDoctrineOverlay(
+			doctrineDir(opts.DoctrineDir, roots), opts.DoctrineMaxBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	prompt := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay)
 
 	window, _ := p.Window(opts.Model)
 	ctxCfg := ce.DefaultConfig()
@@ -351,7 +392,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 	return &Session{
 		Engine: engine, Registry: registry, Prompt: prompt, Options: opts,
-		ContextWindow: window,
+		ContextWindow:  window,
+		Origins:        overlay.Origins(),
+		DoctrineNotice: overlayNotices,
 	}, nil
 }
 
@@ -426,9 +469,9 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry) string {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay) string {
 	return behavior.Build(behavior.Prompt{
-		Doctrine:     behavior.DefaultDoctrine(toolNames),
+		Doctrine:     behavior.DefaultDoctrine(toolNames).Apply(overlay),
 		Tools:        toolNames,
 		Instructions: instructions,
 		SkillIndex:   index,
@@ -735,4 +778,53 @@ type DenyAll struct{}
 // Approve always denies.
 func (DenyAll) Approve(context.Context, protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
 	return protocol.ApprovalDeny, nil
+}
+
+// doctrineDir decides where the overlay is read from.
+//
+// It takes the config root and NOT the workspace, and that is the whole point:
+// the overlay redefines who the agent thinks it is, and a repository someone
+// cloned is not the user (RN-11). There is no branch here that could reach the
+// workspace, because the workspace is not a parameter.
+func doctrineDir(override string, roots config.Roots) string {
+	if override != "" {
+		return override
+	}
+	return filepath.Join(roots.Config, behavior.DoctrineDirName)
+}
+
+// DoctrineAudit renders where each doctrine section came from, and everything
+// the overlay loader refused to do silently.
+//
+// It is printed under --dump-prompt because a replacement nobody can see would
+// be worse than the immutability it replaces: before the overlay existed, the
+// prompt itself was the whole answer to "what is in force". Now it is not, and
+// this is the rest of the answer.
+func DoctrineAudit(s *Session) string {
+	var b strings.Builder
+	b.WriteString("\n--- doctrine ---\n")
+	for _, row := range []struct {
+		name   string
+		origin behavior.Origin
+	}{
+		{"Identity", s.Origins.Identity},
+		{"Using tools", s.Origins.ToolPolicy},
+		{"Safety", s.Origins.Safety},
+		{"Style", s.Origins.Style},
+	} {
+		fmt.Fprintf(&b, "  %-12s %s\n", row.name, row.origin)
+	}
+	if s.Origins.Safety != behavior.OriginBuiltin {
+		// Unreachable: the overlay type has no Safety field. Stated anyway,
+		// because the day it stops being unreachable is the day someone needs
+		// to be told loudly rather than to notice.
+		b.WriteString("  !! Safety is not builtin. This should be impossible.\n")
+	}
+	if len(s.DoctrineNotice) > 0 {
+		b.WriteString("\n--- doctrine notices ---\n")
+		for _, n := range s.DoctrineNotice {
+			fmt.Fprintf(&b, "  %s\n", n)
+		}
+	}
+	return b.String()
 }

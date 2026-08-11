@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/behavior"
 	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
@@ -306,7 +307,7 @@ func buildTestPrompt(t *testing.T, ws string, reg *tools.Registry) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return behaviorBuild(reg.Names(), instructions, nil)
+	return behaviorBuild(reg.Names(), instructions, nil, behavior.DoctrineOverlay{})
 }
 
 // sequenced replays one recorded turn per call through the real family decoder,

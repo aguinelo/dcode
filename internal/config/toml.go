@@ -42,6 +42,9 @@ var KnownKeys = map[string]string{
 	"update.check":                  "DCODE_UPDATE_CHECK",
 	"update.channel":                "DCODE_UPDATE_CHANNEL", // DCODE_RELEASE_CHANNEL still works as a fallback
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
+	"doctrine.enabled":              "DCODE_DOCTRINE_ENABLED",
+	"doctrine.dir":                  "DCODE_DOCTRINE_DIR",
+	"doctrine.max_bytes":            "DCODE_DOCTRINE_MAX_BYTES",
 	// The eval keys are read by the measurement harness, never by the product.
 	// They live in the same schema anyway: a key that governs behaviour and
 	// cannot be inspected with `--config` is the gap the audit pair closes,
