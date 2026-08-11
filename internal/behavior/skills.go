@@ -155,9 +155,37 @@ func splitList(v string) []string {
 
 // Index renders the prefix entries, one line each.
 func Index(skills []Skill) []SkillIndexEntry {
+	return IndexCapped(skills, DefaultMaxIndex)
+}
+
+// DefaultMaxIndex caps how many skills reach the prefix.
+//
+// The index line is paid for on every turn of every session, so an unbounded
+// index is an unbounded tax: a directory grown to two hundred skills quietly
+// adds two hundred lines to every prompt, and the cost arrives as a slow bill
+// rather than as an error.
+const DefaultMaxIndex = 64
+
+// IndexCapped is Index with an explicit ceiling.
+//
+// Over the cap it keeps the first n by name and says how many it left out. It
+// does not truncate in silence: a skill missing from the index is one the model
+// never learns exists, and discovering that from behaviour costs far more than
+// reading one line.
+func IndexCapped(skills []Skill, max int) []SkillIndexEntry {
 	out := make([]SkillIndexEntry, 0, len(skills))
 	for _, s := range skills {
 		out = append(out, SkillIndexEntry{Name: s.Name, WhenToUse: s.WhenToUse})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	if max > 0 && len(out) > max {
+		dropped := len(out) - max
+		out = out[:max:max]
+		out = append(out, SkillIndexEntry{
+			Name: "…",
+			WhenToUse: fmt.Sprintf("%d more skills are installed and not listed here; the index is capped at %d.",
+				dropped, max),
+		})
 	}
 	return out
 }

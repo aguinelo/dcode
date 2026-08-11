@@ -1,6 +1,7 @@
 package behavior
 
 import (
+	"fmt"
 	"go/parser"
 	"go/token"
 	"regexp"
@@ -237,4 +238,59 @@ func mustBuild(t *testing.T, p Prompt) string {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// The index line is paid for on every turn of every session, so an unbounded
+// index is an unbounded tax — and it arrives as a slow bill rather than an
+// error.
+func TestTheSkillIndexIsCappedAndSaysWhatItLeftOut(t *testing.T) {
+	var many []Skill
+	for i := 0; i < 100; i++ {
+		many = append(many, Skill{Name: fmt.Sprintf("skill-%03d", i), WhenToUse: "when x"})
+	}
+	got := IndexCapped(many, 10)
+	if len(got) != 11 {
+		t.Fatalf("got %d entries, want 10 plus the line saying what was dropped", len(got))
+	}
+	last := got[len(got)-1]
+	if !strings.Contains(last.WhenToUse, "90") {
+		t.Errorf("the index does not say how many it left out: %q", last.WhenToUse)
+	}
+	// A skill missing from the index is one the model never learns exists, so
+	// truncating in silence is the failure this avoids.
+	if last.Name == "" {
+		t.Error("the notice has no name and would render as a blank entry")
+	}
+}
+
+func TestAnIndexUnderTheCapIsUntouched(t *testing.T) {
+	got := IndexCapped([]Skill{{Name: "b"}, {Name: "a"}}, 64)
+	if len(got) != 2 {
+		t.Fatalf("got %d entries, want 2", len(got))
+	}
+	// Sorted, so the prefix is byte-identical between runs whatever order the
+	// directory walk returned.
+	if got[0].Name != "a" || got[1].Name != "b" {
+		t.Errorf("the index is not sorted: %v", got)
+	}
+}
+
+// The precedence table has a top row that nothing could occupy: SourceLocked
+// ranked above everything and Instruction had no Locked field.
+func TestALockedInstructionOutranksEveryOther(t *testing.T) {
+	out := renderInstructions([]Instruction{
+		{Source: SourceUser, Text: "user says one"},
+		{Source: SourceProject, Text: "project says two"},
+		{Source: SourceDirectory, Text: "directory says three"},
+		{Source: SourceLocked, Locked: true, Scope: "requirements.toml", Text: "the administrator says four"},
+	})
+	admin := strings.Index(out, "the administrator says four")
+	if admin < 0 {
+		t.Fatal("the locked instruction is missing entirely")
+	}
+	for _, weaker := range []string{"user says one", "project says two", "directory says three"} {
+		if strings.Index(out, weaker) > admin {
+			t.Errorf("%q appears after the locked instruction; the most specific must be last, which is the position of greatest weight", weaker)
+		}
+	}
 }

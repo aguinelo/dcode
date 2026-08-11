@@ -68,7 +68,7 @@
 - [ ] Emitir `tool.approval_required` ao cruzar fronteira; sessão vai a `blocked`.
 - [ ] `POST .../approvals/{id}` resolve; segunda chamada devolve `409` (RN-4).
 - [ ] Prazo de `DCODE_APPROVAL_TIMEOUT` expira em **negação** (RN-5).
-- [ ] Aviso em nível `warn` no boot quando `danger-full-access` + `never`.
+- [x] Aviso no boot quando `full-access` + `never`. `policy.BoundaryWarning` é pura, então servidor e cliente não precisam concordar sobre quando avisar. **Avisa, não recusa**: quem roda um container descartável quer exatamente essa combinação, e produto que discute ali é produto que se contorna — o que ele não pode é acontecer em silêncio.
 
 **Teste obrigatório:** duas resoluções concorrentes — exatamente uma retorna `200`, exatamente uma retorna `409`.
 

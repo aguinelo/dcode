@@ -21,10 +21,14 @@ Valores espelham a ADR-02. O protocolo transporta a decisão; a fronteira é apl
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_SANDBOX_MODE` | enum | `workspace-write` | `read-only`, `workspace-write`, `danger-full-access`. Default por sessão; sobrescrevível em `CreateSessionRequest.SandboxMode`. |
+| `DCODE_SANDBOX_MODE` | enum | `workspace-write` | `read-only`, `workspace-write`, `full-access`. Default por sessão; sobrescrevível em `CreateSessionRequest.SandboxMode`. |
 | `DCODE_APPROVAL_POLICY` | enum | `on-request` | `untrusted`, `on-request`, `never`. Política de escalonamento, **ortogonal** ao modo de sandbox. |
 
-> `DCODE_SANDBOX_MODE=danger-full-access` combinado com `DCODE_APPROVAL_POLICY=never` remove toda fronteira. O servidor **deve** registrar aviso em nível `warn` na inicialização quando essa combinação estiver ativa.
+> `DCODE_SANDBOX_MODE=full-access` combinado com `DCODE_APPROVAL_POLICY=never` remove toda fronteira. O servidor registra aviso na inicialização quando essa combinação está ativa.
+
+> **Correção de nome.** Esta spec dizia `danger-full-access` e o `202608072336-sandbox-policy.p.spec.md` diz `full-access`, ambas marcadas `stable`, e o código sempre implementou `full-access`. Duas specs discordando de um valor que as duas declaram estável é pior que uma incompleta — quem lê uma delas escreve algo que a inicialização recusa. O nome do código vence, pelo mesmo motivo de `sandbox.policy` → `sandbox.approval_policy`: o nome interno passa a ser o que o usuário escreve.
+>
+> O prefixo `danger-` era um aviso embutido no valor, e é uma ideia boa que se resolve melhor onde o aviso é lido: o modo aparece em destaque permanente na linha de status, e a combinação com `never` avisa no boot.
 
 ## 4. Runtime Go
 

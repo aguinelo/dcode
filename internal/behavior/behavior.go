@@ -58,6 +58,10 @@ var authority = map[InstructionSource]int{
 type Instruction struct {
 	Source InstructionSource
 	Scope  string
+	// Locked marks an instruction the administrator set, which is what
+	// SourceLocked ranking above everything else is FOR. Without the field the
+	// precedence table had a top row nothing could ever occupy.
+	Locked bool
 	Text   string
 }
 

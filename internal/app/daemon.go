@@ -23,6 +23,9 @@ type DaemonOptions struct {
 	EventRetention  int
 	ApprovalTimeout time.Duration
 	Base            Options
+	// Log receives operational notices. Nil silences them, which a test wants
+	// and a daemon must not.
+	Log func(string)
 }
 
 // DefaultSocketPath resolves where the daemon listens.
@@ -65,6 +68,11 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		Manager:     d.manager,
 		Build:       d.build,
 		MaxSessions: opts.MaxSessions,
+		// Raised once at boot rather than per session, so it is read before
+		// anything runs rather than scrolling past during work.
+		DefaultMode:   opts.Base.SandboxMode,
+		DefaultPolicy: opts.Base.Policy,
+		Log:           opts.Log,
 	})
 	return d
 }
