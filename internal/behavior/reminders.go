@@ -18,6 +18,7 @@ const (
 	ReminderContextBudget         ReminderKind = "context_budget"
 	ReminderUnmetCriteria         ReminderKind = "unmet_criteria"
 	ReminderProtectedTouched      ReminderKind = "protected_touched"
+	ReminderInterrupted           ReminderKind = "interrupted"
 )
 
 // BudgetBand is how full the context is, as announced to the model.
