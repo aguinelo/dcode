@@ -126,6 +126,12 @@ type Strings struct {
 	// would make it harder to translate well, not easier.
 	Usage string
 
+	// Copy mode
+	CopySelected string // takes a line count
+	CopyKeys     string
+	CopyDone     string
+	CopyEmpty    string
+
 	// Empty state and general
 	EmptyHint      string
 	Interrupt      string
@@ -220,6 +226,10 @@ Environment:
   DCODE_SOCKET             daemon socket path
 `,
 
+		CopySelected:   "%d line(s) selected",
+		CopyKeys:       "↑ ↓ extend · y copy · esc leave",
+		CopyDone:       "copied to the clipboard",
+		CopyEmpty:      "nothing selected",
 		EmptyHint:      "Ask for something, or type / for commands.",
 		Interrupt:      "esc interrupts",
 		Queued:         "queued",
@@ -305,6 +315,10 @@ Ambiente:
   DCODE_SOCKET             caminho do socket do daemon
 `,
 
+		CopySelected:   "%d linha(s) selecionada(s)",
+		CopyKeys:       "↑ ↓ estende · y copia · esc sai",
+		CopyDone:       "copiado para a área de transferência",
+		CopyEmpty:      "nada selecionado",
 		EmptyHint:      "Peça alguma coisa, ou digite / para ver os comandos.",
 		Interrupt:      "esc interrompe",
 		Queued:         "na fila",
