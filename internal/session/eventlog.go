@@ -263,4 +263,16 @@ func (l *EventLog) Close() {
 		close(s.ch)
 		delete(l.subs, id)
 	}
+	// The spill exists so a client that was away can still read what it missed.
+	// Once the session is gone nobody can ask — the id resolves to nothing and
+	// there is no route to it — so the file is garbage with a session id in its
+	// name, and one per session adds up for as long as the daemon is useful.
+	//
+	// A failure here is not worth failing a close over: the session is already
+	// finished, and refusing to shut down because a file could not be removed
+	// trades a leaked file for a stuck daemon.
+	if l.spill != nil {
+		_ = l.spill.Remove()
+		l.spill = nil
+	}
 }
