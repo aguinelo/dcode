@@ -487,13 +487,19 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		RunCriterion:           criterionRunner(sb, opts),
 		WrittenPaths:           state.Written,
 		WriteSeq:               state.WriteSeq,
-		Rules:                  opts.Rules,
-		Summarise:              summariser(p, opts.Model),
-		Skills:                 skills,
-		InstructionChain:       chain,
-		ReadFile:               readFileText,
-		Reminders:              opts.Reminders,
-		ShowReasoning:          opts.ShowReasoning,
+		// Stamped by the product after the turn, never asked of the model: a
+		// prompt requesting the marker would be a prompt hoping for it, and the
+		// digests have to be of the bytes actually read.
+		AfterTurn: func(written []string) {
+			StampGenerated(opts.Workspace, foreignFiles(opts.InstructionForeign), written)
+		},
+		Rules:            opts.Rules,
+		Summarise:        summariser(p, opts.Model),
+		Skills:           skills,
+		InstructionChain: chain,
+		ReadFile:         readFileText,
+		Reminders:        opts.Reminders,
+		ShowReasoning:    opts.ShowReasoning,
 	}, ce.Session{Instructions: prompt})
 
 	// The knot: the tool needed the engine, and the engine needed the registry

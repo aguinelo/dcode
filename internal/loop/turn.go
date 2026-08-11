@@ -94,6 +94,14 @@ type Config struct {
 	// WrittenPaths reports what the session has written, for the protected-path
 	// check. Nil disables it.
 	WrittenPaths func() []string
+	// AfterTurn is told what the session has written, once per turn, after the
+	// turn ends. Injected like every other side effect the loop needs: it knows
+	// when a turn finishes and what was touched, and nothing about what any of
+	// it means.
+	//
+	// Called on every ending, including an interrupted one — the files a
+	// half-finished turn wrote are the ones most likely to need attention.
+	AfterTurn func(written []string)
 	// WriteSeq reports how many writes the session has made, ever-increasing.
 	//
 	// A COUNT, not a set and not a clock. The set cannot answer this: rewriting
@@ -695,6 +703,12 @@ func (e *Engine) finish(out Outcome, reason string) Outcome {
 		ev.Completion = c
 	}
 	e.emit(protocol.EventTurnCompleted, ev)
+	// The single exit of every turn, which is why the hook lives here rather
+	// than at the call sites: an ending added later gets it for free, and one
+	// that forgot it would be the only turn whose writes nobody heard about.
+	if e.cfg.AfterTurn != nil {
+		e.cfg.AfterTurn(e.written())
+	}
 	return out
 }
 

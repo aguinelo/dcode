@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -1027,5 +1028,86 @@ func TestSummarisingDoesNotSpendAnIteration(t *testing.T) {
 	if out.Iterations != base.Iterations {
 		t.Errorf("the same work took %d iterations with compaction and %d without; "+
 			"the summary call is spending the user's budget", out.Iterations, base.Iterations)
+	}
+}
+
+// A turn that changed files sometimes needs the product to do something about
+// them afterwards — stamping a generated file with what it was generated from
+// is the case that exists. It has to happen AFTER the turn, because during it
+// the model may still be writing.
+//
+// Injected like every other side effect the loop needs: the loop knows when a
+// turn ends and what was written, and knows nothing about what any of it means.
+func TestAfterATurnTheCallerIsToldWhatWasWritten(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "one", delay: 0, path: "a"})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "one", `{}`), done()},
+		{text("done"), done()},
+	}}
+
+	var calls [][]string
+	e, _ := newEngine(t, p, reg, func(c *Config) {
+		c.WrittenPaths = func() []string { return []string{"DCODE.md", "a.go"} }
+		c.AfterTurn = func(written []string) {
+			calls = append(calls, append([]string(nil), written...))
+		}
+	})
+
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("the caller was told %d times, want exactly once per turn", len(calls))
+	}
+	if !reflect.DeepEqual(calls[0], []string{"DCODE.md", "a.go"}) {
+		t.Errorf("told %v, want what the session wrote", calls[0])
+	}
+
+	// A second turn is a second notification, not a repeat of the first.
+	p.turns = [][]provider.StreamEvent{{text("nothing more"), done()}}
+	if _, err := e.Run(context.Background(), "again"); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 {
+		t.Errorf("the caller was told %d times after two turns", len(calls))
+	}
+}
+
+// An interrupted turn wrote files too, and they are exactly the ones most
+// likely to need attention. Skipping the notification on the unhappy path is
+// how half-done work stops being noticed.
+func TestAnInterruptedTurnStillTellsTheCallerWhatWasWritten(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "slow", delay: 50 * time.Millisecond, path: "a"})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "slow", `{}`), done()},
+		{text("done"), done()},
+	}}
+	told := 0
+	e, _ := newEngine(t, p, reg, func(c *Config) {
+		c.WrittenPaths = func() []string { return []string{"half.go"} }
+		c.AfterTurn = func([]string) { told++ }
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { time.Sleep(10 * time.Millisecond); cancel() }()
+	if _, err := e.Run(ctx, "go"); err != nil {
+		t.Fatal(err)
+	}
+	if told != 1 {
+		t.Errorf("an interrupted turn told the caller %d times; the files it wrote "+
+			"are the ones most likely to need attention", told)
+	}
+}
+
+// Nil changes nothing, which is what every other injected hook here does.
+func TestWithoutTheHookTheTurnIsUnchanged(t *testing.T) {
+	reg := tools.NewRegistry(slowTool{name: "one", delay: 0, path: "a"})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "one", `{}`), done()},
+		{text("done"), done()},
+	}}
+	e, _ := newEngine(t, p, reg)
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
 	}
 }
