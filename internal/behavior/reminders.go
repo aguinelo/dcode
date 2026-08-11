@@ -15,7 +15,43 @@ const (
 	ReminderCompacted             ReminderKind = "compacted"
 	ReminderToolsParallel         ReminderKind = "tools_parallel"
 	ReminderInstructionOutOfChain ReminderKind = "instruction_out_of_chain"
+	ReminderContextBudget         ReminderKind = "context_budget"
 )
+
+// BudgetBand is how full the context is, as announced to the model.
+//
+// Mirrors contextengine.Band as a plain integer rather than importing it: the
+// reminder channel is about text, and the arithmetic belongs where the window
+// is measured. Importing would also point this package at one that assembles
+// prompts, which is backwards.
+type BudgetBand int
+
+const (
+	BudgetNone BudgetBand = iota
+	Budget60
+	Budget80
+	Budget92
+)
+
+// budgetTexts is what each band asks for. One Kind with three texts, not three
+// Kinds: the rule is one — spend what is left deliberately — and what changes
+// is only how much is left.
+//
+// Each text is a CONSTANT. No number is interpolated, deliberately: a value
+// that moves every turn makes the history irreproducible (RN-7 of the context
+// engine), and the band already carries everything the model can act on.
+var budgetTexts = map[BudgetBand]string{
+	Budget60: "You have used about 60% of the context you get before earlier " +
+		"history is summarised away. Prefer reading the part of a file you need " +
+		"over reading all of it.",
+	Budget80: "You have used about 80% of the context you get before earlier " +
+		"history is summarised away. Write down anything you have learned that " +
+		"must survive that summary, and finish what is open before starting " +
+		"something new.",
+	Budget92: "You are close to the point where earlier history is summarised " +
+		"away. If the remaining work does not fit in what is left, say so now " +
+		"rather than starting it and losing the thread partway through.",
+}
 
 // Reminder is one appended note.
 //
@@ -51,6 +87,12 @@ type SessionState struct {
 	ParallelBatch int
 	// OutOfChain are instruction files discovered after the chain was frozen.
 	OutOfChain []OutOfChainInstruction
+	// BudgetCrossed is the occupancy band to announce, set only on the turn the
+	// band is crossed upward. BudgetNone announces nothing.
+	//
+	// The caller decides whether a crossing happened, because that needs the
+	// previous band, and Emit is a function of this state alone.
+	BudgetCrossed BudgetBand
 }
 
 // Emit is PURE: the same state always produces the same reminders, in the same
@@ -96,6 +138,10 @@ func Emit(s SessionState) []Reminder {
 				"describe a sequence. Do not read one as having happened before " +
 				"another, and do not infer that one caused the next.",
 		})
+	}
+
+	if text, ok := budgetTexts[s.BudgetCrossed]; ok {
+		out = append(out, Reminder{Kind: ReminderContextBudget, Text: text})
 	}
 
 	for _, oc := range sortedOutOfChain(s.OutOfChain) {

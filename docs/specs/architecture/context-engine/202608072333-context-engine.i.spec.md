@@ -88,6 +88,37 @@ Passo 1 (tipos)
 
 Manter essas três coisas fora é o que preserva a pureza, e a pureza é o que torna o componente exatamente testável.
 
+### Passo N — Orçamento realimentado
+
+> Acrescentado por [202608102200](changelog/202608102200-orcamento-de-contexto-realimentado.md). Este arquivo dizia "sem alterações desde a criação" enquanto o `.r`, o `.p` e o `.config` já carregavam a RN-6.1, três tipos novos e seis invariantes. Guia de implementação que não acompanha a regra é guia que ninguém segue.
+
+`internal/contextengine/budget.go`
+
+- [x] `Fraction(s Session, cfg Config) float64` — a mesma conta que `Plan` já faz, agora alcançável por quem pode agir sobre ela. Pura.
+- [x] `Band`, `BandNone`/`Band60`/`Band80`/`Band92`, e `BandFor(f, compactAt float64) Band`.
+- [x] `Crossed(announced Band, f, compactAt float64) (Band, bool)` — só para cima. Descer não anuncia, mas **rearma**.
+- [x] Epsilon na comparação de limiar. `Fraction` vem de heurística de caractere com margem: diferença de `1e-16` não carrega informação, e sem o epsilon um valor exatamente no limiar cai para a faixa de baixo, porque `0.64/0.80` é `0.7999…` em binário.
+
+`internal/behavior/reminders.go`
+
+- [x] `ReminderContextBudget`, **um** `Kind` com três textos escolhidos pela faixa. A regra é uma; o que muda é quanto resta.
+- [x] Texto **constante** por faixa. Nenhum número interpolado: valor que muda a cada turno torna o histórico irreproduzível (RN-7).
+- [x] `SessionState.BudgetCrossed`, preenchido só na travessia. Quem decide se houve travessia é o chamador, porque isso exige a faixa anterior e `Emit` é função só deste estado.
+
+`internal/loop/turn.go`
+
+- [x] A faixa já anunciada vive no `Engine`, não é derivada por turno — é o que torna a emissão por borda em vez de por nível.
+- [x] `crossBudget()` roda uma vez por iteração, junto da checagem de compactação que já recalcula a fração.
+
+**Testes obrigatórios:**
+- `BandFor` e `Crossed` puros, com o limiar exato incluído.
+- Anuncia uma vez; permanecer na mesma faixa não anuncia de novo.
+- Descer não anuncia **e** rearma: subir de novo anuncia.
+- Sessão curta não anuncia nada — a metade determinística de `no-budget-noise-when-low`.
+- Nenhuma faixa cai em cima ou acima de `CompactAt`, para qualquer gatilho configurado.
+
+> **A correção que a implementação forçou.** As faixas são fração do **orçamento**, não da janela. Ver a nota no `.config`: `0.80` e `0.92` da janela são inalcançáveis com `CompactAt` em `0.80`, e o teste que exige toda faixa abaixo do gatilho é o que pegou.
+
 ## Armadilhas conhecidas
 
 - **`map` em serialização** — ordem de iteração de map em Go é aleatória por design. Qualquer estrutura que vire JSON precisa de campo ordenado ou de `json.Marshal` sobre struct, nunca sobre `map` com múltiplas chaves.
@@ -97,4 +128,4 @@ Manter essas três coisas fora é o que preserva a pureza, e a pureza é o que t
 
 ## Changelog
 
-_Sem alterações desde a criação._
+- [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)

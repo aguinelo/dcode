@@ -14,6 +14,7 @@ func TestEveryShippedFixtureLoads(t *testing.T) {
 	ids := []string{
 		"toolcall-schema-valid", "toolcall-recover", "no-phantom-tool",
 		"notices-wrong-replacement",
+		"records-before-compaction", "warns-when-task-exceeds-budget",
 	}
 	for _, id := range ids {
 		t.Run(id, func(t *testing.T) {
