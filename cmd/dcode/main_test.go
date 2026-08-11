@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
 )
 
@@ -189,5 +190,65 @@ func TestOriginNamesTheSourceAndFlagsALock(t *testing.T) {
 func TestMax(t *testing.T) {
 	if max(3, 7) != 7 || max(7, 3) != 7 || max(4, 4) != 4 {
 		t.Fatal("max is wrong")
+	}
+}
+
+// The path rules decide when the product stops and asks, and a rule nobody can
+// inspect is one nobody can reason about when it surprises them: the question
+// arrives naming a pattern, and the only way to find out where that pattern
+// came from would be to read the source.
+//
+// Asserted through the real default chain rather than a hand-built layer,
+// because what is being claimed is that the shipped defaults are visible, not
+// that printing works.
+func TestTheEffectiveRulesAreInspectableWithTheirProvenance(t *testing.T) {
+	home := t.TempDir()
+	env := func(k string) string {
+		if k == "HOME" {
+			return home
+		}
+		return ""
+	}
+	r, err := app.Resolve(env, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"rules.confirm_write", "rules.confirm_read", "rules.confirm_command"} {
+		v, ok := r.Get(key)
+		if !ok {
+			t.Errorf("%s is not resolvable; the rule governs behaviour and cannot be inspected", key)
+			continue
+		}
+		// An empty list is a legitimate value: no command rules ship. What the
+		// invariant demands is that the answer comes WITH where it came from,
+		// so "nothing is configured" is distinguishable from "nobody knows".
+		if v.Origin == "" {
+			t.Errorf("%s has no origin; a value without provenance answers half the question", key)
+		}
+		out, _ := capture(t, func() {
+			if err := printConfig(r, key); err != nil {
+				t.Error(err)
+			}
+		})
+		if !strings.Contains(out, key) || !strings.Contains(out, v.Origin) {
+			t.Errorf("--config %s does not report the value with its origin:\n%s", key, out)
+		}
+	}
+
+	// And a user's own list is reported as theirs, not as the default it
+	// replaced — otherwise inspection would confirm the wrong thing.
+	custom := config.Resolve([]config.Layer{
+		{Source: config.SourceDefault, Origin: "built-in",
+			Values: map[string]string{"rules.confirm_write": ".git/**"}},
+		{Source: config.SourceUser, Origin: "/home/ada/config.toml",
+			Values: map[string]string{"rules.confirm_write": "vendor/**"}},
+	})
+	out, _ := capture(t, func() {
+		if err := printConfig(custom, "rules.confirm_write"); err != nil {
+			t.Error(err)
+		}
+	})
+	if !strings.Contains(out, "vendor/**") || !strings.Contains(out, "/home/ada/config.toml") {
+		t.Errorf("a user's own rule is not reported as theirs:\n%s", out)
 	}
 }
