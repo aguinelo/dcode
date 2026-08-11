@@ -1,0 +1,118 @@
+package tui
+
+import (
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func TestResolutionOrder(t *testing.T) {
+	cases := []struct {
+		name string
+		env  map[string]string
+		want Lang
+	}{
+		{"nothing set", nil, Fallback},
+		{"DCODE_LANG wins over LC_ALL and LANG",
+			map[string]string{"DCODE_LANG": "en", "LC_ALL": "pt_BR.UTF-8", "LANG": "pt_BR"}, En},
+		{"LC_ALL wins over LANG",
+			map[string]string{"LC_ALL": "en_US.UTF-8", "LANG": "pt_BR.UTF-8"}, En},
+		{"LANG alone",
+			map[string]string{"LANG": "pt_BR.UTF-8"}, PtBR},
+		{"an encoding and a modifier are cut",
+			map[string]string{"LANG": "en_GB.UTF-8@euro"}, En},
+		{"case and separator do not matter",
+			map[string]string{"DCODE_LANG": "PT-br"}, PtBR},
+		// Not an error, and not a silent English fallback either: it lands
+		// where everything with no information lands.
+		{"a language dcode does not have",
+			map[string]string{"DCODE_LANG": "de_DE.UTF-8"}, Fallback},
+		{"an empty value is not a choice",
+			map[string]string{"DCODE_LANG": "", "LANG": "en"}, En},
+		{"C and POSIX are not languages",
+			map[string]string{"LANG": "C"}, Fallback},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := Resolve(func(k string) string { return c.env[k] })
+			if got != c.want {
+				t.Errorf("Resolve = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// A missing string must not fall back to English and must not show a raw key.
+// Both hide a missing translation — the first forever, the second badly and
+// late. This is the check that makes absence impossible to ship.
+func TestEveryDeclaredLanguageCoversEveryString(t *testing.T) {
+	typ := reflect.TypeOf(Strings{})
+	for _, lang := range Languages() {
+		v := reflect.ValueOf(Text(lang))
+		for i := 0; i < typ.NumField(); i++ {
+			if v.Field(i).String() == "" {
+				t.Errorf("%s is missing %s", lang, typ.Field(i).Name)
+			}
+		}
+	}
+}
+
+func TestAnUndeclaredLanguageGetsTheFallbackNotAnEmptyScreen(t *testing.T) {
+	s := Text(Lang("de"))
+	if s.EmptyHint == "" {
+		t.Fatal("an undeclared language produced a blank interface, which is worse than the wrong language")
+	}
+	if s != Text(Fallback) {
+		t.Error("an undeclared language did not land on the fallback")
+	}
+}
+
+// Translated text is longer — German runs 30% over English — and some lines
+// have fixed columns. Checking here is what stops the overflow being discovered
+// in a screenshot.
+func TestFixedWidthLinesFitInEveryLanguage(t *testing.T) {
+	// The status line is the tightest: it carries the seal beside the mode and
+	// neither may be dropped.
+	for _, lang := range Languages() {
+		s := Text(lang)
+		for _, label := range []string{s.VerifiedLabel, s.NotVerifiedLabel, s.UnverifiedLabel} {
+			if w := visibleWidth(label); w > 16 {
+				t.Errorf("%s: the seal %q is %d cells wide, over the 16 the status line reserves", lang, label, w)
+			}
+		}
+		for _, label := range []string{s.CompletionMet, s.CompletionUnmet, s.CompletionUnchecked, s.CompletionMeasure} {
+			if w := visibleWidth(label); w > 22 {
+				t.Errorf("%s: the report label %q is %d cells wide, over the 22 the column reserves", lang, label, w)
+			}
+		}
+	}
+}
+
+// The structural half of RN-19: the packages that write for the MODEL must not
+// be able to reach the catalogue at all.
+//
+// A convention would break at the first refactor. An import that does not exist
+// cannot be used by accident.
+func TestModelFacingPackagesCannotReachTheCatalogue(t *testing.T) {
+	for _, pkg := range []string{"tools", "policy", "behavior"} {
+		dir := "../" + pkg
+		fset := token.NewFileSet()
+		pkgs, err := parser.ParseDir(fset, dir, nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatalf("parsing %s: %v", dir, err)
+		}
+		for _, p := range pkgs {
+			for name, f := range p.Files {
+				for _, imp := range f.Imports {
+					if strings.Contains(imp.Path.Value, "internal/tui") {
+						t.Errorf("%s imports the client package; tool descriptions, tool errors and the doctrine stay English because the model reads them", name)
+					}
+				}
+			}
+		}
+		_ = ast.Print
+	}
+}

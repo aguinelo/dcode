@@ -261,7 +261,7 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 	// not information about the session, it is the one thing on screen that a
 	// model claiming success in prose cannot contradict. A field that vanishes
 	// on a narrow terminal is a guarantee that vanishes on a narrow terminal.
-	if label, style := VerificationLabel(m.Verification); label != "" {
+	if label, style := VerificationLabel(m.Verification, m.Lang); label != "" {
 		fields = append(fields, field{p.Apply(style, label), 0})
 	}
 	if label := ContextLabel(m.InputTokens, m.Window); label != "" {
@@ -933,16 +933,17 @@ func renderCompletions(m Model, g Geometry) []string {
 // Short enough to survive beside everything else, and worded so the failing
 // states read as failing without colour: a monochrome terminal, a screenshot in
 // a bug report, and a colour-blind reader all have to get the same answer.
-func VerificationLabel(v string) (string, Style) {
+func VerificationLabel(v string, lang Lang) (string, Style) {
+	t := Text(lang)
 	switch v {
 	case string(loop.VerificationPassed):
-		return "verified", StyleOK
+		return t.VerifiedLabel, StyleOK
 	case string(loop.VerificationFailed):
-		return "NOT VERIFIED", StyleDanger
+		return t.NotVerifiedLabel, StyleDanger
 	case string(loop.VerificationStale):
-		return "unverified", StyleWarn
+		return t.UnverifiedLabel, StyleWarn
 	case string(loop.VerificationUnavailable):
-		return "unverified", StyleWarn
+		return t.UnverifiedLabel, StyleWarn
 	default:
 		// Clean, or no definition of done. Nothing changed, so there is nothing
 		// to claim either way, and a permanent label would stop being read.

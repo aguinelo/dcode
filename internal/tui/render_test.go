@@ -25,7 +25,7 @@ func widest(s string) int {
 }
 
 func modelWithPlan() Model {
-	m := NewModel("s1", "/w", "MiniMax-M3", "workspace-write")
+	m := NewModel("s1", "/w", "MiniMax-M3", "workspace-write", En)
 	m.Plan = []protocol.PlanItem{
 		{ID: 1, Text: "read the parser", Status: protocol.PlanDone},
 		{ID: 2, Text: "add the test", Status: protocol.PlanActive},
@@ -89,7 +89,7 @@ func TestPanelHidesWhenAskedAndWhenThereIsNoPlan(t *testing.T) {
 		t.Error("the user asked for it hidden")
 	}
 
-	empty := NewModel("s", "/w", "m", "read-only")
+	empty := NewModel("s", "/w", "m", "read-only", En)
 	empty.Entries = []Entry{{Kind: KindAssistant, Summary: "hi"}}
 	if strings.Contains(Render(empty, DefaultGeometry(120, 24)), "PLAN") {
 		t.Error("no plan, no panel")
@@ -122,14 +122,14 @@ func TestASCIIFallbackKeepsBlockedDistinctFromDone(t *testing.T) {
 // The one piece of state where being wrong is dangerous, so it is never quiet —
 // and it must survive with colour switched off.
 func TestFullAccessIsLoudInPlainText(t *testing.T) {
-	m := NewModel("s", "/w", "m", "full-access")
+	m := NewModel("s", "/w", "m", "full-access", En)
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	got := lines(Render(m, DefaultGeometry(120, 24)))[0]
 	if !strings.Contains(got, "FULL-ACCESS") {
 		t.Errorf("got %q", got)
 	}
 
-	quiet := NewModel("s", "/w", "m", "read-only")
+	quiet := NewModel("s", "/w", "m", "read-only", En)
 	quiet.Entries = m.Entries
 	if strings.Contains(Render(quiet, DefaultGeometry(120, 24)), "!!") {
 		t.Error("a safe mode must not shout")
@@ -181,7 +181,7 @@ func TestApprovalModalWithoutACommand(t *testing.T) {
 // The mark has to render in its own terminal; one that cannot is external
 // decoration.
 func TestEmptyStateRendersInBothCharacterSets(t *testing.T) {
-	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write")
+	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write", En)
 	for _, unicode := range []bool{true, false} {
 		g := DefaultGeometry(100, 24)
 		g.Unicode = unicode
@@ -197,7 +197,7 @@ func TestEmptyStateRendersInBothCharacterSets(t *testing.T) {
 
 // During a turn the newest output is what matters.
 func TestTheStreamShowsItsTail(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = append(m.Entries, Entry{Kind: KindUser, Summary: "go"})
 	for i := 0; i < 200; i++ {
 		m.Entries = append(m.Entries, Entry{Kind: KindNote, Summary: "line"})
@@ -214,7 +214,7 @@ func TestTheStreamShowsItsTail(t *testing.T) {
 }
 
 func TestDetailIsTruncatedWithAMark(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{
 		Kind: KindTool, Tool: "bash", Summary: "ran",
 		Detail: strings.Repeat("out\n", 100), Expanded: true,
@@ -233,7 +233,7 @@ func TestDetailIsTruncatedWithAMark(t *testing.T) {
 }
 
 func TestQueuedInputIsVisible(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	m, _ = m.Enqueue("later", 10)
 	got := Render(m, DefaultGeometry(80, 10))
@@ -296,7 +296,7 @@ func TestStreamWidthNeverGoesBelowAUsableMinimum(t *testing.T) {
 }
 
 func TestContextPercentAppearsWhenKnown(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	// The meter is derived from the tokens and the window, not from a
 	// percentage set by hand: two fields that can disagree eventually do.
@@ -314,7 +314,7 @@ func TestStatusReflectsTheSessionState(t *testing.T) {
 		protocol.SessionStateBlocked: "!",
 		protocol.SessionStateIdle:    "✓",
 	} {
-		m := NewModel("s", "/w", "m", "read-only")
+		m := NewModel("s", "/w", "m", "read-only", En)
 		m.State = state
 		m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 		if got := lines(Render(m, DefaultGeometry(80, 10)))[0]; !strings.HasPrefix(got, want) {
@@ -324,7 +324,7 @@ func TestStatusReflectsTheSessionState(t *testing.T) {
 }
 
 func TestCursorMarksTheSelectedEntry(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{
 		{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "ok"},
 		{Kind: KindError, Summary: "boom"},
@@ -449,7 +449,7 @@ func TestThePanelNarrowsOnANarrowTerminal(t *testing.T) {
 // dangerous, so it is never what goes.
 func TestTheSandboxModeSurvivesEveryWidth(t *testing.T) {
 	for _, mode := range []string{"read-only", "workspace-write", "full-access"} {
-		m := NewModel("s", "/w", "MiniMax-M3", mode)
+		m := NewModel("s", "/w", "MiniMax-M3", mode, En)
 		m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 		m.Plan = modelWithPlan().Plan
 		m.InputTokens, m.Window = 34000, 100000
@@ -473,7 +473,7 @@ func TestTheSandboxModeSurvivesEveryWidth(t *testing.T) {
 // The model name is the first thing given up, and the plan summary the last —
 // the counter is the field that tells the user work is still moving.
 func TestTheStatusBarDropsInAStatedOrder(t *testing.T) {
-	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write")
+	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write", En)
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	m.Plan = modelWithPlan().Plan
 	m.InputTokens, m.Window = 34000, 100000
@@ -526,7 +526,7 @@ func TestThePanelGrowsOnAWideTerminalAndIsCapped(t *testing.T) {
 func TestTheMascotIsColouredWithTheBrandPalette(t *testing.T) {
 	g := DefaultGeometry(100, 20)
 	g.Palette = Palette{Enabled: true}
-	got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only"), g)
+	got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only", En), g)
 
 	for name, code := range map[string]string{
 		"highlight": ansi[StyleHighlight],
@@ -551,7 +551,7 @@ func TestTheEmptyStateStillWorksWithoutColour(t *testing.T) {
 	for _, unicode := range []bool{true, false} {
 		g := DefaultGeometry(100, 20)
 		g.Unicode = unicode
-		got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only"), g)
+		got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only", En), g)
 		if strings.ContainsRune(got, 0x1b) {
 			t.Errorf("unicode=%v: monochrome must emit no escapes", unicode)
 		}
@@ -564,7 +564,7 @@ func TestTheEmptyStateStillWorksWithoutColour(t *testing.T) {
 // full-access has to be loud even on the splash, where a user is most likely to
 // be starting something without having checked how they started it.
 func TestTheEmptyStateShoutsFullAccess(t *testing.T) {
-	m := NewModel("s", "/w", "MiniMax-M3", "full-access")
+	m := NewModel("s", "/w", "MiniMax-M3", "full-access", En)
 	if !strings.Contains(Render(m, DefaultGeometry(100, 20)), "FULL-ACCESS") {
 		t.Error("the splash must carry the warning too")
 	}
@@ -575,7 +575,7 @@ func TestTheEmptyStateShoutsFullAccess(t *testing.T) {
 // Ragged summaries are read one at a time, which is exactly what a wall of tool
 // calls must not be.
 func TestToolSummariesAlignIntoAColumn(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{
 		{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "240 lines"},
 		{Kind: KindTool, Tool: "grep", Target: "func validate", Summary: "18 matches in 4 files"},
@@ -627,7 +627,7 @@ func TestADiffShowsWithoutBeingAskedForAndExpandsOnTab(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		diff += fmt.Sprintf("+linha %d\n", i)
 	}
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{Kind: KindTool, Tool: "edit", Target: "x.go", Summary: "+30 −0", Diff: diff}}
 
 	g := DefaultGeometry(100, 60)
@@ -651,7 +651,7 @@ func TestADiffShowsWithoutBeingAskedForAndExpandsOnTab(t *testing.T) {
 // The diff wins over the raw output: the tool's prose says nothing a reviewer
 // needs.
 func TestTheDiffReplacesTheRawOutput(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{
 		Kind: KindTool, Tool: "edit", Target: "x.go", Summary: "+1 −1",
 		Detail: "edited x.go (1 replacement)",
@@ -669,7 +669,7 @@ func TestTheDiffReplacesTheRawOutput(t *testing.T) {
 func TestDiffLinesAreColouredBySign(t *testing.T) {
 	g := DefaultGeometry(100, 20)
 	g.Palette = Palette{Enabled: true}
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{
 		Kind: KindTool, Tool: "edit", Target: "x.go",
 		Diff: "@@ -1 +1 @@ x.go\n-antes\n+depois",

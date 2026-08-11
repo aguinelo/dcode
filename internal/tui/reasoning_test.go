@@ -20,7 +20,7 @@ func thinking(t *testing.T, m Model, fragments ...string) Model {
 // Thinking arrives in fragments and reads as thinking only when it flows, so it
 // accumulates into one entry rather than a line per fragment.
 func TestThoughtFragmentsAccumulate(t *testing.T) {
-	m := thinking(t, NewModel("s", "/w", "m", "read-only"),
+	m := thinking(t, NewModel("s", "/w", "m", "read-only", En),
 		"Preciso ", "ler o handler ", "antes de editar.")
 
 	if len(m.Entries) != 1 {
@@ -45,7 +45,7 @@ func TestAThoughtClosesWhenTheTurnMovesOn(t *testing.T) {
 		"the end of the turn": ev(t, 9, protocol.EventTurnCompleted,
 			protocol.TurnCompleted{TurnID: "t1"}),
 	} {
-		m := thinking(t, NewModel("s", "/w", "m", "read-only"), "pensando")
+		m := thinking(t, NewModel("s", "/w", "m", "read-only", En), "pensando")
 		if m.Entries[0].Closed {
 			t.Fatalf("%s: setup — the thought should still be open", name)
 		}
@@ -59,7 +59,7 @@ func TestAThoughtClosesWhenTheTurnMovesOn(t *testing.T) {
 // Once closed it is one line, because thinking runs several times the length of
 // the answer and left expanded it buries the result it was leading to.
 func TestAClosedThoughtIsOneLine(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Now = time.Unix(1000, 0)
 	m = thinking(t, m, strings.Repeat("uma linha inteira de raciocínio. ", 30))
 	m.Now = time.Unix(1004, 0)
@@ -93,7 +93,7 @@ func TestAClosedThoughtIsOneLine(t *testing.T) {
 // While open it streams, and only the tail: what it is thinking now is what
 // matters, the same reason the stream follows its own end.
 func TestAnOpenThoughtStreamsItsTail(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	var b strings.Builder
 	for i := 0; i < 40; i++ {
 		b.WriteString("linha de pensamento número ")
@@ -121,7 +121,7 @@ func TestAnOpenThoughtStreamsItsTail(t *testing.T) {
 }
 
 func TestAThoughtExpandsOnTab(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m = thinking(t, m, "primeira parte do raciocínio. segunda parte que só aparece expandida.")
 	m = m.Apply(ev(t, 9, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t1"}))
 
@@ -138,7 +138,7 @@ func TestAThoughtExpandsOnTab(t *testing.T) {
 // A second thought in the same turn is its own entry: the model thought, acted,
 // and thought again, and collapsing those into one would misreport the sequence.
 func TestASecondThoughtIsItsOwnEntry(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m = thinking(t, m, "primeiro")
 	m = m.Apply(ev(t, 5, protocol.EventToolRequested, protocol.ToolRequested{Name: "read"}))
 	m = thinking(t, m, "segundo")
@@ -157,7 +157,7 @@ func TestASecondThoughtIsItsOwnEntry(t *testing.T) {
 // The invariant that survives everything: thinking is not the answer, and the
 // two must never be confused on screen.
 func TestAThoughtIsNeverTheAnswer(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m = thinking(t, m, "vou deletar tudo, talvez")
 	m = m.Apply(ev(t, 9, protocol.EventMessageDelta, protocol.MessageDelta{Text: "Não vou fazer isso."}))
 
@@ -178,7 +178,7 @@ func TestAThoughtIsNeverTheAnswer(t *testing.T) {
 }
 
 func TestReasoningDegradesToASCII(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m = thinking(t, m, "pensando")
 	m = m.Apply(ev(t, 9, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t1"}))
 

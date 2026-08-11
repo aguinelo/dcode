@@ -109,7 +109,7 @@ func newProgram(t *testing.T, opts ...func(*Options)) (*program, *fakeTransport)
 	t.Cleanup(cancel)
 
 	p := &program{
-		opts: o, model: NewModel(o.SessionID, o.Workspace, o.Model, o.Sandbox),
+		opts: o, model: NewModel(o.SessionID, o.Workspace, o.Model, o.Sandbox, En),
 		geo: o.Geometry, ctx: ctx, cancel: cancel,
 	}
 	p.attach(o.SessionID)
@@ -1012,7 +1012,7 @@ func TestCtrlXRemovesTheOldestQueuedMessage(t *testing.T) {
 }
 
 func TestTheQueueIsVisibleWithItsKey(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	m, _ = m.Enqueue("depois roda o benchmark", 10)
 	m, _ = m.Enqueue("e atualiza o godoc", 10)

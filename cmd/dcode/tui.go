@@ -120,7 +120,17 @@ func runTUI(args []string) error {
 		Geometry:  geo,
 		Commands:  commands,
 		Lookup:    lookup(resolved),
-		Notice:    versionNotice,
+		// Resolved at the edge, once. The client package renders and never
+		// reads the environment, the same way it never builds its own palette.
+		Lang: tui.Resolve(func(k string) string {
+			if k == "DCODE_LANG" {
+				if v := resolved.String("ui.lang", ""); v != "" {
+					return v
+				}
+			}
+			return os.Getenv(k)
+		}),
+		Notice: versionNotice,
 	})
 }
 

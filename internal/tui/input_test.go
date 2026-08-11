@@ -7,7 +7,7 @@ import (
 
 // typed builds a line with the caret at a known offset.
 func typed(text string, cursor int) Model {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Input = text
 	m.InputCursor = cursor
 	return m
@@ -88,7 +88,7 @@ func TestDeleteWordTakesTrailingSpacesWithIt(t *testing.T) {
 // ---------- history ----------
 
 func TestHistoryWalksBackAndForwards(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m = m.Remember("primeiro").Remember("segundo")
 
 	m = m.HistoryPrev()
@@ -117,7 +117,7 @@ func TestHistoryWalksBackAndForwards(t *testing.T) {
 
 // Entering the history must not silently discard a half-written message.
 func TestHistoryKeepsTheDraft(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only").Remember("antigo")
+	m := NewModel("s", "/w", "m", "read-only", En).Remember("antigo")
 	m = m.SetInput("meio escrito")
 
 	m = m.HistoryPrev()
@@ -132,7 +132,7 @@ func TestHistoryKeepsTheDraft(t *testing.T) {
 
 // Pressing up twice should reach two different commands, not the same one.
 func TestHistoryCollapsesConsecutiveDuplicates(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m = m.Remember("igual").Remember("igual").Remember("outro")
 	if len(m.History) != 2 {
 		t.Fatalf("got %v", m.History)
@@ -143,7 +143,7 @@ func TestHistoryCollapsesConsecutiveDuplicates(t *testing.T) {
 }
 
 func TestHistoryOnAnEmptyHistory(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	if got := m.HistoryPrev(); got.Input != "" {
 		t.Errorf("got %q", got.Input)
 	}
@@ -154,7 +154,7 @@ func TestHistoryOnAnEmptyHistory(t *testing.T) {
 
 // Typing leaves the history: what is on the line is now the user's.
 func TestTypingLeavesTheHistory(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only").Remember("antigo").HistoryPrev()
+	m := NewModel("s", "/w", "m", "read-only", En).Remember("antigo").HistoryPrev()
 	if m.HistoryAt < 0 {
 		t.Fatal("setup: the model should be browsing")
 	}

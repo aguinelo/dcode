@@ -39,6 +39,9 @@ type Options struct {
 	Transport Transport
 	Geometry  Geometry
 	QueueMax  int
+	// Lang is the interface language, resolved once by the caller. Zero lands
+	// on the fallback.
+	Lang Lang
 
 	// Commands is the user's discovered command set. Frozen at start, like the
 	// instruction chain, so behaviour cannot change mid-session.
@@ -89,7 +92,7 @@ func Run(ctx context.Context, opts Options) error {
 
 	p := &program{
 		opts:  opts,
-		model: NewModel(opts.SessionID, opts.Workspace, opts.Model, opts.Sandbox),
+		model: NewModel(opts.SessionID, opts.Workspace, opts.Model, opts.Sandbox, opts.Lang),
 		geo:   opts.Geometry,
 		ctx:   runCtx,
 	}
@@ -207,7 +210,7 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// than carried over: keeping entries from the old one would show a
 		// history the model no longer has.
 		p.opts.SessionID = msg.session.ID
-		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode)
+		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
 		p.attach(msg.session.ID)
 		return p, p.waitForEvent()
 
@@ -513,7 +516,7 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 
 	switch r.Name {
 	case "help":
-		return note(HelpText(p.opts.Commands))
+		return note(HelpText(p.opts.Commands, p.model.Lang))
 
 	case "plan":
 		if strings.TrimSpace(r.Args) == "" {

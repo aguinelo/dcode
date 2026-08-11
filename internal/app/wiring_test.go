@@ -101,6 +101,7 @@ var wiringTable = []configOption{
 var nonSession = map[string]string{
 	"update.check":   "read by the update path, which is not a session",
 	"update.channel": "read by the update path, which is not a session",
+	"ui.lang":        "read by the terminal client, which is not a session",
 	"eval.enabled":   "read by the eval harness, which measures the product rather than running it",
 	"eval.model":     "read by the eval harness, which measures the product rather than running it",
 	"eval.runs":      "read by the eval harness, which measures the product rather than running it",

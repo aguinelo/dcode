@@ -15,19 +15,39 @@ import (
 // user commands.
 type Builtin struct {
 	Name string
-	Args string
-	Help string
 }
 
 // Builtins is the whole built-in set, in the order `/help` prints them.
+// Builtins are the commands the client itself provides.
+//
+// Name is the only field here now: the argument shape and the one-line help are
+// text a PERSON reads, so they live in the catalogue with everything else the
+// client composes. Keeping them here would have made /help the one screen that
+// stays English.
 var Builtins = []Builtin{
-	{"help", "", "shortcuts and commands"},
-	{"init", "", "write DCODE.md for this workspace from what is already here"},
-	{"clear", "", "end this session and open a fresh one"},
-	{"plan", "[what to change]", "show the plan; with an argument, ask for a new one"},
-	{"config", "<key>", "the effective value of a key and where it came from"},
-	{"model", "<name>", "switch model — opens a new session, since the prefix changes"},
-	{"resume", "[id]", "list sessions, or reattach to one"},
+	{Name: "help"}, {Name: "init"}, {Name: "clear"}, {Name: "plan"},
+	{Name: "config"}, {Name: "model"}, {Name: "resume"},
+}
+
+// builtinText resolves a command's argument shape and help in one language.
+func builtinText(name string, t Strings) (args, help string) {
+	switch name {
+	case "help":
+		return "", t.CmdHelp
+	case "init":
+		return "", t.CmdInit
+	case "clear":
+		return "", t.CmdClear
+	case "plan":
+		return t.CmdPlanArgs, t.CmdPlan
+	case "config":
+		return t.CmdConfigArgs, t.CmdConfig
+	case "model":
+		return t.CmdModelArgs, t.CmdModel
+	case "resume":
+		return t.CmdResumeArgs, t.CmdResume
+	}
+	return "", ""
 }
 
 func isBuiltin(name string) bool {
@@ -97,36 +117,38 @@ func ShadowedBuiltins(user config.CommandSet) []string {
 }
 
 // HelpText renders `/help`. Pure over the discovered command set.
-func HelpText(user config.CommandSet) string {
+func HelpText(user config.CommandSet, lang Lang) string {
+	t := Text(lang)
 	var b strings.Builder
-	b.WriteString("Keys\n")
+	b.WriteString(t.HelpKeys + "\n")
 	for _, k := range [][2]string{
-		{"enter", "send (queues while a turn is running)"},
-		{"↑ ↓", "history on an empty line, otherwise move through the stream"},
-		{"PgUp/PgDn", "scroll · Home and End jump to either end"},
-		{"tab", "expand or collapse the selected entry"},
-		{"esc", "close the expansion, then the selection"},
-		{"^P", "show or hide the plan panel"},
-		{"^X", "remove the oldest queued message"},
-		{"^A ^E ^W ^U ^K", "start, end, delete word, clear, cut to end"},
-		{"^C", "interrupt the turn, or quit when idle"},
-		{"^D", "quit"},
+		{"enter", t.KeyEnter},
+		{"↑ ↓", t.KeyArrows},
+		{"PgUp/PgDn", t.KeyPage},
+		{"tab", t.KeyTab},
+		{"esc", t.KeyEsc},
+		{"^P", t.KeyPanel},
+		{"^X", t.KeyDequeue},
+		{"^A ^E ^W ^U ^K", t.KeyEditing},
+		{"^C", t.KeyInterrupt},
+		{"^D", t.KeyQuit},
 	} {
 		fmt.Fprintf(&b, "  %-16s %s\n", k[0], k[1])
 	}
 
-	b.WriteString("\nCommands\n")
+	b.WriteString("\n" + t.HelpCommands + "\n")
 	for _, c := range Builtins {
+		args, help := builtinText(c.Name, t)
 		name := "/" + c.Name
-		if c.Args != "" {
-			name += " " + c.Args
+		if args != "" {
+			name += " " + args
 		}
-		fmt.Fprintf(&b, "  %-22s %s\n", name, c.Help)
+		fmt.Fprintf(&b, "  %-22s %s\n", name, help)
 	}
 
 	names := user.Names()
 	if len(names) > 0 {
-		b.WriteString("\nYours\n")
+		b.WriteString("\n" + t.HelpYours + "\n")
 		for _, n := range names {
 			if isBuiltin(n) {
 				continue
@@ -135,7 +157,9 @@ func HelpText(user config.CommandSet) string {
 		}
 	}
 
-	b.WriteString("\nApprovals\n  [d] deny   [a] allow once   [A] allow for the session\n  Enter denies.\n")
+	fmt.Fprintf(&b, "\n%s\n  [d] %s   [a] %s   [A] %s\n  %s\n",
+		t.ApprovalHeading, t.ApprovalDeny, t.ApprovalAllowOnce,
+		t.ApprovalAllowSession, t.ApprovalEnterDenies)
 	return strings.TrimRight(b.String(), "\n")
 }
 
@@ -194,7 +218,7 @@ func ReplanPrompt(what string) string {
 // PlanText renders the full plan for `/plan` without an argument.
 func PlanText(m Model) string {
 	if len(m.Plan) == 0 {
-		return "There is no plan yet."
+		return Text(m.Lang).NoPlan
 	}
 	var b strings.Builder
 	for _, it := range m.Plan {
@@ -224,7 +248,8 @@ type Completion struct {
 // has chosen, and a menu that stays open is a menu in the way. Built-ins come
 // first because a user command can never shadow one, so offering them mixed
 // together would suggest a competition that does not exist.
-func Complete(input string, user config.CommandSet) []Completion {
+func Complete(input string, user config.CommandSet, lang Lang) []Completion {
+	t := Text(lang)
 	if !strings.HasPrefix(input, "/") || strings.ContainsAny(input, " \t") {
 		return nil
 	}
@@ -233,7 +258,8 @@ func Complete(input string, user config.CommandSet) []Completion {
 	var out []Completion
 	for _, b := range Builtins {
 		if strings.HasPrefix(b.Name, prefix) {
-			out = append(out, Completion{Name: b.Name, Args: b.Args, Description: b.Help})
+			args, help := builtinText(b.Name, t)
+			out = append(out, Completion{Name: b.Name, Args: args, Description: help})
 		}
 	}
 	for _, name := range user.Names() {
