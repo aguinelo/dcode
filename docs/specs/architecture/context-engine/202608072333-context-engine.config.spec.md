@@ -25,7 +25,13 @@
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_BUDGET_NOTICE` | booleano | `true` | Liga o aviso de ocupação da janela ao modelo. Desligar devolve o comportamento anterior: o único sinal passa a ser o aviso **pós**-compactação. |
-| `DCODE_BUDGET_BANDS` | lista | `0.60,0.80,0.92` | Frações que disparam o aviso, na travessia para cima. Todas devem ser menores que `DCODE_COMPACT_AT` — aviso que chega junto com o corte não serve para nada, e a inicialização recusa uma lista que viole isso. |
+| `DCODE_BUDGET_BANDS` | lista | `0.60,0.80,0.92` | Frações **do orçamento** que disparam o aviso, na travessia para cima. O orçamento é o espaço até `DCODE_COMPACT_AT`, não a janela inteira. |
+
+> **Correção.** Esta linha dizia "frações da janela" e, ao mesmo tempo, que todas deviam ser menores que `DCODE_COMPACT_AT`. As duas coisas não cabem juntas: `DCODE_COMPACT_AT` é `0.80` por default, então `0.80` e `0.92` da janela são inalcançáveis — o contexto é cortado antes de chegar lá.
+>
+> Lidas como fração do **orçamento**, as duas afirmações valem e o sentido melhora. "Você está em 92%" passa a dizer 92% do que se tem antes de a memória ser cortada, que é exatamente aquilo sobre o que o modelo consegue agir. Contra a janela, seria um número sobre um limite que nunca chega.
+>
+> As faixas acompanham o gatilho: baixar `DCODE_COMPACT_AT` para `0.5` encolhe o orçamento e move as três junto. Uma faixa presa à janela dispararia depois do corte.
 
 > **Não há chave para emitir por nível.** Repetir o aviso enquanto a fração estiver acima do limiar custa em todo turno e produz habituação: aviso que aparece sempre deixa de ser lido. A emissão é por borda, e rearma na compactação.
 

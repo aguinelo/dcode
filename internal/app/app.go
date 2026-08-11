@@ -56,6 +56,8 @@ type Options struct {
 	// Skills switches progressive disclosure on. Off removes the index from the
 	// prefix, and no body is ever loaded.
 	Skills bool
+	// BudgetNotice switches the occupancy warning to the model on.
+	BudgetNotice bool
 	// SymbolMaxMatches caps what symbol returns. Same ceiling as grep, and for
 	// the same reason: a symbol matching thousands of times is a badly chosen
 	// symbol, and returning all of it spends context without informing.
@@ -142,8 +144,12 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			// says is a replace_all that hit more than one occurrence.
 			"tools.edit_echo_diff":     tools.EchoDiffMulti,
 			"tools.symbol_max_matches": "200",
-			"doctrine.enabled":         "true",
-			"doctrine.max_bytes":       "16384",
+			// The model is told how much of its budget is gone before it runs
+			// out, not after. Off leaves the post-compaction notice as the only
+			// signal, which is what it was.
+			"budget.notice":      "true",
+			"doctrine.enabled":   "true",
+			"doctrine.max_bytes": "16384",
 		}},
 	}
 
@@ -201,6 +207,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Skills:            r.Bool("behavior.skills_enabled", true),
 		EditEchoDiff:      r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
 		SymbolMaxMatches:  r.Int("tools.symbol_max_matches", 200),
+		BudgetNotice:      r.Bool("budget.notice", true),
 		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
 		DoctrineDir:       r.String("doctrine.dir", ""),
 		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
@@ -397,6 +404,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Emitter: emitter, Approver: approver,
 		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
 		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
+		BudgetNotice:     opts.BudgetNotice,
 		Rules:            opts.Rules,
 		Summarise:        summariser(p, opts.Model),
 		Skills:           skills,

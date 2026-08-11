@@ -74,6 +74,9 @@ type Config struct {
 	ShowReasoning bool
 	// Reminders disables the appended-notice channel when false.
 	Reminders bool
+	// BudgetNotice switches the occupancy warning on. Off leaves the
+	// post-compaction notice as the only signal, which is what it was before.
+	BudgetNotice bool
 	// Now is the clock used to time tool calls. Nil means the real one.
 	Now func() time.Time
 }
@@ -95,6 +98,12 @@ type Engine struct {
 	// batch. Told once is guidance; told every batch is noise the model starts
 	// to discount.
 	seenDirs map[string]struct{}
+	// budgetBand is the highest occupancy band already announced. It lives here
+	// rather than being derived per turn because the announcement is
+	// edge-triggered: emitting while the fraction is merely above a threshold
+	// repeats the same reminder every turn, and a warning that is always there
+	// stops being read.
+	budgetBand ce.Band
 }
 
 // now is the engine's clock. Injectable so a test can assert a duration without
@@ -209,6 +218,7 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 
 		batch.Compacted = compacted
 		compacted = false
+		batch.BudgetCrossed = e.crossBudget()
 		e.session.History = append(e.session.History, e.reminders(batch)...)
 
 		out.Iterations++
@@ -310,6 +320,8 @@ type batchFacts struct {
 	Denied      []string
 	TouchedDirs []string
 	Compacted   bool
+	// BudgetCrossed is set only on the iteration a band is crossed upward.
+	BudgetCrossed ce.Band
 }
 
 func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall) ([]ce.Message, batchFacts) {
@@ -382,6 +394,7 @@ func (e *Engine) reminders(f batchFacts) []ce.Message {
 		DeniedTools:   f.Denied,
 		Compacted:     f.Compacted,
 		ParallelBatch: f.Parallel,
+		BudgetCrossed: behavior.BudgetBand(f.BudgetCrossed),
 	}
 	if e.cfg.ReadFile != nil {
 		st.ChangedFiles = e.cfg.State.ChangedSinceRead(e.cfg.ReadFile)
@@ -628,4 +641,32 @@ func SortedPlan(items []protocol.PlanItem) []protocol.PlanItem {
 	copy(out, items)
 	sort.SliceStable(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
+}
+
+// crossBudget reports the occupancy band to announce this iteration, or
+// ce.BandNone when there is nothing new to say.
+//
+// Edge-triggered, and the edge is what makes it affordable: the fraction is
+// recomputed every iteration anyway, and announcing on level would repeat the
+// same reminder for the rest of the session.
+//
+// It also rearms. Compaction drops the fraction, so the stored band falls with
+// it, and climbing back up is announced again — which is right, because after a
+// cut the climb genuinely is new information.
+func (e *Engine) crossBudget() ce.Band {
+	if !e.cfg.BudgetNotice {
+		return ce.BandNone
+	}
+	cfg := e.cfg.CtxConfig
+	if cfg.Window <= 0 && e.cfg.Provider != nil {
+		if w, err := e.cfg.Provider.Window(e.cfg.Model); err == nil {
+			cfg.Window = w
+		}
+	}
+	band, announce := ce.Crossed(e.budgetBand, ce.Fraction(e.session, cfg), cfg.CompactAt)
+	e.budgetBand = band
+	if !announce {
+		return ce.BandNone
+	}
+	return band
 }
