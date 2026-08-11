@@ -18,9 +18,12 @@ import (
 
 // DaemonOptions configure the server process.
 type DaemonOptions struct {
-	SocketPath      string
-	MaxSessions     int
-	EventRetention  int
+	SocketPath     string
+	MaxSessions    int
+	EventRetention int
+	// EventSpillDir is where trimmed events are kept so a replay below the
+	// retention horizon still answers. Empty makes retention a hard limit.
+	EventSpillDir   string
 	ApprovalTimeout time.Duration
 	Base            Options
 	// Log receives operational notices. Nil silences them, which a test wants
@@ -103,6 +106,12 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 
 	id := session.NewID(time.Now, randomUint32)
 	log := session.NewEventLog(id, d.opts.EventRetention, time.Now)
+	// Retention without a spill is a hard horizon: a client away longer than it
+	// gets events_expired, and the session it was watching becomes unreadable
+	// for a reason that has nothing to do with the session.
+	if sp, err := session.NewSpill(d.opts.EventSpillDir, id); err == nil {
+		log.SetSpill(sp)
+	}
 
 	// The session is its own emitter and its own approver: the loop announces
 	// a crossing through the log and blocks until a client answers, which is

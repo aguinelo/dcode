@@ -29,6 +29,9 @@ type EventLog struct {
 	sessionID string
 	clock     Clock
 	retention int
+	// spill keeps trimmed events readable. Nil means retention is a hard
+	// horizon and a client away too long gets events_expired.
+	spill *Spill
 
 	seq    uint64
 	events []protocol.Event
@@ -108,8 +111,24 @@ func (l *EventLog) trim() {
 		return
 	}
 	drop := len(l.events) - l.retention
+	// To disk before out of memory. Dropping first and writing after would
+	// lose them on any failure in between, and a gap a client cannot detect is
+	// worse than a refused replay.
+	if err := l.spill.Append(l.events[:drop]); err != nil {
+		// Nothing is dropped if it could not be kept. Memory grows, which is
+		// visible and recoverable; a silent hole in the session is neither.
+		return
+	}
 	l.firstSeq = l.events[drop].Seq
 	l.events = append([]protocol.Event(nil), l.events[drop:]...)
+}
+
+// SetSpill attaches a spill file. Called at session creation, before anything
+// is appended.
+func (l *EventLog) SetSpill(s *Spill) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.spill = s
 }
 
 // LastSeq returns the highest sequence assigned.
@@ -128,12 +147,23 @@ func (l *EventLog) Replay(from uint64) ([]protocol.Event, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
+	var out []protocol.Event
 	if from < l.firstSeq {
-		return nil, protocol.Errorf(protocol.CodeEventsExpired,
-			"events before %d are no longer held; the earliest available is %d",
-			from, l.firstSeq)
+		// Trimmed out of memory is not gone if there is a spill file. The
+		// event log is the session, and a client that took too long to come
+		// back should get the session, not a refusal about bookkeeping.
+		spilled, err := l.spill.Replay(from)
+		if err != nil {
+			return nil, protocol.Errorf(protocol.CodeInternal,
+				"the spilled events could not be read: %v", err)
+		}
+		if len(spilled) == 0 && l.spill == nil {
+			return nil, protocol.Errorf(protocol.CodeEventsExpired,
+				"events before %d are no longer held; the earliest available is %d",
+				from, l.firstSeq)
+		}
+		out = append(out, spilled...)
 	}
-	out := make([]protocol.Event, 0, len(l.events))
 	for _, ev := range l.events {
 		if ev.Seq >= from {
 			out = append(out, ev)
