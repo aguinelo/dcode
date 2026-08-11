@@ -762,3 +762,55 @@ func TestNewEventLogFillsInDefaults(t *testing.T) {
 		t.Errorf("got %+v", evs)
 	}
 }
+
+// The other half of the grant key, and the half that decides how often a person
+// is asked: when a RULE produced the question, the grant is keyed by the rule.
+//
+// Approving `.git/config` therefore also covers `.git/hooks/pre-commit`. That
+// is the point — the user said yes to "writing inside .git", which is what they
+// were actually shown, and asking again for the next path under the same rule
+// is how people learn to approve without reading.
+func TestAllowForTheSessionIsKeyedByTheRuleThatAsked(t *testing.T) {
+	s := newSession(t)
+	ctx := context.Background()
+
+	first := protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "write", Command: "",
+		Rule: ".git/**", Reason: "writing inside .git",
+	}
+	go func() {
+		for len(s.Pending()) == 0 {
+			time.Sleep(time.Millisecond)
+		}
+		_ = s.Resolve("a1", protocol.ApprovalAllowSession)
+	}()
+	if d, err := s.Approve(ctx, first, 2*time.Second); err != nil || d != protocol.ApprovalAllowSession {
+		t.Fatalf("first approval = %v, %v", d, err)
+	}
+
+	// A different path, same rule: already answered.
+	same := protocol.ApprovalRequest{
+		ApprovalID: "a2", Tool: "write", Command: "",
+		Rule: ".git/**", Reason: "writing inside .git",
+	}
+	d, err := s.Approve(ctx, same, 100*time.Millisecond)
+	if err != nil || d != protocol.ApprovalAllowSession {
+		t.Errorf("the same rule asked again: %v, %v — the user answered this question", d, err)
+	}
+
+	// A different rule is a different question, and must still be asked. Without
+	// this half, one grant would quietly become a grant for everything.
+	other := protocol.ApprovalRequest{
+		ApprovalID: "a3", Tool: "write", Command: "",
+		Rule: "vendor/**", Reason: "writing inside vendor",
+	}
+	go func() {
+		for len(s.Pending()) == 0 {
+			time.Sleep(time.Millisecond)
+		}
+		_ = s.Resolve("a3", protocol.ApprovalDeny)
+	}()
+	if d, err := s.Approve(ctx, other, 2*time.Second); err != nil || d != protocol.ApprovalDeny {
+		t.Errorf("a different rule was answered by the earlier grant: %v, %v", d, err)
+	}
+}
