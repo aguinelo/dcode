@@ -76,7 +76,7 @@ func (r *ReplayTransport) Do(ctx context.Context, wire WireRequest) (<-chan Wire
 
 	if fw := r.tr.FailWith; fw != nil {
 		if fw.Status != 0 {
-			if pe := ClassifyStatus(fw.Status, fw.Body); pe != nil {
+			if pe := ClassifyStatus(fw.Status, fw.Body, ""); pe != nil {
 				return nil, pe
 			}
 		}

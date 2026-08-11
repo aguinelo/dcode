@@ -733,7 +733,9 @@ func (t *HTTPTransport) Do(ctx context.Context, wire provider.WireRequest) (<-ch
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
 		resp.Body.Close()
-		if pe := provider.ClassifyStatus(resp.StatusCode, string(body)); pe != nil {
+		// The Retry-After header travels with the status. Read here because this
+		// is the only place holding the response; classification stays pure.
+		if pe := provider.ClassifyStatus(resp.StatusCode, string(body), resp.Header.Get("Retry-After")); pe != nil {
 			return nil, pe
 		}
 	}

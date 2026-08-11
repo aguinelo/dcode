@@ -305,7 +305,7 @@ func TestClassifyStatus(t *testing.T) {
 		{500, ErrClassProvider, true},
 		{503, ErrClassProvider, true},
 	} {
-		got := ClassifyStatus(tc.status, "body")
+		got := ClassifyStatus(tc.status, "body", "")
 		if got == nil || got.Class != tc.want {
 			t.Errorf("%d: got %+v want %s", tc.status, got, tc.want)
 			continue
@@ -314,7 +314,7 @@ func TestClassifyStatus(t *testing.T) {
 			t.Errorf("%d: retryable got %v want %v", tc.status, got.Retryable, tc.retry)
 		}
 	}
-	if ClassifyStatus(200, "") != nil {
+	if ClassifyStatus(200, "", "") != nil {
 		t.Error("a success status is not an error")
 	}
 }
@@ -335,7 +335,7 @@ func TestCredentialsNeverAppearInErrorMessages(t *testing.T) {
 		{"json body", `{"error":{"message":"bad key ` + sentinel + `"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			pe := ClassifyStatus(400, tc.body)
+			pe := ClassifyStatus(400, tc.body, "")
 			if strings.Contains(pe.Error(), sentinel) {
 				t.Errorf("credential leaked: %s", pe.Error())
 			}
