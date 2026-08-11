@@ -123,7 +123,7 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 - [x] `VerifyTools(text string, have []string) []Finding` — ferramenta citada conferida contra o registro do produto. Fato, não julgamento.
 - [x] `ProbeCommands(text string, fs fs.FS) []Finding` — comando citado conferido por **presença de arquivo** (`package.json`, `go.mod`, `Makefile`).
-- [x] `SourceDigest(fsys fs.FS, files []string) string` e `RenderDigest`, com digest **por arquivo** — digest das origens, gravado no `DCODE.md` gerado.
+- [x] `RenderDigest`, com digest **por arquivo** — gravado no `DCODE.md` gerado por `StampGenerated`. Um digest único do conjunto responderia "algo mudou"; o aviso precisa dizer **o quê**.
 - [x] `Diverged(dcodeMD string, fs fs.FS) ([]string, bool)` — nomeia **quais** arquivos mudaram desde a geração.
 
 **Testes obrigatórios:**

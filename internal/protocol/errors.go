@@ -10,9 +10,8 @@ import (
 // human text in English. Localisation, if it ever exists, hangs off Code and
 // never off Message.
 type Error struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details,omitempty"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 func (e *Error) Error() string {

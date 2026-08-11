@@ -62,7 +62,6 @@ type Config struct {
 	// Nil means denied, which is the reading that holds when nobody said
 	// otherwise.
 	AllowNetwork func() bool
-	ProfileDir   string
 }
 
 // New returns the sandbox for cfg.

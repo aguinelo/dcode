@@ -83,7 +83,6 @@ const (
 	CodeAmbiguousMatch  = "ambiguous_match"
 	CodeNoOpEdit        = "no_op_edit"
 	CodeNotFound        = "not_found"
-	CodeIsBinary        = "is_binary"
 	CodeInvalidPattern  = "invalid_pattern"
 	CodeTimeout         = "timeout"
 	CodePlanMultiActive = "plan_multiple_active"

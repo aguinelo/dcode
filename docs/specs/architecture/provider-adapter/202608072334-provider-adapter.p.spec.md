@@ -66,7 +66,6 @@ type Decoder interface {
 
 type Limits struct {
     MaxIterations int // teto de iterações do loop para esta família
-    MaxOutputTokens int // 0 = default do provedor
 }
 
 // Provider é a composição. Construído pelo Registry, nunca à mão.

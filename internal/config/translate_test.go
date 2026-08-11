@@ -95,15 +95,17 @@ func TestProbeCommandsIsSilentWhenTheFileIsThere(t *testing.T) {
 
 // ---------- digest and divergence ----------
 
+// Content, not modification time: a file rewritten with the same bytes has not
+// changed, and a clock would make the digest differ between machines.
 func TestDigestChangesOnlyWithContent(t *testing.T) {
 	a := fstest.MapFS{"AGENTS.md": &fstest.MapFile{Data: []byte("one")}}
 	b := fstest.MapFS{"AGENTS.md": &fstest.MapFile{Data: []byte("one")}}
 	c := fstest.MapFS{"AGENTS.md": &fstest.MapFile{Data: []byte("two")}}
 
-	if SourceDigest(a, []string{"AGENTS.md"}) != SourceDigest(b, []string{"AGENTS.md"}) {
+	if RenderDigest(a, []string{"AGENTS.md"}) != RenderDigest(b, []string{"AGENTS.md"}) {
 		t.Error("identical content produced different digests")
 	}
-	if SourceDigest(a, []string{"AGENTS.md"}) == SourceDigest(c, []string{"AGENTS.md"}) {
+	if RenderDigest(a, []string{"AGENTS.md"}) == RenderDigest(c, []string{"AGENTS.md"}) {
 		t.Error("different content produced the same digest")
 	}
 }

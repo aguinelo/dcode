@@ -110,7 +110,6 @@ type ResolveApprovalRequest struct {
 type Error struct {
     Code    string         `json:"code"`    // estável, legível por máquina
     Message string         `json:"message"` // inglês, legível por humano — ver nota
-    Details map[string]any `json:"details,omitempty"`
 }
 ```
 

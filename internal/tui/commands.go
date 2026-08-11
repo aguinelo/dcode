@@ -214,12 +214,6 @@ theirs you dropped by mistake.
 If DCODE.md already exists, read it and propose the smallest change that brings
 it up to date. Never overwrite it wholesale.`
 
-// DiscardHeading is the section the generated DCODE.md must carry.
-//
-// Checked in code after the turn, not asked for in the prompt and hoped for. A
-// prompt asking the model to verify is not verification.
-const DiscardHeading = "## Not carried over from"
-
 // ReplanPrompt asks for a fresh plan.
 func ReplanPrompt(what string) string {
 	if strings.TrimSpace(what) == "" {
