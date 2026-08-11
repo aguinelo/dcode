@@ -273,3 +273,57 @@ func TestEveryFileNamedByAnImplementationSpecExists(t *testing.T) {
 	}
 	t.Logf("%d paths checked across %d specs", checked, len(specs))
 }
+
+// Every family that declares invariants must have something claiming them.
+//
+// Without this, the guard covers whichever families someone remembered. Six of
+// the ten were done and the four that were not looked exactly like the six from
+// anywhere except a directory listing — which is how "every invariant is
+// claimed" gets said about a repository where seventy-five are not.
+//
+// A guard that has to be remembered per family is not a guard, it is a habit.
+func TestEveryFamilyThatDeclaresInvariantsHasAGuard(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	families, err := filepath.Glob(filepath.Join(root, "docs", "specs", "architecture", "*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	guards, err := filepath.Glob(filepath.Join(root, "internal", "*", "invariants_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(guards) == 0 {
+		t.Fatal("no invariants_test.go anywhere; the check below would report every family")
+	}
+	var claimed string
+	for _, g := range guards {
+		data, err := os.ReadFile(g)
+		if err != nil {
+			t.Fatal(err)
+		}
+		claimed += string(data)
+	}
+
+	checked := 0
+	for _, dir := range families {
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+			continue
+		}
+		family := filepath.Base(dir)
+		// A family with no invariants section declares nothing to claim.
+		if _, err := Invariants(root, family); err != nil {
+			continue
+		}
+		checked++
+		if !strings.Contains(claimed, `"`+family+`"`) {
+			t.Errorf("%s declares invariants and no invariants_test.go names it", family)
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no family was checked; the guard would pass vacuously")
+	}
+	t.Logf("%d families with invariants", checked)
+}
