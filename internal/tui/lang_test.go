@@ -116,3 +116,26 @@ func TestModelFacingPackagesCannotReachTheCatalogue(t *testing.T) {
 		_ = ast.Print
 	}
 }
+
+// The usage block is the earliest text the product shows, and the only one that
+// runs before the configuration chain exists.
+func TestTheUsageBlockIsTranslatedAndKeepsItsVerbSlot(t *testing.T) {
+	for _, lang := range Languages() {
+		u := Text(lang).Usage
+		if !strings.Contains(u, "%s") {
+			t.Errorf("%s: the usage block lost the version slot", lang)
+		}
+		if strings.Count(u, "%") != strings.Count(u, "%s") {
+			t.Errorf("%s: the usage block has a stray %% that Fprintf will mangle", lang)
+		}
+		// Every subcommand must still be listed, whatever the prose around it.
+		for _, cmd := range []string{"dcode serve", "dcode tui", "dcode login", "dcode config", "dcode update"} {
+			if !strings.Contains(u, cmd) {
+				t.Errorf("%s: usage no longer lists %q", lang, cmd)
+			}
+		}
+		if !strings.Contains(u, "DCODE_LANG") {
+			t.Errorf("%s: the language key is not discoverable from the help that documents the others", lang)
+		}
+	}
+}

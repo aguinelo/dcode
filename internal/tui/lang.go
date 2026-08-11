@@ -121,6 +121,11 @@ type Strings struct {
 	CmdResume     string
 	CmdResumeArgs string
 
+	// CLI. The usage block is one string per language rather than a field per
+	// line: it is prose with alignment, and cutting it into thirty fields
+	// would make it harder to translate well, not easier.
+	Usage string
+
 	// Empty state and general
 	EmptyHint      string
 	Interrupt      string
@@ -183,6 +188,38 @@ var catalogue = map[Lang]Strings{
 		CmdResume:     "list sessions, or reattach to one",
 		CmdResumeArgs: "[id]",
 
+		Usage: `dcode %s — an agentic coding harness
+
+Usage:
+  dcode                      open the terminal interface
+  dcode [flags] <task>       run one task and exit
+  dcode serve [flags]        run the daemon
+  dcode tui [flags]          open the terminal interface
+  dcode login [flags]        store the model credential, read without echo
+  dcode config [key]         the effective configuration and where it came from
+  dcode update [flags]       install the latest release
+
+Examples:
+  dcode
+  dcode "add a test for the parser"
+  dcode --dump-prompt
+  dcode --config model.name
+  dcode serve &  dcode tui
+
+Run a subcommand with --help for its flags.
+
+Environment:
+  DCODE_API_KEY            model credential; overrides anything stored
+  DCODE_MODEL              model name (default MiniMax-M3)
+  DCODE_TRANSPORT          wire format: openai or anthropic
+  DCODE_SANDBOX_MODE       read-only, workspace-write or full-access
+  DCODE_APPROVAL_POLICY    untrusted, on-request or never
+  DCODE_ALLOW_NETWORK      grant network without asking
+  DCODE_LANG               interface language: pt-BR or en
+  DCODE_HOME               configuration root (default ~/.dcode)
+  DCODE_SOCKET             daemon socket path
+`,
+
 		EmptyHint:      "Ask for something, or type / for commands.",
 		Interrupt:      "esc interrupts",
 		Queued:         "queued",
@@ -235,6 +272,38 @@ var catalogue = map[Lang]Strings{
 		CmdModelArgs:  "<nome>",
 		CmdResume:     "lista sessões, ou reconecta a uma",
 		CmdResumeArgs: "[id]",
+
+		Usage: `dcode %s — um harness de programação agêntica
+
+Uso:
+  dcode                      abre a interface de terminal
+  dcode [flags] <tarefa>     roda uma tarefa e sai
+  dcode serve [flags]        roda o daemon
+  dcode tui [flags]          abre a interface de terminal
+  dcode login [flags]        guarda a credencial do modelo, lida sem eco
+  dcode config [chave]       a configuração efetiva e de onde ela veio
+  dcode update [flags]       instala a última versão
+
+Exemplos:
+  dcode
+  dcode "adicione um teste para o parser"
+  dcode --dump-prompt
+  dcode --config model.name
+  dcode serve &  dcode tui
+
+Rode um subcomando com --help para ver as flags dele.
+
+Ambiente:
+  DCODE_API_KEY            credencial do modelo; vence qualquer uma guardada
+  DCODE_MODEL              nome do modelo (default MiniMax-M3)
+  DCODE_TRANSPORT          formato de fio: openai ou anthropic
+  DCODE_SANDBOX_MODE       read-only, workspace-write ou full-access
+  DCODE_APPROVAL_POLICY    untrusted, on-request ou never
+  DCODE_ALLOW_NETWORK      concede rede sem perguntar
+  DCODE_LANG               idioma da interface: pt-BR ou en
+  DCODE_HOME               raiz de configuração (default ~/.dcode)
+  DCODE_SOCKET             caminho do socket do daemon
+`,
 
 		EmptyHint:      "Peça alguma coisa, ou digite / para ver os comandos.",
 		Interrupt:      "esc interrompe",
