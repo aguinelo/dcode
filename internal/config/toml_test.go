@@ -173,7 +173,7 @@ func TestFileLayersLoadsUserThenProject(t *testing.T) {
 	write(t, filepath.Join(home, ConfigFileName), "[model]\nname = \"user-model\"\n")
 	write(t, filepath.Join(ws, ".dcode", ConfigFileName), "[model]\nname = \"project-model\"\n")
 
-	layers, err := FileLayers(Roots{Config: home}, ws)
+	layers, err := FileLayers(Roots{Config: home}, ws, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestFileLayersLoadsUserThenProject(t *testing.T) {
 func TestFileLayersReportsABrokenProjectFile(t *testing.T) {
 	ws := t.TempDir()
 	write(t, filepath.Join(ws, ".dcode", ConfigFileName), "[model]\nunknown = 1\n")
-	if _, err := FileLayers(Roots{Config: t.TempDir()}, ws); err == nil {
+	if _, err := FileLayers(Roots{Config: t.TempDir()}, ws, ""); err == nil {
 		t.Error("a broken project config must fail")
 	}
 }

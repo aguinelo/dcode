@@ -12,6 +12,12 @@ import (
 // KnownKeys is the whole configuration surface, mapping each `section.key` to
 // the one environment variable that carries it.
 //
+// DCODE_REQUIREMENTS_FILE is deliberately NOT here, and the omission is the
+// point. Every key in this map can be set from config.toml — a file the user
+// owns — and letting that file say where the locked policy lives would let the
+// user redirect the policy that binds them. It is environment-only, like the
+// directory roots, and for the same class of reason.
+//
 // The map is the schema. An unknown key is an error rather than a warning
 // because a typo that is silently ignored is the most frustrating class of
 // configuration bug there is: everything reports success and nothing changed.
@@ -246,22 +252,58 @@ func LoadFile(path string, source Source) (Layer, bool, error) {
 
 // FileLayers loads the user and project configuration files, in the order the
 // precedence chain expects them.
-func FileLayers(roots Roots, workspace string) ([]Layer, error) {
+// RequirementsFileName is the administrator's locked configuration.
+//
+// A separate file from config.toml, and that separation is the whole point: it
+// is what an organisation deploys and what a user cannot edit, so mixing the
+// two into one file with a "locked" marker per key would make the boundary a
+// convention inside a file the user owns.
+const RequirementsFileName = "requirements.toml"
+
+// FileLayers loads every configuration file, weakest first.
+//
+// The locked layer is loaded LAST and ranked HIGHEST, and that is RN-7 of
+// sandbox-policy and RN-9 of configuration: an administrator's policy is not
+// overridable by an environment variable or by a flag. It is what makes dcode
+// adoptable in an organisation, and it was the one layer nothing ever built —
+// SourceLocked was defined, ranked, and handled by Resolve, and no production
+// code path constructed it.
+func FileLayers(roots Roots, workspace, requirements string) ([]Layer, error) {
 	var out []Layer
-	for _, c := range []struct {
+	sources := []struct {
 		path   string
 		source Source
 	}{
 		{filepath.Join(roots.Config, ConfigFileName), SourceUser},
 		{filepath.Join(workspace, ".dcode", ConfigFileName), SourceProject},
-	} {
+	}
+	if requirements != "" {
+		sources = append(sources, struct {
+			path   string
+			source Source
+		}{requirements, SourceLocked})
+	}
+	for _, c := range sources {
 		layer, ok, err := LoadFile(c.path, c.source)
 		if err != nil {
 			return nil, err
 		}
-		if ok {
-			out = append(out, layer)
+		if !ok {
+			// A missing user or project file is the normal case. A missing
+			// requirements file that something explicitly named is not: "there
+			// is no policy" and "the policy failed to load" are different
+			// facts, and starting anyway would silently hand the user every
+			// permission the administrator meant to withhold.
+			if c.source == SourceLocked {
+				return nil, fmt.Errorf(
+					"config: the locked configuration at %s does not exist. "+
+						"Point DCODE_REQUIREMENTS_FILE at the right file, or unset it — "+
+						"starting without a policy that was asked for is not the same as having none",
+					c.path)
+			}
+			continue
 		}
+		out = append(out, layer)
 	}
 	return out, nil
 }

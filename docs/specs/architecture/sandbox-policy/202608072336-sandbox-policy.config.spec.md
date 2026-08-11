@@ -23,6 +23,7 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
+| `DCODE_REQUIREMENTS_FILE` | caminho | vazio | Configuração **travada** pelo administrador. Vazio procura `requirements.toml` na raiz de configuração e, não achando, não há camada travada — o caso normal de uma pessoa na própria máquina. Apontado explicitamente e ausente é **erro**: "não há política" e "a política não carregou" são fatos diferentes, e começar assim mesmo entregaria em silêncio toda permissão que o administrador quis reter. |
 | `DCODE_CONFIRM_WRITE` | lista | `.git/**`, `.env*`, `.dcode/**`, arquivos de lock | Caminhos cuja **escrita** pede confirmação mesmo dentro do workspace. Não é contenção — é atenção: são coisas que parecem workspace e não são de mexer. |
 | `DCODE_CONFIRM_READ` | lista | `.env*`, `**/*_rsa`, `**/credentials*` | Caminhos cuja **leitura** pede confirmação. |
 | `DCODE_CONFIRM_COMMAND` | lista | `rm -rf`, `git push`, `curl … \| sh` | Comandos que pedem confirmação. Regra que casa texto de comando é regra que se contorna sem querer — por isso ela só **escalona** o que já era permitido, e nunca resgata o que foi negado. |

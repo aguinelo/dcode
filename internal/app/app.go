@@ -186,7 +186,7 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 	if err != nil {
 		return config.Resolved{}, err
 	}
-	fileLayers, err := config.FileLayers(roots, workspace)
+	fileLayers, err := config.FileLayers(roots, workspace, requirementsPath(env, roots))
 	if err != nil {
 		return config.Resolved{}, err
 	}
@@ -926,4 +926,28 @@ func DoctrineAudit(s *Session) string {
 		}
 	}
 	return b.String()
+}
+
+// requirementsPath is where the administrator's locked configuration lives.
+//
+// It is read from the environment rather than from the configuration chain, and
+// it has to be: a locked file whose location the chain decides is a locked file
+// the user can move. The environment variable is set by whatever deployed the
+// machine — an MDM profile, a container image, a shell profile the user does
+// not own — and pointing it somewhere else is a decision at that level, not at
+// this one.
+//
+// Absent, there is no locked layer at all, which is the normal case for a
+// single user on their own laptop.
+func requirementsPath(env func(string) string, roots config.Roots) string {
+	if p := strings.TrimSpace(env("DCODE_REQUIREMENTS_FILE")); p != "" {
+		return p
+	}
+	// The default sits beside the user's configuration but is not the same
+	// file: an organisation drops it in, and nothing dcode does writes there.
+	p := filepath.Join(roots.Config, config.RequirementsFileName)
+	if _, err := os.Stat(p); err != nil {
+		return ""
+	}
+	return p
 }
