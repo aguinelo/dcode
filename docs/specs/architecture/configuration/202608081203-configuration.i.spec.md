@@ -121,10 +121,10 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 `internal/config/translate.go` — a verificação, que é código, não prompt:
 
-- [ ] `VerifyTools(text string, have []string) []Finding` — ferramenta citada conferida contra o registro do produto. Fato, não julgamento.
-- [ ] `ProbeCommands(text string, fs fs.FS) []Finding` — comando citado conferido por **presença de arquivo** (`package.json`, `go.mod`, `Makefile`).
-- [ ] `SourceDigest(files []string) string` — digest das origens, gravado no `DCODE.md` gerado.
-- [ ] `Diverged(dcodeMD string, fs fs.FS) ([]string, bool)` — nomeia **quais** arquivos mudaram desde a geração.
+- [x] `VerifyTools(text string, have []string) []Finding` — ferramenta citada conferida contra o registro do produto. Fato, não julgamento.
+- [x] `ProbeCommands(text string, fs fs.FS) []Finding` — comando citado conferido por **presença de arquivo** (`package.json`, `go.mod`, `Makefile`).
+- [x] `SourceDigest(fsys fs.FS, files []string) string` e `RenderDigest`, com digest **por arquivo** — digest das origens, gravado no `DCODE.md` gerado.
+- [x] `Diverged(dcodeMD string, fs fs.FS) ([]string, bool)` — nomeia **quais** arquivos mudaram desde a geração.
 
 **Testes obrigatórios:**
 - Guarda de importação: `translate.go` **não** importa `os/exec`. Comando de origem nunca é executado (RN-6.1).
@@ -135,8 +135,8 @@ Concluído o Passo 3, `202608080016-behavior-definition` deixa de ter pendência
 
 `internal/tui/commands.go`:
 
-- [ ] `InitPrompt` reescrito: traduzir, não resumir. Exige a seção de descarte no arquivo gerado.
-- [ ] Aviso de início de sessão pelo canal de **lembrete**, nunca no prefixo.
+- [x] `InitPrompt` reescrito: traduzir, não resumir. Exige a seção de descarte no arquivo gerado.
+- [x] Aviso de início de sessão pelo canal de **lembrete**, nunca no prefixo.
 
 > A guarda de importação é o mesmo desenho do Passo 7, e pelo mesmo motivo: "só rodo pra ver se funciona" é a tentação óbvia, e aqui ela executa instrução de repositório de terceiro dentro do workspace.
 

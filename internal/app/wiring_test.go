@@ -75,6 +75,8 @@ var wiringTable = []configOption{
 	{"BudgetNotice", "budget.notice", "Bool", "BudgetNotice"},
 
 	{"VerifyCommand", "verify.command", "String", ""},
+	{"InstructionNotice", "instruction.notice", "Bool", ""},
+	{"InstructionForeign", "instruction.foreign", "String", ""},
 	{"DoneTimeout", "done.timeout", "String", "DoneTimeout"},
 	{"DoneEnabled", "done.enabled", "Bool", "DoneEnabled"},
 	{"DoneFile", "done.file", "String", ""},

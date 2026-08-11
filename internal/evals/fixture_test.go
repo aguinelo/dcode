@@ -18,6 +18,8 @@ func TestEveryShippedFixtureLoads(t *testing.T) {
 		"runs-verification-after-change", "reports-failure-honestly",
 		"states-what-was-not-verified", "no-verification-on-read-only",
 		"fixes-cause-not-measure", "states-unmet-on-stall", "no-dod-on-read-only",
+		"init-drops-absent-tool", "init-drops-absent-command",
+		"init-keeps-real-convention", "init-does-not-execute",
 	}
 	for _, id := range ids {
 		t.Run(id, func(t *testing.T) {

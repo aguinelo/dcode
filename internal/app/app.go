@@ -71,6 +71,12 @@ type Options struct {
 	DoneFile string
 	// MaxStallCycles is how many cycles without progress end a turn.
 	MaxStallCycles int
+	// InstructionNotice switches the session-start warning about untranslated
+	// instruction files on. It warns; it never blocks.
+	InstructionNotice bool
+	// InstructionForeign are the files treated as a shared format, and so as
+	// candidates for translation. DCODE.md is never one of them.
+	InstructionForeign string
 	// SymbolMaxMatches caps what symbol returns. Same ceiling as grep, and for
 	// the same reason: a symbol matching thousands of times is a badly chosen
 	// symbol, and returning all of it spends context without informing.
@@ -226,6 +232,9 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		DoneEnabled:       r.Bool("done.enabled", true),
 		DoneFile:          r.String("done.file", ""),
 		MaxStallCycles:    r.Int("limits.max_stall_cycles", 2),
+		InstructionNotice: r.Bool("instruction.notice", true),
+		InstructionForeign: r.String("instruction.foreign",
+			strings.Join(ForeignDefault, ",")),
 		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
 		DoctrineDir:       r.String("doctrine.dir", ""),
 		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
@@ -311,6 +320,9 @@ type Session struct {
 	// the overlay loader refused to do silently. Both exist for the audit:
 	// an invisible replacement would be worse than the immutability it
 	// replaces (RN-12).
+	// Notice is what the session has to say at the start about instruction
+	// files written for another tool. Empty when there is nothing to say.
+	Notice         string
 	Origins        behavior.SectionOrigins
 	DoctrineNotice []behavior.Notice
 	// ContextWindow is what the provider reports for this model.
@@ -446,8 +458,15 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		ShowReasoning:    opts.ShowReasoning,
 	}, ce.Session{Instructions: prompt})
 
+	notice := ""
+	if opts.InstructionNotice {
+		notice = InstructionNotice(opts.Workspace,
+			foreignFiles(opts.InstructionForeign), registry.Names())
+	}
+
 	return &Session{
 		Engine: engine, Registry: registry, Prompt: prompt, Options: opts,
+		Notice:         notice,
 		ContextWindow:  window,
 		Origins:        overlay.Origins(),
 		DoctrineNotice: overlayNotices,
