@@ -28,6 +28,17 @@ type StandingGrants struct {
 	// something that then fails anyway is the worst of both answers — and it
 	// must not survive a restart, because that is what "once" means.
 	open bool
+	// closed is a refusal that lasts as long as this process.
+	//
+	// A shell command is opaque, so the question is true of nearly every one of
+	// them: without this, saying no would mean being asked again on the next
+	// command, and the one after. Answering the same question twenty times is
+	// the pattern that teaches people to stop reading it.
+	//
+	// Not written to disk, deliberately. A refusal that outlived the session
+	// would be a boundary the user closed once and then could not find — and
+	// the way out of it would be editing a file they do not know exists.
+	closed bool
 }
 
 // NetworkNow reports whether the network is permitted at this moment.
@@ -72,7 +83,13 @@ func (s *StandingGrants) Granted(req protocol.ApprovalRequest) protocol.Approval
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.grants.Network(s.Workspace) {
+	// A refusal answers too. The record is what the user decided, and "no" is a
+	// decision — asking again until they say yes is not a boundary, it is
+	// nagging.
+	if s.closed {
+		return protocol.ApprovalDeny
+	}
+	if s.open || s.grants.Network(s.Workspace) {
 		return protocol.ApprovalAllowProject
 	}
 	return ""
@@ -85,7 +102,16 @@ func (s *StandingGrants) Granted(req protocol.ApprovalRequest) protocol.Approval
 // answered; losing the file costs them being asked again next time, which is
 // the safe direction to fail in.
 func (s *StandingGrants) Remember(req protocol.ApprovalRequest, d protocol.ApprovalDecision) error {
-	if !rememberable(req) || !d.Grants() {
+	if !rememberable(req) {
+		return nil
+	}
+	if d == protocol.ApprovalDeny {
+		s.mu.Lock()
+		s.closed = true
+		s.mu.Unlock()
+		return nil
+	}
+	if !d.Grants() {
 		return nil
 	}
 

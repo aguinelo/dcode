@@ -631,6 +631,17 @@ func (p *program) onApprovalKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, p.resolve(id, protocol.ApprovalAllow)
 	case "A", "shift+a":
 		return p, p.resolve(id, protocol.ApprovalAllowSession)
+	case "P", "shift+p":
+		// Written down, and only offered where an answer can be. The two
+		// standing options take a capital: harder to press by accident, which
+		// is what the largest consequence deserves.
+		if standingScope(*p.model.Pending) {
+			return p, p.resolve(id, protocol.ApprovalAllowProject)
+		}
+	case "G", "shift+g":
+		if standingScope(*p.model.Pending) {
+			return p, p.resolve(id, protocol.ApprovalAllowAlways)
+		}
 	case "d", "enter", "esc":
 		// Enter denies. The safe action is the default and the least effort.
 		return p, p.resolve(id, protocol.ApprovalDeny)

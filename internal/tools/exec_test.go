@@ -2,41 +2,37 @@ package tools
 
 import "testing"
 
-// Regression: bash asked for network approval on every command, in a
-// configuration where the sandbox blocks the network at the OS level.
+// A shell command is opaque, so the worst case is what gets declared. There is
+// no reading of the string that answers whether this one reaches out: a build
+// resolves dependencies, a test suite pulls an image, a formatter checks for a
+// newer version.
 //
-// The prompt said "this would reach the network" about a command that could
-// not. Approving granted nothing — the command still could not resolve a host —
-// and denying stopped the whole command rather than its network access. The
-// user was answering a question that was not the one on screen.
+// This once depended on what the sandbox was built to permit, and the reasoning
+// was sound then: the OS blocked the network either way, so approving granted
+// nothing and denying stopped the whole command rather than its network access
+// — the user answered a question that was not the one on screen.
 //
-// A crossing the mechanism already prevents is a false alarm, not honesty.
-func TestBashDeclaresNetworkOnlyWhenTheSandboxWouldPermitIt(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		allowed bool
-	}{
-		{"blocked by the sandbox", false},
-		{"permitted by the sandbox", true},
+// That premise is gone. The sandbox is asked per command and a grant opens it,
+// so consent now means what it appears to mean, and the question is asked once
+// per project instead of once per command.
+func TestBashAlwaysDeclaresThatACommandMayReachTheNetwork(t *testing.T) {
+	for _, command := range []string{
+		"go test ./...", "ls", "echo hello", "curl https://example.com",
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			b := Bash{AllowNetwork: tc.allowed}
-			req, err := b.Declare([]byte(`{"command":"go test ./..."}`))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if req.Network != tc.allowed {
-				t.Errorf("declared network %v while the sandbox permits %v",
-					req.Network, tc.allowed)
-			}
-			// What is opaque about a shell command has not changed: it can
-			// still write, and the workspace boundary is what answers that.
-			if len(req.Paths) == 0 || !req.Paths[0].Write {
-				t.Error("a shell command must still declare that it writes")
-			}
-			if req.Command == "" {
-				t.Error("the command must reach the approval, or consent is blind")
-			}
-		})
+		req, err := Bash{}.Declare([]byte(`{"command":"` + command + `"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !req.Network {
+			t.Errorf("%q was declared unable to reach the network; nothing here can know that", command)
+		}
+		// What is opaque about a shell command has not changed: it can still
+		// write, and the workspace boundary is what answers that.
+		if len(req.Paths) == 0 || !req.Paths[0].Write {
+			t.Error("a shell command must still declare that it writes")
+		}
+		if req.Command == "" {
+			t.Error("the command must reach the approval, or consent is blind")
+		}
 	}
 }

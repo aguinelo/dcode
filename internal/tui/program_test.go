@@ -1199,3 +1199,66 @@ func TestAPasteArrivesWhole(t *testing.T) {
 		t.Errorf("input = %q", got)
 	}
 }
+
+// The network question is the one whose answer can be written down, so it is
+// the one that offers the two standing options.
+func TestTheNetworkApprovalOffersTheAnswersThatOutliveTheSession(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.Pending = &protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash", Command: "go test ./...",
+		BoundaryCrossed: "network",
+	}
+
+	screen := Render(p.model, DefaultGeometry(100, 30))
+	// It says what the answer does. "Allow this command" would promise
+	// something narrower than what saying yes actually opens.
+	if !strings.Contains(screen, "this project may reach the network") &&
+		!strings.Contains(screen, "project may reach the network") {
+		t.Errorf("the modal does not say the answer is about the project:\n%s", screen)
+	}
+	for _, key := range []string{"[P]", "[G]"} {
+		if !strings.Contains(screen, key) {
+			t.Errorf("the modal does not offer %s:\n%s", key, screen)
+		}
+	}
+
+	_, cmd := p.onApprovalKey(key("P"))
+	run(t, p, cmd)
+	if got := tr.resolvedDecisions(); len(got) != 1 || got[0] != protocol.ApprovalAllowProject {
+		t.Errorf("decisions = %v, want one allow_project", got)
+	}
+}
+
+// Everything else keeps the three answers it had. A standing grant over "write
+// outside the workspace" would be a permission given once for a reason nobody
+// records, and the path in that question is what makes it answerable.
+func TestAnyOtherCrossingOffersNoStandingAnswer(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.Pending = &protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "write", Command: "",
+		BoundaryCrossed: "filesystem_write",
+	}
+
+	screen := Render(p.model, DefaultGeometry(100, 30))
+	for _, key := range []string{"[P]", "[G]"} {
+		if strings.Contains(screen, key) {
+			t.Errorf("a crossing nobody can grant standing offered %s:\n%s", key, screen)
+		}
+	}
+
+	// And pressing them does nothing rather than resolving by accident.
+	_, first := p.onApprovalKey(key("P"))
+	_, second := p.onApprovalKey(key("G"))
+	run(t, p, first)
+	run(t, p, second)
+	if got := tr.resolvedDecisions(); len(got) != 0 {
+		t.Errorf("a key that is not offered resolved the approval: %v", got)
+	}
+}
+
+// resolvedDecisions returns what the client answered.
+func (f *fakeTransport) resolvedDecisions() []protocol.ApprovalDecision {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]protocol.ApprovalDecision(nil), f.resolved...)
+}

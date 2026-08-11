@@ -195,14 +195,16 @@ func TestNetworkAccessIsDeniedWithoutApprovalWhenTheNetworkIsOpen(t *testing.T) 
 	}
 }
 
-// Regression: with the network shut at the sandbox there is no crossing, so the
-// command is not gated on one — and it still cannot reach the network, because
-// the OS is what stops it rather than the prompt.
+// A shell command is opaque, so it declares that it may reach the network and
+// the user is asked once. With nobody willing to say yes, the command is
+// refused — and the refusal names the network rather than stopping the command
+// for a reason nobody can act on.
 //
-// The old behaviour asked on every single command and the answer changed
-// nothing: approving still could not resolve a host, and denying stopped the
-// whole command rather than its network access.
-func TestAShellCommandIsNotGatedOnACrossingTheSandboxPrevents(t *testing.T) {
+// This inverts an earlier rule, and the earlier rule was right at the time: the
+// network was shut at the sandbox, so there was no crossing to gate on, and
+// approving would have granted nothing. Now a grant opens the boundary for the
+// command being asked about, so the question is real and so is the answer.
+func TestAShellCommandIsRefusedWhenTheNetworkQuestionIsAnsweredNo(t *testing.T) {
 	ws := t.TempDir()
 	sess := wireSessionWith(t, ws, [][]string{
 		{frameToolCall("c1", "bash", `{"command":"curl -sS -m 5 https://example.com"}`), "[DONE]"},
@@ -219,11 +221,14 @@ func TestAShellCommandIsNotGatedOnACrossingTheSandboxPrevents(t *testing.T) {
 			result = m.ToolResult.Output
 		}
 	}
-	if strings.Contains(strings.ToLower(result), "denied") {
-		t.Errorf("nothing was crossed, so nothing should have been refused: %q", result)
+	if !strings.Contains(strings.ToLower(result), "denied") {
+		t.Errorf("the answer was no and the command ran anyway: %q", result)
 	}
-	// And the network is still unreachable — which is the invariant that
-	// actually matters, and it is the OS that holds it.
+	if !strings.Contains(strings.ToLower(result), "network") {
+		t.Errorf("the refusal does not say what was refused: %q", result)
+	}
+	// And the network is unreachable either way, which is the invariant that
+	// actually matters: the prompt is the question, the OS is the boundary.
 	if strings.Contains(result, "<!doctype") || strings.Contains(result, "<html") {
 		t.Errorf("the network must remain unreachable: %q", result)
 	}
@@ -283,7 +288,7 @@ func wireSessionNet(t *testing.T, ws string, turns [][]string, approver loop.App
 		tools.Read{}, tools.Write{}, tools.Edit{}, tools.Glob{}, tools.Grep{},
 		tools.Bash{
 			Runner:  sandbox.Runner{Sandbox: sb, Mode: policy.ModeWorkspaceWrite},
-			Workdir: ws, AllowNetwork: net,
+			Workdir: ws,
 		},
 		tools.Plan{},
 	)

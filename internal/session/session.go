@@ -224,7 +224,9 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, tim
 	// week. Checked before anything is registered, so nothing is ever pending
 	// for a crossing nobody needs to be asked about.
 	if s.Standing != nil {
-		if d := s.Standing.Granted(req); d.Grants() {
+		// Any recorded decision answers, including a refusal. "No" is a
+		// decision, and asking again until the answer changes is not a boundary.
+		if d := s.Standing.Granted(req); d.Valid() {
 			return d, nil
 		}
 	}
