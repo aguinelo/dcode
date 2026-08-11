@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/tools"
 )
 
@@ -108,15 +108,34 @@ func TestATruncatedReportSaysSo(t *testing.T) {
 // Without this the parent's ceiling is fiction: a turn could delegate its way
 // past any budget.
 func TestChildTokensAreDebitedFromTheParent(t *testing.T) {
-	e := New(Config{}, ce.Session{Instructions: "x"})
-	e.delegated.InputTokens = 900
-	e.delegated.OutputTokens = 100
+	e, _ := delegateEngine(t, [][]provider.StreamEvent{
+		{text("the child answer"), spent(500, 40)},
+		{text("the parent answer"), spent(11, 3)},
+	})
 
-	out := Outcome{}
-	out.Usage.InputTokens += e.delegated.InputTokens
-	out.Usage.OutputTokens += e.delegated.OutputTokens
-	if out.Usage.InputTokens != 900 || out.Usage.OutputTokens != 100 {
-		t.Fatal("the child's usage is not reaching the parent's accounting")
+	if _, err := e.Delegate(context.Background(), "where is it", "", DelegateLimits{MaxIterations: 3}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := e.Run(context.Background(), "go on")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The parent's own turn spent 11/3. Anything less than the sum means the
+	// child ran for free, and a ceiling a turn can delegate its way past is not
+	// a ceiling.
+	if out.Usage.InputTokens != 511 || out.Usage.OutputTokens != 43 {
+		t.Fatalf("parent usage = %d in / %d out, want 511/43 — the child spent 500/40",
+			out.Usage.InputTokens, out.Usage.OutputTokens)
+	}
+	// Debited once. Left standing, the same child would be charged again on
+	// every later turn of the parent.
+	again, err := e.Run(context.Background(), "and again")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Usage.InputTokens >= 500 {
+		t.Errorf("the next turn was charged %d again; the child is debited once", again.Usage.InputTokens)
 	}
 }
 
