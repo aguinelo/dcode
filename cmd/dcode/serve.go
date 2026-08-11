@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/aguinelo/dcode/internal/config"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -40,7 +42,7 @@ func runServe(args []string) error {
 	if err != nil {
 		return err
 	}
-	base, _, err := loadOptions(ws)
+	base, resolved, err := loadOptions(ws)
 	if err != nil {
 		return err
 	}
@@ -55,6 +57,7 @@ func runServe(args []string) error {
 		SocketPath:      path,
 		MaxSessions:     *maxSessions,
 		EventRetention:  *retention,
+		EventSpillDir:   spillDir(resolved),
 		ApprovalTimeout: *timeout,
 		Base:            base,
 	})
@@ -73,4 +76,21 @@ func runServe(args []string) error {
 		return err
 	}
 	return nil
+}
+
+// spillDir is where trimmed events are kept.
+//
+// Defaults to the state root rather than to nothing. Retention without a spill
+// is a hard horizon, and the failure it produces — a client reattaching to a
+// long session and being told the events expired — is one nobody would think to
+// switch a setting on to avoid, because it looks like the session broke.
+func spillDir(r config.Resolved) string {
+	if v := r.String("events.spill_dir", ""); v != "" {
+		return v
+	}
+	roots, err := config.DiscoverRoots(os.Getenv)
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(roots.State, "events")
 }

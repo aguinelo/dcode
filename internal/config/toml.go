@@ -61,6 +61,7 @@ var KnownKeys = map[string]string{
 	"done.timeout":                  "DCODE_DONE_TIMEOUT",
 	"limits.max_stall_cycles":       "DCODE_MAX_STALL_CYCLES",
 	"ui.lang":                       "DCODE_LANG",
+	"events.spill_dir":              "DCODE_EVENT_SPILL",
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
 	"doctrine.enabled":              "DCODE_DOCTRINE_ENABLED",
 	"doctrine.dir":                  "DCODE_DOCTRINE_DIR",

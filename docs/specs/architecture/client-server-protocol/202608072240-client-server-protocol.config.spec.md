@@ -14,6 +14,11 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
+| `DCODE_EVENT_SPILL` | caminho | `$DCODE_STATE_DIR/events` | Onde os eventos que saem da memória são guardados. Retenção **sem** transbordo é horizonte duro: um cliente que demorou demais para voltar recebe `events_expired`, e a sessão que ele acompanhava fica ilegível por um motivo que não tem nada a ver com a sessão. Vazio desliga e devolve o comportamento antigo. |
+
+> O log de evento **é** a sessão — o cliente guarda um número e todo o resto vive no servidor, e é isso que torna reconectar indistinguível de ter acompanhado ao vivo. Um horizonte de retenção quebra exatamente essa propriedade, e quebra em silêncio: o usuário vê uma sessão que "sumiu".
+>
+> Nada é descartado se não puder ser guardado. Memória crescendo é visível e recuperável; buraco silencioso no meio da sessão não é nenhum dos dois.
 
 ## 3. Aprovação e sandbox
 
