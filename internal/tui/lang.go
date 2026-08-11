@@ -73,7 +73,6 @@ type Strings struct {
 	VerifiedLabel    string
 	NotVerifiedLabel string
 	UnverifiedLabel  string
-	ContextLeft      string
 
 	// Completion report
 	VerifiedSummary     string // takes a count
@@ -133,11 +132,9 @@ type Strings struct {
 	CopyEmpty    string
 
 	// Empty state and general
-	EmptyHint      string
-	Interrupt      string
-	Queued         string
-	NoPlan         string
-	SessionCleared string
+	Interrupt string
+	Queued    string
+	NoPlan    string
 }
 
 // catalogue is embedded, not loaded.
@@ -151,7 +148,6 @@ var catalogue = map[Lang]Strings{
 		VerifiedLabel:    "verified",
 		NotVerifiedLabel: "NOT VERIFIED",
 		UnverifiedLabel:  "unverified",
-		ContextLeft:      "context",
 
 		VerifiedSummary:     "verified — %d %s passed",
 		NotVerifiedSummary:  "NOT verified — %s did not pass",
@@ -226,21 +222,18 @@ Environment:
   DCODE_SOCKET             daemon socket path
 `,
 
-		CopySelected:   "%d line(s) selected",
-		CopyKeys:       "↑ ↓ extend · y copy · esc leave",
-		CopyDone:       "copied to the clipboard",
-		CopyEmpty:      "nothing selected",
-		EmptyHint:      "Ask for something, or type / for commands.",
-		Interrupt:      "esc interrupts",
-		Queued:         "queued",
-		NoPlan:         "There is no plan yet.",
-		SessionCleared: "New session started.",
+		CopySelected: "%d line(s) selected",
+		CopyKeys:     "↑ ↓ extend · y copy · esc leave",
+		CopyDone:     "copied to the clipboard",
+		CopyEmpty:    "nothing selected",
+		Interrupt:    "esc interrupts",
+		Queued:       "queued",
+		NoPlan:       "There is no plan yet.",
 	},
 	PtBR: {
 		VerifiedLabel:    "conferido",
 		NotVerifiedLabel: "NÃO CONFERIDO",
 		UnverifiedLabel:  "sem conferir",
-		ContextLeft:      "contexto",
 
 		VerifiedSummary:     "conferido — %d %s passaram",
 		NotVerifiedSummary:  "NÃO conferido — %s não passou",
@@ -315,15 +308,13 @@ Ambiente:
   DCODE_SOCKET             caminho do socket do daemon
 `,
 
-		CopySelected:   "%d linha(s) selecionada(s)",
-		CopyKeys:       "↑ ↓ estende · y copia · esc sai",
-		CopyDone:       "copiado para a área de transferência",
-		CopyEmpty:      "nada selecionado",
-		EmptyHint:      "Peça alguma coisa, ou digite / para ver os comandos.",
-		Interrupt:      "esc interrompe",
-		Queued:         "na fila",
-		NoPlan:         "Ainda não há plano.",
-		SessionCleared: "Nova sessão iniciada.",
+		CopySelected: "%d linha(s) selecionada(s)",
+		CopyKeys:     "↑ ↓ estende · y copia · esc sai",
+		CopyDone:     "copiado para a área de transferência",
+		CopyEmpty:    "nada selecionado",
+		Interrupt:    "esc interrompe",
+		Queued:       "na fila",
+		NoPlan:       "Ainda não há plano.",
 	},
 }
 
