@@ -1,6 +1,10 @@
 package provider
 
-import "time"
+import (
+	"strconv"
+	"strings"
+	"time"
+)
 
 // Backoff is how long to wait before trying again.
 //
@@ -63,4 +67,42 @@ func (b Backoff) Wait(attempt int, e *ProviderError) (time.Duration, bool) {
 		d = max
 	}
 	return d, true
+}
+
+// RetryAfterOf reads an HTTP Retry-After value.
+//
+// Both forms the header allows: delta-seconds, and an HTTP date. The date form
+// is why this takes a clock — a deadline is only a wait relative to now, and a
+// date already past is not a wait at all.
+//
+// Anything absent, unparseable or negative answers zero, which the backoff
+// reads as "no instruction" and falls back to its own schedule. An absent
+// signal must not become a number: a wait invented from a header nobody sent is
+// worse than the default it replaced.
+func RetryAfterOf(header string, now time.Time) time.Duration {
+	h := strings.TrimSpace(header)
+	if h == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(h); err == nil {
+		if secs <= 0 {
+			return 0
+		}
+		return time.Duration(secs) * time.Second
+	}
+	// The three layouts the HTTP date form allows, written out rather than
+	// reached for through net/http: this package declares that its standard
+	// suite runs with the network off, and the cheapest way to keep that true
+	// is not to import the thing that dials.
+	for _, layout := range []string{time.RFC1123, time.RFC850, time.ANSIC} {
+		when, err := time.Parse(layout, h)
+		if err != nil {
+			continue
+		}
+		if d := when.Sub(now); d > 0 {
+			return d
+		}
+		return 0
+	}
+	return 0
 }

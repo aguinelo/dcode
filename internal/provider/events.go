@@ -147,14 +147,21 @@ func classify(err error) *ProviderError {
 
 // ClassifyStatus maps an HTTP status to a class. Shared by every transport so
 // the loop sees one classification regardless of dialect.
-func ClassifyStatus(status int, body string) *ProviderError {
+// retryAfter is the raw Retry-After header, empty when the response had none.
+// Threaded through rather than attached by the caller afterwards so the
+// invariant is structural: only the rate-limit branch can carry a wait, and no
+// later caller can attach one to an error that has none to give.
+func ClassifyStatus(status int, body, retryAfter string) *ProviderError {
 	switch {
 	case status == 401 || status == 403:
 		return &ProviderError{Class: ErrClassAuth, Message: "authentication rejected"}
 	case status == 402:
 		return &ProviderError{Class: ErrClassQuota, Message: "quota or billing limit reached"}
 	case status == 429:
-		return &ProviderError{Class: ErrClassRateLimit, Message: "rate limited", Retryable: true}
+		return &ProviderError{
+			Class: ErrClassRateLimit, Message: "rate limited", Retryable: true,
+			RetryAfter: RetryAfterOf(retryAfter, time.Now()),
+		}
 	case status == 413:
 		return &ProviderError{Class: ErrClassContextSize, Message: "request exceeds the context window", Retryable: true}
 	case status >= 400 && status < 500:

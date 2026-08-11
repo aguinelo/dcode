@@ -76,3 +76,51 @@ func TestTheClassesDecideSendsToRetryAreRetryable(t *testing.T) {
 		}
 	}
 }
+
+// The server says how long to wait and the product declares it obeys: Wait
+// honours RetryAfter over its own backoff. Nothing ever set the field, so on a
+// 429 the client picked its own delay and retried into the same wall — polite
+// in the type system, impolite on the wire.
+func TestRetryAfterIsReadFromTheHeader(t *testing.T) {
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name, header string
+		want         time.Duration
+	}{
+		{"delta seconds", "30", 30 * time.Second},
+		{"zero is no instruction", "0", 0},
+		{"http date", "Tue, 11 Aug 2026 12:00:45 GMT", 45 * time.Second},
+		// A date already past is not a wait, and a negative duration would run
+		// the backoff backwards.
+		{"a date in the past", "Tue, 11 Aug 2026 11:59:00 GMT", 0},
+		{"absent", "", 0},
+		{"nonsense", "soon", 0},
+		{"negative", "-5", 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := RetryAfterOf(c.header, now); got != c.want {
+				t.Errorf("RetryAfterOf(%q) = %v, want %v", c.header, got, c.want)
+			}
+		})
+	}
+}
+
+// The invariant, and it is structural rather than a convention: only the
+// rate-limit branch can carry the field, so no later caller can attach a wait
+// to an error that does not have one to give.
+func TestOnlyARateLimitCarriesARetryAfter(t *testing.T) {
+	for _, status := range []int{401, 402, 413, 400, 404, 500, 503} {
+		pe := ClassifyStatus(status, "body", "30")
+		if pe != nil && pe.RetryAfter != 0 {
+			t.Errorf("status %d produced %v with RetryAfter %v", status, pe.Class, pe.RetryAfter)
+		}
+	}
+	pe := ClassifyStatus(429, "body", "30")
+	if pe.Class != ErrClassRateLimit || pe.RetryAfter != 30*time.Second {
+		t.Errorf("429 = %v with RetryAfter %v, want rate_limit with 30s", pe.Class, pe.RetryAfter)
+	}
+	if pe := ClassifyStatus(429, "body", ""); pe.RetryAfter != 0 {
+		t.Errorf("a 429 with no header carries %v; absent must not become a number", pe.RetryAfter)
+	}
+}
