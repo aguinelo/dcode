@@ -25,12 +25,6 @@ type Bash struct {
 	Runner  Runner
 	Workdir string
 	Timeout time.Duration
-	// AllowNetwork mirrors what the sandbox was built to permit.
-	//
-	// It belongs here because Declare has to state what is possible, and what
-	// is possible is a property of the sandbox that will run the command — not
-	// of the command, which is opaque either way.
-	AllowNetwork bool
 }
 
 // BashInput is the argument shape.
@@ -60,19 +54,21 @@ func (b Bash) Declare(input json.RawMessage) (policy.Request, error) {
 	if err := decode(b.Name(), input, &in); err != nil {
 		return policy.Request{}, err
 	}
-	// A shell command is opaque, so the worst case is what gets declared — but
-	// the worst case is bounded by the sandbox that will run it, and outside
-	// full-access a confining sandbox is guaranteed to exist.
+	// A shell command is opaque, so the worst case is what gets declared. A
+	// build resolves dependencies, a test suite pulls an image, a formatter
+	// checks for a newer version: there is no reading of the string that
+	// answers whether this one reaches out.
 	//
-	// Declaring a crossing the mechanism already prevents is a false alarm, not
-	// honesty: it asked for consent to reach the network on every command, in a
-	// configuration where the network was blocked at the OS level. Approving
-	// granted nothing and denying stopped the whole command, so the answer never
-	// did what the question said.
+	// This used to be declared only when the sandbox already permitted the
+	// network, and the reasoning was sound at the time: approving granted
+	// nothing, because the OS blocked it either way, so the answer did not do
+	// what the question said. That premise is gone. The sandbox now asks per
+	// command and a grant opens it, so consent means what it appears to mean —
+	// and the question is asked once per project rather than once per command.
 	return policy.Request{
 		Tool:    b.Name(),
 		Command: in.Command,
-		Network: b.AllowNetwork,
+		Network: true,
 		Paths:   []policy.Access{{Path: ".", Write: true}},
 	}, nil
 }

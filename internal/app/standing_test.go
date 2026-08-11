@@ -207,3 +207,40 @@ func TestAPreviouslyRecordedGrantAnswersOnItsOwn(t *testing.T) {
 		t.Error("the recorded grant did not reach the next session")
 	}
 }
+
+// Saying no is a decision, and asking again until the answer changes is not a
+// boundary — it is nagging. A shell command is opaque, so the question is true
+// of nearly every one of them: without this, one refusal would mean answering
+// the same question on every command until you gave in.
+func TestARefusalIsNotAskedAgainForTheRestOfTheSession(t *testing.T) {
+	s, _ := NewStandingGrants(t.TempDir(), t.TempDir())
+
+	if d := s.Granted(netReq()); d.Valid() {
+		t.Fatalf("something was already decided: %q", d)
+	}
+	if err := s.Remember(netReq(), protocol.ApprovalDeny); err != nil {
+		t.Fatal(err)
+	}
+	if d := s.Granted(netReq()); d != protocol.ApprovalDeny {
+		t.Errorf("after saying no the answer is %q; the question comes back", d)
+	}
+	if s.NetworkNow() {
+		t.Error("a refusal opened the boundary")
+	}
+}
+
+// And it is NOT written down. A refusal that outlived the session would be a
+// boundary the user closed once and then could not find, whose only way out is
+// editing a file they do not know exists.
+func TestARefusalDoesNotOutliveTheSession(t *testing.T) {
+	root, ws := t.TempDir(), t.TempDir()
+	first, _ := NewStandingGrants(root, ws)
+	if err := first.Remember(netReq(), protocol.ApprovalDeny); err != nil {
+		t.Fatal(err)
+	}
+
+	next, _ := NewStandingGrants(root, ws)
+	if d := next.Granted(netReq()); d.Valid() {
+		t.Errorf("the refusal survived into a new session as %q", d)
+	}
+}

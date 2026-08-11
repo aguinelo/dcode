@@ -394,9 +394,6 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			Runner:  sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
 			Workdir: opts.Workspace,
 			Timeout: 120 * time.Second,
-			// The same value the sandbox was built with, so what the tool
-			// declares and what the mechanism enforces cannot disagree.
-			AllowNetwork: opts.AllowNetwork,
 		},
 		tools.Plan{},
 	}

@@ -428,7 +428,7 @@ func TestDeclareTouchesNothing(t *testing.T) {
 // by the sandbox that will run it, because a crossing the mechanism already
 // prevents is a false alarm rather than honesty.
 func TestBashDeclaresTheWorstCaseTheSandboxAllows(t *testing.T) {
-	req, err := (Bash{AllowNetwork: true}).Declare(json.RawMessage(`{"command":"rm -rf /"}`))
+	req, err := (Bash{}).Declare(json.RawMessage(`{"command":"rm -rf /"}`))
 	if err != nil {
 		t.Fatal(err)
 	}

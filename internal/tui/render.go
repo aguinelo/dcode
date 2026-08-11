@@ -675,6 +675,28 @@ func renderCaret(m Model, p Palette) string {
 // The screen it takes over is deliberate: as a line in the stream it would
 // scroll past during a long turn and be approved unread. It is also the only
 // moment the user *must* read, so it gets more care than the rest.
+// standingScope reports the crossings whose answer can outlive the session.
+//
+// Only the network. A standing answer to "write outside the workspace" would be
+// a grant over the whole filesystem given once, months ago, for a reason nobody
+// records — and the path in that question is what makes it answerable at all.
+func standingScope(req protocol.ApprovalRequest) bool {
+	return req.BoundaryCrossed == "network"
+}
+
+// approvalKeys lists the answers available for this crossing.
+//
+// Deny first and as the default: the safe action is the one that costs least
+// effort. The capitals are harder to press by accident, which is right for the
+// options with the largest consequence — and the two that are written down are
+// the two that need the most deliberate keystroke.
+func approvalKeys(req protocol.ApprovalRequest) string {
+	if standingScope(req) {
+		return "  [d] no   [a] once   [P] this project   [G] always"
+	}
+	return "  [d] deny   [a] allow   [A] whole session"
+}
+
 func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 	w := g.Width - 8
 	if w > 60 {
@@ -689,6 +711,15 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 		"│" + pad("", w) + "│",
 		"│" + pad("  "+req.Tool+" crosses: "+req.BoundaryCrossed, w) + "│",
 	}
+	// The network question is about the PROJECT, not this command. A shell
+	// command is opaque, so answering yes opens the boundary for everything
+	// that runs here — saying "allow this command" would promise something
+	// narrower than what the answer does.
+	if standingScope(req) {
+		lines = append(lines,
+			"│"+pad("", w)+"│",
+			"│"+pad("  Commands in this project may reach the network.", w)+"│")
+	}
 	if req.Command != "" {
 		// The rendered command, never a description. Asking for consent to
 		// "access the network" without showing what runs is asking blind.
@@ -702,7 +733,7 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 		// Deny first and as the default: the safe action is the one that costs
 		// least effort. The capital A is harder to press by accident, which is
 		// right for the option with the largest consequence.
-		"│"+pad("  [d] deny   [a] allow   [A] whole session", w)+"│",
+		"│"+pad(approvalKeys(req), w)+"│",
 		"│"+pad("  Enter denies.", w)+"│",
 		"│"+pad("", w)+"│",
 		"└"+strings.Repeat("─", w)+"┘",
