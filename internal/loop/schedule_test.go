@@ -31,7 +31,7 @@ func TestIndependentReadsShareAGroup(t *testing.T) {
 		exec(0, "read", rd("a.go")),
 		exec(1, "read", rd("b.go")),
 		exec(2, "read", rd("c.go")),
-	}, 4)
+	}, 4, nil)
 	if len(groups) != 1 || len(groups[0]) != 3 {
 		t.Fatalf("want one group of three, got %v", shape(groups))
 	}
@@ -47,7 +47,7 @@ func TestConflictingPathsAreSeparated(t *testing.T) {
 		{"write then read of the same path", []ToolExecution{exec(0, "edit", wr("a.go")), exec(1, "read", rd("a.go"))}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			groups := Schedule(tc.execs, 4)
+			groups := Schedule(tc.execs, 4, nil)
 			if len(groups) != 2 {
 				t.Errorf("racing calls must not share a group, got %v", shape(groups))
 			}
@@ -59,7 +59,7 @@ func TestWritesToDifferentPathsCanShareAGroup(t *testing.T) {
 	groups := Schedule([]ToolExecution{
 		exec(0, "edit", wr("a.go")),
 		exec(1, "edit", wr("b.go")),
-	}, 4)
+	}, 4, nil)
 	if len(groups) != 1 {
 		t.Errorf("independent writes are safe together, got %v", shape(groups))
 	}
@@ -77,7 +77,7 @@ func TestSystemCommandsAlwaysRunAlone(t *testing.T) {
 		exec(0, "read", rd("a.go")),
 		sys,
 		exec(2, "read", rd("b.go")),
-	}, 4)
+	}, 4, nil)
 
 	for _, g := range groups {
 		if len(g) > 1 {
@@ -98,7 +98,7 @@ func TestTwoSystemCommandsNeverOverlap(t *testing.T) {
 		return ToolExecution{Index: i, Call: ce.ToolCall{Name: "bash"},
 			Declare: policy.Request{Tool: "bash", Command: "echo"}}
 	}
-	groups := Schedule([]ToolExecution{mk(0), mk(1)}, 4)
+	groups := Schedule([]ToolExecution{mk(0), mk(1)}, 4, nil)
 	if len(groups) != 2 {
 		t.Errorf("got %v", shape(groups))
 	}
@@ -108,7 +108,7 @@ func TestTwoSystemCommandsNeverOverlap(t *testing.T) {
 // nothing can be scheduled alongside it.
 func TestADeclarationFailureRunsAlone(t *testing.T) {
 	bad := ToolExecution{Index: 1, Call: ce.ToolCall{Name: "x"}, Err: context.Canceled}
-	groups := Schedule([]ToolExecution{exec(0, "read", rd("a")), bad, exec(2, "read", rd("b"))}, 4)
+	groups := Schedule([]ToolExecution{exec(0, "read", rd("a")), bad, exec(2, "read", rd("b"))}, 4, nil)
 	if len(groups) != 3 {
 		t.Errorf("got %v", shape(groups))
 	}
@@ -119,7 +119,7 @@ func TestParallelismLimitIsRespected(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		execs = append(execs, exec(i, "read", rd(string(rune('a'+i))+".go")))
 	}
-	groups := Schedule(execs, 3)
+	groups := Schedule(execs, 3, nil)
 	for _, g := range groups {
 		if len(g) > 3 {
 			t.Errorf("group of %d exceeds the limit of 3", len(g))
@@ -133,7 +133,7 @@ func TestParallelismLimitIsRespected(t *testing.T) {
 func TestZeroParallelismSerialises(t *testing.T) {
 	groups := Schedule([]ToolExecution{
 		exec(0, "read", rd("a")), exec(1, "read", rd("b")),
-	}, 0)
+	}, 0, nil)
 	if len(groups) != 2 {
 		t.Errorf("a limit of zero must mean one at a time, got %v", shape(groups))
 	}
@@ -144,9 +144,9 @@ func TestScheduleIsDeterministic(t *testing.T) {
 		exec(0, "read", rd("a")), exec(1, "edit", wr("a")),
 		exec(2, "read", rd("b")), exec(3, "read", rd("c")),
 	}
-	first := shape(Schedule(execs, 4))
+	first := shape(Schedule(execs, 4, nil))
 	for i := 0; i < 50; i++ {
-		if got := shape(Schedule(execs, 4)); !equal(got, first) {
+		if got := shape(Schedule(execs, 4, nil)); !equal(got, first) {
 			t.Fatalf("run %d differs: %v vs %v", i, got, first)
 		}
 	}
@@ -157,7 +157,7 @@ func TestScheduleKeepsEmissionOrder(t *testing.T) {
 		exec(0, "read", rd("a")), exec(1, "edit", wr("a")), exec(2, "read", rd("b")),
 	}
 	var seen []int
-	for _, g := range Schedule(execs, 4) {
+	for _, g := range Schedule(execs, 4, nil) {
 		for _, e := range g {
 			seen = append(seen, e.Index)
 		}
@@ -170,7 +170,7 @@ func TestScheduleKeepsEmissionOrder(t *testing.T) {
 }
 
 func TestEmptyScheduleIsEmpty(t *testing.T) {
-	if got := Schedule(nil, 4); len(got) != 0 {
+	if got := Schedule(nil, 4, nil); len(got) != 0 {
 		t.Errorf("got %v", shape(got))
 	}
 }
@@ -364,5 +364,66 @@ func TestSortedPlanIsStable(t *testing.T) {
 	// The input must not be reordered under the caller.
 	if in[0].ID != 3 {
 		t.Error("SortedPlan mutated its argument")
+	}
+}
+
+// The fourth row of table 4.2, and the only one that was never implemented: a
+// call needing approval runs alone, because a user's decision is sequential by
+// nature.
+//
+// Two escalating calls in one group means two questions asked at once about
+// work already in flight. The client shows one; the other waits behind it,
+// invisible, having already been started. Whichever the user answers, they
+// answered it without being shown the other — and "allow" on a batch nobody
+// described is not consent.
+func TestACallNeedingApprovalRunsAlone(t *testing.T) {
+	escalating := map[string]bool{"reach": true}
+	needsApproval := func(e ToolExecution) bool { return escalating[e.Declare.Tool] }
+
+	groups := Schedule([]ToolExecution{
+		exec(0, "read", rd("a")),
+		exec(1, "read", rd("b")),
+		exec(2, "reach", rd("/etc/passwd")),
+		exec(3, "reach", rd("/etc/hosts")),
+		exec(4, "read", rd("c")),
+	}, 4, needsApproval)
+
+	for _, g := range groups {
+		asking := 0
+		for _, e := range g {
+			if needsApproval(e) {
+				asking++
+			}
+		}
+		if asking > 0 && len(g) > 1 {
+			t.Errorf("a call needing approval shares a group with %d others; the user is "+
+				"asked about work already running beside it", len(g)-1)
+		}
+		if asking > 1 {
+			t.Errorf("%d approvals in one group; the questions would be asked at once", asking)
+		}
+	}
+
+	// And the reads either side are still allowed to be parallel: isolating the
+	// question must not serialise the whole batch, or approval would quietly
+	// become a performance setting.
+	var widest int
+	for _, g := range groups {
+		if len(g) > widest {
+			widest = len(g)
+		}
+	}
+	if widest < 2 {
+		t.Error("nothing ran in parallel; isolating the approval serialised the batch")
+	}
+}
+
+// Without a predicate the scheduler behaves exactly as before. The engine is
+// the only thing that can evaluate a verdict, and a Schedule that demanded one
+// would put policy inside a function whose whole job is ordering.
+func TestSchedulingWithoutAPredicateIsUnchanged(t *testing.T) {
+	execs := []ToolExecution{exec(0, "read", rd("a")), exec(1, "read", rd("b"))}
+	if got := Schedule(execs, 4, nil); len(got) != 1 || len(got[0]) != 2 {
+		t.Fatalf("nil predicate changed the grouping: %v", shape(got))
 	}
 }
