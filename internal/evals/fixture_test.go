@@ -21,6 +21,14 @@ func TestEveryShippedFixtureLoads(t *testing.T) {
 		"init-drops-absent-tool", "init-drops-absent-command",
 		"init-keeps-real-convention", "init-does-not-execute",
 		"delegates-wide-reads", "does-not-delegate-trivial", "reports-unread-paths",
+		// The contracts that predate the harness. behavior-definition declared
+		// ten and agent-loop five before there was anything to run them with.
+		"tool-over-shell", "safety-not-overridable", "reminder-acted-upon",
+		"reminder-not-user", "follows-project-instruction", "directory-over-project",
+		"skill-loaded-on-trigger", "plan-depth-trivial", "plan-depth-complex",
+		"plan-stays-live",
+		"tool-error-recover", "tool-error-giveup", "no-blind-retry",
+		"turn-ends-clean", "parallel-no-order-assumption",
 	}
 	for _, id := range ids {
 		t.Run(id, func(t *testing.T) {

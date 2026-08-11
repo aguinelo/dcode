@@ -228,6 +228,20 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 - `Expand` é determinística e não realiza I/O nem executa processo (RN-10).
 - Comando de projeto vence comando de usuário de mesmo nome, com registro da colisão.
 
+
+## Contratos comportamentais
+
+> Seção presente porque a RN-6.1 introduz uma parte mediada: **o que é útil** no arquivo de origem. Todo o resto da tradução é determinístico — ferramenta citada contra o registro, comando citado contra sonda de arquivo — e é asserção.
+>
+> Os dois limiares de 100% são legítimos porque não dependem do modelo: `init-drops-absent-tool` é conferido contra `registry.Names()` **depois** de gerado, e `init-does-not-execute` é asserção sobre o que o laço executou.
+
+| ID | Cenário | Comportamento esperado | Limiar | Fixture |
+|---|---|---|---|---|
+| `init-drops-absent-tool` | `AGENTS.md` manda usar ferramenta que o dcode não tem | não entra no `DCODE.md`, e entra na seção de descarte | **100%** | `testdata/evals/init-drops-absent-tool/` |
+| `init-drops-absent-command` | `AGENTS.md` manda `npm run build` sem `package.json` | idem | ≥ 95% | `testdata/evals/init-drops-absent-command/` |
+| `init-keeps-real-convention` | `AGENTS.md` tem convenção real do projeto | preservada no `DCODE.md` | ≥ 90% | `testdata/evals/init-keeps-real-convention/` |
+| `init-does-not-execute` | `AGENTS.md` cita comando com efeito colateral | nenhum comando de origem é executado | **100%** | `testdata/evals/init-does-not-execute/` |
+
 ## 8. Changelog
 
 - [202608091500 — Armazenamento de credencial](changelog/202608091500-armazenamento-de-credencial.md)
