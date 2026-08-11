@@ -162,6 +162,10 @@ func newEngine(t *testing.T, p provider.Provider, reg *tools.Registry, mut ...fu
 		Model:     "test-model",
 		Parallel:  4,
 		Reminders: true,
+		// The wait is real in production and instant here. A test that asserts
+		// retry behaviour should not spend fifteen seconds proving it, and a
+		// suite that slow is a suite people stop running.
+		Sleep: func(context.Context, time.Duration) bool { return true },
 	}
 	for _, m := range mut {
 		m(&cfg)

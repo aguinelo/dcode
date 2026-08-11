@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
@@ -70,6 +71,9 @@ func TestStreamSetupFailureIsClassified(t *testing.T) {
 				Mode:     policy.ModeWorkspaceWrite,
 				Policy:   policy.PolicyOnRequest,
 				Model:    "m",
+				// Instant, so a test of classification does not spend the real
+				// backoff proving it.
+				Sleep: func(context.Context, time.Duration) bool { return true },
 			}, ce.Session{Instructions: "You are dcode."})
 
 			out, runErr := e.Run(context.Background(), "go")
@@ -258,5 +262,84 @@ func TestEachTurnGetsItsOwnID(t *testing.T) {
 	// And history keeps growing rather than restarting.
 	if len(e.Session().History) < 4 {
 		t.Errorf("history should accumulate across turns, got %d", len(e.Session().History))
+	}
+}
+
+// A rate limit and a dropped connection were both falling through to abort:
+// Decide classified them as wait and retry, and the loop's switch had no arm
+// for either. A 429 ended the turn, with the work already done in it lost.
+func TestARetryableFailureIsRetriedBeforeGivingUp(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  *provider.ProviderError
+	}{
+		{"rate limit", &provider.ProviderError{Class: provider.ErrClassRateLimit, Retryable: true}},
+		{"transport", &provider.ProviderError{Class: provider.ErrClassTransport, Retryable: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ws := t.TempDir()
+			res, err := policy.NewResolver(ws)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := &failingProvider{err: tc.err}
+			waits := 0
+			e := New(Config{
+				Provider: p,
+				Tools:    tools.NewRegistry(),
+				State:    tools.NewState(res, tools.DefaultLimits()),
+				Emitter:  newRecorder(),
+				Limits:   DefaultLimits(),
+				Mode:     policy.ModeWorkspaceWrite,
+				Policy:   policy.PolicyOnRequest,
+				Model:    "m",
+				Sleep: func(context.Context, time.Duration) bool {
+					waits++
+					return true
+				},
+			}, ce.Session{Instructions: "You are dcode."})
+
+			out, runErr := e.Run(context.Background(), "go")
+			if runErr == nil {
+				t.Fatal("a failure that never clears must still surface")
+			}
+			if out.Reason != protocol.StopError {
+				t.Errorf("reason = %q, want error once the attempts run out", out.Reason)
+			}
+			if waits == 0 {
+				t.Fatal("nothing waited: a retryable failure went straight to abort, which is the defect")
+			}
+			if waits >= provider.DefaultBackoff().Tries {
+				t.Errorf("waited %d times, more than the policy allows", waits)
+			}
+		})
+	}
+}
+
+// A user who asked to stop should not sit through a backoff they cannot see.
+func TestAnInterruptDuringBackoffEndsTheTurn(t *testing.T) {
+	ws := t.TempDir()
+	res, err := policy.NewResolver(ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := New(Config{
+		Provider: &failingProvider{err: &provider.ProviderError{
+			Class: provider.ErrClassTransport, Retryable: true,
+		}},
+		Tools:   tools.NewRegistry(),
+		State:   tools.NewState(res, tools.DefaultLimits()),
+		Emitter: newRecorder(),
+		Limits:  DefaultLimits(),
+		Mode:    policy.ModeWorkspaceWrite,
+		Policy:  policy.PolicyOnRequest,
+		Model:   "m",
+		// The wait is where the interruption lands.
+		Sleep: func(context.Context, time.Duration) bool { return false },
+	}, ce.Session{Instructions: "You are dcode."})
+
+	out, _ := e.Run(context.Background(), "go")
+	if out.Reason != protocol.StopInterrupted {
+		t.Fatalf("reason = %q, want interrupted", out.Reason)
 	}
 }

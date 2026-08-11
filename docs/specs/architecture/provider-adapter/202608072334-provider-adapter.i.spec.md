@@ -93,7 +93,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 `internal/provider/retry.go`
 
 - [ ] Mapeamento de cada erro do provedor para `ErrorClass`, com transcript de erro gravado por classe.
-- [ ] Recuo exponencial com `RetryBaseDelay` e teto `RetryMaxDelay`.
+- [x] Recuo exponencial com `RetryBaseDelay` e teto `RetryMaxDelay`.
 - [ ] `rate_limit` usa `RetryAfter` do provedor, ignorando o recuo.
 - [ ] `auth`, `quota` e `bad_request` nunca repetem.
 
