@@ -15,6 +15,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/tui"
 	"github.com/aguinelo/dcode/internal/version"
 )
 
@@ -112,37 +113,15 @@ func printConfig(r config.Resolved, key string) error {
 	return nil
 }
 
+// usage prints the CLI help in the interface language.
+//
+// Resolved here rather than passed in, because usage runs before anything else
+// exists — including the configuration chain, when the argument is bad enough.
+// It is the one place in the command layer that reads the environment for this,
+// and it is the earliest thing that has to work.
 func usage() {
-	fmt.Fprintf(os.Stderr, `dcode %s — an agentic coding harness
-
-Usage:
-  dcode                      open the terminal interface
-  dcode [flags] <task>       run one task and exit
-  dcode serve [flags]        run the daemon
-  dcode tui [flags]          open the terminal interface
-  dcode login [flags]        store the model credential, read without echo
-  dcode config [key]         the effective configuration and where it came from
-  dcode update [flags]       install the latest release
-
-Examples:
-  dcode
-  dcode "add a test for the parser"
-  dcode --dump-prompt
-  dcode --config model.name
-  dcode serve &  dcode tui
-
-Run a subcommand with --help for its flags.
-
-Environment:
-  DCODE_API_KEY            model credential; overrides anything stored
-  DCODE_MODEL              model name (default MiniMax-M3)
-  DCODE_TRANSPORT          wire format: openai or anthropic
-  DCODE_SANDBOX_MODE       read-only, workspace-write or full-access
-  DCODE_APPROVAL_POLICY    untrusted, on-request or never
-  DCODE_ALLOW_NETWORK      grant network without asking
-  DCODE_HOME               configuration root (default ~/.dcode)
-  DCODE_SOCKET             daemon socket path
-`, version.Short())
+	t := tui.Text(tui.Resolve(os.Getenv))
+	fmt.Fprintf(os.Stderr, t.Usage, version.Short())
 }
 
 func max(a, b int) int {
