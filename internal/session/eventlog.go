@@ -247,8 +247,12 @@ func (l *EventLog) Subscribe(ctx context.Context, from uint64) (<-chan protocol.
 	return out, cancel, nil
 }
 
-// Subscribers reports how many readers are attached. Used by tests and by the
-// server's shutdown path.
+// Subscribers reports how many readers are attached.
+//
+// Exists for the tests that assert a stream is cleaned up when a client leaves,
+// and that is the whole of it. The doc used to claim the shutdown path called
+// it; the shutdown path does not, and a comment that names a caller which does
+// not exist is the kind a reader trusts.
 func (l *EventLog) Subscribers() int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

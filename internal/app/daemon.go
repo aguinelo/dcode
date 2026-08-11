@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/server"
@@ -200,11 +199,6 @@ func randomUint32() uint32 {
 		return 0
 	}
 	return binary.BigEndian.Uint32(b[:])
-}
-
-// ResolveRoots exposes directory discovery to the command layer.
-func ResolveRoots(env func(string) string) (config.Roots, error) {
-	return config.DiscoverRoots(env)
 }
 
 func parseMode(s string) (policy.SandboxMode, error) { return policy.ParseMode(s) }
