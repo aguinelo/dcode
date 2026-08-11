@@ -104,15 +104,42 @@ const (
 	ApprovalAllow        ApprovalDecision = "allow"
 	ApprovalAllowSession ApprovalDecision = "allow_session"
 	ApprovalDeny         ApprovalDecision = "deny"
+
+	// The two answers that outlive the session, because some questions are
+	// about the project rather than about the moment. Asking again next week
+	// about a decision already made is how a prompt becomes something people
+	// dismiss without reading — and a prompt nobody reads protects nobody.
+	//
+	// They are recorded in the USER's config root, never in the workspace: a
+	// grant living inside a project would let a repository arrive
+	// pre-approved, so cloning something would permit it before anyone read a
+	// line of it.
+	ApprovalAllowProject ApprovalDecision = "allow_project"
+	ApprovalAllowAlways  ApprovalDecision = "allow_always"
 )
 
 // Valid reports whether d is a decision the server accepts.
 func (d ApprovalDecision) Valid() bool {
 	switch d {
-	case ApprovalAllow, ApprovalAllowSession, ApprovalDeny:
+	case ApprovalAllow, ApprovalAllowSession, ApprovalDeny,
+		ApprovalAllowProject, ApprovalAllowAlways:
 		return true
 	}
 	return false
+}
+
+// Remembered reports whether a decision outlives the session, and how widely.
+//
+// Named rather than compared inline, so the two places that persist a grant and
+// the one that renders it cannot drift into disagreeing about which answers are
+// standing ones.
+func (d ApprovalDecision) Remembered() bool {
+	return d == ApprovalAllowProject || d == ApprovalAllowAlways
+}
+
+// Grants reports whether a decision permits the crossing at all.
+func (d ApprovalDecision) Grants() bool {
+	return d != ApprovalDeny && d.Valid()
 }
 
 // ResolveApprovalRequest answers a pending approval. First writer wins.

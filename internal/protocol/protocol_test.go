@@ -175,3 +175,46 @@ func wrap(err error) error { return errWrap{err} }
 type errWrap struct{ error }
 
 func (e errWrap) Unwrap() error { return e.error }
+
+// The two standing answers, and the reason they are separate from the two that
+// are not: a decision the user makes about a project should not be asked again
+// next week, and a decision they make about this moment should.
+func TestTheStandingAnswersAreDistinguishableFromTheMomentaryOnes(t *testing.T) {
+	for _, c := range []struct {
+		d          ApprovalDecision
+		valid      bool
+		remembered bool
+		grants     bool
+	}{
+		{ApprovalAllow, true, false, true},
+		{ApprovalAllowSession, true, false, true},
+		{ApprovalAllowProject, true, true, true},
+		{ApprovalAllowAlways, true, true, true},
+		{ApprovalDeny, true, false, false},
+		{ApprovalDecision("allow_everything"), false, false, false},
+		{ApprovalDecision(""), false, false, false},
+	} {
+		t.Run(string(c.d), func(t *testing.T) {
+			if got := c.d.Valid(); got != c.valid {
+				t.Errorf("Valid() = %v, want %v", got, c.valid)
+			}
+			if got := c.d.Remembered(); got != c.remembered {
+				t.Errorf("Remembered() = %v, want %v", got, c.remembered)
+			}
+			if got := c.d.Grants(); got != c.grants {
+				t.Errorf("Grants() = %v, want %v", got, c.grants)
+			}
+		})
+	}
+}
+
+// An answer nobody defined must never be read as permission. A decision the
+// server does not understand is not a decision, and treating it as one would
+// let a malformed client grant what the user never did.
+func TestAnUnknownAnswerGrantsNothing(t *testing.T) {
+	for _, s := range []string{"", "yes", "ALLOW", "allow_forever", "true"} {
+		if d := ApprovalDecision(s); d.Grants() {
+			t.Errorf("%q was read as permission", s)
+		}
+	}
+}
