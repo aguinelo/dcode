@@ -351,3 +351,42 @@ func TestClassifyPreservesAnAlreadyClassifiedError(t *testing.T) {
 		t.Errorf("an unknown error should be a retryable transport failure, got %+v", got)
 	}
 }
+
+// Cancelling and the transport closing become ready at the same moment, and a
+// select picks between ready cases at random. So a cancelled stream reported
+// itself as a truncated one about one run in twenty.
+//
+// It is not a cosmetic misfile. Decide sends ErrClassTransport to
+// DecisionRetry and ErrClassCanceled to DecisionSilent, so the loop answered a
+// user's interrupt by calling the provider again — spending money and time on
+// work that had just been called off, in the one case where the user was
+// watching.
+//
+// Repeated because that is the shape of the bug: a single run had a nineteen in
+// twenty chance of passing over it.
+func TestCancellationIsNeverReportedAsATruncatedStream(t *testing.T) {
+	for i := 0; i < 60; i++ {
+		r, _ := registry(t, `{"choices":[{"delta":{"content":"a"}}]}`)
+		p, _ := r.Resolve("MiniMax-M3", "")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		ch, err := p.Stream(ctx, request())
+		if err != nil {
+			t.Fatal(err)
+		}
+		cancel()
+
+		got := drain(t, ch)
+		if len(got) == 0 {
+			t.Fatal("the stream produced nothing at all, not even a terminal event")
+		}
+		last := got[len(got)-1]
+		if last.Type != EventError || last.Err == nil {
+			t.Fatalf("run %d ended with %v; a cancelled stream must say so", i, last.Type)
+		}
+		if last.Err.Class != ErrClassCanceled {
+			t.Fatalf("run %d classed a cancellation as %v — the loop retries that class, "+
+				"so an interrupt becomes another call to the provider", i, last.Err.Class)
+		}
+	}
+}
