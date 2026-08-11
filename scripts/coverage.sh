@@ -2,7 +2,7 @@
 # Gate de cobertura — 202608072337 TESTING.md secao 3.
 # Denominador: codigo deterministico em internal/ e pkg/.
 # Excluidos, com justificativa na convencao:
-#   cmd/**        wiring de main, sem logica
+#   cmd/**        montagem de dependencia; a LOGICA dali tem teste proprio
 #   **/evals/**   caminhos mediados por modelo, atras de build tag
 #   *_gen.go      codigo gerado
 set -euo pipefail
