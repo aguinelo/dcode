@@ -115,7 +115,9 @@ func (Grep) Name() string { return "grep" }
 
 func (Grep) Description() string {
 	return "Search file contents with a regular expression. " +
-		"Output is path:line:text, sorted. Narrow with glob to search fewer files."
+		"Output is path:line:text, sorted. Narrow with glob to search fewer files. " +
+		"When you are looking for an identifier rather than free text, use symbol instead: " +
+		"it matches on symbol boundaries and tells a declaration from a use."
 }
 
 func (Grep) Schema() json.RawMessage {

@@ -42,6 +42,7 @@ var KnownKeys = map[string]string{
 	"update.check":                  "DCODE_UPDATE_CHECK",
 	"update.channel":                "DCODE_UPDATE_CHANNEL", // DCODE_RELEASE_CHANNEL still works as a fallback
 	"tools.edit_echo_diff":          "DCODE_EDIT_ECHO_DIFF",
+	"tools.symbol_max_matches":      "DCODE_SYMBOL_MAX_MATCHES",
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
 	"doctrine.enabled":              "DCODE_DOCTRINE_ENABLED",
 	"doctrine.dir":                  "DCODE_DOCTRINE_DIR",

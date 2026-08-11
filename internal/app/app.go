@@ -56,6 +56,10 @@ type Options struct {
 	// Skills switches progressive disclosure on. Off removes the index from the
 	// prefix, and no body is ever loaded.
 	Skills bool
+	// SymbolMaxMatches caps what symbol returns. Same ceiling as grep, and for
+	// the same reason: a symbol matching thousands of times is a badly chosen
+	// symbol, and returning all of it spends context without informing.
+	SymbolMaxMatches int
 	// EditEchoDiff decides when the diff of an edit goes back to the model.
 	// It always reaches the client, in every mode.
 	EditEchoDiff string
@@ -136,9 +140,10 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			// base layer, paid on every turn of every session.
 			// The only case where the model cannot derive what the file now
 			// says is a replace_all that hit more than one occurrence.
-			"tools.edit_echo_diff": tools.EchoDiffMulti,
-			"doctrine.enabled":     "true",
-			"doctrine.max_bytes":   "16384",
+			"tools.edit_echo_diff":     tools.EchoDiffMulti,
+			"tools.symbol_max_matches": "200",
+			"doctrine.enabled":         "true",
+			"doctrine.max_bytes":       "16384",
 		}},
 	}
 
@@ -195,6 +200,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Instructions:      r.Bool("behavior.instructions_enabled", true),
 		Skills:            r.Bool("behavior.skills_enabled", true),
 		EditEchoDiff:      r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
+		SymbolMaxMatches:  r.Int("tools.symbol_max_matches", 200),
 		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
 		DoctrineDir:       r.String("doctrine.dir", ""),
 		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
@@ -306,10 +312,11 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 	toolLimits := tools.DefaultLimits()
 	toolLimits.EditEchoDiff = opts.EditEchoDiff
+	toolLimits.SymbolMaxMatches = opts.SymbolMaxMatches
 	state := tools.NewState(resolver, toolLimits)
 	registry := tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{},
-		tools.Glob{}, tools.Grep{},
+		tools.Glob{}, tools.Grep{}, tools.Symbol{},
 		tools.Bash{
 			Runner:  sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
 			Workdir: opts.Workspace,
