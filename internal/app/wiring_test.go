@@ -75,6 +75,9 @@ var wiringTable = []configOption{
 	{"BudgetNotice", "budget.notice", "Bool", "BudgetNotice"},
 
 	{"VerifyCommand", "verify.command", "String", ""},
+	{"Delegate", "delegate.enabled", "Bool", ""},
+	{"DelegateMaxIterations", "delegate.max_iterations", "Int", "DelegateMaxIterations"},
+	{"DelegateMaxResultBytes", "delegate.max_result_bytes", "Int", "DelegateMaxResultBytes"},
 	{"InstructionNotice", "instruction.notice", "Bool", ""},
 	{"InstructionForeign", "instruction.foreign", "String", ""},
 	{"DoneTimeout", "done.timeout", "String", "DoneTimeout"},

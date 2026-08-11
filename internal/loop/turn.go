@@ -92,6 +92,13 @@ type Config struct {
 	// RunCriterion executes a criterion command. Injected, and it goes through
 	// the sandbox like everything else.
 	RunCriterion CriterionRunner
+	// DelegateMaxIterations caps a child turn. Smaller than the parent's on
+	// purpose: the child answers ONE question, and one that needs fifty
+	// iterations should have been split.
+	DelegateMaxIterations int
+	// DelegateMaxResultBytes caps the child's report. A child returning 50KB
+	// defeats the point — the cost of reading returns through the answer.
+	DelegateMaxResultBytes int
 	// WrittenPaths reports what the session has written, for the protected-path
 	// check. Nil disables it.
 	WrittenPaths func() []string
@@ -125,6 +132,9 @@ type Engine struct {
 	// lastReport is what the most recent done check found, so the client can
 	// show the seal and the turn can report what was left.
 	lastReport Report
+	// delegated is what child turns cost, debited from this turn. Without it
+	// the parent's ceiling is fiction.
+	delegated provider.Usage
 }
 
 // now is the engine's clock. Injectable so a test can assert a duration without
@@ -202,6 +212,10 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 		out.Usage.InputTokens += usage.InputTokens
 		out.Usage.OutputTokens += usage.OutputTokens
 		out.Usage.CacheReadTokens += usage.CacheReadTokens
+		out.Usage.InputTokens += e.delegated.InputTokens
+		out.Usage.OutputTokens += e.delegated.OutputTokens
+		out.Usage.CacheReadTokens += e.delegated.CacheReadTokens
+		e.delegated = provider.Usage{}
 
 		if perr != nil {
 			switch provider.Decide(perr) {

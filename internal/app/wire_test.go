@@ -27,6 +27,9 @@ func baseOpts(t *testing.T) Options {
 		Policy:      policy.PolicyOnRequest,
 		Backend:     "auto",
 		Parallel:    4,
+		// Options carries no defaults of its own — the configuration chain
+		// supplies them — so a feature switch has to be set explicitly here.
+		Delegate: true,
 	}
 }
 
@@ -47,7 +50,7 @@ func TestNewWiresAWorkingSession(t *testing.T) {
 	// Every tool, or the agent is missing a capability the doctrine already
 	// promises the model it has. The names are asserted rather than the count:
 	// a count tells you a tool went missing, not which one.
-	want := []string{"bash", "edit", "glob", "grep", "plan", "read", "symbol", "write"}
+	want := []string{"bash", "edit", "explore", "glob", "grep", "plan", "read", "symbol", "write"}
 	got := s.Registry.Names()
 	if !slices.Equal(got, want) {
 		t.Errorf("tools = %v, want %v", got, want)

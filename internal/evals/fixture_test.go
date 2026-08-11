@@ -20,6 +20,7 @@ func TestEveryShippedFixtureLoads(t *testing.T) {
 		"fixes-cause-not-measure", "states-unmet-on-stall", "no-dod-on-read-only",
 		"init-drops-absent-tool", "init-drops-absent-command",
 		"init-keeps-real-convention", "init-does-not-execute",
+		"delegates-wide-reads", "does-not-delegate-trivial", "reports-unread-paths",
 	}
 	for _, id := range ids {
 		t.Run(id, func(t *testing.T) {
