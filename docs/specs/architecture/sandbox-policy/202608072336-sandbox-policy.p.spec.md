@@ -56,14 +56,21 @@ const (
 
 type Verdict struct {
     Decision Decision
-    Boundary string // "network" | "workspace_write" | "filesystem_write" | "filesystem_read"
+    Boundary Boundary // tipada, nao string: um valor invalido nao compila
+    Rule     string   // o padrao que escalou, para a aprovacao poder dizer POR QUE
     Reason   string // inglês, legível por humano
 }
 
 // Evaluate é PURA: sem I/O, sem relógio. A resolução de caminho acontece
 // ANTES, em Resolve, para que a decisão seja exatamente testável.
-func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy, workspace string) Verdict
+func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy,
+    rules Rules, inWorkspace func(Access) bool) Verdict
 ```
+
+> **Correção de assinatura.** Esta seção nunca foi atualizada pelo changelog `202608091700`, que acrescentou as regras por caminho e por comando. `Evaluate` recebe `Rules` e recebe a contenção como **função**, não o workspace como string — porque resolver caminho faz E/S e a decisão não pode fazer, e é essa separação que torna a tabela inteira testável por asserção, uma por célula.
+>
+> `Resolve` é método de `Resolver` e não função livre, pelo mesmo motivo: a única parte que toca disco fica num tipo, e o resto do pacote continua puro.
+
 
 ### 3.1 Tabela de decisão
 
@@ -144,7 +151,7 @@ shell é opaco, e "o mesmo tipo de comando" não é algo que isto saiba julgar.
 ```go
 // Resolve faz I/O: expande symlink e normaliza. Separado de Evaluate
 // justamente para manter a decisão pura e testável.
-func Resolve(path string, workspace string) (Access, error)
+func (r *Resolver) Resolve(path string, write bool) (Access, error)
 ```
 
 **Regras:**

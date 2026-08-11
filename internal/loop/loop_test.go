@@ -758,3 +758,37 @@ func TestReasoningIsNotForwardedWhenSwitchedOff(t *testing.T) {
 		t.Errorf("the answer must still arrive: %+v", rec.last[protocol.EventMessageDelta])
 	}
 }
+
+// RN-3 makes emission order and execution order deliberately different: results
+// are appended by emission index so history stays reproducible, while the calls
+// themselves run together. The real order was computed inline, folded into a
+// duration, and discarded — and a duration cannot answer which of two
+// concurrent calls actually went first, which is the question a log is for.
+func TestTheRealExecutionOrderSurvivesTheBatch(t *testing.T) {
+	reg := tools.NewRegistry(tools.Read{}, tools.Glob{})
+	e, _ := newEngine(t, &scriptedProvider{turns: [][]provider.StreamEvent{
+		{
+			call("c1", "glob", `{"pattern":"**/*.go"}`),
+			call("c2", "glob", `{"pattern":"**/*.md"}`),
+			done(),
+		},
+		{text("done"), done()},
+	}}, reg)
+
+	if _, err := e.Run(context.Background(), "look around"); err != nil {
+		t.Fatal(err)
+	}
+
+	timing := e.Timing()
+	if len(timing) != 2 {
+		t.Fatalf("timing has %d entries, want one per call", len(timing))
+	}
+	for i, pair := range timing {
+		if pair[0].IsZero() || pair[1].IsZero() {
+			t.Errorf("call %d has no start or finish recorded", i)
+		}
+		if pair[1].Before(pair[0]) {
+			t.Errorf("call %d finished before it started", i)
+		}
+	}
+}
