@@ -12,7 +12,7 @@
 - [ ] `Session`, `SessionState`, `CreateSessionRequest`, `SubmitTurnRequest`.
 - [ ] `ApprovalRequest`, `ApprovalDecision`, `ResolveApprovalRequest`.
 - [ ] `Error` e as constantes de `code` da seção 8 do `.p`.
-- [ ] Testes de ida e volta de JSON para cada tipo, com golden file em `testdata/`.
+- [x] Testes de ida e volta de JSON para cada tipo, com golden file em `testdata/`. Regravados com `-update`; a nota `At` fixa evita o teste quebrar a cada execução.
 
 > Pacote sem I/O e sem dependência de rede. É o vocabulário compartilhado — cliente e servidor importam daqui.
 
