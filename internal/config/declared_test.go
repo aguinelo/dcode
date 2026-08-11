@@ -142,3 +142,43 @@ func TestTheExceptionListIsStillAccurate(t *testing.T) {
 		}
 	}
 }
+
+// The mirror of TestEveryKeyTheSpecsDeclareIsReadSomewhere, and the half that
+// was missing for longer.
+//
+// That guard catches a key the spec promises and the code ignores. This one
+// catches the opposite: a key the code honours and no spec mentions, which is
+// configuration a user cannot discover. Nine keys were in that state on
+// 2026-08-11, including all three behaviour switches and every confirm-rule
+// list — real controls, working, documented nowhere.
+//
+// Undocumented configuration is the quieter defect of the two. The first kind
+// disappoints someone who tried; this kind is never tried at all.
+func TestEveryKnownKeyIsDeclaredInSomeSpec(t *testing.T) {
+	root := repoRoot(t)
+	specs, err := filepath.Glob(filepath.Join(root, "docs", "specs", "architecture", "*", "*.config.spec.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := map[string]bool{}
+	for _, spec := range specs {
+		data, err := os.ReadFile(spec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range specRow.FindAllStringSubmatch(string(data), -1) {
+			declared[m[1]] = true
+		}
+	}
+	if len(declared) == 0 {
+		t.Fatal("no keys found in any spec; the guard would pass vacuously")
+	}
+
+	for key, env := range KnownKeys {
+		if !declared[env] {
+			t.Errorf("KnownKeys maps %q to %s, which no .config.spec.md declares: "+
+				"the setting works and nobody can find out it exists", key, env)
+		}
+	}
+}

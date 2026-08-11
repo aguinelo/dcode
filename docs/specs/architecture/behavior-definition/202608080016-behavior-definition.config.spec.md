@@ -10,6 +10,9 @@
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 
+| `DCODE_BEHAVIOR_INSTRUCTIONS_ENABLED` | booleano | `true` | Liga a leitura de `AGENTS.md` e `DCODE.md`. Desligar roda só com a doutrina embarcada — é como se isola se um comportamento vem da instrução do usuário ou do produto. |
+
+> O prefixo `BEHAVIOR_` casa com a seção `behavior.*` do `config.toml`, e a bijeção entre chave e variável é asserção de teste. A spec declarava `DCODE_INSTRUCTIONS_ENABLED` e o código sempre implementou este nome; o nome documentado é que estava errado. Mesmo precedente de `sandbox.policy` → `sandbox.approval_policy`: o nome interno passou a ser o que o usuário escreve, não o contrário.
 ## 2. Skills
 
 | Variável | Tipo | Default | Uso |
@@ -17,11 +20,14 @@
 
 > `DCODE_SKILLS_DIR` é declarada em `202608081203-configuration.config.spec.md`, seção 3, junto das demais raízes de descoberta.
 
+| `DCODE_BEHAVIOR_SKILLS_ENABLED` | booleano | `true` | Liga a divulgação progressiva. Desligar tira o índice do prefixo, e nenhum corpo de skill é carregado. |
 ## 3. Lembretes
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 
+| `DCODE_BEHAVIOR_REMINDERS_ENABLED` | booleano | `true` | Liga o canal anexado. Desligar remove todo lembrete — inclusive o de arquivo alterado em disco, que é o que impede editar a partir de conteúdo que o modelo não tem mais. |
+| `DCODE_SHOW_REASONING` | booleano | `true` | Encaminha o raciocínio do modelo aos clientes. Ele **nunca** entra no histórico: é evento de exibição, não contexto. |
 ## 3.1 Verificação (RN-13)
 
 | Variável | Tipo | Default | Uso |

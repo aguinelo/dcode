@@ -28,6 +28,7 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 
 > `DCODE_INSTRUCTIONS_PATH`, `DCODE_INSTRUCTIONS_MAX_BYTES` e `DCODE_INSTRUCTIONS_MAX_DEPTH` são declaradas em `202608080016-behavior-definition.config.spec.md`, seção 1. Esta spec fornece os **defaults** que lá estavam pendentes.
 
+| `DCODE_CREDENTIAL_BACKEND` | enum | vazio | Escolhe o armazenamento da credencial: chaveiro do sistema ou arquivo `0600`. Vazio escolhe pelo que existe. Configuração e não flag de comando: uma flag no comando que **escreve**, e nada nos que **leem**, guarda o segredo onde nada procura. |
 ## 3.1 Tradução e reindex
 
 | Variável | Tipo | Default | Uso |
