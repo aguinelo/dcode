@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -74,6 +75,15 @@ func call(id, name, input string) provider.StreamEvent {
 }
 
 func done() provider.StreamEvent { return provider.StreamEvent{Type: provider.EventDone} }
+
+// spent ends a turn declaring what it cost, which is how the accounting tests
+// can measure a debit instead of performing it themselves.
+func spent(in, out int) provider.StreamEvent {
+	return provider.StreamEvent{
+		Type:  provider.EventDone,
+		Usage: &provider.Usage{InputTokens: in, OutputTokens: out},
+	}
+}
 
 // recorder captures emitted events.
 type recorder struct {
@@ -393,8 +403,11 @@ func TestConcurrentExecutionIsAnnouncedWithAConstantNote(t *testing.T) {
 			t.Errorf("the note must be byte-identical between runs:\n%q\n%q", notes[0], n)
 		}
 	}
-	for _, bad := range []string{"20", ":", "ms"} {
-		_ = bad // shape check below is enough; explicit digits would be brittle
+	// The invariant is that no timestamp, count or ID reaches the model. The
+	// byte-identity above already forbids a value that VARIES; this forbids a
+	// constant that merely looks like one, which identity cannot see.
+	if m := regexp.MustCompile(`\d`).FindString(notes[0]); m != "" {
+		t.Errorf("the note carries the digit %q; counts and clocks both start as digits:\n%q", m, notes[0])
 	}
 }
 

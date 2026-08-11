@@ -63,10 +63,11 @@ func TestADelegatedTurnReturnsAConclusionAndWhereItLooked(t *testing.T) {
 	if len(res.Read) == 0 || !strings.Contains(strings.Join(res.Read, ","), "pay.go") {
 		t.Fatalf("read = %v, want the file the child opened — the list is what turns \"trust me\" into something checkable", res.Read)
 	}
-	// The child's spend lands on the parent, or the parent's ceiling is fiction.
-	if e.delegated.OutputTokens < 0 {
-		t.Error("the child's usage was not accounted to the parent")
-	}
+	// The accounting is NOT asserted here. It used to be, as
+	// `e.delegated.OutputTokens < 0` — a condition a token count cannot meet,
+	// so the line could only ever pass. Making it real needs a fixture that
+	// declares a cost, which belongs to the test about cost:
+	// TestChildTokensAreDebitedFromTheParent.
 }
 
 // The child receives the TASK, never the parent's history. Copying the history
