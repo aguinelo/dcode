@@ -70,6 +70,8 @@ var wiringTable = []configOption{
 	{"Rules", "rules.confirm_read", "String", "Rules"},
 	{"Rules", "rules.confirm_command", "String", "Rules"},
 
+	{"EditEchoDiff", "tools.edit_echo_diff", "String", ""},
+
 	{"DumpPrompt", "doctrine.dump", "Bool", ""},
 	{"DoctrineOverlay", "doctrine.enabled", "Bool", ""},
 	{"DoctrineDir", "doctrine.dir", "String", ""},

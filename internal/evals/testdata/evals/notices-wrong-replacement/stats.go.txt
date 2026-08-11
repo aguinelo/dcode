@@ -1,0 +1,17 @@
+package stats
+
+// Summary counts rows and tracks how many accounts were seen.
+type Summary struct {
+	count        int
+	accountCount int
+}
+
+func (s *Summary) Add(account string) {
+	s.count++
+	if account != "" {
+		s.accountCount++
+	}
+}
+
+func (s *Summary) Rows() int     { return s.count }
+func (s *Summary) Accounts() int { return s.accountCount }

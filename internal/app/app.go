@@ -56,6 +56,9 @@ type Options struct {
 	// Skills switches progressive disclosure on. Off removes the index from the
 	// prefix, and no body is ever loaded.
 	Skills bool
+	// EditEchoDiff decides when the diff of an edit goes back to the model.
+	// It always reaches the client, in every mode.
+	EditEchoDiff string
 	// DoctrineOverlay switches the reading of the user's doctrine/ directory
 	// on. Off runs on the shipped doctrine alone, which is how one tells
 	// whether a behaviour comes from the user's overlay or from the product.
@@ -131,8 +134,11 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			// The overlay is read by default; without files it changes nothing.
 			// The cap is smaller than the instruction cap because this is the
 			// base layer, paid on every turn of every session.
-			"doctrine.enabled":   "true",
-			"doctrine.max_bytes": "16384",
+			// The only case where the model cannot derive what the file now
+			// says is a replace_all that hit more than one occurrence.
+			"tools.edit_echo_diff": tools.EchoDiffMulti,
+			"doctrine.enabled":     "true",
+			"doctrine.max_bytes":   "16384",
 		}},
 	}
 
@@ -188,6 +194,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		ShowReasoning:     r.Bool("behavior.show_reasoning", true),
 		Instructions:      r.Bool("behavior.instructions_enabled", true),
 		Skills:            r.Bool("behavior.skills_enabled", true),
+		EditEchoDiff:      r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
 		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
 		DoctrineDir:       r.String("doctrine.dir", ""),
 		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
@@ -297,7 +304,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		return nil, err
 	}
 
-	state := tools.NewState(resolver, tools.DefaultLimits())
+	toolLimits := tools.DefaultLimits()
+	toolLimits.EditEchoDiff = opts.EditEchoDiff
+	state := tools.NewState(resolver, toolLimits)
 	registry := tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{},
