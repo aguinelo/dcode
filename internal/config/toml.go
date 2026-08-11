@@ -45,6 +45,8 @@ var KnownKeys = map[string]string{
 	"tools.symbol_max_matches":      "DCODE_SYMBOL_MAX_MATCHES",
 	"budget.notice":                 "DCODE_BUDGET_NOTICE",
 	"verify.command":                "DCODE_VERIFY_COMMAND",
+	"instruction.notice":            "DCODE_INSTRUCTION_NOTICE",
+	"instruction.foreign":           "DCODE_INSTRUCTION_FOREIGN",
 	"done.file":                     "DCODE_DONE_FILE",
 	"done.enabled":                  "DCODE_DONE_ENABLED",
 	"done.timeout":                  "DCODE_DONE_TIMEOUT",
