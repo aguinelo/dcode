@@ -100,6 +100,14 @@ func (g Glob) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 
 // ---------- grep ----------
 
+// GrepMaxContextLines caps how much surrounding text one match may carry.
+//
+// A ceiling rather than a configuration key, for the same reason the match
+// limit is one: the number that matters is "enough to understand the match",
+// and past a handful more lines stop informing and start costing. Asking for
+// five thousand is asking for the file, which is what grep exists not to be.
+const GrepMaxContextLines = 10
+
 // Grep searches file contents.
 type Grep struct{}
 
@@ -177,6 +185,17 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	}
 	sort.Strings(files)
 
+	// Context is bounded like everything else here. A generous number against a
+	// common pattern would otherwise return the file, which is the outcome the
+	// match limit exists to prevent.
+	ctxLines := in.ContextLines
+	if ctxLines < 0 {
+		ctxLines = 0
+	}
+	if ctxLines > GrepMaxContextLines {
+		ctxLines = GrepMaxContextLines
+	}
+
 	type hit struct {
 		file string
 		line int
@@ -191,15 +210,34 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 		if err != nil || !utf8.Valid(raw) {
 			continue
 		}
-		for i, line := range strings.Split(string(raw), "\n") {
+		lines := strings.Split(string(raw), "\n")
+		// Which lines to emit for this file. A set rather than a per-match
+		// slice, because two matches close together share context and printing
+		// the overlap twice would read as two separate places in the file.
+		emit := map[int]struct{}{}
+		matched := 0
+		for i, line := range lines {
 			if !re.MatchString(line) {
 				continue
 			}
-			if limit > 0 && len(hits) >= limit {
+			if limit > 0 && matched+len(hits) >= limit {
 				truncated = true
 				break
 			}
-			hits = append(hits, hit{rel, i + 1, line})
+			matched++
+			for j := i - ctxLines; j <= i+ctxLines; j++ {
+				if j >= 0 && j < len(lines) {
+					emit[j] = struct{}{}
+				}
+			}
+		}
+		idx := make([]int, 0, len(emit))
+		for i := range emit {
+			idx = append(idx, i)
+		}
+		sort.Ints(idx)
+		for _, i := range idx {
+			hits = append(hits, hit{rel, i + 1, lines[i]})
 		}
 		if truncated {
 			break
