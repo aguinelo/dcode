@@ -105,6 +105,15 @@ type Config struct {
 	// WrittenPaths reports what the session has written, for the protected-path
 	// check. Nil disables it.
 	WrittenPaths func() []string
+	// WriteSeq reports how many writes the session has made, ever-increasing.
+	//
+	// A COUNT, not a set and not a clock. The set cannot answer this: rewriting
+	// a file already in it leaves it unchanged, and rewriting a file after the
+	// check is the exact case being caught. A clock would answer it and put a
+	// value that varies per run into something a person compares between turns.
+	//
+	// Nil leaves the seal as it was — staleness unknown, never asserted.
+	WriteSeq func() uint64
 	// Sleep is how the loop waits out a backoff. Injectable for the same reason
 	// Now is: a test that asserts retry behaviour should not spend fifteen
 	// seconds proving it. Nil means the real one.
@@ -139,6 +148,10 @@ type Engine struct {
 	// lastReport is what the most recent done check found, so the client can
 	// show the seal and the turn can report what was left.
 	lastReport Report
+	// checkedAt is the write generation the last check was stamped against. The
+	// seal compares it with the current one, which is the difference between
+	// "the suite passed" and "the suite passed on this code".
+	checkedAt uint64
 	// delegated is what child turns cost, debited from this turn. Without it
 	// the parent's ceiling is fiction.
 	delegated provider.Usage
@@ -780,6 +793,10 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (st
 		return protocol.StopDone, nil
 	}
 
+	// Stamped BEFORE the check runs, so anything written while it runs or after
+	// it finishes postdates it. Stamping afterwards would silently absorb every
+	// edit made during a long suite.
+	e.checkedAt = e.writeSeq()
 	rep := Check(ctx, e.cfg.Done, e.cfg.RunCriterion, e.cfg.DoneTimeout)
 	rep.TouchedProtected = e.cfg.Done.TouchedProtected(written)
 	e.lastReport = rep
@@ -793,7 +810,7 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (st
 		//
 		// It does not force another iteration. There is nothing to run, and
 		// insisting only produces a second guess; what it forces is saying so.
-		if VerificationOf(rep, true) == VerificationUnavailable {
+		if VerificationOf(rep, true, false) == VerificationUnavailable {
 			return protocol.StopUnverified, nil
 		}
 		return protocol.StopDone, nil
@@ -833,6 +850,23 @@ func (e *Engine) stallLimit() int {
 	return 2
 }
 
+// writeSeq is the session's write generation, or zero when nothing counts.
+func (e *Engine) writeSeq() uint64 {
+	if e.cfg.WriteSeq == nil {
+		return 0
+	}
+	return e.cfg.WriteSeq()
+}
+
+// stale reports that a write landed after the last check was stamped.
+//
+// Unknowable without a counter, and then the answer is false: an absent signal
+// must not become a positive one, and "not stale" is the claim that takes
+// nothing away from what the criteria already said.
+func (e *Engine) stale() bool {
+	return e.cfg.WriteSeq != nil && e.cfg.WriteSeq() > e.checkedAt
+}
+
 func (e *Engine) written() []string {
 	if e.cfg.WrittenPaths == nil {
 		return nil
@@ -845,7 +879,7 @@ func (e *Engine) Report() Report { return e.lastReport }
 
 // Verification is the single-criterion seal for the client.
 func (e *Engine) Verification() Verification {
-	return VerificationOf(e.lastReport, len(e.written()) > 0)
+	return VerificationOf(e.lastReport, len(e.written()) > 0, e.stale())
 }
 
 // completion is what the client shows instead of trusting the prose.

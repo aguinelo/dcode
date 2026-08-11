@@ -158,3 +158,57 @@ func loopSources(t *testing.T) string {
 	}
 	return b.String()
 }
+
+// The seal must not say "passed" for a check that ran before the last edit.
+//
+// This is the shape the mechanism exists to catch, and the one it could not
+// see: run the suite, watch it go green, then keep editing. Every input to the
+// old seal still said met-and-changed, so it printed "passed" over code no
+// command had ever looked at.
+//
+// Counted, not timed. A clock in the seal would put a varying value in
+// something a person compares between turns; a generation number answers the
+// only question being asked — did anything change after the check started.
+func TestASealGoesStaleWhenTheCodeChangesAfterTheCheck(t *testing.T) {
+	seq := uint64(1)
+	e := New(Config{
+		DoneEnabled:  true,
+		Done:         DoneSet{Criteria: []Criterion{{Name: "verify", Command: "make check"}}},
+		WrittenPaths: func() []string { return []string{"a.go"} },
+		WriteSeq:     func() uint64 { return seq },
+		RunCriterion: func(context.Context, string) (int, string, error) { return 0, "", nil },
+	}, ce.Session{Instructions: "x"})
+
+	stall, unmet := 0, []string(nil)
+	if reason, _ := e.checkDone(context.Background(), &stall, &unmet); reason != protocol.StopDone {
+		t.Fatalf("a passing check should end the turn, got %q", reason)
+	}
+	if got := e.Verification(); got != VerificationPassed {
+		t.Fatalf("seal = %v, want passed — the check ran after the only edit", got)
+	}
+
+	// The model keeps working after the green run.
+	seq++
+
+	if got := e.Verification(); got != VerificationStale {
+		t.Errorf("seal = %v, want stale — the check describes code that no longer exists", got)
+	}
+}
+
+// Without a counter there is nothing to compare, and the honest answer is the
+// one that claims least. Reporting "passed" because staleness is unknowable is
+// how an absent signal turns into a positive one.
+func TestWithoutAWriteCounterTheSealNeverClaimsPassed(t *testing.T) {
+	e := New(Config{
+		DoneEnabled:  true,
+		Done:         DoneSet{Criteria: []Criterion{{Name: "verify", Command: "make check"}}},
+		WrittenPaths: func() []string { return []string{"a.go"} },
+		RunCriterion: func(context.Context, string) (int, string, error) { return 0, "", nil },
+	}, ce.Session{Instructions: "x"})
+
+	stall, unmet := 0, []string(nil)
+	e.checkDone(context.Background(), &stall, &unmet)
+	if got := e.Verification(); got != VerificationPassed {
+		t.Errorf("seal = %v; with no counter wired the seal keeps its previous meaning", got)
+	}
+}

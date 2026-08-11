@@ -116,7 +116,13 @@ func Progressed(before, after []string) bool {
 }
 
 // VerificationOf collapses a report of one criterion into the client's seal.
-func VerificationOf(r Report, changed bool) Verification {
+//
+// stale says a file was written AFTER the check ran. It is the boolean the seal
+// was missing: without it "passed" means "the check exited zero at some point
+// this turn", which is true of a session that ran the suite and then edited
+// everything it touched. That is the precise false confidence this whole
+// mechanism exists to prevent, wearing the badge that says it was prevented.
+func VerificationOf(r Report, changed, stale bool) Verification {
 	if len(r.States) == 0 {
 		if changed {
 			return VerificationUnavailable
@@ -133,6 +139,14 @@ func VerificationOf(r Report, changed bool) Verification {
 		case CriterionUnavailable:
 			return VerificationUnavailable
 		}
+	}
+	// Everything the check looked at was met — but only the check that ran
+	// before the last edit. Staleness is applied HERE and nowhere earlier so it
+	// can only ever remove reassurance: a failure followed by an edit stays a
+	// failure, because replacing a red seal with a neutral one is the wrong
+	// direction to be wrong in.
+	if stale {
+		return VerificationStale
 	}
 	return VerificationPassed
 }

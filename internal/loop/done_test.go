@@ -3,8 +3,10 @@ package loop
 import (
 	"context"
 	"errors"
+	"os"
 	osexec "os/exec"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -137,18 +139,32 @@ func TestVerificationSeal(t *testing.T) {
 		name    string
 		states  map[string]CriterionState
 		changed bool
+		stale   bool
 		want    Verification
 	}{
-		{"nothing changed", map[string]CriterionState{"v": CriterionMet}, false, VerificationClean},
-		{"changed and passed", map[string]CriterionState{"v": CriterionMet}, true, VerificationPassed},
-		{"changed and failed", map[string]CriterionState{"v": CriterionUnmet}, true, VerificationFailed},
-		{"changed, nothing to run", map[string]CriterionState{"v": CriterionUnavailable}, true, VerificationUnavailable},
-		{"changed, no criteria at all", nil, true, VerificationUnavailable},
-		{"read-only session", nil, false, VerificationClean},
+		{"nothing changed", map[string]CriterionState{"v": CriterionMet}, false, false, VerificationClean},
+		{"changed and passed", map[string]CriterionState{"v": CriterionMet}, true, false, VerificationPassed},
+		{"changed and failed", map[string]CriterionState{"v": CriterionUnmet}, true, false, VerificationFailed},
+		{"changed, nothing to run", map[string]CriterionState{"v": CriterionUnavailable}, true, false, VerificationUnavailable},
+		{"changed, no criteria at all", nil, true, false, VerificationUnavailable},
+		{"read-only session", nil, false, false, VerificationClean},
+
+		// The state that had no producer. "passed" is documented as "ran after
+		// the last edit"; edit after the check and the check describes code that
+		// no longer exists.
+		{"passed, then edited again", map[string]CriterionState{"v": CriterionMet}, true, true, VerificationStale},
+
+		// Staleness only ever takes away reassurance. A failure that was
+		// followed by an edit is still a failure worth showing: overriding it
+		// with "stale" would replace a red seal with a neutral one, which is the
+		// wrong direction to be wrong in.
+		{"failed, then edited again", map[string]CriterionState{"v": CriterionUnmet}, true, true, VerificationFailed},
+		{"nothing to run, then edited", map[string]CriterionState{"v": CriterionUnavailable}, true, true, VerificationUnavailable},
+		{"stale is meaningless with no change", map[string]CriterionState{"v": CriterionMet}, false, true, VerificationClean},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := VerificationOf(Report{States: c.states}, c.changed); got != c.want {
+			if got := VerificationOf(Report{States: c.states}, c.changed, c.stale); got != c.want {
 				t.Errorf("seal = %v, want %v", got, c.want)
 			}
 		})
@@ -188,5 +204,49 @@ func TestTheReportNamesTouchedProtectedPaths(t *testing.T) {
 	out := rep.String()
 	if !strings.Contains(out, "turn_test.go") || !strings.Contains(out, "protected") {
 		t.Fatalf("the report hides a change to what measures it:\n%s", out)
+	}
+}
+
+// A declared state nothing can produce is the defect this guard exists for, and
+// it is the one that was here: VerificationStale was declared, rendered by two
+// branches of the client, and returned by no input at all.
+//
+// Stronger than a source sweep for the same reason a test beats a comment: it
+// exercises the full input space and asks which values come OUT. A constant
+// mentioned in a comment satisfies a substring search; nothing satisfies this
+// but a reachable state.
+func TestEveryVerificationStateIsReachable(t *testing.T) {
+	declared := map[Verification]bool{}
+	src, err := os.ReadFile("done.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range regexp.MustCompile(`Verification\s*=\s*"([a-z]+)"`).FindAllStringSubmatch(string(src), -1) {
+		declared[Verification(m[1])] = false
+	}
+	if len(declared) < 2 {
+		t.Fatalf("parsed %d states from done.go; the guard would pass vacuously", len(declared))
+	}
+
+	everyState := []map[string]CriterionState{
+		nil,
+		{"v": CriterionMet},
+		{"v": CriterionUnmet},
+		{"v": CriterionUnavailable},
+	}
+	for _, states := range everyState {
+		for _, changed := range []bool{true, false} {
+			for _, stale := range []bool{true, false} {
+				declared[VerificationOf(Report{States: states}, changed, stale)] = true
+			}
+		}
+	}
+
+	for state, reached := range declared {
+		if !reached {
+			t.Errorf("Verification %q is declared and no combination of report, "+
+				"change and staleness produces it — a seal the client renders and "+
+				"the loop can never set", state)
+		}
 	}
 }
