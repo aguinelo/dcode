@@ -733,3 +733,157 @@ func TestThePublishedMatrixIsExactlyWhatCanRun(t *testing.T) {
 		}
 	}
 }
+
+// The staging directory sits beside the target so the final step is a rename
+// within one filesystem. Across filesystems a rename is a copy, and a copy that
+// is interrupted leaves a partial binary — a machine with no working dcode.
+//
+// Asserted by consequence rather than by reading the call: staging happens
+// BEFORE the download, so a target directory that cannot be written to must
+// stop Apply with nothing fetched. If the staging moved to TMPDIR, the download
+// would go ahead and this would see the request.
+func TestApplyStagesBesideTheTargetAndNotSomewhereElse(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	old := version.Source
+	defer func() { version.Source = old }()
+	version.Source = version.SourceRelease
+
+	f := newFixture(t, "v1.2.3", false)
+
+	var fetched int
+	guard := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fetched++
+		http.Error(w, "the artifact should not have been fetched", http.StatusTeapot)
+	}))
+	defer guard.Close()
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "dcode")
+	if err := os.WriteFile(target, []byte("#!/bin/sh\necho 0.0.1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	u := newUpdater(t, f, target)
+	rel, err := u.Latest(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Point the artifact at the guard, so any fetch is visible.
+	for k, a := range rel.Artifacts {
+		a.URL = guard.URL + "/artifact"
+		rel.Artifacts[k] = a
+	}
+
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(dir, 0o700)
+
+	err = u.Apply(context.Background(), rel)
+	if err == nil {
+		t.Fatal("Apply succeeded with a target directory it cannot write to")
+	}
+	if !strings.Contains(err.Error(), "stage") {
+		t.Errorf("the failure does not name staging: %v", err)
+	}
+	if fetched != 0 {
+		t.Errorf("the artifact was downloaded %d times before staging failed; "+
+			"staging is not happening beside the target", fetched)
+	}
+	if got, _ := os.ReadFile(target); string(got) != "#!/bin/sh\necho 0.0.1\n" {
+		t.Errorf("the current binary was disturbed: %q", got)
+	}
+}
+
+// RN-3: nothing updates the binary on its own. The passive notice tells the
+// user a version exists; replacing what they are running is a decision they
+// make, because an agent that swaps its own binary mid-session changes what
+// every later turn is running against.
+//
+// One call site, in the command named `update`. A second one is how "check for
+// updates" quietly becomes "install updates".
+func TestNothingAppliesAnUpdateWithoutTheUpdateCommand(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var callers []string
+	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+			return err
+		}
+		if strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, path)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		// Only files that can reach this package. `.Apply(` is also a lipgloss
+		// method, and counting those would report the renderer as an updater.
+		if !strings.Contains(string(data), `"github.com/aguinelo/dcode/internal/update"`) {
+			return nil
+		}
+		for i, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "func ") {
+				continue
+			}
+			if strings.Contains(line, ".Apply(") {
+				callers = append(callers, fmt.Sprintf("%s:%d", rel, i+1))
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(callers) != 1 {
+		t.Fatalf("Apply is called from %d places: %v\n"+
+			"one of them is a path that updates without being asked", len(callers), callers)
+	}
+	if !strings.HasPrefix(callers[0], filepath.Join("cmd", "dcode")) {
+		t.Errorf("Apply is called from %s, outside the update command", callers[0])
+	}
+}
+
+// ADR-03: the assembled context is a function of the session and nothing else.
+// A check timestamp in it would vary between two runs of the same session, so
+// the history would stop being reproducible and the cached prefix would change
+// for a reason that has nothing to do with the conversation.
+//
+// The guarantee is that there is no path: the packages that build what the
+// model sees do not know this package exists.
+func TestTheUpdateNoticeCannotReachWhatTheModelSees(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range []string{"contextengine", "behavior"} {
+		dir := filepath.Join(root, "internal", pkg)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen := 0
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			seen++
+			if strings.Contains(string(data), `"github.com/aguinelo/dcode/internal/update"`) {
+				t.Errorf("internal/%s/%s imports internal/update; CheckedAt is a clock, "+
+					"and a clock in the assembled context makes the history irreproducible", pkg, e.Name())
+			}
+		}
+		if seen == 0 {
+			t.Fatalf("no source read in internal/%s; the guard would pass vacuously", pkg)
+		}
+	}
+}
