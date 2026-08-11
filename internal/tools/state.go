@@ -35,6 +35,9 @@ type Limits struct {
 	RespectGitignore  bool
 	RequireReadBefore bool
 	AtomicWrite       bool
+	// EditEchoDiff decides when the diff of an edit goes back to the MODEL.
+	// It always goes to the client, in every mode.
+	EditEchoDiff string
 }
 
 // DefaultLimits mirrors the documented defaults.
@@ -48,6 +51,7 @@ func DefaultLimits() Limits {
 		RespectGitignore:  true,
 		RequireReadBefore: true,
 		AtomicWrite:       true,
+		EditEchoDiff:      EchoDiffMulti,
 	}
 }
 

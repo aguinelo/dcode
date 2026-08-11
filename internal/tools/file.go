@@ -284,12 +284,24 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	s.MarkRead(abs, updated, 0)
 
 	added, removed := lineDelta(content, updated)
+	diff := UnifiedDiff(content, updated, in.Path)
+
+	out := fmt.Sprintf("edited %s (%d replacement(s), +%d −%d)",
+		in.Path, count, added, removed)
+	if echoDiff(s.Limits.EditEchoDiff, in.ReplaceAll, count) {
+		// The diff already declares its own truncation at DiffMaxLines, which
+		// is what stops the model concluding about a part it never saw with
+		// the confidence of having seen all of it.
+		out += "\n\n" + diff
+	}
+
 	return Result{
-		Output: fmt.Sprintf("edited %s (%d replacement(s), +%d −%d)",
-			in.Path, count, added, removed),
+		Output: out,
 		Meta: Meta{
 			Files: 1, Added: added, Removed: removed,
-			Diff: UnifiedDiff(content, updated, in.Path),
+			// Meta.Diff goes to the client in every mode. What the key
+			// controls is only whether the model also pays for it.
+			Diff: diff,
 		},
 	}, nil
 }

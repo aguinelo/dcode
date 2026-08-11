@@ -243,3 +243,44 @@ func lcsScript(a, b []string) []op {
 	}
 	return out
 }
+
+// The three modes of DCODE_EDIT_ECHO_DIFF.
+const (
+	// EchoDiffNever returns the count alone.
+	EchoDiffNever = "never"
+	// EchoDiffMulti returns the diff only where the model cannot derive the
+	// result: a replace_all that hit more than one occurrence.
+	EchoDiffMulti = "multi"
+	// EchoDiffAlways returns it on every edit. Expensive in an append-only
+	// history, and useful for debugging a model that is editing wrongly.
+	EchoDiffAlways = "always"
+)
+
+// echoDiff answers whether the diff of this edit goes back to the model.
+//
+// The rule is not "return it or not", it is WHEN — because context is
+// append-only (ADR-03), so a diff entering the history is paid on every
+// subsequent turn, forever. Twenty edits in a refactor at 400 lines each is a
+// history that bursts on its own.
+//
+// So the question becomes: can the model work out what the file now says?
+//
+//	write                  yes — it dictated every byte
+//	write over existing    yes — RN-8 already required reading it
+//	edit, one occurrence   yes — old_string is unique, so the site is determined
+//	replace_all, N > 1     NO  — it does not know where the N sites were
+//
+// The line is sharp because RN-4 did half the work already: an ambiguous match
+// fails rather than guessing. What is left is the one case where an edit
+// happens in places the model never saw — and it is the same case where
+// MarkRead records content nobody read.
+func echoDiff(mode string, replaceAll bool, count int) bool {
+	switch mode {
+	case EchoDiffAlways:
+		return true
+	case EchoDiffNever:
+		return false
+	default: // EchoDiffMulti, and anything unset
+		return replaceAll && count > 1
+	}
+}

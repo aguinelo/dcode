@@ -11,7 +11,10 @@ import (
 // the test that catches a threshold whose material was never written, or was
 // renamed and left the spec pointing at nothing.
 func TestEveryShippedFixtureLoads(t *testing.T) {
-	ids := []string{"toolcall-schema-valid", "toolcall-recover", "no-phantom-tool"}
+	ids := []string{
+		"toolcall-schema-valid", "toolcall-recover", "no-phantom-tool",
+		"notices-wrong-replacement",
+	}
 	for _, id := range ids {
 		t.Run(id, func(t *testing.T) {
 			f, err := LoadFixture(FixtureRoot, id)
