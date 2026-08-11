@@ -10,11 +10,11 @@ import (
 )
 
 func TestNothingIsShownWhenThereIsNothingToCheck(t *testing.T) {
-	if _, ok := completionEntry(nil); ok {
+	if _, ok := completionEntry(nil, En); ok {
 		t.Error("a turn with no definition of done produced a line")
 	}
 	clean := &protocol.Completion{Verification: string(loop.VerificationClean)}
-	if _, ok := completionEntry(clean); ok {
+	if _, ok := completionEntry(clean, En); ok {
 		t.Error("a turn that changed nothing produced a line; shown every turn it would stop being read")
 	}
 }
@@ -24,7 +24,7 @@ func TestAFailedCheckSaysSoInWordsNotOnlyInColour(t *testing.T) {
 		Verification: string(loop.VerificationFailed),
 		Met:          []string{"lint"},
 		Unmet:        []string{"tests"},
-	})
+	}, En)
 	if !ok {
 		t.Fatal("a failed check produced no line")
 	}
@@ -43,7 +43,7 @@ func TestUnavailableIsNotReportedAsFailure(t *testing.T) {
 	e, _ := completionEntry(&protocol.Completion{
 		Verification: string(loop.VerificationUnavailable),
 		Unavailable:  []string{"tests"},
-	})
+	}, En)
 	if strings.Contains(e.Summary, "NOT verified") {
 		t.Errorf("nothing to run was reported as a failing check: %q", e.Summary)
 	}
@@ -58,7 +58,7 @@ func TestAChangeToTheMeasurementIsNeverFoldedAwaySilently(t *testing.T) {
 		Verification:     string(loop.VerificationPassed),
 		Met:              []string{"tests"},
 		TouchedProtected: []string{"internal/loop/turn_test.go"},
-	})
+	}, En)
 	if !strings.Contains(e.Detail, "turn_test.go") {
 		t.Fatalf("a change to the measurement is not on screen:\n%s", e.Detail)
 	}
@@ -71,7 +71,7 @@ func TestAChangeToTheMeasurementIsNeverFoldedAwaySilently(t *testing.T) {
 // that vanishes on a narrow terminal is not a guarantee.
 func TestTheSealSurvivesANarrowTerminal(t *testing.T) {
 	m := Model{
-		Sandbox: "workspace-write", Model: "MiniMax-M3",
+		Lang: En, Sandbox: "workspace-write", Model: "MiniMax-M3",
 		Verification: string(loop.VerificationFailed),
 		Window:       100000, InputTokens: 50000,
 	}
@@ -88,14 +88,14 @@ func TestTheSealSurvivesANarrowTerminal(t *testing.T) {
 
 func TestNoSealWhenThereIsNothingToClaim(t *testing.T) {
 	for _, v := range []string{"", string(loop.VerificationClean)} {
-		if label, _ := VerificationLabel(v); label != "" {
+		if label, _ := VerificationLabel(v, En); label != "" {
 			t.Errorf("verification %q produced the label %q; a permanent label stops being read", v, label)
 		}
 	}
 }
 
 func TestTheModelKeepsTheSealOfTheLastTurn(t *testing.T) {
-	m := Model{}
+	m := Model{Lang: En}
 	m = m.Apply(completedEvent(t, &protocol.Completion{
 		Verification: string(loop.VerificationFailed), Unmet: []string{"tests"},
 	}))

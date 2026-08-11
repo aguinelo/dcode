@@ -44,8 +44,8 @@ func TestApplyIsAPureReducer(t *testing.T) {
 		ev(t, 7, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t1"}),
 	}
 
-	first := apply(t, NewModel("", "", "", ""), evs...)
-	second := apply(t, NewModel("", "", "", ""), evs...)
+	first := apply(t, NewModel("", "", "", "", En), evs...)
+	second := apply(t, NewModel("", "", "", "", En), evs...)
 
 	if len(first.Entries) != len(second.Entries) {
 		t.Fatalf("got %d and %d entries", len(first.Entries), len(second.Entries))
@@ -63,7 +63,7 @@ func TestApplyIsAPureReducer(t *testing.T) {
 // Text arrives in fragments; appending to the open entry is what makes it feel
 // alive rather than landing in one block.
 func TestDeltasAppendToTheOpenAssistantEntry(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventMessageDelta, protocol.MessageDelta{Text: "one "}),
 		ev(t, 2, protocol.EventMessageDelta, protocol.MessageDelta{Text: "two"}),
 	)
@@ -83,7 +83,7 @@ func TestDeltasAppendToTheOpenAssistantEntry(t *testing.T) {
 
 // Failure needs attention; success needs only confirmation.
 func TestErrorsOpenAndSuccessesStayCollapsed(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: "bash"}),
 		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{
 			OK: false, Output: "exit 1\nstack trace",
@@ -93,7 +93,7 @@ func TestErrorsOpenAndSuccessesStayCollapsed(t *testing.T) {
 		t.Errorf("a failure must open itself: %+v", m.Entries[0])
 	}
 
-	m2 := apply(t, NewModel("", "", "", ""),
+	m2 := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: "bash"}),
 		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{OK: true, Output: "12 passed"}),
 	)
@@ -112,7 +112,7 @@ func TestToolTargetComesFromTheInput(t *testing.T) {
 		`{"command":"go test"}`: "go test",
 		`{"items":[]}`:          "",
 	} {
-		m := apply(t, NewModel("", "", "", ""),
+		m := apply(t, NewModel("", "", "", "", En),
 			ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{
 				Name: "x", Input: json.RawMessage(input),
 			}))
@@ -123,7 +123,7 @@ func TestToolTargetComesFromTheInput(t *testing.T) {
 
 	// A tool whose input is not an object still gets an entry: dropping the
 	// call would leave the user watching nothing happen.
-	m := NewModel("", "", "", "").Apply(protocol.Event{
+	m := NewModel("", "", "", "", En).Apply(protocol.Event{
 		Seq: 1, Type: protocol.EventToolRequested,
 		Payload: json.RawMessage(`{"name":"x","input":"not an object"}`),
 	})
@@ -133,7 +133,7 @@ func TestToolTargetComesFromTheInput(t *testing.T) {
 }
 
 func TestApprovalMovesTheSessionToBlockedAndBack(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventApprovalRequired, protocol.ApprovalRequest{
 			ApprovalID: "a1", Tool: "bash", BoundaryCrossed: "network",
 		}))
@@ -147,7 +147,7 @@ func TestApprovalMovesTheSessionToBlockedAndBack(t *testing.T) {
 }
 
 func TestCompactionAndErrorsBecomeEntries(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventSessionCompacted, protocol.SessionCompacted{}),
 		ev(t, 2, protocol.EventSessionError, protocol.Error{Code: "boom", Message: "it broke"}),
 	)
@@ -165,7 +165,7 @@ func TestCompactionAndErrorsBecomeEntries(t *testing.T) {
 // A malformed payload must not take the client down: the daemon and the client
 // version independently.
 func TestApplyIgnoresUnreadablePayloads(t *testing.T) {
-	m := NewModel("", "", "", "")
+	m := NewModel("", "", "", "", En)
 	for _, typ := range []protocol.EventType{
 		protocol.EventSessionCreated, protocol.EventMessageDelta,
 		protocol.EventToolRequested, protocol.EventToolCompleted,
@@ -184,7 +184,7 @@ func TestApplyIgnoresUnreadablePayloads(t *testing.T) {
 // A persistent splash steals height from the stream, which is the scarce
 // resource on screen.
 func TestEmptyStateDisappearsOnTheFirstTurnAndNeverReturns(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	if !m.ShowEmptyState() {
 		t.Fatal("a fresh session shows the splash")
 	}
@@ -203,7 +203,7 @@ func TestEmptyStateDisappearsOnTheFirstTurnAndNeverReturns(t *testing.T) {
 // The protocol refuses a concurrent turn, so the queue is what turns a refusal
 // into a usable experience.
 func TestQueueJoinsIntoOneTurnInTypingOrder(t *testing.T) {
-	m := NewModel("", "", "", "")
+	m := NewModel("", "", "", "", En)
 	for _, s := range []string{"first", "second"} {
 		var ok bool
 		m, ok = m.Enqueue(s, 10)
@@ -229,7 +229,7 @@ func TestQueueJoinsIntoOneTurnInTypingOrder(t *testing.T) {
 // Refusing and saying so beats dropping silently: the user would otherwise
 // believe the message was sent.
 func TestQueueRefusesWhenFullAndRefusesBlankInput(t *testing.T) {
-	m := NewModel("", "", "", "")
+	m := NewModel("", "", "", "", En)
 	m, _ = m.Enqueue("one", 1)
 	if _, ok := m.Enqueue("two", 1); ok {
 		t.Error("a full queue must refuse")
@@ -240,7 +240,7 @@ func TestQueueRefusesWhenFullAndRefusesBlankInput(t *testing.T) {
 }
 
 func TestRemoveFromQueue(t *testing.T) {
-	m := NewModel("", "", "", "")
+	m := NewModel("", "", "", "", En)
 	m, _ = m.Enqueue("a", 10)
 	m, _ = m.Enqueue("b", 10)
 	m = m.RemoveFromQueue(0)
@@ -260,7 +260,7 @@ func TestRemoveFromQueue(t *testing.T) {
 // ---------- plan ----------
 
 func TestPlanCountsAndSummary(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventPlanUpdated, protocol.PlanUpdated{Items: []protocol.PlanItem{
 			{ID: 1, Text: "a", Status: protocol.PlanDone},
 			{ID: 2, Text: "b", Status: protocol.PlanActive},
@@ -274,13 +274,13 @@ func TestPlanCountsAndSummary(t *testing.T) {
 	if !strings.Contains(got, "1 of 3") || !strings.Contains(got, "1 blocked") {
 		t.Errorf("got %q", got)
 	}
-	if empty := NewModel("", "", "", "").PlanSummary(); empty != "" {
+	if empty := NewModel("", "", "", "", En).PlanSummary(); empty != "" {
 		t.Errorf("no plan, nothing to say, got %q", empty)
 	}
 }
 
 func TestToggleAt(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: "read"}),
 		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{OK: true, Output: "x"}),
 	)
@@ -298,7 +298,7 @@ func TestToggleAt(t *testing.T) {
 
 func TestSummariseResultFallsBackToOK(t *testing.T) {
 	for _, tool := range []string{"read", "bash", "unknown"} {
-		m := apply(t, NewModel("", "", "", ""),
+		m := apply(t, NewModel("", "", "", "", En),
 			ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: tool}),
 			ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{OK: true, Output: ""}),
 		)
@@ -306,7 +306,7 @@ func TestSummariseResultFallsBackToOK(t *testing.T) {
 			t.Errorf("%s: the placeholder must be replaced, got %q", tool, got)
 		}
 	}
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: "bash"}),
 		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{OK: false, Output: ""}),
 	)
@@ -352,7 +352,7 @@ func TestToolSummariesComeFromTheMetadata(t *testing.T) {
 // to notice says how long. Every call carrying a duration turns the column into
 // noise nobody reads.
 func TestTheStreamShowsRunningStateAndSlowCalls(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 	m.Entries = []Entry{
 		{Kind: KindTool, Tool: "bash", Target: "go test", Running: true},
 		{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "12 lines", Duration: 30 * time.Millisecond},
@@ -371,7 +371,7 @@ func TestTheStreamShowsRunningStateAndSlowCalls(t *testing.T) {
 // The duration the daemon measured is what the client shows: the client cannot
 // see when the tool actually started.
 func TestDurationComesFromTheEvent(t *testing.T) {
-	m := apply(t, NewModel("", "", "", ""),
+	m := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{Name: "bash"}),
 		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{
 			OK: true, HasExit: true, DurationMS: 1500,
@@ -387,7 +387,7 @@ func TestDurationComesFromTheEvent(t *testing.T) {
 
 // The context meter needs a denominator: "12400 tokens" answers nothing.
 func TestContextPercentNeedsTheWindow(t *testing.T) {
-	withWindow := apply(t, NewModel("", "", "", ""),
+	withWindow := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ContextWindow: 100000}),
 		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
 			Usage: &protocol.Usage{InputTokens: 34000, OutputTokens: 800},
@@ -402,7 +402,7 @@ func TestContextPercentNeedsTheWindow(t *testing.T) {
 
 	// A large window is where the meter matters most early on, and it is
 	// exactly where integer division erases it.
-	big := apply(t, NewModel("", "", "", ""),
+	big := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ContextWindow: 1_000_000}),
 		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
 			Usage: &protocol.Usage{InputTokens: 5200},
@@ -414,7 +414,7 @@ func TestContextPercentNeedsTheWindow(t *testing.T) {
 
 	// Without a window there is no percentage to state, and inventing one
 	// would be worse than saying nothing.
-	noWindow := apply(t, NewModel("", "", "", ""),
+	noWindow := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventTurnCompleted, protocol.TurnCompleted{
 			Usage: &protocol.Usage{InputTokens: 34000},
 		}),

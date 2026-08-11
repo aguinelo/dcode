@@ -70,7 +70,7 @@ func TestHelpTextListsEverySurface(t *testing.T) {
 		config.Command{Name: "revisar", Description: "reviews the diff", Body: "x"},
 		config.Command{Name: "help", Description: "shadowed", Body: "x"},
 	)
-	got := HelpText(user)
+	got := HelpText(user, En)
 
 	for _, b := range Builtins {
 		if !strings.Contains(got, "/"+b.Name) {
@@ -95,7 +95,7 @@ func TestHelpTextListsEverySurface(t *testing.T) {
 }
 
 func TestPlanText(t *testing.T) {
-	if got := PlanText(NewModel("", "", "", "")); !strings.Contains(got, "no plan") {
+	if got := PlanText(NewModel("", "", "", "", En)); !strings.Contains(got, "no plan") {
 		t.Errorf("got %q", got)
 	}
 	got := PlanText(modelWithPlan())
@@ -151,19 +151,19 @@ func TestSessionList(t *testing.T) {
 func TestCompleteOnlyOffersOnABarePrefix(t *testing.T) {
 	user := userCommands(config.Command{Name: "revisar", Description: "revisa o diff", Body: "x"})
 
-	if got := Complete("/", user); len(got) < len(Builtins) {
+	if got := Complete("/", user, En); len(got) < len(Builtins) {
 		t.Errorf("a bare slash offers everything, got %d", len(got))
 	}
-	if got := Complete("/pl", user); len(got) != 1 || got[0].Name != "plan" {
+	if got := Complete("/pl", user, En); len(got) != 1 || got[0].Name != "plan" {
 		t.Errorf("got %+v", got)
 	}
-	if got := Complete("/plan agora", user); got != nil {
+	if got := Complete("/plan agora", user, En); got != nil {
 		t.Errorf("an argument means the choice is made, got %+v", got)
 	}
-	if got := Complete("texto normal", user); got != nil {
+	if got := Complete("texto normal", user, En); got != nil {
 		t.Errorf("got %+v", got)
 	}
-	if got := Complete("/zzz", user); got != nil {
+	if got := Complete("/zzz", user, En); got != nil {
 		t.Errorf("nothing matches, so nothing is offered: %+v", got)
 	}
 }
@@ -175,7 +175,7 @@ func TestCompleteListsBuiltinsFirstAndSkipsShadowed(t *testing.T) {
 		config.Command{Name: "revisar", Description: "revisa", Body: "x"},
 		config.Command{Name: "plan", Description: "sombreado", Body: "x"},
 	)
-	got := Complete("/", user)
+	got := Complete("/", user, En)
 
 	var sawUser bool
 	for _, c := range got {
@@ -203,7 +203,7 @@ func TestCompleteListsBuiltinsFirstAndSkipsShadowed(t *testing.T) {
 
 func TestTheMenuFollowsTheLine(t *testing.T) {
 	user := userCommands()
-	m := NewModel("s", "/w", "m", "read-only")
+	m := NewModel("s", "/w", "m", "read-only", En)
 
 	m = m.SetInput("/pl").Refresh(user)
 	if len(m.Completions) != 1 {
@@ -216,7 +216,7 @@ func TestTheMenuFollowsTheLine(t *testing.T) {
 }
 
 func TestTheMenuWrapsAtBothEnds(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only").SetInput("/").Refresh(userCommands())
+	m := NewModel("s", "/w", "m", "read-only", En).SetInput("/").Refresh(userCommands())
 	n := len(m.Completions)
 	if n < 3 {
 		t.Fatalf("setup: got %d candidates", n)
@@ -234,7 +234,7 @@ func TestTheMenuWrapsAtBothEnds(t *testing.T) {
 // The user's next keystroke is the argument; making them type the separator is
 // a small tax on every single use.
 func TestAcceptingACompletionLeavesASpaceOnlyWhenThereAreArguments(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only").SetInput("/conf").Refresh(userCommands())
+	m := NewModel("s", "/w", "m", "read-only", En).SetInput("/conf").Refresh(userCommands())
 	got := m.AcceptCompletion()
 	if got.Input != "/config " {
 		t.Errorf("a command taking an argument gets a space, got %q", got.Input)
@@ -246,12 +246,12 @@ func TestAcceptingACompletionLeavesASpaceOnlyWhenThereAreArguments(t *testing.T)
 		t.Error("accepting closes the menu")
 	}
 
-	m = NewModel("s", "/w", "m", "read-only").SetInput("/hel").Refresh(userCommands())
+	m = NewModel("s", "/w", "m", "read-only", En).SetInput("/hel").Refresh(userCommands())
 	if got := m.AcceptCompletion(); got.Input != "/help" {
 		t.Errorf("a command without arguments needs no space, got %q", got.Input)
 	}
 	// Nothing to accept is a no-op rather than a panic.
-	empty := NewModel("s", "/w", "m", "read-only")
+	empty := NewModel("s", "/w", "m", "read-only", En)
 	if got := empty.AcceptCompletion(); got.Input != "" {
 		t.Errorf("got %q", got.Input)
 	}
@@ -261,7 +261,7 @@ func TestAcceptingACompletionLeavesASpaceOnlyWhenThereAreArguments(t *testing.T)
 // follows.
 func TestClosingTheMenuLastsUntilTheLineChanges(t *testing.T) {
 	user := userCommands()
-	m := NewModel("s", "/w", "m", "read-only").SetInput("/pl").Refresh(user)
+	m := NewModel("s", "/w", "m", "read-only", En).SetInput("/pl").Refresh(user)
 	if len(m.Completions) == 0 {
 		t.Fatal("setup")
 	}

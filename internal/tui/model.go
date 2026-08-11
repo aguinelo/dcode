@@ -82,6 +82,8 @@ type Model struct {
 
 	Entries []Entry
 	Plan    []protocol.PlanItem
+	// Lang is the interface language, resolved once when the client starts.
+	Lang Lang
 	// Verification is the seal of the last completed turn. Empty when the turn
 	// had no definition of done.
 	//
@@ -151,10 +153,16 @@ type Model struct {
 }
 
 // NewModel builds an empty view.
-func NewModel(sessionID, workspace, model, sandbox string) Model {
+// NewModel builds the client state.
+//
+// The language is a parameter rather than resolved here, for the same reason
+// the palette is not built here: this package renders, and the environment is
+// read once, at the edge, by whoever starts the client. A zero Lang lands on the
+// fallback, which is the documented behaviour and not an accident.
+func NewModel(sessionID, workspace, model, sandbox string, lang Lang) Model {
 	return Model{
 		SessionID: sessionID, Workspace: workspace, Model: model,
-		Sandbox: sandbox, State: protocol.SessionStateIdle, Cursor: -1,
+		Sandbox: sandbox, Lang: lang, State: protocol.SessionStateIdle, Cursor: -1,
 		Follow: true, HistoryAt: -1,
 	}
 }
@@ -313,7 +321,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 				m.ContextPct = 100 * d.Usage.InputTokens / m.Window
 			}
 		}
-		if e, ok := completionEntry(d.Completion); ok {
+		if e, ok := completionEntry(d.Completion, m.Lang); ok {
 			m.Entries = append(m.Entries, e)
 		}
 		m.Verification = ""
@@ -332,7 +340,8 @@ func (m Model) Apply(ev protocol.Event) Model {
 // Nothing is shown when there was no definition of done: a line saying
 // "nothing to check" on every turn is a line that stops being read, and it
 // would drown the turns where there IS something to say.
-func completionEntry(c *protocol.Completion) (Entry, bool) {
+func completionEntry(c *protocol.Completion, lang Lang) (Entry, bool) {
+	t := Text(lang)
 	if c == nil {
 		return Entry{}, false
 	}
@@ -342,15 +351,15 @@ func completionEntry(c *protocol.Completion) (Entry, bool) {
 		return Entry{}, false
 	}
 
-	summary := completionSummary(c)
+	summary := completionSummary(c, lang)
 	var detail strings.Builder
 	for _, group := range []struct {
 		label string
 		names []string
 	}{
-		{"met", c.Met},
-		{"not met", c.Unmet},
-		{"could not be checked", c.Unavailable},
+		{t.CompletionMet, c.Met},
+		{t.CompletionUnmet, c.Unmet},
+		{t.CompletionUnchecked, c.Unavailable},
 	} {
 		if len(group.names) > 0 {
 			fmt.Fprintf(&detail, "%-22s %s\n", group.label, strings.Join(group.names, ", "))
@@ -359,23 +368,24 @@ func completionEntry(c *protocol.Completion) (Entry, bool) {
 	if len(c.TouchedProtected) > 0 {
 		// Never folded into the detail silently. Changing what measures the
 		// work is sometimes right and always worth seeing.
-		fmt.Fprintf(&detail, "%-22s %s\n", "measurement changed", strings.Join(c.TouchedProtected, ", "))
+		fmt.Fprintf(&detail, "%-22s %s\n", t.CompletionMeasure, strings.Join(c.TouchedProtected, ", "))
 	}
 	return Entry{Kind: KindCompletion, Summary: summary, Detail: strings.TrimRight(detail.String(), "\n")}, true
 }
 
-func completionSummary(c *protocol.Completion) string {
+func completionSummary(c *protocol.Completion, lang Lang) string {
+	t := Text(lang)
 	switch c.Verification {
 	case string(loop.VerificationPassed):
-		return fmt.Sprintf("verified — %d %s passed", len(c.Met), plural(len(c.Met), "check", "checks"))
+		return fmt.Sprintf(t.VerifiedSummary, len(c.Met), plural(len(c.Met), "check", "checks"))
 	case string(loop.VerificationFailed):
-		return "NOT verified — " + strings.Join(c.Unmet, ", ") + " did not pass"
+		return fmt.Sprintf(t.NotVerifiedSummary, strings.Join(c.Unmet, ", "))
 	case string(loop.VerificationUnavailable):
-		return "not verified — nothing here could check this"
+		return t.NothingCouldCheck
 	case string(loop.VerificationStale):
-		return "not verified — files changed after the last check"
+		return t.ChangedAfterCheck
 	default:
-		return "verification " + c.Verification
+		return c.Verification
 	}
 }
 
@@ -719,7 +729,7 @@ func (m Model) Refresh(user config.CommandSet) Model {
 		m.Completions = nil
 		return m
 	}
-	got := Complete(m.Input, user)
+	got := Complete(m.Input, user, m.Lang)
 	// The highlight resets whenever the candidate set changes, or it would
 	// point at a different command than the one it pointed at a keystroke ago.
 	if len(got) != len(m.Completions) {

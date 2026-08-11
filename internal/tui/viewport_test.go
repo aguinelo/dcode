@@ -10,7 +10,7 @@ import (
 
 // longStream builds a model with more output than any screen holds.
 func longStream(n int) Model {
-	m := NewModel("s1", "/w", "m", "read-only")
+	m := NewModel("s1", "/w", "m", "read-only", En)
 	for i := 0; i < n; i++ {
 		m.Entries = append(m.Entries, Entry{
 			Kind: KindNote, Summary: fmt.Sprintf("linha %d", i),

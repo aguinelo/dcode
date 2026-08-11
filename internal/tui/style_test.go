@@ -201,7 +201,7 @@ func TestFormatDuration(t *testing.T) {
 // ---------- the working line ----------
 
 func workingModel() Model {
-	m := NewModel("s1", "/w", "MiniMax-M3", "read-only")
+	m := NewModel("s1", "/w", "MiniMax-M3", "read-only", En)
 	m.State = protocol.SessionStateRunning
 	m.Entries = []Entry{{Kind: KindUser, Summary: "vai"}}
 	m.TurnStartedAt = time.Unix(1000, 0)

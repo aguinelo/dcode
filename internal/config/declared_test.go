@@ -32,7 +32,9 @@ var specRow = regexp.MustCompile("(?m)^\\| `(DCODE_[A-Z_]+)` \\|")
 // tolerable when it is named, explained, and small enough to read. An entry
 // here is a promise that the key is being implemented, not that it is exempt.
 var declaredNotYetRead = map[string]string{
-	"DCODE_LANG": "the interface language; RN-19 of client-tui is specified and the catalogue is not built yet",
+	// Empty, and it reached empty the way it was meant to: DCODE_LANG was the
+	// only entry, and TestTheExceptionListIsStillAccurate is what said so on
+	// the day the catalogue landed.
 }
 
 func TestEveryKeyTheSpecsDeclareIsReadSomewhere(t *testing.T) {
