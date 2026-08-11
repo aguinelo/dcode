@@ -26,6 +26,15 @@ type Session struct {
 	Log    *EventLog
 	engine *loop.Engine
 
+	// Standing is the record of decisions that outlive the session. Optional:
+	// without one the session asks every time, which is what it did before.
+	//
+	// A port rather than the record itself, because this package must not learn
+	// what the boundaries mean. It asks "was this already answered" and says
+	// "remember this"; which crossings are worth remembering, and where the
+	// answer is kept, belong to the layer that knows both.
+	Standing Standing
+
 	mu      sync.Mutex
 	state   protocol.SessionState
 	cancel  context.CancelFunc
@@ -162,16 +171,6 @@ func (a *approval) resolve(d protocol.ApprovalDecision) {
 	})
 }
 
-// grantKey is what an "allow for the session" answer is remembered against.
-//
-// The rule when a rule asked, so approving a write to `.git/config` covers
-// `.git/**` rather than that one file. Editing three files under a directory is
-// one decision, not three, and three prompts is how people learn to approve
-// without reading.
-//
-// Without a rule it stays the exact tool and command, which is the conservative
-// key: a shell command is opaque, and "the same kind of command" is not
-// something this can judge.
 // maxLapsed bounds what is remembered about approvals nobody answered.
 //
 // A daemon runs for weeks and a set that grows once per approval is a leak with
@@ -199,6 +198,16 @@ func (s *Session) lapsedCount() int {
 	return len(s.lapsed)
 }
 
+// grantKey is what an "allow for the session" answer is remembered against.
+//
+// The rule when a rule asked, so approving a write to `.git/config` covers
+// `.git/**` rather than that one file. Editing three files under a directory is
+// one decision, not three, and three prompts is how people learn to approve
+// without reading.
+//
+// Without a rule it stays the exact tool and command, which is the conservative
+// key: a shell command is opaque, and "the same kind of command" is not
+// something this can judge.
 func grantKey(req protocol.ApprovalRequest) string {
 	if req.Rule != "" {
 		return req.Tool + "\x00rule:" + req.Rule
@@ -211,6 +220,15 @@ func grantKey(req protocol.ApprovalRequest) string {
 func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, timeout time.Duration) (
 	protocol.ApprovalDecision, error,
 ) {
+	// A question the user already answered, in a previous session or a previous
+	// week. Checked before anything is registered, so nothing is ever pending
+	// for a crossing nobody needs to be asked about.
+	if s.Standing != nil {
+		if d := s.Standing.Granted(req); d.Grants() {
+			return d, nil
+		}
+	}
+
 	key := grantKey(req)
 	s.mu.Lock()
 	if s.allowAll[key] {
@@ -247,6 +265,13 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, tim
 			s.mu.Lock()
 			s.allowAll[key] = true
 			s.mu.Unlock()
+		}
+		// An answer meant to outlive the session is written down. A failure to
+		// write it must not cancel the decision: the user answered, the answer
+		// applies now, and what is lost is only that they will be asked again
+		// next time — which is the safe direction to fail in.
+		if d.Remembered() && s.Standing != nil {
+			_ = s.Standing.Remember(req, d)
 		}
 		return d, nil
 	case <-timer:
@@ -426,4 +451,18 @@ func NewID(clock Clock, entropy func() uint32) string {
 		suffix = entropy()
 	}
 	return fmt.Sprintf("%011x%08x", ms, suffix)
+}
+
+// Standing is the record of decisions that outlive a session.
+//
+// Deliberately ignorant of what a boundary means. This package knows a crossing
+// was declared and that someone must answer; which crossings are worth
+// remembering, and where an answer is kept, belong to the layer that knows both
+// the policy and the user's configuration.
+type Standing interface {
+	// Granted reports a decision already made for this crossing, or an empty
+	// decision when the question still has to be asked.
+	Granted(req protocol.ApprovalRequest) protocol.ApprovalDecision
+	// Remember writes down an answer meant to outlive the session.
+	Remember(req protocol.ApprovalRequest, d protocol.ApprovalDecision) error
 }

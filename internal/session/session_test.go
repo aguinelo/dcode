@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
@@ -904,4 +905,123 @@ func codeOf(err error) string {
 		return pe.Code
 	}
 	return ""
+}
+
+// standingStub stands in for the record of what the user already permitted.
+type standingStub struct {
+	granted    protocol.ApprovalDecision
+	remembered []protocol.ApprovalDecision
+	failSave   bool
+}
+
+func (s *standingStub) Granted(protocol.ApprovalRequest) protocol.ApprovalDecision { return s.granted }
+
+func (s *standingStub) Remember(_ protocol.ApprovalRequest, d protocol.ApprovalDecision) error {
+	s.remembered = append(s.remembered, d)
+	if s.failSave {
+		return errors.New("disk full")
+	}
+	return nil
+}
+
+// A question already answered is not asked again. That is the whole point: the
+// crossing still exists and is still governed, but the person decided once.
+func TestACrossingAlreadyPermittedIsNotAskedAboutAgain(t *testing.T) {
+	s := newSession(t)
+	s.Standing = &standingStub{granted: protocol.ApprovalAllowProject}
+
+	// Nobody is waiting to answer, and a short timeout would deny. Returning
+	// promptly with the standing answer is the assertion.
+	d, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash", Command: "go test ./...",
+		BoundaryCrossed: "network",
+	}, 50*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d != protocol.ApprovalAllowProject {
+		t.Errorf("decision = %q, want the standing answer", d)
+	}
+	if n := len(s.Pending()); n != 0 {
+		t.Errorf("%d approvals were left pending for a question nobody needed to ask", n)
+	}
+}
+
+// A standing answer is recorded, and only a standing one. "Allow once" means
+// once, and writing it down would turn a momentary decision into a permanent
+// one behind the user's back.
+func TestOnlyAStandingAnswerIsWrittenDown(t *testing.T) {
+	for _, c := range []struct {
+		answer protocol.ApprovalDecision
+		kept   bool
+	}{
+		{protocol.ApprovalAllow, false},
+		{protocol.ApprovalAllowSession, false},
+		{protocol.ApprovalAllowProject, true},
+		{protocol.ApprovalAllowAlways, true},
+		{protocol.ApprovalDeny, false},
+	} {
+		t.Run(string(c.answer), func(t *testing.T) {
+			s := newSession(t)
+			st := &standingStub{}
+			s.Standing = st
+
+			go func() {
+				for len(s.Pending()) == 0 {
+					time.Sleep(time.Millisecond)
+				}
+				_ = s.Resolve("a1", c.answer)
+			}()
+			if _, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+				ApprovalID: "a1", Tool: "bash", BoundaryCrossed: "network",
+			}, 2*time.Second); err != nil {
+				t.Fatal(err)
+			}
+
+			if kept := len(st.remembered) > 0; kept != c.kept {
+				t.Errorf("remembered = %v, want %v for %q", kept, c.kept, c.answer)
+			}
+		})
+	}
+}
+
+// A record that could not be written must not cancel the decision. The user
+// answered, and the answer applies now; what is lost is only that they will be
+// asked again next time, which is the safe direction to fail in.
+func TestADecisionStandsEvenWhenItCannotBeWrittenDown(t *testing.T) {
+	s := newSession(t)
+	s.Standing = &standingStub{failSave: true}
+
+	go func() {
+		for len(s.Pending()) == 0 {
+			time.Sleep(time.Millisecond)
+		}
+		_ = s.Resolve("a1", protocol.ApprovalAllowAlways)
+	}()
+	d, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash", BoundaryCrossed: "network",
+	}, 2*time.Second)
+	if err != nil {
+		t.Fatalf("a failed save refused the user's answer: %v", err)
+	}
+	if !d.Grants() {
+		t.Errorf("decision = %q; the user allowed it and the disk is not their problem", d)
+	}
+}
+
+// Without the record the session behaves exactly as it did, which is what lets
+// this be added without changing anything for callers that do not supply one.
+func TestWithoutTheRecordNothingChanges(t *testing.T) {
+	s := newSession(t)
+	go func() {
+		for len(s.Pending()) == 0 {
+			time.Sleep(time.Millisecond)
+		}
+		_ = s.Resolve("a1", protocol.ApprovalAllow)
+	}()
+	if d, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash",
+	}, 2*time.Second); err != nil || d != protocol.ApprovalAllow {
+		t.Fatalf("got %v, %v", d, err)
+	}
 }

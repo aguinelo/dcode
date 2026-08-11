@@ -137,6 +137,21 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
 		appSession.Engine, log, time.Now)
 	sess.ContextWindow = appSession.ContextWindow
+
+	// What the user has already permitted, so a question they answered last
+	// week is not asked again. A record that cannot be read stops the session:
+	// starting one that silently permits more than they agreed to is worse than
+	// not starting.
+	roots, err := config.DiscoverRoots(opts.Env)
+	if err != nil {
+		return nil, err
+	}
+	standing, err := NewStandingGrants(roots.Config, opts.Workspace)
+	if err != nil {
+		return nil, err
+	}
+	sess.Standing = standing
+
 	return sess, nil
 }
 
