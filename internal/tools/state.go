@@ -19,7 +19,9 @@ type State struct {
 	mu      sync.Mutex
 	files   map[string]fileState
 	written map[string]struct{}
-	plan    []protocol.PlanItem
+	// writeSeq counts every write, including repeats of the same path.
+	writeSeq uint64
+	plan     []protocol.PlanItem
 }
 
 type fileState struct {
@@ -140,6 +142,23 @@ func (s *State) MarkWritten(path string) {
 		s.written = map[string]struct{}{}
 	}
 	s.written[path] = struct{}{}
+	s.writeSeq++
+}
+
+// WriteSeq is how many writes this session has made, ever-increasing.
+//
+// The set above answers "what changed"; this answers "did anything change since
+// a moment I recorded". They are different questions, and the set cannot stand
+// in for the counter: rewriting a file already in it leaves it identical, which
+// is the ordinary shape of fixing what a failing check just reported.
+//
+// A count rather than a clock, deliberately. The verification seal is compared
+// between turns and shown to a person, and a timestamp there would vary per run
+// for a fact that is purely ordinal.
+func (s *State) WriteSeq() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.writeSeq
 }
 
 // Written returns the workspace-relative paths this session changed, sorted.
