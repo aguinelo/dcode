@@ -258,7 +258,7 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - `Verification` é função pura do registro de escrita e do registro de execução — mesmo registro, mesmo estado (RN-13).
 - Edição sem verificação posterior produz `stale`; verificação após a última edição com saída zero produz `passed`.
 - Sessão que só leu arquivos produz `clean`, e nenhum lembrete de verificação é emitido.
-- A continuação forçada dispara **no máximo uma vez por turno** — asserção contra o laço patológico.
+- A continuação forçada é limitada por `MaxStallCycles` ciclos sem progresso, nunca por contagem de tentativas — asserção contra o laço patológico.
 - Nenhum lembrete de verificação aparece no prefixo — varredura da saída de `Build`.
 
 ## 9. Changelog

@@ -72,7 +72,7 @@ Os arquivos da sobreposição, e o efeito de cada um, estão na seção 3.1 do `
 | Prefixo montado uma vez por sessão | sempre | RN-5; instrução tardia invalidaria o prefixo inteiro. |
 | Precedência da seção 4 do `.p` | sempre | Instrução mais específica vence; travada vence tudo. |
 | Estado de verificação derivado de fato | sempre | RN-13; se dependesse de julgamento, o selo do cliente não valeria nada. |
-| Continuação forçada dispara no máximo uma vez por turno | sempre | RN-13; sem teto, projeto cuja verificação não roda gira até o teto de iterações. |
+| Continuação forçada limitada por ciclos sem progresso | sempre | RN-13; sem teto, projeto cuja verificação não roda gira até o teto de iterações. |
 | Comando de verificação vindo de formato compartilhado | **nunca** | RN-13; seria execução de instrução de terceiro a cada turno. |
 
 ## 6. Changelog

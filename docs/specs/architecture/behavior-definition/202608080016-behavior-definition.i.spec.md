@@ -110,7 +110,7 @@ O localizador continua sendo **injetado por interface**, não caminho literal �
 `internal/loop` — a condição do passo 4 da RN-1 de `agent-loop`:
 
 - [ ] Sem tool call, com `stale` ou `failed`, e ainda não forçado neste turno → anexa lembrete e volta ao passo 2.
-- [ ] Forçado **uma vez por turno**; persistindo, encerra com `StopUnverified`.
+- [x] Reentra **enquanto houver progresso**; parado `MaxStallCycles` ciclos, encerra com `StopIncomplete`. Sem critério algum que possa rodar, encerra com `StopUnverified`.
 - [ ] `unavailable` **não** força continuação.
 
 **Testes obrigatórios:**
