@@ -165,6 +165,18 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, 
 		if ev.Type == EventDone || ev.Type == EventError {
 			terminal = true
 		}
+		// A send that can succeed immediately always does. Both cases of a
+		// select are chosen at random when both are ready, and on cancellation
+		// both ARE ready — which dropped the cancellation event itself often
+		// enough to matter, closing the stream with no terminal event at all
+		// and leaving the caller unable to tell an interrupt from a clean end.
+		select {
+		case out <- ev:
+			return true
+		default:
+		}
+		// Only now is giving up meaningful: the buffer is full, so the consumer
+		// has genuinely stopped draining.
 		select {
 		case out <- ev:
 			return true
@@ -191,7 +203,19 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, 
 				// Otherwise the transport closed without saying why. Treat it
 				// as a truncated stream rather than a clean finish: a silent
 				// success here would hand the loop a half-formed turn.
+				//
+				// Unless the reason is that WE stopped it. Cancelling closes the
+				// transport too, so both this and ctx.Done() become ready at the
+				// same instant and the select above picks between them at
+				// random. Reporting a user's interrupt as a transport failure is
+				// not a cosmetic misfile: Decide sends transport to retry and
+				// cancellation to silence, so the loop answered an interrupt by
+				// calling the provider again.
 				if !terminal {
+					if ctx.Err() != nil {
+						emit(canceledEvent(ctx))
+						return
+					}
 					emit(errorEvent(&ProviderError{
 						Class:     ErrClassTransport,
 						Message:   "stream ended without a terminal event",
