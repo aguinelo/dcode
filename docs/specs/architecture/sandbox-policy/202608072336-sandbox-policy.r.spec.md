@@ -75,7 +75,7 @@ Configuração travada por administrador não é sobrescrevível por variável d
 - Isolamento por container ou máquina virtual — ADR-02 adiou; custo de startup incompatível com a ADR-01.
 - Autenticação e transporte remoto.
 - Varredura de conteúdo em busca de instrução adversarial. A defesa é a fronteira, não a detecção.
-- Windows no MVP — a spec define o comportamento, a implementação vem depois.
+- Windows no MVP — a spec define o comportamento, a implementação vem depois. **O release não publica binário Windows**: `internal/sandbox` não tem backend ali, então `New` falha fechado e o binário não consegue criar sessão. Publicar artefato que instala, verifica e recusa a primeira coisa que se pede é pior que não publicar — e `TestThePublishedMatrixIsExactlyWhatCanRun` impede a matriz de divergir de novo.
 
 ## 6. Changelog
 

@@ -696,3 +696,40 @@ func TestApplyProceedsForAReleaseBuild(t *testing.T) {
 		t.Errorf("the binary was not replaced:\n%s", got)
 	}
 }
+
+// The published matrix and the platforms that have a sandbox backend are the
+// same set, and drifting apart is not a cosmetic problem: an artefact for a
+// platform with no backend installs, verifies, and then refuses the first thing
+// it is asked, with an error about a sandbox the user never chose.
+//
+// Windows was published for exactly that reason, against a spec that puts it
+// out of the MVP by name.
+func TestThePublishedMatrixIsExactlyWhatCanRun(t *testing.T) {
+	withBackend := map[string]bool{"darwin": true, "linux": true}
+
+	for _, p := range SupportedPlatforms {
+		goos, _, ok := strings.Cut(p, "_")
+		if !ok {
+			t.Errorf("%q is not a goos_goarch pair", p)
+			continue
+		}
+		if !withBackend[goos] {
+			t.Errorf("the release publishes %s, and internal/sandbox has no backend for %s: "+
+				"the binary installs, verifies, and cannot create a session", p, goos)
+		}
+	}
+
+	// And the other direction: a platform that gained a backend and was never
+	// published is a platform nobody can install.
+	for goos := range withBackend {
+		found := false
+		for _, p := range SupportedPlatforms {
+			if strings.HasPrefix(p, goos+"_") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s has a sandbox backend and is not published", goos)
+		}
+	}
+}

@@ -69,10 +69,21 @@ func ArtifactName(version, goos, goarch string) string {
 }
 
 // SupportedPlatforms is the published matrix.
+//
+// It is exactly the set that has a sandbox backend, and it has to be. Windows
+// was in this list and in the release workflow, and internal/sandbox has no
+// backend for it — so New fails closed there and the binary cannot create a
+// session at all. Publishing an artefact that cannot run is worse than not
+// publishing one: someone downloads it, it installs, it verifies, and then it
+// refuses the first thing they ask, with an error about a sandbox they never
+// chose.
+//
+// The sandbox spec puts Windows out of the MVP by name. This list now says the
+// same thing, and TestThePublishedMatrixIsExactlyWhatCanRun keeps the two from
+// drifting apart again.
 var SupportedPlatforms = []string{
 	"darwin_amd64", "darwin_arm64",
 	"linux_amd64", "linux_arm64",
-	"windows_amd64", "windows_arm64",
 }
 
 // ParseChecksums reads a `sha256␠␠filename` list into a map keyed by filename.
