@@ -35,8 +35,9 @@
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_VERIFY_COMMAND` | string | vazio | O comando que **conta** como verificação. Explícito porque "rodou algum bash" contaria um `ls`. Vazio produz estado `unavailable` quando há mudança — o produto diz que não sabe conferir, em vez de fingir que conferiu. |
-| `DCODE_VERIFY_TIMEOUT` | duração | `10m` | Teto de execução. Verificação que não termina não é verificação, e travar o turno é pior que relatar o estouro. |
-| `DCODE_VERIFY_FORCE_TURN` | booleano | `true` | Continua o turno quando a verificação está `stale` ou `failed`. Desligar devolve o comportamento antigo — turno termina, lembrete não é cobrado, e o selo passa a ser a única defesa. |
+> **`DCODE_VERIFY_TIMEOUT` e `DCODE_VERIFY_FORCE_TURN` foram removidas**, e pelo motivo que o próprio `202608102100` dá: *"os dois mecanismos não coexistem"*. A verificação é a lista unitária da definição de pronto, então o teto por critério é `DCODE_DONE_TIMEOUT` e a chave que liga a reentrada é `DCODE_DONE_ENABLED`. Manter as duas seria manter duas formas de ajustar a mesma coisa — exatamente o que a remoção de `DCODE_DOCTRINE_STYLE` evitou.
+>
+> `DCODE_VERIFY_COMMAND` **fica**: ela não duplica nada. É o que nomeia o critério único, e é o valor que o `/init` propõe a partir de comando sondado.
 
 > O comando vem da config ou do arquivo de instrução **específico**, revisado por uma pessoa. **Nunca** de formato compartilhado de terceiro: ele passaria a ser executado a cada turno, que é a RN-6.1 de `202608081203-configuration` violada em laço.
 

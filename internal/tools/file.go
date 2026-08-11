@@ -175,6 +175,7 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 		return errf(w.Name(), CodeNotFound, "", "could not write %s: %v", in.Path, err).Result(), nil
 	}
 	s.MarkRead(abs, in.Content, 0)
+	s.MarkWritten(abs)
 
 	verb := "created"
 	if err == nil {
@@ -282,6 +283,7 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	// Re-marking with the new content is what lets a second edit follow without
 	// a re-read; forgetting it makes the next edit fail as file_changed.
 	s.MarkRead(abs, updated, 0)
+	s.MarkWritten(abs)
 
 	added, removed := lineDelta(content, updated)
 	diff := UnifiedDiff(content, updated, in.Path)

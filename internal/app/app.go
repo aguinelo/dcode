@@ -58,6 +58,19 @@ type Options struct {
 	Skills bool
 	// BudgetNotice switches the occupancy warning to the model on.
 	BudgetNotice bool
+	// VerifyCommand is the command that COUNTS as verification. Explicit,
+	// because "some bash ran" would count an `ls`.
+	VerifyCommand string
+	// DoneTimeout caps one criterion. A check that never finishes is not a
+	// check, and hanging the turn is worse than reporting the overrun.
+	DoneTimeout time.Duration
+	// DoneEnabled switches re-entry on unmet criteria on. Off restores the old
+	// behaviour: the turn ends when the model stops calling tools, met or not.
+	DoneEnabled bool
+	// DoneFile overrides where the definition of done is declared.
+	DoneFile string
+	// MaxStallCycles is how many cycles without progress end a turn.
+	MaxStallCycles int
 	// SymbolMaxMatches caps what symbol returns. Same ceiling as grep, and for
 	// the same reason: a symbol matching thousands of times is a badly chosen
 	// symbol, and returning all of it spends context without informing.
@@ -208,6 +221,11 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		EditEchoDiff:      r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
 		SymbolMaxMatches:  r.Int("tools.symbol_max_matches", 200),
 		BudgetNotice:      r.Bool("budget.notice", true),
+		VerifyCommand:     r.String("verify.command", ""),
+		DoneTimeout:       parseDuration(r.String("done.timeout", "10m"), 10*time.Minute),
+		DoneEnabled:       r.Bool("done.enabled", true),
+		DoneFile:          r.String("done.file", ""),
+		MaxStallCycles:    r.Int("limits.max_stall_cycles", 2),
 		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
 		DoctrineDir:       r.String("doctrine.dir", ""),
 		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
@@ -393,6 +411,14 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		}
 	}
 
+	// The definition of done is read once, at session creation, like the
+	// instruction chain and for the same reason. A criterion written mid-session
+	// must not change what the turn is measured against.
+	doneSet, err := loadDoneSet(doneFilePath(opts.DoneFile, opts.Workspace), opts.VerifyCommand)
+	if err != nil {
+		return nil, err
+	}
+
 	prompt := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay)
 
 	window, _ := p.Window(opts.Model)
@@ -405,6 +431,12 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
 		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
 		BudgetNotice:     opts.BudgetNotice,
+		Done:             doneSet,
+		DoneEnabled:      opts.DoneEnabled,
+		MaxStallCycles:   opts.MaxStallCycles,
+		DoneTimeout:      opts.DoneTimeout,
+		RunCriterion:     criterionRunner(sb, opts),
+		WrittenPaths:     state.Written,
 		Rules:            opts.Rules,
 		Summarise:        summariser(p, opts.Model),
 		Skills:           skills,

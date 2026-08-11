@@ -77,6 +77,24 @@ type Config struct {
 	// BudgetNotice switches the occupancy warning on. Off leaves the
 	// post-compaction notice as the only signal, which is what it was before.
 	BudgetNotice bool
+	// Done is the definition of done for this workspace. Empty means the turn
+	// ends when the model stops calling tools, which is what it did before.
+	Done DoneSet
+	// DoneEnabled switches re-entry on unmet criteria on.
+	DoneEnabled bool
+	// MaxStallCycles is how many cycles without progress end the turn in
+	// StopIncomplete. Two, because the legitimate case exists: one cycle to
+	// diagnose, another to fix. Three is the model going in circles.
+	MaxStallCycles int
+	// DoneTimeout caps one criterion. A check that never finishes is not a
+	// check, and hanging the turn is worse than reporting the overrun.
+	DoneTimeout time.Duration
+	// RunCriterion executes a criterion command. Injected, and it goes through
+	// the sandbox like everything else.
+	RunCriterion CriterionRunner
+	// WrittenPaths reports what the session has written, for the protected-path
+	// check. Nil disables it.
+	WrittenPaths func() []string
 	// Now is the clock used to time tool calls. Nil means the real one.
 	Now func() time.Time
 }
@@ -104,6 +122,9 @@ type Engine struct {
 	// repeats the same reminder every turn, and a warning that is always there
 	// stops being read.
 	budgetBand ce.Band
+	// lastReport is what the most recent done check found, so the client can
+	// show the seal and the turn can report what was left.
+	lastReport Report
 }
 
 // now is the engine's clock. Injectable so a test can assert a duration without
@@ -155,6 +176,8 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 	out := Outcome{TurnID: turnID}
 	var recent []ce.ToolCall
 	compacted := false
+	stall := 0
+	var unmet []string
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -203,7 +226,18 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 			})
 		}
 		if len(calls) == 0 {
-			return e.finish(out, protocol.StopDone), nil
+			// Step 4. The turn does not end merely because the model stopped
+			// asking for tools: done is a checked condition, not a declaration.
+			reason, more := e.checkDone(ctx, &stall, &unmet)
+			if more != nil {
+				e.session.History = append(e.session.History, more...)
+				out.Iterations++
+				if out.Iterations >= e.cfg.Limits.MaxIterations {
+					return e.finish(out, protocol.StopMaxIterations), nil
+				}
+				continue
+			}
+			return e.finish(out, reason), nil
 		}
 
 		recent = append(recent, calls...)
@@ -669,4 +703,86 @@ func (e *Engine) crossBudget() ce.Band {
 		return ce.BandNone
 	}
 	return band
+}
+
+// checkDone is step 4: decide whether the turn may end.
+//
+// It returns the stop reason when the turn ends, or the messages to append and
+// nil when it must continue. Re-entry costs one iteration, which is the spend
+// that was authorised, and it buys the difference between a false report and an
+// honest one.
+//
+// Exit is by PROGRESS, never by perfection. If the unmet set shrank strictly,
+// the loop goes round again. If it did not shrink MaxStallCycles times, the
+// turn ends in StopIncomplete carrying what was left. A loop that cannot exit
+// until everything passes makes weakening the check the shortest way out.
+func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (string, []ce.Message) {
+	if !e.cfg.DoneEnabled || len(e.cfg.Done.Criteria) == 0 {
+		return protocol.StopDone, nil
+	}
+	// A turn that changed nothing has nothing to verify. Running the suite to
+	// answer "what does this function do" burns a turn, and two weeks of that
+	// is an uninstalled tool.
+	written := e.written()
+	if len(written) == 0 {
+		e.lastReport = Report{}
+		return protocol.StopDone, nil
+	}
+
+	rep := Check(ctx, e.cfg.Done, e.cfg.RunCriterion, e.cfg.DoneTimeout)
+	rep.TouchedProtected = e.cfg.Done.TouchedProtected(written)
+	e.lastReport = rep
+
+	now := rep.Unmet()
+	if len(now) == 0 {
+		return protocol.StopDone, nil
+	}
+
+	if Progressed(*unmet, now) || *unmet == nil {
+		*stall = 0
+	} else {
+		*stall++
+	}
+	*unmet = now
+
+	if *stall >= e.stallLimit() {
+		// Not an error. This is the product being honest about work that needs
+		// a person, and reporting it as failure would make switching the check
+		// off the easy way out.
+		return protocol.StopIncomplete, nil
+	}
+
+	st := behavior.SessionState{
+		UnmetCriteria:    now,
+		ProtectedTouched: rep.TouchedProtected,
+	}
+	var msgs []ce.Message
+	for _, r := range behavior.Emit(st) {
+		msgs = append(msgs, ce.Message{
+			Role: ce.RoleUser, Text: behavior.Render(r), Reminder: true,
+		})
+	}
+	return "", msgs
+}
+
+func (e *Engine) stallLimit() int {
+	if e.cfg.MaxStallCycles > 0 {
+		return e.cfg.MaxStallCycles
+	}
+	return 2
+}
+
+func (e *Engine) written() []string {
+	if e.cfg.WrittenPaths == nil {
+		return nil
+	}
+	return e.cfg.WrittenPaths()
+}
+
+// Report is what the most recent done check found.
+func (e *Engine) Report() Report { return e.lastReport }
+
+// Verification is the single-criterion seal for the client.
+func (e *Engine) Verification() Verification {
+	return VerificationOf(e.lastReport, len(e.written()) > 0)
 }

@@ -3,6 +3,7 @@ package tools
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -15,9 +16,10 @@ type State struct {
 	Resolver *policy.Resolver
 	Limits   Limits
 
-	mu    sync.Mutex
-	files map[string]fileState
-	plan  []protocol.PlanItem
+	mu      sync.Mutex
+	files   map[string]fileState
+	written map[string]struct{}
+	plan    []protocol.PlanItem
 }
 
 type fileState struct {
@@ -106,6 +108,36 @@ func (s *State) CheckEditable(path, current string) *ToolError {
 }
 
 // WasRead reports whether path has been read this session.
+// MarkWritten records that a tool changed path.
+//
+// Separate from MarkRead on purpose. MarkRead is also called right after a
+// write, to keep the read-before-edit invariant satisfied for the next edit —
+// so it cannot answer "did this session change anything", which is the fact the
+// definition of done needs.
+func (s *State) MarkWritten(path string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.written == nil {
+		s.written = map[string]struct{}{}
+	}
+	s.written[path] = struct{}{}
+}
+
+// Written returns the workspace-relative paths this session changed, sorted.
+func (s *State) Written() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]string, 0, len(s.written))
+	for p := range s.written {
+		if rel, err := filepath.Rel(s.Resolver.Workspace, p); err == nil {
+			p = rel
+		}
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func (s *State) WasRead(path string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()

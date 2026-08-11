@@ -183,6 +183,9 @@ func DefaultDoctrine(toolNames []string) Doctrine {
 
 		Style: "Answer in the language the user wrote in. " +
 			"Be concise: report what changed and what it means, not every step taken. " +
-			"When you are unsure, say so rather than guessing.",
+			"When you are unsure, say so rather than guessing.\n\n" +
+			"If you did not run it, do not say it works. Report what you executed and " +
+			"what came out; when you could not verify something, say that instead of " +
+			"claiming success.",
 	}
 }
