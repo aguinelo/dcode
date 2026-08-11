@@ -500,6 +500,11 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	explore.Delegator = engine
 
 	notice := ""
+	// A model nobody measured is usable and must say so. Reading a difference
+	// in behaviour as a defect in dcode is the cost of not saying it.
+	if resolvedFamily(opts) == provider.GenericName {
+		notice = provider.GenericWarning
+	}
 	if opts.InstructionNotice {
 		notice = InstructionNotice(opts.Workspace,
 			foreignFiles(opts.InstructionForeign), registry.Names())
@@ -516,7 +521,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 // Families are the adaptations this build supports, in registration order.
 func Families() []provider.Family {
-	return []provider.Family{provider.MiniMaxM3{}, provider.Claude{}}
+	return []provider.Family{provider.MiniMaxM3{}, provider.Claude{}, provider.Generic{}}
 }
 
 // CredentialName is the family this model belongs to.
@@ -527,6 +532,9 @@ func Families() []provider.Family {
 //
 // It answers the prompt's question too — RN-8 puts the FORMULATION with the
 // family — and the same resolution serves both because it is the same fact.
+// resolvedFamily is the family this session will actually use.
+func resolvedFamily(opts Options) string { return CredentialName(opts) }
+
 func CredentialName(opts Options) string {
 	if opts.Family != "" {
 		return opts.Family
