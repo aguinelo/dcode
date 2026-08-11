@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 )
@@ -142,5 +143,115 @@ func TestNoDirectoryMeansNoSpill(t *testing.T) {
 	}
 	if err := sp.Remove(); err != nil {
 		t.Errorf("Remove on a nil spill: %v", err)
+	}
+}
+
+// The spill exists so a client that was away can still read what it missed.
+// Once the session is gone, nobody can ask for those events — the id is not
+// resolvable and there is no route to it — so the file is garbage with a
+// session id in its name.
+//
+// Nothing removed it. One file per session, kept forever, in a directory the
+// user configured and never looks at, growing for exactly as long as the daemon
+// is useful. The method to delete it existed and had no caller.
+func TestClosingASessionTakesItsSpillWithIt(t *testing.T) {
+	dir := t.TempDir()
+	sp, err := NewSpill(dir, "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
+	l.SetSpill(sp)
+
+	// Enough events that retention trims and something reaches the file.
+	for i := 0; i < 6; i++ {
+		if _, err := l.Append(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before) != 1 {
+		t.Fatalf("expected the spill to exist before closing, found %d entries", len(before))
+	}
+
+	l.Close()
+
+	after, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != 0 {
+		t.Errorf("the spill outlived the session: %v — one file per session, kept "+
+			"forever, in a directory nobody looks at", names(after))
+	}
+}
+
+// Closing twice is what a shutdown racing a delete does, and a second close
+// must not turn into an error nobody can act on.
+func TestClosingTwiceIsNotAnError(t *testing.T) {
+	dir := t.TempDir()
+	sp, err := NewSpill(dir, "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
+	l.SetSpill(sp)
+	if _, err := l.Append(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"}); err != nil {
+		t.Fatal(err)
+	}
+	l.Close()
+	l.Close()
+}
+
+// A log with no spill closes exactly as it did before. The spill is optional
+// and off by default, and the close path must not start depending on it.
+func TestClosingALogWithoutASpillIsUnchanged(t *testing.T) {
+	l := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
+	if _, err := l.Append(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"}); err != nil {
+		t.Fatal(err)
+	}
+	l.Close()
+}
+
+func names(entries []os.DirEntry) []string {
+	var out []string
+	for _, e := range entries {
+		out = append(out, e.Name())
+	}
+	return out
+}
+
+// End to end through the manager, which is the path a client's DELETE takes.
+// The unit above proves the log removes it; this proves the removal is actually
+// reached when a session is deleted rather than sitting behind a Close nobody
+// calls.
+func TestRemovingASessionThroughTheManagerLeavesNoSpill(t *testing.T) {
+	dir := t.TempDir()
+	m := NewManager(4)
+	log := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
+	sp, err := NewSpill(dir, "s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.SetSpill(sp)
+	s := New("s1", "/w", "MiniMax-M3", "workspace-write", nil, log, func() time.Time { return time.Unix(0, 0) })
+	if err := m.Add(s); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 6; i++ {
+		s.Emit(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"})
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) == 0 {
+		t.Fatal("nothing spilled; the assertion below would prove nothing")
+	}
+
+	if err := m.Remove(s.ID); err != nil {
+		t.Fatal(err)
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Errorf("deleting the session left %v behind", names(entries))
 	}
 }
