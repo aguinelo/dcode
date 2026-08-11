@@ -30,6 +30,10 @@ type Session struct {
 	state   protocol.SessionState
 	cancel  context.CancelFunc
 	pending map[string]*approval
+	// lapsed remembers approvals the deadline denied, so a client that comes
+	// back to answer one is told that rather than that somebody else did.
+	lapsed      map[string]struct{}
+	lapsedOrder []string
 	// allowAll records an "allow for the session" decision, which is the one
 	// place a user answer outlives a single crossing.
 	allowAll map[string]bool
@@ -168,6 +172,33 @@ func (a *approval) resolve(d protocol.ApprovalDecision) {
 // Without a rule it stays the exact tool and command, which is the conservative
 // key: a shell command is opaque, and "the same kind of command" is not
 // something this can judge.
+// maxLapsed bounds what is remembered about approvals nobody answered.
+//
+// A daemon runs for weeks and a set that grows once per approval is a leak with
+// a long fuse. The bound is generous for what it is for — a client that was away
+// coming back to answer — and anything older than that is a question whose
+// context is gone anyway.
+const maxLapsed = 64
+
+// noteLapsed records that an approval ran out of time, keeping the most recent.
+func (s *Session) noteLapsed(id string) {
+	if s.lapsed == nil {
+		s.lapsed = map[string]struct{}{}
+	}
+	s.lapsed[id] = struct{}{}
+	s.lapsedOrder = append(s.lapsedOrder, id)
+	for len(s.lapsedOrder) > maxLapsed {
+		delete(s.lapsed, s.lapsedOrder[0])
+		s.lapsedOrder = s.lapsedOrder[1:]
+	}
+}
+
+func (s *Session) lapsedCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.lapsed)
+}
+
 func grantKey(req protocol.ApprovalRequest) string {
 	if req.Rule != "" {
 		return req.Tool + "\x00rule:" + req.Rule
@@ -221,6 +252,13 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, tim
 	case <-timer:
 		// Nobody answered in time. Denying is the only safe reading: the
 		// alternative would be granting because everyone looked away.
+		//
+		// Recorded, because a client that comes back to answer must be told
+		// which of the two happened: a decision was made, or the deadline made
+		// one. They are opposite facts about whether the work went ahead.
+		s.mu.Lock()
+		s.noteLapsed(req.ApprovalID)
+		s.mu.Unlock()
 		return protocol.ApprovalDeny, nil
 	case <-ctx.Done():
 		return protocol.ApprovalDeny, nil
@@ -236,9 +274,14 @@ func (s *Session) Resolve(approvalID string, d protocol.ApprovalDecision) error 
 	s.mu.Lock()
 	a, ok := s.pending[approvalID]
 	if !ok {
+		_, lapsed := s.lapsed[approvalID]
 		s.mu.Unlock()
+		if lapsed {
+			return protocol.Errorf(protocol.CodeApprovalExpired,
+				"approval %s ran out of time and was denied; nobody answered it", approvalID)
+		}
 		return protocol.Errorf(protocol.CodeApprovalResolved,
-			"approval %s is not pending; it was already answered or it expired", approvalID)
+			"approval %s is not pending; it was already answered", approvalID)
 	}
 	if a.resolved {
 		s.mu.Unlock()

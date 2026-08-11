@@ -743,3 +743,39 @@ func mustJSON(t *testing.T, v any) []byte {
 	}
 	return b
 }
+
+// The protocol table promises 410 for an approval that ran out of time, and the
+// code was declared, mapped to that status, and produced by nothing. A client
+// asking about a lapsed approval got 409 — "somebody already answered" — which
+// is the opposite of what happened.
+func TestALapsedApprovalIsRefusedAsExpiredOverTheWire(t *testing.T) {
+	c, mgr := newDaemon(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	s, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sess, err := mgr.Get(s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Nobody answers, and the deadline denies it.
+	if d, err := sess.Approve(ctx, protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash", Command: "curl x",
+	}, 10*time.Millisecond); err != nil || d != protocol.ApprovalDeny {
+		t.Fatalf("the lapse resolved to %v, %v", d, err)
+	}
+
+	err = c.Resolve(ctx, s.ID, "a1", protocol.ApprovalAllow)
+	pe, ok := protocol.AsError(err)
+	if !ok {
+		t.Fatalf("a lapsed approval answered over the wire: %v", err)
+	}
+	if pe.Code != protocol.CodeApprovalExpired {
+		t.Errorf("code = %q, want %q — the client is told a decision was made when "+
+			"the deadline denied it", pe.Code, protocol.CodeApprovalExpired)
+	}
+}

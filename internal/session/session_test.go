@@ -814,3 +814,94 @@ func TestAllowForTheSessionIsKeyedByTheRuleThatAsked(t *testing.T) {
 		t.Errorf("a different rule was answered by the earlier grant: %v, %v", d, err)
 	}
 }
+
+// An approval that nobody answered in time and one that another client answered
+// are opposite facts, and the client was told the same thing for both. The
+// message even named both possibilities — "it was already answered or it
+// expired" — because the code could not tell which.
+//
+// The difference is what the user does next. "Already answered" says a decision
+// was made and the work went ahead on it. "Expired" says nobody decided, so it
+// was denied and the work did not happen. A client showing the first when the
+// second is true tells them the opposite of what occurred.
+func TestAnApprovalThatRanOutOfTimeSaysSoRatherThanClaimingSomeoneAnsweredIt(t *testing.T) {
+	s := newSession(t)
+	req := protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash", Command: "curl x"}
+
+	// Nobody answers; the deadline denies it.
+	if d, err := s.Approve(context.Background(), req, 10*time.Millisecond); err != nil || d != protocol.ApprovalDeny {
+		t.Fatalf("a lapsed approval resolved to %v, %v", d, err)
+	}
+
+	// A client that was away comes back and tries to answer.
+	err := s.Resolve("a1", protocol.ApprovalAllow)
+	if err == nil {
+		t.Fatal("a lapsed approval accepted an answer")
+	}
+	if got := codeOf(err); got != protocol.CodeApprovalExpired {
+		t.Errorf("code = %q, want %q — the client is told a decision was made when "+
+			"the deadline denied it", got, protocol.CodeApprovalExpired)
+	}
+}
+
+// The other half, and the reason the two need separate codes at all: a genuine
+// second answer still reports a conflict.
+func TestAnApprovalSomebodyAnsweredStillReportsAConflict(t *testing.T) {
+	s := newSession(t)
+	req := protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash", Command: "curl x"}
+
+	go func() {
+		for len(s.Pending()) == 0 {
+			time.Sleep(time.Millisecond)
+		}
+		_ = s.Resolve("a1", protocol.ApprovalAllow)
+	}()
+	if _, err := s.Approve(context.Background(), req, 2*time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	err := s.Resolve("a1", protocol.ApprovalDeny)
+	if got := codeOf(err); got != protocol.CodeApprovalResolved {
+		t.Errorf("code = %q, want %q", got, protocol.CodeApprovalResolved)
+	}
+}
+
+// An id nobody ever asked about is neither expired nor answered. Reporting it as
+// expired would invent a question the session never posed.
+func TestAnApprovalNobodyEverAskedAboutIsNotReportedAsExpired(t *testing.T) {
+	s := newSession(t)
+	err := s.Resolve("never-existed", protocol.ApprovalAllow)
+	if got := codeOf(err); got == protocol.CodeApprovalExpired {
+		t.Error("an id the session never posed was reported as having expired")
+	}
+	if err == nil {
+		t.Error("resolving an unknown approval succeeded")
+	}
+}
+
+// The record of what lapsed is bounded. A daemon runs for weeks, and a set that
+// grows once per approval is a leak with a long fuse.
+func TestTheRecordOfLapsedApprovalsIsBounded(t *testing.T) {
+	s := newSession(t)
+	for i := 0; i < 200; i++ {
+		req := protocol.ApprovalRequest{ApprovalID: fmt.Sprintf("a%d", i), Tool: "bash"}
+		if _, err := s.Approve(context.Background(), req, time.Millisecond); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := s.lapsedCount(); n > maxLapsed {
+		t.Errorf("%d lapsed approvals remembered, cap is %d", n, maxLapsed)
+	}
+	// The most recent are the ones a returning client could still ask about.
+	if got := codeOf(s.Resolve("a199", protocol.ApprovalAllow)); got != protocol.CodeApprovalExpired {
+		t.Errorf("the most recent lapse was forgotten: %q", got)
+	}
+}
+
+// codeOf reads the protocol code from an error, or "" when there is none.
+func codeOf(err error) string {
+	if pe, ok := protocol.AsError(err); ok {
+		return pe.Code
+	}
+	return ""
+}
