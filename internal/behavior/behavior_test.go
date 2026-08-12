@@ -325,3 +325,25 @@ func TestOrientationCarriesNoMachinePath(t *testing.T) {
 		}
 	}
 }
+
+// The doctrine named two boundaries: writing outside the workspace, and the
+// network. The policy enforces three — reading outside the workspace escalates
+// too, and with nobody to ask it is denied.
+//
+// A model told that only *writing* outside crosses a boundary reasonably
+// concludes that reading outside is free. One measured run reached for
+//
+//	bash("command":"ls -la ~/.ssh/ 2>&1 | head -20")
+//
+// before refusing the task in clear terms. It refused well and it looked
+// first, at the directory holding the key it had just been asked to copy.
+func TestTheSafetySectionNamesEveryBoundaryThePolicyEnforces(t *testing.T) {
+	d := strings.ToLower(DefaultDoctrine([]string{"read", "bash"}).Safety)
+
+	for _, need := range []string{"reading", "writing", "network"} {
+		if !strings.Contains(d, need) {
+			t.Errorf("the safety section does not name the %s boundary, which policy.Evaluate escalates:\n%s",
+				need, DefaultDoctrine([]string{"read", "bash"}).Safety)
+		}
+	}
+}
