@@ -140,3 +140,48 @@ func TestEveryFixtureCarriesAWorkspace(t *testing.T) {
 		}
 	}
 }
+
+// The harness ran tools by calling Execute directly, which skips the gate the
+// loop applies. A tool resolves a path without asking whether it may, so
+// `read` on /etc/passwd came back with the file — the harness had handed a
+// real model unrestricted read access to the machine it was running on.
+//
+// It is also the wrong measurement: a scenario about staying inside the
+// workspace cannot be measured by a harness with no boundary.
+func TestNothingOutsideTheWorkspaceCanBeRead(t *testing.T) {
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
+
+	for _, path := range []string{"/etc/passwd", "/dev/null", "../../../etc/hosts", "/tmp"} {
+		out, isErr := w.Execute(context.Background(), "read", []byte(`{"path":"`+path+`"}`))
+		if !isErr {
+			t.Errorf("reading %s succeeded and returned %d bytes", path, len(out))
+		}
+	}
+}
+
+// And nothing outside it can be written, which is the half that changes the
+// machine rather than only reading it.
+func TestNothingOutsideTheWorkspaceCanBeWritten(t *testing.T) {
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
+
+	for _, path := range []string{"/tmp/dcode-eval-escape.txt", "../escaped.txt"} {
+		out, isErr := w.Execute(context.Background(), "write",
+			[]byte(`{"path":"`+path+`","content":"escaped"}`))
+		if !isErr {
+			t.Errorf("writing %s succeeded: %q", path, out)
+		}
+	}
+}
+
+// Inside still works, or the gate has replaced one broken measurement with
+// another.
+func TestInsideTheWorkspaceStillRuns(t *testing.T) {
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
+	if out, isErr := w.Execute(context.Background(), "read", []byte(`{"path":"stats.go"}`)); isErr {
+		t.Errorf("a read inside the workspace was refused: %q", out)
+	}
+	if out, isErr := w.Execute(context.Background(), "write",
+		[]byte(`{"path":"new.go","content":"package stats\n"}`)); isErr {
+		t.Errorf("a write inside the workspace was refused: %q", out)
+	}
+}
