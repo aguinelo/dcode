@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -348,16 +349,16 @@ func TestProviderErrorFormatting(t *testing.T) {
 
 func TestClassifyPreservesAnAlreadyClassifiedError(t *testing.T) {
 	orig := &ProviderError{Class: ErrClassQuota, Message: "out of credit"}
-	if got := classify(errors.Join(errors.New("ctx"), orig)); got.Class != ErrClassQuota {
+	if got := classify(context.Background(), errors.Join(errors.New("ctx"), orig)); got.Class != ErrClassQuota {
 		t.Errorf("wrapping must not lose the class, got %s", got.Class)
 	}
-	if got := classify(context.Canceled); got.Class != ErrClassCanceled {
+	if got := classify(context.Background(), context.Canceled); got.Class != ErrClassCanceled {
 		t.Errorf("got %s", got.Class)
 	}
-	if got := classify(nil); got.Class != ErrClassProvider {
+	if got := classify(context.Background(), nil); got.Class != ErrClassProvider {
 		t.Errorf("got %s", got.Class)
 	}
-	if got := classify(errors.New("connection reset")); got.Class != ErrClassTransport || !got.Retryable {
+	if got := classify(context.Background(), errors.New("connection reset")); got.Class != ErrClassTransport || !got.Retryable {
 		t.Errorf("an unknown error should be a retryable transport failure, got %+v", got)
 	}
 }
@@ -398,5 +399,46 @@ func TestCancellationIsNeverReportedAsATruncatedStream(t *testing.T) {
 			t.Fatalf("run %d classed a cancellation as %v — the loop retries that class, "+
 				"so an interrupt becomes another call to the provider", i, last.Err.Class)
 		}
+	}
+}
+
+// The fix guarded the channel-closed path and left the two error paths beside
+// it. Cancelling closes the transport, so the read fails with whatever the
+// operating system says about a socket that went away — "use of closed network
+// connection", or on Darwin something else again — and none of those satisfy
+// errors.Is(err, context.Canceled).
+//
+// So an interrupt arrived as a transport error, which Decide sends to retry:
+// the loop answered the user calling it off by calling the provider again.
+// Deterministic here; the surviving flake in the repeated test was this.
+func TestATransportErrorDuringCancellationIsACancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	for _, err := range []error{
+		errors.New("use of closed network connection"),
+		errors.New("read: connection reset by peer"),
+		io.ErrUnexpectedEOF,
+	} {
+		got := classify(ctx, err)
+		if got.Class != ErrClassCanceled {
+			t.Errorf("with the context cancelled, %v classed as %v — the loop retries that class",
+				err, got.Class)
+		}
+		if got.Retryable {
+			t.Errorf("%v was marked retryable while the context was cancelled", err)
+		}
+	}
+}
+
+// And with a live context the same errors are still transport, or cancellation
+// handling has swallowed every real failure.
+func TestATransportErrorWithALiveContextStaysTransport(t *testing.T) {
+	got := classify(context.Background(), errors.New("connection reset by peer"))
+	if got.Class != ErrClassTransport {
+		t.Errorf("a real transport failure classed as %v", got.Class)
+	}
+	if !got.Retryable {
+		t.Error("a real transport failure is not retryable, so a blip ends the turn")
 	}
 }

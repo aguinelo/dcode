@@ -224,12 +224,12 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, 
 				return
 			}
 			if wev.Err != nil {
-				emit(errorEvent(classify(wev.Err)))
+				emit(errorEvent(classify(ctx, wev.Err)))
 				return
 			}
 			evs, err := dec.Decode(wev)
 			if err != nil {
-				emit(errorEvent(classify(err)))
+				emit(errorEvent(classify(ctx, err)))
 				return
 			}
 			for _, ev := range evs {

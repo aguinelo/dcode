@@ -131,7 +131,17 @@ func canceledEvent(ctx context.Context) StreamEvent {
 
 // classify turns an arbitrary error into a ProviderError, preserving one that
 // is already classified.
-func classify(err error) *ProviderError {
+//
+// The context is consulted because cancelling closes the transport, and what
+// the read then reports is whatever the operating system says about a socket
+// that went away — "use of closed network connection", a reset, an unexpected
+// EOF. None of those satisfy errors.Is(err, context.Canceled), so an interrupt
+// arrived as a transport error, and Decide sends transport to retry: the loop
+// answered the user calling it off by calling the provider again.
+//
+// A live context still classes those as transport, or cancellation handling
+// would swallow every real failure.
+func classify(ctx context.Context, err error) *ProviderError {
 	if err == nil {
 		return &ProviderError{Class: ErrClassProvider, Message: "unknown error"}
 	}
@@ -140,6 +150,9 @@ func classify(err error) *ProviderError {
 		return pe
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return &ProviderError{Class: ErrClassCanceled, Message: err.Error()}
+	}
+	if ctx != nil && ctx.Err() != nil {
 		return &ProviderError{Class: ErrClassCanceled, Message: err.Error()}
 	}
 	return &ProviderError{Class: ErrClassTransport, Message: err.Error(), Retryable: true}
