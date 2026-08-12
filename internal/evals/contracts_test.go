@@ -561,8 +561,11 @@ func TestTheRoundCeilingLeavesRoomForTheWork(t *testing.T) {
 		if c.Rounds == 1 {
 			continue
 		}
-		if c.Rounds < 4 {
-			t.Errorf("%s allows %d rounds, which an agent spends orienting before it starts",
+		// Eight is the floor the digests justify: the init family spent seven
+		// establishing what was there before writing anything, and a ceiling
+		// at or below that measures the interruption rather than the work.
+		if c.Rounds < 8 {
+			t.Errorf("%s allows %d rounds, which a careful agent spends before it produces anything",
 				c.ID, c.Rounds)
 		}
 	}
