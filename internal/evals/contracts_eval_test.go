@@ -59,7 +59,11 @@ func TestEveryContract(t *testing.T) {
 			var failed Transcript
 			var sawFailure bool
 			attempt := func(ctx context.Context) (bool, error) {
-				tr, err := exchangeRounds(ctx, p, cfg.Model, f, contract)
+				w, err := NewWorkspace(t.TempDir(), f.Files)
+				if err != nil {
+					return false, err
+				}
+				tr, err := exchangeRounds(ctx, p, cfg.Model, f, contract, w)
 				if err != nil {
 					return false, err
 				}
@@ -94,7 +98,7 @@ func TestEveryContract(t *testing.T) {
 // product would have appended — a tool error, a reminder. The wording of those
 // is the product's own, because RN-3 makes tool error text a behaviour surface
 // and measuring against text dcode does not emit measures a different product.
-func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fixture, c Contract) (Transcript, error) {
+func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fixture, c Contract, w *Workspace) (Transcript, error) {
 	// History, not the whole message list. The prompt is rebuilt around it on
 	// every round by the same code path the product uses — which is the fix:
 	// this used to be the entire list, hand-built as one user message, so the
@@ -132,7 +136,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		}
 		// The model's turn, then what the product would have said back.
 		history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
-		history = append(history, answers(f, c, calls, injectNow)...)
+		history = append(history, answers(ctx, w, c, calls, injectNow)...)
 		if injectNow {
 			tr.InjectedAt = len(tr.Calls)
 		}

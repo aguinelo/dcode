@@ -38,25 +38,15 @@ type Fixture struct {
 	// and no convention was ever sent. It could not have passed.
 	Instructions []behavior.Instruction
 	Skills       []behavior.SkillIndexEntry
-	// Results is what each tool returns when it succeeds, by tool name.
+	// Files is the workspace this scenario runs against: the shared miniature
+	// repository, with the fixture's own files/ laid over it.
 	//
-	// The harness executes nothing, so a multi-round scenario has to answer the
-	// model's calls with something. Canned per tool rather than per path: the
-	// scenarios that need content need one file's worth, and parsing arguments
-	// to decide what to return would put a second, invisible implementation of
-	// the tool suite inside the thing measuring it.
-	Results map[string]string
-}
-
-// ResultFor is what a successful call to name returns.
-//
-// A tool with nothing declared returns "ok" — enough to keep the exchange
-// well-formed, and the scenarios where the content is the point declare it.
-func (f Fixture) ResultFor(name string) string {
-	if out, ok := f.Results[name]; ok {
-		return out
-	}
-	return "ok"
+	// It replaced a canned answer per tool, and that answer was the string
+	// "ok". A model that globbed and grepped and got "ok" every time concluded
+	// the workspace was empty — correctly, from what it had been told — and
+	// refused to invent code. That is good behaviour scored as zero, and it
+	// was poisoning every multi-round scenario at once.
+	Files map[string]string
 }
 
 // LoadFixture reads testdata/evals/<id>/ under root.
@@ -96,19 +86,13 @@ func LoadFixture(root, id string) (Fixture, error) {
 		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
 	}
 
-	results, err := loadResults(dir)
+	shared, err := loadFiles(filepath.Join(filepath.Dir(root), filepath.Base(WorkspaceRoot)))
+	if err != nil {
+		return Fixture{}, fmt.Errorf("fixture %s: shared workspace: %w", id, err)
+	}
+	own, err := loadFiles(filepath.Join(dir, "files"))
 	if err != nil {
 		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
-	}
-
-	f := Fixture{Tools: tools}
-	for name := range results {
-		// A canned result for a tool the scenario does not offer is material
-		// that reads as though it will be used and never is — the shape of
-		// every defect this package was built around.
-		if !f.Declares(name) {
-			return Fixture{}, fmt.Errorf("fixture %s: results.json answers %q and the scenario does not offer that tool", id, name)
-		}
 	}
 
 	return Fixture{
@@ -117,28 +101,10 @@ func LoadFixture(root, id string) (Fixture, error) {
 		Tools:        tools,
 		Instructions: ins,
 		Skills:       skills,
-		Results:      results,
+		Files:        overlay(shared, own),
 	}, nil
 }
 
-// loadResults reads results.json, if it is there.
-func loadResults(dir string) (map[string]string, error) {
-	raw, err := os.ReadFile(filepath.Join(dir, "results.json"))
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	var results map[string]string
-	if err := json.Unmarshal(raw, &results); err != nil {
-		return nil, fmt.Errorf("results.json: %w", err)
-	}
-	return results, nil
-}
-
-// instructionSources is every source a fixture file may be named after.
-//
 // Spelled out rather than accepted freely: a file named `porject.md` would
 // otherwise load as an instruction from a source with no authority ranking,
 // sort first, and quietly measure the opposite of what the scenario says.
@@ -220,6 +186,8 @@ func loadSkills(dir string) ([]behavior.SkillIndexEntry, error) {
 }
 
 // ToolNames is the fixture's tool set, in the order it was declared.
+
+// ToolNames is the fixture's tool set, in the order it was declared.
 func (f Fixture) ToolNames() []string {
 	names := make([]string, 0, len(f.Tools))
 	for _, t := range f.Tools {
@@ -261,17 +229,4 @@ func (f Fixture) Messages(family string, history []ce.Message) ([]ce.Message, er
 		Tools:        f.Tools,
 		History:      history,
 	})
-}
-
-// Declares reports whether name is in the fixture's tool set.
-//
-// This is what a phantom-tool judge asks, and it lives here rather than in the
-// scenario so the question is asked the same way everywhere.
-func (f Fixture) Declares(name string) bool {
-	for _, t := range f.Tools {
-		if t.Name == name {
-			return true
-		}
-	}
-	return false
 }

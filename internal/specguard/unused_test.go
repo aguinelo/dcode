@@ -122,6 +122,13 @@ func scanRepository(t *testing.T, root string) (map[string]string, map[string]in
 			!strings.HasPrefix(rel, "cmd/") {
 			return nil
 		}
+		// testdata is material, not product code. The Go toolchain ignores it
+		// for the same reason, and a scanner that does not will report a type
+		// in an eval fixture as dead code — which it is, deliberately: the
+		// scenario exists precisely so a model can be asked to change it.
+		if strings.Contains(rel, "/testdata/") {
+			return nil
+		}
 
 		f, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {

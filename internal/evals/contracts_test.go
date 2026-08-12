@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -299,12 +300,10 @@ func TestAScenarioAboutMaterialShipsThatMaterial(t *testing.T) {
 // having failed. A model that then re-read looked like it had acted on the
 // reminder when it had only retried.
 func TestAReminderArrivesAsAReminderNextToASuccessfulResult(t *testing.T) {
-	f := Fixture{
-		Tools:   []ce.ToolDef{{Name: "read"}},
-		Results: map[string]string{"read": "package stats"},
-	}
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
 	c := Contract{Inject: "<system-reminder>stats.go changed</system-reminder>", InjectAs: InjectReminder}
-	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "read"}}, true)
+	out := answers(context.Background(), w, c,
+		[]ce.ToolCall{{ID: "c1", Name: "read", Input: []byte(`{"path":"stats.go"}`)}}, true)
 
 	if len(out) != 2 {
 		t.Fatalf("got %d messages, want a tool result and a reminder: %+v", len(out), out)
@@ -312,8 +311,8 @@ func TestAReminderArrivesAsAReminderNextToASuccessfulResult(t *testing.T) {
 	if out[0].ToolResult == nil || out[0].ToolResult.IsError {
 		t.Errorf("the read was reported as having failed: %+v", out[0].ToolResult)
 	}
-	if out[0].ToolResult.Output != "package stats" {
-		t.Errorf("the read returned %q, not the scenario's content", out[0].ToolResult.Output)
+	if !strings.Contains(out[0].ToolResult.Output, "package stats") {
+		t.Errorf("the read returned %q, not the workspace's content", out[0].ToolResult.Output)
 	}
 	if !out[1].Reminder || out[1].Role != ce.RoleUser {
 		t.Errorf("the reminder did not arrive as a reminder: %+v", out[1])
@@ -322,9 +321,9 @@ func TestAReminderArrivesAsAReminderNextToASuccessfulResult(t *testing.T) {
 
 // A tool error is still a tool error, and it lands on the call that failed.
 func TestAToolErrorLandsOnTheCallAndNotBesideIt(t *testing.T) {
-	f := Fixture{Tools: []ce.ToolDef{{Name: "edit"}}}
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
 	c := Contract{Inject: "old_string was not found", InjectAs: InjectToolError}
-	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "edit"}}, true)
+	out := answers(context.Background(), w, c, []ce.ToolCall{{ID: "c1", Name: "edit"}}, true)
 
 	if len(out) != 1 {
 		t.Fatalf("got %d messages, want just the failed result: %+v", len(out), out)
@@ -337,10 +336,13 @@ func TestAToolErrorLandsOnTheCallAndNotBesideIt(t *testing.T) {
 // Every call is answered. An unanswered call is a malformed exchange, and the
 // provider that tolerates it today is not a guarantee.
 func TestEveryCallIsAnsweredAndOnlyTheFirstCarriesTheError(t *testing.T) {
-	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}, {Name: "grep"}}}
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
 	c := Contract{Inject: "boom", InjectAs: InjectToolError}
-	calls := []ce.ToolCall{{ID: "c1", Name: "read"}, {ID: "c2", Name: "grep"}}
-	out := answers(f, c, calls, true)
+	calls := []ce.ToolCall{
+		{ID: "c1", Name: "read", Input: []byte(`{"path":"stats.go"}`)},
+		{ID: "c2", Name: "grep", Input: []byte(`{"pattern":"package"}`)},
+	}
+	out := answers(context.Background(), w, c, calls, true)
 
 	if len(out) != 2 {
 		t.Fatalf("got %d results for %d calls", len(out), len(calls))
@@ -361,9 +363,9 @@ func TestEveryCallIsAnsweredAndOnlyTheFirstCarriesTheError(t *testing.T) {
 // An error with no call to attach it to has nowhere to go. The reminder still
 // arrives, because the product sends those whether or not a tool ran.
 func TestWithNoCallTheInjectionStillReachesTheModel(t *testing.T) {
-	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}}}
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
 	for _, as := range []Injection{InjectToolError, InjectReminder} {
-		out := answers(f, Contract{Inject: "something", InjectAs: as}, nil, true)
+		out := answers(context.Background(), w, Contract{Inject: "something", InjectAs: as}, nil, true)
 		if len(out) != 1 || !out[0].Reminder {
 			t.Errorf("injection %v produced %+v, want one reminder", as, out)
 		}
@@ -373,10 +375,11 @@ func TestWithNoCallTheInjectionStillReachesTheModel(t *testing.T) {
 // A tool with no declared result still answers, or the exchange breaks on any
 // scenario whose fixture did not think to name every tool.
 func TestAToolWithNoDeclaredResultStillAnswers(t *testing.T) {
-	f := Fixture{Tools: []ce.ToolDef{{Name: "glob"}}}
-	out := answers(f, Contract{Inject: "x", InjectAs: InjectReminder}, []ce.ToolCall{{ID: "c1", Name: "glob"}}, true)
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
+	out := answers(context.Background(), w, Contract{Inject: "x", InjectAs: InjectReminder},
+		[]ce.ToolCall{{ID: "c1", Name: "bash", Input: []byte(`{"command":"ls"}`)}}, true)
 	if out[0].ToolResult.Output == "" {
-		t.Error("an undeclared tool answered with nothing")
+		t.Error("the shell answered with nothing at all, which reads as a command that ran and printed nothing")
 	}
 }
 
@@ -413,11 +416,11 @@ func TestAContractWithNothingToInjectDeclaresNoDelivery(t *testing.T) {
 // every round would measure a model being nagged, which is a different
 // scenario from a model being told something once.
 func TestAnInjectionHappensOnceAndOnlyOnce(t *testing.T) {
-	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}}}
+	w := workspaceWith(t, map[string]string{"stats.go": "package stats\n"})
 	c := Contract{Inject: "<system-reminder>x</system-reminder>", InjectAs: InjectReminder}
-	calls := []ce.ToolCall{{ID: "c1", Name: "read"}}
+	calls := []ce.ToolCall{{ID: "c1", Name: "read", Input: []byte(`{"path":"stats.go"}`)}}
 
-	later := answers(f, c, calls, false)
+	later := answers(context.Background(), w, c, calls, false)
 	if len(later) != 1 {
 		t.Fatalf("a later round produced %d messages, want just the tool result", len(later))
 	}
@@ -427,4 +430,14 @@ func TestAnInjectionHappensOnceAndOnlyOnce(t *testing.T) {
 	if later[0].ToolResult == nil || later[0].ToolResult.IsError {
 		t.Error("a later round reported the call as having failed")
 	}
+}
+
+// workspaceWith builds a scenario workspace over a temp directory.
+func workspaceWith(t *testing.T, files map[string]string) *Workspace {
+	t.Helper()
+	w, err := NewWorkspace(t.TempDir(), files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return w
 }

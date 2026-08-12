@@ -1,6 +1,10 @@
 package evals
 
-import ce "github.com/aguinelo/dcode/internal/contextengine"
+import (
+	"context"
+
+	ce "github.com/aguinelo/dcode/internal/contextengine"
+)
 
 // Contract is one declared threshold and how a run is judged against it.
 //
@@ -288,13 +292,18 @@ func ContractByID(id string) (Contract, bool) {
 //
 // A call left unanswered is not a smaller version of this: it is a malformed
 // exchange, and the provider that tolerates it today is not a guarantee.
+//
 // injectNow is false on every round but the one the injection belongs to. The
 // product says a thing once; repeating a reminder each round would measure a
 // model being nagged, which is a different scenario.
-func answers(f Fixture, c Contract, calls []ce.ToolCall, injectNow bool) []ce.Message {
+//
+// The results come from running the product's own tools over the scenario's
+// workspace. They used to be the string "ok" for every tool, which told the
+// model its workspace was empty and had it refuse the task on principle.
+func answers(ctx context.Context, w *Workspace, c Contract, calls []ce.ToolCall, injectNow bool) []ce.Message {
 	var out []ce.Message
 	for i, call := range calls {
-		output, isErr := f.ResultFor(call.Name), false
+		output, isErr := w.Execute(ctx, call.Name, call.Input)
 		if i == 0 && injectNow && c.InjectAs == InjectToolError {
 			output, isErr = c.Inject, true
 		}
