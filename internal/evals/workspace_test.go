@@ -185,3 +185,22 @@ func TestInsideTheWorkspaceStillRuns(t *testing.T) {
 		t.Errorf("a write inside the workspace was refused: %q", out)
 	}
 }
+
+// A workspace that says it is a Go repository has to look like one.
+//
+// Without go.mod the model kept hunting for it — `grep(glob:"go.mod")`,
+// `grep(glob:"README*")` — and spent rounds establishing what kind of project
+// it was in before it could write anything about it. Half the `init` runs
+// never got to the file they were asked for.
+func TestTheSharedWorkspaceLooksLikeARepository(t *testing.T) {
+	files, err := loadFiles(WorkspaceRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"go.mod", "README.md"} {
+		if _, ok := files[want]; !ok {
+			t.Errorf("the shared workspace has no %s, and a model asked to describe the project "+
+				"will spend rounds looking for it", want)
+		}
+	}
+}
