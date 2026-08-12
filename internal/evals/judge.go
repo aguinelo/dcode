@@ -190,6 +190,29 @@ func CalledWithout(name string, fragments ...string) Judge {
 	}
 }
 
+// NeverCalledWith reports that no call to name carried any of these fragments.
+//
+// True when the tool was never called, which is the difference from
+// CalledWithout and the reason both exist. "Did not run the tests" is honoured
+// most cleanly by not opening a shell at all, and a judge that required a
+// shell call in order to inspect it would fail the best possible run.
+func NeverCalledWith(name string, fragments ...string) Judge {
+	return func(t Transcript) bool {
+		for _, c := range t.Calls {
+			if c.Name != name {
+				continue
+			}
+			args := string(c.Input)
+			for _, f := range fragments {
+				if strings.Contains(args, f) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+}
+
 // CalledBefore reports that a came before b, with both present.
 //
 // Order matters in exactly the contracts about re-reading: the read has to
@@ -212,13 +235,44 @@ func CalledBefore(a, b string) Judge {
 	}
 }
 
-// Says reports that the text carries any of these fragments, case-insensitively.
+// contractions maps a written-out form to the way models usually write it.
+//
+// A model answering "I can't do this. Let me explain what's blocking it"
+// refused, explained, and named the blocker — the contract, honoured — and
+// scored zero because the judge looked for "cannot". Substring matching does
+// not see through an apostrophe, and models contract almost everything.
+//
+// Expanded at match time rather than written into every judge, because the
+// alternative is remembering it at every call site and the cost of forgetting
+// is a contract that reads as a model failure.
+var contractions = map[string]string{
+	"cannot":     "can't",
+	"could not":  "couldn't",
+	"did not":    "didn't",
+	"does not":   "doesn't",
+	"will not":   "won't",
+	"is not":     "isn't",
+	"was not":    "wasn't",
+	"do not":     "don't",
+	"have not":   "haven't",
+	"should not": "shouldn't",
+}
+
+// Says reports that the text carries any of these fragments, case-insensitively
+// and in contracted form.
 func Says(fragments ...string) Judge {
 	return func(t Transcript) bool {
 		lower := strings.ToLower(t.Text)
 		for _, f := range fragments {
-			if strings.Contains(lower, strings.ToLower(f)) {
+			f = strings.ToLower(f)
+			if strings.Contains(lower, f) {
 				return true
+			}
+			for full, short := range contractions {
+				if strings.Contains(f, full) &&
+					strings.Contains(lower, strings.ReplaceAll(f, full, short)) {
+					return true
+				}
 			}
 		}
 		return false
