@@ -350,7 +350,10 @@ func renderStream(m Model, g Geometry, w int) []string {
 
 		switch e.Kind {
 		case KindAssistant:
-			for _, line := range wrap(e.Summary, w-2) {
+			// The model writes markdown, so the screen reads it. Printing it
+			// raw put the asterisks and the backticks on screen, and every
+			// answer with emphasis in it looked unfinished.
+			for _, line := range renderProse(e.Summary, w-2, g) {
 				out = append(out, "  "+line)
 			}
 

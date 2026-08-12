@@ -33,6 +33,10 @@ var tuiInvariants = map[string]string{
 	"Sessão retomada com histórico":     "TestAResumedSessionNeverShowsTheEmptyState",
 	"mascote degrada para ASCII":        "TestTheMascotKeepsItsShapeWithoutUnicodeAndWithoutColour",
 
+	// Prose rendering.
+	"Nenhum marcador de markdown":      "TestEmphasisMarkersDoNotReachTheScreen",
+	"prosa estilizada excede a coluna": "TestStyledProseNeverExceedsItsColumn",
+
 	// The bottom bar.
 	"worktree ativo nunca é descartado": "TestTheWorktreeSurvivesEveryWidth",
 	"Segmento sem dado não desenha":     "TestWhatIsWaitingNeverDropsAndVanishesWhenThereIsNothing",
