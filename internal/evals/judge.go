@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"fmt"
 	"strings"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -42,6 +43,43 @@ func (t Transcript) Since() Transcript {
 // or the error reached it.
 func SinceInjection(inner Judge) Judge {
 	return func(t Transcript) bool { return inner(t.Since()) }
+}
+
+// digestText is how much of what the model said is worth printing.
+//
+// Enough to tell a refusal from an answer, and not so much that a failing run
+// buries the next one.
+const digestText = 240
+
+// Digest is what one run did, in one line, for a person reading a failure.
+//
+// A rate with no transcript behind it cannot be acted on: `0.0% of 20 runs`
+// reads as "the model gets this wrong" and is just as often "the scenario
+// cannot reach the behaviour it judges". Those two need opposite fixes, and
+// only the call sequence separates them.
+//
+// The marker is where the product spoke, because for half these contracts the
+// whole question is what the model did after that and not before.
+func (t Transcript) Digest() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d round(s):", t.Rounds)
+	if len(t.Calls) == 0 {
+		b.WriteString(" no tool calls")
+	}
+	for i, c := range t.Calls {
+		if i == t.InjectedAt && t.InjectedAt > 0 {
+			b.WriteString(" ⟨product spoke⟩")
+		}
+		b.WriteString(" " + c.Name)
+	}
+	said := strings.Join(strings.Fields(t.Text), " ")
+	if len(said) > digestText {
+		said = said[:digestText] + "…"
+	}
+	if said != "" {
+		b.WriteString("\n  said: " + said)
+	}
+	return b.String()
 }
 
 // Judge answers whether one run behaved as the contract says.

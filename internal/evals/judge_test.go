@@ -2,6 +2,7 @@ package evals
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -193,5 +194,50 @@ func TestSinceInjectionSurvivesAnImpossibleIndex(t *testing.T) {
 		if !SinceInjection(Called("read"))(tr) {
 			t.Errorf("InjectedAt %d lost the calls", at)
 		}
+	}
+}
+
+// A failing contract has to show what happened. `0.0% of 20 runs` reads as a
+// model problem and is just as often a scenario that cannot reach the
+// behaviour it judges — and the call sequence is what separates them.
+func TestTheDigestShowsTheCallsAndWhereTheProductSpoke(t *testing.T) {
+	tr := Transcript{
+		Rounds:     2,
+		Calls:      []ce.ToolCall{{Name: "read"}, {Name: "edit"}},
+		InjectedAt: 1,
+		Text:       "  I read   the file\nand edited it. ",
+	}
+	got := tr.Digest()
+	for _, want := range []string{"2 round(s)", "read", "edit", "product spoke", "I read the file and edited it."} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the digest lost %q:\n%s", want, got)
+		}
+	}
+	// The marker sits between the two calls, not before both.
+	if strings.Index(got, "product spoke") < strings.Index(got, "read") {
+		t.Errorf("the marker is before the first call:\n%s", got)
+	}
+}
+
+// A run that called nothing is the most common failure and the easiest to
+// misread as missing output.
+func TestTheDigestSaysWhenNothingWasCalled(t *testing.T) {
+	got := Transcript{Rounds: 1, Text: "I cannot do that."}.Digest()
+	if !strings.Contains(got, "no tool calls") {
+		t.Errorf("a run with no calls does not say so:\n%s", got)
+	}
+	if strings.Contains(got, "product spoke") {
+		t.Errorf("nothing was injected and the digest says otherwise:\n%s", got)
+	}
+}
+
+// A long answer must not bury the next failure in the log.
+func TestTheDigestTrimsALongAnswer(t *testing.T) {
+	got := Transcript{Rounds: 1, Text: strings.Repeat("x", digestText*3)}.Digest()
+	if len(got) > digestText+120 {
+		t.Errorf("the digest is %d chars, long enough to bury the next one", len(got))
+	}
+	if !strings.Contains(got, "…") {
+		t.Errorf("the answer was cut without saying so:\n%s", got)
 	}
 }

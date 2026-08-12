@@ -51,12 +51,23 @@ func TestEveryContract(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			// The first failing run is kept so the report can show what the
+			// model actually did. A rate on its own cannot be acted on: 0% of
+			// 20 reads as "the model gets this wrong" and is just as often
+			// "the scenario cannot reach the behaviour it judges", and those
+			// two need opposite fixes.
+			var failed Transcript
+			var sawFailure bool
 			attempt := func(ctx context.Context) (bool, error) {
 				tr, err := exchangeRounds(ctx, p, cfg.Model, f, contract)
 				if err != nil {
 					return false, err
 				}
-				return contract.Judge(tr), nil
+				ok := contract.Judge(tr)
+				if !ok && !sawFailure {
+					failed, sawFailure = tr, true
+				}
+				return ok, nil
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(),
@@ -65,6 +76,9 @@ func TestEveryContract(t *testing.T) {
 
 			r := Measure(ctx, cfg, contract.ID, contract.Threshold, attempt)
 			measured = append(measured, r)
+			if !r.Met() && sawFailure {
+				t.Log("one failing run — " + failed.Digest())
+			}
 			report(t, r)
 		})
 	}
