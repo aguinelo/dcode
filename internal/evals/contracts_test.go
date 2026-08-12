@@ -122,8 +122,16 @@ func TestEveryFixtureHasAJudge(t *testing.T) {
 		if c.Rounds < 1 {
 			t.Errorf("%s asks for %d rounds", e.Name(), c.Rounds)
 		}
-		if c.Rounds > 1 && c.Inject == "" {
-			t.Errorf("%s runs %d rounds and injects nothing between them, so the extra rounds see no new input",
+		// The old rule here was that a multi-round scenario had to inject
+		// something, which was true only because the loop refused to continue
+		// without one — and that refusal is what capped every scenario at a
+		// single round. Extra rounds now see the tool results, which is what
+		// the product shows the model.
+		//
+		// The invariant that survives is the other direction: an injection
+		// needs a round after it, or it never reaches the model at all.
+		if c.Inject != "" && c.Rounds < 2 {
+			t.Errorf("%s injects something and runs %d round(s), so the injection never reaches the model",
 				e.Name(), c.Rounds)
 		}
 	}
@@ -296,7 +304,7 @@ func TestAReminderArrivesAsAReminderNextToASuccessfulResult(t *testing.T) {
 		Results: map[string]string{"read": "package stats"},
 	}
 	c := Contract{Inject: "<system-reminder>stats.go changed</system-reminder>", InjectAs: InjectReminder}
-	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "read"}})
+	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "read"}}, true)
 
 	if len(out) != 2 {
 		t.Fatalf("got %d messages, want a tool result and a reminder: %+v", len(out), out)
@@ -316,7 +324,7 @@ func TestAReminderArrivesAsAReminderNextToASuccessfulResult(t *testing.T) {
 func TestAToolErrorLandsOnTheCallAndNotBesideIt(t *testing.T) {
 	f := Fixture{Tools: []ce.ToolDef{{Name: "edit"}}}
 	c := Contract{Inject: "old_string was not found", InjectAs: InjectToolError}
-	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "edit"}})
+	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "edit"}}, true)
 
 	if len(out) != 1 {
 		t.Fatalf("got %d messages, want just the failed result: %+v", len(out), out)
@@ -332,7 +340,7 @@ func TestEveryCallIsAnsweredAndOnlyTheFirstCarriesTheError(t *testing.T) {
 	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}, {Name: "grep"}}}
 	c := Contract{Inject: "boom", InjectAs: InjectToolError}
 	calls := []ce.ToolCall{{ID: "c1", Name: "read"}, {ID: "c2", Name: "grep"}}
-	out := answers(f, c, calls)
+	out := answers(f, c, calls, true)
 
 	if len(out) != 2 {
 		t.Fatalf("got %d results for %d calls", len(out), len(calls))
@@ -355,7 +363,7 @@ func TestEveryCallIsAnsweredAndOnlyTheFirstCarriesTheError(t *testing.T) {
 func TestWithNoCallTheInjectionStillReachesTheModel(t *testing.T) {
 	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}}}
 	for _, as := range []Injection{InjectToolError, InjectReminder} {
-		out := answers(f, Contract{Inject: "something", InjectAs: as}, nil)
+		out := answers(f, Contract{Inject: "something", InjectAs: as}, nil, true)
 		if len(out) != 1 || !out[0].Reminder {
 			t.Errorf("injection %v produced %+v, want one reminder", as, out)
 		}
@@ -366,7 +374,7 @@ func TestWithNoCallTheInjectionStillReachesTheModel(t *testing.T) {
 // scenario whose fixture did not think to name every tool.
 func TestAToolWithNoDeclaredResultStillAnswers(t *testing.T) {
 	f := Fixture{Tools: []ce.ToolDef{{Name: "glob"}}}
-	out := answers(f, Contract{Inject: "x", InjectAs: InjectReminder}, []ce.ToolCall{{ID: "c1", Name: "glob"}})
+	out := answers(f, Contract{Inject: "x", InjectAs: InjectReminder}, []ce.ToolCall{{ID: "c1", Name: "glob"}}, true)
 	if out[0].ToolResult.Output == "" {
 		t.Error("an undeclared tool answered with nothing")
 	}
@@ -398,5 +406,25 @@ func TestAContractWithNothingToInjectDeclaresNoDelivery(t *testing.T) {
 		if c.Inject == "" && c.InjectAs != InjectToolError {
 			t.Errorf("%s injects nothing and declares a delivery", c.ID)
 		}
+	}
+}
+
+// The injection happens once, on the round it belongs to. Repeating a reminder
+// every round would measure a model being nagged, which is a different
+// scenario from a model being told something once.
+func TestAnInjectionHappensOnceAndOnlyOnce(t *testing.T) {
+	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}}}
+	c := Contract{Inject: "<system-reminder>x</system-reminder>", InjectAs: InjectReminder}
+	calls := []ce.ToolCall{{ID: "c1", Name: "read"}}
+
+	later := answers(f, c, calls, false)
+	if len(later) != 1 {
+		t.Fatalf("a later round produced %d messages, want just the tool result", len(later))
+	}
+	if later[0].Reminder {
+		t.Error("the reminder was repeated on a later round")
+	}
+	if later[0].ToolResult == nil || later[0].ToolResult.IsError {
+		t.Error("a later round reported the call as having failed")
 	}
 }
