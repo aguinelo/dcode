@@ -259,7 +259,7 @@ func TestMalformedFrameIsAProviderError(t *testing.T) {
 		if err == nil {
 			t.Fatalf("%s: a malformed frame must be an error", fam.Name())
 		}
-		if pe := classify(err); pe.Class != ErrClassProvider {
+		if pe := classify(context.Background(), err); pe.Class != ErrClassProvider {
 			t.Errorf("%s: got class %s", fam.Name(), pe.Class)
 		}
 	}
@@ -452,7 +452,7 @@ func TestReplayCanReproduceAFailure(t *testing.T) {
 			if err == nil {
 				t.Fatal("the recorded failure should surface")
 			}
-			if pe := classify(err); pe.Class != tc.want {
+			if pe := classify(context.Background(), err); pe.Class != tc.want {
 				t.Errorf("got %s want %s", pe.Class, tc.want)
 			}
 		})
