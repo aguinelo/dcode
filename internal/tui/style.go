@@ -34,6 +34,10 @@ const (
 	StyleBody
 	StyleShadow
 	StyleEye
+	// StyleOnAccent is amber ground with near-black text. The design gives it
+	// to structure and to nothing else: two of them side by side would say that
+	// everything is structure.
+	StyleOnAccent
 )
 
 // Palette turns a role into an escape sequence.
@@ -63,6 +67,9 @@ var ansi = map[Style]string{
 	StyleBody:      "38;5;179",
 	StyleShadow:    "38;5;136",
 	StyleEye:       "38;5;131",
+
+	// Amber ground, near-black text — the contrast the design pins at 8:1.
+	StyleOnAccent: "48;5;179;38;5;234",
 }
 
 // Apply wraps text in a role.

@@ -97,6 +97,11 @@ type Model struct {
 	// text can lie, this is derived from what actually ran.
 	Verification string
 	Pending      *protocol.ApprovalRequest
+	// The diff accumulated in this worktree, summed from what each tool
+	// reported rather than parsed back out of its text.
+	DiffAdded   int
+	DiffRemoved int
+	DiffFiles   int
 
 	InputTokens  int
 	OutputTokens int
@@ -254,6 +259,14 @@ func (m Model) Apply(ev protocol.Event) Model {
 		var d protocol.ToolCompleted
 		if err := json.Unmarshal(ev.Payload, &d); err != nil {
 			break
+		}
+		// What changed here, summed as the tools report it. A call that changed
+		// nothing is not a file touched: counting a read would make the number
+		// mean "calls" while reading as "files".
+		if d.Added > 0 || d.Removed > 0 {
+			m.DiffAdded += d.Added
+			m.DiffRemoved += d.Removed
+			m.DiffFiles++
 		}
 		m.Entries = append([]Entry(nil), m.Entries...)
 		for i := len(m.Entries) - 1; i >= 0; i-- {

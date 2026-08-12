@@ -134,7 +134,11 @@ type Strings struct {
 	// Empty state and general
 	Interrupt string
 	Queued    string
-	NoPlan    string
+	// The bottom bar names what it counts, so the numbers survive a terminal
+	// with no colour to group them.
+	BarFiles   string
+	BarWaiting string
+	NoPlan     string
 }
 
 // catalogue is embedded, not loaded.
@@ -228,6 +232,8 @@ Environment:
 		CopyEmpty:    "nothing selected",
 		Interrupt:    "esc interrupts",
 		Queued:       "queued",
+		BarFiles:     "files",
+		BarWaiting:   "wait",
 		NoPlan:       "There is no plan yet.",
 	},
 	PtBR: {
@@ -314,6 +320,8 @@ Ambiente:
 		CopyEmpty:    "nada selecionado",
 		Interrupt:    "esc interrompe",
 		Queued:       "na fila",
+		BarFiles:     "arq",
+		BarWaiting:   "espera",
 		NoPlan:       "Ainda não há plano.",
 	},
 }

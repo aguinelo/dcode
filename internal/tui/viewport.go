@@ -13,7 +13,9 @@ import (
 // BodyHeight is how many rows the stream gets: everything but the status bar,
 // the input line, and the working line when a turn is running.
 func BodyHeight(m Model, g Geometry) int {
-	h := g.Height - 2
+	// Status line, input line, and the bottom bar. The bar is not optional:
+	// it is the region that is true regardless of what the stream shows.
+	h := g.Height - 3
 	if m.workingVisible() {
 		h--
 	}

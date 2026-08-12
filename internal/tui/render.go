@@ -221,6 +221,8 @@ func Render(m Model, g Geometry) string {
 		b.WriteString("\n")
 	}
 	b.WriteString(renderInput(m, g, ScrollHint(m, g, top, total, height)))
+	b.WriteString("\n")
+	b.WriteString(RenderStatusBar(m, g))
 
 	if m.Pending != nil {
 		return overlay(b.String(), renderApproval(*m.Pending, g), g)
