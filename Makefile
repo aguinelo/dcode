@@ -79,8 +79,15 @@ check: lint race cover build
 #
 # Sem DCODE_EVAL_ENABLED=true e DCODE_EVAL_MODEL, cada cenário se pula dizendo
 # o que falta. -count=1 porque medição em cache não é medição.
+#
+# O timeout é explícito porque o default do `go test` são 10 minutos e uma
+# medição completa leva mais que isso — 35 cenários vezes DCODE_EVAL_RUNS, em
+# série. Com o default, o alvo morria em pânico no meio da primeira corrida
+# de verdade e nunca chegava a imprimir um resultado.
+EVAL_TIMEOUT ?= 180m
+
 eval:
-	$(GO) test -tags eval -count=1 -v ./internal/evals/...
+	$(GO) test -tags eval -count=1 -timeout $(EVAL_TIMEOUT) -v ./internal/evals/...
 
 # Compila os cenários sem executá-los. É o que impede a suíte de eval apodrecer
 # em silêncio enquanto o código que ela mede muda por baixo — o modo de falha

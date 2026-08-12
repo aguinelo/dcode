@@ -111,8 +111,11 @@ func TestEveryFixtureHasAJudge(t *testing.T) {
 			t.Errorf("%s has material and no judge: it would load, pass the fixture test, and measure nothing", e.Name())
 			continue
 		}
-		if c.Judge == nil {
+		if c.Judge == nil && c.Measured() {
 			t.Errorf("%s is in the table with a nil judge", e.Name())
+		}
+		if !c.Measured() {
+			continue // settled by assertion; the rounds below describe a run it never makes
 		}
 		if c.Rounds < 1 {
 			t.Errorf("%s asks for %d rounds", e.Name(), c.Rounds)
@@ -168,11 +171,75 @@ func TestTheThresholdsAgreeWithTheSpecs(t *testing.T) {
 	for _, c := range Contracts {
 		want, ok := declared[c.ID]
 		if !ok {
-			continue // declared only in a changelog; the fixture guard covers it
+			// The escape hatch this used to have — "declared only in a
+			// changelog, the fixture guard covers it" — is what let a contract
+			// live in the runner with no row in any `.p`. The fixture guard
+			// walks the other direction and could never catch it.
+			t.Errorf("%s runs at %.0f%% and no `.p` spec table declares it, so nothing keeps the two in agreement",
+				c.ID, c.Threshold*100)
+			continue
 		}
 		if c.Threshold != want {
 			t.Errorf("%s: the spec says %.0f%% and the runner uses %.0f%%",
 				c.ID, want*100, c.Threshold*100)
 		}
 	}
+}
+
+// A contract is answered by a model or by an assertion, and it must say which.
+//
+// Neither leaves an ID that nothing establishes. Both is the shape that started
+// this: a contract carrying a judge that returned true unconditionally, sitting
+// in the measured set, ready to spend twenty model calls printing MET at 100%
+// without looking at the transcript.
+func TestEveryContractIsEitherMeasuredOrAsserted(t *testing.T) {
+	for _, c := range Contracts {
+		switch {
+		case c.Judge == nil && len(c.Asserted) == 0:
+			t.Errorf("%s is declared and nothing establishes it: no judge, no assertion named", c.ID)
+		case c.Judge != nil && len(c.Asserted) > 0:
+			t.Errorf("%s carries a judge and names assertions; one of the two is not doing what it looks like", c.ID)
+		}
+	}
+}
+
+// A named assertion has to exist. A contract that points at a test that was
+// renamed away is back to being established by nothing, and it says the
+// opposite in the table.
+func TestEveryNamedAssertionExists(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := map[string]bool{}
+	decl := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]*)\(`)
+	err = filepath.WalkDir(filepath.Join(root, "internal"), func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, "_test.go") {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range decl.FindAllStringSubmatch(string(data), -1) {
+			have[m[1]] = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(have) == 0 {
+		t.Fatal("no test names collected; the guard would pass vacuously")
+	}
+
+	for _, c := range Contracts {
+		for _, name := range c.Asserted {
+			if !have[name] {
+				t.Errorf("%s names %s and no such test exists", c.ID, name)
+			}
+		}
+	}
+	t.Logf("%d contracts asserted deterministically, %d measured against a model",
+		len(Contracts)-Measurable(Contracts), Measurable(Contracts))
 }

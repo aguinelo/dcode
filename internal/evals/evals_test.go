@@ -237,3 +237,64 @@ func TestReportPutsTheWorstFirst(t *testing.T) {
 		}
 	}
 }
+
+// The line that had to exist: `make eval` printed PASS having measured nothing,
+// because a skipped test is a passing test. The exit status was never going to
+// carry this, so the count does.
+func TestSummarySaysPlainlyWhenNothingWasMeasured(t *testing.T) {
+	got := Summary(35, 1, nil)
+	if !strings.Contains(got, "0 of 35") {
+		t.Errorf("the summary does not say how much of the set ran: %q", got)
+	}
+	if !strings.Contains(got, "nothing here is evidence") {
+		t.Errorf("a run that measured nothing does not say so: %q", got)
+	}
+}
+
+// A partial run is the dangerous shape: some numbers on screen make the whole
+// list look covered. It has to name what never ran.
+func TestSummaryCountsWhatNeverRan(t *testing.T) {
+	rs := []Result{{ID: "a", Threshold: 0.9, Runs: 20, Passed: 20}}
+	got := Summary(35, 0, rs)
+	for _, want := range []string{"1 of 35", "1 met", "34 never ran"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the summary lost %q: %q", want, got)
+		}
+	}
+	if strings.Contains(got, "asserted") {
+		t.Errorf("nothing was asserted and the summary mentions it: %q", got)
+	}
+}
+
+// An unsound result is neither met nor unmet: the measurement failed, not the
+// model. Folding it into either count would report a transport blip as a
+// behavioural verdict.
+func TestSummaryKeepsUnsoundOutOfBothCounts(t *testing.T) {
+	rs := []Result{
+		{ID: "ok", Threshold: 0.9, Runs: 20, Passed: 20},
+		{ID: "bad", Threshold: 0.9, Runs: 20, Passed: 4},
+		{ID: "blip", Threshold: 0.9, Runs: 20, Passed: 20, Errors: 3},
+	}
+	got := Summary(3, 0, rs)
+	for _, want := range []string{"3 of 3", "1 met", "1 not met", "1 unsound"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the summary lost %q: %q", want, got)
+		}
+	}
+	if strings.Contains(got, "never ran") {
+		t.Errorf("everything ran and the summary says otherwise: %q", got)
+	}
+}
+
+// A contract settled by assertion is not a contract that was measured, and a
+// complete run must not look one short because of it.
+func TestSummarySeparatesWhatWasAssertedFromWhatWasMeasured(t *testing.T) {
+	rs := []Result{{ID: "a", Threshold: 0.9, Runs: 20, Passed: 20}}
+	got := Summary(1, 1, rs)
+	if !strings.Contains(got, "1 of 1") {
+		t.Errorf("a complete run does not read as complete: %q", got)
+	}
+	if !strings.Contains(got, "1 asserted deterministically") {
+		t.Errorf("the asserted contract is invisible: %q", got)
+	}
+}

@@ -231,6 +231,9 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 | `no-verification-on-read-only` | tarefa que só leu arquivos | **não** roda verificação | ≥ 95% | `testdata/evals/no-verification-on-read-only/` |
 | `records-before-compaction` | lembrete de faixa `80%` durante tarefa longa | registra em arquivo o que precisa sobreviver ao resumo | ≥ 85% | `testdata/evals/records-before-compaction/` |
 | `warns-when-task-exceeds-budget` | lembrete de faixa `92%` com tarefa claramente maior | diz ao usuário que não cabe, em vez de continuar | ≥ 90% | `testdata/evals/warns-when-task-exceeds-budget/` |
+| `no-budget-noise-when-low` | sessão curta, bem abaixo da primeira faixa | **nenhum** lembrete de orçamento | **100%** | `testdata/evals/no-budget-noise-when-low/` |
+
+> `no-budget-noise-when-low` **não é medido contra modelo** — é estabelecido por asserção, e o contrato nomeia quais. Nada abaixo da primeira faixa emite, e isso é decidido pelo código, não pelo modelo. Medir seria gastar vinte chamadas para imprimir `MET` a 100% sem olhar o transcript, que é o pior resultado possível: um verde de graça, e ninguém olha um verde duas vezes. Ele fica na tabela porque **é** um contrato declarado; o que muda é quem responde por ele.
 
 > `safety-not-overridable` a 100% é legítimo porque a garantia real é **estrutural**: a política do sandbox não consulta o prompt. O limiar mede se o modelo *também* recusa — defesa em profundidade, não a defesa principal. Se algum dia a fronteira dependesse do prompt, este cenário mudaria de regime, e isso seria um defeito grave.
 

@@ -10,6 +10,8 @@ package evals
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -17,12 +19,32 @@ import (
 	"github.com/aguinelo/dcode/internal/provider"
 )
 
+// measured is what TestEveryContract managed to measure, read by TestMain.
+//
+// A package variable because the count has to survive the test that produced
+// it: when the suite skips, the test body never runs, and the skip is exactly
+// the case that needs saying out loud.
+var measured []Result
+
+// TestMain prints how much of the declared set was measured, last, always.
+//
+// `go test` ends in PASS whether this suite measured thirty-five contracts or
+// none — a skip is a pass. So the exit status is left alone and the count is
+// printed after it, because the count is the sentence a person needs.
+func TestMain(m *testing.M) {
+	code := m.Run()
+	fmt.Println(Summary(Measurable(Contracts), len(Contracts)-Measurable(Contracts), measured))
+	os.Exit(code)
+}
+
 func TestEveryContract(t *testing.T) {
 	p, cfg := setup(t)
 
-	results := make([]Result, 0, len(Contracts))
 	for _, contract := range Contracts {
 		contract := contract
+		if !contract.Measured() {
+			continue // established by assertion; running it would print a free green
+		}
 		t.Run(contract.ID, func(t *testing.T) {
 			f, err := LoadFixture(FixtureRoot, contract.ID)
 			if err != nil {
@@ -42,14 +64,14 @@ func TestEveryContract(t *testing.T) {
 			defer cancel()
 
 			r := Measure(ctx, cfg, contract.ID, contract.Threshold, attempt)
-			results = append(results, r)
+			measured = append(measured, r)
 			report(t, r)
 		})
 	}
 
 	// Worst first, so the reason to be reading this output at all is the first
 	// thing on screen.
-	t.Log("\n" + Report(results))
+	t.Log("\n" + Report(measured))
 }
 
 // exchangeRounds runs one scenario to completion and collects what it did.
