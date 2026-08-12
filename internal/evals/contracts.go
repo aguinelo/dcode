@@ -182,7 +182,13 @@ var Contracts = []Contract{
 			All(CalledWith("write", "legacy"), CalledWithout("write", "Must")),
 			All(CalledWith("edit", "legacy"), CalledWithout("edit", "Must")))},
 	{ID: "skill-loaded-on-trigger", Threshold: 0.85, Rounds: 6,
-		Judge: Any(Called("write"), Called("edit"), Says("version"))},
+		// The step nobody would guess. The skill says to record the version in
+		// RELEASING.md before cutting the tag, and a model that never received
+		// the body has no way to know that file exists. Judging on "did it do
+		// anything" measured whether it had a body at all, which was the thing
+		// that was broken.
+		Judge: Any(CalledWith("write", "RELEASING"), CalledWith("edit", "RELEASING"),
+			Says("RELEASING"))},
 	{ID: "plan-depth-trivial", Threshold: 0.90, Rounds: 6,
 		// A ceiling, not a floor. The expensive failure of planning is
 		// planning too much, and nobody tests that side.

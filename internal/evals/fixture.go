@@ -37,7 +37,13 @@ type Fixture struct {
 	// whether the model follows a project convention without being reminded —
 	// and no convention was ever sent. It could not have passed.
 	Instructions []behavior.Instruction
-	Skills       []behavior.SkillIndexEntry
+	// Skills are whole skills, index and body.
+	//
+	// The index alone was not enough: the product puts one line per skill in
+	// the prefix and appends the *body* when the task matches (RN-7), and a
+	// fixture that shipped only the index measured whether the model could
+	// guess a procedure it had never been shown.
+	Skills []behavior.Skill
 	// Files is the workspace this scenario runs against: the shared miniature
 	// repository, with the fixture's own files/ laid over it.
 	//
@@ -159,30 +165,40 @@ func loadInstructions(dir string) ([]behavior.Instruction, error) {
 	return out, nil
 }
 
-// loadSkills reads skills.json, if it is there.
+// loadSkills reads skills/*.md, if the directory is there.
 //
-// The index only — one line per skill, never a body. That is what the product
-// puts in the prefix (RN-7), and a fixture that shipped bodies would measure a
-// prompt the product never builds.
-func loadSkills(dir string) ([]behavior.SkillIndexEntry, error) {
-	raw, err := os.ReadFile(filepath.Join(dir, "skills.json"))
+// Whole skills, parsed by the product's own ParseSkill, because the body is
+// what the contract is about. The index is derived from them rather than
+// written beside them: two lists of the same skills is one list that drifts.
+func loadSkills(dir string) ([]behavior.Skill, error) {
+	entries, err := os.ReadDir(filepath.Join(dir, "skills"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	var skills []behavior.SkillIndexEntry
-	if err := json.Unmarshal(raw, &skills); err != nil {
-		return nil, fmt.Errorf("skills.json: %w", err)
-	}
-	for _, s := range skills {
-		if strings.TrimSpace(s.Name) == "" || strings.TrimSpace(s.WhenToUse) == "" {
-			return nil, fmt.Errorf("skills.json: an entry is missing its name or when-to-use, "+
-				"so nothing in the index would tell the model when to load it: %+v", s)
+	var out []behavior.Skill
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
 		}
+		path := filepath.Join(dir, "skills", e.Name())
+		text, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		skill, err := behavior.ParseSkill(string(text), e.Name())
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(skill.WhenToUse) == "" {
+			return nil, fmt.Errorf("skills/%s has no when_to_use, so nothing tells the model when to load it", e.Name())
+		}
+		out = append(out, skill)
 	}
-	return skills, nil
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
 }
 
 // decodeTools reads a scenario's tool set.
@@ -253,8 +269,26 @@ func (f Fixture) Prompt(family string) (string, error) {
 		Doctrine:     behavior.DefaultDoctrine(names),
 		Tools:        names,
 		Instructions: f.Instructions,
-		SkillIndex:   f.Skills,
+		SkillIndex:   behavior.Index(f.Skills),
 	}, behavior.FormulationFor(family))
+}
+
+// Opening is the history a scenario starts from: the task, and the body of any
+// skill it triggers.
+//
+// The loop appends a matched skill body as a reminder after the user message
+// (turn.go, RN-7), and the harness sent only the task. So the scenario about
+// using a skill body measured whether the model could invent a procedure it had
+// never been shown — and the procedure exists in the fixture precisely because
+// nobody would guess it.
+func (f Fixture) Opening() []ce.Message {
+	out := []ce.Message{{Role: ce.RoleUser, Text: f.Task}}
+	for _, s := range behavior.Match(f.Task, f.Skills) {
+		out = append(out, ce.Message{
+			Role: ce.RoleUser, Text: behavior.RenderSkill(s), Reminder: true,
+		})
+	}
+	return out
 }
 
 // Messages assembles one call the way the product assembles it.

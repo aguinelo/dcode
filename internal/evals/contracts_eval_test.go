@@ -104,7 +104,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 	// this used to be the entire list, hand-built as one user message, so the
 	// model never saw the doctrine, the project instructions or the skill
 	// index that most of these contracts are about.
-	history := []ce.Message{{Role: ce.RoleUser, Text: f.Task}}
+	history := f.Opening()
 	var tr Transcript
 
 	rounds := c.Rounds
