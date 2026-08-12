@@ -282,7 +282,12 @@ func TestAScenarioAboutMaterialShipsThatMaterial(t *testing.T) {
 			}
 		case "skills":
 			if len(f.Skills) == 0 {
-				t.Errorf("%s is about a skill index and ships none", id)
+				t.Errorf("%s is about a skill and ships none", id)
+			}
+			for _, sk := range f.Skills {
+				if strings.TrimSpace(sk.Body) == "" {
+					t.Errorf("%s ships skill %q with no body, which is the half the contract measures", id, sk.Name)
+				}
 			}
 		}
 	}
