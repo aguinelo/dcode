@@ -826,3 +826,95 @@ func TestAnInjectedReminderIsTheProductsOwnText(t *testing.T) {
 		}
 	}
 }
+
+// An injected tool error has to land on a call it could plausibly have come
+// from. It used to land on the first call of the first round, whatever that
+// was: a scenario about a missing test binary answered
+//
+//	bash("command":"ls -la")
+//
+// with "integration: command not found: dcode-testdb", and the model spent its
+// remaining eleven rounds re-running `pwd && ls -la` trying to understand what
+// had happened to its directory listing.
+func TestAnInjectedErrorWaitsForTheCallItBelongsTo(t *testing.T) {
+	c := Contract{Inject: errMissingDep, InjectOn: "bash"}
+
+	looking := []ce.ToolCall{{ID: "c1", Name: "glob"}, {ID: "c2", Name: "read"}}
+	if at := InjectionTarget(c, looking); at != -1 {
+		t.Errorf("the error attached to %v, which is not the tool it belongs to", looking[at].Name)
+	}
+
+	running := []ce.ToolCall{{ID: "c1", Name: "read"}, {ID: "c2", Name: "bash"}}
+	if at := InjectionTarget(c, running); at != 1 {
+		t.Errorf("the error attached at %d, want the bash call at 1", at)
+	}
+}
+
+// Without InjectOn it is the first call, which is what a reminder wants: the
+// product sends those regardless of what was called.
+func TestAnInjectionWithNoTargetTakesTheFirstCall(t *testing.T) {
+	c := Contract{Inject: "<system-reminder>x</system-reminder>", InjectAs: InjectReminder}
+	if at := InjectionTarget(c, []ce.ToolCall{{Name: "glob"}, {Name: "read"}}); at != 0 {
+		t.Errorf("a reminder attached at %d, want 0", at)
+	}
+	if at := InjectionTarget(c, nil); at != -1 {
+		t.Errorf("with no calls the target is %d, want -1", at)
+	}
+}
+
+// errorFromAnyCall is the contract whose error is about recovering from *an*
+// error, whatever the model was doing, with the reason.
+var errorFromAnyCall = map[string]string{
+	"toolcall-recover": "the adapter's contract is that the model recovers from a tool error at all, " +
+		"not that it recovers from one particular tool failing",
+}
+
+// Every other contract that injects a tool error names the tool, or the error
+// lands wherever the model happened to look first.
+func TestEveryInjectedToolErrorNamesItsTool(t *testing.T) {
+	for _, c := range Contracts {
+		if c.Inject == "" || c.InjectAs != InjectToolError {
+			continue
+		}
+		if _, exempt := errorFromAnyCall[c.ID]; exempt {
+			continue
+		}
+		if c.InjectOn == "" {
+			t.Errorf("%s injects a tool error and does not say which tool it came from", c.ID)
+		}
+	}
+	for id := range errorFromAnyCall {
+		if _, ok := ContractByID(id); !ok {
+			t.Errorf("errorFromAnyCall excuses %q, which is not a contract", id)
+		}
+	}
+}
+
+// A named tool has to be one the scenario offers, or the error waits for a
+// call that can never come and the scenario's premise never reaches the model.
+func TestAnInjectedErrorNamesAToolTheScenarioOffers(t *testing.T) {
+	for _, c := range Contracts {
+		if c.InjectOn == "" {
+			continue
+		}
+		f, err := LoadFixture(FixtureRoot, c.ID)
+		if err != nil {
+			t.Errorf("%s: %v", c.ID, err)
+			continue
+		}
+		if !slicesContains(f.ToolNames(), c.InjectOn) {
+			t.Errorf("%s injects on %q and its scenario does not offer that tool, "+
+				"so the error waits for a call that cannot happen. Offered: %v",
+				c.ID, c.InjectOn, f.ToolNames())
+		}
+	}
+}
+
+func slicesContains(haystack []string, needle string) bool {
+	for _, h := range haystack {
+		if h == needle {
+			return true
+		}
+	}
+	return false
+}

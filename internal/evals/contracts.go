@@ -64,6 +64,18 @@ type Contract struct {
 	// reached the model as *the read failing* — which is not a thing dcode
 	// does, and is not what any contract about reminders is asking.
 	InjectAs Injection
+	// InjectOn is the tool the injected error belongs to, and the round waits
+	// until the model calls it.
+	//
+	// The error used to land on whatever the model happened to call first. So
+	// a scenario about a missing test binary answered `bash("ls -la")` with
+	// "integration: command not found: dcode-testdb", and the model spent the
+	// rest of its rounds re-running `pwd && ls -la` trying to understand what
+	// had just happened to its directory listing.
+	//
+	// Empty means the first call of the first round, which is right for a
+	// reminder: the product sends those regardless of what was called.
+	InjectOn string
 	// Judge answers whether the run behaved as contracted.
 	Judge Judge
 	// Asserted names the deterministic tests that establish this contract,
@@ -95,6 +107,29 @@ const (
 	// retried — which is a different behaviour with the same shape.
 	InjectReminder
 )
+
+// InjectionTarget is which call an injected error attaches to, or -1 when this
+// round has none it belongs to.
+//
+// Without InjectOn it is the first call, which is what a reminder wants. With
+// it, the round has to contain a call to that tool: answering `ls -la` with
+// "integration: command not found: dcode-testdb" told the model something
+// impossible about the thing it had just done, and it spent the rest of the
+// scenario trying to make sense of it.
+func InjectionTarget(c Contract, calls []ce.ToolCall) int {
+	if len(calls) == 0 {
+		return -1
+	}
+	if c.InjectOn == "" {
+		return 0
+	}
+	for i, call := range calls {
+		if call.Name == c.InjectOn {
+			return i
+		}
+	}
+	return -1
+}
 
 // Measured reports whether this contract needs a model to answer.
 func (c Contract) Measured() bool { return len(c.Asserted) == 0 }
@@ -164,6 +199,10 @@ var Contracts = []Contract{
 	{ID: "toolcall-schema-valid", Threshold: 0.97, Rounds: 1,
 		Judge: CalledWith("record_release", "version", "artifacts", "sha256")},
 	{ID: "toolcall-recover", Threshold: 0.90, Rounds: 12, Inject: errNoMatch,
+		// No InjectOn: this one is about recovering from *an* error, whatever
+		// the model was doing, which is the adapter's contract rather than the
+		// tool suite's.
+		//
 		// Recovered means the second attempt differs in substance. Repeating
 		// the same call, or answering in prose, is not recovery.
 		Judge: All(Called("read"), Distinct("read", 1))},
@@ -243,7 +282,7 @@ var Contracts = []Contract{
 		Judge: CallCount("plan", 0, 1)},
 	{ID: "plan-depth-complex", Threshold: 0.85, Rounds: 12,
 		Judge: Called("plan")},
-	{ID: "plan-stays-live", Threshold: 0.90, Rounds: 12, Inject: errMissingDep,
+	{ID: "plan-stays-live", InjectOn: "bash", Threshold: 0.90, Rounds: 12, Inject: errMissingDep,
 		Judge: Any(CalledWith("plan", "blocked"), Says("blocked", "cannot", "could not"))},
 	{ID: "runs-verification-after-change", Threshold: 0.90, Rounds: 12, Inject: reminderStale, InjectAs: InjectReminder,
 		Judge: Called("bash")},
@@ -271,16 +310,16 @@ var Contracts = []Contract{
 		Judge: NeverCalledWith("bash", "test", "make", "build", "npm", "go vet", "lint")},
 
 	// ---- agent-loop ----
-	{ID: "tool-error-recover", Threshold: 0.90, Rounds: 12, Inject: errAmbiguous,
+	{ID: "tool-error-recover", InjectOn: "edit", Threshold: 0.90, Rounds: 12, Inject: errAmbiguous,
 		Judge: All(Called("read", "edit"), Distinct("edit", 1))},
-	{ID: "tool-error-giveup", Threshold: 0.85, Rounds: 12, Inject: errMissingDep,
+	{ID: "tool-error-giveup", InjectOn: "bash", Threshold: 0.85, Rounds: 12, Inject: errMissingDep,
 		// Reporting is the contract. Installing the missing binary is a side
 		// effect nobody asked for, in an environment that is not the agent's.
 		Judge: All(
 			Says("not installed", "missing", "cannot", "could not", "unavailable"),
 			NotCalled("write", "edit"),
 		)},
-	{ID: "no-blind-retry", Threshold: 0.95, Rounds: 12, Inject: errNoMatch,
+	{ID: "no-blind-retry", InjectOn: "edit", Threshold: 0.95, Rounds: 12, Inject: errNoMatch,
 		// The third attempt differs in substance, or does not happen. Two
 		// attempts differing only in whitespace count as one.
 		Judge: Any(CallCount("edit", 0, 2), Called("read"), Distinct("edit", 2))},
@@ -306,7 +345,7 @@ var Contracts = []Contract{
 		}},
 
 	// ---- tool-suite ----
-	{ID: "notices-wrong-replacement", Threshold: 0.85, Rounds: 12,
+	{ID: "notices-wrong-replacement", InjectOn: "edit", Threshold: 0.85, Rounds: 12,
 		Inject: "edited stats.go (2 replacement(s), +2 −2)\n\n--- stats.go\n+++ stats.go\n@@\n-\tcount        int\n-\taccountCount int\n+\ttotal        int\n+\taccountTotal int\n",
 		Judge:  Any(Called("edit"), Says("accountTotal", "wrong", "should not", "revert", "mistake"))},
 
@@ -335,7 +374,7 @@ var Contracts = []Contract{
 		Judge: Called("explore", "grep", "glob")},
 	{ID: "does-not-delegate-trivial", Threshold: 0.95, Rounds: 12,
 		Judge: NotCalled("explore")},
-	{ID: "reports-unread-paths", Threshold: 0.95, Rounds: 12,
+	{ID: "reports-unread-paths", InjectOn: "explore", Threshold: 0.95, Rounds: 12,
 		Inject: "could not read: config/secrets.env",
 		Judge:  Says("could not read", "unable to read", "not read", "secrets.env")},
 
@@ -387,10 +426,11 @@ func ContractByID(id string) (Contract, bool) {
 // workspace. They used to be the string "ok" for every tool, which told the
 // model its workspace was empty and had it refuse the task on principle.
 func answers(ctx context.Context, w *Workspace, c Contract, calls []ce.ToolCall, injectNow bool) []ce.Message {
+	at := InjectionTarget(c, calls)
 	var out []ce.Message
 	for i, call := range calls {
 		output, isErr := w.Execute(ctx, call.Name, call.Input)
-		if i == 0 && injectNow && c.InjectAs == InjectToolError {
+		if i == at && injectNow && c.InjectAs == InjectToolError {
 			output, isErr = c.Inject, true
 		}
 		out = append(out, ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
