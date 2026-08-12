@@ -621,3 +621,22 @@ func TestTheBashDescriptionCoversOrienting(t *testing.T) {
 		}
 	}
 }
+
+// The description says what a plan is, when to call it, and how to size it.
+// It never said who reads it, and the measurement showed the consequence: the
+// model plans in prose — "I have a complete picture. Let me read each file to
+// make precise edits." — and does the work correctly without ever calling the
+// tool.
+//
+// Prose planning leaves the client's plan panel empty, which is the one thing
+// the panel exists for. Naming the reader is what turns the tool from
+// bookkeeping into the only channel that reaches them.
+func TestThePlanDescriptionSaysWhoReadsIt(t *testing.T) {
+	d := strings.ToLower(Plan{}.Description())
+	for _, need := range []string{"see", "prose"} {
+		if !strings.Contains(d, need) {
+			t.Errorf("the plan description does not say who reads it (missing %q): %s",
+				need, Plan{}.Description())
+		}
+	}
+}

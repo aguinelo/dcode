@@ -161,7 +161,9 @@ func (Plan) Description() string {
 		"Replaces the plan entirely on each call. " +
 		"Keep it proportional: a one-line fix needs one item, a cross-file change needs several. " +
 		"Exactly one item may be active. Mark an item blocked, with a reason, " +
-		"rather than done when it could not be finished."
+		"rather than done when it could not be finished. " +
+		"This is what the person watching sees; describing the steps in prose instead " +
+		"leaves them nothing to follow."
 }
 
 func (Plan) Schema() json.RawMessage {
