@@ -38,6 +38,25 @@ type Fixture struct {
 	// and no convention was ever sent. It could not have passed.
 	Instructions []behavior.Instruction
 	Skills       []behavior.SkillIndexEntry
+	// Results is what each tool returns when it succeeds, by tool name.
+	//
+	// The harness executes nothing, so a multi-round scenario has to answer the
+	// model's calls with something. Canned per tool rather than per path: the
+	// scenarios that need content need one file's worth, and parsing arguments
+	// to decide what to return would put a second, invisible implementation of
+	// the tool suite inside the thing measuring it.
+	Results map[string]string
+}
+
+// ResultFor is what a successful call to name returns.
+//
+// A tool with nothing declared returns "ok" — enough to keep the exchange
+// well-formed, and the scenarios where the content is the point declare it.
+func (f Fixture) ResultFor(name string) string {
+	if out, ok := f.Results[name]; ok {
+		return out
+	}
+	return "ok"
 }
 
 // LoadFixture reads testdata/evals/<id>/ under root.
@@ -77,13 +96,45 @@ func LoadFixture(root, id string) (Fixture, error) {
 		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
 	}
 
+	results, err := loadResults(dir)
+	if err != nil {
+		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
+	}
+
+	f := Fixture{Tools: tools}
+	for name := range results {
+		// A canned result for a tool the scenario does not offer is material
+		// that reads as though it will be used and never is — the shape of
+		// every defect this package was built around.
+		if !f.Declares(name) {
+			return Fixture{}, fmt.Errorf("fixture %s: results.json answers %q and the scenario does not offer that tool", id, name)
+		}
+	}
+
 	return Fixture{
 		ID:           id,
 		Task:         strings.TrimSpace(string(task)),
 		Tools:        tools,
 		Instructions: ins,
 		Skills:       skills,
+		Results:      results,
 	}, nil
+}
+
+// loadResults reads results.json, if it is there.
+func loadResults(dir string) (map[string]string, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "results.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var results map[string]string
+	if err := json.Unmarshal(raw, &results); err != nil {
+		return nil, fmt.Errorf("results.json: %w", err)
+	}
+	return results, nil
 }
 
 // instructionSources is every source a fixture file may be named after.

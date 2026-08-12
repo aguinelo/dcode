@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
 // contractRow matches a behavioural contract row in a `.p.spec.md` table.
@@ -280,6 +282,121 @@ func TestAScenarioAboutMaterialShipsThatMaterial(t *testing.T) {
 	for id := range needsMaterial {
 		if _, ok := ContractByID(id); !ok {
 			t.Errorf("%s is claimed here and is not a contract", id)
+		}
+	}
+}
+
+// The defect: everything arrived as a failed tool result whenever the model
+// had called a tool, so a `<system-reminder>` reached the model as the read
+// having failed. A model that then re-read looked like it had acted on the
+// reminder when it had only retried.
+func TestAReminderArrivesAsAReminderNextToASuccessfulResult(t *testing.T) {
+	f := Fixture{
+		Tools:   []ce.ToolDef{{Name: "read"}},
+		Results: map[string]string{"read": "package stats"},
+	}
+	c := Contract{Inject: "<system-reminder>stats.go changed</system-reminder>", InjectAs: InjectReminder}
+	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "read"}})
+
+	if len(out) != 2 {
+		t.Fatalf("got %d messages, want a tool result and a reminder: %+v", len(out), out)
+	}
+	if out[0].ToolResult == nil || out[0].ToolResult.IsError {
+		t.Errorf("the read was reported as having failed: %+v", out[0].ToolResult)
+	}
+	if out[0].ToolResult.Output != "package stats" {
+		t.Errorf("the read returned %q, not the scenario's content", out[0].ToolResult.Output)
+	}
+	if !out[1].Reminder || out[1].Role != ce.RoleUser {
+		t.Errorf("the reminder did not arrive as a reminder: %+v", out[1])
+	}
+}
+
+// A tool error is still a tool error, and it lands on the call that failed.
+func TestAToolErrorLandsOnTheCallAndNotBesideIt(t *testing.T) {
+	f := Fixture{Tools: []ce.ToolDef{{Name: "edit"}}}
+	c := Contract{Inject: "old_string was not found", InjectAs: InjectToolError}
+	out := answers(f, c, []ce.ToolCall{{ID: "c1", Name: "edit"}})
+
+	if len(out) != 1 {
+		t.Fatalf("got %d messages, want just the failed result: %+v", len(out), out)
+	}
+	if out[0].ToolResult == nil || !out[0].ToolResult.IsError {
+		t.Errorf("the error did not arrive as a failed result: %+v", out[0].ToolResult)
+	}
+}
+
+// Every call is answered. An unanswered call is a malformed exchange, and the
+// provider that tolerates it today is not a guarantee.
+func TestEveryCallIsAnsweredAndOnlyTheFirstCarriesTheError(t *testing.T) {
+	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}, {Name: "grep"}}}
+	c := Contract{Inject: "boom", InjectAs: InjectToolError}
+	calls := []ce.ToolCall{{ID: "c1", Name: "read"}, {ID: "c2", Name: "grep"}}
+	out := answers(f, c, calls)
+
+	if len(out) != 2 {
+		t.Fatalf("got %d results for %d calls", len(out), len(calls))
+	}
+	if !out[0].ToolResult.IsError {
+		t.Error("the first call did not carry the error")
+	}
+	if out[1].ToolResult.IsError {
+		t.Error("the second call carried the error too")
+	}
+	for i, m := range out {
+		if m.ToolResult.ToolCallID != calls[i].ID {
+			t.Errorf("result %d answers %q, want %q", i, m.ToolResult.ToolCallID, calls[i].ID)
+		}
+	}
+}
+
+// An error with no call to attach it to has nowhere to go. The reminder still
+// arrives, because the product sends those whether or not a tool ran.
+func TestWithNoCallTheInjectionStillReachesTheModel(t *testing.T) {
+	f := Fixture{Tools: []ce.ToolDef{{Name: "read"}}}
+	for _, as := range []Injection{InjectToolError, InjectReminder} {
+		out := answers(f, Contract{Inject: "something", InjectAs: as}, nil)
+		if len(out) != 1 || !out[0].Reminder {
+			t.Errorf("injection %v produced %+v, want one reminder", as, out)
+		}
+	}
+}
+
+// A tool with no declared result still answers, or the exchange breaks on any
+// scenario whose fixture did not think to name every tool.
+func TestAToolWithNoDeclaredResultStillAnswers(t *testing.T) {
+	f := Fixture{Tools: []ce.ToolDef{{Name: "glob"}}}
+	out := answers(f, Contract{Inject: "x", InjectAs: InjectReminder}, []ce.ToolCall{{ID: "c1", Name: "glob"}})
+	if out[0].ToolResult.Output == "" {
+		t.Error("an undeclared tool answered with nothing")
+	}
+}
+
+// The guard that stops the delivery defect returning. A contract whose
+// injected text is a reminder must say so, or the harness hands it to the
+// model as a tool failure and measures a different behaviour with the same
+// shape.
+func TestEveryInjectedReminderIsDeclaredAsOne(t *testing.T) {
+	for _, c := range Contracts {
+		if c.Inject == "" {
+			continue
+		}
+		isReminder := strings.Contains(c.Inject, "<system-reminder>")
+		switch {
+		case isReminder && c.InjectAs != InjectReminder:
+			t.Errorf("%s injects a system-reminder and delivers it as a tool error", c.ID)
+		case !isReminder && c.InjectAs == InjectReminder:
+			t.Errorf("%s delivers a tool error as a reminder", c.ID)
+		}
+	}
+}
+
+// A contract that injects nothing must not say how to deliver it, or the field
+// reads as a decision that was made when it never applied.
+func TestAContractWithNothingToInjectDeclaresNoDelivery(t *testing.T) {
+	for _, c := range Contracts {
+		if c.Inject == "" && c.InjectAs != InjectToolError {
+			t.Errorf("%s injects nothing and declares a delivery", c.ID)
 		}
 	}
 }
