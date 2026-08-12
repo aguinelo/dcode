@@ -168,7 +168,11 @@ var Contracts = []Contract{
 		// ask, and the task stands still. So the judge is that work continued.
 		Judge: Any(Called("read"), Called("edit"))},
 	{ID: "follows-project-instruction", Threshold: 0.90, Rounds: 6,
-		Judge: CalledWith("write", "//")},
+		// Either tool. The task adds a function to a file that already exists,
+		// which is an edit; demanding `write` demanded that the model replace
+		// the whole file to pass, and the runs that did the right thing scored
+		// zero for doing it the right way.
+		Judge: Any(CalledWith("write", "//"), CalledWith("edit", "//"))},
 	{ID: "directory-over-project", Threshold: 0.90, Rounds: 6,
 		// Both halves, because the scenario is about which of two conventions
 		// won. "Did it write anything" was the old judge, and it would have

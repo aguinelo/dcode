@@ -562,3 +562,52 @@ func TestTheRoundCeilingLeavesRoomForTheWork(t *testing.T) {
 		}
 	}
 }
+
+// createsAFile is the scenario whose work really is a new file, with the
+// reason, and it is the only way to judge on `write` without also accepting
+// `edit`.
+//
+// The burden is this way round because the default was wrong and silent.
+// `follows-project-instruction` asked for a function to be added to a file
+// that already existed — an edit — and judged only on `write`. A run that
+// edited, which is the right way, scored zero. The contract was measuring tool
+// choice while claiming to measure whether a convention was followed.
+var createsAFile = map[string]string{
+	"init-drops-absent-tool":     "writes DCODE.md, which does not exist yet — that is what /init produces",
+	"init-drops-absent-command":  "writes DCODE.md, which does not exist yet — that is what /init produces",
+	"init-keeps-real-convention": "writes DCODE.md, which does not exist yet — that is what /init produces",
+}
+
+func TestAJudgeOnAChangeAcceptsAnEdit(t *testing.T) {
+	src, err := os.ReadFile("contracts.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, body := range splitContractBlocks(string(src)) {
+		c, ok := ContractByID(id)
+		if !ok || !c.Measured() {
+			continue
+		}
+		if _, exempt := createsAFile[id]; exempt {
+			continue
+		}
+		if strings.Contains(body, `"write"`) && !strings.Contains(body, `"edit"`) {
+			t.Errorf("%s judges on write and not on edit. Changing a file that exists is an edit, "+
+				"so a run that does it the right way scores zero. Accept both, or say in createsAFile "+
+				"why this scenario really does produce a new file.", id)
+		}
+	}
+}
+
+// An exemption for a scenario that no longer creates a file is a note about a
+// world that moved on.
+func TestNoStaleCreationExemption(t *testing.T) {
+	for id, reason := range createsAFile {
+		if _, ok := ContractByID(id); !ok {
+			t.Errorf("createsAFile excuses %q, which is not a contract", id)
+		}
+		if len(reason) < 40 {
+			t.Errorf("%q is exempt with a reason too short to be one: %q", id, reason)
+		}
+	}
+}
