@@ -37,8 +37,8 @@ func (Bash) Name() string { return "bash" }
 
 func (Bash) Description() string {
 	return "Run a shell command in the workspace. " +
-		"Use the dedicated tools for reading, searching and editing files — " +
-		"they are cheaper and need fewer permissions. " +
+		"Use the dedicated tools for reading, searching and editing files, and `glob` for " +
+		"listing or locating them — they are cheaper and need fewer permissions. " +
 		"A non-zero exit is a result, not a failure; read the output and decide."
 }
 
@@ -157,7 +157,8 @@ type PlanInput struct {
 func (Plan) Name() string { return "plan" }
 
 func (Plan) Description() string {
-	return "Record the execution plan. Replaces the plan entirely on each call. " +
+	return "Record the execution plan, before you start work that touches more than one file. " +
+		"Replaces the plan entirely on each call. " +
 		"Keep it proportional: a one-line fix needs one item, a cross-file change needs several. " +
 		"Exactly one item may be active. Mark an item blocked, with a reason, " +
 		"rather than done when it could not be finished."

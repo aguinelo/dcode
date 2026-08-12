@@ -589,3 +589,35 @@ func TestGlobPointedAtAFileFindsIt(t *testing.T) {
 		t.Errorf("glob on a file found nothing: %q", res.Output)
 	}
 }
+
+// The plan description says how to size a plan and what replaces what. It
+// never said when to call it, and the measurement found the consequence:
+// given a rename across several files the model worked for six rounds —
+// glob, grep, read, read, edit — and never planned. 15% against a 85%
+// threshold, with both the doctrine and this description already telling it
+// how a plan should look.
+//
+// Shape without a trigger reads as bookkeeping to do if there is time.
+func TestThePlanDescriptionSaysWhenToCallIt(t *testing.T) {
+	d := strings.ToLower(Plan{}.Description())
+	for _, need := range []string{"before"} {
+		if !strings.Contains(d, need) {
+			t.Errorf("the plan description does not say when to call it (missing %q): %s",
+				need, Plan{}.Description())
+		}
+	}
+}
+
+// The bash description covers reading, searching and editing. Orienting is
+// none of those, and it is what the model reaches for the shell to do:
+// `bash("command":"ls -la")` opened most measured runs, including runs that
+// went on to use the dedicated tools for everything else.
+func TestTheBashDescriptionCoversOrienting(t *testing.T) {
+	d := strings.ToLower(Bash{}.Description())
+	for _, need := range []string{"glob", "listing"} {
+		if !strings.Contains(d, need) {
+			t.Errorf("the bash description does not cover looking around (missing %q): %s",
+				need, Bash{}.Description())
+		}
+	}
+}
