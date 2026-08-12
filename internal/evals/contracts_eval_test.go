@@ -106,6 +106,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 	// index that most of these contracts are about.
 	history := f.Opening()
 	var tr Transcript
+	var injected bool
 
 	rounds := c.Rounds
 	if rounds < 1 {
@@ -129,8 +130,21 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		}
 		// A round with no call and nothing to say back is the model finished.
 		// Asking again would spend a call on a turn the product would never
-		// have taken.
-		injectNow := i == 0 && c.Inject != ""
+		// have taken. An injection still pending is not "nothing to say":
+		// with no call to attach it to it arrives as a reminder.
+		// The injection waits for the call it belongs to. A tool error that
+		// lands on whatever the model happened to do first tells it something
+		// impossible about that action, and the rounds after go on trying to
+		// reconcile it.
+		//
+		// A round with no calls is the last chance to say it: `answers`
+		// delivers it as a reminder there, because the alternative is a
+		// scenario whose whole premise never reaches the model.
+		injectNow := !injected && c.Inject != "" &&
+			(c.InjectAs == InjectReminder || InjectionTarget(c, calls) >= 0 || len(calls) == 0)
+		if injectNow {
+			injected = true
+		}
 		if len(calls) == 0 && !injectNow {
 			break
 		}
