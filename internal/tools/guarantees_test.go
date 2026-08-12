@@ -40,6 +40,30 @@ func TestNoOutputCarriesAClockOrAnAbsolutePath(t *testing.T) {
 	// time.Now().String(), RFC3339, or a bare wall clock.
 	clock := regexp.MustCompile(`\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}`)
 
+	// A failing call leaks more easily than a successful one, and a model
+	// reads an error harder than it reads a result. `read` on a directory
+	// wrapped the raw Go error and printed the whole temp path; the model then
+	// tried to read that path, which is a round spent on something the tool
+	// told it to do.
+	cases = append(cases,
+		struct {
+			tool Tool
+			args any
+		}{Read{}, ReadInput{Path: "."}},
+		struct {
+			tool Tool
+			args any
+		}{Read{}, ReadInput{Path: "pkg"}},
+		struct {
+			tool Tool
+			args any
+		}{Read{}, ReadInput{Path: "nope.go"}},
+		struct {
+			tool Tool
+			args any
+		}{Edit{}, EditInput{Path: "pkg/stats.go", OldString: "x", NewString: "y"}},
+	)
+
 	for _, c := range cases {
 		res := run(t, c.tool, s, c.args)
 		if strings.Contains(res.Output, ws) {
@@ -47,6 +71,35 @@ func TestNoOutputCarriesAClockOrAnAbsolutePath(t *testing.T) {
 		}
 		if m := clock.FindString(res.Output); m != "" {
 			t.Errorf("%s: output carries a clock reading %q:\n%s", c.tool.Name(), m, res.Output)
+		}
+	}
+}
+
+// Reading a directory is a thing a model does constantly, and the answer was
+// the raw Go error: "read /private/var/folders/.../001: is a directory". It
+// leaked the path, and it never said what to do instead — so the model tried
+// reading that path next, and spent the round finding out it was the same
+// directory.
+//
+// Every other error in this suite carries a way forward. This one is the
+// commonest and it carried none.
+func TestReadingADirectorySaysToUseGlob(t *testing.T) {
+	s, ws := setup(t)
+	writeFileT(t, ws, "pkg/stats.go", "package pkg\n")
+
+	for _, path := range []string{".", "pkg"} {
+		res := run(t, Read{}, s, ReadInput{Path: path})
+		if !res.IsError {
+			t.Fatalf("reading the directory %q succeeded", path)
+		}
+		if strings.Contains(res.Output, ws) {
+			t.Errorf("read(%q) leaked the workspace path: %s", path, res.Output)
+		}
+		if !strings.Contains(res.Output, "directory") {
+			t.Errorf("read(%q) does not say it is a directory: %s", path, res.Output)
+		}
+		if !strings.Contains(res.Output, "glob") {
+			t.Errorf("read(%q) does not say what to use instead: %s", path, res.Output)
 		}
 	}
 }

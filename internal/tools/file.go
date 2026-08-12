@@ -3,10 +3,13 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/aguinelo/dcode/internal/policy"
@@ -326,7 +329,30 @@ func notFound(tool, path string, err error) *ToolError {
 		return errf(tool, CodeNotFound,
 			"Check the path, or use glob to find it.", "%s does not exist", path)
 	}
-	return errf(tool, CodeNotFound, "", "could not read %s: %v", path, err)
+	// Reading a directory is a thing a model does constantly, and the answer
+	// used to be the wrapped Go error — which named the absolute path and said
+	// nothing about what to do. The model would then read that path, and spend
+	// the round discovering it was the same directory.
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) && errors.Is(pathErr.Err, syscall.EISDIR) {
+		return errf(tool, CodeNotFound,
+			"Use glob to list what is in it, or name a file inside it.",
+			"%s is a directory", path)
+	}
+	// The workspace path is never in an error either. It varies by machine,
+	// which breaks golden output, and a model that reads it starts treating an
+	// absolute path as a thing it may use (RN-7).
+	return errf(tool, CodeNotFound, "", "could not read %s: %v", path, scrub(err, path))
+}
+
+// scrub keeps a filesystem error's meaning and drops the absolute path it
+// carries, which is everything before the last colon.
+func scrub(err error, path string) error {
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		return fmt.Errorf("%s: %w", path, pathErr.Err)
+	}
+	return err
 }
 
 // writeFile writes atomically by default: a crash between truncate and write
