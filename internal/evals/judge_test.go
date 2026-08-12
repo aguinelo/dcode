@@ -241,3 +241,43 @@ func TestTheDigestTrimsALongAnswer(t *testing.T) {
 		t.Errorf("the answer was cut without saying so:\n%s", got)
 	}
 }
+
+// The tool name alone leaves the question half answered. `bash` running `cat`
+// is the contract being broken; `bash` running `ls` is an agent looking around.
+// Those are opposite findings and the name is the same in both.
+func TestTheDigestShowsWhatTheCallAskedFor(t *testing.T) {
+	got := Transcript{Rounds: 1, Calls: []ce.ToolCall{
+		{Name: "bash", Input: []byte(`{"command": "cat internal/config/toml.go"}`)},
+	}}.Digest()
+
+	if !strings.Contains(got, "cat internal/config/toml.go") {
+		t.Errorf("the digest does not say what bash was asked to run:\n%s", got)
+	}
+}
+
+// A call with no arguments must not print empty brackets, which read as an
+// argument that was there and got lost.
+func TestTheDigestOmitsEmptyArguments(t *testing.T) {
+	for _, input := range [][]byte{nil, []byte("{}"), []byte("  ")} {
+		got := Transcript{Rounds: 1, Calls: []ce.ToolCall{{Name: "plan", Input: input}}}.Digest()
+		if strings.Contains(got, "()") {
+			t.Errorf("input %q printed empty brackets:\n%s", input, got)
+		}
+	}
+}
+
+// A write carries a whole file. Printing it would bury every other call in the
+// run, and the digest exists to be read at a glance.
+func TestTheDigestTrimsALongArgument(t *testing.T) {
+	body := strings.Repeat("x", previewArg*4)
+	got := Transcript{Rounds: 1, Calls: []ce.ToolCall{
+		{Name: "write", Input: []byte(`{"content":"` + body + `"}`)},
+	}}.Digest()
+
+	if len(got) > previewArg+80 {
+		t.Errorf("the digest is %d chars, long enough to bury the rest of the run", len(got))
+	}
+	if !strings.Contains(got, "…") {
+		t.Errorf("the argument was cut without saying so:\n%s", got)
+	}
+}

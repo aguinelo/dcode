@@ -51,6 +51,33 @@ func SinceInjection(inner Judge) Judge {
 // buries the next one.
 const digestText = 240
 
+// previewArg is how much of a call's arguments the digest carries.
+//
+// A path or a command fits; a file being written does not, and should not —
+// the digest is for telling one behaviour from another, not for reading the
+// work.
+const previewArg = 60
+
+// preview renders a call's arguments compactly, or nothing.
+//
+// The tool name alone leaves the question half answered. `bash` reaching for
+// `cat internal/config/toml.go` is a contract violation; `bash` reaching for
+// `ls` is an agent looking around before it can use the dedicated tool. Those
+// are opposite findings — one is the doctrine failing to land, the other is
+// the scenario being too narrow — and the name is the same in both.
+func preview(input []byte) string {
+	flat := strings.Join(strings.Fields(string(input)), " ")
+	flat = strings.TrimSuffix(strings.TrimPrefix(flat, "{"), "}")
+	flat = strings.TrimSpace(flat)
+	if flat == "" {
+		return ""
+	}
+	if len(flat) > previewArg {
+		flat = flat[:previewArg] + "…"
+	}
+	return "(" + flat + ")"
+}
+
 // Digest is what one run did, in one line, for a person reading a failure.
 //
 // A rate with no transcript behind it cannot be acted on: `0.0% of 20 runs`
@@ -70,7 +97,7 @@ func (t Transcript) Digest() string {
 		if i == t.InjectedAt && t.InjectedAt > 0 {
 			b.WriteString(" ⟨product spoke⟩")
 		}
-		b.WriteString(" " + c.Name)
+		b.WriteString(" " + c.Name + preview(c.Input))
 	}
 	said := strings.Join(strings.Fields(t.Text), " ")
 	if len(said) > digestText {
