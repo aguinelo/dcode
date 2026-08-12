@@ -373,11 +373,38 @@ func TestClassifyPreservesAnAlreadyClassifiedError(t *testing.T) {
 // work that had just been called off, in the one case where the user was
 // watching.
 //
-// Repeated because that is the shape of the bug: a single run had a nineteen in
-// twenty chance of passing over it.
+// Deterministic, where it used to repeat sixty times and hope.
+//
+// The repetition was racing its own setup: the pump could drain the single
+// frame, find no terminal event and emit a truncated-stream error *before*
+// cancel() ran on the test goroutine. In that interleaving the product is
+// right — nobody had cancelled anything yet — and the test failed roughly one
+// run in fifty, on whichever machine scheduled it that way.
+//
+// Two invariants, each pinned without a race. A context already cancelled, and
+// a stream held open until the cancel has certainly happened.
 func TestCancellationIsNeverReportedAsATruncatedStream(t *testing.T) {
-	for i := 0; i < 60; i++ {
+	t.Run("cancelled before the stream starts", func(t *testing.T) {
 		r, _ := registry(t, `{"choices":[{"delta":{"content":"a"}}]}`)
+		p, _ := r.Resolve("MiniMax-M3", "")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		ch, err := p.Stream(ctx, request())
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertCancelled(t, drain(t, ch))
+	})
+
+	t.Run("cancelled while the stream is in flight", func(t *testing.T) {
+		held := &heldTransport{released: make(chan struct{})}
+		r := NewRegistry()
+		r.RegisterTransport(held)
+		if err := r.RegisterFamily(MiniMaxM3{}); err != nil {
+			t.Fatal(err)
+		}
 		p, _ := r.Resolve("MiniMax-M3", "")
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -385,21 +412,45 @@ func TestCancellationIsNeverReportedAsATruncatedStream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// The transport is still holding, so the pump cannot have finished.
 		cancel()
+		close(held.released)
 
-		got := drain(t, ch)
-		if len(got) == 0 {
-			t.Fatal("the stream produced nothing at all, not even a terminal event")
-		}
-		last := got[len(got)-1]
-		if last.Type != EventError || last.Err == nil {
-			t.Fatalf("run %d ended with %v; a cancelled stream must say so", i, last.Type)
-		}
-		if last.Err.Class != ErrClassCanceled {
-			t.Fatalf("run %d classed a cancellation as %v — the loop retries that class, "+
-				"so an interrupt becomes another call to the provider", i, last.Err.Class)
-		}
+		assertCancelled(t, drain(t, ch))
+	})
+}
+
+func assertCancelled(t *testing.T, got []StreamEvent) {
+	t.Helper()
+	if len(got) == 0 {
+		t.Fatal("the stream produced nothing at all, not even a terminal event")
 	}
+	last := got[len(got)-1]
+	if last.Type != EventError || last.Err == nil {
+		t.Fatalf("ended with %v; a cancelled stream must say so", last.Type)
+	}
+	if last.Err.Class != ErrClassCanceled {
+		t.Fatalf("classed a cancellation as %v — the loop retries that class, "+
+			"so an interrupt becomes another call to the provider", last.Err.Class)
+	}
+}
+
+// heldTransport keeps a stream open until the test lets it go, which is what
+// makes "cancelled in flight" a fact rather than a hope.
+type heldTransport struct{ released chan struct{} }
+
+func (heldTransport) Name() string { return TransportOpenAI }
+
+func (h *heldTransport) Do(ctx context.Context, _ WireRequest) (<-chan WireEvent, error) {
+	out := make(chan WireEvent)
+	go func() {
+		defer close(out)
+		select {
+		case <-ctx.Done():
+		case <-h.released:
+		}
+	}()
+	return out, nil
 }
 
 // The fix guarded the channel-closed path and left the two error paths beside
