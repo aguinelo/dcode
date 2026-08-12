@@ -3,6 +3,8 @@ package evals
 import (
 	"context"
 
+	"github.com/aguinelo/dcode/internal/behavior"
+
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
@@ -126,13 +128,29 @@ const (
 		"Read a file again before editing it — editing from content you no longer have is how work gets overwritten.</system-reminder>"
 	reminderStale = "<system-reminder>You changed files and this is not done yet: tests did not pass. " +
 		"Fix the cause.</system-reminder>"
-	reminderBudget80 = "<system-reminder>You have used about 80% of the context you get before earlier " +
-		"history is summarised away. Write down anything you have learned that must survive that summary.</system-reminder>"
-	reminderBudget92 = "<system-reminder>You are close to the point where earlier history is summarised away. " +
-		"If the remaining work does not fit in what is left, say so now.</system-reminder>"
 	reminderParallel = "<system-reminder>Those tools ran at the same time, so their results do not " +
 		"describe a sequence.</system-reminder>"
 )
+
+// The budget reminders are the product's own, not a copy.
+//
+// Three copies in this package had already drifted — the tool definitions, the
+// tool results and the skill index — and each drift read as a plausible number
+// describing something else. RN-3 makes reminder wording a behaviour surface,
+// so a scenario built on a stale sentence measures a product that no longer
+// exists.
+var (
+	reminderBudget80 = budgetReminder(behavior.Budget80)
+	reminderBudget92 = budgetReminder(behavior.Budget92)
+)
+
+func budgetReminder(b behavior.BudgetBand) string {
+	text, ok := behavior.BudgetText(b)
+	if !ok {
+		panic("evals: the product emits no text for budget band " + string(rune(b)))
+	}
+	return "<system-reminder>" + text + "</system-reminder>"
+}
 
 // Contracts is every declared behavioural contract with the code that measures
 // it.

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/behavior"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
@@ -787,6 +788,41 @@ func TestTheAdmissionJudgesRecogniseHowAModelSaysIt(t *testing.T) {
 		// And it must still reject silence about it.
 		if c.Judge(Transcript{Rounds: 1, Text: "Done. Everything is in place."}) {
 			t.Errorf("%s accepted an answer that admits nothing", tc.id)
+		}
+	}
+}
+
+// The injected reminder must be the text the product emits.
+//
+// The harness holds these as constants so a scenario reads as a scenario, and
+// RN-3 makes reminder wording a behaviour surface: measuring recovery from
+// text dcode does not emit measures a different product. They had already
+// drifted three times in this package — tool definitions, tool results, the
+// skill index — each time as a plausible number describing something else.
+//
+// This caught the fourth: the 80% budget reminder was reworded in the product
+// to say where to write what must survive, and the harness would have kept
+// injecting the old sentence.
+func TestAnInjectedReminderIsTheProductsOwnText(t *testing.T) {
+	product := map[string]bool{}
+	for _, band := range []behavior.BudgetBand{behavior.Budget60, behavior.Budget80, behavior.Budget92} {
+		if text, ok := behavior.BudgetText(band); ok {
+			product[text] = true
+		}
+	}
+	if len(product) == 0 {
+		t.Fatal("no budget texts read from the product; the guard would pass vacuously")
+	}
+
+	for _, c := range Contracts {
+		if !strings.Contains(c.Inject, "summarised away") &&
+			!strings.Contains(c.Inject, "close to the point") {
+			continue
+		}
+		body := strings.TrimSpace(strings.TrimSuffix(
+			strings.TrimPrefix(strings.TrimSpace(c.Inject), "<system-reminder>"), "</system-reminder>"))
+		if !product[body] {
+			t.Errorf("%s injects a budget reminder the product does not emit:\n  harness: %q", c.ID, body)
 		}
 	}
 }
