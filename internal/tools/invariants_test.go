@@ -35,12 +35,13 @@ var toolInvariants = map[string]string{
 	"acima do teto declara":           "TestAnEchoedDiffThatIsTruncatedSaysSo",
 
 	// RN-10, symbol.
-	"escapa `Name`":           "TestSymbolMatchesOnBoundaryNotOnLetters",
-	"respeita fronteira":      "TestSymbolMatchesOnBoundaryNotOnLetters",
-	"casa `func Parse(`":      "TestDeclarationPatternsPerLanguage",
-	"Extensão sem padrão":     "TestUnknownExtensionAnswersAndSaysTheKindIsUnknown",
-	"declaração de limite":    "TestEveryResultDeclaresItsOwnLimit",
-	"estável entre execuções": "TestOrderingIsStableBetweenRuns",
+	"com `Path` de arquivo buscam nele": "TestGrepSearchesTheFileItWasPointedAt",
+	"escapa `Name`":                     "TestSymbolMatchesOnBoundaryNotOnLetters",
+	"respeita fronteira":                "TestSymbolMatchesOnBoundaryNotOnLetters",
+	"casa `func Parse(`":                "TestDeclarationPatternsPerLanguage",
+	"Extensão sem padrão":               "TestUnknownExtensionAnswersAndSaysTheKindIsUnknown",
+	"declaração de limite":              "TestEveryResultDeclaresItsOwnLimit",
+	"estável entre execuções":           "TestOrderingIsStableBetweenRuns",
 
 	// RN-11, delegation.
 	"não** o histórico do pai": "TestExploreDeclaresOnlyARead",

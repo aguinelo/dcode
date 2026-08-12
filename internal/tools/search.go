@@ -69,7 +69,11 @@ func (g Glob) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 		return terr.Result(), nil
 	}
 
+	root, only := searchRoot(root)
 	matches, err := walkFiles(root, s.Limits.RespectGitignore, func(rel string) bool {
+		if only != "" {
+			return rel == only
+		}
 		return re.MatchString(rel)
 	})
 	if err != nil {
@@ -177,7 +181,11 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 		return terr.Result(), nil
 	}
 
+	root, only := searchRoot(root)
 	files, err := walkFiles(root, s.Limits.RespectGitignore, func(rel string) bool {
+		if only != "" {
+			return rel == only
+		}
 		return fileRe == nil || fileRe.MatchString(rel)
 	})
 	if err != nil {
@@ -277,6 +285,27 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 // Native Go rather than shelling out: it keeps the single static binary, and it
 // removes the question of whether to bundle a search tool or depend on one the
 // user may not have.
+// searchRoot splits a search target into the directory to walk and, when the
+// target names a single file, the one entry to keep.
+//
+// Pointing a search at one file is the most natural thing a model does after a
+// broad search returns too much, and it did not work: WalkDir visits a file
+// root exactly once with `rel == "."`, which walkFiles skips, so the search ran
+// over nothing and answered "no matches". Not an error — a confident report of
+// absence, which is the one kind of wrong answer nobody re-checks. A model that
+// narrowed to the file it had just been shown was told the symbol was not in
+// it.
+//
+// Splitting here rather than special-casing inside walkFiles keeps the returned
+// paths relative to the directory, which is what every caller joins against and
+// prints.
+func searchRoot(root string) (dir, only string) {
+	if fi, err := os.Stat(root); err == nil && !fi.IsDir() {
+		return filepath.Dir(root), filepath.Base(root)
+	}
+	return root, ""
+}
+
 func walkFiles(root string, respectGitignore bool, keep func(rel string) bool) ([]string, error) {
 	ig := loadIgnores(root, respectGitignore)
 	var out []string

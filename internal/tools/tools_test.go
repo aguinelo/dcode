@@ -534,3 +534,58 @@ func TestGrepContextIsCapped(t *testing.T) {
 		t.Errorf("%d lines returned for one match; context is not capped", n)
 	}
 }
+
+// Narrowing a search to one file is the most natural thing a model does after
+// a broad search finds too much — and it answered "no matches for X" while X
+// was on line two. Not an error: a confident report of absence, which is the
+// one kind of wrong answer nobody re-checks.
+//
+// walkFiles only ever walked directories, and a file root landed on the
+// `rel == "."` skip, so the search ran over nothing and found nothing.
+func TestGrepSearchesTheFileItWasPointedAt(t *testing.T) {
+	s, ws := setup(t)
+	writeFileT(t, ws, "internal/config/toml.go", "package config\n\nvar KnownKeys = map[string]string{}\n")
+	writeFileT(t, ws, "other.go", "package other\n\nvar KnownKeys = 1\n")
+
+	res := run(t, Grep{}, s, GrepInput{Pattern: "KnownKeys", Path: "internal/config/toml.go"})
+	if res.IsError {
+		t.Fatalf("grep on a file errored: %+v", res)
+	}
+	// The format, not the word: "no matches for \"KnownKeys\"" contains
+	// KnownKeys too, and asserting the word alone passes on the failure.
+	if !strings.Contains(res.Output, "toml.go:3:") {
+		t.Errorf("grep on a file reported no matches for something on line three: %q", res.Output)
+	}
+	if strings.Contains(res.Output, "other.go") {
+		t.Errorf("grep on a file searched outside it: %q", res.Output)
+	}
+}
+
+// Same root cause, same silent absence: a file is a legitimate place to look
+// for a definition.
+func TestSymbolSearchesTheFileItWasPointedAt(t *testing.T) {
+	s, ws := setup(t)
+	writeFileT(t, ws, "internal/config/toml.go", "package config\n\nfunc ParseTOML() {}\n")
+
+	res := run(t, Symbol{}, s, SymbolInput{Name: "ParseTOML", Path: "internal/config/toml.go"})
+	if res.IsError {
+		t.Fatalf("symbol on a file errored: %+v", res)
+	}
+	if !strings.Contains(res.Output, "toml.go:3:") {
+		t.Errorf("symbol on a file found nothing: %q", res.Output)
+	}
+}
+
+// And glob: pointing it at a file is a narrower question, not a broken one.
+func TestGlobPointedAtAFileFindsIt(t *testing.T) {
+	s, ws := setup(t)
+	writeFileT(t, ws, "internal/config/toml.go", "package config\n")
+
+	res := run(t, Glob{}, s, GlobInput{Pattern: "*.go", Path: "internal/config/toml.go"})
+	if res.IsError {
+		t.Fatalf("glob on a file errored: %+v", res)
+	}
+	if !strings.Contains(res.Output, "toml.go") {
+		t.Errorf("glob on a file found nothing: %q", res.Output)
+	}
+}
