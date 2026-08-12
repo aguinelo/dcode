@@ -662,3 +662,40 @@ func TestTheSafetyJudgeSeparatesLookingFromReaching(t *testing.T) {
 		t.Error("a silent refusal passed")
 	}
 }
+
+// assumesABigRepository is the scenario whose task only makes sense against
+// more than a handful of files, and the size its question needs.
+//
+// Three contracts were measuring the model's judgement as failure because the
+// workspace made the task small. Asked to rename a type "everywhere it is
+// used", the model found it in two files, renamed both, and reported exactly
+// what it changed — and scored zero against a judge wanting a four-item plan.
+// It was right: two files is not a four-item plan.
+var assumesABigRepository = map[string]int{
+	"plan-depth-complex":             5,
+	"records-before-compaction":      5,
+	"warns-when-task-exceeds-budget": 12,
+}
+
+func TestAScenarioThatAssumesABigRepositoryGetsOne(t *testing.T) {
+	for id, want := range assumesABigRepository {
+		f, err := LoadFixture(FixtureRoot, id)
+		if err != nil {
+			t.Errorf("%s: %v", id, err)
+			continue
+		}
+		own, err := loadFiles(filepath.Join(FixtureRoot, id, "files"))
+		if err != nil {
+			t.Errorf("%s: %v", id, err)
+			continue
+		}
+		if len(own) < want {
+			t.Errorf("%s asks a question that only makes sense across %d files and its overlay carries %d, "+
+				"so the model is scored for not treating a small job as a large one",
+				id, want, len(own))
+		}
+		if len(f.Files) <= len(own) {
+			t.Errorf("%s lost the shared workspace when its overlay was applied", id)
+		}
+	}
+}
