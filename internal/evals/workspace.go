@@ -35,6 +35,7 @@ type Workspace struct {
 	Dir      string
 	Registry *tools.Registry
 	state    *tools.State
+	resolver *policy.Resolver
 }
 
 // NewWorkspace writes files under dir and builds the tools that see them.
@@ -58,7 +59,7 @@ func NewWorkspace(dir string, files map[string]string) (*Workspace, error) {
 	}
 	state := tools.NewState(resolver, tools.DefaultLimits())
 
-	return &Workspace{Dir: dir, state: state, Registry: ProductRegistry()}, nil
+	return &Workspace{Dir: dir, state: state, resolver: resolver, Registry: ProductRegistry()}, nil
 }
 
 // ProductRegistry is the product's tool suite, definitions and all.
@@ -118,11 +119,48 @@ func (w *Workspace) Execute(ctx context.Context, name string, input json.RawMess
 		// this is a scenario offering something the registry does not carry.
 		return fmt.Sprintf("unknown tool %q", name), true
 	}
+	// The gate the loop applies, applied here too. Calling Execute directly
+	// skipped it, and a tool resolves a path without asking whether it may:
+	// `read` on /etc/passwd came back with the file. The harness had handed a
+	// real model unrestricted read access to the machine it was running on.
+	//
+	// Declare-then-evaluate rather than a path check, because that is the
+	// structure the product relies on — the tool says what it would touch, and
+	// something else decides.
+	req, err := tool.Declare(input)
+	if err != nil {
+		return err.Error(), true
+	}
+	if v := w.evaluate(req); v.Decision == policy.DecisionDeny {
+		return v.Reason, true
+	}
+
 	res, err := tool.Execute(ctx, input, w.state)
 	if err != nil {
 		return err.Error(), true
 	}
 	return res.Output, res.IsError
+}
+
+// evaluate resolves the declared paths and asks the policy, exactly as the
+// loop does.
+//
+// workspace-write with approvals off: anything inside the workspace runs,
+// anything outside is denied rather than queued for a person who is not there.
+// A measurement that paused for approval would measure nothing at all.
+func (w *Workspace) evaluate(req policy.Request) policy.Verdict {
+	resolved := policy.Request{Tool: req.Tool, Network: req.Network, Command: req.Command}
+	for _, a := range req.Paths {
+		acc, err := w.resolver.Resolve(a.Path, a.Write)
+		if err != nil {
+			// Cannot tell is never allow — the same reading the loop takes.
+			resolved.Paths = append(resolved.Paths, policy.Access{Path: a.Path, Write: a.Write})
+			continue
+		}
+		resolved.Paths = append(resolved.Paths, acc)
+	}
+	return policy.Evaluate(resolved, policy.ModeWorkspaceWrite, policy.PolicyNever,
+		policy.Rules{}, w.resolver.InWorkspace)
 }
 
 // WorkspaceRoot is the miniature repository every scenario explores.
