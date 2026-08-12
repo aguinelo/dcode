@@ -223,7 +223,11 @@ func (sy Symbol) Execute(_ context.Context, input json.RawMessage, s *State) (Re
 		return terr.Result(), nil
 	}
 
+	root, only := searchRoot(root)
 	files, err := walkFiles(root, s.Limits.RespectGitignore, func(rel string) bool {
+		if only != "" {
+			return rel == only
+		}
 		return fileRe == nil || fileRe.MatchString(rel)
 	})
 	if err != nil {
