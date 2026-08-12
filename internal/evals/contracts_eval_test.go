@@ -120,13 +120,20 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		tr.Text += text + "\n"
 		tr.Rounds++
 
-		if i == rounds-1 || c.Inject == "" {
+		if i == rounds-1 {
+			break
+		}
+		// A round with no call and nothing to say back is the model finished.
+		// Asking again would spend a call on a turn the product would never
+		// have taken.
+		injectNow := i == 0 && c.Inject != ""
+		if len(calls) == 0 && !injectNow {
 			break
 		}
 		// The model's turn, then what the product would have said back.
 		history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
-		history = append(history, answers(f, c, calls)...)
-		if tr.InjectedAt == 0 {
+		history = append(history, answers(f, c, calls, injectNow)...)
+		if injectNow {
 			tr.InjectedAt = len(tr.Calls)
 		}
 	}
