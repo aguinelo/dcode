@@ -539,3 +539,26 @@ func TestNoStaleAbsenceExemption(t *testing.T) {
 		}
 	}
 }
+
+// The ceiling has to sit above what a scenario actually needs, and what a
+// scenario needs is the whole turn: orient, look, read, then do the work.
+//
+// Three was below it. Three contracts printed the identical opening —
+// bash("ls -la"), glob("**/*"), read(...) — and ran out before the write their
+// judges asked about, scoring zero for having been interrupted.
+func TestTheRoundCeilingLeavesRoomForTheWork(t *testing.T) {
+	for _, c := range Contracts {
+		if !c.Measured() {
+			continue
+		}
+		// The single-round pair is the deliberate exception: their contract is
+		// the opening call itself.
+		if c.Rounds == 1 {
+			continue
+		}
+		if c.Rounds < 4 {
+			t.Errorf("%s allows %d rounds, which an agent spends orienting before it starts",
+				c.ID, c.Rounds)
+		}
+	}
+}
