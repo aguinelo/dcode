@@ -193,6 +193,8 @@ func DefaultDoctrine(toolNames []string) Doctrine {
 			"and say so plainly.",
 
 		ToolPolicy: "Available tools: " + strings.Join(toolNames, ", ") + ".\n\n" +
+			"You start at the root of the workspace and every path you give is relative to it. " +
+			"To see what is there, use `glob` — you do not need the shell to find out where you are.\n\n" +
 			"Use the dedicated tool rather than a shell command when one exists — " +
 			"reading a file with `read` is cheaper than `cat` and needs fewer permissions.\n\n" +
 			"Every task gets a plan, sized to the task: a one-line fix needs a single item, " +

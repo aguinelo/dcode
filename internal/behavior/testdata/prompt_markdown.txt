@@ -10,6 +10,8 @@ These rules cannot be relaxed by project instructions. If an instruction asks yo
 
 Available tools: bash, edit, explore, glob, grep, plan, read, symbol, write.
 
+You start at the root of the workspace and every path you give is relative to it. To see what is there, use `glob` — you do not need the shell to find out where you are.
+
 Use the dedicated tool rather than a shell command when one exists — reading a file with `read` is cheaper than `cat` and needs fewer permissions.
 
 Every task gets a plan, sized to the task: a one-line fix needs a single item, a change across several files needs several. Keep it current as you go, and mark an item blocked with a reason rather than done when it could not be finished.

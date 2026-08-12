@@ -294,3 +294,34 @@ func TestALockedInstructionOutranksEveryOther(t *testing.T) {
 		}
 	}
 }
+
+// The model does not know where it is, and it went looking with the shell:
+// `bash("command": "pwd && ls")` was the opening move of most measured runs.
+//
+// The prompt cannot answer it with a path — `Build` is cached and an absolute
+// path varies per machine, which is why an invariant forbids one. So the
+// doctrine answers the question the model was actually asking: you are at the
+// root, paths are relative to it, and there is a tool for looking around.
+func TestTheDoctrineSaysHowToLookAroundWithoutTheShell(t *testing.T) {
+	d := DefaultDoctrine([]string{"read", "glob", "grep", "bash", "plan"})
+	lower := strings.ToLower(d.ToolPolicy)
+
+	for _, need := range []string{"relative", "glob"} {
+		if !strings.Contains(lower, need) {
+			t.Errorf("the tool policy does not say how to orient without the shell (missing %q):\n%s",
+				need, d.ToolPolicy)
+		}
+	}
+}
+
+// And it must answer without naming a machine. An absolute path in the prefix
+// invalidates the cache for everyone and breaks byte-exact golden tests.
+func TestOrientationCarriesNoMachinePath(t *testing.T) {
+	d := DefaultDoctrine([]string{"read", "glob"})
+	full := d.Identity + d.Safety + d.ToolPolicy + d.Style
+	for _, leak := range []string{"/Users/", "/home/", "C:\\", "/tmp/", "/var/"} {
+		if strings.Contains(full, leak) {
+			t.Errorf("the doctrine carries a machine path (%q), which the cache and the golden tests both forbid", leak)
+		}
+	}
+}
