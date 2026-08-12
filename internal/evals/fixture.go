@@ -69,8 +69,8 @@ func LoadFixture(root, id string) (Fixture, error) {
 	if err != nil {
 		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
 	}
-	var tools []ce.ToolDef
-	if err := json.Unmarshal(raw, &tools); err != nil {
+	tools, err := decodeTools(raw)
+	if err != nil {
 		return Fixture{}, fmt.Errorf("fixture %s: tools.json: %w", id, err)
 	}
 	if len(tools) == 0 {
@@ -183,6 +183,50 @@ func loadSkills(dir string) ([]behavior.SkillIndexEntry, error) {
 		}
 	}
 	return skills, nil
+}
+
+// decodeTools reads a scenario's tool set.
+//
+// A bare string names a product tool and takes the product's own definition. An
+// object describes a tool the product does not have, which a few scenarios need
+// — `record_release` for the schema contract, `delete_file` for the phantom one.
+//
+// Hand-written copies of product schemas are refused, because they drifted: a
+// fixture declared `plan` with a free-string `state` while the product declares
+// `status` with an enum, and the model spent every round of those scenarios
+// sending a shape the fixture had described wrongly.
+func decodeTools(raw []byte) ([]ce.ToolDef, error) {
+	var entries []json.RawMessage
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return nil, err
+	}
+	registry := ProductRegistry()
+	defs := map[string]ce.ToolDef{}
+	for _, d := range registry.Defs() {
+		defs[d.Name] = d
+	}
+
+	out := make([]ce.ToolDef, 0, len(entries))
+	for _, entry := range entries {
+		var name string
+		if err := json.Unmarshal(entry, &name); err == nil {
+			def, ok := defs[name]
+			if !ok {
+				return nil, fmt.Errorf("%q is not a tool the product has; describe it inline if the scenario needs one that is not real", name)
+			}
+			out = append(out, def)
+			continue
+		}
+		var def ce.ToolDef
+		if err := json.Unmarshal(entry, &def); err != nil {
+			return nil, err
+		}
+		if _, real := defs[def.Name]; real {
+			return nil, fmt.Errorf("%q is a product tool and is described by hand here; name it as a string so it takes the product's own definition", def.Name)
+		}
+		out = append(out, def)
+	}
+	return out, nil
 }
 
 // ToolNames is the fixture's tool set, in the order it was declared.

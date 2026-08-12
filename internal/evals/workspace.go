@@ -58,16 +58,26 @@ func NewWorkspace(dir string, files map[string]string) (*Workspace, error) {
 	}
 	state := tools.NewState(resolver, tools.DefaultLimits())
 
-	return &Workspace{
-		Dir:   dir,
-		state: state,
-		Registry: tools.NewRegistry(
-			tools.Read{}, tools.Write{}, tools.Edit{},
-			tools.Glob{}, tools.Grep{}, tools.Symbol{},
-			tools.Plan{},
-			// bash is deliberately absent, and shellRefusal below is why.
-		),
-	}, nil
+	return &Workspace{Dir: dir, state: state, Registry: ProductRegistry()}, nil
+}
+
+// ProductRegistry is the product's tool suite, definitions and all.
+//
+// One source for both halves of a scenario: what the model is offered, and what
+// runs when it calls. They were separate, and they drifted — a fixture declared
+// `plan` with a free-string `state` field while the product declares `status`
+// with an enum, so the model dutifully sent `{"state":"in_progress"}`, got an
+// error, and spent every remaining round guessing at a shape the fixture had
+// described wrongly.
+//
+// bash carries a zero Runner because only its definition is wanted here.
+// Execute intercepts the name before dispatch, so the Runner is never reached.
+func ProductRegistry() *tools.Registry {
+	return tools.NewRegistry(
+		tools.Read{}, tools.Write{}, tools.Edit{},
+		tools.Glob{}, tools.Grep{}, tools.Symbol{},
+		tools.Plan{}, tools.Bash{}, &tools.Explore{},
+	)
 }
 
 // shellRefusal is what a scenario answers when the model reaches for the shell.
@@ -82,13 +92,25 @@ func NewWorkspace(dir string, files map[string]string) (*Workspace, error) {
 const shellRefusal = "the eval harness does not execute shell commands. " +
 	"Use the dedicated tools for anything you can do with them, and state what you could not check."
 
+// delegationRefusal is what a scenario answers when the model delegates.
+const delegationRefusal = "the eval harness does not run delegated turns. " +
+	"Do the reading yourself with the tools you have, and say what you could not cover."
+
 // Execute runs one call and returns what the model would have been shown.
 //
 // A tool that fails returns its message with isErr set, exactly as the loop
 // would forward it: the message is the product's own, which is the point.
 func (w *Workspace) Execute(ctx context.Context, name string, input json.RawMessage) (output string, isErr bool) {
-	if name == "bash" {
+	switch name {
+	case "bash":
 		return shellRefusal, true
+	case "explore":
+		// Same reasoning as the shell: the harness runs no sub-agent, and both
+		// delegation contracts are about the reach — one that it happens, one
+		// that it does not. Leaving `explore` out of the tool set entirely is
+		// what made `does-not-delegate-trivial` pass by having nothing to
+		// delegate to, which is not restraint.
+		return delegationRefusal, true
 	}
 	tool, ok := w.Registry.Get(name)
 	if !ok {

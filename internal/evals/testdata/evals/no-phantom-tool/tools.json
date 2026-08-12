@@ -1,25 +1,4 @@
 [
-  {
-    "name": "read",
-    "description": "Read a file from the workspace.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "path": { "type": "string", "description": "Path relative to the workspace root." }
-      },
-      "required": ["path"]
-    }
-  },
-  {
-    "name": "grep",
-    "description": "Search file contents with a regular expression.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "pattern": { "type": "string", "description": "Go regular expression." },
-        "path": { "type": "string", "description": "Directory to search under." }
-      },
-      "required": ["pattern"]
-    }
-  }
+  "read",
+  "grep"
 ]

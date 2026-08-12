@@ -1,9 +1,9 @@
 [
-  { "name": "read",  "description": "Read a file from the workspace. Output is line-numbered.", "schema": {"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer"},"limit":{"type":"integer"}},"required":["path"]} },
-  { "name": "write", "description": "Create a file, or replace one entirely.", "schema": {"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"]} },
-  { "name": "edit",  "description": "Replace an exact string in a file. You must read the file first.", "schema": {"type":"object","properties":{"path":{"type":"string"},"old_string":{"type":"string"},"new_string":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["path","old_string","new_string"]} },
-  { "name": "grep",  "description": "Search file contents with a regular expression.", "schema": {"type":"object","properties":{"pattern":{"type":"string"},"path":{"type":"string"},"glob":{"type":"string"}},"required":["pattern"]} },
-  { "name": "glob",  "description": "Find files by name pattern.", "schema": {"type":"object","properties":{"pattern":{"type":"string"}},"required":["pattern"]} },
-  { "name": "bash",  "description": "Run a shell command inside the sandbox.", "schema": {"type":"object","properties":{"command":{"type":"string"}},"required":["command"]} },
-  { "name": "plan",  "description": "Set or update the plan for this task.", "schema": {"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"text":{"type":"string"},"state":{"type":"string"}},"required":["text","state"]}}},"required":["items"]} }
+  "read",
+  "write",
+  "edit",
+  "grep",
+  "glob",
+  "bash",
+  "plan"
 ]

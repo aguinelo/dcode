@@ -441,3 +441,101 @@ func workspaceWith(t *testing.T, files map[string]string) *Workspace {
 	}
 	return w
 }
+
+// A judge must not name a tool its scenario does not offer.
+//
+// `does-not-delegate-trivial` judged NotCalled("explore") and its fixture did
+// not offer `explore`. It scored 100% by having nothing to delegate to, which
+// is not restraint — it is an empty room reported as good manners. Its sibling
+// `delegates-wide-reads` had the opposite half of the same defect: it judged
+// Called("explore", ...) and could only ever pass through the alternatives.
+//
+// Read from the source rather than from the judge, because a judge is a
+// closure and its arguments are gone by the time anything can ask.
+// judgesOnAbsence is the scenario whose whole question is a tool NOT being
+// there, with the reason it is exempt.
+//
+// One entry, and it should stay hard to add: every other case of a judge naming
+// an absent tool was a contract deciding its own verdict from its tool list.
+var judgesOnAbsence = map[string]string{
+	"no-phantom-tool": "the contract is that a name outside the offered set never reaches execution, " +
+		"so the names it watches for are absent on purpose — that absence is the scenario",
+}
+
+func TestNoJudgeNamesAToolItsScenarioDoesNotOffer(t *testing.T) {
+	src, err := os.ReadFile("contracts.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	known := map[string]bool{}
+	for _, d := range ProductRegistry().Defs() {
+		known[d.Name] = true
+	}
+
+	// Each contract's literal block, from its ID to the next one.
+	blocks := splitContractBlocks(string(src))
+	if len(blocks) < len(Contracts)/2 {
+		t.Fatalf("only %d contract blocks parsed from %d contracts; the pattern has drifted and the guard is measuring nothing",
+			len(blocks), len(Contracts))
+	}
+	quoted := regexp.MustCompile(`"([a-z_][a-z0-9_]*)"`)
+
+	for id, body := range blocks {
+		c, ok := ContractByID(id)
+		if !ok || !c.Measured() {
+			continue
+		}
+		if _, exempt := judgesOnAbsence[id]; exempt {
+			continue
+		}
+		f, err := LoadFixture(FixtureRoot, id)
+		if err != nil {
+			t.Errorf("%s: %v", id, err)
+			continue
+		}
+		offered := map[string]bool{}
+		for _, n := range f.ToolNames() {
+			offered[n] = true
+		}
+		for _, m := range quoted.FindAllStringSubmatch(body, -1) {
+			name := m[1]
+			if !known[name] || offered[name] {
+				continue
+			}
+			t.Errorf("%s judges on %q and its scenario does not offer that tool, so the verdict is decided by the tool set rather than by the model. Offered: %v",
+				id, name, f.ToolNames())
+		}
+	}
+}
+
+// splitContractBlocks cuts the contract table into one source block per ID.
+//
+// By ID boundary rather than by brace matching: the literals nest, and a regex
+// that tried to balance them would silently match too little — which is how a
+// guard ends up passing because it read nothing.
+func splitContractBlocks(src string) map[string]string {
+	head := regexp.MustCompile(`\{ID: "([a-z0-9-]+)"`)
+	locs := head.FindAllStringSubmatchIndex(src, -1)
+	out := map[string]string{}
+	for i, loc := range locs {
+		end := len(src)
+		if i+1 < len(locs) {
+			end = locs[i+1][0]
+		}
+		out[src[loc[2]:loc[3]]] = src[loc[1]:end]
+	}
+	return out
+}
+
+// An exemption for a scenario that no longer needs one is a note about a world
+// that moved on, and left alone they become the reason nothing fails.
+func TestNoStaleAbsenceExemption(t *testing.T) {
+	for id, reason := range judgesOnAbsence {
+		if _, ok := ContractByID(id); !ok {
+			t.Errorf("judgesOnAbsence excuses %q, which is not a contract", id)
+		}
+		if len(reason) < 40 {
+			t.Errorf("%q is exempt with a reason too short to be one: %q", id, reason)
+		}
+	}
+}
