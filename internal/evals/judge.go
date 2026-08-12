@@ -47,9 +47,11 @@ func SinceInjection(inner Judge) Judge {
 
 // digestText is how much of what the model said is worth printing.
 //
-// Enough to tell a refusal from an answer, and not so much that a failing run
-// buries the next one.
-const digestText = 240
+// Enough to tell a refusal from an answer — and enough to tell whether a text
+// judge was right to reject it, which 240 was not: it cut
+// "…No test command is conf" off the exact sentence proving the contract had
+// been honoured, and the judge blamed for 0% was found by guessing at the rest.
+const digestText = 420
 
 // previewArg is how much of a call's arguments the digest carries.
 //
