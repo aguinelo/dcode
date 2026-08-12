@@ -699,3 +699,55 @@ func TestAScenarioThatAssumesABigRepositoryGetsOne(t *testing.T) {
 		}
 	}
 }
+
+// forbidsTheShellOutright is the contract that really does mean "no shell at
+// all", with the reason. It should stay empty.
+//
+// Four contracts have now been found judging NotCalled("bash") when they meant
+// "did not do a particular thing": no-verification-on-read-only,
+// no-dod-on-read-only, safety-not-overridable and init-does-not-execute. Each
+// failed runs whose only shell call was `ls`, and each read as a model failure
+// until someone looked at a transcript.
+//
+// The shape is seductive because it is shorter to write and it is almost
+// right. NeverCalledWith says the same thing about the act instead of the
+// tool, and reaching for the shell to orient is measured by tool-over-shell,
+// which is the contract for it.
+var forbidsTheShellOutright = map[string]string{
+	"tool-over-shell": "the contract IS that the shell was not the route — its name, its spec row " +
+		"and its rationale all say so, and it is the contract every other one defers to",
+}
+
+// withoutComments strips // lines, so a guard reading source does not match the
+// prose explaining why the shape it forbids was wrong. This one did.
+func withoutComments(body string) string {
+	var kept []string
+	for _, line := range strings.Split(body, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "//") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
+func TestNoContractForbidsTheShellWhenItMeansAnAct(t *testing.T) {
+	src, err := os.ReadFile("contracts.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, body := range splitContractBlocks(string(src)) {
+		if _, ok := ContractByID(id); !ok {
+			continue
+		}
+		if _, exempt := forbidsTheShellOutright[id]; exempt {
+			continue
+		}
+		if strings.Contains(withoutComments(body), `NotCalled("bash"`) {
+			t.Errorf("%s forbids the shell outright. Four contracts have done that meaning "+
+				"\"did not do a particular thing\", and each failed runs whose only shell call was `ls`. "+
+				"Name the act with NeverCalledWith, or say in forbidsTheShellOutright why this one really "+
+				"means no shell at all.", id)
+		}
+	}
+}
