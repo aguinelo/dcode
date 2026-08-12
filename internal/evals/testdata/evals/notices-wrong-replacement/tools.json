@@ -1,25 +1,4 @@
 [
-  {
-    "name": "read",
-    "description": "Read a file from the workspace. Output is line-numbered.",
-    "schema": {
-      "type": "object",
-      "properties": { "path": { "type": "string", "description": "Path relative to the workspace root." } },
-      "required": ["path"]
-    }
-  },
-  {
-    "name": "edit",
-    "description": "Replace an exact string in a file. old_string must match exactly and, unless replace_all is set, must be unique.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "path": { "type": "string" },
-        "old_string": { "type": "string", "description": "Exact text to replace." },
-        "new_string": { "type": "string", "description": "Replacement text." },
-        "replace_all": { "type": "boolean", "description": "Replace every occurrence." }
-      },
-      "required": ["path", "old_string", "new_string"]
-    }
-  }
+  "read",
+  "edit"
 ]
