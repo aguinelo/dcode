@@ -347,3 +347,28 @@ func TestTheSafetySectionNamesEveryBoundaryThePolicyEnforces(t *testing.T) {
 		}
 	}
 }
+
+// "Write down anything you have learned that must survive that summary" was
+// read as "state it in your answer", and the answer is the very thing that
+// gets summarised away. A measured run replied
+//
+//	save what I've found before context rolls over, then give you the map.
+//	**Persisted findings (internal/config/):** - Layers (first non-empty
+//	wins)…
+//
+// having persisted nothing. It believed it had. The only place that survives a
+// summary is a file, and the reminder never said so.
+func TestTheBudgetReminderSaysToWriteToAFile(t *testing.T) {
+	var body string
+	for _, v := range budgetTexts {
+		if strings.Contains(v, "must survive") {
+			body = v
+		}
+	}
+	if body == "" {
+		t.Fatal("no reminder mentions surviving the summary")
+	}
+	if !strings.Contains(strings.ToLower(body), "file") {
+		t.Errorf("the reminder does not say where to write it, and the answer does not survive:\n%s", body)
+	}
+}

@@ -48,12 +48,23 @@ var budgetTexts = map[BudgetBand]string{
 		"history is summarised away. Prefer reading the part of a file you need " +
 		"over reading all of it.",
 	Budget80: "You have used about 80% of the context you get before earlier " +
-		"history is summarised away. Write down anything you have learned that " +
-		"must survive that summary, and finish what is open before starting " +
-		"something new.",
+		"history is summarised away. Write anything you have learned that must " +
+		"survive that summary to a file — saying it in your answer does not " +
+		"survive, because your answer is part of what gets summarised. Finish " +
+		"what is open before starting something new.",
 	Budget92: "You are close to the point where earlier history is summarised " +
 		"away. If the remaining work does not fit in what is left, say so now " +
 		"rather than starting it and losing the thread partway through.",
+}
+
+// BudgetText is the sentence a band emits, and whether that band emits one.
+//
+// Exported so the eval harness injects the product's own words rather than a
+// copy. RN-3 makes reminder wording a behaviour surface, and a copy is a thing
+// that drifts — three other copies in that package already had.
+func BudgetText(b BudgetBand) (string, bool) {
+	t, ok := budgetTexts[b]
+	return t, ok
 }
 
 // Reminder is one appended note.
