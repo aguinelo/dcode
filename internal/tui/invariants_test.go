@@ -32,6 +32,10 @@ var tuiInvariants = map[string]string{
 	"Estado vazio some no primeiro":     "TestEmptyStateDisappearsOnTheFirstTurnAndNeverReturns",
 	"Sessão retomada com histórico":     "TestAResumedSessionNeverShowsTheEmptyState",
 	"mascote degrada para ASCII":        "TestTheMascotKeepsItsShapeWithoutUnicodeAndWithoutColour",
+
+	// The bottom bar.
+	"worktree ativo nunca é descartado": "TestTheWorktreeSurvivesEveryWidth",
+	"Segmento sem dado não desenha":     "TestWhatIsWaitingNeverDropsAndVanishesWhenThereIsNothing",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
