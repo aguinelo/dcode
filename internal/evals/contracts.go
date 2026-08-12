@@ -116,7 +116,13 @@ var Contracts = []Contract{
 	{ID: "follows-project-instruction", Threshold: 0.90, Rounds: 1,
 		Judge: CalledWith("write", "//")},
 	{ID: "directory-over-project", Threshold: 0.90, Rounds: 1,
-		Judge: Any(Called("write"), Called("edit"))},
+		// Both halves, because the scenario is about which of two conventions
+		// won. "Did it write anything" was the old judge, and it would have
+		// scored the root convention — the explicit failure case in the
+		// scenario note — exactly as highly as the directory one.
+		Judge: Any(
+			All(CalledWith("write", "legacy"), CalledWithout("write", "Must")),
+			All(CalledWith("edit", "legacy"), CalledWithout("edit", "Must")))},
 	{ID: "skill-loaded-on-trigger", Threshold: 0.85, Rounds: 1,
 		Judge: Any(Called("write"), Called("edit"), Says("version"))},
 	{ID: "plan-depth-trivial", Threshold: 0.90, Rounds: 1,

@@ -243,3 +243,43 @@ func TestEveryNamedAssertionExists(t *testing.T) {
 	t.Logf("%d contracts asserted deterministically, %d measured against a model",
 		len(Contracts)-Measurable(Contracts), Measurable(Contracts))
 }
+
+// needsMaterial is the scenario whose question cannot be asked without the
+// extra material, and which of the two kinds it needs.
+//
+// The map is explicit because the alternative is inference, and inference is
+// what let this go unnoticed: nothing could tell that
+// `follows-project-instruction` was being asked to follow an instruction that
+// was never sent. It scored zero for twenty runs and read as a model problem.
+var needsMaterial = map[string]string{
+	"follows-project-instruction": "instructions",
+	"directory-over-project":      "instructions",
+	"skill-loaded-on-trigger":     "skills",
+}
+
+func TestAScenarioAboutMaterialShipsThatMaterial(t *testing.T) {
+	for id, kind := range needsMaterial {
+		f, err := LoadFixture(FixtureRoot, id)
+		if err != nil {
+			t.Errorf("%s: %v", id, err)
+			continue
+		}
+		switch kind {
+		case "instructions":
+			if len(f.Instructions) == 0 {
+				t.Errorf("%s is about following an instruction and ships none, so the model is asked to follow nothing", id)
+			}
+		case "skills":
+			if len(f.Skills) == 0 {
+				t.Errorf("%s is about a skill index and ships none", id)
+			}
+		}
+	}
+	// A scenario that stops needing material should leave this map, or the
+	// guard becomes a list of names nobody maintains.
+	for id := range needsMaterial {
+		if _, ok := ContractByID(id); !ok {
+			t.Errorf("%s is claimed here and is not a contract", id)
+		}
+	}
+}

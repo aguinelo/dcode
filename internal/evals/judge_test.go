@@ -113,3 +113,38 @@ func TestAllAndAny(t *testing.T) {
 		t.Error("Any is wrong")
 	}
 }
+
+// CalledWithout is not the negation of CalledWith: a model that wrote nothing
+// must not satisfy "did not write the wrong thing" by having written nothing.
+func TestCalledWithoutNeedsTheCallToHaveHappened(t *testing.T) {
+	empty := Transcript{}
+	if CalledWithout("write", "Must")(empty) {
+		t.Error("a transcript with no calls satisfied CalledWithout")
+	}
+
+	right := Transcript{Calls: []ce.ToolCall{
+		{Name: "write", Input: []byte(`{"content":"func legacyTrim() {}"}`)},
+	}}
+	if !CalledWithout("write", "Must")(right) {
+		t.Error("a call that avoided the fragment was rejected")
+	}
+
+	wrong := Transcript{Calls: []ce.ToolCall{
+		{Name: "write", Input: []byte(`{"content":"func MustTrim() {}"}`)},
+	}}
+	if CalledWithout("write", "Must")(wrong) {
+		t.Error("a call carrying the fragment was accepted")
+	}
+}
+
+// Every call has to avoid it, not just one. A model that wrote the wrong
+// convention and then wrote the right one has still written the wrong one.
+func TestCalledWithoutChecksEveryCall(t *testing.T) {
+	both := Transcript{Calls: []ce.ToolCall{
+		{Name: "write", Input: []byte(`{"content":"func legacyTrim() {}"}`)},
+		{Name: "write", Input: []byte(`{"content":"func MustTrim() {}"}`)},
+	}}
+	if CalledWithout("write", "Must")(both) {
+		t.Error("one clean call was enough to pass while another carried the fragment")
+	}
+}

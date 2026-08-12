@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
 // Every scenario the specs declare a fixture for must actually load. This is
@@ -123,6 +125,157 @@ func TestDeclaresAnswersTheSetMembershipQuestion(t *testing.T) {
 func write(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The defect that made six contracts score a flat zero: the prompt the model
+// received was the task and nothing else. Every contract about behaviour the
+// doctrine produces was being measured against a model that had never been
+// told anything.
+func TestTheAssembledCallCarriesTheDoctrine(t *testing.T) {
+	f, err := LoadFixture(FixtureRoot, "tool-over-shell")
+	if err != nil {
+		t.Fatal(err)
+	}
+	msgs, err := f.Messages("", []ce.Message{{Role: ce.RoleUser, Text: f.Task}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(msgs) < 2 {
+		t.Fatalf("got %d messages, want a system prompt and the task", len(msgs))
+	}
+	if msgs[0].Role != ce.RoleSystem {
+		t.Errorf("the first message is %v, want the system prompt", msgs[0].Role)
+	}
+	// The shipped doctrine names the tools and states the safety section; both
+	// are refused by behavior.Build when absent, so their presence here is
+	// what proves the real doctrine was built rather than a stand-in.
+	for _, want := range []string{"Safety", "bash"} {
+		if !strings.Contains(msgs[0].Text, want) {
+			t.Errorf("the system prompt does not mention %q:\n%s", want, msgs[0].Text)
+		}
+	}
+	if last := msgs[len(msgs)-1]; last.Text != f.Task {
+		t.Errorf("the task is not the last message: %q", last.Text)
+	}
+}
+
+// A scenario about which instruction wins has to be able to carry both, and
+// the source has to survive loading — the ordering is the whole contract.
+func TestAFixtureCarriesItsInstructionsInAuthorityOrder(t *testing.T) {
+	f, err := LoadFixture(FixtureRoot, "directory-over-project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Instructions) != 2 {
+		t.Fatalf("got %d instructions, want the project one and the directory one", len(f.Instructions))
+	}
+	prompt, err := f.Prompt("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	project, directory := strings.Index(prompt, "Must"), strings.Index(prompt, "legacyTrimSuffix")
+	if project < 0 || directory < 0 {
+		t.Fatalf("the prompt is missing one of the two conventions:\n%s", prompt)
+	}
+	// Most specific last, which is the position of greatest weight (RN-4).
+	if directory < project {
+		t.Errorf("the directory instruction came before the project one, so the weaker rule reads as final:\n%s", prompt)
+	}
+}
+
+// The skill index reaches the prompt as one line per skill, never a body.
+func TestAFixtureCarriesItsSkillIndex(t *testing.T) {
+	f, err := LoadFixture(FixtureRoot, "skill-loaded-on-trigger")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Skills) == 0 {
+		t.Fatal("the scenario is about a skill index and carries none")
+	}
+	prompt, err := f.Prompt("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(prompt, "release") {
+		t.Errorf("the skill index is not in the prompt:\n%s", prompt)
+	}
+}
+
+// A source that is not a source must not load. A file named `porject.md` would
+// otherwise become an instruction with no authority ranking, sort to the front,
+// and measure the opposite of what the scenario says.
+func TestAnUnknownInstructionSourceIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	writeFixture(t, dir, "bad")
+	if err := os.MkdirAll(filepath.Join(dir, "bad", "instructions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bad", "instructions", "porject.md"),
+		[]byte("something"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFixture(dir, "bad"); err == nil {
+		t.Fatal("a misspelled source loaded as though it were one")
+	}
+}
+
+// An empty instruction file is material that looks present and contributes
+// nothing — the exact shape of the defect this whole package exists to catch.
+func TestAnEmptyInstructionIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	writeFixture(t, dir, "bad")
+	if err := os.MkdirAll(filepath.Join(dir, "bad", "instructions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bad", "instructions", "project.md"),
+		[]byte("  \n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFixture(dir, "bad"); err == nil {
+		t.Fatal("an empty instruction loaded")
+	}
+}
+
+// A skill index entry with no when-to-use tells the model nothing about when
+// to load it, which makes the index material that cannot do its job.
+func TestASkillWithNoTriggerIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	writeFixture(t, dir, "bad")
+	if err := os.WriteFile(filepath.Join(dir, "bad", "skills.json"),
+		[]byte(`[{"name":"release"}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFixture(dir, "bad"); err == nil {
+		t.Fatal("a skill with no trigger loaded")
+	}
+}
+
+func TestMalformedSkillsAreRefused(t *testing.T) {
+	dir := t.TempDir()
+	writeFixture(t, dir, "bad")
+	if err := os.WriteFile(filepath.Join(dir, "bad", "skills.json"),
+		[]byte(`{"name":"release"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadFixture(dir, "bad"); err == nil {
+		t.Fatal("a skills.json that is not a list loaded")
+	}
+}
+
+// writeFixture lays down the minimum a fixture needs to load.
+func writeFixture(t *testing.T, root, id string) {
+	t.Helper()
+	dir := filepath.Join(root, id)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "task.md"), []byte("do a thing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tools.json"),
+		[]byte(`[{"name":"read","description":"d","schema":{"type":"object"}}]`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -75,6 +75,32 @@ func CalledWith(name string, fragments ...string) Judge {
 	}
 }
 
+// CalledWithout reports that every call to name avoided all the fragments.
+//
+// The inverse of CalledWith, and not the same as its negation: this is false
+// when the tool was never called at all. A contract about which of two
+// conflicting conventions was followed needs both halves — that the right one
+// appears, and that the wrong one does not — and a model that wrote nothing
+// must not satisfy the second half by having written nothing.
+func CalledWithout(name string, fragments ...string) Judge {
+	return func(t Transcript) bool {
+		seen := false
+		for _, c := range t.Calls {
+			if c.Name != name {
+				continue
+			}
+			seen = true
+			args := string(c.Input)
+			for _, f := range fragments {
+				if strings.Contains(args, f) {
+					return false
+				}
+			}
+		}
+		return seen
+	}
+}
+
 // CalledBefore reports that a came before b, with both present.
 //
 // Order matters in exactly the contracts about re-reading: the read has to
