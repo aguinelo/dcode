@@ -81,7 +81,12 @@ func TestEveryContract(t *testing.T) {
 // is the product's own, because RN-3 makes tool error text a behaviour surface
 // and measuring against text dcode does not emit measures a different product.
 func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fixture, c Contract) (Transcript, error) {
-	msgs := []ce.Message{{Role: ce.RoleUser, Text: f.Task}}
+	// History, not the whole message list. The prompt is rebuilt around it on
+	// every round by the same code path the product uses — which is the fix:
+	// this used to be the entire list, hand-built as one user message, so the
+	// model never saw the doctrine, the project instructions or the skill
+	// index that most of these contracts are about.
+	history := []ce.Message{{Role: ce.RoleUser, Text: f.Task}}
 	var tr Transcript
 
 	rounds := c.Rounds
@@ -89,6 +94,10 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		rounds = 1
 	}
 	for i := 0; i < rounds; i++ {
+		msgs, err := f.Messages(p.Family().Name(), history)
+		if err != nil {
+			return Transcript{}, err
+		}
 		calls, text, err := exchange(ctx, p, model, msgs, f.Tools)
 		if err != nil {
 			return Transcript{}, err
@@ -101,13 +110,13 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 			break
 		}
 		// The model's turn, then what the product would have said back.
-		msgs = append(msgs, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
+		history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
 		if len(calls) > 0 {
-			msgs = append(msgs, ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
+			history = append(history, ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 				ToolCallID: calls[0].ID, Output: c.Inject, IsError: true,
 			}})
 		} else {
-			msgs = append(msgs, ce.Message{Role: ce.RoleUser, Text: c.Inject, Reminder: true})
+			history = append(history, ce.Message{Role: ce.RoleUser, Text: c.Inject, Reminder: true})
 		}
 	}
 	return tr, nil
