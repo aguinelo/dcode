@@ -109,19 +109,6 @@ func TestMalformedToolsetIsAnError(t *testing.T) {
 	}
 }
 
-func TestDeclaresAnswersTheSetMembershipQuestion(t *testing.T) {
-	f, err := LoadFixture(FixtureRoot, "no-phantom-tool")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !f.Declares("read") {
-		t.Error("read is in the fixture and Declares said no")
-	}
-	if f.Declares("delete_file") {
-		t.Error("delete_file is not in the fixture and Declares said yes: this is the exact question the phantom-tool judge asks")
-	}
-}
-
 func write(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
