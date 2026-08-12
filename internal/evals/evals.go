@@ -184,6 +184,48 @@ func Measure(ctx context.Context, cfg Config, id string, threshold float64, atte
 	return r
 }
 
+// Summary states how much of the declared set was actually measured, and it is
+// the last line a measurement run prints.
+//
+// It exists because `go test` ends in PASS whether the suite measured every
+// contract or none of them, and a skipped measurement under a PASS reads as a
+// measurement that succeeded. That is the exact misreading this package was
+// built to prevent, and for a while it lived in the package built to prevent
+// it: `make eval` printed PASS having run nothing against a model.
+//
+// The count goes last rather than the exit status, because the exit status is
+// the wrong sentence. Measuring nothing is not a failure — it is the default,
+// on purpose, since a suite that costs money and fails by default is a suite
+// somebody switches off. What must not happen is measuring nothing quietly.
+func Summary(declared, asserted int, rs []Result) string {
+	var b strings.Builder
+	if len(rs) == 0 {
+		fmt.Fprintf(&b, "evals: 0 of %d contracts measured — nothing here is evidence about behaviour", declared)
+	} else {
+		var met, unsound int
+		for _, r := range rs {
+			switch {
+			case !r.Sound():
+				unsound++
+			case r.Met():
+				met++
+			}
+		}
+		fmt.Fprintf(&b, "evals: %d of %d contracts measured · %d met · %d not met",
+			len(rs), declared, met, len(rs)-met-unsound)
+		if unsound > 0 {
+			fmt.Fprintf(&b, " · %d unsound", unsound)
+		}
+		if missing := declared - len(rs); missing > 0 {
+			fmt.Fprintf(&b, " · %d never ran", missing)
+		}
+	}
+	if asserted > 0 {
+		fmt.Fprintf(&b, " · %d asserted deterministically, not measured", asserted)
+	}
+	return b.String()
+}
+
 // Report renders a set of results, worst first.
 //
 // Worst first because the reason to read this output at all is to find what

@@ -28,7 +28,11 @@ func setup(t *testing.T) (provider.Provider, Config) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := app.Resolve(os.Getenv, wd)
+	// FromEnv rather than Resolve, so the credential is found the same way the
+	// product finds it: the environment first, then the store `dcode login`
+	// wrote to. Reading only DCODE_API_KEY meant the suite skipped on the
+	// machine of anyone who had logged in properly, which is everyone.
+	opts, resolved, err := app.FromEnv(os.Getenv, wd)
 	if err != nil {
 		t.Fatalf("resolving configuration: %v", err)
 	}
@@ -38,13 +42,13 @@ func setup(t *testing.T) (provider.Provider, Config) {
 		t.Skip(reason)
 	}
 
-	key := os.Getenv("DCODE_API_KEY")
+	key := opts.APIKey
 	if key == "" {
-		t.Skip("no DCODE_API_KEY: a measurement against a real model needs a credential")
+		t.Skip("no credential: set DCODE_API_KEY or run `dcode login`. A measurement against a real model needs one.")
 	}
 
 	reg := provider.NewRegistry()
-	base := resolved.String("model.base_url", "")
+	base := opts.BaseURL
 	reg.RegisterTransport(app.NewHTTPTransport(provider.TransportOpenAI, base, key))
 	reg.RegisterTransport(app.NewHTTPTransport(provider.TransportAnthropic, base, key))
 	for _, f := range app.Families() {

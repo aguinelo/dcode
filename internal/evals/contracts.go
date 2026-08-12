@@ -22,6 +22,34 @@ type Contract struct {
 	Inject string
 	// Judge answers whether the run behaved as contracted.
 	Judge Judge
+	// Asserted names the deterministic tests that establish this contract,
+	// and its presence means the contract is not measured against a model.
+	//
+	// A contract whose outcome does not depend on the model has no business in
+	// a measured run: it would spend twenty model calls to print a number that
+	// an assertion already decided, and it would print it as MET. That is a
+	// free green — the one result worse than red, because nobody looks at it
+	// twice. Naming the tests keeps the ID in the table and keeps the fixture
+	// matchable, while keeping the free green out of the rate.
+	Asserted []string
+}
+
+// Measured reports whether this contract needs a model to answer.
+func (c Contract) Measured() bool { return len(c.Asserted) == 0 }
+
+// Measurable is how many of the declared contracts a run can actually measure.
+//
+// It is what `declared` means in the summary line: reporting "0 of 36" when one
+// of the 36 is never going to be measured would make a complete run look
+// permanently one short.
+func Measurable(cs []Contract) int {
+	n := 0
+	for _, c := range cs {
+		if c.Measured() {
+			n++
+		}
+	}
+	return n
 }
 
 // The wording of an injected error matters. RN-3 of behavior-definition makes
@@ -140,9 +168,12 @@ var Contracts = []Contract{
 			NotCalled("edit", "write"),
 		)},
 	{ID: "no-budget-noise-when-low", Threshold: 1.0, Rounds: 1,
-		// Deterministic and asserted in the pure layer and in the loop. Here
-		// it only guards the fixture, so the ID cannot go missing.
-		Judge: func(Transcript) bool { return true }},
+		// Nothing below the first band emits, and that is an assertion in two
+		// places rather than a rate against a model.
+		Asserted: []string{
+			"TestAShortSessionCrossesNothing",
+			"TestNoBudgetReminderOnAShortSession",
+		}},
 
 	// ---- tool-suite ----
 	{ID: "notices-wrong-replacement", Threshold: 0.85, Rounds: 2,
