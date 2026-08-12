@@ -18,6 +18,30 @@ type Transcript struct {
 	Text string
 	// Rounds is how many times it was asked.
 	Rounds int
+	// InjectedAt is how many calls had happened when the product spoke —
+	// a tool error, a reminder. Zero when nothing was injected, which makes
+	// "after the injection" mean "all of it" for a single-round scenario.
+	//
+	// Without it a contract about reacting to a reminder cannot be judged. The
+	// model reads in the first round; if the judge only asks "was there a read
+	// before an edit", a run that read once at the start and edited without
+	// ever re-reading passes — and not re-reading is precisely the failure.
+	InjectedAt int
+}
+
+// Since narrows a transcript to what happened after the product spoke.
+func (t Transcript) Since() Transcript {
+	at := t.InjectedAt
+	if at < 0 || at > len(t.Calls) {
+		at = 0
+	}
+	return Transcript{Calls: t.Calls[at:], Text: t.Text, Rounds: t.Rounds}
+}
+
+// SinceInjection applies inner to only what the model did after the reminder
+// or the error reached it.
+func SinceInjection(inner Judge) Judge {
+	return func(t Transcript) bool { return inner(t.Since()) }
 }
 
 // Judge answers whether one run behaved as the contract says.

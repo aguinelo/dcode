@@ -148,3 +148,50 @@ func TestCalledWithoutChecksEveryCall(t *testing.T) {
 		t.Error("one clean call was enough to pass while another carried the fragment")
 	}
 }
+
+// The judge has to see only what happened after the product spoke. A model
+// that read once at the start and then edited without re-reading has ignored
+// the reminder, and judging the whole transcript scores it as a pass.
+func TestSinceInjectionIgnoresWhatCameBefore(t *testing.T) {
+	ignored := Transcript{
+		Calls: []ce.ToolCall{
+			{Name: "read"}, // first round, before the reminder
+			{Name: "edit"}, // second round, straight to the edit
+		},
+		InjectedAt: 1,
+	}
+	if SinceInjection(CalledBefore("read", "edit"))(ignored) {
+		t.Error("editing without re-reading passed the reminder contract")
+	}
+
+	acted := Transcript{
+		Calls: []ce.ToolCall{
+			{Name: "read"},
+			{Name: "read"}, {Name: "edit"},
+		},
+		InjectedAt: 1,
+	}
+	if !SinceInjection(CalledBefore("read", "edit"))(acted) {
+		t.Error("re-reading before editing failed the reminder contract")
+	}
+}
+
+// Nothing injected means nothing to narrow to, and the judge must not silently
+// see an empty transcript.
+func TestSinceInjectionWithNoInjectionSeesEverything(t *testing.T) {
+	whole := Transcript{Calls: []ce.ToolCall{{Name: "read"}, {Name: "edit"}}}
+	if !SinceInjection(Called("read"))(whole) {
+		t.Error("a transcript with no injection lost its calls")
+	}
+}
+
+// An index past the end would panic on a slice, and a harness that panics
+// mid-measurement loses every result collected so far.
+func TestSinceInjectionSurvivesAnImpossibleIndex(t *testing.T) {
+	for _, at := range []int{-3, 99} {
+		tr := Transcript{Calls: []ce.ToolCall{{Name: "read"}}, InjectedAt: at}
+		if !SinceInjection(Called("read"))(tr) {
+			t.Errorf("InjectedAt %d lost the calls", at)
+		}
+	}
+}

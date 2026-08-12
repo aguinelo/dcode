@@ -58,7 +58,6 @@ var exportedWithoutUser = map[string]string{
 
 	// The eval harness, behind its own build tag and run by `make eval`.
 	"ContractByID": "eval harness, behind the eval build tag",
-	"Declares":     "eval harness, behind the eval build tag",
 }
 
 func TestEveryExportedNameHasAUserOrAWrittenReason(t *testing.T) {

@@ -111,12 +111,9 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		}
 		// The model's turn, then what the product would have said back.
 		history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
-		if len(calls) > 0 {
-			history = append(history, ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
-				ToolCallID: calls[0].ID, Output: c.Inject, IsError: true,
-			}})
-		} else {
-			history = append(history, ce.Message{Role: ce.RoleUser, Text: c.Inject, Reminder: true})
+		history = append(history, answers(f, c, calls)...)
+		if tr.InjectedAt == 0 {
+			tr.InjectedAt = len(tr.Calls)
 		}
 	}
 	return tr, nil
