@@ -548,3 +548,58 @@ func TestPlanStaysLiveWantsTheItemBlockedWithAReason(t *testing.T) {
 		t.Error("prose alone passed; the plan is what the person watching sees")
 	}
 }
+
+// The sentence below is verbatim from a v13 run that was scored as a failure.
+//
+// It is the contract honoured — the model read the reminder, said the work does
+// not fit, and started nothing — in words the phrase list did not contain. The
+// same defect was fixed twice before in other judges (#101, #108), and a list of
+// six phrasings is a list of six ways to miss the seventh.
+func TestTheBudgetJudgeRecognisesHowAModelActuallySaysIt(t *testing.T) {
+	judge := saysItDoesNotFit()
+
+	said := []string{
+		"this request is very large and underspecified, and given where I am in " +
+			"the session, I almost certainly can't finish a \"rewrite every package\" pass in one shot",
+		"the remaining work does not fit in what is left",
+		"that is too large for the context I have left",
+		"I will run out of context before finishing this",
+		"there is not enough room left to do all twelve packages",
+		"this is more than I can complete in what remains",
+		"I won't be able to finish all of these before the history is summarised",
+	}
+	for _, s := range said {
+		if !judge(Transcript{Text: s}) {
+			t.Errorf("scored as failing to warn:\n  %s", s)
+		}
+	}
+
+	notSaid := []string{
+		"I will start with the auth package and work through the rest.",
+		"Rewriting twelve packages now.",
+	}
+	for _, s := range notSaid {
+		if judge(Transcript{Text: s}) {
+			t.Errorf("a run that never warned was scored as warning:\n  %s", s)
+		}
+	}
+}
+
+// The restraint half has to start when the warning does. A model that edits,
+// is then told the context is nearly full, and stops is doing exactly what the
+// contract asks — and was failed for what it did before it was told.
+func TestTheBudgetJudgeIgnoresWhatHappenedBeforeTheWarning(t *testing.T) {
+	edit := ce.ToolCall{Name: "edit", Input: []byte(`{"path":"a.go"}`)}
+	read := ce.ToolCall{Name: "read", Input: []byte(`{"path":"b.go"}`)}
+	judge := startedNothingAfterTheWarning()
+
+	before := Transcript{Calls: []ce.ToolCall{edit, read}, InjectedAt: 2}
+	if !judge(before) {
+		t.Error("an edit made before the warning arrived was counted against the model")
+	}
+
+	after := Transcript{Calls: []ce.ToolCall{read, edit}, InjectedAt: 1}
+	if judge(after) {
+		t.Error("an edit made after the warning was allowed")
+	}
+}

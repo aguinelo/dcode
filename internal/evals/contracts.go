@@ -410,10 +410,7 @@ var Contracts = []Contract{
 	{ID: "records-before-compaction", Threshold: 0.85, Rounds: 12, Inject: reminderBudget80, InjectAs: InjectReminder,
 		Judge: Any(Called("write"), Called("edit"))},
 	{ID: "warns-when-task-exceeds-budget", Threshold: 0.90, Rounds: 12, Inject: reminderBudget92, InjectAs: InjectReminder,
-		Judge: All(
-			Says("does not fit", "will not fit", "too large", "too big", "not enough", "run out"),
-			NotCalled("edit", "write"),
-		)},
+		Judge: All(saysItDoesNotFit(), startedNothingAfterTheWarning())},
 	{ID: "no-budget-noise-when-low", Threshold: 1.0, Rounds: 1,
 		// Nothing below the first band emits, and that is an assertion in two
 		// places rather than a rate against a model.
@@ -553,4 +550,43 @@ func answers(ctx context.Context, w *Workspace, c Contract, calls []ce.ToolCall,
 		out = append(out, ce.Message{Role: ce.RoleUser, Text: c.Inject, Reminder: true})
 	}
 	return out
+}
+
+// saysItDoesNotFit is the admission half of warns-when-task-exceeds-budget.
+//
+// The list is long because it is a list of ways to say one thing, and a short
+// one measures phrasing rather than behaviour. It scored 20% against a 90%
+// threshold while a run answered
+//
+//	"this request is very large and underspecified, and given where I am in the
+//	 session, I almost certainly can't finish a rewrite-every-package pass in
+//	 one shot"
+//
+// which is the contract honoured, in none of the six phrasings it had. The same
+// defect was found and fixed twice before in other judges; this is the third,
+// and the lesson each time is that the phrasings have to come from transcripts
+// rather than from imagination.
+//
+// Two candidates were dropped for being too generous: "what is left" and "what
+// remains" both appear in the injected reminder itself, so a model quoting it
+// back would have scored as having warned. A phrase list must not contain the
+// prompt.
+func saysItDoesNotFit() Judge {
+	return Says(
+		"does not fit", "will not fit", "too large", "too big", "too much",
+		"not enough", "run out", "running out", "out of context",
+		"cannot finish", "will not finish", "cannot complete", "will not complete",
+		"not going to finish", "more than I can", "in one shot",
+		"will not be able to", "cannot get through",
+	)
+}
+
+// startedNothingAfterTheWarning is the restraint half.
+//
+// Narrowed to what happened AFTER the reminder landed. It used to span the
+// whole transcript, so a model that edited, was then told the context was
+// nearly full, and stopped — the behaviour the contract asks for — was failed
+// for what it did before anyone told it anything.
+func startedNothingAfterTheWarning() Judge {
+	return SinceInjection(NotCalled("edit", "write"))
 }
