@@ -1,5 +1,6 @@
 [
   "read",
   "grep",
-  "write"
+  "write",
+  "edit"
 ]

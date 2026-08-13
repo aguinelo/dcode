@@ -837,7 +837,7 @@ func TestAnInjectedReminderIsTheProductsOwnText(t *testing.T) {
 // remaining eleven rounds re-running `pwd && ls -la` trying to understand what
 // had happened to its directory listing.
 func TestAnInjectedErrorWaitsForTheCallItBelongsTo(t *testing.T) {
-	c := Contract{Inject: errMissingDep, InjectOn: "bash"}
+	c := Contract{Inject: errMissingDep, InjectOn: []string{"bash"}}
 
 	looking := []ce.ToolCall{{ID: "c1", Name: "glob"}, {ID: "c2", Name: "read"}}
 	if at := InjectionTarget(c, looking); at != -1 {
@@ -879,7 +879,7 @@ func TestEveryInjectedToolErrorNamesItsTool(t *testing.T) {
 		if _, exempt := errorFromAnyCall[c.ID]; exempt {
 			continue
 		}
-		if c.InjectOn == "" {
+		if len(c.InjectOn) == 0 {
 			t.Errorf("%s injects a tool error and does not say which tool it came from", c.ID)
 		}
 	}
@@ -894,7 +894,7 @@ func TestEveryInjectedToolErrorNamesItsTool(t *testing.T) {
 // call that can never come and the scenario's premise never reaches the model.
 func TestAnInjectedErrorNamesAToolTheScenarioOffers(t *testing.T) {
 	for _, c := range Contracts {
-		if c.InjectOn == "" {
+		if len(c.InjectOn) == 0 {
 			continue
 		}
 		f, err := LoadFixture(FixtureRoot, c.ID)
@@ -902,10 +902,12 @@ func TestAnInjectedErrorNamesAToolTheScenarioOffers(t *testing.T) {
 			t.Errorf("%s: %v", c.ID, err)
 			continue
 		}
-		if !slicesContains(f.ToolNames(), c.InjectOn) {
-			t.Errorf("%s injects on %q and its scenario does not offer that tool, "+
-				"so the error waits for a call that cannot happen. Offered: %v",
-				c.ID, c.InjectOn, f.ToolNames())
+		for _, want := range c.InjectOn {
+			if !slicesContains(f.ToolNames(), want) {
+				t.Errorf("%s injects on %q and its scenario does not offer that tool, "+
+					"so the premise waits for a call that cannot happen. Offered: %v",
+					c.ID, want, f.ToolNames())
+			}
 		}
 	}
 }
@@ -917,4 +919,56 @@ func slicesContains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+// A reminder that asserts a state waits for that state.
+//
+// "You changed files and there is no command configured that could check them"
+// reached a model that had run one grep, and told it something untrue about
+// what it had just done. It read for three rounds and said nothing; the
+// contract scored 40% against 95%.
+//
+// Same defect as an error landing on the wrong call, in the other kind of
+// injection. The product only emits these when the state holds.
+func TestAReminderThatAssertsAStateWaitsForIt(t *testing.T) {
+	changed := map[string]bool{
+		"runs-verification-after-change": true,
+		"states-what-was-not-verified":   true,
+		"reports-failure-honestly":       true,
+		"fixes-cause-not-measure":        true,
+		"states-unmet-on-stall":          true,
+	}
+	for _, c := range Contracts {
+		if !changed[c.ID] {
+			continue
+		}
+		if len(c.InjectOn) == 0 {
+			t.Errorf("%s says the model changed files and fires before it has", c.ID)
+			continue
+		}
+		var write, edit bool
+		for _, on := range c.InjectOn {
+			write = write || on == "write"
+			edit = edit || on == "edit"
+		}
+		if !write || !edit {
+			t.Errorf("%s waits for %v; a change is a write OR an edit", c.ID, c.InjectOn)
+		}
+	}
+}
+
+// A reminder that asserts nothing fires whenever. A budget band is true
+// regardless of what was called, and making it wait would leave a scenario
+// whose model called nothing with no premise at all.
+func TestABudgetReminderWaitsForNothing(t *testing.T) {
+	for _, id := range []string{"records-before-compaction", "warns-when-task-exceeds-budget"} {
+		c, ok := ContractByID(id)
+		if !ok {
+			t.Errorf("%s is gone", id)
+			continue
+		}
+		if len(c.InjectOn) != 0 {
+			t.Errorf("%s waits for %v, and a budget band is true whatever was called", id, c.InjectOn)
+		}
+	}
 }
