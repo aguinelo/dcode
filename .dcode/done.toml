@@ -1,0 +1,19 @@
+# O que conta como pronto neste repositório.
+#
+# Quem define o critério de saída é o orquestrador, não o agente. O agente
+# nunca responde "cumpri" — o comando responde por ele, e o laço lê o código
+# de saída. É a única parte da conclusão que não depende de o modelo obedecer.
+#
+# Um só critério, e é o portão inteiro: `make check` roda lint, vet, race,
+# cobertura mínima e build. Dividir em quatro daria quatro chances de terminar
+# com três verdes e um vermelho parecendo progresso.
+#
+# `protected` são os caminhos que SÃO a medição. Mudança neles é destacada no
+# relatório e nunca contada como progresso em silêncio. Não é proibição —
+# às vezes consertar o teste é o trabalho certo. É visibilidade.
+
+protected = ["**/*_test.go", "docs/specs/**", "internal/evals/testdata/**", "Makefile", "scripts/**"]
+
+[check]
+command = "make check"
+exit_code = 0
