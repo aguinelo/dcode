@@ -290,14 +290,20 @@ func Mark(g Geometry) string {
 	return "█▀▀█"
 }
 
-// RenderMark is Mark with the brand's three roles applied.
+// RenderMark is Mark with the brand's roles applied.
+//
+// The eye is drawn on the body rather than beside it. A half-block painted
+// with a foreground alone leaves its lower half showing the terminal's
+// background, which put a hole through the middle of the mark — the head
+// looked cut rather than solid. The eye is inside the head, so the head has to
+// be behind it.
 func RenderMark(g Geometry) string {
 	body, eye := "█", "▀▀"
 	if !g.Unicode {
 		body, eye = "#", "oo"
 	}
 	p := g.Palette
-	return p.Apply(StyleBody, body) + p.Apply(StyleEye, eye) + p.Apply(StyleBody, body)
+	return p.Apply(StyleBody, body) + p.Apply(StyleEyeOnBody, eye) + p.Apply(StyleBody, body)
 }
 
 func renderStatus(m Model, g Geometry, showPanel, showMark bool) string {
