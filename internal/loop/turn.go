@@ -955,3 +955,17 @@ func (e *Engine) sleep(ctx context.Context, d time.Duration) bool {
 		return false
 	}
 }
+
+// Close releases what the engine owns beyond a single turn.
+//
+// Today that is the background processes started through bash. The chain is
+// deliberate — session owns engine owns tool state owns processes — because it
+// makes "a process dies with the session" a consequence of ownership rather
+// than a cleanup step someone has to remember to write. There is no handler to
+// forget to register, and no path where the session ends and the process does
+// not.
+func (e *Engine) Close() {
+	if e.cfg.State != nil {
+		e.cfg.State.Close()
+	}
+}

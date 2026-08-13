@@ -22,6 +22,10 @@ type State struct {
 	// writeSeq counts every write, including repeats of the same path.
 	writeSeq uint64
 	plan     []protocol.PlanItem
+	// procs are the background commands this session started, in the order
+	// they were started. They live here because this is what a session owns
+	// and what goes away when it ends.
+	procs []*procEntry
 }
 
 type fileState struct {
