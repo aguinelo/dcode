@@ -38,7 +38,7 @@ func TestEachBandHasItsOwnTextUnderOneKind(t *testing.T) {
 
 // The text is constant per band. A number that moves every turn makes the
 // history irreproducible, which is RN-7 of the context engine.
-func TestBudgetTextCarriesNoVaryingNumber(t *testing.T) {
+func TestABudgetBandCarriesNoVaryingNumber(t *testing.T) {
 	for _, band := range []BudgetBand{Budget60, Budget80, Budget92} {
 		first := Emit(SessionState{BudgetCrossed: band})
 		second := Emit(SessionState{BudgetCrossed: band})
