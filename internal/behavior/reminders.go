@@ -58,16 +58,6 @@ var budgetTexts = map[BudgetBand]string{
 		"rather than starting it and losing the thread partway through.",
 }
 
-// BudgetText is the sentence a band emits, and whether that band emits one.
-//
-// Exported so the eval harness injects the product's own words rather than a
-// copy. RN-3 makes reminder wording a behaviour surface, and a copy is a thing
-// that drifts — three other copies in that package already had.
-func BudgetText(b BudgetBand) (string, bool) {
-	t, ok := budgetTexts[b]
-	return t, ok
-}
-
 // Reminder is one appended note.
 //
 // Appended, never prefixed. That is the whole point of the channel: it steers

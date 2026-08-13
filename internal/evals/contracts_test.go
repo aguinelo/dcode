@@ -793,41 +793,6 @@ func TestTheAdmissionJudgesRecogniseHowAModelSaysIt(t *testing.T) {
 	}
 }
 
-// The injected reminder must be the text the product emits.
-//
-// The harness holds these as constants so a scenario reads as a scenario, and
-// RN-3 makes reminder wording a behaviour surface: measuring recovery from
-// text dcode does not emit measures a different product. They had already
-// drifted three times in this package — tool definitions, tool results, the
-// skill index — each time as a plausible number describing something else.
-//
-// This caught the fourth: the 80% budget reminder was reworded in the product
-// to say where to write what must survive, and the harness would have kept
-// injecting the old sentence.
-func TestAnInjectedReminderIsTheProductsOwnText(t *testing.T) {
-	product := map[string]bool{}
-	for _, band := range []behavior.BudgetBand{behavior.Budget60, behavior.Budget80, behavior.Budget92} {
-		if text, ok := behavior.BudgetText(band); ok {
-			product[text] = true
-		}
-	}
-	if len(product) == 0 {
-		t.Fatal("no budget texts read from the product; the guard would pass vacuously")
-	}
-
-	for _, c := range Contracts {
-		if !strings.Contains(c.Inject, "summarised away") &&
-			!strings.Contains(c.Inject, "close to the point") {
-			continue
-		}
-		body := strings.TrimSpace(strings.TrimSuffix(
-			strings.TrimPrefix(strings.TrimSpace(c.Inject), "<system-reminder>"), "</system-reminder>"))
-		if !product[body] {
-			t.Errorf("%s injects a budget reminder the product does not emit:\n  harness: %q", c.ID, body)
-		}
-	}
-}
-
 // An injected tool error has to land on a call it could plausibly have come
 // from. It used to land on the first call of the first round, whatever that
 // was: a scenario about a missing test binary answered
@@ -1055,6 +1020,59 @@ func TestTheInitFixturesSendThePromptTheProductShips(t *testing.T) {
 		}
 		if string(body) != tui.InitPrompt {
 			t.Errorf("%s/task.md is not the prompt /init sends; regenerate it from tui.InitPrompt", id)
+		}
+	}
+}
+
+// A scenario that injects a reminder must inject the product's, byte for byte.
+//
+// RN-3 of behavior-definition makes reminder wording a behaviour surface, so a
+// scenario built on text dcode does not emit measures a different product. Copies
+// in this package have drifted four times already — the tool definitions, the
+// tool results, the skill index, and the 80% budget sentence, which was reworded
+// in the product to say WHERE to write what must survive.
+//
+// A narrower version of this guard covered only the budget pair, comparing the
+// text inside the wrapper. It passed while every contract in the table injected
+// a wrapper the product does not produce, because the product renders with
+// newlines and the harness concatenated without them. Comparing the whole
+// rendered reminder leaves nothing to get wrong.
+//
+// reminderStale was a copy of the product text made by hand, and it had lost
+// the last clause: "if you cannot get there, say what is left." That clause is
+// exactly what states-unmet-on-stall's judge looks for. The contract asked the
+// model to do something the text it was given never asked for, and then scored
+// it at 45% against a 95% threshold.
+//
+// The budget reminders already avoided this by taking the product's text
+// (contracts.go), which is the pattern the rest now follows. This guard is what
+// keeps the next one from being typed out again.
+func TestEveryInjectedReminderIsTheProductsOwn(t *testing.T) {
+	product := map[string]bool{}
+	for _, s := range []behavior.SessionState{
+		{ChangedFiles: []string{"stats.go"}},
+		{UnmetCriteria: []string{"tests"}},
+		{ParallelBatch: 2},
+		{Compacted: true},
+		{DeniedTools: []string{"bash"}},
+		{ProtectedTouched: []string{"stats_test.go"}},
+		{VerificationUnavailable: true},
+		{BudgetCrossed: behavior.Budget60},
+		{BudgetCrossed: behavior.Budget80},
+		{BudgetCrossed: behavior.Budget92},
+	} {
+		for _, r := range behavior.Emit(s) {
+			product[behavior.Render(r)] = true
+		}
+	}
+
+	for _, c := range Contracts {
+		if c.InjectAs != InjectReminder || c.Inject == "" {
+			continue
+		}
+		if !product[c.Inject] {
+			t.Errorf("%s injects a reminder the product does not emit:\n  %s\n"+
+				"Take it from behavior.Emit rather than writing it out.", c.ID, c.Inject)
 		}
 	}
 }
