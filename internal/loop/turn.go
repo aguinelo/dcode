@@ -206,6 +206,10 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 	stall := 0
 	attempts := 0
 	var unmet []string
+	// toldUnverified latches the one announcement about work nothing could
+	// check. Per turn, because repeating it every cycle would be a loop with
+	// nothing to make progress on.
+	toldUnverified := false
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -277,7 +281,7 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 		if len(calls) == 0 {
 			// Step 4. The turn does not end merely because the model stopped
 			// asking for tools: done is a checked condition, not a declaration.
-			reason, more := e.checkDone(ctx, &stall, &unmet)
+			reason, more := e.checkDone(ctx, &stall, &unmet, &toldUnverified)
 			if more != nil {
 				e.session.History = append(e.session.History, more...)
 				out.Iterations++
@@ -785,7 +789,7 @@ func (e *Engine) crossBudget() ce.Band {
 // the loop goes round again. If it did not shrink MaxStallCycles times, the
 // turn ends in StopIncomplete carrying what was left. A loop that cannot exit
 // until everything passes makes weakening the check the shortest way out.
-func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (string, []ce.Message) {
+func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, told *bool) (string, []ce.Message) {
 	if !e.cfg.DoneEnabled || len(e.cfg.Done.Criteria) == 0 {
 		return protocol.StopDone, nil
 	}
@@ -816,6 +820,18 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (st
 		// It does not force another iteration. There is nothing to run, and
 		// insisting only produces a second guess; what it forces is saying so.
 		if VerificationOf(rep, true, false) == VerificationUnavailable {
+			// Once, and then the turn ends. The re-entry is not to run the
+			// check again — there is nothing to run, which is the whole
+			// situation — it is to give the model the one thing it still can
+			// produce: a sentence saying the work was not confirmed.
+			//
+			// Without it the seal told the user and nothing told the model,
+			// while this function's own comment claimed "what it forces is
+			// saying so". Nothing forced anything.
+			if !*told {
+				*told = true
+				return "", remindersFor(behavior.SessionState{VerificationUnavailable: true})
+			}
 			return protocol.StopUnverified, nil
 		}
 		return protocol.StopDone, nil
@@ -835,17 +851,21 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string) (st
 		return protocol.StopIncomplete, nil
 	}
 
-	st := behavior.SessionState{
+	return "", remindersFor(behavior.SessionState{
 		UnmetCriteria:    now,
 		ProtectedTouched: rep.TouchedProtected,
-	}
+	})
+}
+
+// remindersFor renders a state as messages the model reads next turn.
+func remindersFor(st behavior.SessionState) []ce.Message {
 	var msgs []ce.Message
 	for _, r := range behavior.Emit(st) {
 		msgs = append(msgs, ce.Message{
 			Role: ce.RoleUser, Text: behavior.Render(r), Reminder: true,
 		})
 	}
-	return "", msgs
+	return msgs
 }
 
 func (e *Engine) stallLimit() int {

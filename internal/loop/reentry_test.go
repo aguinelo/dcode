@@ -53,7 +53,7 @@ func TestATurnThatChangedNothingRunsNoCheck(t *testing.T) {
 	}, ce.Session{Instructions: "x"})
 
 	stall, unmet := 0, []string(nil)
-	reason, more := e.checkDone(context.Background(), &stall, &unmet)
+	reason, more := e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if ran {
 		t.Error("a read-only turn ran the verification")
 	}
@@ -65,7 +65,7 @@ func TestATurnThatChangedNothingRunsNoCheck(t *testing.T) {
 func TestAMetCriterionEndsTheTurn(t *testing.T) {
 	e := doneEngine(t, []string{"a.go"}, map[string]int{"make test": 0})
 	stall, unmet := 0, []string(nil)
-	reason, more := e.checkDone(context.Background(), &stall, &unmet)
+	reason, more := e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if more != nil {
 		t.Fatal("the turn was continued although everything passed")
 	}
@@ -77,7 +77,7 @@ func TestAMetCriterionEndsTheTurn(t *testing.T) {
 func TestAnUnmetCriterionContinuesTheTurnWithAReminder(t *testing.T) {
 	e := doneEngine(t, []string{"a.go"}, map[string]int{"make test": 1})
 	stall, unmet := 0, []string(nil)
-	reason, more := e.checkDone(context.Background(), &stall, &unmet)
+	reason, more := e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if more == nil {
 		t.Fatalf("the turn ended with an unmet criterion; reason %q", reason)
 	}
@@ -93,12 +93,12 @@ func TestNoProgressEndsTheTurnAsIncomplete(t *testing.T) {
 	stall, unmet := 0, []string(nil)
 
 	// First check: nothing to compare against, so it continues.
-	if _, more := e.checkDone(context.Background(), &stall, &unmet); more == nil {
+	if _, more := e.checkDone(context.Background(), &stall, &unmet, new(bool)); more == nil {
 		t.Fatal("the first unmet check ended the turn")
 	}
 	// Two more cycles with the same unmet set and no progress.
-	e.checkDone(context.Background(), &stall, &unmet)
-	reason, more := e.checkDone(context.Background(), &stall, &unmet)
+	e.checkDone(context.Background(), &stall, &unmet, new(bool))
+	reason, more := e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if more != nil {
 		t.Fatalf("the turn is still going after %d stalled cycles", stall)
 	}
@@ -112,7 +112,7 @@ func TestNoProgressEndsTheTurnAsIncomplete(t *testing.T) {
 func TestWritingATestFileIsSurfaced(t *testing.T) {
 	e := doneEngine(t, []string{"internal/loop/turn_test.go"}, map[string]int{"make test": 1})
 	stall, unmet := 0, []string(nil)
-	_, more := e.checkDone(context.Background(), &stall, &unmet)
+	_, more := e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if more == nil {
 		t.Fatal("expected the turn to continue")
 	}
@@ -132,7 +132,7 @@ func TestDoneDisabledEndsTheTurnAsBefore(t *testing.T) {
 	e := doneEngine(t, []string{"a.go"}, map[string]int{"make test": 1})
 	e.cfg.DoneEnabled = false
 	stall, unmet := 0, []string(nil)
-	if reason, more := e.checkDone(context.Background(), &stall, &unmet); more != nil || reason != protocol.StopDone {
+	if reason, more := e.checkDone(context.Background(), &stall, &unmet, new(bool)); more != nil || reason != protocol.StopDone {
 		t.Fatal("switching the definition of done off did not restore the old behaviour")
 	}
 }
@@ -140,14 +140,14 @@ func TestDoneDisabledEndsTheTurnAsBefore(t *testing.T) {
 func TestTheSealFollowsTheLastCheck(t *testing.T) {
 	e := doneEngine(t, []string{"a.go"}, map[string]int{"make test": 0})
 	stall, unmet := 0, []string(nil)
-	e.checkDone(context.Background(), &stall, &unmet)
+	e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if got := e.Verification(); got != VerificationPassed {
 		t.Errorf("seal = %v, want passed", got)
 	}
 
 	e2 := doneEngine(t, []string{"a.go"}, map[string]int{"make test": 1})
 	stall, unmet = 0, nil
-	e2.checkDone(context.Background(), &stall, &unmet)
+	e2.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if got := e2.Verification(); got != VerificationFailed {
 		t.Errorf("seal = %v, want failed", got)
 	}
