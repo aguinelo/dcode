@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-13
 **Origem:** uso real — "roda esse projeto", `npm start`, a sessão travou
-**Estado:** pauta aberta, nada decidido
+**Estado:** três decisões tomadas; o desenho ainda não foi escrito
 
 ## O que aconteceu
 
@@ -53,20 +53,42 @@ plano não tem código de saída até morrer, e "subiu" é uma pergunta diferent
 - O harness de eval não tem contrato sobre isso, e precisaria de um: "sobe um
   servidor e relata o endereço, sem travar" é comportamento, não asserção.
 
-## As perguntas que decidem, antes de qualquer tipo
+## As três decisões
 
-1. **O processo morre com a sessão, ou sobrevive?** As duas respostas são
-   defensáveis e levam a produtos diferentes. Sobreviver exige um registro
-   durável de processos e um jeito de matá-los; morrer junto exige que o
-   usuário aceite que fechar a TUI derruba o servidor.
+Tomadas em 2026-08-13. Escritas aqui porque decisão que não fica escrita vira
+discussão de novo.
 
-2. **A aprovação de um processo longo é a mesma de um comando?** Uma aprovação
-   que vale enquanto o processo viver não é a mesma coisa que uma que vale para
-   uma chamada. Se for a mesma, o usuário aprovou uma duração sem saber.
+**1. O processo morre com a sessão.** Fechar a TUI derruba o servidor, e isso é
+aceito. A alternativa exigiria um registro durável de processos e um jeito de
+matá-los depois — e produziria órfãos na máquina de alguém, que é pior que
+travar porque travar é visível.
 
-3. **O modelo consulta a saída depois, ou recebe?** Consultar precisa de outra
-   ferramenta (`logs`, ou `bash` com um handle). Receber precisa de um canal do
-   servidor para o turno que não existe no protocolo hoje.
+Isso resolve um problema que parecia separado: `kill` em PID alheio é negado
+pelo Seatbelt, e continuará sendo. Quem mata é o daemon, de fora do sandbox,
+sobre processos que ele mesmo registrou. O modelo nunca ganha autoridade de
+sinal sobre a máquina — e não precisa, porque nada fica órfão.
+
+**2. Aprovar um processo longo é o mesmo ato que aprovar um comando.** Sem
+pergunta extra sobre duração. É defensável porque o processo não sobrevive à
+sessão: a autorização e o processo têm o mesmo tempo de vida, então não existe
+a janela em que alguém aprovou um instante e concedeu uma duração.
+
+**3. O modelo consulta a saída; não a recebe.** `bash` devolve um identificador
+na hora, e uma ferramenta de leitura entrega o que saiu quando o modelo pedir.
+
+Receber exigiria um caminho do servidor para dentro do turno que o protocolo não
+tem, e um servidor tagarela comeria a janela de contexto sem ninguém ter pedido.
+Consultar é coerente com o ciclo de vida curto que a decisão 1 estabelece.
+
+## O que ainda não foi decidido
+
+- A forma da ferramenta de leitura: outra ferramenta (`logs`), ou o mesmo `bash`
+  recebendo um identificador.
+- Como o modelo sabe que o servidor **subiu**, que é pergunta diferente de
+  "terminou bem". Sondar porta e ler log são as duas respostas óbvias e nenhuma
+  é obviamente melhor.
+- O contrato de eval que mede isso. "Sobe um servidor e relata o endereço, sem
+  travar" é comportamento, não asserção, e hoje não existe.
 
 ## Relacionado
 
