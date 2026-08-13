@@ -62,7 +62,15 @@ func TestEveryContract(t *testing.T) {
 				if err != nil {
 					return false, err
 				}
-				tr, err := exchangeRounds(ctx, p, cfg.Model, f, contract, w)
+				// The deadline belongs to the run, not to the contract. It
+				// used to cover all of them at once, which meant one hung
+				// stream ate the whole budget and every run after it failed
+				// instantly — the harness reporting its own exhaustion as the
+				// model's behaviour.
+				runCtx, done := context.WithTimeout(ctx, runTimeout*time.Duration(contract.Rounds))
+				defer done()
+
+				tr, err := exchangeRounds(runCtx, p, cfg.Model, f, contract, w)
 				if err != nil {
 					return false, err
 				}
@@ -79,11 +87,11 @@ func TestEveryContract(t *testing.T) {
 			runCfg := cfg
 			runCfg.Runs = contract.RunCount(cfg.Runs)
 
-			ctx, cancel := context.WithTimeout(context.Background(),
-				runTimeout*time.Duration(runCfg.Runs*contract.Rounds))
-			defer cancel()
-
-			r := Measure(ctx, runCfg, contract.ID, contract.Threshold, attempt)
+			// No contract-wide deadline. Each run carries its own, and the
+			// suite's ceiling is `go test -timeout`, which is the one place a
+			// total budget belongs. A second ceiling here only decided which
+			// contract got blamed for the suite running long.
+			r := Measure(context.Background(), runCfg, contract.ID, contract.Threshold, attempt)
 			measured = append(measured, r)
 			if !r.Met() {
 				if s := evidence.String(); s != "" {

@@ -103,11 +103,19 @@ func (c Config) Unavailable() string {
 type Result struct {
 	ID        string
 	Threshold float64
-	Runs      int
-	Passed    int
-	Errors    int
-	Model     string
-	Build     string
+	// Planned is how many runs the contract asked for; Runs is how many
+	// actually happened.
+	//
+	// They differ only when a deadline cut the measurement short, and keeping
+	// both is what lets that be reported instead of guessed at. Collapsing
+	// them either invents runs that never ran or loses the fact that the
+	// number is short of what the threshold needs.
+	Planned int
+	Runs    int
+	Passed  int
+	Errors  int
+	Model   string
+	Build   string
 	// FirstError is why the errored runs errored, or empty when none did.
 	//
 	// The count alone cannot be acted on. A measurement that reports "20
@@ -135,6 +143,12 @@ func (r Result) Rate() float64 {
 // from the model failing the contract — a network blip must never be readable
 // as a behavioural regression. Zero runs is the same class of non-answer.
 func (r Result) Sound() bool {
+	// A measurement cut short is not a lenient measurement, it is not a
+	// measurement. Eight runs of a fifty-run contract compared against 95%
+	// produces a verdict with no evidence under it.
+	if r.Planned > 0 && r.Runs < r.Planned {
+		return false
+	}
 	return r.Runs > 0 && r.Errors == 0
 }
 
@@ -161,6 +175,9 @@ func (r Result) String() string {
 	}
 	fmt.Fprintf(&b, "%-32s %s  %.1f%% of %d runs (threshold %.1f%%)",
 		r.ID, verdict, r.Rate()*100, r.Runs, r.Threshold*100)
+	if r.Planned > 0 && r.Runs < r.Planned {
+		fmt.Fprintf(&b, " — stopped after %d of %d planned, measurement unsound", r.Runs, r.Planned)
+	}
 	if r.Errors > 0 {
 		fmt.Fprintf(&b, " — %d run(s) errored, measurement unsound", r.Errors)
 		if r.FirstError != "" {
@@ -197,11 +214,20 @@ func Measure(ctx context.Context, cfg Config, id string, threshold float64, atte
 	r := Result{
 		ID:        id,
 		Threshold: threshold,
-		Runs:      cfg.Runs,
+		Planned:   cfg.Runs,
 		Model:     cfg.Model,
 		Build:     version.Short(),
 	}
 	for i := 0; i < cfg.Runs; i++ {
+		// A dead context does not produce twenty more failures, it produces
+		// nothing. Calling attempt anyway is how v11 came back with 34 of 35
+		// contracts unsound and no reason on any of them: every run after the
+		// first hang errored instantly, and the harness reported its own
+		// invented errors as if the model had produced them.
+		if ctx.Err() != nil {
+			break
+		}
+		r.Runs++
 		ok, err := attempt(ctx)
 		switch {
 		case err != nil:

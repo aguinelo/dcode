@@ -411,3 +411,57 @@ func TestEvidenceSaysNothingWhenNothingFailed(t *testing.T) {
 		t.Errorf("an empty record spoke: %q", s)
 	}
 }
+
+// A deadline that has passed does not turn the remaining runs into failures.
+//
+// This is what happened to v11: it came back with 34 of 35 contracts unsound
+// and no reason on any of them. The context covered the whole contract, so once
+// one stream hung, every run after it errored instantly — twenty transport
+// errors invented by the harness, reported as if the model had produced them.
+func TestMeasureStopsAtTheDeadlineInsteadOfFabricatingErrors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var attempts int
+	r := Measure(ctx, Config{Runs: 20}, "x", 0.9, func(context.Context) (bool, error) {
+		attempts++
+		if attempts == 3 {
+			cancel()
+		}
+		return true, nil
+	})
+
+	if attempts > 4 {
+		t.Errorf("kept going %d times past a cancelled context", attempts)
+	}
+	if r.Errors != 0 {
+		t.Errorf("a cancelled measurement invented %d errors", r.Errors)
+	}
+	if r.Runs >= 20 {
+		t.Errorf("reported %d runs, but it never got that far", r.Runs)
+	}
+	if r.Planned != 20 {
+		t.Errorf("lost what it set out to do: planned %d", r.Planned)
+	}
+}
+
+// Eight runs of a fifty-run contract is not a lenient measurement, it is not a
+// measurement. Comparing it with a threshold produces a verdict with no
+// evidence, which is the one outcome worse than red.
+func TestATruncatedMeasurementIsNeverSound(t *testing.T) {
+	r := Result{ID: "x", Threshold: 0.9, Planned: 50, Runs: 8, Passed: 8}
+	if r.Sound() {
+		t.Error("a measurement that stopped a sixth of the way in called itself sound")
+	}
+	if r.Met() {
+		t.Error("8 of 8 passing was read as the contract holding over 50 runs")
+	}
+	if !strings.Contains(r.String(), "of 50 planned") {
+		t.Errorf("the line does not say it was cut short: %q", r.String())
+	}
+}
+
+func TestACompleteMeasurementIsSound(t *testing.T) {
+	r := Result{ID: "x", Threshold: 0.9, Planned: 20, Runs: 20, Passed: 19}
+	if !r.Sound() || !r.Met() {
+		t.Errorf("a complete measurement was rejected: %s", r)
+	}
+}
