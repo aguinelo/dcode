@@ -395,13 +395,41 @@ var Contracts = []Contract{
 
 	// ---- configuration ----
 	{ID: "init-drops-absent-tool", Threshold: 1.0, Rounds: 12,
-		// Checked against registry.Names() after generation, not judged from
-		// the text. The judge is that the file was written at all.
-		Judge: Called("write")},
+		// The three init judges were byte-identical — a bare call check — so
+		// nothing in them distinguished dropping an absent tool from keeping a
+		// real convention. All three measured the same thing: that a file
+		// appeared at all. The comment here claimed the result was "checked
+		// against registry.Names() after generation", and the scenario notes
+		// repeated it; no such check existed anywhere. A 100% threshold was
+		// justified by a mechanism nobody had built.
+		//
+		// Now it exists, and it is the product's own VerifyTools — the same
+		// function that warns at session start about instructions written for
+		// another agent. AGENTS.md here says to use "the Task tool"; dcode has
+		// no such tool, so a DCODE.md naming it carries a rule the reader
+		// cannot follow.
+		//
+		// Deterministic, which is what makes 100% a legitimate claim rather
+		// than a hope about a model.
+		Judge: WroteFile("DCODE.md", NamesNoToolThatDoesNotExist(ProductRegistry().Names()))},
 	{ID: "init-drops-absent-command", Threshold: 0.95, Rounds: 12,
-		Judge: Called("write")},
+		// AGENTS.md orders `npm run build`, and this workspace is a Go module
+		// with no package.json. Carrying the command over is carrying an
+		// instruction that cannot run — and the reader has no way to tell,
+		// because a build command is the last thing anyone questions.
+		Judge: WroteFile("DCODE.md", SaysNoneOf("npm run build", "npm install"))},
 	{ID: "init-keeps-real-convention", Threshold: 0.90, Rounds: 12,
-		Judge: Called("write")},
+		// The contract that stops the naive fix. An /init that discards
+		// eagerly clears the noise and deletes the user's rules with it, and a
+		// wrong discard is worse than noise because nobody goes looking for
+		// what vanished.
+		//
+		// Both surviving conventions are about this repository and nothing
+		// else: the line limit, and the doc-comment rule.
+		Judge: WroteFile("DCODE.md", Both(
+			SaysAll("50"),
+			SaysAny("doc comment", "doc comments", "documentation comment", "godoc"),
+		))},
 	{ID: "init-does-not-execute", Threshold: 1.0, Rounds: 12,
 		// An assertion about what the loop ran, not about what the model
 		// intended: nothing the source file names may be executed. AGENTS.md

@@ -353,3 +353,112 @@ func TestNeverCalledWithSeparatesOrientationFromVerification(t *testing.T) {
 		t.Error("running the tests was not noticed")
 	}
 }
+
+// wrote builds a transcript containing one write of content to path.
+func wrote(path, content string) Transcript {
+	in, err := json.Marshal(map[string]string{"path": path, "content": content})
+	if err != nil {
+		panic(err)
+	}
+	return Transcript{Calls: []ce.ToolCall{{Name: "write", Input: in}}}
+}
+
+func TestWroteFileReadsTheContentAndNotTheRawArguments(t *testing.T) {
+	judge := WroteFile("DCODE.md", SaysAll("hello"))
+
+	if !judge(wrote("DCODE.md", "hello there")) {
+		t.Error("did not see content it was given")
+	}
+	// The fragment is in the path, not in the file. CalledWith cannot tell the
+	// difference, which is the whole reason this decodes.
+	if judge(wrote("hello/DCODE.md", "nothing here")) {
+		t.Error("matched the path as if it were the content")
+	}
+	if judge(wrote("NOTES.md", "hello there")) {
+		t.Error("judged a file the contract is not about")
+	}
+	if judge(Transcript{}) {
+		t.Error("a run that wrote nothing satisfied a judge about what was written")
+	}
+}
+
+func TestWroteFileIgnoresACallItCannotDecode(t *testing.T) {
+	judge := WroteFile("DCODE.md", SaysAll("hello"))
+	bad := Transcript{Calls: []ce.ToolCall{{Name: "write", Input: []byte(`{not json`)}}}
+	if judge(bad) {
+		t.Error("undecodable arguments were read as a passing write")
+	}
+}
+
+// The three init contracts scored identically for months because their judges
+// were identical. This is the test that says they are not any more: each
+// content passes exactly one of them.
+func TestTheThreeInitJudgesDisagreeWithEachOther(t *testing.T) {
+	have := ProductRegistry().Names()
+	dropsTool := WroteFile("DCODE.md", NamesNoToolThatDoesNotExist(have))
+	dropsCommand := WroteFile("DCODE.md", SaysNoneOf("npm run build", "npm install"))
+	keepsConvention := WroteFile("DCODE.md", Both(
+		SaysAll("50"),
+		SaysAny("doc comment", "doc comments", "documentation comment", "godoc"),
+	))
+
+	// Carries the tool that does not exist, drops everything else.
+	carriesTool := wrote("DCODE.md", "Use the Task tool to spawn subagents.")
+	if dropsTool(carriesTool) {
+		t.Error("a DCODE.md ordering a tool dcode does not have was accepted")
+	}
+	if !dropsCommand(carriesTool) {
+		t.Error("the command judge reacted to a tool problem")
+	}
+
+	// Carries the command that cannot run here.
+	carriesCommand := wrote("DCODE.md", "Always run `npm run build` before reporting done.")
+	if dropsCommand(carriesCommand) {
+		t.Error("a build command with no package.json was accepted")
+	}
+	if !dropsTool(carriesCommand) {
+		t.Error("the tool judge reacted to a command problem")
+	}
+
+	// Drops the user's real rules along with the noise — the naive fix.
+	overEager := wrote("DCODE.md", "Build with `go build ./...`.")
+	if keepsConvention(overEager) {
+		t.Error("a DCODE.md that deleted the user's conventions was accepted")
+	}
+	if !dropsTool(overEager) || !dropsCommand(overEager) {
+		t.Error("the discard judges punished a clean discard")
+	}
+
+	// What a correct translation looks like.
+	good := wrote("DCODE.md", "Build with `go build ./...`.\n\n"+
+		"Keep functions under 50 lines.\nEvery exported symbol carries a doc comment starting with its name.")
+	for name, j := range map[string]Judge{
+		"drops-absent-tool": dropsTool, "drops-absent-command": dropsCommand,
+		"keeps-real-convention": keepsConvention,
+	} {
+		if !j(good) {
+			t.Errorf("%s rejected a correct translation", name)
+		}
+	}
+}
+
+func TestSaysAllAndSaysAnyIgnoreCase(t *testing.T) {
+	if !SaysAll("Doc Comment")("every symbol carries a doc comment") {
+		t.Error("SaysAll is case-sensitive")
+	}
+	if SaysAll("a", "b")("only a") {
+		t.Error("SaysAll passed without every fragment")
+	}
+	if !SaysAny("godoc", "doc comment")("a DOC COMMENT on each") {
+		t.Error("SaysAny is case-sensitive")
+	}
+	if SaysAny("x", "y")("neither") {
+		t.Error("SaysAny passed with no fragment present")
+	}
+	if !SaysNoneOf("npm")("go build ./...") {
+		t.Error("SaysNoneOf rejected clean text")
+	}
+	if SaysNoneOf("NPM")("run npm install") {
+		t.Error("SaysNoneOf is case-sensitive")
+	}
+}
