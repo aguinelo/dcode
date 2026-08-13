@@ -733,3 +733,96 @@ func withEntries() Model {
 	}
 	return m
 }
+
+// The mark sits in the top right corner and stays there.
+//
+// The head with its eye, which is the part of the mascot that survives being
+// small — the brand puts the contrast in luminance rather than hue for exactly
+// this reason, so the terracotta eye reads against the amber body at any size.
+func TestTheMarkIsInTheTopRightCorner(t *testing.T) {
+	m := NewModel("s1", "/w/proj", "MiniMax-M3", "workspace-write", PtBR)
+	m.Entries = []Entry{{Kind: KindUser, Summary: "olá"}}
+	g := DefaultGeometry(100, 24)
+	g.Palette = Palette{}
+
+	status := strings.Split(Render(m, g), "\n")[0]
+	if !strings.HasSuffix(strings.TrimRight(status, " "), Mark(g)) {
+		t.Errorf("the mark is not at the right edge of the status line:\n%q", status)
+	}
+	if visibleWidth(status) > g.Width {
+		t.Errorf("the status line is %d cells in a %d-column terminal", visibleWidth(status), g.Width)
+	}
+}
+
+// It is there with a session in flight too, which is the whole ask: always.
+func TestTheMarkSurvivesAFullStatusLine(t *testing.T) {
+	m := modelWithPlan()
+	m.Sandbox = "full-access" // the loudest the status line ever gets
+	g := DefaultGeometry(120, 24)
+	g.Palette = Palette{}
+
+	status := strings.Split(Render(m, g), "\n")[0]
+	if !strings.Contains(status, Mark(g)) {
+		t.Errorf("the mark is gone from a busy status line:\n%q", status)
+	}
+}
+
+// A terminal without Unicode gets a mark made of what it has. A brand that
+// cannot render in its own terminal is external decoration.
+func TestTheMarkDegradesWithoutUnicode(t *testing.T) {
+	g := DefaultGeometry(100, 24)
+	g.Unicode = false
+	if strings.ContainsAny(Mark(g), "█▀▄") {
+		t.Errorf("the fallback mark uses block characters: %q", Mark(g))
+	}
+	if Mark(g) == "" {
+		t.Error("a terminal without Unicode gets no mark at all")
+	}
+}
+
+// Decoration gives ground before anything that carries meaning. On a terminal
+// too narrow for both, the sandbox mode stays and the mark goes.
+func TestTheMarkGivesGroundBeforeTheSafetyIndicator(t *testing.T) {
+	m := NewModel("s1", "/w/proj", "MiniMax-M3", "full-access", PtBR)
+	g := DefaultGeometry(30, 24)
+	g.Palette = Palette{}
+
+	status := strings.Split(Render(m, g), "\n")[0]
+	if !strings.Contains(status, "FULL-ACCESS") {
+		t.Errorf("the safety indicator was dropped:\n%q", status)
+	}
+	if visibleWidth(status) > g.Width {
+		t.Errorf("the status line is %d cells in a %d-column terminal", visibleWidth(status), g.Width)
+	}
+}
+
+// The empty state already carries the whole mascot, so the mark stays off it.
+// Two of it on one screen is one too many, and the eye is meant to be the only
+// terracotta in the interface.
+func TestTheEmptyStateShowsOneMascotAndNotTwo(t *testing.T) {
+	m := NewModel("s1", "/w/proj", "m", "workspace-write", PtBR)
+	g := DefaultGeometry(100, 24)
+	g.Palette = Palette{}
+
+	status := strings.Split(Render(m, g), "\n")[0]
+	if strings.Contains(status, Mark(g)) {
+		t.Errorf("the empty state draws the mark as well as the mascot:\n%q", status)
+	}
+}
+
+// The eye is the one terracotta in the interface, and it is what makes the
+// mark the mascot rather than a rectangle.
+func TestTheMarkCarriesItsEye(t *testing.T) {
+	g := DefaultGeometry(100, 24)
+	if g.Palette.Apply(StyleEye, "x") == "x" {
+		t.Skip("no colour in this environment")
+	}
+	m := NewModel("s1", "/w/proj", "m", "workspace-write", PtBR)
+	m.Entries = []Entry{{Kind: KindUser, Summary: "olá"}}
+	status := strings.Split(Render(m, g), "\n")[0]
+
+	eye := g.Palette.Apply(StyleEye, "")
+	if eye != "" && !strings.Contains(status, strings.TrimSuffix(eye, "\x1b[0m")) {
+		t.Errorf("the mark has no eye:\n%q", status)
+	}
+}
