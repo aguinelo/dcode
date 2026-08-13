@@ -128,3 +128,37 @@ func TestRenderMarksTheChannel(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+// The seal tells the user; nothing told the model.
+//
+// checkDone returned StopUnverified with no message at all, while its own
+// comment said "what it forces is saying so". Nothing forced anything: the
+// model had already produced its answer, and whether that answer admitted the
+// work was unchecked was left to luck and to one sentence of doctrine.
+func TestAnUnverifiableChangeIsAnnouncedToTheModel(t *testing.T) {
+	got := Emit(SessionState{VerificationUnavailable: true})
+	if len(got) != 1 {
+		t.Fatalf("emitted %d reminders, want exactly one", len(got))
+	}
+	if got[0].Kind != ReminderVerificationUnavailable {
+		t.Errorf("kind = %q", got[0].Kind)
+	}
+	// It has to ask for the admission, not merely state the fact. A reminder
+	// the model can read as background produces no sentence for the user.
+	for _, want := range []string{"could not", "say"} {
+		if !strings.Contains(strings.ToLower(got[0].Text), want) {
+			t.Errorf("the text never asks the model to say anything: %q", got[0].Text)
+		}
+	}
+	// And it must not invite the opposite. "Verify it" is advice the model
+	// cannot follow — there is nothing to run, which is the whole situation.
+	if strings.Contains(strings.ToLower(got[0].Text), "run the") {
+		t.Errorf("the text asks for something impossible here: %q", got[0].Text)
+	}
+}
+
+func TestNothingIsAnnouncedWhenVerificationWasPossible(t *testing.T) {
+	if got := Emit(SessionState{}); len(got) != 0 {
+		t.Errorf("a quiet state emitted %d reminders", len(got))
+	}
+}

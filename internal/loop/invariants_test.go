@@ -32,6 +32,7 @@ var loopInvariants = map[string]string{
 	"não percorrem nenhum caminho":     "TestAnUnfinishedTurnIsAStateAndNotAnError",
 	"encolher estritamente":            "TestProgressedRequiresTheUnmetSetToShrinkStrictly",
 	"encerra em `StopIncomplete`":      "TestNoProgressEndsTheTurnAsIncomplete",
+	"anexa o lembrete **uma vez**":     "TestChangedWithNothingAbleToCheckEndsUnverified",
 	"não provoca reentrada":            "TestChangedWithNothingAbleToCheckEndsUnverified",
 	"Mudança em caminho de `Protected": "TestWritingATestFileIsSurfaced",
 

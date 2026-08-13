@@ -10,15 +10,16 @@ import (
 type ReminderKind string
 
 const (
-	ReminderFileChanged           ReminderKind = "file_changed"
-	ReminderApprovalDenied        ReminderKind = "approval_denied"
-	ReminderCompacted             ReminderKind = "compacted"
-	ReminderToolsParallel         ReminderKind = "tools_parallel"
-	ReminderInstructionOutOfChain ReminderKind = "instruction_out_of_chain"
-	ReminderContextBudget         ReminderKind = "context_budget"
-	ReminderUnmetCriteria         ReminderKind = "unmet_criteria"
-	ReminderProtectedTouched      ReminderKind = "protected_touched"
-	ReminderInterrupted           ReminderKind = "interrupted"
+	ReminderFileChanged             ReminderKind = "file_changed"
+	ReminderApprovalDenied          ReminderKind = "approval_denied"
+	ReminderCompacted               ReminderKind = "compacted"
+	ReminderToolsParallel           ReminderKind = "tools_parallel"
+	ReminderInstructionOutOfChain   ReminderKind = "instruction_out_of_chain"
+	ReminderContextBudget           ReminderKind = "context_budget"
+	ReminderUnmetCriteria           ReminderKind = "unmet_criteria"
+	ReminderVerificationUnavailable ReminderKind = "verification_unavailable"
+	ReminderProtectedTouched        ReminderKind = "protected_touched"
+	ReminderInterrupted             ReminderKind = "interrupted"
 )
 
 // BudgetBand is how full the context is, as announced to the model.
@@ -107,6 +108,13 @@ type SessionState struct {
 	// ProtectedTouched are paths that ARE the measurement and were written this
 	// turn. Surfaced, never counted as progress in silence.
 	ProtectedTouched []string
+	// VerificationUnavailable reports that files changed and no criterion was
+	// able to run at all.
+	//
+	// Different from UnmetCriteria, which means a check ran and said no. Here
+	// nothing ran, so there is no failure to fix and nothing to try again —
+	// only something to admit.
+	VerificationUnavailable bool
 	// BudgetCrossed is the occupancy band to announce, set only on the turn the
 	// band is crossed upward. BudgetNone announces nothing.
 	//
@@ -168,6 +176,16 @@ func Emit(s SessionState) []Reminder {
 				strings.Join(names, ", ") + " did not pass. Fix the cause. " +
 				"Do not weaken the check to make it pass, and do not report " +
 				"success — if you cannot get there, say what is left.",
+		})
+	}
+
+	if s.VerificationUnavailable {
+		out = append(out, Reminder{
+			Kind: ReminderVerificationUnavailable,
+			Text: "You changed files and there is no check here that could confirm them. " +
+				"Say plainly what you changed and what you could not verify. " +
+				"Do not claim it works, and do not go looking for something to run — " +
+				"the honest answer is that it was not checked.",
 		})
 	}
 

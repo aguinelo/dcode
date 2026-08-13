@@ -24,10 +24,30 @@ func TestChangedWithNothingAbleToCheckEndsUnverified(t *testing.T) {
 		RunCriterion: nil, // nothing can run
 	}, ce.Session{Instructions: "x"})
 
-	stall, unmet := 0, []string(nil)
-	reason, more := e.checkDone(context.Background(), &stall, &unmet)
+	stall, unmet, told := 0, []string(nil), false
+
+	// The first pass says so. Not to run the check again — there is nothing to
+	// run, which is the whole situation — but to give the model the one thing
+	// it still can produce: a sentence admitting the work was not confirmed.
+	//
+	// This used to return immediately with no message, and the assertion here
+	// was that it must not re-enter. The reasoning was half right: re-entering
+	// to RETRY is pointless, and that is still true. But the comment in
+	// checkDone claimed "what it forces is saying so" while nothing forced
+	// anything — the seal told the user, and the model was never told at all.
+	reason, more := e.checkDone(context.Background(), &stall, &unmet, &told)
+	if reason != "" {
+		t.Fatalf("ended as %q without ever telling the model the work was unchecked", reason)
+	}
+	if len(more) != 1 || !strings.Contains(more[0].Text, "could not verify") {
+		t.Fatalf("the model was not asked to say what it could not verify: %+v", more)
+	}
+
+	// And then it ends. Once, because repeating it every cycle is a loop with
+	// nothing able to make progress on it.
+	reason, more = e.checkDone(context.Background(), &stall, &unmet, &told)
 	if more != nil {
-		t.Fatal("an unavailable criterion forced another iteration; there is nothing to run and insisting only produces a second guess")
+		t.Fatalf("said it twice: %+v", more)
 	}
 	if reason != protocol.StopUnverified {
 		t.Fatalf("reason = %q, want %q", reason, protocol.StopUnverified)
@@ -46,7 +66,7 @@ func TestAPassingCheckStillEndsDone(t *testing.T) {
 	}, ce.Session{Instructions: "x"})
 
 	stall, unmet := 0, []string(nil)
-	reason, _ := e.checkDone(context.Background(), &stall, &unmet)
+	reason, _ := e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if reason != protocol.StopDone {
 		t.Fatalf("reason = %q, want done — a check that ran and passed is the one case that may claim success", reason)
 	}
@@ -62,7 +82,7 @@ func TestAReadOnlyTurnIsNotUnverified(t *testing.T) {
 	}, ce.Session{Instructions: "x"})
 
 	stall, unmet := 0, []string(nil)
-	if reason, _ := e.checkDone(context.Background(), &stall, &unmet); reason != protocol.StopDone {
+	if reason, _ := e.checkDone(context.Background(), &stall, &unmet, new(bool)); reason != protocol.StopDone {
 		t.Fatalf("reason = %q, want done", reason)
 	}
 }
@@ -180,7 +200,7 @@ func TestASealGoesStaleWhenTheCodeChangesAfterTheCheck(t *testing.T) {
 	}, ce.Session{Instructions: "x"})
 
 	stall, unmet := 0, []string(nil)
-	if reason, _ := e.checkDone(context.Background(), &stall, &unmet); reason != protocol.StopDone {
+	if reason, _ := e.checkDone(context.Background(), &stall, &unmet, new(bool)); reason != protocol.StopDone {
 		t.Fatalf("a passing check should end the turn, got %q", reason)
 	}
 	if got := e.Verification(); got != VerificationPassed {
@@ -207,7 +227,7 @@ func TestWithoutAWriteCounterTheSealNeverClaimsPassed(t *testing.T) {
 	}, ce.Session{Instructions: "x"})
 
 	stall, unmet := 0, []string(nil)
-	e.checkDone(context.Background(), &stall, &unmet)
+	e.checkDone(context.Background(), &stall, &unmet, new(bool))
 	if got := e.Verification(); got != VerificationPassed {
 		t.Errorf("seal = %v; with no counter wired the seal keeps its previous meaning", got)
 	}
