@@ -13,12 +13,14 @@
 package sandbox
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/aguinelo/dcode/internal/policy"
 )
@@ -144,16 +146,64 @@ func (r Runner) Run(ctx context.Context, workdir, command string) (string, int, 
 	if err != nil {
 		return "", -1, err
 	}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			// A non-zero exit is the command's answer, not a failure to run it.
-			return string(out), ee.ExitCode(), nil
-		}
-		return string(out), -1, err
+	// Not CombinedOutput. It waits for the output pipe to reach EOF, and a
+	// grandchild that inherited the pipe holds it open long after the process
+	// exits — killing the direct child when the context expires does not close
+	// it. A turn was held for 3m38s against a 120s ceiling that way, which made
+	// the timeout unable to keep the one promise it exists for.
+	//
+	// So the reading is waited on, and the context is waited on, and whichever
+	// comes first decides. What was produced before the cut is returned either
+	// way: it is what the model has to reason with.
+	var buf lockedBuffer
+	cmd.Stdout, cmd.Stderr = &buf, &buf
+	if err := cmd.Start(); err != nil {
+		return "", -1, err
 	}
-	return string(out), 0, nil
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			var ee *exec.ExitError
+			if errors.As(err, &ee) {
+				// A non-zero exit is the command's answer, not a failure to run it.
+				return buf.String(), ee.ExitCode(), nil
+			}
+			return buf.String(), -1, err
+		}
+		return buf.String(), 0, nil
+
+	case <-ctx.Done():
+		// CommandContext is already killing the child. Wait is left to the
+		// goroutine, which may block for as long as a grandchild holds the
+		// pipe; nothing here depends on it any more.
+		_ = cmd.Process.Kill()
+		return buf.String(), -1, ctx.Err()
+	}
+}
+
+// lockedBuffer is the output, safe to read while the command is still writing.
+//
+// Both halves of a timed-out run touch it at once: the goroutine copying the
+// child's output, and the return that hands back what arrived before the cut.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 // noneSandbox runs unconfined. Reachable only with full-access, checked in New.
