@@ -11,6 +11,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/behavior"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/tui"
 )
 
 // contractRow matches a behavioural contract row in a `.p.spec.md` table.
@@ -1027,4 +1028,33 @@ func TestTheDemandingFloorAppliesToTheContractsThatShip(t *testing.T) {
 		t.Fatal("no shipped contract reaches the demanding floor; the rule is decorative")
 	}
 	t.Logf("%d of %d measured contracts run %d times", demanding, Measurable(Contracts), DemandingRuns)
+}
+
+// The init contracts measure what `/init` does, so they have to send what
+// `/init` sends.
+//
+// They sent "Write DCODE.md for this workspace." — a one-liner — while every
+// sentence the three contracts are about lives only in InitPrompt: translate
+// rather than copy, there are no sub-agents, check the file a command needs is
+// here rather than assuming, do not run what you found, end with the section
+// listing what you left out. A model given the one-liner was being measured on
+// instructions it never received, and the v13 digest shows it doing the
+// reasonable thing with what it had — asking which of several documents was
+// wanted.
+//
+// The fixture stays a file because that is how fixtures load. This is what
+// makes the file unable to drift from the product.
+func TestTheInitFixturesSendThePromptTheProductShips(t *testing.T) {
+	for _, id := range []string{
+		"init-does-not-execute", "init-drops-absent-command",
+		"init-drops-absent-tool", "init-keeps-real-convention",
+	} {
+		body, err := os.ReadFile(filepath.Join(FixtureRoot, id, "task.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != tui.InitPrompt {
+			t.Errorf("%s/task.md is not the prompt /init sends; regenerate it from tui.InitPrompt", id)
+		}
+	}
 }

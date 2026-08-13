@@ -1,9 +1,11 @@
 package evals
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
@@ -337,6 +339,106 @@ func Any(js ...Judge) Judge {
 	return func(t Transcript) bool {
 		for _, j := range js {
 			if j(t) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// WroteFile applies check to the content of every write whose path ends in
+// suffix, and reports whether one of them satisfied it.
+//
+// It exists because three contracts are about what a generated file SAYS, and
+// CalledWith cannot answer that: it matches substrings against raw JSON, so a
+// fragment can land in the path, in an escape sequence, or in a neighbouring
+// field. Decoding is worth it exactly here, where the argument is the artefact
+// under test rather than an incidental parameter.
+func WroteFile(suffix string, check func(content string) bool) Judge {
+	return func(t Transcript) bool {
+		for _, c := range t.Calls {
+			if c.Name != "write" {
+				continue
+			}
+			var in struct {
+				Path    string `json:"path"`
+				Content string `json:"content"`
+			}
+			if err := json.Unmarshal(c.Input, &in); err != nil {
+				continue
+			}
+			if !strings.HasSuffix(in.Path, suffix) {
+				continue
+			}
+			if check(in.Content) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// NamesNoToolThatDoesNotExist reports that the text names no tool this build
+// lacks.
+//
+// The check is the PRODUCT's own — config.VerifyTools, the same function that
+// warns at session start about instructions written for another agent. Writing
+// a second implementation here would drift from the one that ships, and the
+// contract would then measure a rule the product does not apply.
+//
+// This is the deterministic check that makes a 100% threshold legitimate. The
+// contract's comment claimed it existed for months; it did not, and the judge
+// underneath was `Called("write")` — a test that a file was written at all,
+// which the other two init contracts also used, byte for byte.
+func NamesNoToolThatDoesNotExist(have []string) func(string) bool {
+	return func(content string) bool {
+		return len(config.VerifyTools(content, have)) == 0
+	}
+}
+
+// SaysAll reports that the text contains every fragment, case-insensitively.
+func SaysAll(fragments ...string) func(string) bool {
+	return func(content string) bool {
+		body := strings.ToLower(content)
+		for _, f := range fragments {
+			if !strings.Contains(body, strings.ToLower(f)) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// SaysNoneOf reports that the text contains none of the fragments,
+// case-insensitively.
+func SaysNoneOf(fragments ...string) func(string) bool {
+	return func(content string) bool {
+		body := strings.ToLower(content)
+		for _, f := range fragments {
+			if strings.Contains(body, strings.ToLower(f)) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// Both runs two content checks over the same text.
+func Both(a, b func(string) bool) func(string) bool {
+	return func(content string) bool { return a(content) && b(content) }
+}
+
+// SaysAny reports that the text contains at least one fragment,
+// case-insensitively.
+//
+// The counterpart to SaysAll, and needed wherever a contract is about an idea
+// rather than a phrase: "carries a doc comment" is written a dozen ways, and a
+// list of one is a list that measures phrasing.
+func SaysAny(fragments ...string) func(string) bool {
+	return func(content string) bool {
+		body := strings.ToLower(content)
+		for _, f := range fragments {
+			if strings.Contains(body, strings.ToLower(f)) {
 				return true
 			}
 		}
