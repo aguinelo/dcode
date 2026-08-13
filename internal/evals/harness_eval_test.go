@@ -15,6 +15,12 @@ import (
 
 // runTimeout bounds a single measured exchange. A run that hangs is a run that
 // measured nothing, and twenty of them hanging is an afternoon.
+//
+// One run is allowed this per round, and no more: a scenario with a ceiling of
+// twelve rounds gets twelve times this and then it is cut. The budget is per
+// RUN and never per contract — a contract-wide deadline meant the first hang
+// consumed what the other nineteen runs needed, and they then failed instantly
+// against a deadline that had nothing to do with them.
 const runTimeout = 90 * time.Second
 
 // setup resolves configuration and builds a provider, or skips with the reason.
