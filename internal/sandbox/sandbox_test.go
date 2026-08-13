@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/policy"
 )
@@ -362,5 +363,54 @@ func TestAnAbsentNetworkDecisionIsRefusedRatherThanAssumed(t *testing.T) {
 	}
 	if !isolated {
 		t.Error("an unwired decision left the network shared")
+	}
+}
+
+// The ceiling has to be a ceiling.
+//
+// A turn was held for 3m38s against a 120s timeout, because the model worked
+// around the missing background support the only way it could:
+//
+//	nohup node src/server.js > /tmp/log 2>&1 & disown; echo "PID=$!"
+//
+// CombinedOutput waits for the output pipe to reach EOF, not for the process to
+// exit. Any grandchild that inherited the pipe holds it open, and killing the
+// direct child when the context expires does not close it. So the one guarantee
+// the timeout exists to make — the session comes back — was the guarantee it
+// could not keep.
+func TestARunReturnsAtItsCeilingEvenWithAChildHoldingTheOutput(t *testing.T) {
+	r := Runner{Sandbox: noneSandbox{}, Mode: policy.ModeFullAccess}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	// `sleep` inherits stdout and holds the pipe long after the shell exits.
+	out, _, _ := r.Run(ctx, t.TempDir(), "sleep 30 & echo started")
+	elapsed := time.Since(start)
+
+	if elapsed > 3*time.Second {
+		t.Errorf("the run took %s against a 500ms ceiling; the session is held by a process nobody is waiting for", elapsed)
+	}
+	if !strings.Contains(out, "started") {
+		t.Errorf("what the command produced before the cut was lost: %q", out)
+	}
+}
+
+// And a command that finishes returns its output whole, or the fix has traded
+// a hang for truncation.
+func TestARunThatFinishesReturnsEverything(t *testing.T) {
+	r := Runner{Sandbox: noneSandbox{}, Mode: policy.ModeFullAccess}
+	out, code, err := r.Run(context.Background(), t.TempDir(), "echo one; echo two >&2; echo three")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 {
+		t.Errorf("exit %d", code)
+	}
+	for _, want := range []string{"one", "two", "three"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the output lost %q: %q", want, out)
+		}
 	}
 }
