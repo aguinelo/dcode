@@ -445,3 +445,73 @@ func SaysAny(fragments ...string) func(string) bool {
 		return false
 	}
 }
+
+// planItems decodes the last plan call, which is the plan.
+//
+// The last one, because the tool replaces the plan entirely on each call: a run
+// that opens with four items and collapses to one has not kept a deep plan, and
+// judging the best call ever made would reward exactly that.
+func planItems(t Transcript) ([]planItem, bool) {
+	var last []planItem
+	found := false
+	for _, c := range t.Calls {
+		if c.Name != "plan" {
+			continue
+		}
+		var in struct {
+			Items []planItem `json:"items"`
+		}
+		if err := json.Unmarshal(c.Input, &in); err != nil {
+			continue
+		}
+		last, found = in.Items, true
+	}
+	return last, found
+}
+
+// planItem mirrors the fields of the plan tool this package judges on. Only
+// what a contract asks about: the harness has no business carrying the rest.
+type planItem struct {
+	Text    string `json:"text"`
+	Status  string `json:"status"`
+	Blocked string `json:"blocked"`
+}
+
+// PlannedAtLeast reports that the plan ended with at least n items.
+//
+// A contract about depth has to count. Checking only that `plan` was called
+// cannot tell a plan from the task repeated back — and "renomear Summary" as a
+// single item, for a rename spanning six files in three different forms, is the
+// exact failure the scenario names.
+func PlannedAtLeast(n int) Judge {
+	return func(t Transcript) bool {
+		items, ok := planItems(t)
+		return ok && len(items) >= n
+	}
+}
+
+// PlannedBlockedWithReason reports that the plan ended with a blocked item
+// carrying a reason.
+//
+// Prose is not enough, and that is the point of the contract: the plan is what
+// the person watching sees, and a step that cannot be finished has to be
+// visible there rather than mentioned in a paragraph that scrolls away. Leaving
+// the item active forever is the other failure, and it fails here too.
+//
+// The reason is required because the product requires it — a blocked item with
+// no reason is refused by the tool itself, so a judge that accepted one would
+// pass a call that could never have happened.
+func PlannedBlockedWithReason() Judge {
+	return func(t Transcript) bool {
+		items, ok := planItems(t)
+		if !ok {
+			return false
+		}
+		for _, it := range items {
+			if it.Status == "blocked" && strings.TrimSpace(it.Blocked) != "" {
+				return true
+			}
+		}
+		return false
+	}
+}
