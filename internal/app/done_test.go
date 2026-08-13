@@ -140,3 +140,63 @@ func TestACriterionRunsInsideTheSandbox(t *testing.T) {
 		t.Errorf("exit = %d, want 3", code)
 	}
 }
+
+// This repository declares its own definition of done, and it has to load.
+//
+// The mechanism was built and left unused here, which is the shape of every
+// defect this project keeps finding: something that exists, is documented, and
+// that no side reads. A harness that verifies other people's work and not its
+// own is the first place to look.
+func TestThisRepositoryDeclaresItsOwnDefinitionOfDone(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	set, err := loadDoneSet(filepath.Join(root, ".dcode", DoneFileName), "")
+	if err != nil {
+		t.Fatalf("the repository's own definition of done does not load: %v", err)
+	}
+	if len(set.Criteria) == 0 {
+		t.Fatal("the definition of done declares no criterion, so nothing is checked")
+	}
+	for _, c := range set.Criteria {
+		if strings.TrimSpace(c.Command) == "" {
+			t.Errorf("criterion %q has no command; a criterion the model judges is not one", c.Name)
+		}
+	}
+	// The gate is the criterion. Anything narrower would let a turn end with
+	// the tests green and the build broken.
+	var gate bool
+	for _, c := range set.Criteria {
+		if strings.Contains(c.Command, "make check") {
+			gate = true
+		}
+	}
+	if !gate {
+		t.Errorf("no criterion runs the gate; got %+v", set.Criteria)
+	}
+}
+
+// The paths that ARE the measurement are protected, or the shortest way out of
+// a loop that will not release becomes weakening the thing measuring it.
+func TestTheMeasurementItselfIsProtected(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	set, err := loadDoneSet(filepath.Join(root, ".dcode", DoneFileName), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"**/*_test.go", "docs/specs/**"} {
+		var found bool
+		for _, p := range set.Protected {
+			if p == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s is not protected, and it is what decides whether the work was done", want)
+		}
+	}
+}
