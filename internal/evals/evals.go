@@ -28,6 +28,24 @@ import (
 // a smaller number does not measure faster, it measures nothing.
 const DefaultRuns = 20
 
+// Demanding is the threshold above which twenty runs stop being enough, and
+// DemandingRuns is what such a contract measures instead.
+//
+// The arithmetic is the whole argument. Over twenty runs one failure moves the
+// rate five points, so a measurement cannot distinguish 90% from 100% — and a
+// contract declaring 95% is asking exactly that question. Fifty runs put one
+// failure at two points, which is finer than the distance being judged.
+//
+// It is not free: nineteen of the thirty-five contracts sit at or above this
+// line, so the suite roughly doubles in time and in spend. That is the price of
+// a number that means what it says, and the alternative was lowering every
+// strong claim the product makes — including the ones about not bypassing
+// safety — to what a cheap measurement can support.
+const (
+	Demanding     = 0.95
+	DemandingRuns = 50
+)
+
 // Reader is the slice of resolved configuration this package needs.
 //
 // An interface rather than *config.Resolved because the harness has no business

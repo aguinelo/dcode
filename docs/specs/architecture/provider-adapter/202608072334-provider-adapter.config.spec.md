@@ -34,7 +34,22 @@ Registra contra o que os limiares foram medidos. Trocar qualquer valor aqui **in
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_EVAL_MODEL` | string | — | Modelo usado na medição. Registrado junto do resultado. |
-| `DCODE_EVAL_RUNS` | inteiro | `20` | Execuções por cenário. Abaixo de `20` o intervalo de confiança fica largo demais para um limiar de 95%. |
+| `DCODE_EVAL_RUNS` | inteiro | `20` | Piso global de execuções por cenário. Contrato com limiar **≥ 95%** mede **50 vezes**, derivado do próprio limiar e não declarável por contrato. Um valor maior aqui vence os dois. |
+
+> **Por que 20 não serve para um limiar de 95%.** Em 20 execuções uma falha vale
+> 5 pontos, então a medição não distingue 90% de 100% — que é exatamente a
+> pergunta que um limiar de 95% faz. Em 50, uma falha vale 2 pontos, mais fino
+> que a distância julgada.
+>
+> O piso é **derivado do limiar** em `Contract.RunCount`, nunca escrito contrato
+> a contrato: dezenove entradas com o mesmo literal são dezenove chances de uma
+> derivar, e a deriva seria invisível — um contrato medindo pouco ainda imprime
+> uma taxa, e a taxa ainda parece evidência.
+>
+> Não é de graça: dezenove dos trinta e cinco contratos ficam nessa faixa, então
+> a suíte dobra em tempo e em gasto. A alternativa era rebaixar toda afirmação
+> forte do produto — inclusive as sobre não burlar a segurança — ao que uma
+> medição barata sustenta.
 | `DCODE_EVAL_ENABLED` | booleano | `false` | Eval depende de modelo real e custa dinheiro: fica atrás de build tag e desta chave. Nunca liga na suíte padrão (RN-4). |
 
 ## 5. Constantes não configuráveis
