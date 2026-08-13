@@ -826,3 +826,28 @@ func TestTheMarkCarriesItsEye(t *testing.T) {
 		t.Errorf("the mark has no eye:\n%q", status)
 	}
 }
+
+// The eye is drawn ON the body, not beside it.
+//
+// A half-block painted with a foreground alone leaves its lower half showing
+// the terminal's own background, and the mark read as a head with a hole
+// through it. The eye is inside the head, so the head has to be behind it.
+func TestTheMarkHasNoHoleInIt(t *testing.T) {
+	g := DefaultGeometry(80, 24)
+	g.Palette = Palette{Enabled: true}
+
+	out := RenderMark(g)
+	body, ok := ansi[StyleBody]
+	if !ok {
+		t.Fatal("the body has no colour")
+	}
+	// The eye cell carries the body as its BACKGROUND, which is the whole
+	// point: 48 is the background introducer, 38 the foreground.
+	bg := "48;" + strings.TrimPrefix(body, "38;")
+	if !strings.Contains(out, bg) {
+		t.Errorf("the eye is not drawn on the body; nothing sets %s as a background:\n%q", bg, out)
+	}
+	if strings.Contains(out, "\x1b["+ansi[StyleEye]+"m") {
+		t.Errorf("the eye is still painted with a foreground alone, which leaves the hole:\n%q", out)
+	}
+}
