@@ -382,7 +382,6 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	toolLimits := tools.DefaultLimits()
 	toolLimits.EditEchoDiff = opts.EditEchoDiff
 	toolLimits.SymbolMaxMatches = opts.SymbolMaxMatches
-	state := tools.NewState(resolver, toolLimits)
 	// explore is registered as a pointer because its delegator is the engine,
 	// which does not exist yet: the registry is what the engine is built with.
 	// The knot is tied after, and it is the only one of its kind here.
@@ -402,6 +401,10 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		toolset = append(toolset, explore)
 	}
 	registry := tools.NewRegistry(toolset...)
+	// After the registry, because the session's tool names are what an error
+	// message may point at. A tool error naming a capability this build does
+	// not carry sends the model somewhere that does not exist.
+	state := tools.NewState(resolver, toolLimits, registry.Names())
 
 	if opts.APIKey != "" {
 		provider.RegisterSecret(opts.APIKey)

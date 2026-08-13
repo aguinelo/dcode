@@ -15,6 +15,14 @@ import (
 type State struct {
 	Resolver *policy.Resolver
 	Limits   Limits
+	// tools are the names this session offers the model.
+	//
+	// Error text is a behaviour surface (RN-3), so an error may only point at a
+	// capability that is actually there. `read` on a directory used to answer
+	// "use glob to list what is in it" whatever the session carried, and a
+	// session without glob sent the model after a tool it did not have — which
+	// costs a round and teaches it that the error text cannot be trusted.
+	tools map[string]struct{}
 
 	mu      sync.Mutex
 	files   map[string]fileState
@@ -65,9 +73,23 @@ func DefaultLimits() Limits {
 	}
 }
 
-// NewState builds session state.
-func NewState(r *policy.Resolver, l Limits) *State {
-	return &State{Resolver: r, Limits: l, files: map[string]fileState{}}
+// NewState builds session state for a session offering these tools.
+//
+// The names are a parameter rather than a setter with a default, because every
+// default here is a guess about what the model can reach, and a guess that is
+// wrong is an error message sending it somewhere that does not exist.
+func NewState(r *policy.Resolver, l Limits, tools []string) *State {
+	set := make(map[string]struct{}, len(tools))
+	for _, n := range tools {
+		set[n] = struct{}{}
+	}
+	return &State{Resolver: r, Limits: l, tools: set, files: map[string]fileState{}}
+}
+
+// has reports whether this session offers the named tool.
+func (s *State) has(name string) bool {
+	_, ok := s.tools[name]
+	return ok
 }
 
 // MarkRead records that path was read with this content.

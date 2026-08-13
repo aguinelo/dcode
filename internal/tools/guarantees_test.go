@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/policy"
 )
 
 // The two invariants in this file are the ones TestEveryInvariantHasATest found
@@ -151,5 +153,58 @@ func TestEveryToolPassesThroughPolicy(t *testing.T) {
 	exec := strings.Index(body, "tool.Execute(")
 	if gate < 0 || gate > exec {
 		t.Error("the only execution site is not preceded by the evaluator")
+	}
+}
+
+// A tool error may only point at a capability this session has.
+//
+// Error text is a behaviour surface (RN-3), so naming a tool that is not there
+// is worse than naming nothing: the model follows the instruction, finds no
+// such tool, and has spent a round learning that the error lied.
+//
+// The v13 digest of records-before-compaction is what that looks like. The
+// scenario offered no glob, the model read directories anyway, and every error
+// answered "use glob to list what is in it" — thirty reads at guessed paths,
+// ending in the model writing "Glob isn't available. Let me try to list by
+// guessing common file names in those directories."
+func TestAToolErrorNamesGlobOnlyWhenTheSessionHasIt(t *testing.T) {
+	r, err := policy.NewResolver(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFileT(t, r.Workspace, "pkg/stats.go", "package pkg\n")
+
+	for _, tc := range []struct {
+		name  string
+		tools []string
+		want  bool
+	}{
+		{"offered", []string{"read", "glob", "grep"}, true},
+		{"not offered", []string{"read", "grep"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewState(r, DefaultLimits(), tc.tools)
+
+			dir := run(t, Read{}, s, ReadInput{Path: "pkg"})
+			missing := run(t, Read{}, s, ReadInput{Path: "nope.go"})
+
+			for _, res := range []Result{dir, missing} {
+				if !res.IsError {
+					t.Fatalf("expected an error, got: %s", res.Output)
+				}
+				if got := strings.Contains(strings.ToLower(res.Output), "glob"); got != tc.want {
+					t.Errorf("mentions glob = %v, want %v: %s", got, tc.want, res.Output)
+				}
+			}
+			// Dropping the suggestion must not drop the way forward. An error
+			// that only says what went wrong leaves the model to guess, which
+			// is the behaviour the message exists to prevent.
+			if !strings.Contains(dir.Output, "file inside it") {
+				t.Errorf("no way forward offered: %s", dir.Output)
+			}
+			if !strings.Contains(missing.Output, "Check the path") {
+				t.Errorf("no way forward offered: %s", missing.Output)
+			}
+		})
 	}
 }

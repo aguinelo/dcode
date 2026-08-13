@@ -283,7 +283,7 @@ func wireSessionNet(t *testing.T, ws string, turns [][]string, approver loop.App
 		t.Skipf("no sandbox available: %v", err)
 	}
 
-	state := tools.NewState(resolver, tools.DefaultLimits())
+	state := tools.NewState(resolver, tools.DefaultLimits(), allToolNames)
 	registry := tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{}, tools.Glob{}, tools.Grep{},
 		tools.Bash{
@@ -523,3 +523,7 @@ func asProviderErr(err error, target **provider.ProviderError) bool {
 	}
 	return false
 }
+
+// allToolNames is every tool the product ships, which is what a session with
+// the full registry offers. Tests that care about a narrower set say so.
+var allToolNames = []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}

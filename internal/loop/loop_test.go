@@ -170,7 +170,7 @@ func newEngine(t *testing.T, p provider.Provider, reg *tools.Registry, mut ...fu
 	cfg := Config{
 		Provider:  p,
 		Tools:     reg,
-		State:     tools.NewState(res, tools.DefaultLimits()),
+		State:     tools.NewState(res, tools.DefaultLimits(), allToolNames),
 		Emitter:   rec,
 		Limits:    DefaultLimits(),
 		Mode:      policy.ModeWorkspaceWrite,
@@ -1016,7 +1016,7 @@ func TestSummarisingDoesNotSpendAnIteration(t *testing.T) {
 		}
 		summarised := 0
 		e := New(Config{
-			Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits()),
+			Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits(), allToolNames),
 			Emitter: newRecorder(), Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
 			Policy: policy.PolicyOnRequest, Model: "m",
 			CtxConfig: ce.Config{CompactAt: 0.5, KeepTurns: 2, Window: window},
@@ -1219,3 +1219,7 @@ func TestTheTimesReachTheClientAndNotTheModel(t *testing.T) {
 		t.Errorf("a timestamp reached the model: %q", m)
 	}
 }
+
+// allToolNames is every tool the product ships, which is what a session with
+// the full registry offers. Tests that care about a narrower set say so.
+var allToolNames = []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}

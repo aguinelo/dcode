@@ -32,7 +32,7 @@ func delegateEngine(t *testing.T, turns [][]provider.StreamEvent) (*Engine, stri
 		Tools: tools.NewRegistry(
 			tools.Read{}, tools.Write{}, tools.Glob{}, tools.Grep{}, tools.Symbol{},
 		),
-		State:                  tools.NewState(res, tools.DefaultLimits()),
+		State:                  tools.NewState(res, tools.DefaultLimits(), allToolNames),
 		Emitter:                newRecorder(),
 		Limits:                 DefaultLimits(),
 		Mode:                   policy.ModeWorkspaceWrite,
@@ -235,7 +235,7 @@ func TestTheChildIsReadOnlyEvenWithAWritingToolInReach(t *testing.T) {
 			{text("could not write"), done()},
 		}},
 		Tools:                  tools.NewRegistry(tools.Read{}, scribble{dir: ws}),
-		State:                  tools.NewState(res, tools.DefaultLimits()),
+		State:                  tools.NewState(res, tools.DefaultLimits(), allToolNames),
 		Emitter:                newRecorder(),
 		Approver:               spy,
 		Limits:                 DefaultLimits(),

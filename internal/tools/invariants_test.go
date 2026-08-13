@@ -22,6 +22,7 @@ var toolInvariants = map[string]string{
 	"sem qualquer efeito":              "TestDeclareTouchesNothing",
 	"Nenhuma saída contém":             "TestNoOutputCarriesAClockOrAnAbsolutePath",
 	"em diretório diz que é diretório": "TestReadingADirectorySaysToUseGlob",
+	"só nomeia ferramenta que":         "TestAToolErrorNamesGlobOnlyWhenTheSessionHasIt",
 	"Truncamento sempre":               "TestTruncationIsDeclared",
 	"saída diferente de zero":          "TestBashNonZeroExitIsAResultNotAnError",
 	"sem veredito favorável":           "TestEveryToolPassesThroughPolicy",

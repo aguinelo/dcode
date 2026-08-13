@@ -19,7 +19,7 @@ func setup(t *testing.T) (*State, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewState(r, DefaultLimits()), r.Workspace
+	return NewState(r, DefaultLimits(), allToolNames), r.Workspace
 }
 
 func writeFileT(t *testing.T, dir, name, content string) string {
@@ -640,3 +640,7 @@ func TestThePlanDescriptionSaysWhoReadsIt(t *testing.T) {
 		}
 	}
 }
+
+// allToolNames is every tool the product ships, which is what a session with
+// the full registry offers. Tests that care about a narrower set say so.
+var allToolNames = []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}
