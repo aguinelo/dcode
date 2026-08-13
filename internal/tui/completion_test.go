@@ -79,7 +79,7 @@ func TestTheSealSurvivesANarrowTerminal(t *testing.T) {
 	// rather than fielded, and no arrangement fits. Above it, the seal is never
 	// the thing given up — the model name and the context meter are.
 	for _, width := range []int{120, 80, 60, 40} {
-		out := renderStatus(m, DefaultGeometry(width, 40), false, true)
+		out := renderStatus(m, DefaultGeometry(width, 40), false)
 		if !strings.Contains(out, "NOT VERIFIED") {
 			t.Errorf("at width %d the seal was dropped:\n%s", width, out)
 		}

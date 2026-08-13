@@ -38,13 +38,6 @@ const (
 	// to structure and to nothing else: two of them side by side would say that
 	// everything is structure.
 	StyleOnAccent
-	// StyleEyeOnBody is the eye drawn ON the body: terracotta over amber.
-	//
-	// A half-block painted with a foreground alone leaves its lower half
-	// showing the terminal's own background, which put a hole through the
-	// middle of the mark. The eye is inside the head, so the head has to be
-	// behind it.
-	StyleEyeOnBody
 )
 
 // Palette turns a role into an escape sequence.
@@ -76,8 +69,7 @@ var ansi = map[Style]string{
 	StyleEye:       "38;5;131",
 
 	// Amber ground, near-black text — the contrast the design pins at 8:1.
-	StyleOnAccent:  "48;5;179;38;5;234",
-	StyleEyeOnBody: "48;5;179;38;5;131",
+	StyleOnAccent: "48;5;179;38;5;234",
 }
 
 // Apply wraps text in a role.

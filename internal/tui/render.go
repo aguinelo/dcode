@@ -194,7 +194,7 @@ func render(m Model, g Geometry) string {
 	showPanel := g.ShowPanel(len(m.Plan) > 0)
 
 	var b strings.Builder
-	b.WriteString(renderStatus(m, g, showPanel, len(m.Entries) > 0))
+	b.WriteString(renderStatus(m, g, showPanel))
 	b.WriteString("\n")
 
 	body := StreamLines(m, g)
@@ -274,39 +274,7 @@ func StreamLines(m Model, g Geometry) []string {
 // one. The order below is deliberate and the sandbox mode is never in it: it is
 // the only field where being wrong is dangerous, so a narrow terminal loses the
 // model name before it loses the mode.
-// Mark is the mascot at the size the status line can hold: the head, and the
-// eye that makes it the mascot rather than a rectangle.
-//
-// One row, four cells, in the top right corner and always there. The brand
-// puts the contrast in luminance rather than hue precisely so this survives —
-// the terracotta eye reads against the amber body at any size, where two
-// analogous hues alone would have blurred into one patch.
-//
-// Plain text so the caller styles it; RenderMark is the coloured one.
-func Mark(g Geometry) string {
-	if !g.Unicode {
-		return "#oo#"
-	}
-	return "█▀▀█"
-}
-
-// RenderMark is Mark with the brand's roles applied.
-//
-// The eye is drawn on the body rather than beside it. A half-block painted
-// with a foreground alone leaves its lower half showing the terminal's
-// background, which put a hole through the middle of the mark — the head
-// looked cut rather than solid. The eye is inside the head, so the head has to
-// be behind it.
-func RenderMark(g Geometry) string {
-	body, eye := "█", "▀▀"
-	if !g.Unicode {
-		body, eye = "#", "oo"
-	}
-	p := g.Palette
-	return p.Apply(StyleBody, body) + p.Apply(StyleEyeOnBody, eye) + p.Apply(StyleBody, body)
-}
-
-func renderStatus(m Model, g Geometry, showPanel, showMark bool) string {
+func renderStatus(m Model, g Geometry, showPanel bool) string {
 	gl := glyphs(g.Unicode)
 	p := g.Palette
 
@@ -391,18 +359,6 @@ func renderStatus(m Model, g Geometry, showPanel, showMark bool) string {
 	}
 	line := render(fields)
 
-	// The mark is pinned to the right edge rather than appended, so it stays in
-	// the corner whatever the line holds. It is decoration, so it is the first
-	// thing to go: on a terminal too narrow for both, what carries meaning
-	// stays and the brand does not.
-	//
-	// Not on the empty state, where the whole mascot is already on screen. Two
-	// of it on one screen is one too many, and the eye is meant to be the only
-	// terracotta in the interface.
-	gap := g.Width - visibleWidth(line) - visibleWidth(Mark(g)) - 1
-	if showMark && gap >= 0 {
-		line += strings.Repeat(" ", gap+1) + RenderMark(g)
-	}
 	return clipStyled(line, g.Width)
 }
 
