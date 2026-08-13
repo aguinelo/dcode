@@ -166,6 +166,31 @@ func Render(m Model, g Geometry) string {
 	if g.Width <= 0 || g.Height <= 0 {
 		return ""
 	}
+	return fill(render(m, g), g)
+}
+
+// fill pads every line to the full width.
+//
+// A frame owns every cell it covers. Twenty-nine lines in thirty ended before
+// the right edge, and every cell past them kept whatever the terminal had there
+// — the previous command's output showing through the gaps of a running
+// session. Whether the alternate screen was entered is not knowable from in
+// here, and with this it stops mattering: a line that reaches the edge cannot
+// have anything behind it.
+//
+// Padding rather than an erase-to-end-of-line escape, because the escape is the
+// renderer's business and this has to hold whatever renderer draws it.
+func fill(body string, g Geometry) string {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if pad := g.Width - visibleWidth(line); pad > 0 {
+			lines[i] = line + strings.Repeat(" ", pad)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func render(m Model, g Geometry) string {
 	showPanel := g.ShowPanel(len(m.Plan) > 0)
 
 	var b strings.Builder
