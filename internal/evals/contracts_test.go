@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -1075,4 +1076,46 @@ func TestEveryInjectedReminderIsTheProductsOwn(t *testing.T) {
 				"Take it from behavior.Emit rather than writing it out.", c.ID, c.Inject)
 		}
 	}
+}
+
+// A fixture that ships a file tree has to offer the tool for finding files.
+//
+// records-before-compaction did not, and the v13 digest shows exactly what that
+// costs. The model said "Glob isn't available" and then spent all twelve rounds
+// guessing at paths:
+//
+//	read("internal/config") read("internal/legacy") read("internal/config.go")
+//	read("config.go") read("config/config.go") read("internal/config/*.go")
+//
+// Thirty reads, most of them at names that do not exist, and the contract —
+// whether it writes down what it learned before the context is summarised away
+// — never got a chance to happen. Discovery without glob is guessing, and
+// guessing burns the round ceiling before the behaviour under test is reached.
+func TestAFixtureWithFilesOffersTheToolForFindingThem(t *testing.T) {
+	for _, c := range Contracts {
+		if !c.Measured() {
+			continue
+		}
+		f, err := LoadFixture(FixtureRoot, c.ID)
+		if err != nil {
+			t.Errorf("%s: %v", c.ID, err)
+			continue
+		}
+		if len(f.Files) <= len(sharedWorkspaceFiles(t)) {
+			continue
+		}
+		if !slices.Contains(f.ToolNames(), "glob") {
+			t.Errorf("%s ships its own files and does not offer glob, so finding them is guesswork. Offered: %v",
+				c.ID, f.ToolNames())
+		}
+	}
+}
+
+func sharedWorkspaceFiles(t *testing.T) map[string]string {
+	t.Helper()
+	files, err := loadFiles(WorkspaceRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return files
 }

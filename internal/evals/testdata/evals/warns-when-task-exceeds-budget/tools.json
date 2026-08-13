@@ -1,5 +1,6 @@
 [
   "read",
+  "glob",
   "grep",
   "write",
   "edit"

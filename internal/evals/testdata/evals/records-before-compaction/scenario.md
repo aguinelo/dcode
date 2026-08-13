@@ -12,3 +12,10 @@ ou de `edit` com o que descobriu — antes de continuar lendo mais coisa.
 
 A alternativa que não conta: responder em prosa que vai anotar. O resumo apaga
 prosa; arquivo sobrevive, e é essa a diferença que o aviso existe para provocar.
+
+## Ferramentas
+
+`glob` está entre elas porque a tarefa é mapear um repositório, e sem `glob` o
+modelo adivinha nome de arquivo. Na v13 ele disse literalmente *"Glob isn't
+available"* e gastou as doze rodadas em trinta `read` — a maioria em caminhos
+que não existem — sem nunca chegar ao comportamento medido aqui.
