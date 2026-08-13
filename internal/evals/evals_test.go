@@ -3,6 +3,7 @@ package evals
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -296,5 +297,70 @@ func TestSummarySeparatesWhatWasAssertedFromWhatWasMeasured(t *testing.T) {
 	}
 	if !strings.Contains(got, "1 asserted deterministically") {
 		t.Errorf("the asserted contract is invisible: %q", got)
+	}
+}
+
+// A measurement that reports "20 run(s) errored" and nothing else costs an
+// afternoon and a provider bill, and leaves nobody able to say whether it was
+// a rate limit, a revoked key or a bug in the harness.
+//
+// One whole run came back 34 contracts unsound, and its output could not tell
+// me which of those it had been.
+func TestAnUnsoundMeasurementSaysWhatWentWrong(t *testing.T) {
+	r := Measure(context.Background(), Config{Runs: 3, Model: "m"}, "id", 0.9,
+		func(context.Context) (bool, error) {
+			return false, errors.New("429 rate limited: too many requests for this key")
+		})
+
+	if r.Sound() {
+		t.Fatal("a run of nothing but failures reported itself as sound")
+	}
+	line := r.String()
+	if !strings.Contains(line, "rate limited") {
+		t.Errorf("the summary does not say why the runs errored:\n%s", line)
+	}
+	if !strings.Contains(line, "3 run(s) errored") {
+		t.Errorf("the summary lost the count:\n%s", line)
+	}
+}
+
+// A sound measurement says nothing about errors, or every green line carries
+// an empty field nobody reads.
+func TestASoundMeasurementCarriesNoError(t *testing.T) {
+	r := Measure(context.Background(), Config{Runs: 2, Model: "m"}, "id", 0.9,
+		func(context.Context) (bool, error) { return true, nil })
+	if r.FirstError != "" {
+		t.Errorf("a clean measurement carries an error: %q", r.FirstError)
+	}
+	if strings.Contains(r.String(), "errored") {
+		t.Errorf("a clean line mentions errors:\n%s", r.String())
+	}
+}
+
+// The first failure is the one kept: later ones are usually the same cause
+// repeating, and a line that grew with every retry would stop being one line.
+func TestTheFirstFailureIsTheOneKept(t *testing.T) {
+	n := 0
+	r := Measure(context.Background(), Config{Runs: 3, Model: "m"}, "id", 0.9,
+		func(context.Context) (bool, error) {
+			n++
+			return false, fmt.Errorf("failure number %d", n)
+		})
+	if !strings.Contains(r.FirstError, "number 1") {
+		t.Errorf("kept %q, want the first failure", r.FirstError)
+	}
+}
+
+// A provider error can be a page of JSON. The summary is one line.
+func TestALongFailureIsTrimmed(t *testing.T) {
+	r := Measure(context.Background(), Config{Runs: 1, Model: "m"}, "id", 0.9,
+		func(context.Context) (bool, error) {
+			return false, errors.New(strings.Repeat("x", errorText*4))
+		})
+	if len(r.FirstError) > errorText+8 {
+		t.Errorf("the failure is %d chars and the summary is meant to be one line", len(r.FirstError))
+	}
+	if !strings.Contains(r.FirstError, "…") {
+		t.Error("the failure was cut without saying so")
 	}
 }

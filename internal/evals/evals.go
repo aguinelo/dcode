@@ -90,6 +90,14 @@ type Result struct {
 	Errors    int
 	Model     string
 	Build     string
+	// FirstError is why the errored runs errored, or empty when none did.
+	//
+	// The count alone cannot be acted on. A measurement that reports "20
+	// run(s) errored" and nothing else costs an afternoon and a provider bill
+	// and leaves nobody able to say whether it was a rate limit, a revoked
+	// key, or a bug in the harness — which is the same defect as a rate with
+	// no transcript behind it, in the one place it is most expensive.
+	FirstError string
 }
 
 // Rate is the share of runs that behaved as contracted.
@@ -137,6 +145,9 @@ func (r Result) String() string {
 		r.ID, verdict, r.Rate()*100, r.Runs, r.Threshold*100)
 	if r.Errors > 0 {
 		fmt.Fprintf(&b, " — %d run(s) errored, measurement unsound", r.Errors)
+		if r.FirstError != "" {
+			fmt.Fprintf(&b, ": %s", r.FirstError)
+		}
 	}
 	if r.Model != "" {
 		fmt.Fprintf(&b, " · model %s", r.Model)
@@ -177,6 +188,9 @@ func Measure(ctx context.Context, cfg Config, id string, threshold float64, atte
 		switch {
 		case err != nil:
 			r.Errors++
+			if r.FirstError == "" {
+				r.FirstError = trimError(err.Error())
+			}
 		case ok:
 			r.Passed++
 		}
@@ -224,6 +238,18 @@ func Summary(declared, asserted int, rs []Result) string {
 		fmt.Fprintf(&b, " · %d asserted deterministically, not measured", asserted)
 	}
 	return b.String()
+}
+
+// errorText is how much of a failure is worth carrying into the summary line.
+const errorText = 160
+
+// trimError keeps a failure readable on one line.
+func trimError(msg string) string {
+	msg = strings.Join(strings.Fields(msg), " ")
+	if len(msg) > errorText {
+		msg = msg[:errorText] + "…"
+	}
+	return msg
 }
 
 // Report renders a set of results, worst first.
