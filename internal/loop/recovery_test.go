@@ -65,7 +65,7 @@ func TestStreamSetupFailureIsClassified(t *testing.T) {
 			e := New(Config{
 				Provider: &failingProvider{err: tc.err},
 				Tools:    tools.NewRegistry(),
-				State:    tools.NewState(res, tools.DefaultLimits()),
+				State:    tools.NewState(res, tools.DefaultLimits(), allToolNames),
 				Emitter:  newRecorder(),
 				Limits:   DefaultLimits(),
 				Mode:     policy.ModeWorkspaceWrite,
@@ -112,7 +112,7 @@ func TestContextSizeErrorTriggersCompactionAndRetries(t *testing.T) {
 	rec := newRecorder()
 	e := New(Config{
 		Provider: p, Tools: tools.NewRegistry(),
-		State: tools.NewState(res, tools.DefaultLimits()), Emitter: rec,
+		State: tools.NewState(res, tools.DefaultLimits(), allToolNames), Emitter: rec,
 		Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
 		Policy: policy.PolicyOnRequest, Model: "m",
 		// A window large enough that the local estimate would not have
@@ -147,7 +147,7 @@ func TestContextSizeErrorWithNothingToCompactFails(t *testing.T) {
 	res, _ := policy.NewResolver(ws)
 	e := New(Config{
 		Provider: p, Tools: tools.NewRegistry(),
-		State: tools.NewState(res, tools.DefaultLimits()), Emitter: newRecorder(),
+		State: tools.NewState(res, tools.DefaultLimits(), allToolNames), Emitter: newRecorder(),
 		Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
 		Policy: policy.PolicyOnRequest, Model: "m",
 	}, ce.Session{Instructions: "You are dcode."}) // empty history
@@ -287,7 +287,7 @@ func TestARetryableFailureIsRetriedBeforeGivingUp(t *testing.T) {
 			e := New(Config{
 				Provider: p,
 				Tools:    tools.NewRegistry(),
-				State:    tools.NewState(res, tools.DefaultLimits()),
+				State:    tools.NewState(res, tools.DefaultLimits(), allToolNames),
 				Emitter:  newRecorder(),
 				Limits:   DefaultLimits(),
 				Mode:     policy.ModeWorkspaceWrite,
@@ -328,7 +328,7 @@ func TestAnInterruptDuringBackoffEndsTheTurn(t *testing.T) {
 			Class: provider.ErrClassTransport, Retryable: true,
 		}},
 		Tools:   tools.NewRegistry(),
-		State:   tools.NewState(res, tools.DefaultLimits()),
+		State:   tools.NewState(res, tools.DefaultLimits(), allToolNames),
 		Emitter: newRecorder(),
 		Limits:  DefaultLimits(),
 		Mode:    policy.ModeWorkspaceWrite,

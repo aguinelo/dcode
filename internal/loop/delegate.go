@@ -100,7 +100,7 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 	child := New(Config{
 		Provider: e.cfg.Provider,
 		Tools:    reg,
-		State:    tools.NewState(e.cfg.State.Resolver, e.cfg.State.Limits),
+		State:    tools.NewState(e.cfg.State.Resolver, e.cfg.State.Limits, readable),
 		Emitter:  nil, // the child's steps are not the parent session's events
 		Approver: approver,
 		// Read-only, fixed here. It is not a field of the tool input and the

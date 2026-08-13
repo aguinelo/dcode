@@ -290,7 +290,7 @@ func TestCompactionRunsOnceAndIsAnnounced(t *testing.T) {
 	rec := newRecorder()
 	summarised := 0
 	e := New(Config{
-		Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits()),
+		Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits(), allToolNames),
 		Emitter: rec, Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
 		Policy: policy.PolicyOnRequest, Model: "m",
 		CtxConfig: ce.Config{CompactAt: 0.5, KeepTurns: 2, Window: 500},
@@ -334,7 +334,7 @@ func TestCompactionFallsBackWhenSummarisingFails(t *testing.T) {
 	ws := t.TempDir()
 	res, _ := policy.NewResolver(ws)
 	e := New(Config{
-		Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits()),
+		Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits(), allToolNames),
 		Emitter: newRecorder(), Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
 		Policy: policy.PolicyOnRequest, Model: "m",
 		CtxConfig: ce.Config{CompactAt: 0.5, KeepTurns: 2, Window: 500},

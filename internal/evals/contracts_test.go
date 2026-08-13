@@ -443,7 +443,7 @@ func TestAnInjectionHappensOnceAndOnlyOnce(t *testing.T) {
 // workspaceWith builds a scenario workspace over a temp directory.
 func workspaceWith(t *testing.T, files map[string]string) *Workspace {
 	t.Helper()
-	w, err := NewWorkspace(t.TempDir(), files)
+	w, err := NewWorkspace(t.TempDir(), files, ProductRegistry().Names())
 	if err != nil {
 		t.Fatal(err)
 	}

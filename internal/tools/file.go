@@ -63,7 +63,7 @@ func (r Read) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 
 	raw, err := os.ReadFile(abs)
 	if err != nil {
-		return notFound(r.Name(), in.Path, err).Result(), nil
+		return s.notFound(r.Name(), in.Path, err).Result(), nil
 	}
 	// A binary dump would flood the context with bytes the model cannot use
 	// and cannot summarise.
@@ -171,7 +171,7 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 			return e.Result(), nil
 		}
 	case !os.IsNotExist(err):
-		return notFound(w.Name(), in.Path, err).Result(), nil
+		return s.notFound(w.Name(), in.Path, err).Result(), nil
 	}
 
 	if err := writeFile(abs, in.Content, s.Limits.AtomicWrite); err != nil {
@@ -253,7 +253,7 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 
 	raw, err := os.ReadFile(abs)
 	if err != nil {
-		return notFound(e.Name(), in.Path, err).Result(), nil
+		return s.notFound(e.Name(), in.Path, err).Result(), nil
 	}
 	content := string(raw)
 
@@ -324,10 +324,15 @@ func resolvePath(tool string, s *State, path string, write bool) (string, *ToolE
 	return a.Path, nil
 }
 
-func notFound(tool, path string, err error) *ToolError {
+func (s *State) notFound(tool, path string, err error) *ToolError {
+	// The suggestion is offered only when the session can act on it.
+	find, list := "Check the path.", "Name a file inside it."
+	if s.has("glob") {
+		find = "Check the path, or use glob to find it."
+		list = "Use glob to list what is in it, or name a file inside it."
+	}
 	if os.IsNotExist(err) {
-		return errf(tool, CodeNotFound,
-			"Check the path, or use glob to find it.", "%s does not exist", path)
+		return errf(tool, CodeNotFound, find, "%s does not exist", path)
 	}
 	// Reading a directory is a thing a model does constantly, and the answer
 	// used to be the wrapped Go error — which named the absolute path and said
@@ -335,9 +340,7 @@ func notFound(tool, path string, err error) *ToolError {
 	// the round discovering it was the same directory.
 	var pathErr *fs.PathError
 	if errors.As(err, &pathErr) && errors.Is(pathErr.Err, syscall.EISDIR) {
-		return errf(tool, CodeNotFound,
-			"Use glob to list what is in it, or name a file inside it.",
-			"%s is a directory", path)
+		return errf(tool, CodeNotFound, list, "%s is a directory", path)
 	}
 	// The workspace path is never in an error either. It varies by machine,
 	// which breaks golden output, and a model that reads it starts treating an

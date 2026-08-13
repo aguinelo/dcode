@@ -42,7 +42,7 @@ type Workspace struct {
 //
 // Every path is relative and confined: the policy resolver is rooted at dir,
 // so a scenario cannot reach out of its own workspace even if the model asks.
-func NewWorkspace(dir string, files map[string]string) (*Workspace, error) {
+func NewWorkspace(dir string, files map[string]string, offered []string) (*Workspace, error) {
 	for name, body := range files {
 		path := filepath.Join(dir, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -57,7 +57,11 @@ func NewWorkspace(dir string, files map[string]string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	state := tools.NewState(resolver, tools.DefaultLimits())
+	// The fixture's tools, not the whole registry: a tool error may only
+	// point at what the model was actually offered, and the scenario decides
+	// that. Passing the registry here is how records-before-compaction came
+	// to be told "use glob" thirty times by a session with no glob.
+	state := tools.NewState(resolver, tools.DefaultLimits(), offered)
 
 	return &Workspace{Dir: dir, state: state, resolver: resolver, Registry: ProductRegistry()}, nil
 }

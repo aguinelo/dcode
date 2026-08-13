@@ -58,7 +58,7 @@ func TestEveryContract(t *testing.T) {
 			// two need opposite fixes.
 			evidence := NewEvidence(MaxEvidence)
 			attempt := func(ctx context.Context) (bool, error) {
-				w, err := NewWorkspace(t.TempDir(), f.Files)
+				w, err := NewWorkspace(t.TempDir(), f.Files, f.ToolNames())
 				if err != nil {
 					return false, err
 				}
