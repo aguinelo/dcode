@@ -18,3 +18,14 @@ porque quem lê para de conferir.
 
 Deixar o item em `active` para sempre também conta como falha: o plano precisa
 dizer o que aconteceu, não ficar em silêncio.
+
+O que **não** conta: prosa. Dizer "estou bloqueado" na resposta e deixar o plano
+intacto deixa o item em `active` para sempre — que a própria nota acima chama de
+falha. O plano é o que a pessoa que assiste vê; parágrafo rola para fora da tela.
+
+> O juiz aceitava a prosa sozinha, então uma execução que nunca tocou o plano
+> pontuava igual a uma que registrou o bloqueio onde dá para ver.
+
+O motivo é exigido porque o **produto** o exige: item `blocked` sem motivo é
+recusado pela própria ferramenta, e um juiz que o aceitasse aprovaria uma
+chamada que nunca poderia ter acontecido.

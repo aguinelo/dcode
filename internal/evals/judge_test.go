@@ -462,3 +462,89 @@ func TestSaysAllAndSaysAnyIgnoreCase(t *testing.T) {
 		t.Error("SaysNoneOf is case-sensitive")
 	}
 }
+
+// planned builds a transcript with one plan call carrying these items.
+func planned(items ...map[string]any) Transcript {
+	in, err := json.Marshal(map[string]any{"items": items})
+	if err != nil {
+		panic(err)
+	}
+	return Transcript{Calls: []ce.ToolCall{{Name: "plan", Input: in}}}
+}
+
+func item(id int, text, status string) map[string]any {
+	return map[string]any{"id": id, "text": text, "status": status}
+}
+
+// The scenario demands "plano com 4 itens ou mais" and warns that a one-item
+// plan is not a plan, it is the task repeated. The judge was Called("plan"),
+// which cannot tell those apart — so the contract has never measured the thing
+// its own note says it measures.
+func TestPlanDepthCountsTheItems(t *testing.T) {
+	judge := PlannedAtLeast(4)
+
+	if judge(planned(item(1, "rename Summary", "active"))) {
+		t.Error("a one-item plan satisfied a contract about depth")
+	}
+	if !judge(planned(
+		item(1, "rename the declaration", "active"),
+		item(2, "update the uses", "pending"),
+		item(3, "update the tests", "pending"),
+		item(4, "update the doc comments", "pending"),
+	)) {
+		t.Error("a four-item plan was rejected")
+	}
+	if judge(Transcript{}) {
+		t.Error("a run with no plan at all passed")
+	}
+}
+
+// A plan is replaced entirely on each call, so the last one is the plan. A run
+// that starts with four items and collapses to one has not kept a deep plan.
+func TestPlanDepthReadsTheLastPlanNotTheBest(t *testing.T) {
+	deep, err := json.Marshal(map[string]any{"items": []map[string]any{
+		item(1, "a", "active"), item(2, "b", "pending"),
+		item(3, "c", "pending"), item(4, "d", "pending"),
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	shallow, err := json.Marshal(map[string]any{"items": []map[string]any{item(1, "everything", "active")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := Transcript{Calls: []ce.ToolCall{
+		{Name: "plan", Input: deep},
+		{Name: "plan", Input: shallow},
+	}}
+	if PlannedAtLeast(4)(tr) {
+		t.Error("a plan collapsed to one item was judged on the version it replaced")
+	}
+}
+
+// "blocked com motivo" is the contract. The judge accepted prose containing the
+// word "blocked", so a run that never touched the plan and merely said "I am
+// blocked" scored the same as one that recorded it where the person watching
+// can see.
+func TestPlanStaysLiveWantsTheItemBlockedWithAReason(t *testing.T) {
+	judge := PlannedBlockedWithReason()
+
+	blocked := map[string]any{"id": 2, "text": "run them", "status": "blocked",
+		"blocked": "no staging database is reachable"}
+	if !judge(planned(item(1, "write the tests", "done"), blocked)) {
+		t.Error("a blocked item with a reason was rejected")
+	}
+
+	noReason := map[string]any{"id": 2, "text": "run them", "status": "blocked"}
+	if judge(planned(noReason)) {
+		t.Error("a blocked item with no reason passed; the product itself refuses that call")
+	}
+	if judge(planned(item(1, "run them", "active"))) {
+		t.Error("an item left active forever passed a contract about declaring the block")
+	}
+
+	proseOnly := Transcript{Text: "I am blocked: there is no staging database."}
+	if judge(proseOnly) {
+		t.Error("prose alone passed; the plan is what the person watching sees")
+	}
+}
