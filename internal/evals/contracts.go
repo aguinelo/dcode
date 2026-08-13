@@ -52,6 +52,13 @@ type Contract struct {
 	// turn is more chances to reach for the shell, and a whole turn is what
 	// the product runs.
 	Rounds int
+	// Runs is how many times this contract measures, when the global is not
+	// enough for what it claims. Zero takes the global.
+	//
+	// Separate from Rounds and constantly confused with it: Rounds is how many
+	// exchanges ONE run gets, Runs is how many times the whole scenario is
+	// repeated to turn a verdict into a rate.
+	Runs int
 	// Inject is fed back to the model between rounds, standing in for what the
 	// product would have appended — a tool error, a reminder. Empty means the
 	// scenario is a single exchange.
@@ -147,6 +154,29 @@ func InjectionTarget(c Contract, calls []ce.ToolCall) int {
 
 // Measured reports whether this contract needs a model to answer.
 func (c Contract) Measured() bool { return len(c.Asserted) == 0 }
+
+// RunCount resolves how many times this contract measures, given the global.
+//
+// The demanding floor is DERIVED from the threshold rather than written on each
+// contract. Nineteen entries carrying the same literal is nineteen chances for
+// one of them to drift, and the drift would be invisible: a contract measuring
+// too few times still prints a rate, and the rate still looks like evidence.
+// Derived, the next contract declaring 95% cannot forget.
+//
+// Runs stays as an explicit override for a contract that needs more than the
+// floor. The larger of the three wins, because someone raising DCODE_EVAL_RUNS
+// is asking for more evidence and a floor that capped them would be a ceiling
+// wearing a floor's name.
+func (c Contract) RunCount(global int) int {
+	n := c.Runs
+	if c.Threshold >= Demanding && n < DemandingRuns {
+		n = DemandingRuns
+	}
+	if global > n {
+		return global
+	}
+	return n
+}
 
 // Measurable is how many of the declared contracts a run can actually measure.
 //

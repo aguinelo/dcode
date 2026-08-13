@@ -74,11 +74,17 @@ func TestEveryContract(t *testing.T) {
 				return ok, nil
 			}
 
+			// A contract that claims more measures more. Resolved here rather
+			// than inside Measure so the count that ran is the count that
+			// gets printed, with no second place deciding it.
+			runCfg := cfg
+			runCfg.Runs = contract.RunCount(cfg.Runs)
+
 			ctx, cancel := context.WithTimeout(context.Background(),
-				runTimeout*time.Duration(cfg.Runs*contract.Rounds))
+				runTimeout*time.Duration(runCfg.Runs*contract.Rounds))
 			defer cancel()
 
-			r := Measure(ctx, cfg, contract.ID, contract.Threshold, attempt)
+			r := Measure(ctx, runCfg, contract.ID, contract.Threshold, attempt)
 			measured = append(measured, r)
 			if !r.Met() && sawFailure {
 				t.Log("one failing run — " + failed.Digest())

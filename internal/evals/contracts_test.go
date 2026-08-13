@@ -972,3 +972,59 @@ func TestABudgetReminderWaitsForNothing(t *testing.T) {
 		}
 	}
 }
+
+// A threshold is a claim about a rate, and a rate measured twenty times cannot
+// tell 90% from 100% — one failure is five points. A contract that claims 95%
+// and measures twenty times is asking the instrument for a precision it does
+// not have, and the answer it gets back is noise wearing a verdict.
+//
+// The guard is here rather than in a comment because a convention nobody checks
+// is a convention the next contract forgets.
+func TestADemandingThresholdMeasuresEnoughTimesToAssertIt(t *testing.T) {
+	for _, c := range Contracts {
+		if !c.Measured() || c.Threshold < Demanding {
+			continue
+		}
+		if got := c.RunCount(DefaultRuns); got < DemandingRuns {
+			t.Errorf("%s claims %.0f%% but measures %d times; %.0f%% needs at least %d",
+				c.ID, c.Threshold*100, got, Demanding*100, DemandingRuns)
+		}
+	}
+}
+
+// The global stays the default. Declaring the count on every contract would put
+// the same number in thirty-five places, and the one that drifts is the one
+// nobody reads.
+func TestRunCountFallsBackToTheGlobalWhenTheContractIsSilent(t *testing.T) {
+	if got := (Contract{}).RunCount(20); got != 20 {
+		t.Errorf("a silent contract resolved to %d runs, not the global 20", got)
+	}
+	if got := (Contract{Runs: 50}).RunCount(20); got != 50 {
+		t.Errorf("a contract asking for 50 runs resolved to %d", got)
+	}
+	// A global raised above what the contract asks for wins: someone who sets
+	// DCODE_EVAL_RUNS=100 is asking for more evidence, not less.
+	if got := (Contract{Runs: 50}).RunCount(100); got != 100 {
+		t.Errorf("a raised global was overridden down to %d", got)
+	}
+	// The floor is not opt-in. A demanding contract that names a smaller count
+	// is a contract that would print a rate its own threshold cannot read.
+	if got := (Contract{Threshold: 0.99, Runs: 20}).RunCount(20); got != DemandingRuns {
+		t.Errorf("a 99%% contract asking for 20 runs resolved to %d, not the floor", got)
+	}
+}
+
+// The derivation has to actually reach the shipped table. A rule that applies
+// to nothing is a rule nobody can tell is broken.
+func TestTheDemandingFloorAppliesToTheContractsThatShip(t *testing.T) {
+	var demanding int
+	for _, c := range Contracts {
+		if c.Measured() && c.RunCount(DefaultRuns) >= DemandingRuns {
+			demanding++
+		}
+	}
+	if demanding == 0 {
+		t.Fatal("no shipped contract reaches the demanding floor; the rule is decorative")
+	}
+	t.Logf("%d of %d measured contracts run %d times", demanding, Measurable(Contracts), DemandingRuns)
+}
