@@ -48,6 +48,23 @@ var toolInvariants = map[string]string{
 	"não** o histórico do pai": "TestExploreDeclaresOnlyARead",
 	"lista de caminhos lidos":  "TestExploreReportsWhereItLookedAndWhatItCouldNotRead",
 	"reporta leitura, nunca":   "TestExploreDeclaresOnlyARead",
+
+	// RN-12, a command that does not end. Three of these are asserted in
+	// internal/sandbox, which is why the search covers that directory too: the
+	// lifetime of a process is a property of the boundary that started it, not
+	// of the tool that asked.
+	"enquanto o comando ainda roda":     "TestABackgroundCommandReturnsWhileItIsStillRunning",
+	"morre na janela de assentamento":   "TestABackgroundCommandThatDiesDuringStartupSaysSo",
+	"identificador é sequência":         "TestAProcessIdentifierCarriesNoClock",
+	"sem identificador lista":           "TestProcessWithNoIdentifierListsWhatIsRunning",
+	"identificador desconhecido":        "TestProcessNamesTheIdentifiersItKnowsWhenGivenAnUnknownOne",
+	"process.Declare":                   "TestProcessCrossesNoBoundaryAndSoNeverAsks",
+	"chamada de primeiro plano declara": "TestBackgroundDeclaresExactlyWhatAForegroundCommandDeclares",
+	"sem executor capaz":                "TestBackgroundIsRefusedWhenNothingCanRunIt",
+	"encerra **todo** processo":         "TestClosingTheStateStopsEveryProcess",
+	"alcança o **grupo**":               "TestStopKillsWhatTheCommandStartedToo",
+	"sobrevive ao turno":                "TestACommandOutlivesTheTurnThatStartedIt",
+	"mantém o **fim**":                  "TestProcessKeepsTheTailWhenTheOutputIsTooLong",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
@@ -60,7 +77,11 @@ func checkInvariants(t *testing.T, family string, mapping map[string]string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := specguard.Check(root, family, []string{"."}, mapping)
+	// The sandbox directory is searched too. A spec family is not a Go package,
+	// and the invariants about how long a process lives are asserted where the
+	// process is actually started — excusing them here would be the escape
+	// hatch this guard exists to close.
+	findings, err := specguard.Check(root, family, []string{".", "../sandbox"}, mapping)
 	if err != nil {
 		t.Fatal(err)
 	}

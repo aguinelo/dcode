@@ -62,6 +62,12 @@ func runOnce(args []string) error {
 	if err != nil {
 		return err
 	}
+	// A one-shot run is still a session, and a background command started in it
+	// must not outlive the binary. Nothing on unix kills a child when its
+	// parent exits — it is reparented and keeps running — so leaving this out
+	// is exactly how `dcode "start the server"` would strand a server with
+	// nobody left who knows its name.
+	defer session.Engine.Close()
 
 	// The audit answer to "what exactly goes to the model". A harness that
 	// cannot show its own prompt asks for blind trust in a program with shell

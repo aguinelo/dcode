@@ -15,6 +15,7 @@ import (
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/provider"
+	"github.com/aguinelo/dcode/internal/sandbox"
 )
 
 func baseOpts(t *testing.T) Options {
@@ -50,7 +51,7 @@ func TestNewWiresAWorkingSession(t *testing.T) {
 	// Every tool, or the agent is missing a capability the doctrine already
 	// promises the model it has. The names are asserted rather than the count:
 	// a count tells you a tool went missing, not which one.
-	want := []string{"bash", "edit", "explore", "glob", "grep", "plan", "read", "symbol", "write"}
+	want := []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}
 	got := s.Registry.Names()
 	if !slices.Equal(got, want) {
 		t.Errorf("tools = %v, want %v", got, want)
@@ -333,5 +334,38 @@ func TestLoadInstructionsPicksUpBothFileNames(t *testing.T) {
 	// without being rewritten.
 	if !strings.Contains(got[0].Text, "SHARED") || !strings.Contains(got[1].Text, "SPECIFIC") {
 		t.Errorf("got %+v", got)
+	}
+}
+
+// The adapter exists because Go returns are not covariant, and an adapter that
+// nothing exercises is an adapter that compiles and does not work. Both halves
+// are asserted: the one that hands the process across, and the one that must
+// not hand a typed nil across when starting failed.
+func TestTheBackgroundAdapterCarriesTheProcessAndTheFailure(t *testing.T) {
+	sb, err := sandbox.New(sandbox.Config{Backend: sandbox.BackendNone}, policy.ModeFullAccess)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := background{sandbox.Runner{Sandbox: sb, Mode: policy.ModeFullAccess}}
+
+	h, err := b.Start(context.Background(), t.TempDir(), "sleep 30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h == nil {
+		t.Fatal("a started process came back as no handle at all")
+	}
+	h.Stop()
+
+	// A nil *Proc wrapped in a non-nil interface is the classic way this shape
+	// goes wrong: the caller checks the error, gets one, and a later nil check
+	// on the handle passes anyway.
+	failed := background{sandbox.Runner{}}
+	h, err = failed.Start(context.Background(), t.TempDir(), "sleep 30")
+	if err == nil {
+		t.Fatal("starting without a sandbox reported success")
+	}
+	if h != nil {
+		t.Error("a failed start still handed back a handle")
 	}
 }

@@ -149,6 +149,13 @@ func (s *Session) Close() {
 	if cancel != nil {
 		cancel()
 	}
+	// Cancelling the context ends the turn; it does not end what the turn
+	// deliberately started outside itself. A background command is bound to
+	// the session rather than to a turn precisely so it survives between them,
+	// which means the session is what has to end it.
+	if s.engine != nil {
+		s.engine.Close()
+	}
 	s.Log.Close()
 }
 

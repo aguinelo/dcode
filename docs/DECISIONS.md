@@ -772,3 +772,28 @@ checks is the hole the whole file exists to close.
 Nothing in `make check` compiles a file behind the `eval` tag, so the scenarios
 would drift out of sync with the code they measure and nobody would learn until
 the next paid run. `go vet -tags eval` costs a second and makes that impossible.
+
+### Nada sobrevive ao que criou
+
+Decidido em 2026-08-13, e é escolha de escopo antes de ser de arquitetura: o
+produto não vira uma frota de agentes em worktrees, então não existe sessão a
+ser reencontrada.
+
+Isso resolve três pendências de uma vez, porque as três eram a mesma pergunta em
+lugares diferentes — trabalho que acontece fora do turno que a pessoa está
+olhando:
+
+- processo em segundo plano morre com a sessão;
+- turno delegado morre com o turno pai (já era assim, e por construção);
+- o laço só estende o próprio turno.
+
+O que a decisão custa está escrito para que ninguém a reabra por engano: agente
+que sobrevive à sessão fica impossível, e com ele qualquer forma de retomar
+trabalho depois de fechar o cliente. Foi aceito.
+
+O que ela paga é concreto. Aprovar um comando longo passa a não precisar de
+pergunta separada sobre duração: autorização e processo têm o mesmo tempo de
+vida, então não há janela em que alguém consentiu com um instante e concedeu uma
+era. E a regra de tempo de vida vira **posse** — a tabela de processos mora no
+estado de sessão — em vez de um passo de faxina que alguém precisa lembrar de
+escrever.

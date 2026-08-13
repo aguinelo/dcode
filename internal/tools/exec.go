@@ -25,12 +25,23 @@ type Bash struct {
 	Runner  Runner
 	Workdir string
 	Timeout time.Duration
+
+	// Background starts a command that is not waited on. Nil means this build
+	// cannot start one, and asking for it is refused rather than silently run
+	// in the foreground — which would freeze the session, the exact failure
+	// the flag exists to prevent.
+	Background BackgroundRunner
+	// Settle is how long a background start watches before reporting. It is
+	// not a readiness check: it answers "did it die immediately", which is the
+	// common failure and the one a model cannot otherwise see.
+	Settle time.Duration
 }
 
 // BashInput is the argument shape.
 type BashInput struct {
-	Command string `json:"command"`
-	Timeout int    `json:"timeout_seconds,omitempty"`
+	Command    string `json:"command"`
+	Timeout    int    `json:"timeout_seconds,omitempty"`
+	Background bool   `json:"background,omitempty"`
 }
 
 func (Bash) Name() string { return "bash" }
@@ -39,13 +50,18 @@ func (Bash) Description() string {
 	return "Run a shell command in the workspace. " +
 		"Use the dedicated tools for reading, searching and editing files, and `glob` for " +
 		"listing or locating them — they are cheaper and need fewer permissions. " +
-		"A non-zero exit is a result, not a failure; read the output and decide."
+		"A non-zero exit is a result, not a failure; read the output and decide.\n" +
+		"Set background for a command that is not meant to finish — a server, a watcher, " +
+		"a tail. Waiting for one of those blocks the session until the timeout cuts it, " +
+		"and nothing is learned. You get an identifier back; read it with `process`."
 }
 
 func (Bash) Schema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{` +
 		`"command":{"type":"string"},` +
-		`"timeout_seconds":{"type":"integer"}},` +
+		`"timeout_seconds":{"type":"integer"},` +
+		`"background":{"type":"boolean","description":` +
+		`"Start it and return without waiting. For commands that do not end, such as a server."}},` +
 		`"required":["command"]}`)
 }
 
@@ -80,6 +96,9 @@ func (b Bash) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 	}
 	if strings.TrimSpace(in.Command) == "" {
 		return errf(b.Name(), CodeBadInput, "", "command is required").Result(), nil
+	}
+	if in.Background {
+		return b.startBackground(ctx, in.Command, s), nil
 	}
 	if b.Runner == nil {
 		return errf(b.Name(), CodeDenied, "",
@@ -124,6 +143,82 @@ func (b Bash) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 		Output: fmt.Sprintf("exit %d\n%s", code, body),
 		Meta:   Meta{ExitCode: code, HasExit: true, Lines: countLines(out)},
 	}, nil
+}
+
+// startBackground starts a command nobody waits on and reports what it did
+// with the first moments it was given.
+//
+// The settle window is the whole design decision. "Did it come up" and "did it
+// finish well" are different questions, and a background process has no exit
+// code to answer the second with until it dies. Probing a port would need a
+// port nobody named; parsing the log for readiness would need a convention no
+// two programs share. Watching briefly answers the question that actually
+// bites — it crashed on startup — and leaves the rest to `process`.
+func (b Bash) startBackground(ctx context.Context, command string, s *State) Result {
+	if b.Background == nil {
+		return errf(b.Name(), CodeDenied,
+			"Run it in the foreground, or say that you could not start it.",
+			"this build cannot start a command in the background").Result()
+	}
+	h, err := b.Background.Start(ctx, b.Workdir, command)
+	if err != nil {
+		return errf(b.Name(), CodeDenied, "", "could not start the command: %v", err).Result()
+	}
+	id := s.AddProcess(command, h)
+
+	settle := b.Settle
+	if settle <= 0 {
+		settle = 2 * time.Second
+	}
+	code, done := watchUntilSettled(ctx, h, settle)
+
+	out, cut := clampTail(h.Output(), s.Limits.MaxToolOutput)
+	body := out
+	if strings.TrimSpace(body) == "" {
+		body = "(no output yet)"
+	}
+	state := "still running"
+	if done {
+		// It died in the time it was watched, which almost always means it
+		// never came up. Saying "started" here would be the tool reporting a
+		// success the command did not have.
+		state = fmt.Sprintf("exit %d during startup", code)
+	}
+	res := Result{
+		Output: fmt.Sprintf("started as %s · %s\n\n%s\n\nRead it again with `process`.",
+			id, state, body),
+		Truncated: cut,
+		Meta:      Meta{Lines: countLines(out)},
+	}
+	if done {
+		res.Meta.ExitCode, res.Meta.HasExit = code, true
+	}
+	return res
+}
+
+// watchUntilSettled waits for the process to die or the window to close,
+// whichever is first. Polling rather than blocking on a wait: a command that
+// crashes in 40ms should not cost the model the whole window.
+func watchUntilSettled(ctx context.Context, h Handle, window time.Duration) (int, bool) {
+	deadline := time.NewTimer(window)
+	defer deadline.Stop()
+	tick := time.NewTicker(window / 10)
+	defer tick.Stop()
+
+	for {
+		if code, done := h.Exited(); done {
+			return code, true
+		}
+		select {
+		case <-tick.C:
+		case <-deadline.C:
+			code, done := h.Exited()
+			return code, done
+		case <-ctx.Done():
+			code, done := h.Exited()
+			return code, done
+		}
+	}
 }
 
 // countLines counts non-empty output lines, which is what a reader means by

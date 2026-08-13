@@ -391,11 +391,12 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{}, tools.Symbol{},
 		tools.Bash{
-			Runner:  sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
-			Workdir: opts.Workspace,
-			Timeout: 120 * time.Second,
+			Runner:     sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
+			Background: background{sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode}},
+			Workdir:    opts.Workspace,
+			Timeout:    120 * time.Second,
 		},
-		tools.Plan{},
+		tools.Plan{}, tools.Process{},
 	}
 	if opts.Delegate {
 		toolset = append(toolset, explore)
@@ -1007,4 +1008,22 @@ func requirementsPath(env func(string) string, roots config.Roots) string {
 		return ""
 	}
 	return p
+}
+
+// background ties a concrete *sandbox.Proc to the Handle the tools package
+// asks for.
+//
+// Go returns are not covariant, so sandbox.Runner cannot satisfy
+// tools.BackgroundRunner directly without importing tools — and that import
+// would point the wrong way: the boundary must not be described in terms of
+// the thing it confines. One adapter here costs less than that inversion, and
+// this file already ties the one other knot of its kind.
+type background struct{ sandbox.Runner }
+
+func (b background) Start(ctx context.Context, workdir, command string) (tools.Handle, error) {
+	p, err := b.Runner.Start(ctx, workdir, command)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
