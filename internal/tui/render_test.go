@@ -682,3 +682,54 @@ func TestDiffLinesAreColouredBySign(t *testing.T) {
 		t.Error("a removed line must be red")
 	}
 }
+
+// A frame owns every cell it covers.
+//
+// Twenty-nine of thirty lines ended before the right edge, so every cell past
+// them kept whatever the terminal had there before — the previous command's
+// output showing through the gaps of a running session:
+//
+//	⏺ read   README.md        16 lines      ▏ghost ▏ghost ▏ghost
+//
+// Whether the alternate screen was entered is not knowable from here and, with
+// this, no longer matters: a line that reaches the right edge cannot have
+// anything behind it.
+func TestEveryLineReachesTheRightEdge(t *testing.T) {
+	for _, m := range []Model{
+		NewModel("s1", "/w/proj", "MiniMax-M3", "workspace-write", PtBR),
+		modelWithPlan(),
+		withEntries(),
+	} {
+		for _, size := range [][2]int{{80, 24}, {120, 30}, {40, 12}} {
+			g := DefaultGeometry(size[0], size[1])
+			g.Palette = Palette{}
+			for i, line := range strings.Split(Render(m, g), "\n") {
+				if w := visibleWidth(line); w != g.Width {
+					t.Errorf("%dx%d line %d is %d cells wide; anything past it shows what was there before:\n%q",
+						size[0], size[1], i, w, line)
+				}
+			}
+		}
+	}
+}
+
+// And the frame fills the screen, or the rows below it keep the old content
+// for the same reason.
+func TestTheFrameFillsTheScreen(t *testing.T) {
+	m := withEntries()
+	for _, h := range []int{12, 24, 40} {
+		g := DefaultGeometry(100, h)
+		if n := len(strings.Split(Render(m, g), "\n")); n != h {
+			t.Errorf("a %d-line terminal got %d lines", h, n)
+		}
+	}
+}
+
+func withEntries() Model {
+	m := NewModel("s1", "/w/proj", "MiniMax-M3", "workspace-write", PtBR)
+	m.Entries = []Entry{
+		{Kind: KindUser, Summary: "roda esse projeto"},
+		{Kind: KindAssistant, Summary: "Vou instalar as dependências e rodar o servidor."},
+	}
+	return m
+}
