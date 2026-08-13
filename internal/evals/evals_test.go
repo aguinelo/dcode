@@ -364,3 +364,50 @@ func TestALongFailureIsTrimmed(t *testing.T) {
 		t.Error("the failure was cut without saying so")
 	}
 }
+
+// Every diagnosis in this suite has been made by reading one digest. With six
+// failures in twenty, one is a sample of one — and the run it happens to be is
+// whichever failed first, which is not the same as representative.
+func TestEvidenceKeepsSeveralDistinctFailures(t *testing.T) {
+	e := NewEvidence(3)
+	e.Record("read stats.go")
+	e.Record("grep Summary")
+	e.Record("bash ls")
+	e.Record("edit stats.go")
+
+	if e.total != 4 {
+		t.Errorf("counted %d failures, want 4", e.total)
+	}
+	if got := len(e.kept); got != 3 {
+		t.Errorf("kept %d transcripts, want the cap of 3", got)
+	}
+	// The cap exists because twenty digests is noise, not evidence. What it
+	// must never do is hide that it applied.
+	if s := e.String(); !strings.Contains(s, "4 run(s) failed") ||
+		!strings.Contains(s, "3 distinct") {
+		t.Errorf("the report does not declare its own truncation: %q", s)
+	}
+}
+
+// Twenty runs failing the same way is one finding, not twenty. Spending the cap
+// on repeats is how the second cause stays invisible.
+func TestEvidenceIgnoresARepeatOfWhatItAlreadyHas(t *testing.T) {
+	e := NewEvidence(3)
+	e.Record("read stats.go")
+	e.Record("read stats.go")
+	e.Record("read stats.go")
+	e.Record("grep Summary")
+
+	if got := len(e.kept); got != 2 {
+		t.Errorf("kept %d transcripts, want 2 distinct ones", got)
+	}
+	if e.total != 4 {
+		t.Errorf("counted %d failures, want all 4", e.total)
+	}
+}
+
+func TestEvidenceSaysNothingWhenNothingFailed(t *testing.T) {
+	if s := NewEvidence(3).String(); s != "" {
+		t.Errorf("an empty record spoke: %q", s)
+	}
+}
