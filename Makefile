@@ -81,10 +81,21 @@ check: lint race cover build
 # o que falta. -count=1 porque medição em cache não é medição.
 #
 # O timeout é explícito porque o default do `go test` são 10 minutos e uma
-# medição completa leva mais que isso — 35 cenários vezes DCODE_EVAL_RUNS, em
-# série. Com o default, o alvo morria em pânico no meio da primeira corrida
-# de verdade e nunca chegava a imprimir um resultado.
-EVAL_TIMEOUT ?= 180m
+# medição completa leva muito mais — 35 cenários vezes DCODE_EVAL_RUNS vezes
+# até `Rounds` rodadas, em série. Com o default, o alvo morria em pânico no
+# meio da primeira corrida de verdade e nunca chegava a imprimir um resultado.
+#
+# Oito horas, e o número tem conta atrás. 180m era o valor de quando cada
+# cenário tinha teto de 3 rodadas; com 12 a corrida passou de três horas e
+# morreu em pânico aos 10800s exatos — sem resumo, sem contagem, com 30 de 35
+# medidos e nada disso legível na saída. Um teto que a própria suíte não cabe
+# dentro é o mesmo defeito que este projeto acabou de consertar no `bash`.
+#
+# O pior caso teórico é 35 × 20 × 12 rodadas, que nenhuma corrida alcança
+# porque o laço termina quando o modelo para de pedir ferramenta. O observado
+# são ~4h. Oito dá folga para um modelo mais lento sem transformar um
+# travamento de verdade em espera indefinida.
+EVAL_TIMEOUT ?= 480m
 
 eval:
 	$(GO) test -tags eval -count=1 -timeout $(EVAL_TIMEOUT) -v ./internal/evals/...
