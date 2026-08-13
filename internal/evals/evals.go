@@ -290,3 +290,64 @@ func Report(rs []Result) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// MaxEvidence is how many distinct failing transcripts a contract keeps.
+//
+// Three, and the number is a compromise between two ways of learning nothing.
+// One digest — what this kept before — is a sample of one, and the one it is
+// happens to be whichever failed first, which is not the same as
+// representative. Twenty digests of four hundred characters is a wall nobody
+// reads, and a wall nobody reads is where a second cause hides.
+const MaxEvidence = 3
+
+// Evidence collects what a contract's failing runs actually did.
+//
+// It exists because every diagnosis in this suite has been made by reading a
+// digest, never by reading a rate. A rate says a contract is at 70%; only the
+// transcript says whether the model refused sensibly, ran out of rounds, or was
+// asked a question the fixture never gave it the tools to answer.
+type Evidence struct {
+	cap   int
+	total int
+	seen  map[string]struct{}
+	kept  []string
+}
+
+// NewEvidence returns a collector holding at most cap distinct digests.
+func NewEvidence(cap int) *Evidence {
+	return &Evidence{cap: cap, seen: map[string]struct{}{}}
+}
+
+// Record notes one failing run.
+//
+// Repeats are counted and not kept. Twenty runs failing the same way is one
+// finding, and spending the cap on copies of it is how the second cause stays
+// invisible.
+func (e *Evidence) Record(digest string) {
+	e.total++
+	if _, ok := e.seen[digest]; ok {
+		return
+	}
+	e.seen[digest] = struct{}{}
+	if len(e.kept) < e.cap {
+		e.kept = append(e.kept, digest)
+	}
+}
+
+// String renders the evidence, declaring what it left out.
+//
+// The count of failures and the count of transcripts are printed separately on
+// purpose: they differ whenever the cap bit or a failure repeated, and a reader
+// who cannot see the difference will read three transcripts as three failures.
+// Same rule as every truncated tool output — the cut is declared (RN-5).
+func (e *Evidence) String() string {
+	if e.total == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d run(s) failed, %d distinct transcript(s):", e.total, len(e.kept))
+	for _, d := range e.kept {
+		fmt.Fprintf(&b, "\n  %s", d)
+	}
+	return b.String()
+}

@@ -56,8 +56,7 @@ func TestEveryContract(t *testing.T) {
 			// 20 reads as "the model gets this wrong" and is just as often
 			// "the scenario cannot reach the behaviour it judges", and those
 			// two need opposite fixes.
-			var failed Transcript
-			var sawFailure bool
+			evidence := NewEvidence(MaxEvidence)
 			attempt := func(ctx context.Context) (bool, error) {
 				w, err := NewWorkspace(t.TempDir(), f.Files)
 				if err != nil {
@@ -68,8 +67,8 @@ func TestEveryContract(t *testing.T) {
 					return false, err
 				}
 				ok := contract.Judge(tr)
-				if !ok && !sawFailure {
-					failed, sawFailure = tr, true
+				if !ok {
+					evidence.Record(tr.Digest())
 				}
 				return ok, nil
 			}
@@ -86,8 +85,10 @@ func TestEveryContract(t *testing.T) {
 
 			r := Measure(ctx, runCfg, contract.ID, contract.Threshold, attempt)
 			measured = append(measured, r)
-			if !r.Met() && sawFailure {
-				t.Log("one failing run — " + failed.Digest())
+			if !r.Met() {
+				if s := evidence.String(); s != "" {
+					t.Log(s)
+				}
 			}
 			report(t, r)
 		})
