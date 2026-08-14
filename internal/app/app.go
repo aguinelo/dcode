@@ -84,6 +84,12 @@ type Options struct {
 	// InstructionForeign are the files treated as a shared format, and so as
 	// candidates for translation. DCODE.md is never one of them.
 	InstructionForeign string
+	// Fetch switches the network tool on. Off by default: the network is the
+	// one capability whose absence nobody has to work around, so it is the one
+	// that earns an opt-in rather than an opt-out.
+	Fetch bool
+	// FetchMaxBytes caps a fetched document.
+	FetchMaxBytes int
 	// SymbolMaxMatches caps what symbol returns. Same ceiling as grep, and for
 	// the same reason: a symbol matching thousands of times is a badly chosen
 	// symbol, and returning all of it spends context without informing.
@@ -178,6 +184,8 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			// says is a replace_all that hit more than one occurrence.
 			"tools.edit_echo_diff":     tools.EchoDiffMulti,
 			"tools.symbol_max_matches": "200",
+			"tools.fetch_enabled":      "false",
+			"tools.fetch_max_bytes":    "262144",
 			// The model is told how much of its budget is gone before it runs
 			// out, not after. Off leaves the post-compaction notice as the only
 			// signal, which is what it was.
@@ -241,6 +249,8 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Skills:                 r.Bool("behavior.skills_enabled", true),
 		EditEchoDiff:           r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
 		SymbolMaxMatches:       r.Int("tools.symbol_max_matches", 200),
+		Fetch:                  r.Bool("tools.fetch_enabled", false),
+		FetchMaxBytes:          r.Int("tools.fetch_max_bytes", 262144),
 		BudgetNotice:           r.Bool("budget.notice", true),
 		VerifyCommand:          r.String("verify.command", ""),
 		DoneTimeout:            parseDuration(r.String("done.timeout", "10m"), 10*time.Minute),
@@ -404,6 +414,12 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			Timeout:    120 * time.Second,
 		},
 		tools.Plan{}, tools.Process{},
+	}
+	if opts.Fetch {
+		// Off unless asked for. Reaching the network is the one capability
+		// whose absence nobody has to work around — every other tool here is
+		// needed to do the job at all — so it is the one that earns an opt-in.
+		toolset = append(toolset, tools.Fetch{Limit: opts.FetchMaxBytes})
 	}
 	if opts.Delegate {
 		toolset = append(toolset, explore)

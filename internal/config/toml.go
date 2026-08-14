@@ -49,6 +49,8 @@ var KnownKeys = map[string]string{
 	"update.channel":                "DCODE_UPDATE_CHANNEL", // DCODE_RELEASE_CHANNEL still works as a fallback
 	"tools.edit_echo_diff":          "DCODE_EDIT_ECHO_DIFF",
 	"tools.symbol_max_matches":      "DCODE_SYMBOL_MAX_MATCHES",
+	"tools.fetch_enabled":           "DCODE_FETCH_ENABLED",
+	"tools.fetch_max_bytes":         "DCODE_FETCH_MAX_BYTES",
 	"delegate.enabled":              "DCODE_DELEGATE_ENABLED",
 	"delegate.max_iterations":       "DCODE_DELEGATE_MAX_ITERATIONS",
 	"delegate.max_result_bytes":     "DCODE_DELEGATE_MAX_RESULT_BYTES",
