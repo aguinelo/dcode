@@ -276,3 +276,17 @@ func TestRemovingASessionThroughTheManagerKeepsItsRecord(t *testing.T) {
 		t.Errorf("removing the session took its record with it: %v", names(entries))
 	}
 }
+
+// Undoing while a turn runs is refused: the files are moving under it, and
+// putting half of something still being written back is worse than waiting.
+func TestUndoIsRefusedWhileATurnRuns(t *testing.T) {
+	log := NewEventLog("s1", 10, func() time.Time { return time.Unix(0, 0) })
+	s := New("s1", "/w", "m", "read-only", nil, log, func() time.Time { return time.Unix(0, 0) })
+	s.mu.Lock()
+	s.state = protocol.SessionStateRunning
+	s.mu.Unlock()
+
+	if _, err := s.Undo(); err == nil {
+		t.Fatal("undoing mid-turn reported success")
+	}
+}

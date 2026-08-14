@@ -184,6 +184,10 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 
 
+
+- Desfazer restaura o que o **último** turno mudou; turno novo substitui o conjunto.
+- Arquivo alterado depois do turno é recusado, nunca sobrescrito — e a recusa é por arquivo, não do lote.
+- Desfazer durante um turno em curso é recusado.
 - Continuar cria sessão **nova** carregando a conversa; a antiga acabou com o cliente que a rodou.
 - Continuar sessão inexistente falha; nunca começa em branco em silêncio.
 - Chamada de ferramenta sem resultado não entra no histórico reconstruído.

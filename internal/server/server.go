@@ -155,6 +155,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}/events", s.events)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/turns", s.submitTurn)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/interrupt", s.interrupt)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/undo", s.undo)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/approvals/{approvalID}", s.resolveApproval)
 }
 
@@ -245,6 +246,20 @@ func (s *Server) interrupt(w http.ResponseWriter, r *http.Request) {
 	// Idempotent: the user cannot know the turn just finished on its own.
 	sess.Interrupt()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) undo(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	out, err := sess.Undo()
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) resolveApproval(w http.ResponseWriter, r *http.Request) {

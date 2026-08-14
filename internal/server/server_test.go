@@ -779,3 +779,35 @@ func TestALapsedApprovalIsRefusedAsExpiredOverTheWire(t *testing.T) {
 			"the deadline denied it", pe.Code, protocol.CodeApprovalExpired)
 	}
 }
+
+// Undo travels the same wire as everything else, so a second client can put
+// back what the first one's turn changed.
+func TestUndoOverTheWire(t *testing.T) {
+	c, _ := newDaemon(t)
+	ctx := context.Background()
+
+	s, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Nothing has run, so nothing goes back — and that is an answer, not an
+	// error. A session with no engine must not turn a request into a failure
+	// the caller has to interpret.
+	out, err := c.Undo(ctx, s.ID)
+	if err != nil {
+		t.Fatalf("undoing an untouched session failed: %v", err)
+	}
+	if len(out.Restored) != 0 || len(out.Refused) != 0 {
+		t.Errorf("got %+v", out)
+	}
+}
+
+// A session that is not there is a 404 the caller can act on, not a silent
+// success that looks like the undo worked.
+func TestUndoingAnUnknownSessionIsRefused(t *testing.T) {
+	c, _ := newDaemon(t)
+	if _, err := c.Undo(context.Background(), "never-existed"); err == nil {
+		t.Fatal("undoing a session that does not exist reported success")
+	}
+}

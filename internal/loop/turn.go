@@ -207,6 +207,14 @@ func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 		})
 	}
 
+	// A turn is the unit that can be undone, so it is the unit that starts a
+	// new set of snapshots. Anything the previous turn changed has been read
+	// by the person by now; undo that reached back through it would go further
+	// than the last thing, which is not undo.
+	if e.cfg.State != nil {
+		e.cfg.State.BeginTurn()
+	}
+
 	out := Outcome{TurnID: turnID}
 	var recent []ce.ToolCall
 	compacted := false
@@ -1031,4 +1039,17 @@ func (e *Engine) unplannedChange() bool {
 	}
 	e.toldUnplanned = true
 	return true
+}
+
+// Undo puts back what the last turn changed.
+//
+// Not a tool: the model does not get to undo its own work, because the judgment
+// undo exists for is the person's. It is an operation on the session, asked for
+// through the client, and the loop only owns it because the loop owns the state
+// that knows what changed.
+func (e *Engine) Undo() (restored, refused []string, err error) {
+	if e.cfg.State == nil {
+		return nil, nil, nil
+	}
+	return e.cfg.State.Undo()
 }

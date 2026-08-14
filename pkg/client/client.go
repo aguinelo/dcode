@@ -100,6 +100,13 @@ func (c *Client) Interrupt(ctx context.Context, id string) error {
 }
 
 // Resolve answers a pending approval.
+// Undo puts back what the last turn changed.
+func (c *Client) Undo(ctx context.Context, id string) (protocol.UndoResult, error) {
+	var out protocol.UndoResult
+	err := c.do(ctx, http.MethodPost, "/sessions/"+id+"/undo", nil, &out)
+	return out, err
+}
+
 func (c *Client) Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error {
 	return c.do(ctx, http.MethodPost,
 		"/sessions/"+id+"/approvals/"+approvalID,

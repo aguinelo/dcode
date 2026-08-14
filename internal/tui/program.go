@@ -21,6 +21,7 @@ type Transport interface {
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
 	Submit(ctx context.Context, id, text string) error
 	Interrupt(ctx context.Context, id string) error
+	Undo(ctx context.Context, id string) (protocol.UndoResult, error)
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
 	Subscribe(ctx context.Context, id string, from uint64) (<-chan protocol.Event, <-chan error)
 }
@@ -625,6 +626,11 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		}
 		return note(v)
 
+	case "undo":
+		// Not a tool. The model does not undo its own work, because the
+		// judgment undo exists for is the person's.
+		return p, p.undo()
+
 	case "clear":
 		// A fresh session rather than a cleared screen: context is server-side
 		// and append-only, so there is no way to unsay something to the model.
@@ -783,4 +789,32 @@ func (p *program) renderedStream() []string {
 	g := p.geo
 	g.Width = max(20, g.Width)
 	return renderStream(p.model, g, g.Width)
+}
+
+// undo asks the session to put the last turn back and says what happened.
+//
+// Both halves are reported. A silent undo leaves the person guessing which of
+// seven files went back, and the one that did NOT is the one they most need to
+// know about — it did not go back because they had changed it themselves.
+func (p *program) undo() tea.Cmd {
+	return func() tea.Msg {
+		out, err := p.opts.Transport.Undo(p.ctx, p.opts.SessionID)
+		if err != nil {
+			return noteMsg(Text(p.model.Lang).UndoFailed + " " + err.Error())
+		}
+		t := Text(p.model.Lang)
+		switch {
+		case len(out.Restored) == 0 && len(out.Refused) == 0:
+			return noteMsg(t.UndoNothing)
+		case len(out.Refused) == 0:
+			return noteMsg(fmt.Sprintf("%s\n  %s", t.UndoRestored, strings.Join(out.Restored, "\n  ")))
+		default:
+			body := t.UndoRestored + "\n  " + strings.Join(out.Restored, "\n  ")
+			if len(out.Restored) == 0 {
+				body = ""
+			}
+			return noteMsg(strings.TrimSpace(body + "\n\n" + t.UndoRefused + "\n  " +
+				strings.Join(out.Refused, "\n  ")))
+		}
+	}
 }

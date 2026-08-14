@@ -34,6 +34,9 @@ type State struct {
 	// they were started. They live here because this is what a session owns
 	// and what goes away when it ends.
 	procs []*procEntry
+	// snaps is how the files this turn touches stood before it touched them.
+	// Replaced at each turn: undo means the last thing, not everything.
+	snaps map[string]snapshot
 }
 
 type fileState struct {

@@ -28,6 +28,10 @@ type fakeTransport struct {
 	createErr error
 	getErr    error
 
+	undos      int
+	undoResult protocol.UndoResult
+	undoErr    error
+
 	events chan protocol.Event
 	errs   chan error
 }
@@ -68,6 +72,13 @@ func (f *fakeTransport) Submit(_ context.Context, _, text string) error {
 	defer f.mu.Unlock()
 	f.submitted = append(f.submitted, text)
 	return f.submitErr
+}
+
+func (f *fakeTransport) Undo(context.Context, string) (protocol.UndoResult, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.undos++
+	return f.undoResult, f.undoErr
 }
 
 func (f *fakeTransport) Interrupt(context.Context, string) error {
@@ -1345,5 +1356,59 @@ func TestATurnWithoutTextShowsNoLine(t *testing.T) {
 	p.model = p.model.Apply(ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1"}))
 	if len(p.model.Entries) != 0 {
 		t.Errorf("a textless turn produced %+v", p.model.Entries)
+	}
+}
+
+// Both halves are reported. A silent undo leaves the person guessing which of
+// seven files went back, and the one that did NOT is the one they most need to
+// hear about: it stayed because they had changed it themselves.
+func TestUndoSaysWhatWentBackAndWhatDidNot(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.undoResult = protocol.UndoResult{
+		Restored: []string{"stats.go", "report.go"},
+		Refused:  []string{"notes.md"},
+	}
+
+	msg := run(t, p, p.undo())
+	note, ok := msg.(noteMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	for _, want := range []string{"stats.go", "report.go", "notes.md"} {
+		if !strings.Contains(string(note), want) {
+			t.Errorf("the note does not mention %q:\n%s", want, note)
+		}
+	}
+	if tr.undos != 1 {
+		t.Errorf("asked the session %d times", tr.undos)
+	}
+}
+
+// A turn that changed nothing says so rather than looking like it worked.
+func TestUndoingNothingSaysSo(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.undoResult = protocol.UndoResult{}
+
+	note, ok := run(t, p, p.undo()).(noteMsg)
+	if !ok {
+		t.Fatal("expected a note")
+	}
+	if !strings.Contains(string(note), "no files") {
+		t.Errorf("got %q", note)
+	}
+}
+
+// A refused undo is reported, not swallowed. The commonest reason is a turn
+// still running, and somebody who is not told will assume it worked.
+func TestAFailedUndoIsReported(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.undoErr = errors.New("a turn is running; interrupt it before undoing")
+
+	note, ok := run(t, p, p.undo()).(noteMsg)
+	if !ok {
+		t.Fatal("expected a note")
+	}
+	if !strings.Contains(string(note), "a turn is running") {
+		t.Errorf("got %q", note)
 	}
 }
