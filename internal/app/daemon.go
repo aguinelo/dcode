@@ -24,7 +24,11 @@ type DaemonOptions struct {
 	// Empty turns recording off, and then retention is a hard horizon: a
 	// client away longer than it gets events_expired, and nobody can read the
 	// session afterwards either.
-	RecordDir       string
+	RecordDir string
+	// RecordBudget is how much history survives. Applied when a session opens
+	// rather than on a timer: nothing should be deleting a person's history
+	// while the program is not running.
+	RecordBudget    session.PruneBudget
 	ApprovalTimeout time.Duration
 	Base            Options
 	// Log receives operational notices. Nil silences them, which a test wants
@@ -107,6 +111,19 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 
 	id := session.NewID(time.Now, randomUint32)
 	log := session.NewEventLog(id, d.opts.EventRetention, time.Now)
+	// Opening a session is when history is tidied. The live set is what the
+	// manager holds, because a session being written is not garbage however
+	// old its first line is.
+	if d.opts.RecordDir != "" {
+		budget := d.opts.RecordBudget
+		budget.Live = d.manager.LiveIDs()
+		if n, err := session.Prune(d.opts.RecordDir, budget); err != nil && d.opts.Log != nil {
+			d.opts.Log(fmt.Sprintf("session records could not be pruned: %v", err))
+		} else if n > 0 && d.opts.Log != nil {
+			d.opts.Log(fmt.Sprintf("removed %d old session record(s)", n))
+		}
+	}
+
 	// The record serves two readers with one file: a client rejoining below the
 	// retention horizon, and a person reading afterwards what the agent did.
 	if rec, err := session.NewRecord(d.opts.RecordDir, id); err == nil {

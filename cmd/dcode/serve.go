@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/session"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -58,6 +59,7 @@ func runServe(args []string) error {
 		MaxSessions:     *maxSessions,
 		EventRetention:  *retention,
 		RecordDir:       recordDir(resolved),
+		RecordBudget:    recordBudget(resolved),
 		ApprovalTimeout: *timeout,
 		Base:            base,
 	})
@@ -96,4 +98,21 @@ func recordDir(r config.Resolved) string {
 		return ""
 	}
 	return filepath.Join(roots.State, "sessions")
+}
+
+// recordBudget is how much session history survives.
+//
+// Thirty days and half a gigabyte, and both have to hold: age alone lets a busy
+// fortnight fill a disk inside the window, and size alone deletes this
+// morning's work on a busy day.
+//
+// The floor is not configurable, and that is the point. Someone who used dcode
+// twice last year should still find those two sessions, and a policy that can
+// be set to zero is a policy that empties the directory on a typo.
+func recordBudget(r config.Resolved) session.PruneBudget {
+	return session.PruneBudget{
+		MaxAge:      time.Duration(r.Int("record.keep_days", 30)) * 24 * time.Hour,
+		MaxBytes:    int64(r.Int("record.max_bytes", 512<<20)),
+		KeepAtLeast: 10,
+	}
 }

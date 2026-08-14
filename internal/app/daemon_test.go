@@ -12,6 +12,7 @@ import (
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/sandbox"
+	"github.com/aguinelo/dcode/internal/session"
 	"github.com/aguinelo/dcode/pkg/client"
 )
 
@@ -417,5 +418,87 @@ func TestASessionThroughTheDaemonLeavesAReadableRecord(t *testing.T) {
 	}
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("record mode is %v, want 0600", perm)
+	}
+}
+
+// Opening a session is when history is tidied, and the session being opened is
+// never what gets tidied away.
+//
+// On a timer would mean something deleting a person's history while the program
+// is not running. A readdir on the way into a session is cheap enough that
+// nobody notices, and it happens exactly when the directory is about to grow.
+func TestOpeningASessionPrunesOldRecordsAndKeepsItsOwn(t *testing.T) {
+	dir := t.TempDir()
+	stale := filepath.Join(dir, "s-from-last-year.jsonl")
+	if err := os.WriteFile(stale, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-400 * 24 * time.Hour)
+	if err := os.Chtimes(stale, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		RecordBudget:   session.PruneBudget{MaxAge: 24 * time.Hour},
+		Base:           baseOpts(t),
+		Log:            func(string) {},
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: t.TempDir(), Model: "MiniMax-M3"})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	sess.Emit(protocol.EventToolRequested, map[string]string{"tool": "read"})
+	sess.Close()
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("directory holds %d records, want only the new session's", len(entries))
+	}
+	if entries[0].Name() == "s-from-last-year.jsonl" {
+		t.Error("the stale record survived and the new one did not")
+	}
+}
+
+// A record that cannot be opened is said out loud and does not stop the
+// session. An audit trail must not hold the product hostage, and a silent
+// failure to record is the one outcome worse than not recording at all.
+func TestARecordThatCannotBeOpenedIsReportedAndNotFatal(t *testing.T) {
+	blocked := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var said []string
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      blocked,
+		RecordBudget:   session.PruneBudget{MaxAge: 24 * time.Hour},
+		Base:           baseOpts(t),
+		Log:            func(m string) { said = append(said, m) },
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: t.TempDir(), Model: "MiniMax-M3"})
+	if err != nil {
+		t.Fatalf("a session that cannot be recorded is still a session: %v", err)
+	}
+	sess.Emit(protocol.EventToolRequested, map[string]string{"tool": "read"})
+	sess.Close()
+
+	var told bool
+	for _, m := range said {
+		if strings.Contains(m, "not being recorded") || strings.Contains(m, "could not be pruned") {
+			told = true
+		}
+	}
+	if !told {
+		t.Errorf("nothing was said about a session that is not being recorded: %v", said)
 	}
 }
