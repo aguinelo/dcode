@@ -76,7 +76,7 @@ func TestEveryContract(t *testing.T) {
 				}
 				ok := contract.Judge(tr)
 				if !ok {
-					evidence.Record(tr.Digest())
+					evidence.Record(tr.Digest(), tr.HitCeiling)
 				}
 				return ok, nil
 			}
@@ -168,6 +168,12 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		history = append(history, answers(ctx, w, c, calls, injectNow)...)
 		if injectNow {
 			tr.InjectedAt = len(tr.Calls)
+		}
+		// The last round it was given, and it still wanted more. Recorded here
+		// rather than compared afterwards because only this loop knows whether
+		// it stopped because the model was done or because the ceiling came.
+		if i == rounds-1 {
+			tr.HitCeiling = true
 		}
 	}
 	return tr, nil

@@ -370,10 +370,10 @@ func TestALongFailureIsTrimmed(t *testing.T) {
 // whichever failed first, which is not the same as representative.
 func TestEvidenceKeepsSeveralDistinctFailures(t *testing.T) {
 	e := NewEvidence(3)
-	e.Record("read stats.go")
-	e.Record("grep Summary")
-	e.Record("bash ls")
-	e.Record("edit stats.go")
+	e.Record("read stats.go", false)
+	e.Record("grep Summary", false)
+	e.Record("bash ls", false)
+	e.Record("edit stats.go", false)
 
 	if e.total != 4 {
 		t.Errorf("counted %d failures, want 4", e.total)
@@ -393,10 +393,10 @@ func TestEvidenceKeepsSeveralDistinctFailures(t *testing.T) {
 // on repeats is how the second cause stays invisible.
 func TestEvidenceIgnoresARepeatOfWhatItAlreadyHas(t *testing.T) {
 	e := NewEvidence(3)
-	e.Record("read stats.go")
-	e.Record("read stats.go")
-	e.Record("read stats.go")
-	e.Record("grep Summary")
+	e.Record("read stats.go", false)
+	e.Record("read stats.go", false)
+	e.Record("read stats.go", false)
+	e.Record("grep Summary", false)
 
 	if got := len(e.kept); got != 2 {
 		t.Errorf("kept %d transcripts, want 2 distinct ones", got)
@@ -463,5 +463,47 @@ func TestACompleteMeasurementIsSound(t *testing.T) {
 	r := Result{ID: "x", Threshold: 0.9, Planned: 20, Runs: 20, Passed: 19}
 	if !r.Sound() || !r.Met() {
 		t.Errorf("a complete measurement was rejected: %s", r)
+	}
+}
+
+// A run that ran out of rounds did not fail the contract, it never reached it.
+//
+// Two of the three recorded failures of init-keeps-real-convention were twelve
+// rounds of reading with no write at the end. The rate said 30% and the digests
+// said "still reading", and only reading three transcripts by hand told them
+// apart. The count says it directly.
+func TestEvidenceSeparatesRunningOutOfRoundsFromFailing(t *testing.T) {
+	e := NewEvidence(3)
+	e.Record("read read read", true)
+	e.Record("wrote the wrong thing", false)
+	e.Record("read read glob", true)
+
+	s := e.String()
+	if !strings.Contains(s, "3 run(s) failed") {
+		t.Errorf("lost the failure count: %q", s)
+	}
+	if !strings.Contains(s, "2 ran out of rounds") {
+		t.Errorf("the ceiling is not reported: %q", s)
+	}
+}
+
+// Silence when it never happened. A line saying "0 ran out of rounds" is noise
+// on every healthy contract.
+func TestEvidenceSaysNothingAboutTheCeilingWhenNobodyHitIt(t *testing.T) {
+	e := NewEvidence(3)
+	e.Record("wrote the wrong thing", false)
+	if strings.Contains(e.String(), "ran out of rounds") {
+		t.Errorf("reported a ceiling nobody reached: %q", e.String())
+	}
+}
+
+// The ceiling is counted per RUN, not per distinct transcript: two runs failing
+// the same way are two runs that ran out.
+func TestTheCeilingIsCountedForEveryRunNotEveryTranscript(t *testing.T) {
+	e := NewEvidence(1)
+	e.Record("same", true)
+	e.Record("same", true)
+	if !strings.Contains(e.String(), "2 ran out of rounds") {
+		t.Errorf("repeats were not counted: %q", e.String())
 	}
 }

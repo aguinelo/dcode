@@ -337,6 +337,13 @@ type Evidence struct {
 	total int
 	seen  map[string]struct{}
 	kept  []string
+	// ceiling counts the runs that used every round they were given.
+	//
+	// A run that ran out did not fail the contract, it never reached it — and
+	// the two are indistinguishable in a rate. init-keeps-real-convention read
+	// for twelve rounds and never wrote the file it was asked for; the rate
+	// said 30% and only reading three transcripts by hand said why.
+	ceiling int
 }
 
 // NewEvidence returns a collector holding at most cap distinct digests.
@@ -349,8 +356,13 @@ func NewEvidence(cap int) *Evidence {
 // Repeats are counted and not kept. Twenty runs failing the same way is one
 // finding, and spending the cap on copies of it is how the second cause stays
 // invisible.
-func (e *Evidence) Record(digest string) {
+func (e *Evidence) Record(digest string, hitCeiling bool) {
 	e.total++
+	if hitCeiling {
+		// Per run and not per distinct transcript: two runs failing the same
+		// way are two runs that ran out.
+		e.ceiling++
+	}
 	if _, ok := e.seen[digest]; ok {
 		return
 	}
@@ -371,7 +383,11 @@ func (e *Evidence) String() string {
 		return ""
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d run(s) failed, %d distinct transcript(s):", e.total, len(e.kept))
+	fmt.Fprintf(&b, "%d run(s) failed, %d distinct transcript(s)", e.total, len(e.kept))
+	if e.ceiling > 0 {
+		fmt.Fprintf(&b, "; %d ran out of rounds", e.ceiling)
+	}
+	b.WriteString(":")
 	for _, d := range e.kept {
 		fmt.Fprintf(&b, "\n  %s", d)
 	}
