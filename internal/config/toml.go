@@ -63,6 +63,8 @@ var KnownKeys = map[string]string{
 	"ui.lang":                       "DCODE_LANG",
 	"record.enabled":                "DCODE_RECORD_ENABLED",
 	"record.dir":                    "DCODE_RECORD_DIR",
+	"record.keep_days":              "DCODE_RECORD_KEEP_DAYS",
+	"record.max_bytes":              "DCODE_RECORD_MAX_BYTES",
 	"doctrine.dump":                 "DCODE_DOCTRINE_DUMP",
 	"doctrine.enabled":              "DCODE_DOCTRINE_ENABLED",
 	"doctrine.dir":                  "DCODE_DOCTRINE_DIR",

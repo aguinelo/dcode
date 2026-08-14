@@ -16,6 +16,7 @@ import (
 	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/session"
 	"github.com/aguinelo/dcode/internal/tui"
 	"github.com/aguinelo/dcode/pkg/client"
 )
@@ -79,7 +80,7 @@ func runTUI(args []string) error {
 			// not an invitation to start something somewhere else.
 			return fmt.Errorf("no daemon answered on %s: %w", path, err)
 		}
-		embedded, cleanup, err := startEmbedded(ctx, opts, recordDir(resolved))
+		embedded, cleanup, err := startEmbedded(ctx, opts, recordDir(resolved), recordBudget(resolved))
 		if err != nil {
 			return err
 		}
@@ -147,7 +148,7 @@ func healthy(ctx context.Context, c *client.Client) error {
 // Private rather than the default path: two terminals opened without a shared
 // daemon would otherwise race to bind the same socket, and the loser would fail
 // to start for a reason the user cannot act on.
-func startEmbedded(ctx context.Context, base app.Options, recordDir string) (*client.Client, func(), error) {
+func startEmbedded(ctx context.Context, base app.Options, recordDir string, budget session.PruneBudget) (*client.Client, func(), error) {
 	dir, err := os.MkdirTemp("", "dcode")
 	if err != nil {
 		return nil, nil, err
@@ -161,6 +162,7 @@ func startEmbedded(ctx context.Context, base app.Options, recordDir string) (*cl
 		SocketPath:     path,
 		EventRetention: 10000,
 		RecordDir:      recordDir,
+		RecordBudget:   budget,
 		Base:           base,
 	})
 	if err := d.Listen(); err != nil {

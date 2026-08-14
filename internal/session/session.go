@@ -390,6 +390,21 @@ func (m *Manager) Get(id string) (*Session, error) {
 	return s, nil
 }
 
+// LiveIDs is every session the manager currently holds.
+//
+// It exists for pruning: a record being written is not history, and deciding
+// that from the file alone would mean guessing from a timestamp that is
+// changing as you read it.
+func (m *Manager) LiveIDs() map[string]bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make(map[string]bool, len(m.sessions))
+	for id := range m.sessions {
+		out[id] = true
+	}
+	return out
+}
+
 // List returns live sessions in creation order, so a client's list does not
 // reshuffle between calls.
 func (m *Manager) List() []protocol.Session {

@@ -16,6 +16,22 @@
 |---|---|---|---|
 | `DCODE_RECORD_ENABLED` | booleano | `true` | Grava cada sessão em disco, um JSONL por sessão. Desligado, retenção volta a ser horizonte duro — cliente que demorou a voltar recebe `events_expired` — e ninguém consegue ler a sessão depois que ela acaba. |
 | `DCODE_RECORD_DIR` | caminho | `$DCODE_STATE_DIR/sessions` | Onde os registros ficam. Diretório `0700`, arquivo `0600`: a transcrição guarda o que a pessoa digitou e o que o agente leu, que é a coisa mais privada que este programa toca. |
+| `DCODE_RECORD_KEEP_DAYS` | inteiro | `30` | Idade máxima de um registro. |
+| `DCODE_RECORD_MAX_BYTES` | inteiro | `536870912` | Teto do diretório; os mais antigos saem primeiro. |
+
+> **Os dois orçamentos valem juntos, e nenhum sozinho basta.** Só idade deixa
+> uma quinzena movimentada encher o disco dentro da janela; só tamanho apaga o
+> trabalho desta manhã num dia cheio.
+>
+> A poda roda **quando uma sessão abre**, não em temporizador: nada deve estar
+> apagando o histórico de alguém enquanto o programa não está rodando.
+>
+> Existe um **piso de dez sessões** que vence os dois orçamentos, e ele **não é
+> configurável**. Quem usou o dcode duas vezes ano passado ainda tem de achar
+> essas duas, e política que pode ser zerada é política que esvazia o diretório
+> num erro de digitação — sem desfazer.
+>
+> Sessão aberta nunca é podada, por mais antiga que seja a primeira linha dela.
 
 > O log de evento **é** a sessão — o cliente guarda um número e todo o resto vive no servidor, e é isso que torna reconectar indistinguível de ter acompanhado ao vivo. Um horizonte de retenção quebra exatamente essa propriedade, e quebra em silêncio: o usuário vê uma sessão que "sumiu".
 >
