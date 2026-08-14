@@ -182,6 +182,11 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 ## 9. Invariantes verificáveis
 
 
+
+- Listagem de sessões vem do registro em disco, ordenada da mais recente, filtrada pelo workspace por default.
+- Sessão é titulada pela primeira pergunta; sem pergunta ainda, aparece assim mesmo.
+- Arquivo sem `session.created` não é registro e não entra na listagem.
+- Transcrição junta os fragmentos de texto numa resposta só, e mostra compactação, recusa e aprovação.
 - `turn.started` carrega o texto pedido; sem ele o log tem as respostas e nenhuma pergunta.
 - Cliente que não digitou vê a pergunta ao anexar, porque ela vem do evento e não de eco local.
 Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r.spec.md`.

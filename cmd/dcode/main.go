@@ -44,6 +44,8 @@ func dispatch(args []string) error {
 			return runLogin(args[1:])
 		case "config":
 			return runConfig(args[1:])
+		case "sessions":
+			return runSessions(args[1:])
 		case "help", "--help", "-h":
 			usage()
 			return nil

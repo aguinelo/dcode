@@ -13,7 +13,7 @@ import (
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session")}
 
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
@@ -27,6 +27,12 @@ var protocolInvariants = map[string]string{
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",
 	"vê a pergunta ao anexar": "TestAnAttachingClientSeesTheQuestion",
+	// Reading a session back. The record is the session, so these assertions
+	// live where records are read.
+	"ordenada da mais recente":     "TestBrowsingPutsTheNewestFirst",
+	"titulada pela primeira":       "TestASessionIsTitledByWhatWasAsked",
+	"não é registro e não entra":   "TestRubbishInTheDirectoryIsSkipped",
+	"junta os fragmentos de texto": "TestATranscriptReadsLikeTheConversation",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
