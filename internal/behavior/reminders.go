@@ -18,6 +18,7 @@ const (
 	ReminderContextBudget           ReminderKind = "context_budget"
 	ReminderUnmetCriteria           ReminderKind = "unmet_criteria"
 	ReminderVerificationUnavailable ReminderKind = "verification_unavailable"
+	ReminderUnplannedChange         ReminderKind = "unplanned_change"
 	ReminderProtectedTouched        ReminderKind = "protected_touched"
 	ReminderInterrupted             ReminderKind = "interrupted"
 )
@@ -98,6 +99,13 @@ type SessionState struct {
 	// ProtectedTouched are paths that ARE the measurement and were written this
 	// turn. Surfaced, never counted as progress in silence.
 	ProtectedTouched []string
+	// UnplannedChange reports that work has spread across several files with
+	// no plan recorded.
+	//
+	// A boolean and not a count: the count would vary between otherwise
+	// identical runs and reach the model through the text, which is what RN-7
+	// of the context engine forbids and why the budget texts are constants too.
+	UnplannedChange bool
 	// VerificationUnavailable reports that files changed and no criterion was
 	// able to run at all.
 	//
@@ -166,6 +174,17 @@ func Emit(s SessionState) []Reminder {
 				strings.Join(names, ", ") + " did not pass. Fix the cause. " +
 				"Do not weaken the check to make it pass, and do not report " +
 				"success — if you cannot get there, say what is left.",
+		})
+	}
+
+	if s.UnplannedChange {
+		out = append(out, Reminder{
+			Kind: ReminderUnplannedChange,
+			Text: "You have changed several files and there is no plan. " +
+				"Call `plan` with the steps you are working through, and keep it current. " +
+				"The person watching sees the plan, not this reasoning — without one " +
+				"they cannot follow the work or stop it early, which is the whole " +
+				"reason the plan is a tool and not a paragraph.",
 		})
 	}
 

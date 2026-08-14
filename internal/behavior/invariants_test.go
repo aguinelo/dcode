@@ -50,6 +50,8 @@ var behaviorInvariants = map[string]string{
 	"só leu arquivos produz `clean`":             "TestATurnThatChangedNothingRunsNoCheck",
 	"continuação forçada é limitada":             "TestNoProgressEndsTheTurnAsIncomplete",
 	"lembrete de verificação aparece no prefixo": "TestNoReminderTextEverReachesThePrefix",
+	"trabalho sem plano é emitido":               "TestUnplannedWorkIsPointedOutOnceAndRearmsAfterAPlan",
+	"carrega contagem no texto":                  "TestTheUnplannedNoticeCarriesNoCount",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

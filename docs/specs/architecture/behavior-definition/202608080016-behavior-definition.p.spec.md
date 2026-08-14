@@ -159,6 +159,12 @@ const (
     ReminderVerificationStale       ReminderKind = "verification_stale"
     ReminderVerificationFailed      ReminderKind = "verification_failed"
     ReminderVerificationUnavailable ReminderKind = "verification_unavailable"
+
+    // Trabalho espalhado por vários arquivos sem plano registrado. Existe
+    // porque a descrição da ferramenta pede o plano e não está pegando: o
+    // modelo descreve o plano em prosa e executa. Camada de lembrete, não
+    // quarta frase no mesmo lugar.
+    ReminderUnplannedChange ReminderKind = "unplanned_change"
 )
 
 // Verification é o estado de verificação do turno (RN-13). Derivado do registro
@@ -248,6 +254,8 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - `Emit` é pura: mesmo `SessionState`, mesmo conjunto de lembretes.
 - Nenhum lembrete aparece no prefixo — varredura da saída de `Build`.
 - Texto de lembrete é idêntico entre emissões do mesmo `Kind` com os mesmos dados.
+- O aviso de trabalho sem plano é emitido **uma vez**, some enquanto houver plano, e rearma quando o plano deixa de existir.
+- Nenhum lembrete carrega contagem no texto: número que varia entre execuções idênticas quebra a reprodutibilidade (RN-7 de `context-engine`).
 - Índice de skill contém apenas uma linha por skill; nenhum corpo (RN-7).
 - Duas famílias distintas produzem prompts distintos a partir do **mesmo** `Prompt` — e ambos contêm todas as regras de `Doctrine.Safety`.
 - `Apply` é pura, e `Apply(DoctrineOverlay{})` devolve a doutrina embarcada inalterada.

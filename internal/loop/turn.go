@@ -142,6 +142,13 @@ type Engine struct {
 	// repeats the same reminder every turn, and a warning that is always there
 	// stops being read.
 	budgetBand ce.Band
+	// toldUnplanned latches the one notice about work spreading with no plan.
+	//
+	// Per session and not per turn, and cleared the moment a plan appears: told
+	// every batch is noise the model learns to discount — the same reasoning
+	// seenDirs carries — but a session that plans, finishes, and sprawls again
+	// on a second task is in the position it was in the first time.
+	toldUnplanned bool
 	// lastReport is what the most recent done check found, so the client can
 	// show the seal and the turn can report what was left.
 	lastReport Report
@@ -492,6 +499,7 @@ func (e *Engine) reminders(f batchFacts) []ce.Message {
 		st.ChangedFiles = e.cfg.State.ChangedSinceRead(e.cfg.ReadFile)
 	}
 	st.OutOfChain = e.outOfChain(f.TouchedDirs)
+	st.UnplannedChange = e.unplannedChange()
 
 	var out []ce.Message
 	for _, r := range behavior.Emit(st) {
@@ -988,4 +996,39 @@ func (e *Engine) Close() {
 	if e.cfg.State != nil {
 		e.cfg.State.Close()
 	}
+}
+
+// unplannedFiles is how far work spreads before the absence of a plan is worth
+// saying out loud.
+//
+// Three, while the tool description asks for a plan at more than one file. The
+// gap is deliberate: the description says when to plan, and a reminder that
+// fired at the first missed opportunity would be nagging. This is the backstop
+// for work that has visibly become a project, not a second copy of the rule.
+const unplannedFiles = 3
+
+// unplannedChange reports whether work has spread across several files with no
+// plan recorded, and that this has not been said yet.
+//
+// It answers plan-depth-complex, which measures 60%: the model reads the six
+// files, edits every one of them correctly, and records no plan — it narrates
+// one instead, into a paragraph nobody watching can follow. The tool
+// description has asked for the opposite since #107 without landing, and a
+// fourth sentence in the same place would be the third time that failed. A
+// reminder is the other layer: zero cost until the situation exists, and
+// delivered at the moment it is being ignored rather than at the top of the
+// session.
+func (e *Engine) unplannedChange() bool {
+	if e.cfg.State == nil {
+		return false
+	}
+	if len(e.cfg.State.Plan()) > 0 {
+		e.toldUnplanned = false
+		return false
+	}
+	if e.toldUnplanned || len(e.cfg.State.Written()) < unplannedFiles {
+		return false
+	}
+	e.toldUnplanned = true
+	return true
 }
