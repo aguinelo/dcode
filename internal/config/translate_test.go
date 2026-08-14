@@ -192,3 +192,62 @@ func TestOnlyLinesAboutToolsAreScannedForNames(t *testing.T) {
 		}
 	}
 }
+
+// A tool name is a name. "the file tools" is prose.
+//
+// VerifyTools flagged the word before "tool" whatever it was, held back only by
+// a list of common words that could never be complete — its own comment admits
+// "without this every 'the tool' becomes a finding". So a DCODE.md saying
+// "prefer the file tools over shell commands" reported `file` as a tool dcode
+// does not have.
+//
+// That is not only a judge problem. This function also drives the session-start
+// notice, which tells the user how many things the instructions name that do
+// not exist here — a count that was wrong for any prose mentioning tools.
+func TestOnlySomethingShapedLikeAToolNameIsAFinding(t *testing.T) {
+	have := []string{"bash", "edit", "glob", "grep", "plan", "read", "write"}
+
+	prose := []string{
+		"Prefer the file tools over shell commands.",
+		"There are no sub-agent tools here.",
+		"These tools are available: read, write, edit.",
+		"Use the dedicated tools rather than the shell.",
+		"Every tool reports what it touched.",
+		"Several tools can run at once.",
+	}
+	for _, s := range prose {
+		if f := VerifyTools(s, have); len(f) > 0 {
+			t.Errorf("prose read as a tool name: %q -> %v", s, f)
+		}
+	}
+
+	named := map[string]string{
+		"Use the Task tool to spawn subagents for anything big.": "Task",
+		"Run it with the `Dispatcher` tool.":                     "Dispatcher",
+		"The Dispatch tool handles fan-out.":                     "Dispatch",
+	}
+	for s, want := range named {
+		f := VerifyTools(s, have)
+		if len(f) != 1 || f[0].Subject != want {
+			t.Errorf("%q -> %v, want one finding for %q", s, f, want)
+		}
+	}
+}
+
+// A tool this build has is never a finding, however it is written.
+func TestAToolThatExistsIsNeverAFinding(t *testing.T) {
+	have := []string{"bash", "edit", "glob", "read"}
+	for _, s := range []string{
+		"Use the Read tool for files.",
+		"Use the `glob` tool to find them.",
+		"tools: read, write, glob",
+	} {
+		if f := VerifyTools(s, have); len(f) > 0 {
+			for _, x := range f {
+				if strings.EqualFold(x.Subject, "read") || strings.EqualFold(x.Subject, "glob") {
+					t.Errorf("%q flagged a tool that exists: %v", s, f)
+				}
+			}
+		}
+	}
+}
