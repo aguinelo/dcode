@@ -155,7 +155,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		// A round with no calls is the last chance to say it: `answers`
 		// delivers it as a reminder there, because the alternative is a
 		// scenario whose whole premise never reaches the model.
-		injectNow := !injected && c.Inject != "" &&
+		injectNow := !injected && c.Inject != "" && c.InjectableAt(i) &&
 			(InjectionTarget(c, calls) >= 0 || len(calls) == 0)
 		if injectNow {
 			injected = true

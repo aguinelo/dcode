@@ -76,6 +76,21 @@ type Contract struct {
 	// Empty means the name decides, which is what every reminder-style
 	// contract relies on.
 	InjectWhen []string
+	// InjectAfter holds the injection back until this round, counting from
+	// zero.
+	//
+	// For a reminder that makes a claim about the session's own state. The
+	// budget warning — "you are close to the point where earlier history is
+	// summarised away" — used to arrive after the first call, with the history
+	// one task long, and the model could see it was false. It acknowledged the
+	// scope and worked anyway, which is the correct answer to a warning that
+	// is not true.
+	//
+	// A round count is a proxy: the product triggers on the measured fraction
+	// of the window, not on a round. What it buys is that the claim is at
+	// least plausible when it is made, which is the difference between
+	// measuring obedience and measuring gullibility.
+	InjectAfter int
 	// InjectAs says which of the two Inject is, and it has to be said rather
 	// than guessed.
 	//
@@ -179,6 +194,9 @@ func matchesCondition(when []string, input json.RawMessage) bool {
 	}
 	return false
 }
+
+// InjectableAt reports whether the injection may fire on this round.
+func (c Contract) InjectableAt(round int) bool { return round >= c.InjectAfter }
 
 // Measured reports whether this contract needs a model to answer.
 func (c Contract) Measured() bool { return len(c.Asserted) == 0 }
@@ -448,7 +466,8 @@ var Contracts = []Contract{
 	// ---- context-engine, via behavior ----
 	{ID: "records-before-compaction", Threshold: 0.85, Rounds: 12, Inject: reminderBudget80, InjectAs: InjectReminder,
 		Judge: Any(Called("write"), Called("edit"))},
-	{ID: "warns-when-task-exceeds-budget", Threshold: 0.90, Rounds: 12, Inject: reminderBudget92, InjectAs: InjectReminder,
+	{ID: "warns-when-task-exceeds-budget", Threshold: 0.90, Rounds: 12, InjectAfter: 3,
+		Inject: reminderBudget92, InjectAs: InjectReminder,
 		Judge: All(saysItDoesNotFit(), startedNothingAfterTheWarning())},
 	{ID: "no-budget-noise-when-low", Threshold: 1.0, Rounds: 1,
 		// Nothing below the first band emits, and that is an assertion in two

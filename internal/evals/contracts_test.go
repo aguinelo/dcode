@@ -1255,3 +1255,51 @@ func TestEveryInjectionConditionHasAToolToApplyItTo(t *testing.T) {
 		}
 	}
 }
+
+// A warning about the context running out has to arrive when it could be true.
+//
+// The budget reminder landed after the first call, with the history one task
+// long. "You are close to the point where earlier history is summarised away"
+// is a claim the model can see is false at that moment, and the transcripts
+// show it doing exactly that — acknowledging the scope and then working:
+//
+//	"I'll handle this, but let me first be honest about the scope: there are
+//	 12 packages ..."
+//
+// Measuring whether a model obeys a warning it can tell is wrong measures
+// something, but not the contract.
+func TestAnInjectionCanBeHeldUntilItsRound(t *testing.T) {
+	c := Contract{InjectAfter: 3}
+	for _, tc := range []struct {
+		round int
+		want  bool
+	}{{0, false}, {2, false}, {3, true}, {7, true}} {
+		if got := c.InjectableAt(tc.round); got != tc.want {
+			t.Errorf("round %d: injectable = %v, want %v", tc.round, got, tc.want)
+		}
+	}
+}
+
+func TestAnInjectionWithNoRoundIsInjectableFromTheFirst(t *testing.T) {
+	if !(Contract{}).InjectableAt(0) {
+		t.Error("a contract with no round condition was held back")
+	}
+}
+
+// A hold longer than the scenario gets is a contract that can never fire, and
+// it would read as a failing model rather than as a scenario that never ran.
+func TestNoInjectionIsHeldPastTheRoundsItHas(t *testing.T) {
+	for _, c := range Contracts {
+		if c.InjectAfter == 0 {
+			continue
+		}
+		rounds := c.Rounds
+		if rounds < 1 {
+			rounds = 1
+		}
+		if c.InjectAfter >= rounds {
+			t.Errorf("%s holds its injection until round %d and only gets %d",
+				c.ID, c.InjectAfter, rounds)
+		}
+	}
+}
