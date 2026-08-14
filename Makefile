@@ -91,11 +91,20 @@ check: lint race cover build
 # medidos e nada disso legível na saída. Um teto que a própria suíte não cabe
 # dentro é o mesmo defeito que este projeto acabou de consertar no `bash`.
 #
-# O pior caso teórico é 35 × 20 × 12 rodadas, que nenhuma corrida alcança
-# porque o laço termina quando o modelo para de pedir ferramenta. O observado
-# são ~4h. Oito dá folga para um modelo mais lento sem transformar um
-# travamento de verdade em espera indefinida.
-EVAL_TIMEOUT ?= 480m
+# Oito deixou de bastar quando a suíte dobrou de tamanho, e pelo mesmo tipo de
+# descuido: contrato com limiar >= 95% passou a medir 50 vezes em vez de 20, e a
+# família `init` passou a ter teto de 20 rodadas em vez de 12. Nenhuma das duas
+# mudanças mexeu neste número. A corrida seguinte chegou a 6h21 com 28 de 35
+# medidos e sete dos mais caros ainda por vir.
+#
+# Quinze horas. A conta: 19 contratos a 50 execuções e 16 a 20 dão 1270 corridas,
+# contra as 700 de antes — 1,8x sobre um observado que já era de ~4h a 6h. O teto
+# não é estimativa do provável, é a linha onde um travamento de verdade deixa de
+# ser espera indefinida, e essa linha tem de ficar acima do pior caso plausível.
+#
+# O padrão vale para além daqui: quando uma mudança faz a suíte crescer, o teto é
+# parte da mudança. Foi assim que 180m matou uma corrida, e 480m matou outra.
+EVAL_TIMEOUT ?= 900m
 
 eval:
 	$(GO) test -tags eval -count=1 -timeout $(EVAL_TIMEOUT) -v ./internal/evals/...
