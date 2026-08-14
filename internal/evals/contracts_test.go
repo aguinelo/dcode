@@ -1022,6 +1022,20 @@ func TestTheInitFixturesSendThePromptTheProductShips(t *testing.T) {
 		if string(body) != tui.InitPrompt {
 			t.Errorf("%s/task.md is not the prompt /init sends; regenerate it from tui.InitPrompt", id)
 		}
+		// And the rounds that prompt needs. It asks for the README, any
+		// AGENTS.md or CONTRIBUTING.md, the build configuration and enough of
+		// the source to see the conventions — all before the file is written.
+		// At the ordinary ceiling the model was still reading when the rounds
+		// ran out, and a run that never reached the write is judged as a file
+		// that was never written.
+		c, ok := ContractByID(id)
+		if !ok {
+			t.Fatalf("%s has a fixture and no contract", id)
+		}
+		if c.Rounds != initRounds {
+			t.Errorf("%s sends InitPrompt and gets %d rounds, not the %d that prompt needs",
+				id, c.Rounds, initRounds)
+		}
 	}
 }
 
