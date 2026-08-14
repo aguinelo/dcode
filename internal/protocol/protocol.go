@@ -208,6 +208,14 @@ type (
 	// TurnStarted announces an accepted input.
 	TurnStarted struct {
 		TurnID string `json:"turn_id"`
+		// Text is what the user asked for.
+		//
+		// It rides here because a turn starts BECAUSE of it, and because
+		// nothing else carried it: the log held the model's side of a
+		// conversation and none of the questions. A transcript could not be
+		// read, a session could not be titled, and a client attaching to a
+		// session already under way saw answers to questions it never saw.
+		Text string `json:"text,omitempty"`
 	}
 	// MessageReasoning is a fragment of the model's thinking.
 	MessageReasoning struct {

@@ -118,7 +118,7 @@ type Error struct {
 | `type` | Payload | Quando |
 |---|---|---|
 | `session.created` | `Session` | criação |
-| `turn.started` | `{"turn_id":string}` | entrada aceita |
+| `turn.started` | `{"turn_id":string,"text":string}` | entrada aceita; `text` é o que foi pedido |
 | `message.delta` | `{"turn_id":string,"text":string}` | fragmento de texto do modelo |
 | `tool.requested` | `{"turn_id":string,"tool_call_id":string,"name":string,"input":object}` | modelo pediu ferramenta |
 | `tool.approval_required` | `ApprovalRequest` | cruzou fronteira do sandbox (RN-4) |
@@ -181,6 +181,9 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 ## 9. Invariantes verificáveis
 
+
+- `turn.started` carrega o texto pedido; sem ele o log tem as respostas e nenhuma pergunta.
+- Cliente que não digitou vê a pergunta ao anexar, porque ela vem do evento e não de eco local.
 Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r.spec.md`.
 
 - `Seq` é estritamente crescente e sem lacunas, por sessão.

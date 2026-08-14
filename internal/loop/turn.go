@@ -194,7 +194,7 @@ func (e *Engine) Session() ce.Session { return e.session }
 func (e *Engine) Run(ctx context.Context, input string) (Outcome, error) {
 	e.turnSeq++
 	turnID := fmt.Sprintf("t%d", e.turnSeq)
-	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: turnID})
+	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: turnID, Text: input})
 
 	e.session.History = append(e.session.History, ce.Message{Role: ce.RoleUser, Text: input})
 
