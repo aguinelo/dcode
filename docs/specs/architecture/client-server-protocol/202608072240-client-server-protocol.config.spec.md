@@ -14,7 +14,8 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_EVENT_SPILL` | caminho | `$DCODE_STATE_DIR/events` | Onde os eventos que saem da memória são guardados. Retenção **sem** transbordo é horizonte duro: um cliente que demorou demais para voltar recebe `events_expired`, e a sessão que ele acompanhava fica ilegível por um motivo que não tem nada a ver com a sessão. Vazio desliga e devolve o comportamento antigo. |
+| `DCODE_RECORD_ENABLED` | booleano | `true` | Grava cada sessão em disco, um JSONL por sessão. Desligado, retenção volta a ser horizonte duro — cliente que demorou a voltar recebe `events_expired` — e ninguém consegue ler a sessão depois que ela acaba. |
+| `DCODE_RECORD_DIR` | caminho | `$DCODE_STATE_DIR/sessions` | Onde os registros ficam. Diretório `0700`, arquivo `0600`: a transcrição guarda o que a pessoa digitou e o que o agente leu, que é a coisa mais privada que este programa toca. |
 
 > O log de evento **é** a sessão — o cliente guarda um número e todo o resto vive no servidor, e é isso que torna reconectar indistinguível de ter acompanhado ao vivo. Um horizonte de retenção quebra exatamente essa propriedade, e quebra em silêncio: o usuário vê uma sessão que "sumiu".
 >
