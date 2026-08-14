@@ -43,7 +43,19 @@ func (f Finding) String() string { return f.Subject + " — " + f.Reason }
 var backtickName = regexp.MustCompile("`([A-Za-z_][A-Za-z0-9_]*)`")
 
 // namedTool finds the `<Name> tool` form, which carries its own context.
-var namedTool = regexp.MustCompile(`(?i)\b([A-Za-z_][A-Za-z0-9_]*)\s+tools?\b`)
+//
+// The name must be capitalised, backticked, or snake_case, because that is what
+// separates a NAME from the word that happens to precede "tool". English prose
+// has no underscores, and the tools written for other agents are named either
+// `Task` or `memory_store`. Instructions written for
+// another agent say "the Task tool" and "the `glob` tool"; ordinary prose says
+// "the file tools" and "several tools", and every one of those was a finding
+// while the only defence was a list of common words that could never be
+// complete — as its own comment admitted.
+var namedTool = regexp.MustCompile(
+	"`?\\b([A-Z][A-Za-z0-9_]*)`?\\s+tools?\\b" + // Capitalised: the Task tool
+		"|`([A-Za-z_][A-Za-z0-9_]*)`\\s+tools?\\b" + // Backticked: the `glob` tool
+		"|\\b([A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]*)\\s+tools?\\b") // snake_case: the memory_store tool
 
 // bareList finds the names in `Key tools: a, b, c`.
 var bareList = regexp.MustCompile(`(?i)\btools?\s*[:=]\s*(.+)$`)
@@ -92,7 +104,11 @@ func VerifyTools(text string, have []string) []Finding {
 
 	for _, line := range strings.Split(text, "\n") {
 		for _, m := range namedTool.FindAllStringSubmatch(line, -1) {
+			// One alternative matched; the other groups are empty, and add
+			// ignores those.
 			add(m[1])
+			add(m[2])
+			add(m[3])
 		}
 		if !strings.Contains(strings.ToLower(line), "tool") {
 			continue
@@ -120,6 +136,16 @@ var commonWords = map[string]struct{}{
 	"any": {}, "no": {}, "one": {}, "other": {}, "another": {}, "same": {},
 	"dedicated": {}, "right": {}, "correct": {}, "appropriate": {}, "which": {},
 	"what": {}, "when": {}, "use": {}, "using": {}, "with": {}, "and": {}, "or": {},
+	// Sentence-initial capitals reach the name form too, so the list still
+	// earns its keep — it is just no longer the only thing standing between
+	// prose and a finding.
+	"these": {}, "those": {}, "all": {}, "some": {}, "both": {}, "many": {},
+	"several": {}, "few": {}, "its": {}, "their": {}, "your": {}, "our": {},
+	"only": {}, "main": {}, "first": {}, "last": {}, "next": {}, "such": {},
+	"certain": {}, "available": {}, "various": {}, "additional": {}, "external": {},
+	"internal": {}, "standard": {}, "native": {}, "extra": {}, "more": {},
+	"most": {}, "own": {}, "following": {}, "above": {}, "below": {}, "for": {},
+	"file": {}, "files": {}, "shell": {}, "command": {}, "commands": {},
 }
 
 // commandProbes maps a command prefix to the file whose presence would make it
