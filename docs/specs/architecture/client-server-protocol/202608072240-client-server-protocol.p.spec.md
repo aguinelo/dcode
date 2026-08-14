@@ -183,6 +183,10 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 
 
+
+- Continuar cria sessão **nova** carregando a conversa; a antiga acabou com o cliente que a rodou.
+- Continuar sessão inexistente falha; nunca começa em branco em silêncio.
+- Chamada de ferramenta sem resultado não entra no histórico reconstruído.
 - Listagem de sessões vem do registro em disco, ordenada da mais recente, filtrada pelo workspace por default.
 - Sessão é titulada pela primeira pergunta; sem pergunta ainda, aparece assim mesmo.
 - Arquivo sem `session.created` não é registro e não entra na listagem.

@@ -111,6 +111,14 @@ type Options struct {
 	// Rules ask a question the sandbox cannot, for paths and commands that are
 	// different in kind from ordinary work.
 	Rules policy.Rules
+	// History seeds the conversation, for a session continuing a recorded one.
+	//
+	// It is not compacted here. The engine checks at the top of its first
+	// iteration, before any request, so a seeded history that is too large is
+	// handled by the same code that handles one that grew — and compacting
+	// here would be a second implementation of the thing most worth having
+	// exactly one of.
+	History []ce.Message
 	// CredentialBackend selects the store. Empty chooses.
 	//
 	// Configuration rather than a per-command flag: a flag on the command that
@@ -523,7 +531,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		ReadFile:         readFileText,
 		Reminders:        opts.Reminders,
 		ShowReasoning:    opts.ShowReasoning,
-	}, ce.Session{Instructions: prompt})
+	}, ce.Session{Instructions: prompt, History: opts.History})
 
 	// The knot: the tool needed the engine, and the engine needed the registry
 	// the tool is in. Tied here, once, where both exist.

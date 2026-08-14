@@ -206,6 +206,7 @@ Usage:
   dcode login [flags]        store the model credential, read without echo
   dcode config [key]         the effective configuration and where it came from
   dcode sessions [show <id>] what dcode has done here, and what it did
+  dcode -r                   continue the most recent session here
   dcode update [flags]       install the latest release
 
 Examples:
@@ -296,6 +297,7 @@ Uso:
   dcode login [flags]        guarda a credencial do modelo, lida sem eco
   dcode config [chave]       a configuração efetiva e de onde ela veio
   dcode sessions [show <id>] o que o dcode fez aqui, e o que ele fez
+  dcode -r                   continua a sessão mais recente daqui
   dcode update [flags]       instala a última versão
 
 Exemplos:

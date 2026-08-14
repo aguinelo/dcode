@@ -101,6 +101,19 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	if req.Model != "" {
 		opts.Model = req.Model
 	}
+	if req.Resume != "" {
+		// The record is the only copy of what happened, so continuing means
+		// reading it. A failure here is fatal to the request rather than
+		// quietly starting fresh: someone who asked to continue and got an
+		// empty session would not find out until the model had forgotten
+		// everything.
+		history, herr := session.Rebuild(filepath.Join(d.opts.RecordDir, req.Resume+".jsonl"))
+		if herr != nil {
+			return nil, protocol.Errorf(protocol.CodeSessionNotFound,
+				"session %s cannot be continued: %v", req.Resume, herr)
+		}
+		opts.History = history
+	}
 	if req.SandboxMode != "" {
 		mode, perr := parseMode(req.SandboxMode)
 		if perr != nil {
