@@ -81,7 +81,7 @@ func ProductRegistry() *tools.Registry {
 	return tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{}, tools.Symbol{},
-		tools.Plan{}, tools.Bash{}, &tools.Explore{},
+		tools.Plan{}, tools.Bash{}, &tools.Explore{}, tools.Fetch{},
 	)
 }
 
@@ -97,6 +97,10 @@ func ProductRegistry() *tools.Registry {
 const shellRefusal = "the eval harness does not execute shell commands. " +
 	"Use the dedicated tools for anything you can do with them, and state what you could not check."
 
+// fetchRefusal is what a scenario answers when the model reaches the network.
+const fetchRefusal = "the eval harness does not reach the network. " +
+	"Answer from what is in the workspace, and state what you could not look up."
+
 // delegationRefusal is what a scenario answers when the model delegates.
 const delegationRefusal = "the eval harness does not run delegated turns. " +
 	"Do the reading yourself with the tools you have, and say what you could not cover."
@@ -109,6 +113,11 @@ func (w *Workspace) Execute(ctx context.Context, name string, input json.RawMess
 	switch name {
 	case "bash":
 		return shellRefusal, true
+	case "fetch":
+		// Same reasoning as the shell. A contract that reached the network
+		// would depend on whatever happened to be online that afternoon, and a
+		// measurement nobody can reproduce is not a measurement.
+		return fetchRefusal, true
 	case "explore":
 		// Same reasoning as the shell: the harness runs no sub-agent, and both
 		// delegation contracts are about the reach — one that it happens, one

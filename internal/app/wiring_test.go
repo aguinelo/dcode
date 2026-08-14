@@ -72,6 +72,8 @@ var wiringTable = []configOption{
 
 	{"EditEchoDiff", "tools.edit_echo_diff", "String", ""},
 	{"SymbolMaxMatches", "tools.symbol_max_matches", "Int", ""},
+	{"Fetch", "tools.fetch_enabled", "Bool", ""},
+	{"FetchMaxBytes", "tools.fetch_max_bytes", "Int", ""},
 	{"BudgetNotice", "budget.notice", "Bool", "BudgetNotice"},
 
 	{"VerifyCommand", "verify.command", "String", ""},

@@ -66,6 +66,13 @@ var toolInvariants = map[string]string{
 	"alcança o **grupo**":               "TestStopKillsWhatTheCommandStartedToo",
 	"sobrevive ao turno":                "TestACommandOutlivesTheTurnThatStartedIt",
 	"mantém o **fim**":                  "TestProcessKeepsTheTailWhenTheOutputIsTooLong",
+
+	// RN-13, the network.
+	"reporta rede **sempre**":      "TestFetchAlwaysDeclaresTheNetwork",
+	"nunca vira leitura de disco":  "TestFetchRefusesASchemeThatIsNotWeb",
+	"não é texto é recusado":       "TestFetchRefusesABodyThatIsNotText",
+	"acima do teto é cortado":      "TestFetchDeclaresItsTruncation",
+	"carrega o endereço de origem": "TestFetchReturnsTheDocument",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
