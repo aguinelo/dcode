@@ -114,6 +114,15 @@ type Result struct {
 	Runs    int
 	Passed  int
 	Errors  int
+	// Retries is how many runs had to be attempted again because the transport
+	// failed, across the whole measurement.
+	//
+	// It travels with the result rather than being swallowed, because a
+	// measurement that completed after nine retries is worth knowing about: it
+	// is the difference between a clean provider and one failing half the
+	// time, and a number that only surfaces when everything breaks is a number
+	// nobody can act on early.
+	Retries int
 	Model   string
 	Build   string
 	// FirstError is why the errored runs errored, or empty when none did.
@@ -177,6 +186,9 @@ func (r Result) String() string {
 		r.ID, verdict, r.Rate()*100, r.Runs, r.Threshold*100)
 	if r.Planned > 0 && r.Runs < r.Planned {
 		fmt.Fprintf(&b, " — stopped after %d of %d planned, measurement unsound", r.Runs, r.Planned)
+	}
+	if r.Retries > 0 {
+		fmt.Fprintf(&b, " · %d transport retr%s", r.Retries, plural(r.Retries))
 	}
 	if r.Errors > 0 {
 		fmt.Fprintf(&b, " — %d run(s) errored, measurement unsound", r.Errors)
@@ -403,4 +415,57 @@ func (e *Evidence) String() string {
 // last round is what separates them.
 func CeilingReached(round, rounds, calls int) bool {
 	return round == rounds-1 && calls > 0
+}
+
+// TransportRetries is how many times a run is retried before its failure counts
+// as a failure to measure.
+//
+// Three, and the number comes from what actually went wrong. Two full suite
+// runs came back unsound because DNS failed partway through — the second lost
+// ten contracts, the third lost two, both after hours of paid measurement. A
+// single lost packet should not cost that.
+//
+// It does not soften the rule that a transport error makes a measurement
+// unsound. It separates "the network blipped" from "the provider is not
+// answering", which the old code could not tell apart because it gave up on
+// the first one.
+const TransportRetries = 3
+
+// WithRetry runs attempt until it succeeds, the retries run out, or the context
+// ends.
+//
+// The retry count comes back with the result rather than being swallowed. A
+// measurement that needed nine retries to complete is worth knowing about even
+// though it completed: it is the difference between a clean provider and one
+// failing half the time, and a number that only appears when everything breaks
+// is a number nobody can act on early.
+func WithRetry[T any](ctx context.Context, retries int, attempt func(context.Context) (T, error)) (T, int, error) {
+	var zero T
+	var last error
+	for i := 0; ; i++ {
+		// A cancelled context is not a blip. Retrying against a dead deadline
+		// is how one hang became twenty invented errors.
+		if err := ctx.Err(); err != nil {
+			if last == nil {
+				last = err
+			}
+			return zero, i, last
+		}
+		out, err := attempt(ctx)
+		if err == nil {
+			return out, i, nil
+		}
+		last = err
+		if i >= retries {
+			return zero, i, last
+		}
+	}
+}
+
+// plural is the "y"/"ies" ending, which is the only inflection this file needs.
+func plural(n int) string {
+	if n == 1 {
+		return "y"
+	}
+	return "ies"
 }

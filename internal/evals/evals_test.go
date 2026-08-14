@@ -539,3 +539,80 @@ func TestTheCeilingIsReachedOnlyWhenTheModelStillWantedToAct(t *testing.T) {
 		t.Error("a one-round scenario that acted was not reported as cut off")
 	}
 }
+
+// A transport error is not behaviour, and losing six hours to one is not a
+// measurement policy.
+//
+// Two full runs have now come back unsound because DNS failed partway through.
+// The rule that any transport error poisons a contract is right — a network
+// blip must never read as a behavioural regression — but "poison the contract"
+// and "give up on the first packet lost" are different rules, and only the
+// second was implemented.
+//
+// The retries are counted and reported, because a heavily-retried measurement
+// is worth knowing about even when it succeeds: it is the difference between a
+// clean provider and one that is failing half the time.
+func TestARunRetriesTransportAndSaysHowOften(t *testing.T) {
+	var attempts int
+	got, retries, err := WithRetry(context.Background(), 3, func(context.Context) (string, error) {
+		attempts++
+		if attempts < 3 {
+			return "", errors.New("dial tcp: lookup api.example.com: no such host")
+		}
+		return "ok", nil
+	})
+	if err != nil {
+		t.Fatalf("gave up on a transient failure: %v", err)
+	}
+	if got != "ok" || retries != 2 {
+		t.Errorf("got %q after %d retries, want ok after 2", got, retries)
+	}
+}
+
+// Exhausted is still an error. The point is to survive a blip, not to hide a
+// provider that is down.
+func TestRetryStopsAndReportsWhenItKeepsFailing(t *testing.T) {
+	var attempts int
+	_, retries, err := WithRetry(context.Background(), 3, func(context.Context) (string, error) {
+		attempts++
+		return "", errors.New("no such host")
+	})
+	if err == nil {
+		t.Fatal("a provider that never answered was reported as measured")
+	}
+	if attempts != 4 || retries != 3 {
+		t.Errorf("tried %d times with %d retries, want 4 and 3", attempts, retries)
+	}
+}
+
+// A cancelled context is not a blip. Retrying against a dead deadline is how
+// v11 turned one hang into twenty invented errors.
+func TestRetryDoesNotFightACancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var attempts int
+	if _, _, err := WithRetry(ctx, 3, func(context.Context) (string, error) {
+		attempts++
+		return "", errors.New("no such host")
+	}); err == nil {
+		t.Fatal("expected the cancellation to end it")
+	}
+	if attempts > 1 {
+		t.Errorf("tried %d times against a cancelled context", attempts)
+	}
+}
+
+// The retries reach the line, because a measurement that needed them is not the
+// same as one that did not.
+func TestTheResultLineSaysHowManyRetriesItTook(t *testing.T) {
+	r := Result{ID: "x", Threshold: 0.9, Planned: 20, Runs: 20, Passed: 20, Retries: 4}
+	if !strings.Contains(r.String(), "4 transport retries") {
+		t.Errorf("the retries are invisible: %q", r.String())
+	}
+	if !r.Met() {
+		t.Error("a measurement that survived its retries is still a measurement")
+	}
+	if strings.Contains(Result{ID: "x", Planned: 20, Runs: 20}.String(), "retr") {
+		t.Error("a clean run mentioned retries")
+	}
+}
