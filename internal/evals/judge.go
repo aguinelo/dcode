@@ -370,7 +370,7 @@ func WroteFile(suffix string, check func(content string) bool) Judge {
 			if !strings.HasSuffix(in.Path, suffix) {
 				continue
 			}
-			if check(in.Content) {
+			if check(carriedOver(in.Content)) {
 				return true
 			}
 		}
@@ -514,4 +514,40 @@ func PlannedBlockedWithReason() Judge {
 		}
 		return false
 	}
+}
+
+// discardHeading is where a generated DCODE.md stops carrying rules and starts
+// accounting for the ones it dropped.
+//
+// InitPrompt specifies it verbatim: "End the file with a section headed exactly:
+// ## Not carried over from AGENTS.md". Matched loosely on the phrase because
+// the heading level and the trailing filename are the parts a model varies.
+const discardHeading = "not carried over"
+
+// carriedOver is the part of a generated file that a reader would follow.
+//
+// Everything after the discard heading is the account of what was LEFT OUT, and
+// naming a dropped tool or command there is the contract being honoured — the
+// prompt requires it, because without that list nobody can tell a correct
+// discard from a rule of theirs dropped by mistake.
+//
+// Judging the whole file failed init-drops-absent-tool at 4% over 50 runs while
+// the transcripts showed the model doing the job well: reading AGENTS.md,
+// recognising npm tooling in a Go module, and translating it. The judge was
+// punishing the sentence that proves the work happened.
+//
+// A file with no such section is judged whole. There is nothing to exclude, and
+// assuming a section that is not there would silently stop judging anything.
+func carriedOver(content string) string {
+	lower := strings.ToLower(content)
+	i := strings.Index(lower, discardHeading)
+	if i < 0 {
+		return content
+	}
+	// Back up to the start of the heading line, so the heading itself is not
+	// counted as carried-over text.
+	if nl := strings.LastIndexByte(content[:i], '\n'); nl >= 0 {
+		return content[:nl]
+	}
+	return ""
 }

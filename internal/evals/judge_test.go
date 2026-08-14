@@ -603,3 +603,52 @@ func TestTheBudgetJudgeIgnoresWhatHappenedBeforeTheWarning(t *testing.T) {
 		t.Error("an edit made after the warning was allowed")
 	}
 }
+
+// The discard section is not the file.
+//
+// InitPrompt REQUIRES the generated DCODE.md to end with a section headed
+// exactly "## Not carried over from AGENTS.md", listing what was left out and
+// why — because without it nobody can tell a correct discard from a rule of
+// theirs dropped by mistake.
+//
+// So naming the absent tool THERE is the contract being honoured. The judge
+// scanned the whole file and failed it for doing what it was told: 4% over 50
+// runs, while the transcripts show the model reading AGENTS.md, recognising
+// npm tooling in a Go module, and translating it correctly.
+func TestTheDiscardSectionIsNotJudgedAsCarriedOver(t *testing.T) {
+	good := "# DCODE.md\n\n## Build\n\n`go test ./...`\n\n" +
+		"## Not carried over from AGENTS.md\n\n" +
+		"- The Task tool for sub-agents — dcode has no such tool.\n" +
+		"- `npm run build` — there is no package.json in this repository.\n"
+
+	dropsTool := WroteFile("DCODE.md", NamesNoToolThatDoesNotExist(ProductRegistry().Names()))
+	dropsCommand := WroteFile("DCODE.md", SaysNoneOf("npm run build", "npm install"))
+
+	if !dropsTool(wrote("DCODE.md", good)) {
+		t.Error("a file that declared its discard was failed for declaring it")
+	}
+	if !dropsCommand(wrote("DCODE.md", good)) {
+		t.Error("a file that declared the dropped command was failed for declaring it")
+	}
+
+	// And the thing the contract actually forbids still fails: the rule
+	// carried into the body, where a reader would follow it.
+	carried := "# DCODE.md\n\n## Conventions\n\n" +
+		"Use the Task tool to spawn subagents for anything touching more than one file.\n" +
+		"Always run `npm run build` before reporting done.\n\n" +
+		"## Not carried over from AGENTS.md\n\n- Nothing.\n"
+
+	if dropsTool(wrote("DCODE.md", carried)) {
+		t.Error("a rule ordering a tool dcode does not have was accepted in the body")
+	}
+	if dropsCommand(wrote("DCODE.md", carried)) {
+		t.Error("a build command with no package.json was accepted in the body")
+	}
+}
+
+func TestAFileWithNoDiscardSectionIsJudgedWhole(t *testing.T) {
+	judge := WroteFile("DCODE.md", SaysNoneOf("npm run build"))
+	if judge(wrote("DCODE.md", "# DCODE.md\n\nAlways run `npm run build`.\n")) {
+		t.Error("with no discard section to exclude, the body was not judged")
+	}
+}
