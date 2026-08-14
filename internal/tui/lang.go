@@ -99,6 +99,7 @@ type Strings struct {
 	HelpKeys      string
 	HelpYours     string
 	KeyEnter      string
+	KeyNewline    string
 	KeyArrows     string
 	KeyPage       string
 	KeyTab        string
@@ -173,6 +174,7 @@ var catalogue = map[Lang]Strings{
 		HelpKeys:      "Keys",
 		HelpYours:     "Yours",
 		KeyEnter:      "send (queues while a turn is running)",
+		KeyNewline:    "break the line without sending",
 		KeyArrows:     "history on an empty line, otherwise move through the stream",
 		KeyPage:       "scroll · Home and End jump to either end",
 		KeyTab:        "expand or collapse the selected entry",
@@ -261,6 +263,7 @@ Environment:
 		HelpKeys:      "Teclas",
 		HelpYours:     "Seus",
 		KeyEnter:      "envia (enfileira enquanto um turno roda)",
+		KeyNewline:    "quebra a linha sem enviar",
 		KeyArrows:     "histórico em linha vazia; fora dela, navega no stream",
 		KeyPage:       "rola · Home e End vão para as pontas",
 		KeyTab:        "abre ou fecha a entrada selecionada",
