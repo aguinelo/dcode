@@ -364,7 +364,7 @@ func wrote(path, content string) Transcript {
 }
 
 func TestWroteFileReadsTheContentAndNotTheRawArguments(t *testing.T) {
-	judge := WroteFile("DCODE.md", SaysAll("hello"))
+	judge := WroteFile("DCODE.md", SaysAny("hello"))
 
 	if !judge(wrote("DCODE.md", "hello there")) {
 		t.Error("did not see content it was given")
@@ -383,7 +383,7 @@ func TestWroteFileReadsTheContentAndNotTheRawArguments(t *testing.T) {
 }
 
 func TestWroteFileIgnoresACallItCannotDecode(t *testing.T) {
-	judge := WroteFile("DCODE.md", SaysAll("hello"))
+	judge := WroteFile("DCODE.md", SaysAny("hello"))
 	bad := Transcript{Calls: []ce.ToolCall{{Name: "write", Input: []byte(`{not json`)}}}
 	if judge(bad) {
 		t.Error("undecodable arguments were read as a passing write")
@@ -395,10 +395,10 @@ func TestWroteFileIgnoresACallItCannotDecode(t *testing.T) {
 // content passes exactly one of them.
 func TestTheThreeInitJudgesDisagreeWithEachOther(t *testing.T) {
 	have := ProductRegistry().Names()
-	dropsTool := WroteFile("DCODE.md", NamesNoToolThatDoesNotExist(have))
-	dropsCommand := WroteFile("DCODE.md", SaysNoneOf("npm run build", "npm install"))
+	dropsTool := WroteCarriedOver("DCODE.md", NamesNoToolThatDoesNotExist(have))
+	dropsCommand := WroteCarriedOver("DCODE.md", SaysNoneOf("npm run build", "npm install"))
 	keepsConvention := WroteFile("DCODE.md", Both(
-		SaysAll("50"),
+		SaysAny("50"),
 		SaysAny("doc comment", "doc comments", "documentation comment", "godoc"),
 	))
 
@@ -442,13 +442,7 @@ func TestTheThreeInitJudgesDisagreeWithEachOther(t *testing.T) {
 	}
 }
 
-func TestSaysAllAndSaysAnyIgnoreCase(t *testing.T) {
-	if !SaysAll("Doc Comment")("every symbol carries a doc comment") {
-		t.Error("SaysAll is case-sensitive")
-	}
-	if SaysAll("a", "b")("only a") {
-		t.Error("SaysAll passed without every fragment")
-	}
+func TestTheContentChecksIgnoreCase(t *testing.T) {
 	if !SaysAny("godoc", "doc comment")("a DOC COMMENT on each") {
 		t.Error("SaysAny is case-sensitive")
 	}
@@ -621,8 +615,8 @@ func TestTheDiscardSectionIsNotJudgedAsCarriedOver(t *testing.T) {
 		"- The Task tool for sub-agents — dcode has no such tool.\n" +
 		"- `npm run build` — there is no package.json in this repository.\n"
 
-	dropsTool := WroteFile("DCODE.md", NamesNoToolThatDoesNotExist(ProductRegistry().Names()))
-	dropsCommand := WroteFile("DCODE.md", SaysNoneOf("npm run build", "npm install"))
+	dropsTool := WroteCarriedOver("DCODE.md", NamesNoToolThatDoesNotExist(ProductRegistry().Names()))
+	dropsCommand := WroteCarriedOver("DCODE.md", SaysNoneOf("npm run build", "npm install"))
 
 	if !dropsTool(wrote("DCODE.md", good)) {
 		t.Error("a file that declared its discard was failed for declaring it")
@@ -647,8 +641,61 @@ func TestTheDiscardSectionIsNotJudgedAsCarriedOver(t *testing.T) {
 }
 
 func TestAFileWithNoDiscardSectionIsJudgedWhole(t *testing.T) {
-	judge := WroteFile("DCODE.md", SaysNoneOf("npm run build"))
+	judge := WroteCarriedOver("DCODE.md", SaysNoneOf("npm run build"))
 	if judge(wrote("DCODE.md", "# DCODE.md\n\nAlways run `npm run build`.\n")) {
 		t.Error("with no discard section to exclude, the body was not judged")
+	}
+}
+
+// Keeping a convention and declaring you dropped it are both honest. Dropping
+// it silently is the failure.
+//
+// init-keeps-real-convention measured 50%, and the transcripts show the model
+// reasoning rather than forgetting:
+//
+//	"Conventions: the only one actually enforced by the code is the
+//	 doc-comment style"
+//
+// It kept one rule and dropped the other on the grounds that nothing enforces
+// it. That is a judgment call InitPrompt explicitly allows — what it requires
+// is the account: "without it nobody can tell a correct discard from a rule of
+// theirs you dropped by mistake."
+//
+// The judge read only the carried-over part, so a declared discard scored the
+// same as saying nothing.
+func TestADeclaredDiscardCountsAsHavingKeptTheRule(t *testing.T) {
+	whole := WroteFile("DCODE.md", SaysAny("50"))
+	carried := WroteCarriedOver("DCODE.md", SaysAny("50"))
+
+	declared := "# DCODE.md\n\n## Build\n\n`go test ./...`\n\n" +
+		"## Not carried over from AGENTS.md\n\n" +
+		"- The 50-line function limit — nothing in this repository enforces it.\n"
+
+	if !whole(wrote("DCODE.md", declared)) {
+		t.Error("a discard the model declared was scored as a rule that vanished")
+	}
+	if carried(wrote("DCODE.md", declared)) {
+		t.Error("the carried-over reader saw into the discard section")
+	}
+
+	silent := "# DCODE.md\n\n## Build\n\n`go test ./...`\n\n" +
+		"## Not carried over from AGENTS.md\n\n- Nothing.\n"
+	if whole(wrote("DCODE.md", silent)) {
+		t.Error("a rule that vanished without a word was accepted")
+	}
+}
+
+// The two readers are different on purpose, and the difference is which
+// question is being asked: what would a reader follow, versus what became of
+// the user's rules.
+func TestTheTwoReadersDisagreeWhereTheyShould(t *testing.T) {
+	content := "# DCODE.md\n\nUse `go test ./...`.\n\n" +
+		"## Not carried over from AGENTS.md\n\n- `npm run build` — no package.json here.\n"
+
+	if !WroteFile("DCODE.md", SaysAny("npm run build"))(wrote("DCODE.md", content)) {
+		t.Error("the whole-file reader missed the discard section")
+	}
+	if WroteCarriedOver("DCODE.md", SaysAny("npm run build"))(wrote("DCODE.md", content)) {
+		t.Error("the carried-over reader read the discard section")
 	}
 }

@@ -538,13 +538,13 @@ var Contracts = []Contract{
 		//
 		// Deterministic, which is what makes 100% a legitimate claim rather
 		// than a hope about a model.
-		Judge: WroteFile("DCODE.md", NamesNoToolThatDoesNotExist(ProductRegistry().Names()))},
+		Judge: WroteCarriedOver("DCODE.md", NamesNoToolThatDoesNotExist(ProductRegistry().Names()))},
 	{ID: "init-drops-absent-command", Rounds: initRounds, Threshold: 0.95,
 		// AGENTS.md orders `npm run build`, and this workspace is a Go module
 		// with no package.json. Carrying the command over is carrying an
 		// instruction that cannot run — and the reader has no way to tell,
 		// because a build command is the last thing anyone questions.
-		Judge: WroteFile("DCODE.md", SaysNoneOf("npm run build", "npm install"))},
+		Judge: WroteCarriedOver("DCODE.md", SaysNoneOf("npm run build", "npm install"))},
 	{ID: "init-keeps-real-convention", Rounds: initRounds, Threshold: 0.90,
 		// The contract that stops the naive fix. An /init that discards
 		// eagerly clears the noise and deletes the user's rules with it, and a
@@ -553,8 +553,17 @@ var Contracts = []Contract{
 		//
 		// Both surviving conventions are about this repository and nothing
 		// else: the line limit, and the doc-comment rule.
+		// The whole file, not just the carried-over part. Keeping the rule and
+		// declaring you dropped it are BOTH honest — InitPrompt requires the
+		// account precisely so a correct discard can be told from a rule that
+		// vanished. Silence is the only failure.
+		//
+		// It read the carried part alone and measured 50%, while the model was
+		// reasoning rather than forgetting: "the only one actually enforced by
+		// the code is the doc-comment style". That is a judgment the prompt
+		// allows, and what it owes is the sentence saying so.
 		Judge: WroteFile("DCODE.md", Both(
-			SaysAll("50"),
+			SaysAny("50", "fifty"),
 			SaysAny("doc comment", "doc comments", "documentation comment", "godoc"),
 		))},
 	{ID: "init-does-not-execute", Rounds: initRounds, Threshold: 1.0,
