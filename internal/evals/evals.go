@@ -393,3 +393,14 @@ func (e *Evidence) String() string {
 	}
 	return b.String()
 }
+
+// CeilingReached reports whether a scenario was stopped by its round ceiling
+// rather than by the model being finished.
+//
+// The distinction is the whole value of the flag: a run that answered wrongly
+// and a run that was still working when the harness stopped it look identical
+// in a rate, and only one of them is about the model. Calls outstanding on the
+// last round is what separates them.
+func CeilingReached(round, rounds, calls int) bool {
+	return round == rounds-1 && calls > 0
+}

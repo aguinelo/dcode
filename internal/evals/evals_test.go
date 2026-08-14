@@ -507,3 +507,35 @@ func TestTheCeilingIsCountedForEveryRunNotEveryTranscript(t *testing.T) {
 		t.Errorf("repeats were not counted: %q", e.String())
 	}
 }
+
+// The flag that says a run hit the ceiling has to be set where the ceiling is.
+//
+// It was not. The round loop already breaks at the last round, and the
+// assignment sat after that break — unreachable. Evidence read HitCeiling and
+// nothing ever wrote it, so "N ran out of rounds" could not appear no matter
+// how many runs ran out. Mine, two hours old, and the exact shape this whole
+// exercise keeps finding: something declared that one side reads and no side
+// writes.
+//
+// The decision lives here rather than inline so it can be tested at all: the
+// loop is behind the eval build tag and needs a provider, and a rule nobody
+// can exercise is how the first version shipped broken.
+func TestTheCeilingIsReachedOnlyWhenTheModelStillWantedToAct(t *testing.T) {
+	const rounds = 12
+
+	if !CeilingReached(11, rounds, 2) {
+		t.Error("the last round with calls outstanding is the ceiling")
+	}
+	// It stopped asking on the last round. The loop would have ended anyway.
+	if CeilingReached(11, rounds, 0) {
+		t.Error("a model that finished on the last round was reported as cut off")
+	}
+	if CeilingReached(4, rounds, 3) {
+		t.Error("a middle round was reported as the ceiling")
+	}
+	// A single-round scenario that produced calls is still cut off: it had one
+	// round and used it.
+	if !CeilingReached(0, 1, 1) {
+		t.Error("a one-round scenario that acted was not reported as cut off")
+	}
+}
