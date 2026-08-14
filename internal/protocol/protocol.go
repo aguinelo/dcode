@@ -89,6 +89,14 @@ type CreateSessionRequest struct {
 	Workspace   string `json:"workspace"`
 	Model       string `json:"model,omitempty"`
 	SandboxMode string `json:"sandbox_mode,omitempty"`
+	// Resume names a recorded session whose conversation this one continues.
+	//
+	// A new session either way: the old one ended with the client that ran it,
+	// and nothing survives what created it. What carries over is the history,
+	// rebuilt from the record — not the approvals, which were consent given in
+	// a moment that has passed, and not the background processes, which died
+	// with the session that started them.
+	Resume string `json:"resume,omitempty"`
 }
 
 // SubmitTurnRequest submits user input. Rejected with turn_already_active if a

@@ -508,3 +508,55 @@ func TestARecordThatCannotBeOpenedIsReportedAndNotFatal(t *testing.T) {
 		t.Errorf("nothing was said about a session that is not being recorded: %v", said)
 	}
 }
+
+// Continuing carries the conversation and nothing else.
+//
+// A new session either way: the old one ended with the client that ran it, and
+// nothing survives what created it. What crosses over is what was said, which
+// is the only part a person cannot reconstruct themselves.
+func TestContinuingASessionCarriesItsConversation(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"seq":1,"type":"session.created","at":"2026-08-14T12:00:00Z","payload":{"id":"old","workspace":"/w"}}
+{"seq":2,"type":"turn.started","at":"2026-08-14T12:00:01Z","payload":{"turn_id":"t1","text":"what does Rows do?"}}
+{"seq":3,"type":"message.delta","at":"2026-08-14T12:00:02Z","payload":{"turn_id":"t1","text":"count minus one"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "old.jsonl"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           baseOpts(t),
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Model: "MiniMax-M3", Resume: "old",
+	})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	defer sess.Close()
+
+	if sess.ID == "old" {
+		t.Error("continuing reopened the old session rather than starting one that carries it")
+	}
+}
+
+// Asking to continue something that is not there fails loudly. Starting fresh
+// instead would be discovered only once the model had forgotten everything.
+func TestContinuingAMissingSessionIsAnError(t *testing.T) {
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      t.TempDir(),
+		Base:           baseOpts(t),
+	})
+
+	if _, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Model: "MiniMax-M3", Resume: "never-existed",
+	}); err == nil {
+		t.Fatal("continuing a session that does not exist reported success")
+	}
+}

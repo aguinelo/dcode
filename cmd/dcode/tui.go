@@ -35,7 +35,13 @@ func runTUI(args []string) error {
 		workspace = fs.String("workspace", "", "workspace root (default: current directory)")
 		attach    = fs.String("session", "", "attach to an existing session by id")
 		noPanel   = fs.Bool("no-panel", false, "start with the plan panel hidden")
+		// Continuing and attaching look alike and are not. Attaching joins a
+		// session that is still running; continuing starts a new one carrying
+		// the conversation of one that ended.
+		cont   = fs.Bool("continue", false, "continue the most recent session for this workspace")
+		resume = fs.String("resume", "", "continue a recorded session by id")
 	)
+	fs.BoolVar(cont, "r", false, "shorthand for --continue")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "dcode tui — open the terminal interface\n\nFlags:\n")
 		fs.PrintDefaults()
@@ -88,6 +94,13 @@ func runTUI(args []string) error {
 		c = embedded
 	}
 
+	carry := *resume
+	if *cont && carry == "" {
+		if carry, err = latestSession(ws, resolved); err != nil {
+			return err
+		}
+	}
+
 	sessionID := *attach
 	var sess protocol.Session
 	if sessionID == "" {
@@ -95,6 +108,7 @@ func runTUI(args []string) error {
 			Workspace:   ws,
 			Model:       opts.Model,
 			SandboxMode: string(opts.SandboxMode),
+			Resume:      carry,
 		})
 	} else {
 		sess, err = c.GetSession(ctx, sessionID)
@@ -285,4 +299,21 @@ func lookup(r config.Resolved) func(string) (string, bool) {
 		}
 		return out, true
 	}
+}
+
+// latestSession is the most recent recorded session for this workspace.
+//
+// Filtered by workspace, because --continue means "what I was doing here". An
+// unfiltered latest would hand someone the session from another project, which
+// is worse than finding none: they would notice none, and might not notice the
+// wrong one until the model answered from it.
+func latestSession(ws string, resolved config.Resolved) (string, error) {
+	found, err := session.Browse(recordDir(resolved), ws)
+	if err != nil {
+		return "", err
+	}
+	if len(found) == 0 {
+		return "", fmt.Errorf("no recorded session for this workspace to continue")
+	}
+	return found[0].ID, nil
 }

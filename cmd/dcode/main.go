@@ -61,7 +61,28 @@ func dispatch(args []string) error {
 	if len(args) == 0 && isTerminal(os.Stdout) {
 		return runTUI(nil)
 	}
+	// Continuing is asked for the way the interface is opened — `dcode -r`,
+	// not `dcode tui -r`. Nobody types the subcommand for the thing that runs
+	// without one, and a flag that only works after a word people never say is
+	// a flag nobody finds.
+	if opensTheInterface(args) {
+		return runTUI(args)
+	}
 	return runOnce(args)
+}
+
+// opensTheInterface reports whether these arguments mean "open the TUI" rather
+// than "run this task".
+//
+// Only the flags that continue a session, and only as the first token. A task
+// is free text and may start with anything; treating every leading dash as a
+// flag would make `dcode "-v is not being passed"` an error nobody expects.
+func opensTheInterface(args []string) bool {
+	switch args[0] {
+	case "-r", "--continue", "-continue", "--resume", "-resume":
+		return true
+	}
+	return false
 }
 
 // resolveWorkspace turns a possibly empty flag into an absolute path.

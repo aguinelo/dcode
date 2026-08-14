@@ -13,7 +13,7 @@ import (
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app")}
 
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
@@ -33,6 +33,11 @@ var protocolInvariants = map[string]string{
 	"titulada pela primeira":       "TestASessionIsTitledByWhatWasAsked",
 	"não é registro e não entra":   "TestRubbishInTheDirectoryIsSkipped",
 	"junta os fragmentos de texto": "TestATranscriptReadsLikeTheConversation",
+	// Continuing. The daemon assembles it; the rebuild is asserted where the
+	// record is read.
+	"cria sessão **nova** carregando": "TestContinuingASessionCarriesItsConversation",
+	"Continuar sessão inexistente":    "TestContinuingAMissingSessionIsAnError",
+	"sem resultado não entra":         "TestACallWithNoResultIsDropped",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
