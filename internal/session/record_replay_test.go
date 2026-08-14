@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,12 +27,12 @@ func fill(t *testing.T, l *EventLog, n int) {
 // come back.
 func TestAClientAwayTooLongStillGetsTheSession(t *testing.T) {
 	dir := t.TempDir()
-	sp, err := NewSpill(dir, "s-1")
+	sp, err := NewRecord(dir, "s-1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	l := NewEventLog("s-1", 10, nil)
-	l.SetSpill(sp)
+	l.SetRecord(sp)
 
 	fill(t, l, 50)
 
@@ -51,9 +52,9 @@ func TestAClientAwayTooLongStillGetsTheSession(t *testing.T) {
 
 func TestReplayFromTheMiddleSpansDiskAndMemory(t *testing.T) {
 	dir := t.TempDir()
-	sp, _ := NewSpill(dir, "s-2")
+	sp, _ := NewRecord(dir, "s-2")
 	l := NewEventLog("s-2", 10, nil)
-	l.SetSpill(sp)
+	l.SetRecord(sp)
 	fill(t, l, 50)
 
 	got, err := l.Replay(35)
@@ -81,23 +82,41 @@ func TestWithoutASpillTheOldBehaviourStands(t *testing.T) {
 
 // Nothing is dropped if it could not be kept. Memory growing is visible and
 // recoverable; a silent hole in the session is neither.
-func TestAFailedSpillKeepsTheEventsInMemory(t *testing.T) {
+// A record that cannot be written must not take the events with it. The
+// session is still a session; what is lost is the ability to read it later.
+func TestARecordThatCannotBeOpenedLeavesTheSessionUnrecorded(t *testing.T) {
 	dir := t.TempDir()
-	sp, _ := NewSpill(dir, "s-4")
-	// A directory where the file should be: every write fails.
-	if err := os.MkdirAll(filepath.Join(dir, "s-4.events.jsonl"), 0o700); err != nil {
+	// A directory where the file should be: opening it fails.
+	if err := os.MkdirAll(filepath.Join(dir, "s-4.jsonl"), 0o700); err != nil {
 		t.Fatal(err)
 	}
+	rec, err := NewRecord(dir, "s-4")
+	if err == nil {
+		t.Fatal("opening a record over a directory reported success")
+	}
+	if rec != nil {
+		t.Fatal("a failed open handed back something to write to")
+	}
+
+	// The session runs anyway. Refusing to work because a file could not be
+	// opened would be the audit trail holding the product hostage, and the
+	// daemon says so on its log rather than swallowing it.
 	l := NewEventLog("s-4", 10, nil)
-	l.SetSpill(sp)
+	l.SetRecord(rec)
 	fill(t, l, 50)
 
-	got, err := l.Replay(1)
-	if err != nil {
-		t.Fatalf("the events were dropped although they could not be kept: %v", err)
+	// And it behaves exactly like a session that was never being recorded:
+	// retention is a hard horizon, and asking below it is REFUSED rather than
+	// answered with a gap. A refusal is something a client can act on.
+	if _, err := l.Replay(1); err == nil {
+		t.Fatal("replaying below the horizon of an unrecorded session succeeded")
 	}
-	if len(got) != 50 {
-		t.Fatalf("got %d, want all 50 still in memory", len(got))
+	got, err := l.Replay(41)
+	if err != nil {
+		t.Fatalf("replaying what memory still holds failed: %v", err)
+	}
+	if len(got) != 10 {
+		t.Errorf("got %d events, want the 10 retention kept", len(got))
 	}
 }
 
@@ -105,7 +124,7 @@ func TestAFailedSpillKeepsTheEventsInMemory(t *testing.T) {
 // hitting it would silently truncate the replay.
 func TestALargePayloadSurvivesTheRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	sp, _ := NewSpill(dir, "s-5")
+	sp, _ := NewRecord(dir, "s-5")
 	big := make([]byte, 200_000)
 	for i := range big {
 		big[i] = 'x'
@@ -126,66 +145,70 @@ func TestALargePayloadSurvivesTheRoundTrip(t *testing.T) {
 	}
 }
 
-func TestNoDirectoryMeansNoSpill(t *testing.T) {
-	sp, err := NewSpill("", "s-6")
+func TestNoDirectoryMeansNoRecord(t *testing.T) {
+	sp, err := NewRecord("", "s-6")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if sp != nil {
-		t.Fatal("an empty directory produced a spill file")
+		t.Fatal("an empty directory produced a file; that is how recording is turned off")
 	}
 	// And every method tolerates it, so the caller needs no nil check.
 	if err := sp.Append([]protocol.Event{{Seq: 1}}); err != nil {
-		t.Errorf("Append on a nil spill: %v", err)
+		t.Errorf("Append on a nil record: %v", err)
 	}
 	if got, err := sp.Replay(1); err != nil || got != nil {
-		t.Errorf("Replay on a nil spill: %v, %v", got, err)
+		t.Errorf("Replay on a nil record: %v, %v", got, err)
 	}
-	if err := sp.Remove(); err != nil {
-		t.Errorf("Remove on a nil spill: %v", err)
+	if err := sp.Close(); err != nil {
+		t.Errorf("Close on a nil record: %v", err)
 	}
 }
 
 // The spill exists so a client that was away can still read what it missed.
-// Once the session is gone, nobody can ask for those events — the id is not
-// resolvable and there is no route to it — so the file is garbage with a
-// session id in its name.
+// The record outlives the session, and that is the whole point.
 //
-// Nothing removed it. One file per session, kept forever, in a directory the
-// user configured and never looks at, growing for exactly as long as the daemon
-// is useful. The method to delete it existed and had no caller.
-func TestClosingASessionTakesItsSpillWithIt(t *testing.T) {
+// This asserted the opposite, and the reasoning was sound for what the file
+// then was: once the session is gone nobody can ask for a replay, so the file
+// was garbage with a session id in its name, one per session, in a directory
+// the user configured and never looks at.
+//
+// Every word of that holds for a spill and none of it for a record. The asking
+// that matters happens AFTER the session ends — what did it do, why did it do
+// that, what would we change. Deleting at close destroyed the evidence at the
+// exact moment it became evidence.
+//
+// The growth the old test worried about is real and is answered by pruning,
+// which is a policy about age and size, not by throwing everything away.
+func TestTheRecordOutlivesTheSession(t *testing.T) {
 	dir := t.TempDir()
-	sp, err := NewSpill(dir, "s1")
+	rec, err := NewRecord(dir, "s1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	l := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
-	l.SetSpill(sp)
+	l.SetRecord(rec)
 
-	// Enough events that retention trims and something reaches the file.
 	for i := 0; i < 6; i++ {
-		if _, err := l.Append(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"}); err != nil {
+		if _, err := l.Append(protocol.EventToolCompleted, protocol.MessageDelta{Text: "x"}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	before, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(before) != 1 {
-		t.Fatalf("expected the spill to exist before closing, found %d entries", len(before))
-	}
-
 	l.Close()
 
 	after, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(after) != 0 {
-		t.Errorf("the spill outlived the session: %v — one file per session, kept "+
-			"forever, in a directory nobody looks at", names(after))
+	if len(after) != 1 {
+		t.Fatalf("the record did not survive the session: %v", names(after))
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "s1.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(strings.TrimSpace(string(b)), "\n") + 1; n != 6 {
+		t.Errorf("the record holds %d of 6 events", n)
 	}
 }
 
@@ -193,12 +216,12 @@ func TestClosingASessionTakesItsSpillWithIt(t *testing.T) {
 // must not turn into an error nobody can act on.
 func TestClosingTwiceIsNotAnError(t *testing.T) {
 	dir := t.TempDir()
-	sp, err := NewSpill(dir, "s1")
+	sp, err := NewRecord(dir, "s1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	l := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
-	l.SetSpill(sp)
+	l.SetRecord(sp)
 	if _, err := l.Append(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"}); err != nil {
 		t.Fatal(err)
 	}
@@ -228,30 +251,28 @@ func names(entries []os.DirEntry) []string {
 // The unit above proves the log removes it; this proves the removal is actually
 // reached when a session is deleted rather than sitting behind a Close nobody
 // calls.
-func TestRemovingASessionThroughTheManagerLeavesNoSpill(t *testing.T) {
+func TestRemovingASessionThroughTheManagerKeepsItsRecord(t *testing.T) {
 	dir := t.TempDir()
 	m := NewManager(4)
 	log := NewEventLog("s1", 2, func() time.Time { return time.Unix(0, 0) })
-	sp, err := NewSpill(dir, "s1")
+	rec, err := NewRecord(dir, "s1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	log.SetSpill(sp)
+	log.SetRecord(rec)
 	s := New("s1", "/w", "MiniMax-M3", "workspace-write", nil, log, func() time.Time { return time.Unix(0, 0) })
 	if err := m.Add(s); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 6; i++ {
-		s.Emit(protocol.EventMessageDelta, protocol.MessageDelta{Text: "x"})
-	}
-	if entries, _ := os.ReadDir(dir); len(entries) == 0 {
-		t.Fatal("nothing spilled; the assertion below would prove nothing")
+		s.Emit(protocol.EventToolCompleted, protocol.MessageDelta{Text: "x"})
 	}
 
 	if err := m.Remove(s.ID); err != nil {
 		t.Fatal(err)
 	}
-	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
-		t.Errorf("deleting the session left %v behind", names(entries))
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Errorf("removing the session took its record with it: %v", names(entries))
 	}
 }

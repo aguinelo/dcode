@@ -99,13 +99,14 @@ var wiringTable = []configOption{
 // makes that promise checkable. Without the second half this map would be the
 // hole the whole file exists to close.
 var nonSession = map[string]string{
-	"update.check":     "read by the update path, which is not a session",
-	"update.channel":   "read by the update path, which is not a session",
-	"ui.lang":          "read by the terminal client, which is not a session",
-	"events.spill_dir": "read by the daemon, which outlives any one session",
-	"eval.enabled":     "read by the eval harness, which measures the product rather than running it",
-	"eval.model":       "read by the eval harness, which measures the product rather than running it",
-	"eval.runs":        "read by the eval harness, which measures the product rather than running it",
+	"update.check":   "read by the update path, which is not a session",
+	"update.channel": "read by the update path, which is not a session",
+	"ui.lang":        "read by the terminal client, which is not a session",
+	"record.enabled": "read by the daemon, which outlives any one session",
+	"record.dir":     "read by the daemon, which outlives any one session",
+	"eval.enabled":   "read by the eval harness, which measures the product rather than running it",
+	"eval.model":     "read by the eval harness, which measures the product rather than running it",
+	"eval.runs":      "read by the eval harness, which measures the product rather than running it",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.

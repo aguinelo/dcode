@@ -29,9 +29,10 @@ type EventLog struct {
 	sessionID string
 	clock     Clock
 	retention int
-	// spill keeps trimmed events readable. Nil means retention is a hard
-	// horizon and a client away too long gets events_expired.
-	spill *Spill
+	// record is everything this session did, on disk. Nil means recording is
+	// off, and then retention is a hard horizon: a client away too long gets
+	// events_expired and nobody can read the session afterwards.
+	record *Record
 
 	seq    uint64
 	events []protocol.Event
@@ -41,6 +42,9 @@ type EventLog struct {
 
 	subs map[int]*subscriber
 	next int
+	// recordErr is the first failure to write the record, kept so a session
+	// whose transcript is incomplete can say so rather than look complete.
+	recordErr error
 }
 
 type subscriber struct {
@@ -83,6 +87,16 @@ func (l *EventLog) Append(t protocol.EventType, payload any) (protocol.Event, er
 		Payload:   raw,
 	}
 	l.events = append(l.events, ev)
+	// To the record before anything else sees it. Recording after the fan-out
+	// would let a subscriber act on an event the record does not have, which
+	// is a session whose transcript disagrees with what happened.
+	//
+	// A failure is not worth failing the turn over — the agent is working and
+	// the person is watching — but it must not be silent either, so the log
+	// keeps it and Close reports it.
+	if err := l.record.Append([]protocol.Event{ev}); err != nil && l.recordErr == nil {
+		l.recordErr = err
+	}
 	l.trim()
 
 	// Fan out under the same lock so a subscriber cannot observe events out of
@@ -111,24 +125,28 @@ func (l *EventLog) trim() {
 		return
 	}
 	drop := len(l.events) - l.retention
-	// To disk before out of memory. Dropping first and writing after would
-	// lose them on any failure in between, and a gap a client cannot detect is
-	// worse than a refused replay.
-	if err := l.spill.Append(l.events[:drop]); err != nil {
-		// Nothing is dropped if it could not be kept. Memory grows, which is
-		// visible and recoverable; a silent hole in the session is neither.
+	// The record already has them: Append writes every event as it arrives, so
+	// trimming is only about memory. It used to write here, and doing both
+	// would put the same sequence number in the file twice — a replay that
+	// returns the same event to a client that cannot tell.
+	//
+	// With no record at all, dropping is the intended hard horizon: a client
+	// away too long gets events_expired, which is a refusal it can act on.
+	// With a record that failed to write, nothing is dropped — memory growing
+	// is visible and recoverable, and a silent hole in the session is neither.
+	if l.record != nil && l.recordErr != nil {
 		return
 	}
 	l.firstSeq = l.events[drop].Seq
 	l.events = append([]protocol.Event(nil), l.events[drop:]...)
 }
 
-// SetSpill attaches a spill file. Called at session creation, before anything
-// is appended.
-func (l *EventLog) SetSpill(s *Spill) {
+// SetRecord attaches the file this session is written to. Called at session
+// creation, before anything is appended.
+func (l *EventLog) SetRecord(r *Record) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.spill = s
+	l.record = r
 }
 
 // LastSeq returns the highest sequence assigned.
@@ -149,20 +167,28 @@ func (l *EventLog) Replay(from uint64) ([]protocol.Event, error) {
 
 	var out []protocol.Event
 	if from < l.firstSeq {
-		// Trimmed out of memory is not gone if there is a spill file. The
-		// event log is the session, and a client that took too long to come
-		// back should get the session, not a refusal about bookkeeping.
-		spilled, err := l.spill.Replay(from)
+		// Trimmed out of memory is not gone if the session is being recorded.
+		// The event log is the session, and a client that took too long to
+		// come back should get the session, not a refusal about bookkeeping.
+		recorded, err := l.record.Replay(from)
 		if err != nil {
 			return nil, protocol.Errorf(protocol.CodeInternal,
-				"the spilled events could not be read: %v", err)
+				"the recorded events could not be read: %v", err)
 		}
-		if len(spilled) == 0 && l.spill == nil {
+		if len(recorded) == 0 && l.record == nil {
 			return nil, protocol.Errorf(protocol.CodeEventsExpired,
 				"events before %d are no longer held; the earliest available is %d",
 				from, l.firstSeq)
 		}
-		out = append(out, spilled...)
+		// Below the horizon only. The record holds every event now, not just
+		// what was trimmed, so taking all of it and then appending memory
+		// would hand the client each live event twice — and a duplicated
+		// sequence number is the one thing a client cannot detect.
+		for _, ev := range recorded {
+			if ev.Seq < l.firstSeq {
+				out = append(out, ev)
+			}
+		}
 	}
 	for _, ev := range l.events {
 		if ev.Seq >= from {
@@ -267,16 +293,14 @@ func (l *EventLog) Close() {
 		close(s.ch)
 		delete(l.subs, id)
 	}
-	// The spill exists so a client that was away can still read what it missed.
-	// Once the session is gone nobody can ask — the id resolves to nothing and
-	// there is no route to it — so the file is garbage with a session id in its
-	// name, and one per session adds up for as long as the daemon is useful.
+	// The record is kept. It used to be deleted here, on the reasoning that
+	// once the session is gone nobody can ask for a replay — true for replay,
+	// and exactly backwards for a record, whose whole purpose is the asking
+	// that happens afterwards.
 	//
-	// A failure here is not worth failing a close over: the session is already
-	// finished, and refusing to shut down because a file could not be removed
-	// trades a leaked file for a stuck daemon.
-	if l.spill != nil {
-		_ = l.spill.Remove()
-		l.spill = nil
+	// Growth is real and is answered by pruning, not by throwing the evidence
+	// away at the moment it becomes evidence.
+	if l.record != nil {
+		_ = l.record.Close()
 	}
 }

@@ -23,7 +23,7 @@
 - [ ] `Append(ctx, sessionID, type, payload) (Event, error)` — atribui `Seq` sob lock, monotônico e sem lacunas.
 - [ ] `Replay(ctx, sessionID, from uint64) (iter.Seq[Event], error)` — devolve `events_expired` abaixo da retenção.
 - [ ] `Subscribe(ctx, sessionID, from uint64) (<-chan Event, error)` — reposição seguida de fluxo ao vivo, sem lacuna e sem duplicata na emenda.
-- [x] Retenção conforme `DCODE_EVENT_RETENTION`; transbordo para disco conforme `DCODE_EVENT_SPILL`.
+- [x] Retenção conforme `DCODE_EVENT_RETENTION`; gravação em disco conforme `DCODE_RECORD_ENABLED` e `DCODE_RECORD_DIR`.
 
 > Append-only, um JSON por linha, sem índice: replay é sequencial a partir de um número, que uma varredura responde direto, e a única operação que precisaria ser rápida é a que ninguém faz com frequência.
 >

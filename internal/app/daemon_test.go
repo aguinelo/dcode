@@ -369,3 +369,53 @@ func requireSandbox(t *testing.T, opts Options) {
 		t.Skipf("no sandbox available: %v", err)
 	}
 }
+
+// A session opened through the daemon leaves a file somebody can read.
+//
+// This is the end the whole change exists for. The pieces were all present —
+// an append-only log, a spill file, a config key, a state directory — and the
+// two commands people actually run, `dcode` and `dcode tui`, wired none of it.
+// So there was no way to audit what dcode did, no way to reconstruct a session
+// afterwards, and no evidence to reason from when its behaviour needed work.
+func TestASessionThroughTheDaemonLeavesAReadableRecord(t *testing.T) {
+	dir := t.TempDir()
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           baseOpts(t),
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: t.TempDir(), Model: "MiniMax-M3"})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	sess.Emit(protocol.EventToolRequested, map[string]string{"tool": "read"})
+	sess.Emit(protocol.EventToolCompleted, map[string]string{"ok": "yes"})
+	sess.Close()
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("the session left %d files, want its record", len(entries))
+	}
+	body, err := os.ReadFile(filepath.Join(dir, entries[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "tool.requested") ||
+		!strings.Contains(string(body), "tool.completed") {
+		t.Errorf("the record does not hold what the session did:\n%s", body)
+	}
+	// The file is the person's transcript. Anyone else on the machine reading
+	// it is reading what they typed and what the agent saw.
+	info, err := entries[0].Info()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("record mode is %v, want 0600", perm)
+	}
+}

@@ -79,7 +79,7 @@ func runTUI(args []string) error {
 			// not an invitation to start something somewhere else.
 			return fmt.Errorf("no daemon answered on %s: %w", path, err)
 		}
-		embedded, cleanup, err := startEmbedded(ctx, opts)
+		embedded, cleanup, err := startEmbedded(ctx, opts, recordDir(resolved))
 		if err != nil {
 			return err
 		}
@@ -147,16 +147,20 @@ func healthy(ctx context.Context, c *client.Client) error {
 // Private rather than the default path: two terminals opened without a shared
 // daemon would otherwise race to bind the same socket, and the loser would fail
 // to start for a reason the user cannot act on.
-func startEmbedded(ctx context.Context, base app.Options) (*client.Client, func(), error) {
+func startEmbedded(ctx context.Context, base app.Options, recordDir string) (*client.Client, func(), error) {
 	dir, err := os.MkdirTemp("", "dcode")
 	if err != nil {
 		return nil, nil, err
 	}
 	path := filepath.Join(dir, "d.sock")
 
+	// The embedded daemon records too. It did not, and `dcode` and `dcode tui`
+	// are the paths people actually use — so the mechanism existed, with a
+	// config key and a state directory, and produced nothing for anybody.
 	d := app.NewDaemon(app.DaemonOptions{
 		SocketPath:     path,
 		EventRetention: 10000,
+		RecordDir:      recordDir,
 		Base:           base,
 	})
 	if err := d.Listen(); err != nil {
