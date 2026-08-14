@@ -57,7 +57,13 @@ func TestEveryContract(t *testing.T) {
 			// "the scenario cannot reach the behaviour it judges", and those
 			// two need opposite fixes.
 			evidence := NewEvidence(MaxEvidence)
-			attempt := func(ctx context.Context) (bool, error) {
+			retries := 0
+			// A transport error is not behaviour. Two full runs came back
+			// unsound because DNS failed partway through, after hours of paid
+			// measurement — a lost packet must not cost that. It does not
+			// soften the rule that a failure to measure is unsound; it
+			// separates a blip from a provider that is not answering.
+			once := func(ctx context.Context) (bool, error) {
 				w, err := NewWorkspace(t.TempDir(), f.Files, f.ToolNames())
 				if err != nil {
 					return false, err
@@ -81,6 +87,12 @@ func TestEveryContract(t *testing.T) {
 				return ok, nil
 			}
 
+			attempt := func(ctx context.Context) (bool, error) {
+				ok, again, err := WithRetry(ctx, TransportRetries, once)
+				retries += again
+				return ok, err
+			}
+
 			// A contract that claims more measures more. Resolved here rather
 			// than inside Measure so the count that ran is the count that
 			// gets printed, with no second place deciding it.
@@ -92,6 +104,7 @@ func TestEveryContract(t *testing.T) {
 			// total budget belongs. A second ceiling here only decided which
 			// contract got blamed for the suite running long.
 			r := Measure(context.Background(), runCfg, contract.ID, contract.Threshold, attempt)
+			r.Retries = retries
 			measured = append(measured, r)
 			if !r.Met() {
 				if s := evidence.String(); s != "" {
