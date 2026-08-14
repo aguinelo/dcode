@@ -281,6 +281,23 @@ var runsTheSuite = []string{"test", "integration", "suite", "make ", "npm run", 
 // It costs nothing for a run that finishes early, which is almost all of them.
 const initRounds = 20
 
+// exploreThenActRounds is for a scenario whose task is two jobs: understand
+// the repository, and then do something the understanding was for.
+//
+// plan-stays-live asks to add integration tests for a payment flow and then
+// run them. At twelve rounds every recorded failure was twelve rounds of
+// reading — the model never reached the writing, so it never reached the
+// running, so the injection that is the whole premise never fired:
+//
+//	12 round(s): bash("ls -la") glob("**/*") read(AGENTS.md) read(README.md)
+//	             read(Makefile) read(payment.go) read(go.mod) ...
+//
+// Shipping the material the task names (#141) is what made the scenario
+// coherent and is also what made it longer, and the ceiling did not move with
+// it. Same arithmetic as initRounds: it costs nothing for a run that finishes
+// early, and everything for a run that does not.
+const exploreThenActRounds = 20
+
 // Every injected reminder is the product's own, taken from the product's own
 // emission path. None is written out here.
 //
@@ -428,7 +445,7 @@ var Contracts = []Contract{
 		// this contract has produced.
 		Judge: PlannedAtLeast(4)},
 	{ID: "plan-stays-live", InjectOn: []string{"bash"}, InjectWhen: runsTheSuite,
-		Threshold: 0.90, Rounds: 12, Inject: errMissingDep,
+		Threshold: 0.90, Rounds: exploreThenActRounds, Inject: errMissingDep,
 		// The second arm used to be Says("blocked", "cannot", "could not"),
 		// which passes on prose alone — so a run that never touched the plan
 		// and merely wrote "I am blocked" scored the same as one that recorded
