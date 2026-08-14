@@ -40,6 +40,14 @@ var tuiInvariants = map[string]string{
 	// The bottom bar.
 	"worktree ativo nunca é descartado": "TestTheWorktreeSurvivesEveryWidth",
 	"Segmento sem dado não desenha":     "TestWhatIsWaitingNeverDropsAndVanishesWhenThereIsNothing",
+	// The input box.
+	"desenha exatamente as linhas que o layout reservou": "TestTheFrameReservesExactlyWhatTheBoxDraws",
+	"cobre a largura inteira do quadro":                  "TestEveryRowOfTheBoxCoversItsWidth",
+	"só na primeira linha da caixa":                      "TestOnlyTheFirstRowCarriesThePrompt",
+	"rola por dentro, mantendo o caret":                  "TestTheBoxScrollsToKeepTheCaretVisible",
+	"cede antes do fluxo":                                "TestTheBoxNeverTakesTheWholeWindow",
+	"início e ao fim da linha do caret":                  "TestTheLineKeysStayOnTheirLine",
+	"preserva as quebras e não envia":                    "TestAMultiLinePasteDoesNotSendAnything",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

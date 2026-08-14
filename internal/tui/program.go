@@ -250,22 +250,25 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if p.model.Pending != nil {
 			return p, nil
 		}
-		p.model = p.model.Insert(flattenPaste(msg.Content)).Refresh(p.opts.Commands)
+		p.model = p.model.Insert(normalisePaste(msg.Content)).Refresh(p.opts.Commands)
 		return p, nil
 	}
 	return p, nil
 }
 
-// flattenPaste turns a pasted block into something a one-line input can hold.
+// normalisePaste makes a pasted block's line endings uniform.
 //
-// Pasted text routinely carries newlines — a stack trace, a diff, a log — and
-// the input is a single row. Letting them through would break the render, and
-// treating each as Enter would send one turn per line and lose the last. A
-// space keeps the words apart and keeps every line.
-func flattenPaste(s string) string {
+// The breaks are kept now. They used to become spaces, because the input was
+// one row and letting them through would have broken the render — a stack
+// trace, a diff or a log pasted as one long line was the lesser damage.
+//
+// The box holds rows, so the reason is gone and keeping them is plainly
+// better: a pasted stack trace reads as a stack trace. Treating each break as
+// Enter is still wrong for the same reason as before — it would send one turn
+// per line and lose the last — and nothing here does that.
+func normalisePaste(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
-	s = strings.ReplaceAll(s, "\r", "\n")
-	return strings.ReplaceAll(s, "\n", " ")
+	return strings.ReplaceAll(s, "\r", "\n")
 }
 
 func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -342,6 +345,21 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return p.onEnter()
 
+	// ---------- breaking a line ----------
+	//
+	// Enter sends, so there was no way to type a list: every line collapsed
+	// into one paragraph.
+	//
+	// Three bindings for one act, and it is not generosity. Most terminals
+	// send the same bytes for enter and shift+enter, so the modifier only
+	// survives where the terminal answers Bubble Tea's disambiguation request.
+	// alt+enter and ctrl+j need nothing — ctrl+j IS a newline, and has been on
+	// every terminal ever made — so the feature works everywhere and reads
+	// naturally where it can.
+	case "shift+enter", "alt+enter", "ctrl+j":
+		p.model = p.model.Insert("\n")
+		return p, nil
+
 	// ---------- scrolling ----------
 	//
 	// These never depend on what is in the input line: a key that sometimes
@@ -390,12 +408,23 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// costs nothing to be wrong about: with text on the line, history would
 	// destroy what they were writing.
 	case "up":
+		// A row above is a row to move to, and that beats every other reading:
+		// somebody editing the second line of a list is not reaching for what
+		// they typed yesterday.
+		if at := LineUp(p.model.Input, p.model.InputCursor); at >= 0 {
+			p.model.InputCursor = at
+			return p, nil
+		}
 		if p.model.Input == "" && len(p.model.History) > 0 && p.model.Cursor < 0 {
 			p.model = p.model.HistoryPrev()
 			return p, nil
 		}
 		return p.moveCursor(-1)
 	case "down":
+		if at := LineDown(p.model.Input, p.model.InputCursor); at >= 0 {
+			p.model.InputCursor = at
+			return p, nil
+		}
 		if p.model.HistoryAt >= 0 {
 			p.model = p.model.HistoryNext()
 			return p, nil
@@ -413,11 +442,15 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			p.model.InputCursor++
 		}
 		return p, nil
+	// home and end stay on the stream, deliberately. The rule a few cases up
+	// holds: a key that sometimes scrolls and sometimes types is a key nobody
+	// trusts. ctrl+a and ctrl+e are the line keys, and they now mean THIS
+	// line rather than the whole buffer.
 	case "ctrl+a":
-		p.model.InputCursor = 0
+		p.model.InputCursor = LineStart(p.model.Input, p.model.InputCursor)
 		return p, nil
 	case "ctrl+e":
-		p.model.InputCursor = len([]rune(p.model.Input))
+		p.model.InputCursor = LineEnd(p.model.Input, p.model.InputCursor)
 		return p, nil
 	case "ctrl+u":
 		p.model = p.model.SetInput("").Refresh(p.opts.Commands)

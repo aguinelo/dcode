@@ -123,6 +123,9 @@ func HelpText(user config.CommandSet, lang Lang) string {
 	b.WriteString(t.HelpKeys + "\n")
 	for _, k := range [][2]string{
 		{"enter", t.KeyEnter},
+		// Three, because the modifier only survives where the terminal answers
+		// the disambiguation request. ctrl+j needs nothing anywhere.
+		{"shift+enter / alt+enter / ^J", t.KeyNewline},
 		{"↑ ↓", t.KeyArrows},
 		{"PgUp/PgDn", t.KeyPage},
 		{"tab", t.KeyTab},

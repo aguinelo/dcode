@@ -1090,10 +1090,15 @@ func TestAMultiLinePasteDoesNotSendAnything(t *testing.T) {
 	if !strings.Contains(p.model.Input, "primeira") || !strings.Contains(p.model.Input, "terceira") {
 		t.Errorf("no line may be lost: %q", p.model.Input)
 	}
-	// The line is one line: the input is a single row, and a raw newline in it
-	// would break the render rather than show a paragraph.
-	if strings.ContainsRune(p.model.Input, '\n') {
-		t.Errorf("a newline must not survive into a one-line input: %q", p.model.Input)
+	// The breaks are kept. They used to become spaces, because the input was
+	// one row and a raw newline would have broken the render — a pasted stack
+	// trace arriving as one long line was the lesser damage.
+	//
+	// The box holds rows now, so a pasted stack trace reads as a stack trace.
+	// What is still true is that pasting sends nothing, which is what the
+	// first assertion above is for.
+	if strings.Count(p.model.Input, "\n") != 2 {
+		t.Errorf("the pasted breaks were flattened: %q", p.model.Input)
 	}
 }
 
@@ -1261,4 +1266,46 @@ func (f *fakeTransport) resolvedDecisions() []protocol.ApprovalDecision {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]protocol.ApprovalDecision(nil), f.resolved...)
+}
+
+// Enter sends, so a list could not be typed: every line collapsed into one
+// paragraph. This is the feature, driven through the keyboard rather than
+// asserted on the helpers underneath it.
+//
+// Three bindings, because most terminals send the same bytes for enter and
+// shift+enter — the modifier only survives where the terminal answers Bubble
+// Tea's disambiguation request. ctrl+j needs nothing anywhere, and alt+enter
+// covers the middle.
+func TestBreakingALineDoesNotSend(t *testing.T) {
+	for _, k := range []tea.KeyPressMsg{
+		{Code: tea.KeyEnter, Mod: tea.ModShift},
+		{Code: tea.KeyEnter, Mod: tea.ModAlt},
+		{Code: 'j', Mod: tea.ModCtrl},
+	} {
+		p, tr := newProgram(t)
+		p.Update(key("a"))
+		p.Update(k)
+		p.Update(key("b"))
+
+		if got := p.model.Input; got != "a\nb" {
+			t.Errorf("%v produced %q, want a break between the letters", k, got)
+		}
+		if len(tr.submits()) != 0 {
+			t.Errorf("%v sent the turn: %v", k, tr.submits())
+		}
+	}
+}
+
+// And plain enter still sends, which is the half nobody would notice breaking
+// until it did.
+func TestPlainEnterStillSends(t *testing.T) {
+	p, tr := newProgram(t)
+	run(t, p, typeLine(t, p, "a"))
+
+	if len(tr.submits()) != 1 {
+		t.Fatalf("enter sent %d turns, want 1", len(tr.submits()))
+	}
+	if p.model.Input != "" {
+		t.Errorf("the line was not cleared: %q", p.model.Input)
+	}
 }

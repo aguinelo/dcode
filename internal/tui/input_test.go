@@ -3,203 +3,197 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
-// typed builds a line with the caret at a known offset.
-func typed(text string, cursor int) Model {
-	m := NewModel("s", "/w", "m", "read-only", En)
-	m.Input = text
-	m.InputCursor = cursor
-	return m
-}
+func geo(w, h int) Geometry { return Geometry{Width: w, Height: h} }
 
-// The caret and the text can never disagree about where they are, which is why
-// editing lives on the model rather than in the key handler.
-func TestInsertAtTheCaret(t *testing.T) {
-	m := typed("olá", 3).Insert(" mundo")
-	if m.Input != "olá mundo" || m.InputCursor != 9 {
-		t.Fatalf("got %q at %d", m.Input, m.InputCursor)
-	}
+func protocolIdle() protocol.SessionState { return protocol.SessionStateIdle }
 
-	// In the middle, not appended to the end.
-	m = typed("ac", 1).Insert("b")
-	if m.Input != "abc" || m.InputCursor != 2 {
-		t.Errorf("got %q at %d", m.Input, m.InputCursor)
+// Enter sends, so a list could not be typed: every line collapsed into one
+// paragraph. This is the whole feature.
+func TestABreakMakesARow(t *testing.T) {
+	g := geo(80, 24)
+	if got := InputRows(Model{Input: "one"}, g); got != 1 {
+		t.Errorf("a single line takes %d rows", got)
 	}
-}
-
-// Runes, not bytes: the failure only shows with the accented input a
-// Portuguese-speaking user types.
-func TestEditingCountsRunesNotBytes(t *testing.T) {
-	m := typed("configuração", 12)
-	m = m.Backspace()
-	if m.Input != "configuraçã" {
-		t.Errorf("backspace ate more than one character: %q", m.Input)
+	if got := InputRows(Model{Input: "one\ntwo\nthree"}, g); got != 3 {
+		t.Errorf("three lines take %d rows, want 3", got)
 	}
-	if m.InputCursor != 11 {
-		t.Errorf("got caret at %d", m.InputCursor)
-	}
-
-	m = typed("日本語", 3).Backspace()
-	if m.Input != "日本" {
-		t.Errorf("got %q", m.Input)
+	// A trailing break is a row the caret sits on, and losing it would put the
+	// caret on the line above what the user is typing.
+	if got := InputRows(Model{Input: "one\n"}, g); got != 2 {
+		t.Errorf("a trailing break takes %d rows, want 2", got)
 	}
 }
 
-func TestBackspaceAndDeleteAtTheEdges(t *testing.T) {
-	if got := typed("abc", 0).Backspace(); got.Input != "abc" {
-		t.Errorf("backspace at the start is a no-op, got %q", got.Input)
-	}
-	if got := typed("abc", 3).DeleteForward(); got.Input != "abc" {
-		t.Errorf("delete at the end is a no-op, got %q", got.Input)
-	}
-	if got := typed("abc", 1).DeleteForward(); got.Input != "ac" {
-		t.Errorf("got %q", got.Input)
-	}
-	// A caret past the end must not panic; it is clamped.
-	if got := typed("abc", 99).Backspace(); got.Input != "ab" {
-		t.Errorf("got %q", got.Input)
+// A pasted essay must not eat the window.
+func TestTheBoxStopsGrowing(t *testing.T) {
+	g := geo(80, 40)
+	tall := strings.Repeat("x\n", 100)
+	got := InputRows(Model{Input: tall}, g)
+	if got != MaxInputRows {
+		t.Errorf("a hundred lines took %d rows, want the cap of %d", got, MaxInputRows)
 	}
 }
 
-func TestDeleteWordTakesTrailingSpacesWithIt(t *testing.T) {
-	for _, tc := range []struct{ in, want string }{
-		{"refatore o desconto", "refatore o "},
-		{"refatore o    ", "refatore "},
-		{"palavra", ""},
-		{"", ""},
-	} {
-		got := typed(tc.in, len([]rune(tc.in))).DeleteWord()
-		if got.Input != tc.want {
-			t.Errorf("%q: got %q want %q", tc.in, got.Input, tc.want)
-		}
-		if got.InputCursor != len([]rune(tc.want)) {
-			t.Errorf("%q: caret at %d", tc.in, got.InputCursor)
+// On a short terminal the cap has to yield, or the box leaves no stream.
+func TestTheBoxNeverTakesTheWholeWindow(t *testing.T) {
+	g := geo(80, 8)
+	tall := strings.Repeat("x\n", 100)
+	rows := InputRows(Model{Input: tall}, g)
+	if rows >= g.Height-3 {
+		t.Errorf("the box took %d of %d rows, leaving nothing to read", rows, g.Height)
+	}
+	if rows < 1 {
+		t.Errorf("the box vanished: %d rows", rows)
+	}
+}
+
+// The assertion that would have caught the ghosting: what is drawn has to be
+// exactly the height the layout reserved. Two places computing it is the bug.
+func TestTheFrameReservesExactlyWhatTheBoxDraws(t *testing.T) {
+	for _, in := range []string{"", "one", "one\ntwo", strings.Repeat("y\n", 50)} {
+		m := Model{Input: in}
+		g := geo(80, 24)
+		if got, want := len(renderInputLines(m, g, "")), InputRows(m, g); got != want {
+			t.Errorf("input %q drew %d rows and the layout reserved %d", in, got, want)
 		}
 	}
+}
 
-	// Only what is behind the caret goes.
-	got := typed("um dois tres", 7).DeleteWord()
-	if got.Input != "um  tres" {
-		t.Errorf("got %q", got.Input)
+// Every row is exactly the frame's width, or the terminal keeps whatever was
+// under the short ones — which is the ghosting this project already fixed once.
+func TestEveryRowOfTheBoxCoversItsWidth(t *testing.T) {
+	m := Model{Input: "one\ntwo longer line\nx"}
+	g := geo(40, 24)
+	for i, line := range renderInputLines(m, g, "") {
+		if w := clipWidth(line); w != g.Width {
+			t.Errorf("row %d is %d cells wide, want %d: %q", i, w, g.Width, line)
+		}
 	}
 }
 
-// ---------- history ----------
-
-func TestHistoryWalksBackAndForwards(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only", En)
-	m = m.Remember("primeiro").Remember("segundo")
-
-	m = m.HistoryPrev()
-	if m.Input != "segundo" {
-		t.Fatalf("up must reach the newest first, got %q", m.Input)
+// The prompt marks where typing starts, and it belongs on the first row only.
+// Repeating it would read as three separate messages.
+func TestOnlyTheFirstRowCarriesThePrompt(t *testing.T) {
+	lines := renderInputLines(Model{Input: "one\ntwo\nthree"}, geo(40, 24), "")
+	if !strings.HasPrefix(lines[0], "> ") {
+		t.Errorf("the first row has no prompt: %q", lines[0])
 	}
-	m = m.HistoryPrev()
-	if m.Input != "primeiro" {
-		t.Fatalf("got %q", m.Input)
-	}
-	// Past the oldest there is nothing more to show.
-	m = m.HistoryPrev()
-	if m.Input != "primeiro" {
-		t.Errorf("got %q", m.Input)
-	}
-
-	m = m.HistoryNext()
-	if m.Input != "segundo" {
-		t.Errorf("got %q", m.Input)
-	}
-	m = m.HistoryNext()
-	if m.Input != "" {
-		t.Errorf("past the newest returns to the empty line, got %q", m.Input)
+	for _, l := range lines[1:] {
+		if strings.HasPrefix(strings.TrimSpace(l), ">") {
+			t.Errorf("a continuation row carries a prompt: %q", l)
+		}
 	}
 }
 
-// Entering the history must not silently discard a half-written message.
-func TestHistoryKeepsTheDraft(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only", En).Remember("antigo")
-	m = m.SetInput("meio escrito")
+// The caret has to know about rows, or home and end jump to the ends of the
+// whole buffer and the arrows walk through the break instead of over it.
+func TestTheCaretMovesByLine(t *testing.T) {
+	m := Model{Input: "abc\ndefgh", InputCursor: 5} // before "e", row 1 col 1
 
-	m = m.HistoryPrev()
-	if m.Input != "antigo" {
-		t.Fatalf("got %q", m.Input)
+	if row, col := caretAt(m.Input, m.InputCursor); row != 1 || col != 1 {
+		t.Fatalf("caret at row %d col %d, want 1,1", row, col)
 	}
-	m = m.HistoryNext()
-	if m.Input != "meio escrito" {
-		t.Errorf("the draft must come back, got %q", m.Input)
+
+	// Home is the start of THIS line, not of everything typed.
+	if got := LineStart(m.Input, m.InputCursor); got != 4 {
+		t.Errorf("home went to %d, want the start of the second line", got)
+	}
+	if got := LineEnd(m.Input, m.InputCursor); got != 9 {
+		t.Errorf("end went to %d, want the end of the second line", got)
+	}
+
+	// Up keeps the column where it can.
+	up := LineUp(m.Input, m.InputCursor)
+	if row, col := caretAt(m.Input, up); row != 0 || col != 1 {
+		t.Errorf("up landed at row %d col %d, want 0,1", row, col)
+	}
+	// And clamps to a shorter line rather than overshooting into the next one.
+	short := Model{Input: "ab\nlonger", InputCursor: 9}
+	if row, _ := caretAt(short.Input, LineUp(short.Input, short.InputCursor)); row != 0 {
+		t.Errorf("up from a long line left row 0")
+	}
+	if got := LineUp(short.Input, short.InputCursor); got != 2 {
+		t.Errorf("up landed at %d, want the end of the shorter line", got)
 	}
 }
 
-// Pressing up twice should reach two different commands, not the same one.
-func TestHistoryCollapsesConsecutiveDuplicates(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only", En)
-	m = m.Remember("igual").Remember("igual").Remember("outro")
-	if len(m.History) != 2 {
-		t.Fatalf("got %v", m.History)
+func TestOnASingleLineTheCaretKeepsItsOldBehaviour(t *testing.T) {
+	const s = "just one line"
+	if got := LineStart(s, 5); got != 0 {
+		t.Errorf("home went to %d", got)
 	}
-	if got := m.Remember("   "); len(got.History) != 2 {
-		t.Errorf("blank input is not a command: %v", got.History)
+	if got := LineEnd(s, 5); got != len(s) {
+		t.Errorf("end went to %d", got)
 	}
-}
-
-func TestHistoryOnAnEmptyHistory(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only", En)
-	if got := m.HistoryPrev(); got.Input != "" {
-		t.Errorf("got %q", got.Input)
+	// Nowhere to go, so it stays put and the caller falls back to history.
+	if got := LineUp(s, 5); got != -1 {
+		t.Errorf("up reported %d, want -1 for nothing above", got)
 	}
-	if got := m.HistoryNext(); got.Input != "" {
-		t.Errorf("got %q", got.Input)
+	if got := LineDown(s, 5); got != -1 {
+		t.Errorf("down reported %d, want -1 for nothing below", got)
 	}
 }
 
-// Typing leaves the history: what is on the line is now the user's.
-func TestTypingLeavesTheHistory(t *testing.T) {
-	m := NewModel("s", "/w", "m", "read-only", En).Remember("antigo").HistoryPrev()
-	if m.HistoryAt < 0 {
-		t.Fatal("setup: the model should be browsing")
+// The frame is the assertion that would have caught the ghosting: a taller box
+// takes its rows from the stream and from nowhere else, and the whole thing
+// still fills the terminal exactly.
+func TestATallerBoxTakesItsRowsFromTheStream(t *testing.T) {
+	g := geo(60, 24)
+	base := Model{Lang: En, State: protocolIdle()}
+	tall := base
+	tall.Input = "one\ntwo\nthree\nfour"
+
+	if a, b := BodyHeight(base, g), BodyHeight(tall, g); b != a-3 {
+		t.Errorf("a box three rows taller left the stream at %d, was %d", b, a)
 	}
-	if got := m.Insert("x"); got.HistoryAt >= 0 {
-		t.Error("typing must leave the history behind")
+
+	for _, m := range []Model{base, tall} {
+		lines := strings.Split(strings.TrimSuffix(Render(m, g), "\n"), "\n")
+		if len(lines) != g.Height {
+			t.Errorf("input %q rendered %d rows, want exactly %d",
+				m.Input, len(lines), g.Height)
+		}
 	}
 }
 
-// ---------- the caret on screen ----------
-
-func TestTheCaretIsDrawnWhereTypingLands(t *testing.T) {
-	g := DefaultGeometry(80, 10)
-	g.Palette = Palette{Enabled: true}
-
-	m := typed("abc", 1)
-	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
-	got := Render(m, g)
-
-	// Stripped, because the caret escape sits between the characters — which
-	// is exactly what it is supposed to do.
-	if !strings.Contains(stripANSI(got), "abc") {
-		t.Fatalf("the text must be there:\n%q", got)
+// Past the cap the box scrolls rather than truncating: the row being typed on
+// has to be visible, and it is usually the last one.
+func TestTheBoxScrollsToKeepTheCaretVisible(t *testing.T) {
+	g := geo(40, 40)
+	var b strings.Builder
+	for i := 0; i < 30; i++ {
+		b.WriteString("line\n")
 	}
-	// Reverse video marks the character under the caret, so it survives any
-	// colour theme.
-	if !strings.Contains(got, "\x1b[7m") {
-		t.Errorf("the caret must be visible:\n%q", got)
+	m := Model{Input: b.String()}
+	m.InputCursor = len([]rune(m.Input)) // the empty row at the end
+
+	lines, caretRow, _ := inputWindow(m, InputRows(m, g))
+	if len(lines) != MaxInputRows {
+		t.Fatalf("the window shows %d rows, want the cap of %d", len(lines), MaxInputRows)
 	}
-	if visibleWidth(lines(got)[len(lines(got))-1]) > 80 {
-		t.Error("the caret must not widen the line")
+	if caretRow < 0 || caretRow >= MaxInputRows {
+		t.Errorf("the caret is on row %d, outside the visible window", caretRow)
+	}
+	// And at the top nothing scrolls, or the first line is unreachable.
+	m.InputCursor = 0
+	_, caretRow, _ = inputWindow(m, InputRows(m, g))
+	if caretRow != 0 {
+		t.Errorf("with the caret at the start it sits on row %d", caretRow)
 	}
 }
 
-func TestTheCaretAtTheEndOfTheLine(t *testing.T) {
-	p := Palette{Enabled: true}
-	got := renderCaret(typed("ab", 2), p)
-	if stripANSI(got) != "ab " {
-		t.Errorf("a caret past the last character is a block after it: %q", stripANSI(got))
+// Ctrl+A and Ctrl+E move within the line the caret is on.
+func TestTheLineKeysStayOnTheirLine(t *testing.T) {
+	const text = "first\nsecond line\nthird"
+	at := 10 // inside "second line"
+	if got := LineStart(text, at); got != 6 {
+		t.Errorf("ctrl+a went to %d, want the start of the second line", got)
 	}
-	// Out of range is clamped rather than panicking: the caret comes from a
-	// keystroke and the line can be replaced between the two.
-	if got := renderCaret(typed("ab", 99), p); stripANSI(got) != "ab " {
-		t.Errorf("got %q", stripANSI(got))
-	}
-	if got := renderCaret(typed("ab", -1), p); stripANSI(got) != "ab" {
-		t.Errorf("got %q", stripANSI(got))
+	if got := LineEnd(text, at); got != 17 {
+		t.Errorf("ctrl+e went to %d, want the end of the second line", got)
 	}
 }

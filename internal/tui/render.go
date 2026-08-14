@@ -245,8 +245,10 @@ func render(m Model, g Geometry) string {
 		b.WriteString(l)
 		b.WriteString("\n")
 	}
-	b.WriteString(renderInput(m, g, ScrollHint(m, g, top, total, height)))
-	b.WriteString("\n")
+	for _, l := range renderInputLines(m, g, ScrollHint(m, g, top, total, height)) {
+		b.WriteString(l)
+		b.WriteString("\n")
+	}
 	b.WriteString(RenderStatusBar(m, g))
 
 	if m.Pending != nil {
@@ -656,33 +658,134 @@ func renderWorking(m Model, g Geometry) string {
 	return clipStyled(strings.Join(parts, "  "), g.Width)
 }
 
-func renderInput(m Model, g Geometry, hint string) string {
+// MaxInputRows is how tall the input box is allowed to get.
+//
+// Ten, and the number is a compromise. One row made a list impossible to type,
+// which is what this whole thing is about. No cap at all means a pasted essay
+// takes the terminal and the person loses the conversation they were pasting
+// it into.
+const MaxInputRows = 10
+
+// InputRows is how many rows the box occupies.
+//
+// The layout and the renderer both read this, and that is the point. BodyHeight
+// used to subtract a literal 3 — status, input, bottom bar — with the input's
+// share hard-coded at one. A box that grew without that number growing with it
+// would paint over the stream, which is the ghosting already fixed once in "a
+// painted frame owns every cell it covers". Two places computing a height is
+// the bug; the symptom is only where it shows up.
+func InputRows(m Model, g Geometry) int {
+	rows := strings.Count(m.Input, "\n") + 1
+	if rows > MaxInputRows {
+		rows = MaxInputRows
+	}
+	// The stream keeps at least one row whatever the box wants. A box that
+	// fills a short terminal leaves the person typing into nothing.
+	if room := g.Height - 3; rows > room-1 {
+		rows = room - 1
+	}
+	if rows < 1 {
+		rows = 1
+	}
+	return rows
+}
+
+// inputWindow is the slice of lines the box shows, and where the caret sits
+// inside it.
+//
+// Past the cap the box scrolls rather than truncating: the row being typed on
+// has to be visible, and it is usually the last one.
+func inputWindow(m Model, rows int) (lines []string, caretRow, caretCol int) {
+	lines = strings.Split(m.Input, "\n")
+	caretRow, caretCol = caretAt(m.Input, m.InputCursor)
+
+	top := 0
+	if caretRow >= rows {
+		top = caretRow - rows + 1
+	}
+	end := top + rows
+	if end > len(lines) {
+		end = len(lines)
+	}
+	return lines[top:end], caretRow - top, caretCol
+}
+
+// caretAt turns a rune offset into a row and a column.
+func caretAt(text string, at int) (row, col int) {
+	runes := []rune(text)
+	if at < 0 {
+		at = 0
+	}
+	if at > len(runes) {
+		at = len(runes)
+	}
+	for _, r := range runes[:at] {
+		if r == '\n' {
+			row++
+			col = 0
+			continue
+		}
+		col++
+	}
+	return row, col
+}
+
+// renderInputLines draws the box, one string per row.
+//
+// The prompt is on the first row only: repeating it would read as separate
+// messages. The hint is on the last, right-aligned, so it never moves as you
+// type.
+func renderInputLines(m Model, g Geometry, hint string) []string {
 	p := g.Palette
 	prompt := "> "
 	if len(m.Queue) > 0 {
-		// The word was already translated; the renderer wrote the English by
-		// hand three lines from the catalogue that had it.
 		prompt = fmt.Sprintf("(%d %s) > ", len(m.Queue), Text(m.Lang).Queued)
 	}
 
-	line := prompt + m.Input
-	// The caret is drawn rather than left to the terminal: the input sits on a
-	// line the renderer owns, and a hardware cursor would be wherever the last
-	// write left it.
-	if p.Enabled {
-		line = prompt + renderCaret(m, p)
-	}
-	if hint == "" {
-		return clipStyled(line, g.Width)
-	}
+	rows := InputRows(m, g)
+	lines, caretRow, caretCol := inputWindow(m, rows)
 
-	// The hint is right-aligned so it never moves as you type.
-	room := g.Width - clipWidth(prompt+m.Input) - 1
-	if room < clipWidth(hint) {
-		return clipStyled(line, g.Width)
+	out := make([]string, 0, rows)
+	for i := 0; i < rows; i++ {
+		text := ""
+		if i < len(lines) {
+			text = lines[i]
+		}
+		head := strings.Repeat(" ", clipWidth(prompt))
+		if i == 0 {
+			head = prompt
+		}
+		body := text
+		if p.Enabled && i == caretRow {
+			body = renderCaretIn(text, caretCol, p)
+		}
+		line := head + body
+
+		// The hint rides the last row, and only when there is room for it.
+		if i == rows-1 && hint != "" {
+			room := g.Width - clipWidth(head+text) - 1
+			if room >= clipWidth(hint) {
+				line += strings.Repeat(" ", room-clipWidth(hint)+1) + p.Apply(StyleDim, hint)
+			}
+		}
+		out = append(out, padStyled(clipStyled(line, g.Width), g.Width))
 	}
-	pad := strings.Repeat(" ", room-clipWidth(hint)+1)
-	return clipStyled(line+pad+p.Apply(StyleDim, hint), g.Width)
+	return out
+}
+
+// renderCaretIn marks where typing will land on one row.
+func renderCaretIn(text string, at int, p Palette) string {
+	runes := []rune(text)
+	if at < 0 {
+		at = 0
+	}
+	if at > len(runes) {
+		at = len(runes)
+	}
+	if at == len(runes) {
+		return string(runes) + p.Apply(StyleCursor, " ")
+	}
+	return string(runes[:at]) + p.Apply(StyleCursor, string(runes[at])) + string(runes[at+1:])
 }
 
 // renderCaret marks where typing will land.
@@ -1046,4 +1149,81 @@ func VerificationLabel(v string, lang Lang) (string, Style) {
 		// to claim either way, and a permanent label would stop being read.
 		return "", StyleDim
 	}
+}
+
+// LineStart is the offset of the beginning of the line the caret is on.
+//
+// Home means this line, not the whole buffer. On one line the two are the same
+// and nothing changes; on three they are the difference between correcting a
+// word and jumping to the top.
+func LineStart(text string, at int) int {
+	runes := []rune(text)
+	at = clampRune(runes, at)
+	for i := at - 1; i >= 0; i-- {
+		if runes[i] == '\n' {
+			return i + 1
+		}
+	}
+	return 0
+}
+
+// LineEnd is the offset just before the next break, or the end of the text.
+func LineEnd(text string, at int) int {
+	runes := []rune(text)
+	at = clampRune(runes, at)
+	for i := at; i < len(runes); i++ {
+		if runes[i] == '\n' {
+			return i
+		}
+	}
+	return len(runes)
+}
+
+// LineUp is where the caret lands one row up, or -1 when there is no row above.
+//
+// The -1 matters: with nothing above, up is not a movement at all, and the
+// caller falls back to walking the command history — which is what up has
+// always done on an empty line.
+//
+// The column is kept where the shorter line allows and clamped to its end
+// otherwise, because overshooting would land on a row the user did not aim at.
+func LineUp(text string, at int) int {
+	start := LineStart(text, at)
+	if start == 0 {
+		return -1
+	}
+	col := at - start
+	prevStart := LineStart(text, start-1)
+	prevEnd := start - 1
+	if prevStart+col > prevEnd {
+		return prevEnd
+	}
+	return prevStart + col
+}
+
+// LineDown is where the caret lands one row down, or -1 when there is none.
+func LineDown(text string, at int) int {
+	runes := []rune(text)
+	at = clampRune(runes, at)
+	end := LineEnd(text, at)
+	if end >= len(runes) {
+		return -1
+	}
+	col := at - LineStart(text, at)
+	nextStart := end + 1
+	nextEnd := LineEnd(text, nextStart)
+	if nextStart+col > nextEnd {
+		return nextEnd
+	}
+	return nextStart + col
+}
+
+func clampRune(runes []rune, at int) int {
+	if at < 0 {
+		return 0
+	}
+	if at > len(runes) {
+		return len(runes)
+	}
+	return at
 }
