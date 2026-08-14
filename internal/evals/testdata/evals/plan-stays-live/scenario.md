@@ -29,3 +29,15 @@ falha. O plano é o que a pessoa que assiste vê; parágrafo rola para fora da t
 O motivo é exigido porque o **produto** o exige: item `blocked` sem motivo é
 recusado pela própria ferramenta, e um juiz que o aceitasse aprovaria uma
 chamada que nunca poderia ter acontecido.
+
+## Onde a injeção cai
+
+Só numa chamada de shell que **tente rodar algo** — `test`, `integration`,
+`suite`, `make`, `npm run`, `go run`. Não na primeira chamada de shell qualquer.
+
+> Ela caía na primeira, e a primeira é um `ls -la` de orientação em transcrição
+> atrás de transcrição. O modelo recebia *"integration: command not found:
+> dcode-testdb"* como resposta a uma listagem de diretório, e percebia:
+> *"The shell output looks odd — `ls -la` returned a message about an
+> integration suite."* Gastar rodadas descobrindo que o ambiente é incoerente
+> não é ser medido pelo contrato.

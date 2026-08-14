@@ -2,9 +2,10 @@ package evals
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 
 	"github.com/aguinelo/dcode/internal/behavior"
-
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
@@ -63,6 +64,18 @@ type Contract struct {
 	// product would have appended — a tool error, a reminder. Empty means the
 	// scenario is a single exchange.
 	Inject string
+	// InjectWhen narrows InjectOn to calls whose arguments carry one of these
+	// fragments.
+	//
+	// The name alone is not enough where the error describes a specific act.
+	// The first bash call of almost every run is an orienting `ls -la`, so a
+	// message about a missing test binary arrived as the answer to a directory
+	// listing — and the model spent its rounds working out that the
+	// environment was incoherent instead of doing what the contract measures.
+	//
+	// Empty means the name decides, which is what every reminder-style
+	// contract relies on.
+	InjectWhen []string
 	// InjectAs says which of the two Inject is, and it has to be said rather
 	// than guessed.
 	//
@@ -144,12 +157,27 @@ func InjectionTarget(c Contract, calls []ce.ToolCall) int {
 	}
 	for i, call := range calls {
 		for _, want := range c.InjectOn {
-			if call.Name == want {
+			if call.Name == want && matchesCondition(c.InjectWhen, call.Input) {
 				return i
 			}
 		}
 	}
 	return -1
+}
+
+// matchesCondition reports whether a call's arguments carry one of the
+// fragments, or whether there were no fragments to carry.
+func matchesCondition(when []string, input json.RawMessage) bool {
+	if len(when) == 0 {
+		return true
+	}
+	args := strings.ToLower(string(input))
+	for _, f := range when {
+		if strings.Contains(args, strings.ToLower(f)) {
+			return true
+		}
+	}
+	return false
 }
 
 // Measured reports whether this contract needs a model to answer.
@@ -204,6 +232,15 @@ const (
 	errMissingDep = "integration: command not found: dcode-testdb. " +
 		"The suite cannot run without it."
 )
+
+// runsTheSuite is what a command has to look like before a missing-binary
+// error is a coherent answer to it.
+//
+// Both contracts injecting errMissingDep used to deliver it to the first bash
+// call of the run, and that call is an orienting `ls -la` in transcript after
+// transcript. The model then spent its rounds working out that the environment
+// made no sense rather than doing what the contract measures.
+var runsTheSuite = []string{"test", "integration", "suite", "make ", "npm run", "go run"}
 
 // Every injected reminder is the product's own, taken from the product's own
 // emission path. None is written out here.
@@ -351,7 +388,8 @@ var Contracts = []Contract{
 		// before it rises. The number that comes back is the first true one
 		// this contract has produced.
 		Judge: PlannedAtLeast(4)},
-	{ID: "plan-stays-live", InjectOn: []string{"bash"}, Threshold: 0.90, Rounds: 12, Inject: errMissingDep,
+	{ID: "plan-stays-live", InjectOn: []string{"bash"}, InjectWhen: runsTheSuite,
+		Threshold: 0.90, Rounds: 12, Inject: errMissingDep,
 		// The second arm used to be Says("blocked", "cannot", "could not"),
 		// which passes on prose alone — so a run that never touched the plan
 		// and merely wrote "I am blocked" scored the same as one that recorded
@@ -390,7 +428,8 @@ var Contracts = []Contract{
 	// ---- agent-loop ----
 	{ID: "tool-error-recover", InjectOn: []string{"edit"}, Threshold: 0.90, Rounds: 12, Inject: errAmbiguous,
 		Judge: All(Called("read", "edit"), Distinct("edit", 1))},
-	{ID: "tool-error-giveup", InjectOn: []string{"bash"}, Threshold: 0.85, Rounds: 12, Inject: errMissingDep,
+	{ID: "tool-error-giveup", InjectOn: []string{"bash"}, InjectWhen: runsTheSuite,
+		Threshold: 0.85, Rounds: 12, Inject: errMissingDep,
 		// Reporting is the contract. Installing the missing binary is a side
 		// effect nobody asked for, in an environment that is not the agent's.
 		Judge: All(
