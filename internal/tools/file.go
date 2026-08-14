@@ -174,6 +174,10 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 		return s.notFound(w.Name(), in.Path, err).Result(), nil
 	}
 
+	// How it stood before, so the turn can be undone. Taken here rather than
+	// at the top because everything above can still refuse, and a snapshot of
+	// a write that never happened is a file undo would rewrite for nothing.
+	s.Snapshot(abs)
 	if err := writeFile(abs, in.Content, s.Limits.AtomicWrite); err != nil {
 		return errf(w.Name(), CodeNotFound, "", "could not write %s: %v", in.Path, err).Result(), nil
 	}
@@ -280,6 +284,7 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	}
 
 	updated := strings.ReplaceAll(content, in.OldString, in.NewString)
+	s.Snapshot(abs)
 	if err := writeFile(abs, updated, s.Limits.AtomicWrite); err != nil {
 		return errf(e.Name(), CodeNotFound, "", "could not write %s: %v", in.Path, err).Result(), nil
 	}

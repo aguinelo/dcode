@@ -13,7 +13,7 @@ import (
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools")}
 
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
@@ -38,6 +38,11 @@ var protocolInvariants = map[string]string{
 	"cria sessão **nova** carregando": "TestContinuingASessionCarriesItsConversation",
 	"Continuar sessão inexistente":    "TestContinuingAMissingSessionIsAnError",
 	"sem resultado não entra":         "TestACallWithNoResultIsDropped",
+	// Undo. The state owns what changed, the session owns when it may be
+	// asked for, and the assertions live with each.
+	"restaura o que o **último** turno": "TestANewTurnReplacesWhatCanBeUndone",
+	"é recusado, nunca sobrescrito":     "TestUndoRefusesAFileChangedSinceTheTurn",
+	"durante um turno em curso":         "TestUndoIsRefusedWhileATurnRuns",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

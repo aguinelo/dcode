@@ -105,6 +105,17 @@ type SubmitTurnRequest struct {
 	Text string `json:"text"`
 }
 
+// UndoResult is what putting the last turn back changed, and what it would not
+// touch.
+//
+// Refused is per file rather than all-or-nothing: seven files changed and one
+// edited by hand should still give six back, and naming the one that stayed is
+// more useful than refusing everything on account of it.
+type UndoResult struct {
+	Restored []string `json:"restored"`
+	Refused  []string `json:"refused"`
+}
+
 // ApprovalDecision is the user's answer to a boundary crossing.
 type ApprovalDecision string
 

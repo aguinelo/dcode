@@ -100,6 +100,11 @@ type Strings struct {
 	HelpYours     string
 	KeyEnter      string
 	KeyNewline    string
+	CmdUndo       string
+	UndoRestored  string
+	UndoRefused   string
+	UndoNothing   string
+	UndoFailed    string
 	KeyArrows     string
 	KeyPage       string
 	KeyTab        string
@@ -175,6 +180,11 @@ var catalogue = map[Lang]Strings{
 		HelpYours:     "Yours",
 		KeyEnter:      "send (queues while a turn is running)",
 		KeyNewline:    "break the line without sending",
+		CmdUndo:       "put back the files the last turn changed",
+		UndoRestored:  "put back:",
+		UndoRefused:   "left alone, changed since the turn:",
+		UndoNothing:   "the last turn changed no files",
+		UndoFailed:    "could not undo:",
 		KeyArrows:     "history on an empty line, otherwise move through the stream",
 		KeyPage:       "scroll · Home and End jump to either end",
 		KeyTab:        "expand or collapse the selected entry",
@@ -266,6 +276,11 @@ Environment:
 		HelpYours:     "Seus",
 		KeyEnter:      "envia (enfileira enquanto um turno roda)",
 		KeyNewline:    "quebra a linha sem enviar",
+		CmdUndo:       "restaura os arquivos que o último turno mudou",
+		UndoRestored:  "restaurado:",
+		UndoRefused:   "intocado, mudou depois do turno:",
+		UndoNothing:   "o último turno não mexeu em arquivo nenhum",
+		UndoFailed:    "não foi possível desfazer:",
 		KeyArrows:     "histórico em linha vazia; fora dela, navega no stream",
 		KeyPage:       "rola · Home e End vão para as pontas",
 		KeyTab:        "abre ou fecha a entrada selecionada",

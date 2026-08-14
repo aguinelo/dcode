@@ -139,6 +139,28 @@ func (s *Session) Interrupt() {
 	}
 }
 
+// Undo puts back what the last turn changed.
+//
+// Refused while a turn is running: the files are moving under it, and undoing
+// half of something still being written is worse than waiting.
+func (s *Session) Undo() (protocol.UndoResult, error) {
+	s.mu.Lock()
+	state := s.state
+	s.mu.Unlock()
+	if state == protocol.SessionStateRunning {
+		return protocol.UndoResult{}, protocol.Errorf(protocol.CodeTurnAlreadyActive,
+			"a turn is running; interrupt it before undoing")
+	}
+	if s.engine == nil {
+		return protocol.UndoResult{}, nil
+	}
+	restored, refused, err := s.engine.Undo()
+	if err != nil {
+		return protocol.UndoResult{}, protocol.Errorf(protocol.CodeInternal, "%v", err)
+	}
+	return protocol.UndoResult{Restored: restored, Refused: refused}, nil
+}
+
 // Close ends the session.
 func (s *Session) Close() {
 	s.mu.Lock()
