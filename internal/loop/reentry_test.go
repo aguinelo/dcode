@@ -2,11 +2,14 @@ package loop
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/tools"
 )
 
 // doneEngine builds an engine with a definition of done and a scripted runner.
@@ -160,4 +163,58 @@ func containsAll(s string, subs ...string) bool {
 		}
 	}
 	return true
+}
+
+// The reminder fires when work has spread and no plan exists, once, and it
+// rearms after a plan appears.
+//
+// Once, because told every batch is noise the model learns to discount — the
+// same reasoning seenDirs already carries for out-of-chain instructions.
+// Rearming, because a session that plans, finishes, and then sprawls again on
+// a second task is in the same position it was the first time.
+func TestUnplannedWorkIsPointedOutOnceAndRearmsAfterAPlan(t *testing.T) {
+	res, err := policy.NewResolver(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := tools.NewState(res, tools.DefaultLimits(), []string{"read", "write", "edit", "plan"})
+	e := New(Config{State: st, Reminders: true}, ce.Session{Instructions: "x"})
+
+	// One file is not a sprawl. The tool description asks for a plan sooner
+	// than this; the reminder deliberately waits, because insisting at the
+	// first missed opportunity is nagging.
+	st.MarkWritten("a.go")
+	if e.unplannedChange() {
+		t.Error("one file was treated as work that needs a plan")
+	}
+
+	st.MarkWritten("b.go")
+	st.MarkWritten("c.go")
+	if !e.unplannedChange() {
+		t.Fatal("three files with no plan went unmentioned")
+	}
+	if e.unplannedChange() {
+		t.Error("said it twice in the same session")
+	}
+
+	// A plan arrives — through the tool, because a test-only way of setting it
+	// would be testing a path the product does not have.
+	plan := func(items string) {
+		t.Helper()
+		res, err := tools.Plan{}.Execute(context.Background(), json.RawMessage(items), st)
+		if err != nil || res.IsError {
+			t.Fatalf("plan rejected: %v %s", err, res.Output)
+		}
+	}
+	plan(`{"items":[{"id":1,"text":"rename the declaration","status":"active"}]}`)
+	if e.unplannedChange() {
+		t.Error("nagged a session that has a plan")
+	}
+
+	// And the plan is cleared, and the model sprawls again.
+	plan(`{"items":[]}`)
+	st.MarkWritten("d.go")
+	if !e.unplannedChange() {
+		t.Error("did not rearm after the plan went away")
+	}
 }

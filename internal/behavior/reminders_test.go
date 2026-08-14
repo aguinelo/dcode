@@ -1,6 +1,7 @@
 package behavior
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -160,5 +161,47 @@ func TestAnUnverifiableChangeIsAnnouncedToTheModel(t *testing.T) {
 func TestNothingIsAnnouncedWhenVerificationWasPossible(t *testing.T) {
 	if got := Emit(SessionState{}); len(got) != 0 {
 		t.Errorf("a quiet state emitted %d reminders", len(got))
+	}
+}
+
+// The plan is what the person watching sees. Prose is not.
+//
+// plan-depth-complex measures 60%: the model reads the six files, edits all of
+// them correctly, and never records a plan — it narrates one instead.
+//
+//	"Let me lay out the rename plan and execute it. The renames fall into
+//	 three groups: the type declaration itself, its in-package uses, its
+//	 out-of-package uses..."
+//
+// That is a good plan, written where nobody can follow it. The tool
+// description has asked for the opposite since #107 and it is not landing,
+// which is what makes this a reminder rather than a fourth sentence: the
+// description is read once at the top, the reminder arrives at the moment it
+// is being ignored.
+func TestUnplannedWorkAcrossFilesIsPointedOut(t *testing.T) {
+	got := Emit(SessionState{UnplannedChange: true})
+	if len(got) != 1 {
+		t.Fatalf("emitted %d reminders, want exactly one", len(got))
+	}
+	if got[0].Kind != ReminderUnplannedChange {
+		t.Errorf("kind = %q", got[0].Kind)
+	}
+	if !strings.Contains(got[0].Text, "`plan`") {
+		t.Errorf("the text never names the tool to call: %q", got[0].Text)
+	}
+	// The reason has to be there. "Call plan" alone reads as bureaucracy, and a
+	// model that reads it as bureaucracy complies once and stops.
+	if !strings.Contains(strings.ToLower(got[0].Text), "watching") {
+		t.Errorf("the text never says who the plan is for: %q", got[0].Text)
+	}
+}
+
+// No count reaches the text. A number that moves between otherwise identical
+// runs makes the history irreproducible, which is RN-7 of the context engine
+// and the same reason the budget texts are constants.
+func TestTheUnplannedNoticeCarriesNoCount(t *testing.T) {
+	got := Emit(SessionState{UnplannedChange: true})
+	if m := regexp.MustCompile(`\d`).FindString(got[0].Text); m != "" {
+		t.Errorf("the text carries the digit %q, which varies between runs: %q", m, got[0].Text)
 	}
 }
