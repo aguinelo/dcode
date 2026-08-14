@@ -1119,3 +1119,78 @@ func sharedWorkspaceFiles(t *testing.T) map[string]string {
 	}
 	return files
 }
+
+// shellIsPartOfTheTask names the scenarios whose TASK needs a shell even though
+// no judge mentions one.
+//
+// An escape hatch with a reason each, because the alternative is a rule that
+// quietly stops applying. Anything not listed here and not judged on the shell
+// does not get one.
+var judgesTheNameNotTheTool = map[string]string{
+	"no-phantom-tool": "bash is listed among the invented names the FILTER must reject, " +
+		"not among the tools the scenario offers; offering it would remove the thing measured",
+}
+
+var shellIsPartOfTheTask = map[string]string{
+	"skill-loaded-on-trigger": "the skill's third step is to cut a tag, which is a command; " +
+		"removing the shell would change what the task asks rather than how it is measured",
+}
+
+// A scenario offers the shell only if the shell is what it is about.
+//
+// Eleven fixtures carried bash that no judge and no injection ever referred to,
+// and it was not free. The model opens with it — `bash("pwd && ls -la")` is the
+// first call in transcript after transcript — the harness refuses, and the
+// round is gone. Worse, some runs conclude the environment is fake:
+//
+//	"can't actually execute commands here — the shell returns canned errors,
+//	 not real results"
+//
+// A model that stops trusting its tools measures nothing after that point, so
+// this is a validity problem across the whole suite rather than a tidiness one.
+//
+// The rule cuts one way only. A contract judged on NOT reaching for the shell
+// must be offered one, or it passes by having nothing to refuse — which is not
+// restraint, and is the same mistake that once made does-not-delegate-trivial
+// pass by having nothing to delegate to.
+func TestOnlyAScenarioThatNeedsTheShellIsOfferedOne(t *testing.T) {
+	blocks := splitContractBlocks(mustReadContracts(t))
+
+	for _, c := range Contracts {
+		if !c.Measured() {
+			continue
+		}
+		f, err := LoadFixture(FixtureRoot, c.ID)
+		if err != nil {
+			t.Errorf("%s: %v", c.ID, err)
+			continue
+		}
+		offered := slices.Contains(f.ToolNames(), "bash")
+		judged := strings.Contains(withoutComments(blocks[c.ID]), `"bash"`)
+
+		if offered && !judged {
+			if _, ok := shellIsPartOfTheTask[c.ID]; ok {
+				continue
+			}
+			t.Errorf("%s offers bash and nothing measures it. Every run spends its "+
+				"first call on the shell and gets a refusal; drop it, or say why the "+
+				"task needs it in shellIsPartOfTheTask.", c.ID)
+		}
+		if judged && !offered {
+			if _, ok := judgesTheNameNotTheTool[c.ID]; ok {
+				continue
+			}
+			t.Errorf("%s is judged on bash and is not offered one, so the verdict is "+
+				"decided by the tool set rather than by the model", c.ID)
+		}
+	}
+}
+
+func mustReadContracts(t *testing.T) string {
+	t.Helper()
+	src, err := os.ReadFile("contracts.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(src)
+}
