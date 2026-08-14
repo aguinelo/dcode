@@ -1223,3 +1223,36 @@ func TestTheTimesReachTheClientAndNotTheModel(t *testing.T) {
 // allToolNames is every tool the product ships, which is what a session with
 // the full registry offers. Tests that care about a narrower set say so.
 var allToolNames = []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}
+
+// The turn announces what was asked, and until now it announced only its id.
+//
+// So the event log — and the record on disk, and any client attaching to a
+// session already under way — held the model's side of a conversation and none
+// of the questions. That breaks three things at once: a transcript nobody can
+// read, a session with nothing to title it, and a history that cannot be
+// rebuilt from what was kept.
+func TestTheTurnAnnouncesWhatWasAsked(t *testing.T) {
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{text("done"), done()},
+	}}
+	e, rec := newEngine(t, p, tools.NewRegistry())
+
+	if _, err := e.Run(context.Background(), "rename Summary to Tally"); err != nil {
+		t.Fatal(err)
+	}
+
+	payload, ok := rec.last[protocol.EventTurnStarted]
+	if !ok {
+		t.Fatal("no turn.started was emitted")
+	}
+	d, ok := payload.(protocol.TurnStarted)
+	if !ok {
+		t.Fatalf("turn.started carried %T", payload)
+	}
+	if d.Text != "rename Summary to Tally" {
+		t.Errorf("the turn announced %q, want what was asked", d.Text)
+	}
+	if d.TurnID == "" {
+		t.Error("the turn id went missing while the text was added")
+	}
+}

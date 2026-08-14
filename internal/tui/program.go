@@ -570,12 +570,12 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
-	// The user's own line, echoed before it is sent: a command that expanded
-	// into three paragraphs should not vanish into the void while the model
-	// thinks.
-	p.model.Entries = append(p.model.Entries, Entry{Kind: KindUser, Summary: line})
-
+	// A queued line is echoed here, because no turn will announce it until it
+	// leaves the queue and there is nothing else to show the user meanwhile.
+	// A line that starts a turn is NOT echoed: turn.started carries it, and
+	// echoing as well would show it twice.
 	if p.model.State != protocol.SessionStateIdle {
+		p.model.Entries = append(p.model.Entries, Entry{Kind: KindUser, Summary: line})
 		m, ok := p.model.Enqueue(r.Text, p.opts.QueueMax)
 		p.model = m
 		if !ok {

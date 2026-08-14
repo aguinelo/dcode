@@ -7,13 +7,13 @@ import (
 	"github.com/aguinelo/dcode/internal/specguard"
 )
 
-// A spec family is not a Go package. Three of these invariants are about what
+// A spec family is not a Go package. Several of these invariants are about what
 // the LOOP may emit and when — an ordering the server can only observe, never
 // enforce — so their assertions live where the events are produced. Listing the
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui")}
 
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
@@ -23,6 +23,10 @@ var protocolInvariants = map[string]string{
 	"Cliente desanexado durante turno":     "TestDisconnectingDoesNotAffectTheSession",
 	"Duas resoluções concorrentes":         "TestApprovalIsResolvedOverTheWireAndSecondConflicts",
 	"Aprovação expirada produz":            "TestAnApprovalNobodyAnswersResolvesOnceAndDenies",
+	// The question itself. Emitted by the loop, rendered by the client, and
+	// the two assertions live where each half is.
+	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",
+	"vê a pergunta ao anexar": "TestAnAttachingClientSeesTheQuestion",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

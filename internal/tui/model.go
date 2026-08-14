@@ -205,6 +205,13 @@ func (m Model) Apply(ev protocol.Event) Model {
 	case protocol.EventTurnStarted:
 		var d protocol.TurnStarted
 		_ = json.Unmarshal(ev.Payload, &d)
+		// The question, from the event rather than echoed locally when it was
+		// typed. Echoing locally meant a second client — or this one after a
+		// replay — saw answers to questions it never saw, because the only
+		// copy lived in the client that did the typing.
+		if d.Text != "" {
+			m.Entries = append(m.Entries, Entry{Kind: KindUser, Summary: d.Text})
+		}
 		m.turnStarted = true
 		m.activeTurn = d.TurnID
 		m.State = protocol.SessionStateRunning

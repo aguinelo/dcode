@@ -161,9 +161,17 @@ func TestEnterSubmitsWhenIdleAndEchoesTheLine(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 	// The user's own line must be visible before the model answers, or a long
-	// turn looks like nothing happened.
+	// turn looks like nothing happened. It arrives on turn.started rather than
+	// being echoed when it was typed: the client that echoed was the only one
+	// that had it, so a second client — or this one after a replay — saw
+	// answers to questions it never saw.
+	p.model = p.model.Apply(ev(t, 1, protocol.EventTurnStarted,
+		protocol.TurnStarted{TurnID: "t1", Text: "hello"}))
 	if len(p.model.Entries) != 1 || p.model.Entries[0].Kind != KindUser {
 		t.Errorf("got %+v", p.model.Entries)
+	}
+	if p.model.Entries[0].Summary != "hello" {
+		t.Errorf("the line shown is %q", p.model.Entries[0].Summary)
 	}
 	if p.model.Input != "" {
 		t.Errorf("the input must clear, got %q", p.model.Input)
@@ -1307,5 +1315,35 @@ func TestPlainEnterStillSends(t *testing.T) {
 	}
 	if p.model.Input != "" {
 		t.Errorf("the line was not cleared: %q", p.model.Input)
+	}
+}
+
+// A client that did not do the typing still sees what was asked.
+//
+// This is the case the local echo could never cover: the only copy of the
+// question lived in the client that typed it, so a second client attaching —
+// or this one replaying after a reconnect — saw answers to questions it never
+// saw, and a recorded session read the same way.
+func TestAnAttachingClientSeesTheQuestion(t *testing.T) {
+	p, _ := newProgram(t)
+
+	p.model = p.model.Apply(ev(t, 1, protocol.EventTurnStarted,
+		protocol.TurnStarted{TurnID: "t1", Text: "what does Rows do?"}))
+
+	if len(p.model.Entries) != 1 || p.model.Entries[0].Kind != KindUser {
+		t.Fatalf("nothing was shown for a turn this client did not start: %+v", p.model.Entries)
+	}
+	if p.model.Entries[0].Summary != "what does Rows do?" {
+		t.Errorf("shown %q", p.model.Entries[0].Summary)
+	}
+}
+
+// A turn with no text announces no line. Nothing else emits turn.started
+// today, but a blank entry would be a visible artefact of an invisible cause.
+func TestATurnWithoutTextShowsNoLine(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model = p.model.Apply(ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1"}))
+	if len(p.model.Entries) != 0 {
+		t.Errorf("a textless turn produced %+v", p.model.Entries)
 	}
 }
