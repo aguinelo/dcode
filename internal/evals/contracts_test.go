@@ -1194,3 +1194,64 @@ func mustReadContracts(t *testing.T) string {
 	}
 	return string(src)
 }
+
+// An injected tool error has to land on a call that could have produced it.
+//
+// InjectOn matched on the tool NAME, and the first bash call of almost every
+// run is an orienting `ls -la`. So "integration: command not found:
+// dcode-testdb" arrived as the answer to a directory listing, and the model
+// said so:
+//
+//	"the shell here is named `dcode` and the only command it exposes is
+//	 `ls -la`, which is not a test runner"
+//	"The shell output looks odd — `ls -la` returned a message about an
+//	 integration suite."
+//
+// A model that spends its rounds working out that the environment is
+// incoherent is not being measured on the contract.
+func TestAnInjectionWaitsForACallItCouldDescribe(t *testing.T) {
+	c := Contract{
+		InjectOn:   []string{"bash"},
+		InjectWhen: []string{"test", "integration"},
+	}
+	call := func(name, input string) ce.ToolCall {
+		return ce.ToolCall{Name: name, Input: []byte(input)}
+	}
+
+	orienting := []ce.ToolCall{call("bash", `{"command":"ls -la"}`)}
+	if got := InjectionTarget(c, orienting); got != -1 {
+		t.Errorf("landed on an orienting listing at index %d", got)
+	}
+
+	later := []ce.ToolCall{
+		call("bash", `{"command":"ls -la"}`),
+		call("read", `{"path":"Makefile"}`),
+		call("bash", `{"command":"go test ./integration/..."}`),
+	}
+	if got := InjectionTarget(c, later); got != 2 {
+		t.Errorf("target = %d, want the call that runs the suite", got)
+	}
+}
+
+// Without InjectWhen nothing changes: the name alone still decides, which is
+// what every reminder-style contract relies on.
+func TestAnInjectionWithNoConditionStillMatchesOnTheNameAlone(t *testing.T) {
+	c := Contract{InjectOn: []string{"edit"}}
+	calls := []ce.ToolCall{
+		{Name: "read", Input: []byte(`{"path":"a.go"}`)},
+		{Name: "edit", Input: []byte(`{"path":"a.go"}`)},
+	}
+	if got := InjectionTarget(c, calls); got != 1 {
+		t.Errorf("target = %d, want 1", got)
+	}
+}
+
+// A condition with no tool name is a condition nobody applied, and it would
+// read as a stricter contract than the one that runs.
+func TestEveryInjectionConditionHasAToolToApplyItTo(t *testing.T) {
+	for _, c := range Contracts {
+		if len(c.InjectWhen) > 0 && len(c.InjectOn) == 0 {
+			t.Errorf("%s says when to inject and never says on what", c.ID)
+		}
+	}
+}
