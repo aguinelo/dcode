@@ -205,6 +205,7 @@ Usage:
   dcode tui [flags]          open the terminal interface
   dcode login [flags]        store the model credential, read without echo
   dcode config [key]         the effective configuration and where it came from
+  dcode sessions [show <id>] what dcode has done here, and what it did
   dcode update [flags]       install the latest release
 
 Examples:
@@ -294,6 +295,7 @@ Uso:
   dcode tui [flags]          abre a interface de terminal
   dcode login [flags]        guarda a credencial do modelo, lida sem eco
   dcode config [chave]       a configuração efetiva e de onde ela veio
+  dcode sessions [show <id>] o que o dcode fez aqui, e o que ele fez
   dcode update [flags]       instala a última versão
 
 Exemplos:
