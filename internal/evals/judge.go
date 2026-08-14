@@ -21,6 +21,12 @@ type Transcript struct {
 	Text string
 	// Rounds is how many times it was asked.
 	Rounds int
+	// HitCeiling reports that the scenario used every round it was given.
+	//
+	// It is the difference between a model that answered wrongly and one that
+	// was still working when the harness stopped it, and nothing in a rate can
+	// tell those apart.
+	HitCeiling bool
 	// InjectedAt is how many calls had happened when the product spoke —
 	// a tool error, a reminder. Zero when nothing was injected, which makes
 	// "after the injection" mean "all of it" for a single-round scenario.
