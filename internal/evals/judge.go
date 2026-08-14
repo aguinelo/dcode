@@ -361,6 +361,23 @@ func Any(js ...Judge) Judge {
 // field. Decoding is worth it exactly here, where the argument is the artefact
 // under test rather than an incidental parameter.
 func WroteFile(suffix string, check func(content string) bool) Judge {
+	return wroteFile(suffix, check, func(content string) string { return content })
+}
+
+// WroteCarriedOver is WroteFile reading only the part a reader would follow:
+// everything before the discard heading.
+//
+// Two readers, because they answer different questions. "Does this file carry a
+// rule the reader cannot follow" must not see the section that exists to say a
+// rule was dropped — naming the absent tool there is the contract honoured.
+// "What became of the user's convention" must see all of it, because keeping
+// the rule and declaring you dropped it are both honest, and only silence is
+// the failure.
+func WroteCarriedOver(suffix string, check func(content string) bool) Judge {
+	return wroteFile(suffix, check, carriedOver)
+}
+
+func wroteFile(suffix string, check func(content string) bool, scope func(string) string) Judge {
 	return func(t Transcript) bool {
 		for _, c := range t.Calls {
 			if c.Name != "write" {
@@ -376,7 +393,7 @@ func WroteFile(suffix string, check func(content string) bool) Judge {
 			if !strings.HasSuffix(in.Path, suffix) {
 				continue
 			}
-			if check(carriedOver(in.Content)) {
+			if check(scope(in.Content)) {
 				return true
 			}
 		}
@@ -402,19 +419,6 @@ func NamesNoToolThatDoesNotExist(have []string) func(string) bool {
 	}
 }
 
-// SaysAll reports that the text contains every fragment, case-insensitively.
-func SaysAll(fragments ...string) func(string) bool {
-	return func(content string) bool {
-		body := strings.ToLower(content)
-		for _, f := range fragments {
-			if !strings.Contains(body, strings.ToLower(f)) {
-				return false
-			}
-		}
-		return true
-	}
-}
-
 // SaysNoneOf reports that the text contains none of the fragments,
 // case-insensitively.
 func SaysNoneOf(fragments ...string) func(string) bool {
@@ -437,9 +441,9 @@ func Both(a, b func(string) bool) func(string) bool {
 // SaysAny reports that the text contains at least one fragment,
 // case-insensitively.
 //
-// The counterpart to SaysAll, and needed wherever a contract is about an idea
-// rather than a phrase: "carries a doc comment" is written a dozen ways, and a
-// list of one is a list that measures phrasing.
+// Needed wherever a contract is about an idea rather than a phrase: "carries a
+// doc comment" is written a dozen ways, and a list of one is a list that
+// measures phrasing.
 func SaysAny(fragments ...string) func(string) bool {
 	return func(content string) bool {
 		body := strings.ToLower(content)
