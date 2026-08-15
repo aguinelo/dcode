@@ -125,6 +125,18 @@ func (b *bubblewrap) Available() error {
 	return nil
 }
 
+// under reports whether path sits inside dir.
+//
+// Path-prefix, not string-prefix: "/tmpfoo" is not under "/tmp", and treating it
+// as such would mount a directory the mode did not ask to mount.
+func under(path, dir string) bool {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 const installHint = "Install it with your package manager, for example: apt install bubblewrap."
 
 const namespaceHint = `Unprivileged user namespaces appear to be restricted.
@@ -156,13 +168,22 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, er
 		"--chdir", workdir,
 	}
 
+	// The tmpfs goes on BEFORE the workspace, always. bubblewrap applies mounts
+	// in the order it is given them, and a workspace under /tmp mounted first
+	// vanishes under the fresh tmpfs that lands on top of it — every command
+	// then failing at "Can't chdir to <workspace>", before running.
 	switch mode {
 	case policy.ModeReadOnly:
 		// Everything stays read-only. A writable /tmp is still granted because
 		// too much ordinary tooling cannot start without one.
 		args = append(args, "--tmpfs", "/tmp")
+		// Read-only, so putting the workspace back is a --ro-bind: keeping it
+		// visible must not be the thing that makes it writable.
+		if under(workdir, "/tmp") {
+			args = append(args, "--ro-bind", workdir, workdir)
+		}
 	case policy.ModeWorkspaceWrite:
-		args = append(args, "--bind", workdir, workdir, "--tmpfs", "/tmp")
+		args = append(args, "--tmpfs", "/tmp", "--bind", workdir, workdir)
 	case policy.ModeFullAccess:
 		args = []string{"--bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
 			"--die-with-parent", "--chdir", workdir}

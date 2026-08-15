@@ -44,6 +44,7 @@ var sandboxInvariants = map[string]string{
 	"chaveado pela regra quando houve": "TestAllowForTheSessionIsKeyedByTheRuleThatAsked",
 	"Padrão em branco":                 "TestABlankPatternMatchesNothing",
 	"inspecionáveis por `--config`":    "TestTheEffectiveRulesAreInspectableWithTheirProvenance",
+	"Workspace sob `/tmp`":             "TestAWorkspaceUnderTmpSurvivesTheWritableTmpfs",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
