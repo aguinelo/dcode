@@ -295,42 +295,50 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p.onApprovalKey(k)
 	}
 
-	// The menu owns the arrows, Tab and Esc while it is open — and nothing
-	// else, so every other key keeps doing what it always does.
-	if len(p.model.Completions) > 0 {
-		// Copy mode owns the keyboard while it is open, and nothing else does. A
-		// mode that lets other keys through is a mode people leave by accident,
-		// halfway through a selection.
-		if p.model.Copy.Active {
-			last := len(p.renderedStream()) - 1
-			switch k.String() {
-			case "up", "k":
-				p.model = p.model.ExtendCopy(-1, last)
-				return p, nil
-			case "down", "j":
-				p.model = p.model.ExtendCopy(1, last)
-				return p, nil
-			case "y", "enter":
-				text := CopyText(p.renderedStream(), p.model.Copy)
-				t := Text(p.model.Lang)
-				if text == "" {
-					p.model.Flash = t.CopyEmpty
-					p.model = p.model.LeaveCopy()
-					return p, nil
-				}
-				p.model.Flash = t.CopyDone
-				p.model = p.model.LeaveCopy()
-				// Written straight to the terminal: the clipboard is the
-				// terminal's, not the program's, and OSC 52 is what reaches it
-				// over ssh and inside tmux.
-				return p, tea.Printf("%s", OSC52(text))
-			case "esc", "q", "ctrl+c":
+	// Copy mode owns the keyboard while it is open, and nothing else does. A
+	// mode that lets other keys through is a mode people leave by accident,
+	// halfway through a selection.
+	//
+	// Ahead of the completion menu, not inside it: this block used to sit under
+	// the menu's guard, so it ran only while the menu was open — which is the
+	// one moment copy mode cannot be, because opening it needs an empty input
+	// line and the menu only appears once something is typed. Every key fell
+	// through to the stream bindings underneath instead.
+	if p.model.Copy.Active {
+		last := len(p.renderedStream()) - 1
+		switch k.String() {
+		case "up", "k":
+			p.model = p.model.ExtendCopy(-1, last)
+			return p, nil
+		case "down", "j":
+			p.model = p.model.ExtendCopy(1, last)
+			return p, nil
+		case "y", "enter":
+			text := CopyText(p.renderedStream(), p.model.Copy)
+			t := Text(p.model.Lang)
+			if text == "" {
+				p.model.Flash = t.CopyEmpty
 				p.model = p.model.LeaveCopy()
 				return p, nil
 			}
+			p.model.Flash = t.CopyDone
+			p.model = p.model.LeaveCopy()
+			// Written straight to the terminal: the clipboard is the
+			// terminal's, not the program's, and OSC 52 is what reaches it
+			// over ssh and inside tmux.
+			return p, tea.Printf("%s", OSC52(text))
+		case "esc", "q", "ctrl+c":
+			p.model = p.model.LeaveCopy()
 			return p, nil
 		}
+		// Every other key is swallowed: a mode that lets them through is a
+		// mode people leave by accident, halfway through a selection.
+		return p, nil
+	}
 
+	// The menu owns the arrows, Tab and Esc while it is open — and nothing
+	// else, so every other key keeps doing what it always does.
+	if len(p.model.Completions) > 0 {
 		switch k.String() {
 		case "up":
 			p.model = p.model.MoveCompletion(-1)

@@ -51,6 +51,10 @@ var tuiInvariants = map[string]string{
 	"vai com a **próxima** mensagem":                     "TestAnAttachedImageGoesWithTheNextMessage",
 	"nomeando o modelo":                                  "TestPastingIntoAModelThatCannotSeeNamesTheModel",
 	"preserva as quebras e não envia":                    "TestAMultiLinePasteDoesNotSendAnything",
+
+	// Copy mode.
+	"ela é dona do teclado": "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
+	"A cópia sai por `Esc`": "TestEveryWayOutOfCopyModeWorks",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
