@@ -42,9 +42,18 @@ Teste de reprodução nunca é removido, nem "simplificado" em refatoração. No
 
 ---
 
-## 3. Gate de cobertura: 90%
+## 3. Gate de cobertura: 95% agregado, 90% por pacote
 
-A CI falha abaixo de **90%** de cobertura de linha.
+A CI falha abaixo de **95%** de cobertura de linha sobre o denominador inteiro,
+e reporta todo pacote abaixo de **90%** por conta própria.
+
+São dois números porque respondem a perguntas diferentes. O piso por pacote é o
+que os cinco `.i.spec.md` exigem, e existe para que pacote fraco não se esconda
+atrás de pacote forte. O agregado é o que sobe: os 90% foram alcançados, e ficar
+neles transformava a margem em folga por onde código novo entrava sem teste.
+
+O agregado sobe quando já está folgado, nunca para um número que a árvore ainda
+não cumpre — gate vermelho na chegada é gate que as pessoas aprendem a ignorar.
 
 ```bash
 go test -race -coverprofile=coverage.out ./...
@@ -70,7 +79,7 @@ Exclusão nova exige justificativa no PR. "Difícil de testar" não é justifica
 
 ### O que o gate não prova
 
-90% é **piso, não meta**. Ele pega arquivo sem teste nenhum; não prova correção.
+O gate é **piso, não meta**. Ele pega arquivo sem teste nenhum; não prova correção.
 
 A forma clássica de burlar é teste sem asserção — exercita a linha, não verifica nada, sobe o número. Na revisão, teste que chama função e não afirma nada sobre o resultado é achado, mesmo com a cobertura verde.
 
@@ -97,7 +106,7 @@ Comportamento que emerge da interação com o LLM não é verificável por asser
 - [ ] Código novo veio de teste que falhou primeiro.
 - [ ] `fix:` acompanha teste de reprodução que falhava antes da correção.
 - [ ] `go test -race ./...` limpo.
-- [ ] Cobertura ≥ 90% no denominador definido.
+- [ ] Cobertura ≥ 95% no denominador definido, e nenhum pacote abaixo de 90%.
 - [ ] Nenhum teste novo sem asserção.
 - [ ] Exclusão de cobertura nova, se houver, justificada na descrição do PR.
 - [ ] Spec sincronizada, se o comportamento técnico mudou.

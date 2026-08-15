@@ -8,7 +8,14 @@
 set -euo pipefail
 
 PROFILE="${1:-coverage.out}"
-MIN="${DCODE_COVERAGE_MIN:-90}"
+# Agregado e por pacote sao numeros diferentes, e passaram a ser dois ajustes.
+#
+# O agregado sobe para 95: o piso de 90 foi alcancado e ficar nele deixa a
+# margem virar folga onde codigo novo entra sem teste. O por pacote fica em 90,
+# que e o que os cinco .i.spec.md exigem — subir esse tambem transformaria a
+# regra das specs em outra coisa, sem changelog que o diga.
+MIN="${DCODE_COVERAGE_MIN:-95}"
+MIN_PKG="${DCODE_COVERAGE_MIN_PKG:-90}"
 
 [ -f "$PROFILE" ] || { echo "cobertura: perfil '$PROFILE' nao encontrado"; exit 1; }
 
@@ -45,12 +52,12 @@ PER_PKG="$(tail -n +2 "$FILTERED" | awk '
   }
 ' | sort)"
 
-BELOW="$(printf '%s\n' "$PER_PKG" | awk -v m="$MIN" '$2+0 < m+0 { printf "  %s %s%%\n", $1, $2 }')"
+BELOW="$(printf '%s\n' "$PER_PKG" | awk -v m="$MIN_PKG" '$2+0 < m+0 { printf "  %s %s%%\n", $1, $2 }')"
 if [ -n "$BELOW" ]; then
-  printf 'pacotes abaixo de %s%% por conta propria:\n%s' "$MIN" "$BELOW"
+  printf 'pacotes abaixo de %s%% por conta propria:\n%s' "$MIN_PKG" "$BELOW"
 fi
 awk -v t="$TOTAL" -v m="$MIN" 'BEGIN { exit !(t+0 >= m+0) }' || {
   echo "FALHA: cobertura abaixo do gate"
-  go tool cover -func="$FILTERED" | awk '$3+0 < 90 && $1 != "total:" { print "  " $0 }'
+  go tool cover -func="$FILTERED" | awk -v m="$MIN_PKG" '$3+0 < m+0 && $1 != "total:" { print "  " $0 }'
   exit 1
 }
