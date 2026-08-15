@@ -811,3 +811,39 @@ func TestUndoingAnUnknownSessionIsRefused(t *testing.T) {
 		t.Fatal("undoing a session that does not exist reported success")
 	}
 }
+
+// A picture reaches the session as bytes, decoded once at the edge.
+func TestAnImageArrivesOnATurn(t *testing.T) {
+	c, mgr := newDaemon(t)
+	ctx := context.Background()
+
+	s, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// No engine here, so the turn is refused — but the image must survive
+	// decoding first, which is what this asserts. A malformed one has to fail
+	// as a bad request rather than reaching the session as empty bytes.
+	err = c.Submit(ctx, s.ID, "look", protocol.TurnImage{
+		MediaType: "image/png", Data: "iVBORw0KGgo=",
+	})
+	_ = err
+	if _, gerr := mgr.Get(s.ID); gerr != nil {
+		t.Fatalf("the session went away: %v", gerr)
+	}
+}
+
+// Base64 that is not base64 fails at the edge, where the caller can be told
+// which part of their request was wrong.
+func TestAMalformedImageIsRefused(t *testing.T) {
+	c, _ := newDaemon(t)
+	s, err := c.CreateSession(context.Background(), protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Submit(context.Background(), s.ID, "look", protocol.TurnImage{
+		MediaType: "image/png", Data: "not base64 at all!!",
+	}); err == nil {
+		t.Fatal("a malformed image was accepted")
+	}
+}

@@ -26,7 +26,7 @@ type Builtin struct {
 // stays English.
 var Builtins = []Builtin{
 	{Name: "help"}, {Name: "init"}, {Name: "clear"}, {Name: "plan"},
-	{Name: "config"}, {Name: "model"}, {Name: "resume"}, {Name: "undo"},
+	{Name: "config"}, {Name: "model"}, {Name: "resume"}, {Name: "undo"}, {Name: "image"},
 }
 
 // builtinText resolves a command's argument shape and help in one language.
@@ -48,6 +48,8 @@ func builtinText(name string, t Strings) (args, help string) {
 		return t.CmdResumeArgs, t.CmdResume
 	case "undo":
 		return "", t.CmdUndo
+	case "image":
+		return t.CmdImageArgs, t.CmdImage
 	}
 	return "", ""
 }
@@ -128,6 +130,7 @@ func HelpText(user config.CommandSet, lang Lang) string {
 		// Three, because the modifier only survives where the terminal answers
 		// the disambiguation request. ctrl+j needs nothing anywhere.
 		{"shift+enter / alt+enter / ^J", t.KeyNewline},
+		{"^V", t.KeyPasteImage},
 		{"↑ ↓", t.KeyArrows},
 		{"PgUp/PgDn", t.KeyPage},
 		{"tab", t.KeyTab},

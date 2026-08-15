@@ -16,6 +16,7 @@ import (
 	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/session"
 	"github.com/aguinelo/dcode/internal/tui"
 	"github.com/aguinelo/dcode/pkg/client"
@@ -126,15 +127,16 @@ func runTUI(args []string) error {
 	geo.Palette = tui.Palette{Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)}
 
 	return tui.Run(ctx, tui.Options{
-		SessionID: sess.ID,
-		Workspace: sess.Workspace,
-		Model:     sess.Model,
-		Sandbox:   sess.SandboxMode,
-		Window:    sess.ContextWindow,
-		Transport: c,
-		Geometry:  geo,
-		Commands:  commands,
-		Lookup:    lookup(resolved),
+		SessionID:     sess.ID,
+		Workspace:     sess.Workspace,
+		Model:         sess.Model,
+		Sandbox:       sess.SandboxMode,
+		Window:        sess.ContextWindow,
+		Transport:     c,
+		Geometry:      geo,
+		Commands:      commands,
+		AcceptsImages: acceptsImages(opts.Model),
+		Lookup:        lookup(resolved),
 		// Resolved at the edge, once. The client package renders and never
 		// reads the environment, the same way it never builds its own palette.
 		Lang: tui.Resolve(func(k string) string {
@@ -316,4 +318,17 @@ func latestSession(ws string, resolved config.Resolved) (string, error) {
 		return "", fmt.Errorf("no recorded session for this workspace to continue")
 	}
 	return found[0].ID, nil
+}
+
+// acceptsImages asks the family that owns this model whether it reads pictures.
+//
+// Resolved here, once, so the client can refuse before sending rather than
+// letting a provider reject the request thirty seconds later — a failure the
+// person cannot connect to what they did.
+func acceptsImages(model string) bool {
+	f, ok := provider.FamilyFor(model, app.Families())
+	if !ok {
+		return false
+	}
+	return f.AcceptsImages()
 }

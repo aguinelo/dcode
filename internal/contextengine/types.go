@@ -30,11 +30,28 @@ type Message struct {
 	Text       string      `json:"text,omitempty"`
 	ToolCalls  []ToolCall  `json:"tool_calls,omitempty"`
 	ToolResult *ToolResult `json:"tool_result,omitempty"`
+	// Images ride with the text rather than in a field of their own further
+	// up, because a message is one thing the model reads and splitting it
+	// loses which picture went with which question.
+	Images []Image
 	// Reminder marks a message the harness appended rather than the user
 	// typing it. It rides on the user role because that is the only channel
 	// every provider accepts mid-conversation, but a client must never render
 	// it as something the user said.
 	Reminder bool `json:"reminder,omitempty"`
+}
+
+// Image is a picture the model is shown.
+//
+// Carried as bytes rather than as a path: Assemble is pure and its output must
+// be byte-identical for the same input, and a path is a thing that varies by
+// machine and can change under the session (RN-7).
+type Image struct {
+	// MediaType is the wire type — image/png, image/jpeg, image/gif,
+	// image/webp. Named rather than sniffed at encode time so the one place
+	// that decides it is the one that read the file.
+	MediaType string
+	Data      []byte
 }
 
 // ToolCall is a model request to run a tool.

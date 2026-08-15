@@ -13,9 +13,11 @@ package server
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"net"
 	"net/http"
 	"os"
@@ -230,11 +232,29 @@ func (s *Server) submitTurn(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
 		return
 	}
-	if err := sess.Submit(req.Text); err != nil {
+	images, err := decodeImages(req.Images)
+	if err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInternal, "%v", err))
+		return
+	}
+	if err := sess.Submit(req.Text, images...); err != nil {
 		writeErr(w, wrapErr(err))
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// decodeImages turns the wire form back into bytes.
+func decodeImages(in []protocol.TurnImage) ([]ce.Image, error) {
+	var out []ce.Image
+	for _, img := range in {
+		body, err := base64.StdEncoding.DecodeString(img.Data)
+		if err != nil {
+			return nil, fmt.Errorf("an image could not be decoded: %v", err)
+		}
+		out = append(out, ce.Image{MediaType: img.MediaType, Data: body})
+	}
+	return out, nil
 }
 
 func (s *Server) interrupt(w http.ResponseWriter, r *http.Request) {

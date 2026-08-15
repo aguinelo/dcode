@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -22,7 +23,11 @@ const (
 // diverge at the first maintenance.
 type MiniMaxM3 struct{}
 
-func (MiniMaxM3) Name() string         { return "minimax-m3" }
+func (MiniMaxM3) Name() string { return "minimax-m3" }
+
+// AcceptsImages is true: M3 is natively multimodal and its OpenAI-compatible
+// surface takes an image as a data URL, up to ten megabytes each.
+func (MiniMaxM3) AcceptsImages() bool  { return true }
 func (MiniMaxM3) Transports() []string { return []string{TransportOpenAI, TransportAnthropic} }
 func (MiniMaxM3) Models() []string     { return []string{"MiniMax-M3", "minimax-m3"} }
 
@@ -55,7 +60,10 @@ func (f MiniMaxM3) NewDecoder(tools []ce.ToolDef) Decoder {
 // implementation never validates an abstraction.
 type Claude struct{}
 
-func (Claude) Name() string         { return "claude" }
+func (Claude) Name() string { return "claude" }
+
+// AcceptsImages is true, through a source block rather than a data URL.
+func (Claude) AcceptsImages() bool  { return true }
 func (Claude) Transports() []string { return []string{TransportAnthropic} }
 func (Claude) Models() []string     { return []string{"claude-"} }
 
@@ -79,10 +87,26 @@ func (Claude) NewDecoder(tools []ce.ToolDef) Decoder {
 // ---------- OpenAI dialect ----------
 
 type oaMessage struct {
-	Role       string       `json:"role"`
-	Content    string       `json:"content,omitempty"`
+	Role string `json:"role"`
+	// Content is a string when the message is only text, and an array of parts
+	// when it carries an image. Both are valid on the wire, and sending every
+	// message as an array would change every request to buy nothing.
+	Content    any          `json:"content,omitempty"`
 	ToolCalls  []oaToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string       `json:"tool_call_id,omitempty"`
+}
+
+// oaPart is one piece of a multimodal message.
+type oaPart struct {
+	Type     string      `json:"type"`
+	Text     string      `json:"text,omitempty"`
+	ImageURL *oaImageURL `json:"image_url,omitempty"`
+}
+
+// oaImageURL carries the picture as a data URL, which is what the
+// OpenAI-compatible surface takes.
+type oaImageURL struct {
+	URL string `json:"url"`
 }
 
 type oaToolCall struct {
@@ -137,6 +161,22 @@ func encodeOpenAI(req Request) (WireRequest, error) {
 		if m.Role == ce.RoleTool && m.ToolResult != nil {
 			om.ToolCallID = m.ToolResult.ToolCallID
 			om.Content = m.ToolResult.Output
+		}
+		if len(m.Images) > 0 {
+			parts := make([]oaPart, 0, len(m.Images)+1)
+			if m.Text != "" {
+				parts = append(parts, oaPart{Type: "text", Text: m.Text})
+			}
+			for _, img := range m.Images {
+				parts = append(parts, oaPart{
+					Type: "image_url",
+					ImageURL: &oaImageURL{
+						URL: "data:" + img.MediaType + ";base64," +
+							base64.StdEncoding.EncodeToString(img.Data),
+					},
+				})
+			}
+			om.Content = parts
 		}
 		for _, c := range m.ToolCalls {
 			var tc oaToolCall
@@ -393,6 +433,15 @@ type anContent struct {
 	ToolUseID string          `json:"tool_use_id,omitempty"`
 	Content   string          `json:"content,omitempty"`
 	IsError   bool            `json:"is_error,omitempty"`
+	Source    *anSource       `json:"source,omitempty"`
+}
+
+// anSource is how the Anthropic surface carries a picture: raw base64 in a
+// block of its own, with the media type named beside it.
+type anSource struct {
+	Type      string `json:"type"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
 }
 
 type anTool struct {
@@ -429,6 +478,19 @@ func encodeAnthropic(req Request) (WireRequest, error) {
 		am := anMessage{Role: string(m.Role)}
 		if m.Text != "" {
 			am.Content = append(am.Content, anContent{Type: "text", Text: m.Text})
+		}
+		// Raw base64 in a source block, not a data URL: the two surfaces spell
+		// the same picture differently, and keeping that difference here is
+		// what the family abstraction is for.
+		for _, img := range m.Images {
+			am.Content = append(am.Content, anContent{
+				Type: "image",
+				Source: &anSource{
+					Type:      "base64",
+					MediaType: img.MediaType,
+					Data:      base64.StdEncoding.EncodeToString(img.Data),
+				},
+			})
 		}
 		for _, c := range m.ToolCalls {
 			am.Content = append(am.Content, anContent{

@@ -89,9 +89,10 @@ func (c *Client) DeleteSession(ctx context.Context, id string) error {
 }
 
 // Submit sends user input.
-func (c *Client) Submit(ctx context.Context, id, text string) error {
+// Submit sends a turn, optionally with pictures.
+func (c *Client) Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error {
 	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/turns",
-		protocol.SubmitTurnRequest{Text: text}, nil)
+		protocol.SubmitTurnRequest{Text: text, Images: images}, nil)
 }
 
 // Interrupt cancels the running turn.

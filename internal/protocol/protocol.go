@@ -103,6 +103,16 @@ type CreateSessionRequest struct {
 // turn is already running: one turn per session.
 type SubmitTurnRequest struct {
 	Text string `json:"text"`
+	// Images are pictures shown with this turn, base64 encoded with their
+	// media type. Sent by value rather than as paths: the daemon may be on
+	// another machine, and a path only means something where it was typed.
+	Images []TurnImage `json:"images,omitempty"`
+}
+
+// TurnImage is one picture on the wire.
+type TurnImage struct {
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
 }
 
 // UndoResult is what putting the last turn back changed, and what it would not
