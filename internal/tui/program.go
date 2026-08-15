@@ -2,7 +2,12 @@ package tui
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
+	"github.com/aguinelo/dcode/internal/session"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,7 +24,7 @@ type Transport interface {
 	CreateSession(ctx context.Context, req protocol.CreateSessionRequest) (protocol.Session, error)
 	ListSessions(ctx context.Context) ([]protocol.Session, error)
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
-	Submit(ctx context.Context, id, text string) error
+	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
 	Interrupt(ctx context.Context, id string) error
 	Undo(ctx context.Context, id string) (protocol.UndoResult, error)
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
@@ -27,6 +32,13 @@ type Transport interface {
 }
 
 var _ Transport = (*client.Client)(nil)
+
+// MaxImageBytes is the largest picture that goes to the model.
+//
+// Ten megabytes, which is what the providers take. Refusing here rather than on
+// the wire means the person hears "that file is too big" while they can still
+// pick another one, instead of a rejected request after the turn started.
+const MaxImageBytes = 10 << 20
 
 // Options configure the program.
 type Options struct {
@@ -47,6 +59,10 @@ type Options struct {
 	// Commands is the user's discovered command set. Frozen at start, like the
 	// instruction chain, so behaviour cannot change mid-session.
 	Commands config.CommandSet
+	// AcceptsImages says whether this session's model reads pictures. Passed
+	// in rather than guessed: the client cannot know, and guessing wrong turns
+	// a refusal it could have given into a provider error it cannot explain.
+	AcceptsImages bool
 
 	// Lookup answers `/config <key>`. Injected rather than read here, because
 	// the client is not where configuration is resolved.
@@ -357,6 +373,12 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// alt+enter and ctrl+j need nothing — ctrl+j IS a newline, and has been on
 	// every terminal ever made — so the feature works everywhere and reads
 	// naturally where it can.
+	// Pasting a picture. The terminal cannot deliver one — a paste arrives as
+	// bracketed text or as a key press, and an image on the clipboard produces
+	// neither — so the key is the signal to go and ask the system itself.
+	case "ctrl+v":
+		return p.pasteImage()
+
 	case "shift+enter", "alt+enter", "ctrl+j":
 		p.model = p.model.Insert("\n")
 		return p, nil
@@ -626,6 +648,9 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		}
 		return note(v)
 
+	case "image":
+		return p.attachImage(strings.TrimSpace(r.Args))
+
 	case "undo":
 		// Not a tool. The model does not undo its own work, because the
 		// judgment undo exists for is the person's.
@@ -691,12 +716,96 @@ func (p *program) onApprovalKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (p *program) submit(text string) tea.Cmd {
+	images := p.model.Attached
+	p.model.Attached = nil
 	return func() tea.Msg {
-		if err := p.opts.Transport.Submit(p.ctx, p.opts.SessionID, text); err != nil {
+		if err := p.opts.Transport.Submit(p.ctx, p.opts.SessionID, text, images...); err != nil {
 			return errMsg{err}
 		}
 		return nil
 	}
+}
+
+// attachImage holds a picture for the next question.
+//
+// Attached rather than sent on its own: a picture with no question is a turn
+// the model has to guess the point of, and "what am I looking at" is rarely
+// what the person meant.
+//
+// The refusal when the model cannot read pictures happens HERE, before
+// anything is sent. dcode speaks to several providers and this is a capability
+// only some have — a provider error thirty seconds later is a failure the
+// person cannot connect to what they did.
+func (p *program) attachImage(path string) (tea.Model, tea.Cmd) {
+	t := Text(p.model.Lang)
+	note := func(s string) (tea.Model, tea.Cmd) {
+		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: s, Expanded: true})
+		return p, nil
+	}
+	if path == "" {
+		return note(t.ImageUsage)
+	}
+	if !p.opts.AcceptsImages {
+		return note(fmt.Sprintf(t.ImageUnsupported, p.model.Model))
+	}
+	img, err := session.ReadImage(expandHome(path), MaxImageBytes)
+	if err != nil {
+		return note(t.ImageFailed + " " + err.Error())
+	}
+	p.model.Attached = append(p.model.Attached, protocol.TurnImage{
+		MediaType: img.MediaType,
+		Data:      base64.StdEncoding.EncodeToString(img.Data),
+	})
+	return note(fmt.Sprintf(t.ImageAttached, path, len(p.model.Attached)))
+}
+
+// pasteImage attaches whatever picture is on the clipboard.
+//
+// Every outcome is said out loud, because the alternative is a key that
+// sometimes does nothing for three different reasons and looks identical each
+// time: an empty clipboard, a machine with no way to read it, and a model that
+// cannot see pictures are three different things to do next.
+func (p *program) pasteImage() (tea.Model, tea.Cmd) {
+	t := Text(p.model.Lang)
+	note := func(s string) (tea.Model, tea.Cmd) {
+		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: s, Expanded: true})
+		return p, nil
+	}
+	if !p.opts.AcceptsImages {
+		return note(fmt.Sprintf(t.ImageUnsupported, p.model.Model))
+	}
+
+	body, media, err := ClipboardImage()
+	switch {
+	case errors.Is(err, ErrNoImageInClipboard):
+		return note(t.ClipboardEmpty)
+	case errors.Is(err, ErrNoClipboardTool):
+		return note(t.ClipboardMissing)
+	case err != nil:
+		return note(t.ImageFailed + " " + err.Error())
+	}
+	if len(body) > MaxImageBytes {
+		return note(fmt.Sprintf(t.ImageTooBig, len(body)/(1<<20), MaxImageBytes/(1<<20)))
+	}
+
+	p.model.Attached = append(p.model.Attached, protocol.TurnImage{
+		MediaType: media,
+		Data:      base64.StdEncoding.EncodeToString(body),
+	})
+	return note(fmt.Sprintf(t.ImagePasted, len(p.model.Attached)))
+}
+
+// expandHome turns a leading ~ into the home directory, because a screenshot
+// path is typed by a person and that is how a person writes it.
+func expandHome(path string) string {
+	if !strings.HasPrefix(path, "~/") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	return filepath.Join(home, path[2:])
 }
 
 func (p *program) interrupt() tea.Cmd {

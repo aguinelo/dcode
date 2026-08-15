@@ -47,6 +47,9 @@ var tuiInvariants = map[string]string{
 	"rola por dentro, mantendo o caret":                  "TestTheBoxScrollsToKeepTheCaretVisible",
 	"cede antes do fluxo":                                "TestTheBoxNeverTakesTheWholeWindow",
 	"início e ao fim da linha do caret":                  "TestTheLineKeysStayOnTheirLine",
+	"diz o que aconteceu em todos":                       "TestPastingReportsEveryOutcome",
+	"vai com a **próxima** mensagem":                     "TestAnAttachedImageGoesWithTheNextMessage",
+	"nomeando o modelo":                                  "TestPastingIntoAModelThatCannotSeeNamesTheModel",
 	"preserva as quebras e não envia":                    "TestAMultiLinePasteDoesNotSendAnything",
 }
 

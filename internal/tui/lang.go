@@ -94,37 +94,48 @@ type Strings struct {
 	// Help. The key and command descriptions live here too: a /help with
 	// translated headings and English descriptions is worse than an untranslated
 	// one, because it reads as a bug rather than as a language.
-	HelpCommands  string
-	HelpApprovals string
-	HelpKeys      string
-	HelpYours     string
-	KeyEnter      string
-	KeyNewline    string
-	CmdUndo       string
-	UndoRestored  string
-	UndoRefused   string
-	UndoNothing   string
-	UndoFailed    string
-	KeyArrows     string
-	KeyPage       string
-	KeyTab        string
-	KeyEsc        string
-	KeyPanel      string
-	KeyDequeue    string
-	KeyEditing    string
-	KeyInterrupt  string
-	KeyQuit       string
-	CmdHelp       string
-	CmdInit       string
-	CmdClear      string
-	CmdPlan       string
-	CmdPlanArgs   string
-	CmdConfig     string
-	CmdConfigArgs string
-	CmdModel      string
-	CmdModelArgs  string
-	CmdResume     string
-	CmdResumeArgs string
+	HelpCommands     string
+	HelpApprovals    string
+	HelpKeys         string
+	HelpYours        string
+	KeyEnter         string
+	KeyNewline       string
+	KeyPasteImage    string
+	CmdUndo          string
+	CmdImage         string
+	CmdImageArgs     string
+	ImageUsage       string
+	ImageAttached    string
+	ImageFailed      string
+	ImageUnsupported string
+	ImagePasted      string
+	ImageTooBig      string
+	ClipboardEmpty   string
+	ClipboardMissing string
+	UndoRestored     string
+	UndoRefused      string
+	UndoNothing      string
+	UndoFailed       string
+	KeyArrows        string
+	KeyPage          string
+	KeyTab           string
+	KeyEsc           string
+	KeyPanel         string
+	KeyDequeue       string
+	KeyEditing       string
+	KeyInterrupt     string
+	KeyQuit          string
+	CmdHelp          string
+	CmdInit          string
+	CmdClear         string
+	CmdPlan          string
+	CmdPlanArgs      string
+	CmdConfig        string
+	CmdConfigArgs    string
+	CmdModel         string
+	CmdModelArgs     string
+	CmdResume        string
+	CmdResumeArgs    string
 
 	// CLI. The usage block is one string per language rather than a field per
 	// line: it is prose with alignment, and cutting it into thirty fields
@@ -174,37 +185,48 @@ var catalogue = map[Lang]Strings{
 		ApprovalEnterDenies:  "Enter denies.",
 		ApprovalHeading:      "Approvals",
 
-		HelpCommands:  "Commands",
-		HelpApprovals: "Approvals",
-		HelpKeys:      "Keys",
-		HelpYours:     "Yours",
-		KeyEnter:      "send (queues while a turn is running)",
-		KeyNewline:    "break the line without sending",
-		CmdUndo:       "put back the files the last turn changed",
-		UndoRestored:  "put back:",
-		UndoRefused:   "left alone, changed since the turn:",
-		UndoNothing:   "the last turn changed no files",
-		UndoFailed:    "could not undo:",
-		KeyArrows:     "history on an empty line, otherwise move through the stream",
-		KeyPage:       "scroll · Home and End jump to either end",
-		KeyTab:        "expand or collapse the selected entry",
-		KeyEsc:        "close the expansion, then the selection",
-		KeyPanel:      "show or hide the plan panel",
-		KeyDequeue:    "remove the oldest queued message",
-		KeyEditing:    "start, end, delete word, clear, cut to end",
-		KeyInterrupt:  "interrupt the turn, or quit when idle",
-		KeyQuit:       "quit",
-		CmdHelp:       "shortcuts and commands",
-		CmdInit:       "write DCODE.md for this workspace from what is already here",
-		CmdClear:      "end this session and open a fresh one",
-		CmdPlan:       "show the plan; with an argument, ask for a new one",
-		CmdPlanArgs:   "[what to change]",
-		CmdConfig:     "the effective value of a key and where it came from",
-		CmdConfigArgs: "<key>",
-		CmdModel:      "switch model — opens a new session, since the prefix changes",
-		CmdModelArgs:  "<name>",
-		CmdResume:     "list sessions, or reattach to one",
-		CmdResumeArgs: "[id]",
+		HelpCommands:     "Commands",
+		HelpApprovals:    "Approvals",
+		HelpKeys:         "Keys",
+		HelpYours:        "Yours",
+		KeyEnter:         "send (queues while a turn is running)",
+		KeyNewline:       "break the line without sending",
+		KeyPasteImage:    "paste an image from the clipboard",
+		CmdUndo:          "put back the files the last turn changed",
+		CmdImage:         "show the model a picture with your next message",
+		CmdImageArgs:     "<path>",
+		ImageUsage:       "Usage: /image <path to a png, jpeg, gif or webp>",
+		ImageAttached:    "attached %s — %d image(s) will go with your next message",
+		ImageFailed:      "could not attach it:",
+		ImageUnsupported: "%s does not read pictures. Switch with /model to one that does.",
+		ImagePasted:      "pasted the image — %d will go with your next message",
+		ImageTooBig:      "that image is %dMB and the limit is %dMB",
+		ClipboardEmpty:   "no image on the clipboard — copy one, or use /image <path>",
+		ClipboardMissing: "this machine has no clipboard tool; install wl-clipboard or xclip, or use /image <path>",
+		UndoRestored:     "put back:",
+		UndoRefused:      "left alone, changed since the turn:",
+		UndoNothing:      "the last turn changed no files",
+		UndoFailed:       "could not undo:",
+		KeyArrows:        "history on an empty line, otherwise move through the stream",
+		KeyPage:          "scroll · Home and End jump to either end",
+		KeyTab:           "expand or collapse the selected entry",
+		KeyEsc:           "close the expansion, then the selection",
+		KeyPanel:         "show or hide the plan panel",
+		KeyDequeue:       "remove the oldest queued message",
+		KeyEditing:       "start, end, delete word, clear, cut to end",
+		KeyInterrupt:     "interrupt the turn, or quit when idle",
+		KeyQuit:          "quit",
+		CmdHelp:          "shortcuts and commands",
+		CmdInit:          "write DCODE.md for this workspace from what is already here",
+		CmdClear:         "end this session and open a fresh one",
+		CmdPlan:          "show the plan; with an argument, ask for a new one",
+		CmdPlanArgs:      "[what to change]",
+		CmdConfig:        "the effective value of a key and where it came from",
+		CmdConfigArgs:    "<key>",
+		CmdModel:         "switch model — opens a new session, since the prefix changes",
+		CmdModelArgs:     "<name>",
+		CmdResume:        "list sessions, or reattach to one",
+		CmdResumeArgs:    "[id]",
 
 		Usage: `dcode %s — an agentic coding harness
 
@@ -270,37 +292,48 @@ Environment:
 		ApprovalEnterDenies:  "Enter nega.",
 		ApprovalHeading:      "Aprovações",
 
-		HelpCommands:  "Comandos",
-		HelpApprovals: "Aprovações",
-		HelpKeys:      "Teclas",
-		HelpYours:     "Seus",
-		KeyEnter:      "envia (enfileira enquanto um turno roda)",
-		KeyNewline:    "quebra a linha sem enviar",
-		CmdUndo:       "restaura os arquivos que o último turno mudou",
-		UndoRestored:  "restaurado:",
-		UndoRefused:   "intocado, mudou depois do turno:",
-		UndoNothing:   "o último turno não mexeu em arquivo nenhum",
-		UndoFailed:    "não foi possível desfazer:",
-		KeyArrows:     "histórico em linha vazia; fora dela, navega no stream",
-		KeyPage:       "rola · Home e End vão para as pontas",
-		KeyTab:        "abre ou fecha a entrada selecionada",
-		KeyEsc:        "fecha a expansão, depois a seleção",
-		KeyPanel:      "mostra ou esconde o painel de plano",
-		KeyDequeue:    "descarta a mensagem mais antiga da fila",
-		KeyEditing:    "início, fim, apaga palavra, limpa, corta até o fim",
-		KeyInterrupt:  "interrompe o turno, ou sai quando ocioso",
-		KeyQuit:       "sai",
-		CmdHelp:       "atalhos e comandos",
-		CmdInit:       "escreve o DCODE.md deste workspace a partir do que já existe",
-		CmdClear:      "encerra esta sessão e abre uma nova",
-		CmdPlan:       "mostra o plano; com argumento, pede um novo",
-		CmdPlanArgs:   "[o que mudar]",
-		CmdConfig:     "o valor efetivo de uma chave e de onde ele veio",
-		CmdConfigArgs: "<chave>",
-		CmdModel:      "troca de modelo — abre nova sessão, porque o prefixo muda",
-		CmdModelArgs:  "<nome>",
-		CmdResume:     "lista sessões, ou reconecta a uma",
-		CmdResumeArgs: "[id]",
+		HelpCommands:     "Comandos",
+		HelpApprovals:    "Aprovações",
+		HelpKeys:         "Teclas",
+		HelpYours:        "Seus",
+		KeyEnter:         "envia (enfileira enquanto um turno roda)",
+		KeyNewline:       "quebra a linha sem enviar",
+		KeyPasteImage:    "cola uma imagem da área de transferência",
+		CmdUndo:          "restaura os arquivos que o último turno mudou",
+		CmdImage:         "mostra uma imagem ao modelo junto da próxima mensagem",
+		CmdImageArgs:     "<caminho>",
+		ImageUsage:       "Uso: /image <caminho de png, jpeg, gif ou webp>",
+		ImageAttached:    "anexado %s — %d imagem(ns) vão com a próxima mensagem",
+		ImageFailed:      "não foi possível anexar:",
+		ImageUnsupported: "%s não lê imagem. Troque com /model para um que leia.",
+		ImagePasted:      "imagem colada — %d vão com a próxima mensagem",
+		ImageTooBig:      "essa imagem tem %dMB e o limite é %dMB",
+		ClipboardEmpty:   "nenhuma imagem na área de transferência — copie uma, ou use /image <caminho>",
+		ClipboardMissing: "esta máquina não tem ferramenta de clipboard; instale wl-clipboard ou xclip, ou use /image <caminho>",
+		UndoRestored:     "restaurado:",
+		UndoRefused:      "intocado, mudou depois do turno:",
+		UndoNothing:      "o último turno não mexeu em arquivo nenhum",
+		UndoFailed:       "não foi possível desfazer:",
+		KeyArrows:        "histórico em linha vazia; fora dela, navega no stream",
+		KeyPage:          "rola · Home e End vão para as pontas",
+		KeyTab:           "abre ou fecha a entrada selecionada",
+		KeyEsc:           "fecha a expansão, depois a seleção",
+		KeyPanel:         "mostra ou esconde o painel de plano",
+		KeyDequeue:       "descarta a mensagem mais antiga da fila",
+		KeyEditing:       "início, fim, apaga palavra, limpa, corta até o fim",
+		KeyInterrupt:     "interrompe o turno, ou sai quando ocioso",
+		KeyQuit:          "sai",
+		CmdHelp:          "atalhos e comandos",
+		CmdInit:          "escreve o DCODE.md deste workspace a partir do que já existe",
+		CmdClear:         "encerra esta sessão e abre uma nova",
+		CmdPlan:          "mostra o plano; com argumento, pede um novo",
+		CmdPlanArgs:      "[o que mudar]",
+		CmdConfig:        "o valor efetivo de uma chave e de onde ele veio",
+		CmdConfigArgs:    "<chave>",
+		CmdModel:         "troca de modelo — abre nova sessão, porque o prefixo muda",
+		CmdModelArgs:     "<nome>",
+		CmdResume:        "lista sessões, ou reconecta a uma",
+		CmdResumeArgs:    "[id]",
 
 		Usage: `dcode %s — um harness de programação agêntica
 

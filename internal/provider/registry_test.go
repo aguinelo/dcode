@@ -522,6 +522,7 @@ type fakeFamily struct {
 }
 
 func (f fakeFamily) Name() string               { return f.name }
+func (f fakeFamily) AcceptsImages() bool        { return false }
 func (f fakeFamily) Transports() []string       { return f.transports }
 func (f fakeFamily) Models() []string           { return f.models }
 func (f fakeFamily) Window(string) (int, error) { return 1000, nil }

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -195,5 +197,50 @@ func TestTheLineKeysStayOnTheirLine(t *testing.T) {
 	}
 	if got := LineEnd(text, at); got != 17 {
 		t.Errorf("ctrl+e went to %d, want the end of the second line", got)
+	}
+}
+
+// A clipboard with nothing in it, and a machine with no way to look, are
+// different answers and need different notes.
+func TestTheClipboardDistinguishesEmptyFromUnavailable(t *testing.T) {
+	if ErrNoImageInClipboard == ErrNoClipboardTool {
+		t.Fatal("the two outcomes are the same value, so the caller cannot tell them apart")
+	}
+	for _, e := range []error{ErrNoImageInClipboard, ErrNoClipboardTool} {
+		if e == nil || e.Error() == "" {
+			t.Error("an error with nothing to say")
+		}
+	}
+}
+
+// The reader answers on this machine, whatever the answer is. What it must
+// never do is hang or panic — it runs on a keypress, in the interface.
+func TestReadingTheClipboardAnswers(t *testing.T) {
+	body, media, err := ClipboardImage()
+	switch {
+	case err != nil:
+		// Empty or unavailable are both fine here; a CI runner has neither a
+		// clipboard nor a tool.
+	case len(body) == 0:
+		t.Error("success with no bytes")
+	case media == "":
+		t.Error("bytes with no media type")
+	}
+}
+
+// A screenshot path is typed by a person, and that is how a person writes it.
+func TestATildePathFindsTheFile(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home directory here")
+	}
+	if got := expandHome("~/Desktop/shot.png"); got != filepath.Join(home, "Desktop/shot.png") {
+		t.Errorf("expanded to %q", got)
+	}
+	// Only a leading ~/. A path with a tilde inside it is a path.
+	for _, p := range []string{"/tmp/a~b.png", "relative/shot.png", "~weird"} {
+		if got := expandHome(p); got != p {
+			t.Errorf("%q was rewritten to %q", p, got)
+		}
 	}
 }

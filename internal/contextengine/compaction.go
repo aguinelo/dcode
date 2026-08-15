@@ -19,10 +19,29 @@ func Estimate(msgs []Message, cfg Config) int {
 		if m.ToolResult != nil {
 			chars += len(m.ToolResult.ToolCallID) + len(m.ToolResult.Output)
 		}
+		// An image costs context, and a budget that does not count it drifts
+		// silently: the band reads 60% while the window is nearly full, and
+		// compaction arrives after the model has lost the thread.
+		//
+		// A flat cost per image, not a share of its bytes. A model prices an
+		// image by what it sees; how well the PNG compressed is the one thing
+		// that has nothing to do with it.
+		chars += len(m.Images) * charsPerImage
 	}
 	base := float64(chars) / cfg.CharsPerToken
 	return int(base * (1 + cfg.Margin))
 }
+
+// charsPerImage is what one image is counted as, in characters, before the
+// same divisor every other input goes through.
+//
+// Deliberately coarse. Providers price images by tiles and by detail setting,
+// and reproducing that arithmetic here would be a second implementation of
+// somebody else's billing — wrong in a different way each time it changed. What
+// this has to get right is the ORDER: that an image is worth a page of text
+// rather than a word, so a session full of screenshots compacts before it
+// overflows instead of after.
+const charsPerImage = 6000
 
 // CompactionPlan describes the span to replace with a single summary.
 // FromIdx is inclusive, ToIdx exclusive, both indices into Session.History.

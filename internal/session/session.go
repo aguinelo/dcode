@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
 )
@@ -92,7 +93,7 @@ func (s *Session) State() protocol.SessionState {
 // One turn per session: concurrent input is refused rather than queued here.
 // The queue belongs to the client, which is what keeps the event log linearly
 // ordered and the append-only context coherent.
-func (s *Session) Submit(text string) error {
+func (s *Session) Submit(text string, images ...ce.Image) error {
 	s.mu.Lock()
 	if s.state == protocol.SessionStateClosed {
 		s.mu.Unlock()
@@ -102,6 +103,15 @@ func (s *Session) Submit(text string) error {
 		s.mu.Unlock()
 		return protocol.Errorf(protocol.CodeTurnAlreadyActive,
 			"a turn is already running; wait for it to finish or interrupt it")
+	}
+	// Checked after the states a caller can act on, because "closed" and "a
+	// turn is running" are answers and this one is not. It cannot happen in a
+	// running daemon, and that is why refusing matters: the failure would be a
+	// nil dereference inside a goroutine, taking the whole process with it
+	// rather than the one request that caused it.
+	if s.engine == nil {
+		s.mu.Unlock()
+		return protocol.Errorf(protocol.CodeInternal, "session %s has no engine", s.ID)
 	}
 
 	// The turn's context is detached from any request: a client disconnecting
@@ -122,7 +132,7 @@ func (s *Session) Submit(text string) error {
 			s.mu.Unlock()
 			cancel()
 		}()
-		_, _ = s.engine.Run(ctx, text)
+		_, _ = s.engine.Run(ctx, text, images...)
 	}()
 	return nil
 }

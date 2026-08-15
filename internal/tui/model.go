@@ -134,7 +134,10 @@ type Model struct {
 	// they return to the bottom.
 	Follow bool
 	Queue  []string
-	Input  string
+	// Attached are pictures waiting for the next question. A picture with no
+	// question is a turn the model has to guess the point of.
+	Attached []protocol.TurnImage
+	Input    string
 	// InputCursor is the caret position within Input, in runes.
 	InputCursor int
 	// History is what the user has sent, newest last, with HistoryAt as the

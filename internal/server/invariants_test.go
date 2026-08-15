@@ -13,7 +13,7 @@ import (
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools"), filepath.Join("..", "contextengine"), filepath.Join("..", "provider")}
 
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
@@ -43,6 +43,11 @@ var protocolInvariants = map[string]string{
 	"restaura o que o **último** turno": "TestANewTurnReplacesWhatCanBeUndone",
 	"é recusado, nunca sobrescrito":     "TestUndoRefusesAFileChangedSinceTheTurn",
 	"durante um turno em curso":         "TestUndoIsRefusedWhileATurnRuns",
+	// Images.
+	"imagem por valor":     "TestAnImageArrivesOnATurn",
+	"recusado na borda":    "TestAMalformedImageIsRefused",
+	"conta no orçamento":   "TestAnImageCostsContext",
+	"declara se lê imagem": "TestEachFamilySaysWhetherItReadsPictures",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

@@ -29,6 +29,17 @@ func (Generic) Models() []string { return nil }
 
 func (Generic) Transports() []string { return []string{TransportOpenAI} }
 
+// AcceptsImages is false, and the reason is that nothing here can know.
+//
+// Generic points at whatever OpenAI-compatible endpoint somebody configured,
+// and half of those serve text-only models. Saying no is not a claim that the
+// endpoint cannot; it is a refusal to guess on the user's behalf, made where
+// they can read it instead of thirty seconds later in a provider error.
+//
+// A generic endpoint that does read images is a reason to add a family for it,
+// which is a decision with a name on it rather than a hope.
+func (Generic) AcceptsImages() bool { return false }
+
 // Window is the conservative guess.
 //
 // Under-guessing compacts early and costs a summary; over-guessing overruns the

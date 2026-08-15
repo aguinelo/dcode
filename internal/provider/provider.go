@@ -93,6 +93,14 @@ type Family interface {
 	// dialects serializes differently into each. That parameter is exactly
 	// what a single-axis design could not express.
 	Encode(req Request, transport string) (WireRequest, error)
+	// AcceptsImages reports whether this family's models read pictures.
+	//
+	// Declared rather than attempted. dcode speaks to several providers, and a
+	// capability that some have is exactly the kind of thing that works on the
+	// machine it was written on and fails on somebody else's — as a request
+	// rejected thirty seconds later, for a reason they cannot connect to what
+	// they did.
+	AcceptsImages() bool
 	// NewDecoder builds a decoder for one stream.
 	//
 	// Decoding cannot be a pure function of one frame: a tool call's arguments

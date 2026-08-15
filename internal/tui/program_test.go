@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -28,9 +30,10 @@ type fakeTransport struct {
 	createErr error
 	getErr    error
 
-	undos      int
-	undoResult protocol.UndoResult
-	undoErr    error
+	submittedImages []int
+	undos           int
+	undoResult      protocol.UndoResult
+	undoErr         error
 
 	events chan protocol.Event
 	errs   chan error
@@ -67,10 +70,11 @@ func (f *fakeTransport) GetSession(_ context.Context, id string) (protocol.Sessi
 	return protocol.Session{ID: id, Workspace: "/w", Model: "m", SandboxMode: "read-only"}, nil
 }
 
-func (f *fakeTransport) Submit(_ context.Context, _, text string) error {
+func (f *fakeTransport) Submit(_ context.Context, _, text string, imgs ...protocol.TurnImage) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.submitted = append(f.submitted, text)
+	f.submittedImages = append(f.submittedImages, len(imgs))
 	return f.submitErr
 }
 
@@ -1410,5 +1414,126 @@ func TestAFailedUndoIsReported(t *testing.T) {
 	}
 	if !strings.Contains(string(note), "a turn is running") {
 		t.Errorf("got %q", note)
+	}
+}
+
+// Every outcome is said out loud. A key that sometimes does nothing for three
+// different reasons looks identical each time, and an empty clipboard, a
+// machine with no way to read it, and a model that cannot see are three
+// different things to do next.
+func TestPastingAnImageSaysWhatHappened(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) { o.AcceptsImages = false })
+	p.model.Model = "text-only-model"
+
+	if _, _ = p.pasteImage(); len(p.model.Entries) != 1 {
+		t.Fatal("nothing was said")
+	}
+	if !strings.Contains(p.model.Entries[0].Summary, "text-only-model") {
+		t.Errorf("the note does not name the model: %q", p.model.Entries[0].Summary)
+	}
+	if !strings.Contains(p.model.Entries[0].Summary, "/model") {
+		t.Errorf("the note does not say what to do: %q", p.model.Entries[0].Summary)
+	}
+}
+
+// A picture waits for a question. Sending it alone is a turn the model has to
+// guess the point of, and the attachment rides with the next message.
+func TestAnAttachedImageGoesWithTheNextMessage(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.Attached = []protocol.TurnImage{{MediaType: "image/png", Data: "eA=="}}
+
+	run(t, p, typeLine(t, p, "why is this cut off?"))
+
+	if len(tr.submittedImages) != 1 || tr.submittedImages[0] != 1 {
+		t.Errorf("the image did not go with the message: %v", tr.submittedImages)
+	}
+	// And it is not sent twice: the next message starts clean.
+	if len(p.model.Attached) != 0 {
+		t.Errorf("the attachment survived the send: %+v", p.model.Attached)
+	}
+}
+
+// /image takes a path, for a file that is already on disk and for a daemon on
+// another machine where a clipboard is not a shared thing.
+func TestAttachingAnImageByPath(t *testing.T) {
+	dir := t.TempDir()
+	png := filepath.Join(dir, "shot.png")
+	if err := os.WriteFile(png, []byte("\x89PNG\r\n\x1a\n....."), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	p, _ := newProgram(t, func(o *Options) { o.AcceptsImages = true })
+	p.attachImage(png)
+
+	if len(p.model.Attached) != 1 {
+		t.Fatalf("nothing was attached: %+v", p.model.Entries)
+	}
+	if p.model.Attached[0].MediaType != "image/png" {
+		t.Errorf("media type is %q", p.model.Attached[0].MediaType)
+	}
+}
+
+// A path that is not a picture is refused with the reason, while the person can
+// still pick another file.
+func TestAttachingSomethingThatIsNotAnImage(t *testing.T) {
+	dir := t.TempDir()
+	notes := filepath.Join(dir, "notes.txt")
+	if err := os.WriteFile(notes, []byte("text"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	p, _ := newProgram(t, func(o *Options) { o.AcceptsImages = true })
+	p.attachImage(notes)
+
+	if len(p.model.Attached) != 0 {
+		t.Error("a text file was attached as a picture")
+	}
+	if len(p.model.Entries) != 1 || !strings.Contains(p.model.Entries[0].Summary, "not an image") {
+		t.Errorf("the refusal does not say why: %+v", p.model.Entries)
+	}
+}
+
+// No path at all says how to use it rather than doing nothing.
+func TestAttachingWithNoPathExplainsItself(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) { o.AcceptsImages = true })
+	p.attachImage("")
+	if len(p.model.Entries) != 1 || !strings.Contains(p.model.Entries[0].Summary, "Usage") {
+		t.Errorf("got %+v", p.model.Entries)
+	}
+}
+
+// The clipboard path answers whatever the machine says, and never leaves the
+// person guessing which of the outcomes they got.
+func TestPastingReportsEveryOutcome(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) { o.AcceptsImages = true })
+	p.pasteImage()
+
+	if len(p.model.Entries) != 1 {
+		t.Fatalf("pasting said nothing: %+v", p.model.Entries)
+	}
+	said := p.model.Entries[0].Summary
+	// On a machine with no clipboard and on one with an empty clipboard the
+	// note differs, and either is a real answer. What must never happen is
+	// silence, or an attachment appearing from nowhere.
+	if said == "" {
+		t.Error("an empty note")
+	}
+	if len(p.model.Attached) != 0 && !strings.Contains(said, "image") {
+		t.Errorf("something was attached without saying so: %q", said)
+	}
+}
+
+// A model that cannot see is told before anything is read, so the refusal
+// names the model rather than the clipboard.
+func TestPastingIntoAModelThatCannotSeeNamesTheModel(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) { o.AcceptsImages = false })
+	p.model.Model = "some-text-model"
+	p.pasteImage()
+
+	if len(p.model.Attached) != 0 {
+		t.Error("a picture was attached for a model that cannot read one")
+	}
+	if !strings.Contains(p.model.Entries[0].Summary, "some-text-model") {
+		t.Errorf("got %q", p.model.Entries[0].Summary)
 	}
 }

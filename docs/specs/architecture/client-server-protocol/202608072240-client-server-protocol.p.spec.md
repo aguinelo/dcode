@@ -185,6 +185,11 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 
 
+
+- Turno carrega imagem por valor (base64 + tipo), nunca caminho: o daemon pode estar em outra máquina.
+- Base64 malformado é recusado na borda, não chega à sessão como bytes vazios.
+- Imagem conta no orçamento de contexto; faixa que a ignora deriva em silêncio.
+- Cada família declara se lê imagem; a genérica diz **não**, porque nada aqui pode saber.
 - Desfazer restaura o que o **último** turno mudou; turno novo substitui o conjunto.
 - Arquivo alterado depois do turno é recusado, nunca sobrescrito — e a recusa é por arquivo, não do lote.
 - Desfazer durante um turno em curso é recusado.
