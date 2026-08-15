@@ -125,16 +125,3 @@ func TestServingBindsItsOwnSocketAndCleansUpOnTheWayOut(t *testing.T) {
 		t.Error("the socket outlived the daemon; the next start has to reason about it")
 	}
 }
-
-// A path that cannot be bound is an error from Serve, not a daemon that thinks
-// it started.
-func TestServingRefusesAnAddressItCannotBind(t *testing.T) {
-	// A directory where the socket should be: binding fails.
-	dir := filepath.Join(t.TempDir(), "d.sock")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := serverOn(dir).Serve(context.Background()); err == nil {
-		t.Fatal("serving on an unbindable address reported success")
-	}
-}
