@@ -206,7 +206,9 @@ type Sandbox interface {
 - `allow session` é chaveado pela regra quando houve regra, e pelo comando exato quando não houve.
 - Padrão em branco não casa com nada, e nunca com tudo.
 - As regras efetivas são inspecionáveis por `--config`, com procedência.
+- Workspace sob `/tmp` continua visível dentro do sandbox: o `tmpfs` é montado antes dele, nunca por cima.
 
 ## 7. Changelog
 
 - [202608091700 — Regras por caminho e por comando](changelog/202608091700-regras-por-caminho-e-comando.md)
+- [202608150300 — Workspace sob /tmp](changelog/202608150300-workspace-sob-tmp.md)
