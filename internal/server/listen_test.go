@@ -85,10 +85,56 @@ func TestADaemonWithNoAddressRefusesToStart(t *testing.T) {
 	}
 }
 
-// Serving without listening is a programming error and says so, rather than
-// blocking forever on a listener that is not there.
-func TestServingBeforeListeningIsRefused(t *testing.T) {
-	if err := serverOn(filepath.Join(t.TempDir(), "d.sock")).Serve(context.Background()); err == nil {
-		t.Fatal("serving without a listener reported success")
+// Serving without a prior Listen binds one rather than refusing: the two entry
+// points exist because `dcode serve` wants the socket bound before it forks,
+// and an embedded daemon does not care. Both have to work.
+//
+// Cancelling shuts down and removes the socket, so the next start does not have
+// to reason about a stale one.
+func TestServingBindsItsOwnSocketAndCleansUpOnTheWayOut(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "d.sock")
+	s := serverOn(path)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- s.Serve(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := os.Stat(path); err != nil {
+		cancel()
+		t.Skipf("cannot bind a unix socket here: %v", err)
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("serving ended with %v, want a clean shutdown", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("serving did not return after the context was cancelled")
+	}
+
+	if _, err := os.Stat(path); err == nil {
+		t.Error("the socket outlived the daemon; the next start has to reason about it")
+	}
+}
+
+// A path that cannot be bound is an error from Serve, not a daemon that thinks
+// it started.
+func TestServingRefusesAnAddressItCannotBind(t *testing.T) {
+	// A directory where the socket should be: binding fails.
+	dir := filepath.Join(t.TempDir(), "d.sock")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := serverOn(dir).Serve(context.Background()); err == nil {
+		t.Fatal("serving on an unbindable address reported success")
 	}
 }
