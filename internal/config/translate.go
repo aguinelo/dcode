@@ -38,8 +38,6 @@ type Finding struct {
 	Reason  string // why it does not apply
 }
 
-func (f Finding) String() string { return f.Subject + " — " + f.Reason }
-
 var backtickName = regexp.MustCompile("`([A-Za-z_][A-Za-z0-9_]*)`")
 
 // namedTool finds the `<Name> tool` form, which carries its own context.
@@ -277,13 +275,4 @@ func Diverged(dcodeMD string, fsys fs.FS) ([]string, bool) {
 	}
 	sort.Strings(changed)
 	return changed, len(changed) > 0
-}
-
-func firstNonEmpty(vs ...string) string {
-	for _, v := range vs {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
 }

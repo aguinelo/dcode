@@ -788,22 +788,6 @@ func renderCaretIn(text string, at int, p Palette) string {
 	return string(runes[:at]) + p.Apply(StyleCursor, string(runes[at])) + string(runes[at+1:])
 }
 
-// renderCaret marks where typing will land.
-func renderCaret(m Model, p Palette) string {
-	runes := []rune(m.Input)
-	at := m.InputCursor
-	if at < 0 {
-		at = 0
-	}
-	if at > len(runes) {
-		at = len(runes)
-	}
-	if at == len(runes) {
-		return string(runes) + p.Apply(StyleCursor, " ")
-	}
-	return string(runes[:at]) + p.Apply(StyleCursor, string(runes[at])) + string(runes[at+1:])
-}
-
 // renderApproval is the modal.
 //
 // The screen it takes over is deliberate: as a line in the stream it would
