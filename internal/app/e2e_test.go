@@ -83,6 +83,12 @@ func TestARunChangesAFileOnDisk(t *testing.T) {
 	opts.Workspace = ws
 	opts.BaseURL = srv.URL
 	opts.Policy = policy.PolicyNever
+	// A session that cannot confine its own commands refuses to start, by
+	// design, and a CI runner without a usable namespace is the environment
+	// talking rather than the behaviour under test. Every sibling test here
+	// skips on it; failing instead is what turned this green on macOS and red
+	// on Linux.
+	requireSandbox(t, opts)
 	sess, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
 	if err != nil {
 		t.Fatalf("wiring a session failed: %v", err)
@@ -140,6 +146,12 @@ func TestARunRefusesToLeaveTheWorkspace(t *testing.T) {
 	opts.Workspace = ws
 	opts.BaseURL = srv.URL
 	opts.Policy = policy.PolicyNever
+	// A session that cannot confine its own commands refuses to start, by
+	// design, and a CI runner without a usable namespace is the environment
+	// talking rather than the behaviour under test. Every sibling test here
+	// skips on it; failing instead is what turned this green on macOS and red
+	// on Linux.
+	requireSandbox(t, opts)
 	sess, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
 	if err != nil {
 		t.Fatalf("wiring failed: %v", err)
@@ -176,6 +188,12 @@ func TestARunSurvivesAToolFailure(t *testing.T) {
 	opts.Workspace = ws
 	opts.BaseURL = srv.URL
 	opts.Policy = policy.PolicyNever
+	// A session that cannot confine its own commands refuses to start, by
+	// design, and a CI runner without a usable namespace is the environment
+	// talking rather than the behaviour under test. Every sibling test here
+	// skips on it; failing instead is what turned this green on macOS and red
+	// on Linux.
+	requireSandbox(t, opts)
 	sess, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
 	if err != nil {
 		t.Fatal(err)
