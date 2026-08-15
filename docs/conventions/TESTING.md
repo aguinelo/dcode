@@ -54,9 +54,20 @@ obvious that the case exists because something actually broke once.
 
 ---
 
-## 3. Coverage gate: 90%
+## 3. Coverage gate: 95% aggregate, 90% per package
 
-CI fails below **90%** line coverage.
+CI fails below **95%** line coverage over the whole denominator, and reports any
+package under **90%** on its own.
+
+Two numbers, because they answer different questions. The per-package floor is
+what five `.i.spec.md` files require, and it exists so a weak package cannot
+hide behind stronger ones. The aggregate is the one that ratchets: 90% was
+reached and staying there turned the margin into slack where new code arrived
+untested.
+
+Raise the aggregate when it is comfortably clear, never to a number the tree
+does not already meet — a gate that is red on arrival is a gate people learn to
+ignore.
 
 ```bash
 go test -race -coverprofile=coverage.out ./...
@@ -85,8 +96,8 @@ exemption.
 
 ### What the gate does not prove
 
-90% is a **floor, not a target.** It catches files with no tests at all; it does not
-prove correctness.
+The gate is a **floor, not a target.** It catches files with no tests at all; it
+does not prove correctness.
 
 The classic way to game it is a test with no assertions — it exercises the line, verifies
 nothing, and raises the number. In review, a test that calls a function and asserts
@@ -124,7 +135,7 @@ exactly verifiable. That is the same architectural goal described in `SDD-HARNES
 - [ ] New code came from a test that failed first.
 - [ ] `fix:` ships with a reproducing test that failed before the fix.
 - [ ] `go test -race ./...` is clean.
-- [ ] Coverage ≥ 90% over the defined denominator.
+- [ ] Coverage ≥ 95% over the defined denominator, and no package under 90%.
 - [ ] No new test without assertions.
 - [ ] Any new coverage exclusion is justified in the pull request description.
 - [ ] Spec kept in sync, if technical behavior changed.
