@@ -45,17 +45,55 @@ func call(t *testing.T, sess *Session, state *tools.State, name, args string) to
 	return res
 }
 
+func serving(port int) bool {
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", port))
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return true
+}
+
 func waitServing(port int, within time.Duration) bool {
 	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", port))
-		if err == nil {
-			resp.Body.Close()
+		if serving(port) {
 			return true
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 	return false
+}
+
+// waitAllServing polls every port against ONE deadline rather than giving each
+// its own in turn.
+//
+// Sequential waits hid a slow machine as a per-server failure: the first two
+// spent their windows, and the third answered because it had inherited theirs.
+// A shared deadline costs slow startup once, and a CI runner six times slower
+// than a laptop is the environment this has to survive.
+func waitAllServing(ports []int, within time.Duration) []int {
+	deadline := time.Now().Add(within)
+	up := make([]bool, len(ports))
+	for {
+		missing := []int{}
+		for i, p := range ports {
+			if !up[i] {
+				if serving(p) {
+					up[i] = true
+					continue
+				}
+				missing = append(missing, p)
+			}
+		}
+		if len(missing) == 0 {
+			return nil
+		}
+		if !time.Now().Before(deadline) {
+			return missing
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 // Three servers at once, which is the shape people actually debug in: an API,
@@ -125,12 +163,16 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 	}
 	t.Logf("three servers started in %s: %v", time.Since(started).Round(time.Millisecond), ids)
 
-	// All three are actually serving. Reading the tool's word for it would
-	// test the tool's optimism, not the processes.
-	for i, port := range ports {
-		if !waitServing(port, 5*time.Second) {
-			t.Errorf("server %d (%s, port %d) never answered", i+1, ids[i], port)
-		}
+	// All three are actually serving. Reading the tool's word for it would test
+	// the tool's optimism, not the processes.
+	//
+	// Generous, and against one shared deadline: what is being measured is that
+	// three can run at once, not how fast a loaded CI runner starts python.
+	if missing := waitAllServing(ports, 60*time.Second); len(missing) > 0 {
+		// What the product says about them, so a failure here is diagnosable
+		// rather than just "never answered".
+		t.Fatalf("ports %v never answered; process reports:\n%s",
+			missing, call(t, sess, state, "process", `{}`).Output)
 	}
 
 	// The loop is free: an ordinary tool call works while all three run, and
