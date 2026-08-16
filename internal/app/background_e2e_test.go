@@ -168,9 +168,31 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 		id := strings.Fields(res.Output)[2] // "started as bgN · ..."
 		ids = append(ids, id)
 
-		port, ok := portOf(res.Output)
-		if !ok {
-			t.Fatalf("server %d (%s) never said what port it took:\n%s", i+1, id, res.Output)
+	}
+
+	// The port comes from `process`, not from the start result.
+	//
+	// The start result is a snapshot of the settle window — two seconds, meant
+	// to answer "did it crash", not "what did it print". On a runner where
+	// python takes longer than that to boot, it is empty and correct. Following
+	// a process is what `process` is for, and reading the port through it is
+	// the same thing a person would do.
+	deadline := time.Now().Add(60 * time.Second)
+	for _, id := range ids {
+		var port int
+		for {
+			out := call(t, sess, state, "process", fmt.Sprintf(`{"id":%q}`, id)).Output
+			if p, ok := portOf(out); ok {
+				port = p
+				break
+			}
+			if strings.Contains(out, "exit ") {
+				t.Fatalf("%s died before it said anything:\n%s", id, out)
+			}
+			if !time.Now().Before(deadline) {
+				t.Fatalf("%s never said what port it took:\n%s", id, out)
+			}
+			time.Sleep(100 * time.Millisecond)
 		}
 		ports = append(ports, port)
 	}
