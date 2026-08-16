@@ -342,8 +342,13 @@ func LookupCredential(roots config.Roots, opts Options) (secret, from string) {
 type Session struct {
 	Engine   *loop.Engine
 	Registry *tools.Registry
-	Prompt   string
-	Options  Options
+	// State is the other half of Registry: every tool's Execute takes one, so
+	// a registry handed out without it cannot be called. It is also what owns
+	// the background processes, which is why "a process dies with its session"
+	// is a consequence of this chain rather than a cleanup step.
+	State   *tools.State
+	Prompt  string
+	Options Options
 	// Origins is where each doctrine section came from, and Notices is what
 	// the overlay loader refused to do silently. Both exist for the audit:
 	// an invisible replacement would be worse than the immutability it
@@ -565,7 +570,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	}
 
 	return &Session{
-		Engine: engine, Registry: registry, Prompt: prompt, Options: opts,
+		Engine: engine, Registry: registry, State: state, Prompt: prompt, Options: opts,
 		Standing:       standing,
 		Notice:         notice,
 		ContextWindow:  window,
