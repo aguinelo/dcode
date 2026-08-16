@@ -5,37 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/tools"
 )
-
-// portOf reads the port a server chose for itself out of what it printed.
-//
-// Asking the kernel for a free port and handing it to the server later leaves a
-// window in between: on a loaded CI runner the port went to something else, and
-// the server then sat there running and serving nobody. Letting it bind port 0
-// and say what it got closes the window entirely — there is no moment when the
-// port belongs to nobody.
-func portOf(output string) (int, bool) {
-	m := regexp.MustCompile(`port (\d+)`).FindStringSubmatch(output)
-	if m == nil {
-		return 0, false
-	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil {
-		return 0, false
-	}
-	return n, true
-}
 
 // call runs a tool through the registry the session actually built, which is
 // what makes this an end-to-end test rather than a test of tools.Bash.
@@ -52,45 +33,40 @@ func call(t *testing.T, sess *Session, state *tools.State, name, args string) to
 	return res
 }
 
-func serving(port int) bool {
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", port))
-	if err != nil {
-		return false
-	}
-	resp.Body.Close()
-	return true
+// A long-lived process that announces itself, in nothing but shell builtins
+// and sleep.
+//
+// It used to be `python3 -m http.server`, and answering real HTTP was a nice
+// property that cost the test its portability: on the macOS CI runner python
+// ran and printed nothing for sixty seconds, alive and silent, and no amount of
+// waiting fixed it. Serving HTTP was never the claim. The claim is that N
+// long-lived processes run at once, stay followable, and die with the session —
+// and a shell loop models that on every platform with a shell.
+func serverCmd(marker string) string {
+	return fmt.Sprintf("echo up > %s; while true; do sleep 1; done", marker)
 }
 
-func waitServing(port int, within time.Duration) bool {
-	deadline := time.Now().Add(within)
-	for time.Now().Before(deadline) {
-		if serving(port) {
-			return true
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	return false
+// up reports whether the process got far enough to announce itself. A file
+// rather than a port: the question is "did it come up", and the answer must not
+// depend on a runtime the machine may not have.
+func up(dir, marker string) bool {
+	_, err := os.Stat(filepath.Join(dir, marker))
+	return err == nil
 }
 
-// waitAllServing polls every port against ONE deadline rather than giving each
-// its own in turn.
+// waitAllUp polls every marker against ONE deadline rather than giving each its
+// own in turn.
 //
 // Sequential waits hid a slow machine as a per-server failure: the first two
-// spent their windows, and the third answered because it had inherited theirs.
-// A shared deadline costs slow startup once, and a CI runner six times slower
-// than a laptop is the environment this has to survive.
-func waitAllServing(ports []int, within time.Duration) []int {
+// spent their windows and the third answered because it had inherited theirs.
+// A shared deadline costs slow startup once.
+func waitAllUp(dir string, markers []string, within time.Duration) []string {
 	deadline := time.Now().Add(within)
-	up := make([]bool, len(ports))
 	for {
-		missing := []int{}
-		for i, p := range ports {
-			if !up[i] {
-				if serving(p) {
-					up[i] = true
-					continue
-				}
-				missing = append(missing, p)
+		var missing []string
+		for _, m := range markers {
+			if !up(dir, m) {
+				missing = append(missing, m)
 			}
 		}
 		if len(missing) == 0 {
@@ -110,10 +86,6 @@ func waitAllServing(ports []int, within time.Duration) []int {
 // The whole claim under test is that starting them does not cost the loop its
 // ability to keep working, and that none of them outlives the session.
 func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
-	if _, err := os.Stat("/usr/bin/python3"); err != nil {
-		t.Skip("no python3 to serve with")
-	}
-
 	ws := t.TempDir()
 	// Something for the loop to do while the servers run, so "the loop stayed
 	// free" is asserted rather than assumed.
@@ -141,15 +113,13 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 	// still does not leave three servers on the machine.
 	defer sess.Engine.Close()
 
-	var ports []int
+	markers := []string{"up1", "up2", "up3"}
 	var ids []string
 
 	started := time.Now()
-	for i := 0; i < 3; i++ {
-		// Port 0: the kernel picks, the server says which, and nothing is
-		// reserved and released in between.
+	for i, m := range markers {
 		args, err := json.Marshal(map[string]any{
-			"command":    "python3 -u -m http.server 0",
+			"command":    serverCmd(m),
 			"background": true,
 		})
 		if err != nil {
@@ -165,48 +135,17 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 		if strings.Contains(res.Output, "during startup") {
 			t.Fatalf("server %d died on startup: %s", i+1, res.Output)
 		}
-		id := strings.Fields(res.Output)[2] // "started as bgN · ..."
-		ids = append(ids, id)
-
+		ids = append(ids, strings.Fields(res.Output)[2]) // "started as bgN · ..."
 	}
+	t.Logf("three servers started in %s: %v", time.Since(started).Round(time.Millisecond), ids)
 
-	// The port comes from `process`, not from the start result.
-	//
-	// The start result is a snapshot of the settle window — two seconds, meant
-	// to answer "did it crash", not "what did it print". On a runner where
-	// python takes longer than that to boot, it is empty and correct. Following
-	// a process is what `process` is for, and reading the port through it is
-	// the same thing a person would do.
-	deadline := time.Now().Add(60 * time.Second)
-	for _, id := range ids {
-		var port int
-		for {
-			out := call(t, sess, state, "process", fmt.Sprintf(`{"id":%q}`, id)).Output
-			if p, ok := portOf(out); ok {
-				port = p
-				break
-			}
-			if strings.Contains(out, "exit ") {
-				t.Fatalf("%s died before it said anything:\n%s", id, out)
-			}
-			if !time.Now().Before(deadline) {
-				t.Fatalf("%s never said what port it took:\n%s", id, out)
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-		ports = append(ports, port)
-	}
-	t.Logf("three servers started in %s: %v on %v", time.Since(started).Round(time.Millisecond), ids, ports)
-
-	// All three are actually serving. Reading the tool's word for it would test
-	// the tool's optimism, not the processes.
-	//
-	// Generous, and against one shared deadline: what is being measured is that
-	// three can run at once, not how fast a loaded CI runner starts python.
-	if missing := waitAllServing(ports, 60*time.Second); len(missing) > 0 {
+	// All three really came up. Reading the tool's word for it would test the
+	// tool's optimism, not the processes. One shared deadline, generous: what
+	// is measured is that three run at once, not how fast a loaded runner is.
+	if missing := waitAllUp(ws, markers, 60*time.Second); len(missing) > 0 {
 		// What the product says about them, so a failure here is diagnosable
-		// rather than just "never answered".
-		t.Fatalf("ports %v never answered; process reports:\n%s",
+		// rather than just "never came up".
+		t.Fatalf("%v never came up; process reports:\n%s",
 			missing, call(t, sess, state, "process", `{}`).Output)
 	}
 
@@ -234,27 +173,98 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 	}
 
 	// One can be stopped without touching the others: a server that has served
-	// its purpose, or one holding a port the next start needs.
+	// its purpose, or one holding a resource the next start needs.
 	if res := call(t, sess, state, "process",
 		fmt.Sprintf(`{"id":%q,"stop":true}`, ids[0])); res.IsError {
 		t.Fatalf("stopping %s failed: %s", ids[0], res.Output)
 	}
-	if waitServing(ports[0], 2*time.Second) {
-		t.Errorf("%s kept serving after it was stopped", ids[0])
-	}
-	if !waitServing(ports[1], 2*time.Second) || !waitServing(ports[2], 2*time.Second) {
-		t.Error("stopping one server took the others with it")
+	// Polled, not read once. "running" straight after a stop is the truth: the
+	// signal is sent and the process has not been reaped yet, and reporting
+	// "stopped" before it is would be the product claiming something it does
+	// not know. What has to hold is that it gets there, and that it takes only
+	// the one process with it.
+	stopDeadline := time.Now().Add(10 * time.Second)
+	for {
+		list = call(t, sess, state, "process", `{}`)
+		running := strings.Count(list.Output, "running")
+		if strings.Contains(list.Output, "stopped") && running == 2 {
+			break
+		}
+		if !time.Now().Before(stopDeadline) {
+			t.Fatalf("stopping %s left the listing at %d running:\n%s", ids[0], running, list.Output)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	// Nothing survives what created it. Closing the session ends the two that
 	// are left, as a consequence of ownership rather than of cleanup somebody
 	// remembered to write.
+	//
+	// Asserted against the operating system, not against the product's own
+	// bookkeeping: a session that merely forgot its processes would pass a
+	// check that asked the session.
+	alive := livePIDs(t, ws)
+	// Without this the assertion below passes by finding nothing, which is the
+	// exact shape of defect this codebase keeps turning up: a check that reads
+	// something no side wrote. Two are still running at this point.
+	if len(alive) < 2 {
+		t.Fatalf("found %d live process(es) before closing; the check below would prove nothing", len(alive))
+	}
 	sess.Engine.Close()
-	for i := 1; i < 3; i++ {
-		if waitServing(ports[i], 3*time.Second) {
-			t.Errorf("server %d (%s, port %d) outlived its session", i+1, ids[i], ports[i])
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		still := stillRunning(alive)
+		if len(still) == 0 {
+			break
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatalf("%d process(es) outlived the session: %v", len(still), still)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// livePIDs finds the shell loops this test started, by the marker each one
+// writes. Reading the process table is the only way to tell "the session
+// stopped tracking it" from "the process is gone".
+func livePIDs(t *testing.T, ws string) []int {
+	t.Helper()
+	out, err := exec.Command("ps", "-Ao", "pid=,args=").Output()
+	if err != nil {
+		t.Skipf("cannot read the process table here: %v", err)
+	}
+	var pids []int
+	for _, line := range strings.Split(string(out), "\n") {
+		if !strings.Contains(line, "up1") && !strings.Contains(line, "up2") && !strings.Contains(line, "up3") {
+			continue
+		}
+		if !strings.Contains(line, "while true") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		if pid, err := strconv.Atoi(fields[0]); err == nil {
+			pids = append(pids, pid)
 		}
 	}
+	return pids
+}
+
+func stillRunning(pids []int) []int {
+	var alive []int
+	for _, pid := range pids {
+		p, err := os.FindProcess(pid)
+		if err != nil {
+			continue
+		}
+		// Signal 0 asks "is it there" without touching it.
+		if err := p.Signal(syscall.Signal(0)); err == nil {
+			alive = append(alive, pid)
+		}
+	}
+	return alive
 }
 
 // A process that dies on startup is reported as dead, not as started. A tool
