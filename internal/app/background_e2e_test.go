@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,17 +18,23 @@ import (
 	"github.com/aguinelo/dcode/internal/tools"
 )
 
-// freePort asks the kernel for a port nobody is using and gives it straight
-// back. A hard-coded port makes the test fail on a machine that happens to be
-// running something, which reads as a defect in the code under test.
-func freePort(t *testing.T) int {
-	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+// portOf reads the port a server chose for itself out of what it printed.
+//
+// Asking the kernel for a free port and handing it to the server later leaves a
+// window in between: on a loaded CI runner the port went to something else, and
+// the server then sat there running and serving nobody. Letting it bind port 0
+// and say what it got closes the window entirely — there is no moment when the
+// port belongs to nobody.
+func portOf(output string) (int, bool) {
+	m := regexp.MustCompile(`port (\d+)`).FindStringSubmatch(output)
+	if m == nil {
+		return 0, false
 	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port
+	n, err := strconv.Atoi(m[1])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // call runs a tool through the registry the session actually built, which is
@@ -134,15 +141,15 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 	// still does not leave three servers on the machine.
 	defer sess.Engine.Close()
 
-	ports := []int{freePort(t), freePort(t), freePort(t)}
+	var ports []int
 	var ids []string
 
 	started := time.Now()
-	for i, port := range ports {
-		// No cd: bash already runs in the workspace, and building the path into
-		// the command is how the quoting went wrong the first time.
+	for i := 0; i < 3; i++ {
+		// Port 0: the kernel picks, the server says which, and nothing is
+		// reserved and released in between.
 		args, err := json.Marshal(map[string]any{
-			"command":    fmt.Sprintf("python3 -m http.server %d", port),
+			"command":    "python3 -u -m http.server 0",
 			"background": true,
 		})
 		if err != nil {
@@ -160,8 +167,14 @@ func TestThreeServersRunAtOnceAndDieWithTheSession(t *testing.T) {
 		}
 		id := strings.Fields(res.Output)[2] // "started as bgN · ..."
 		ids = append(ids, id)
+
+		port, ok := portOf(res.Output)
+		if !ok {
+			t.Fatalf("server %d (%s) never said what port it took:\n%s", i+1, id, res.Output)
+		}
+		ports = append(ports, port)
 	}
-	t.Logf("three servers started in %s: %v", time.Since(started).Round(time.Millisecond), ids)
+	t.Logf("three servers started in %s: %v on %v", time.Since(started).Round(time.Millisecond), ids, ports)
 
 	// All three are actually serving. Reading the tool's word for it would test
 	// the tool's optimism, not the processes.
