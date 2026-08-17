@@ -213,23 +213,39 @@ type EditInput struct {
 	OldString  string `json:"old_string"`
 	NewString  string `json:"new_string"`
 	ReplaceAll bool   `json:"replace_all,omitempty"`
+	// Edits is the batch form. When present it wins, and the four fields above
+	// are ignored: two ways of saying the same call in one call is ambiguity
+	// nobody can resolve from the outside.
+	Edits []editOp `json:"edits,omitempty"`
 }
 
 func (Edit) Name() string { return "edit" }
 
 func (Edit) Description() string {
-	return "Replace an exact string in a file. You must read the file first. " +
+	return "Replace exact strings in files. You must read a file before editing it. " +
 		"old_string must match exactly and, unless replace_all is set, must be unique — " +
-		"include surrounding lines to disambiguate."
+		"include surrounding lines to disambiguate. " +
+		"Give edits to make several changes at once, across as many files as you need: " +
+		"they are ALL checked before ANY is written, so a batch either lands whole or " +
+		"changes nothing. Prefer one batch over several calls when the changes belong " +
+		"together — half a rename is worse than no rename. " +
+		"Edits to the same file apply in order, each seeing what the one before it left."
 }
 
 func (Edit) Schema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{` +
-		`"path":{"type":"string"},` +
+		`"path":{"type":"string","description":"The file to edit. Omit when using edits."},` +
 		`"old_string":{"type":"string","description":"Exact text to replace."},` +
 		`"new_string":{"type":"string","description":"Replacement text."},` +
-		`"replace_all":{"type":"boolean","description":"Replace every occurrence."}},` +
-		`"required":["path","old_string","new_string"]}`)
+		`"replace_all":{"type":"boolean","description":"Replace every occurrence."},` +
+		`"edits":{"type":"array","description":` +
+		`"Several changes applied as one. All are checked before any is written.",` +
+		`"items":{"type":"object","properties":{` +
+		`"path":{"type":"string"},` +
+		`"old_string":{"type":"string"},` +
+		`"new_string":{"type":"string"},` +
+		`"replace_all":{"type":"boolean"}},` +
+		`"required":["path","old_string","new_string"]}}}}`)
 }
 
 func (e Edit) Declare(input json.RawMessage) (policy.Request, error) {
@@ -237,7 +253,18 @@ func (e Edit) Declare(input json.RawMessage) (policy.Request, error) {
 	if err := decode(e.Name(), input, &in); err != nil {
 		return policy.Request{}, err
 	}
-	return policy.Request{Tool: e.Name(), Paths: []policy.Access{{Path: in.Path, Write: true}}}, nil
+	// Every path, once. The policy decides on paths, and a path it never saw is
+	// a path nobody was asked about; the same file twice is one question.
+	seen := map[string]struct{}{}
+	var paths []policy.Access
+	for _, op := range in.ops() {
+		if _, dup := seen[op.Path]; dup {
+			continue
+		}
+		seen[op.Path] = struct{}{}
+		paths = append(paths, policy.Access{Path: op.Path, Write: true})
+	}
+	return policy.Request{Tool: e.Name(), Paths: paths}, nil
 }
 
 func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Result, error) {
@@ -245,75 +272,28 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	if err := decode(e.Name(), input, &in); err != nil {
 		return err.(*ToolError).Result(), nil
 	}
-	if in.OldString == in.NewString {
-		return errf(e.Name(), CodeNoOpEdit,
-			"Check whether the edit was already applied.",
-			"old_string and new_string are identical; nothing would change").Result(), nil
+	ops := in.ops()
+	if len(ops) == 0 {
+		return errf(e.Name(), CodeBadInput,
+			"Give path, old_string and new_string, or a list of edits.",
+			"nothing to edit").Result(), nil
 	}
-	abs, terr := resolvePath(e.Name(), s, in.Path, true)
+
+	planned, terr := plan(e.Name(), ops, s)
 	if terr != nil {
 		return terr.Result(), nil
 	}
-
-	raw, err := os.ReadFile(abs)
-	if err != nil {
-		return s.notFound(e.Name(), in.Path, err).Result(), nil
-	}
-	content := string(raw)
-
-	if terr := s.CheckEditable(abs, content); terr != nil {
-		terr.Tool = e.Name()
+	if terr := commit(e.Name(), planned, s); terr != nil {
 		return terr.Result(), nil
 	}
 
-	count := strings.Count(content, in.OldString)
-	switch {
-	case count == 0:
-		return errf(e.Name(), CodeNoMatch,
-			"Read the file again — the text may have changed, or the whitespace may differ.",
-			"old_string was not found in %s", in.Path).Result(), nil
-	case count > 1 && !in.ReplaceAll:
-		// Picking the first occurrence is the tempting implementation and the
-		// wrong one: it is right most of the time and, when it is wrong, it
-		// edits the wrong place silently.
-		return (&ToolError{
-			Tool: e.Name(), Code: CodeAmbiguousMatch,
-			Reason: fmt.Sprintf("old_string appears %d times in %s; nothing was changed", count, in.Path),
-			Hint:   "Include surrounding lines to make it unique, or set replace_all if every occurrence should change.",
-		}).Result(), nil
+	// One file keeps the old rule about echoing the diff. For a batch the diff
+	// is the only account of what happened across files, so it always goes.
+	echo := len(planned) > 1
+	if len(planned) == 1 {
+		echo = echoDiff(s.Limits.EditEchoDiff, ops[0].ReplaceAll, planned[0].changes)
 	}
-
-	updated := strings.ReplaceAll(content, in.OldString, in.NewString)
-	s.Snapshot(abs)
-	if err := writeFile(abs, updated, s.Limits.AtomicWrite); err != nil {
-		return errf(e.Name(), CodeNotFound, "", "could not write %s: %v", in.Path, err).Result(), nil
-	}
-	// Re-marking with the new content is what lets a second edit follow without
-	// a re-read; forgetting it makes the next edit fail as file_changed.
-	s.MarkRead(abs, updated, 0)
-	s.MarkWritten(abs)
-
-	added, removed := lineDelta(content, updated)
-	diff := UnifiedDiff(content, updated, in.Path)
-
-	out := fmt.Sprintf("edited %s (%d replacement(s), +%d −%d)",
-		in.Path, count, added, removed)
-	if echoDiff(s.Limits.EditEchoDiff, in.ReplaceAll, count) {
-		// The diff already declares its own truncation at DiffMaxLines, which
-		// is what stops the model concluding about a part it never saw with
-		// the confidence of having seen all of it.
-		out += "\n\n" + diff
-	}
-
-	return Result{
-		Output: out,
-		Meta: Meta{
-			Files: 1, Added: added, Removed: removed,
-			// Meta.Diff goes to the client in every mode. What the key
-			// controls is only whether the model also pays for it.
-			Diff: diff,
-		},
-	}, nil
+	return report(planned, echo), nil
 }
 
 // ---------- shared ----------
