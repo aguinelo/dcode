@@ -271,6 +271,12 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Sessão que só leu arquivos produz `clean`, e nenhum lembrete de verificação é emitido.
 - A continuação forçada é limitada por `MaxStallCycles` ciclos sem progresso, nunca por contagem de tentativas — asserção contra o laço patológico.
 - Nenhum lembrete de verificação aparece no prefixo — varredura da saída de `Build`.
+- O prefixo carrega branch, branch principal, estado da árvore e commits recentes quando o workspace é um repositório, e **nada** quando não é.
+- O estado do repositório é declarado como instantâneo: o prefixo nunca o apresenta como corrente.
+- Árvore limpa é dita, não deduzida de status vazio — "nada mudou" e "não olhei" não podem ler igual.
+- `HEAD` destacada nunca é reportada como branch; o literal `HEAD` do git jamais vira nome.
+- Status de árvore suja é limitado e o corte é declarado; nenhum caminho trunca em silêncio.
+- `Build` continua pura com o repositório: mesmo instantâneo, prefixo byte-idêntico.
 
 ## 9. Changelog
 
@@ -278,3 +284,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
 - [202608102000 — Verificação antes da afirmação](changelog/202608102000-verificacao-antes-da-afirmacao.md)
 - [202608102200 — Orçamento de contexto realimentado](../context-engine/changelog/202608102200-orcamento-de-contexto-realimentado.md)
+- [202608170200 — O prefixo diz onde o agente está](changelog/202608170200-onde-o-agente-esta.md)

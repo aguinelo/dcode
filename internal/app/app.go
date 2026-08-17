@@ -28,6 +28,7 @@ import (
 	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/tools"
+	"github.com/aguinelo/dcode/internal/vcs"
 )
 
 // Options are the resolved settings for one session.
@@ -515,7 +516,13 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// changes is that the attempt is now visible.
 	safetyNotices := behavior.SafetyClaims(instructions)
 
-	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts))
+	// Frozen here, with the instruction chain and for the same reason: a fact
+	// that changed halfway through a session is worse than one the model knows
+	// is a snapshot. The read is bounded and a directory that is not a
+	// repository produces nothing at all.
+	repo := vcs.Read(context.Background(), opts.Workspace)
+
+	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts), repo)
 	if err != nil {
 		return nil, err
 	}
@@ -656,12 +663,13 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string) (string, error) {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo) (string, error) {
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(toolNames).Apply(overlay),
 		Tools:        toolNames,
 		Instructions: instructions,
 		SkillIndex:   index,
+		Repo:         repo,
 	}, behavior.FormulationFor(family))
 }
 

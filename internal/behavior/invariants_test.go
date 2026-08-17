@@ -19,6 +19,7 @@ var behaviorDirs = []string{
 	".",
 	filepath.Join("..", "app"),
 	filepath.Join("..", "loop"),
+	filepath.Join("..", "vcs"),
 }
 
 var behaviorInvariants = map[string]string{
@@ -52,6 +53,14 @@ var behaviorInvariants = map[string]string{
 	"lembrete de verificação aparece no prefixo": "TestNoReminderTextEverReachesThePrefix",
 	"trabalho sem plano é emitido":               "TestUnplannedWorkIsPointedOutOnceAndRearmsAfterAPlan",
 	"carrega contagem no texto":                  "TestTheUnplannedNoticeCarriesNoCount",
+
+	// Where the agent is working.
+	"prefixo carrega branch":          "TestThePromptSaysWhereInTheRepositoryWeAre",
+	"declarado como instantâneo":      "TestTheRepositorySnapshotSaysItIsASnapshot",
+	"Árvore limpa é dita":             "TestACleanTreeIsStatedRatherThanLeftBlank",
+	"nunca é reportada como branch":   "TestADetachedHeadIsNotGivenABranchName",
+	"limitado e o corte é declarado":  "TestAVeryDirtyTreeIsCutAndSaysSo",
+	"continua pura com o repositório": "TestTheRepositorySectionIsPure",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

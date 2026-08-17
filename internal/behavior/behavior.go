@@ -79,6 +79,9 @@ type Prompt struct {
 	Tools        []string
 	Instructions []Instruction
 	SkillIndex   []SkillIndexEntry
+	// Repo is where the work is happening, frozen at session creation. Nil for
+	// a directory that is not a repository, which is ordinary and silent.
+	Repo *Repo
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
@@ -115,6 +118,13 @@ func Build(p Prompt, f Formulation) (string, error) {
 			fmt.Fprintf(&s, "\n- **%s** — %s", e.Name, e.WhenToUse)
 		}
 		writeBlock(&b, f, "Skills", s.String())
+	}
+
+	// Before the project instructions and after the doctrine: it is context for
+	// reading them, not a rule that competes with them. A working agreement
+	// about branches is unreadable without knowing the branch.
+	if rendered := renderRepo(p.Repo); rendered != "" {
+		writeBlock(&b, f, "This repository", rendered)
 	}
 
 	if rendered := renderInstructions(p.Instructions); rendered != "" {
