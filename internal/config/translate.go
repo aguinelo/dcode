@@ -38,8 +38,6 @@ type Finding struct {
 	Reason  string // why it does not apply
 }
 
-var backtickName = regexp.MustCompile("`([A-Za-z_][A-Za-z0-9_]*)`")
-
 // namedTool finds the `<Name> tool` form, which carries its own context.
 //
 // The name must be capitalised, backticked, or snake_case, because that is what
@@ -50,8 +48,16 @@ var backtickName = regexp.MustCompile("`([A-Za-z_][A-Za-z0-9_]*)`")
 // "the file tools" and "several tools", and every one of those was a finding
 // while the only defence was a list of common words that could never be
 // complete — as its own comment admitted.
+// Capitalisation alone was not enough, and the plural is what separates the two
+// remaining cases. "the Task tool" names one thing; "Go tools", "Build tools"
+// and "Testing tools" name a family — and those are the headings a DCODE.md for
+// an ordinary Go repository writes by itself. So the capitalised form matches
+// the SINGULAR only.
+//
+// The other two forms keep the plural, because neither can be confused with
+// prose: English has no underscores, and nobody backticks a category.
 var namedTool = regexp.MustCompile(
-	"`?\\b([A-Z][A-Za-z0-9_]*)`?\\s+tools?\\b" + // Capitalised: the Task tool
+	"`?\\b([A-Z][A-Za-z0-9_]*)`?\\s+tool\\b" + // Capitalised: the Task tool
 		"|`([A-Za-z_][A-Za-z0-9_]*)`\\s+tools?\\b" + // Backticked: the `glob` tool
 		"|\\b([A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]*)\\s+tools?\\b") // snake_case: the memory_store tool
 
@@ -110,9 +116,6 @@ func VerifyTools(text string, have []string) []Finding {
 		}
 		if !strings.Contains(strings.ToLower(line), "tool") {
 			continue
-		}
-		for _, m := range backtickName.FindAllStringSubmatch(line, -1) {
-			add(m[1])
 		}
 		if m := bareList.FindStringSubmatch(line); m != nil {
 			for _, part := range strings.FieldsFunc(m[1], func(r rune) bool {
