@@ -126,6 +126,15 @@ type Options struct {
 	// here would be a second implementation of the thing most worth having
 	// exactly one of.
 	History []ce.Message
+
+	// Steer hands the running turn what the person said without ending it.
+	//
+	// It rides here rather than as a parameter for the same reason History
+	// does: the engine is built before the session that owns the queue exists,
+	// so this is a closure bound late, exactly like the emitter and the
+	// approver. Nil is a session nobody can steer, which is every non-daemon
+	// path and was the only behaviour until now.
+	Steer func() string
 	// CredentialBackend selects the store. Empty chooses.
 	//
 	// Configuration rather than a per-command flag: a flag on the command that
@@ -536,6 +545,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Emitter: emitter, Approver: approver,
 		Limits: opts.Limits, Mode: opts.SandboxMode, Policy: opts.Policy,
 		Model: opts.Model, Parallel: opts.Parallel, CtxConfig: ctxCfg,
+		Steer:                  opts.Steer,
 		BudgetNotice:           opts.BudgetNotice,
 		DelegateMaxIterations:  opts.DelegateMaxIterations,
 		DelegateMaxResultBytes: opts.DelegateMaxResultBytes,

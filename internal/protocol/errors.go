@@ -23,8 +23,14 @@ func (e *Error) Error() string {
 
 // Error codes. Section 8 of the planning spec.
 const (
-	CodeSessionNotFound    = "session_not_found"
-	CodeTurnAlreadyActive  = "turn_already_active"
+	CodeSessionNotFound   = "session_not_found"
+	CodeTurnAlreadyActive = "turn_already_active"
+	// CodeNoActiveTurn answers a correction aimed at a turn that is not
+	// running. Distinct from turn_already_active and its exact mirror: one says
+	// "wait", the other says "there is nothing to correct — send it as a
+	// message". Collapsing them would leave the client guessing which.
+	CodeNoActiveTurn       = "no_active_turn"
+	CodeInvalidInput       = "invalid_input"
 	CodeApprovalResolved   = "approval_already_resolved"
 	CodeApprovalExpired    = "approval_expired"
 	CodeEventsExpired      = "events_expired"
@@ -38,6 +44,8 @@ const (
 var httpStatus = map[string]int{
 	CodeSessionNotFound:    http.StatusNotFound,
 	CodeTurnAlreadyActive:  http.StatusConflict,
+	CodeNoActiveTurn:       http.StatusConflict,
+	CodeInvalidInput:       http.StatusBadRequest,
 	CodeApprovalResolved:   http.StatusConflict,
 	CodeApprovalExpired:    http.StatusGone,
 	CodeEventsExpired:      http.StatusGone,

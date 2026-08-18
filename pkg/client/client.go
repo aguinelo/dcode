@@ -100,6 +100,16 @@ func (c *Client) Interrupt(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/interrupt", nil, nil)
 }
 
+// Steer hands a running turn something the person said, without ending it.
+//
+// Refused when no turn is running: a correction to a turn that already finished
+// is a new message, and quietly turning it into one would let the person believe
+// an urgent instruction landed when it never did.
+func (c *Client) Steer(ctx context.Context, id, text string) error {
+	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/steer",
+		protocol.SteerRequest{Text: text}, nil)
+}
+
 // Resolve answers a pending approval.
 // Undo puts back what the last turn changed.
 func (c *Client) Undo(ctx context.Context, id string) (protocol.UndoResult, error) {

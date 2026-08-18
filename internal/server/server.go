@@ -157,6 +157,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}/events", s.events)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/turns", s.submitTurn)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/interrupt", s.interrupt)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/steer", s.steer)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/undo", s.undo)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/approvals/{approvalID}", s.resolveApproval)
 }
@@ -266,6 +267,29 @@ func (s *Server) interrupt(w http.ResponseWriter, r *http.Request) {
 	// Idempotent: the user cannot know the turn just finished on its own.
 	sess.Interrupt()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// steer hands a running turn something the person said, without ending it.
+//
+// Its own route rather than a mode of submitTurn: submitting starts a turn and
+// steering cannot, and one call that does two things depending on state is one
+// the caller cannot reason about before making it.
+func (s *Server) steer(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	var req protocol.SteerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		return
+	}
+	if err := sess.Steer(req.Text); err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) undo(w http.ResponseWriter, r *http.Request) {

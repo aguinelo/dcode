@@ -31,6 +31,13 @@ const (
 	EventApprovalRequired EventType = "tool.approval_required"
 	EventApprovalResolved EventType = "tool.approval_resolved"
 	EventToolCompleted    EventType = "tool.completed"
+	// EventTurnSteered is the person correcting a turn already under way.
+	//
+	// Its own event rather than a message delta: a correction the transcript
+	// cannot tell apart from the model's own words is a turn nobody can audit
+	// afterwards, and "why did it change direction" is the first question asked
+	// of any run that went sideways.
+	EventTurnSteered      EventType = "turn.steered"
 	EventTurnCompleted    EventType = "turn.completed"
 	EventPlanUpdated      EventType = "plan.updated"
 	EventSessionCompacted EventType = "session.compacted"
@@ -235,6 +242,18 @@ const (
 // Payloads for the remaining event types.
 type (
 	// TurnStarted announces an accepted input.
+	// SteerRequest is what the person says to a turn already running.
+	SteerRequest struct {
+		Text string `json:"text"`
+	}
+
+	// TurnSteered is what the person said while the turn was running, and the
+	// round it landed at.
+	TurnSteered struct {
+		TurnID string `json:"turn_id"`
+		Text   string `json:"text"`
+	}
+
 	TurnStarted struct {
 		TurnID string `json:"turn_id"`
 		// Text is what the user asked for.
