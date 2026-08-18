@@ -1148,9 +1148,6 @@ var judgesTheNameNotTheTool = map[string]string{
 var shellIsPartOfTheTask = map[string]string{
 	"skill-loaded-on-trigger": "the skill's third step is to cut a tag, which is a command; " +
 		"removing the shell would change what the task asks rather than how it is measured",
-	"uses-what-it-remembers": "the memory says to run `make generate` before `make build`, so " +
-		"acting on it IS a shell call; the judge measures that call, and the harness refusing " +
-		"to execute it does not change what the model chose to do",
 }
 
 // A scenario offers the shell only if the shell is what it is about.

@@ -2,7 +2,7 @@ package stats
 
 import "fmt"
 
-// Print writes the report: a heading and the row count.
+// Print writes the report heading and the row count.
 func Print(s *Summary) string {
 	return fmt.Sprintf("%s: %d", Title(), s.Rows())
 }

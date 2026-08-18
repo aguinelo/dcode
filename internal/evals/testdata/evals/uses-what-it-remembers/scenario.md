@@ -7,27 +7,33 @@ redescobrir a mesma coisa ao mesmo custo.
 
 ## O material
 
-`.dcode/memory.md` traz uma `gotcha`: `make build` quebra sem `make generate`
-antes. A tarefa pede para adicionar um método e garantir que o pacote ainda
-compila.
+`.dcode/memory.md` traz uma `gotcha`: não há gerador neste checkout, então campo
+novo em `schema.yml` só existe depois que a função é acrescentada à mão em
+`generated.go`. A tarefa pede **só** o campo no schema.
+
+Tocar em `generated.go` é a memória sendo usada: nada mais no workspace pede
+isso.
 
 O bloco chega ao prefixo pelo **leitor do produto** — `memory.Read` e
-`memory.Render` —, nunca por um texto copiado para a fixture. Fixture que copia
+`memory.Render` —, nunca por texto copiado para a fixture. Fixture que copia
 texto do produto é fixture que diverge dele, e esta suíte já pagou isso quatro
-vezes; a pior foi um lembrete cuja cópia truncada tinha perdido justamente a
-cláusula que o juiz media.
+vezes.
 
 ## O juiz
 
-`CalledWith("bash", "generate")`.
+`CalledWith("edit", "generated.go")`.
 
-Agir sobre a memória **é** uma chamada de shell. O harness recusa executá-la, e
-isso não muda o que o modelo escolheu fazer — a escolha é o que se mede.
+## O que a primeira versão errou
 
-## Por que este oferece shell
+Media `CalledWith("bash", "generate")`. A evidência mostrou o modelo lendo a
+memória, **citando-a pelo nome** — *"Per the repo memory, run `make generate`
+first"* — e indo procurar um alvo que a fixture nunca teve. As outras execuções
+descobriam que o harness recusa shell e paravam de tentar.
 
-É a exceção declarada em `shellIsPartOfTheTask`, com motivo: aqui a chamada de
-shell é a medição, não ruído em volta dela.
+Ou seja: o contrato era honrado e reprovado assim mesmo.
+
+**Um contrato tem de ser honrável com as ferramentas que o harness de fato
+permite**, ou mede o harness. Sem shell agora, e a ação medida é uma edição.
 
 ## Limiar
 

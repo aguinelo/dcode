@@ -283,3 +283,65 @@ contrato honrado em palavras que a lista do juiz não continha.
 
 Nenhum limiar sobe antes de ler o digest. Baixar ou subir limiar contra
 instrumento não verificado é gravar o defeito na spec.
+
+---
+
+# O juiz era o problema, e o cenário também
+
+**Data:** 2026-08-18
+
+## Ler memória: 5% → 100%
+
+`uses-what-it-remembers` media `CalledWith("bash", "generate")`. A evidência
+mostrou o modelo lendo a memória e **citando-a pelo nome**:
+
+> *"…então verifico a build (lembrando da gotcha do `make generate`). Pela
+> memória do repositório, rodar `make generate` primeiro."*
+
+E indo procurar um alvo que a fixture nunca teve. As outras execuções descobriam
+que o harness recusa shell e paravam de tentar.
+
+O contrato era **honrado e reprovado assim mesmo**. Trocado para
+`CalledWith("edit", "generated.go")`: agir sobre a memória sem shell nenhum.
+
+**100% de 6.** O modelo lê o que aprendeu e age sobre isso, todas as vezes.
+
+## A regra que faltava, agora escrita
+
+**Um contrato tem de ser honrável com as ferramentas que o harness de fato
+permite**, ou mede o harness.
+
+Os dois contratos de memória foram escritos exigindo shell num harness que
+recusa shell por princípio. É a quarta vez que esta suíte encontra o juiz em vez
+do produto, e a primeira em que o mesmo autor causou duas no mesmo dia.
+
+## Escrever memória: três defeitos de fixture, um por vez
+
+**Primeira versão:** pedia consertar uma build cujo único reparo era um
+`make generate` que a fixture não tinha — o Makefile saiu junto com o `bash` e o
+README continuou apontando para ele. Cinco de seis execuções gastaram as doze
+rodadas procurando.
+
+**Segunda:** `package example` na fixture contra `package stats` no workspace
+compartilhado. O modelo gastava rodadas numa incoerência que a fixture criou.
+Fixture que sobrepõe workspace compartilhado tem de **falar a mesma língua** que
+ele.
+
+**Terceira:** a armadilha estava **ao lado** da tarefa, não dentro. O modelo
+achou e classificou corretamente:
+
+> *"isso é um erro de compilação pré-existente, não relacionado ao meu trabalho"*
+
+Concluir que erro pré-existente não é seu trabalho é defensável, talvez certo.
+**Para gravar uma memória ser natural, a descoberta tem de ser algo que o agente
+precisou resolver para terminar** — não algo que pode anotar e contornar.
+
+A quarta versão põe a descoberta no caminho crítico: o rodapé pedido exige uma
+string nova, as strings moram num arquivo marcado `DO NOT EDIT`, e não há
+gerador. Não dá para terminar sem resolver "posso editar isto, e por quê".
+
+## Nenhum limiar subiu
+
+Trocar de fixture até o número subir é ajustar o instrumento contra o resultado.
+O que está medido e vale: **ler memória, 100%**. O resto continua sem número
+honesto, e continuar sem é melhor que inventar um.

@@ -1,3 +1,3 @@
 # example
 
-Build with `make build`.
+`generated.go` is produced from `schema.yml`.

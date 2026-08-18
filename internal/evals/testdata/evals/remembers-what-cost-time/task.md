@@ -1,1 +1,1 @@
-The build is broken. Find out why and fix it.
+The report should end with a footer line. Add it.

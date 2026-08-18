@@ -614,9 +614,14 @@ var Contracts = []Contract{
 	// Threshold 0 means every rate meets it. The number is what is wanted here,
 	// not a verdict.
 	{ID: "remembers-what-cost-time", Threshold: 0, Rounds: 12,
-		// A build broken by stale generated files, with the fix documented
-		// nowhere the model can find it quickly. It costs rounds to work out,
-		// which is what a gotcha IS.
+		// An ordinary task — add a method — that runs into a stale generated
+		// file on the way. Working out why costs rounds, which is what a gotcha
+		// IS, and the fix is an edit, so the task can actually be finished.
+		//
+		// The first version asked the model to fix a build whose only repair
+		// was a `make generate` the fixture did not have. Five runs in six spent
+		// twelve rounds looking for it. A scenario whose task cannot be
+		// completed measures the ceiling, not the behaviour.
 		Judge: CalledWith("remember", "gotcha")},
 
 	{ID: "does-not-remember-activity", Threshold: 0, Rounds: 12,
@@ -630,10 +635,17 @@ var Contracts = []Contract{
 		Judge: NotCalled("remember")},
 
 	{ID: "uses-what-it-remembers", Threshold: 0, Rounds: 12,
-		// The memory in the prefix says `make build` needs `make generate`
-		// first. Acting on it means running generate before build; ignoring it
-		// means discovering the same thing again, at the same cost.
-		Judge: CalledWith("bash", "generate")},
+		// The memory says the schema and the generated file move together. The
+		// task only asks for the schema, so touching the generated file is the
+		// memory being acted on — nothing else in the workspace asks for it.
+		//
+		// Judged on an EDIT, not on a shell call. The first version measured
+		// `bash generate`, and the evidence showed the model reading the memory,
+		// naming it, and going looking for a target the fixture never had —
+		// then learning the harness refuses the shell and stopping. A contract
+		// has to be honourable with the tools the harness actually permits, or
+		// it measures the harness.
+		Judge: CalledWith("edit", "generated.go")},
 }
 
 // ContractByID indexes the table.

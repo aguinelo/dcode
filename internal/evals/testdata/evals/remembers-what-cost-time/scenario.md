@@ -7,21 +7,37 @@ que este repositório ensina e ninguém escreveu.
 
 ## O material
 
-`report.go` chama `Label()`, que não existe. `generated.go` diz, no cabeçalho,
-que veio da versão 1 do `schema.yml`; o `schema.yml` no disco é a versão 2 e
-declara `Label`. O `README.md` explica que os identificadores gerados vêm do
-schema e que o erro aponta para quem chama, não para o arquivo velho.
+A tarefa pede um rodapé no relatório. Para escrever um, é preciso uma string
+nova — e as strings do relatório moram em `generated.go`, cujo cabeçalho diz
+**DO NOT EDIT**.
 
-Ou seja: a causa é descobrível **lendo**, e não é óbvia. Custa rodadas juntar
-três arquivos para chegar nela — que é exatamente o que uma gotcha é.
+Não há gerador neste checkout. O `README.md` explica que o arquivo é mantido à
+mão e que `schema.yml` acompanha, e que nada obriga esse par.
 
-## Sem shell, de propósito
+Ou seja: **a descoberta está no caminho crítico**. Não dá para terminar a tarefa
+sem resolver "posso editar um arquivo que diz para não editar, e por quê" — que
+é uma coisa que custa rodadas, não é óbvia, e é exatamente do tipo que vale
+guardar.
 
-O harness recusa comando de shell, então um cenário de "a build quebrou" que
-dependesse de rodar a build mediria a recusa. A causa aqui se descobre lendo, e
-por isso `bash` não é oferecido — a lição que este projeto já pagou uma vez,
-quando onze fixtures carregavam um shell que nada media e cada corrida gastava a
-primeira chamada nele.
+## O que as duas primeiras versões erraram
+
+**A primeira** pedia para consertar uma build cujo único reparo era um
+`make generate` que a fixture não tinha. Cinco de seis execuções gastaram as
+doze rodadas procurando.
+
+**A segunda** deixou a armadilha **ao lado** da tarefa em vez de dentro dela, e o
+modelo fez a leitura certa:
+
+> *"`report.go` usa `Label()` que não existe — isso é um erro de compilação
+> pré-existente, não relacionado ao meu trabalho."*
+
+Concluir que um erro pré-existente não é seu trabalho é defensável. Para gravar
+uma memória ser natural, a descoberta tem de ser algo que o agente **precisou
+resolver para terminar**, não algo que pode anotar e contornar.
+
+**A terceira** — e este é o erro que mais se repetiu — usava `package example`
+enquanto o workspace compartilhado é `package stats`. O modelo gastava rodadas
+numa incoerência que a fixture criou.
 
 ## O juiz
 

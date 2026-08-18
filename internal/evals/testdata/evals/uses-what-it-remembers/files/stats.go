@@ -1,4 +1,4 @@
-package example
+package stats
 
 // Summary counts rows.
 type Summary struct {

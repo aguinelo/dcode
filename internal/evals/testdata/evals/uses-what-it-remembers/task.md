@@ -1,2 +1,2 @@
-Add a Reset method to Summary that sets the count back to zero, then make sure
-the package still builds.
+The report needs a Footer string. Add it to the schema, and leave the package
+compiling.

@@ -1,4 +1,4 @@
-package example
+package stats
 
 import "fmt"
 
