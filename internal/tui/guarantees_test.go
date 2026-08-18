@@ -242,3 +242,28 @@ func TestTheMascotKeepsItsShapeWithoutUnicodeAndWithoutColour(t *testing.T) {
 		})
 	}
 }
+
+// A continued conversation is on the screen, and says it came from before.
+//
+// The history reached the model and never the person: the screen is built from
+// events, and continuing emitted none. Someone who ran `-r` found a blank
+// window, and the only available reading was that the work was gone.
+func TestAContinuedConversationIsOnTheScreenAndSaysWhereItCameFrom(t *testing.T) {
+	m := NewModel("new", "/w", "MiniMax-M3", "workspace-write", En)
+	m = m.Apply(ev(t, 2, protocol.EventSessionResumed,
+		protocol.SessionResumed{SourceID: "1a015fb", Turns: 2}))
+	m = m.Apply(ev(t, 3, protocol.EventTurnStarted,
+		protocol.TurnStarted{TurnID: "t1", Text: "tem acesso a rede?"}))
+
+	out := Render(m, DefaultGeometry(100, 30))
+	if !strings.Contains(out, "1a015fb") {
+		t.Errorf("the screen does not say which session was continued:\n%s", out)
+	}
+	if !strings.Contains(out, "tem acesso a rede?") {
+		t.Errorf("the carried conversation is not on the screen:\n%s", out)
+	}
+	if m.ShowEmptyState() {
+		t.Error("a continued session showed the empty state; the obvious reading " +
+			"is that the conversation was lost")
+	}
+}

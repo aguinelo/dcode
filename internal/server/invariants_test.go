@@ -37,6 +37,8 @@ var protocolInvariants = map[string]string{
 	// record is read.
 	"cria sessão **nova** carregando": "TestContinuingASessionCarriesItsConversation",
 	"Continuar sessão inexistente":    "TestContinuingAMissingSessionIsAnError",
+	"entra no log da sessão nova":     "TestContinuingShowsAndRecordsWhatItCarries",
+	"Continuar uma continuação":       "TestContinuingAContinuationKeepsTheWholeConversation",
 	"sem resultado não entra":         "TestACallWithNoResultIsDropped",
 	// Undo. The state owns what changed, the session owns when it may be
 	// asked for, and the assertions live with each.

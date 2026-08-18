@@ -156,6 +156,9 @@ type Strings struct {
 	BarFiles   string
 	BarWaiting string
 	NoPlan     string
+	// Resumed opens a continued conversation. It takes the session it came
+	// from and how many turns, in that order.
+	Resumed string
 }
 
 // catalogue is embedded, not loaded.
@@ -270,6 +273,7 @@ Environment:
 		Queued:       "queued",
 		BarFiles:     "files",
 		BarWaiting:   "wait",
+		Resumed:      "continuing %s — %d turn(s) from before",
 		NoPlan:       "There is no plan yet.",
 	},
 	PtBR: {
@@ -377,6 +381,7 @@ Ambiente:
 		Queued:       "na fila",
 		BarFiles:     "arq",
 		BarWaiting:   "espera",
+		Resumed:      "continuando %s — %d turno(s) de antes",
 		NoPlan:       "Ainda não há plano.",
 	},
 }

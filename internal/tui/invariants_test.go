@@ -61,8 +61,9 @@ var tuiInvariants = map[string]string{
 	"A cópia sai por `Esc`":         "TestEveryWayOutOfCopyModeWorks",
 
 	// Continuing. The flag lives in the command, one directory up from here.
-	"em que algo foi perguntado": "TestContinuingSkipsASessionNobodyAskedAnythingIn",
-	"Só haver registro vazio":    "TestNothingButEmptyRecordsSaysSo",
+	"em que algo foi perguntado":        "TestContinuingSkipsASessionNobodyAskedAnythingIn",
+	"Só haver registro vazio":           "TestNothingButEmptyRecordsSaysSo",
+	"Conversa continuada é **exibida**": "TestAContinuedConversationIsOnTheScreenAndSaysWhereItCameFrom",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

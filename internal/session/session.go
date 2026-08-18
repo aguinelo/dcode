@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -39,6 +40,16 @@ type Session struct {
 	// answer is kept, belong to the layer that knows both.
 	Standing Standing
 
+	// Carried is the conversation this session continues, waiting to be put in
+	// the log. It is held rather than emitted at construction because the log
+	// has to open with this session's own creation: a record whose first line
+	// is somebody else's turn is not a record anything can describe.
+	Carried []protocol.Event
+	// CarriedFrom and CarriedTurns describe where it came from, for the marker
+	// that opens the replay.
+	CarriedFrom  string
+	CarriedTurns int
+
 	mu      sync.Mutex
 	state   protocol.SessionState
 	cancel  context.CancelFunc
@@ -70,6 +81,30 @@ func New(id, workspace, model, mode string, engine *loop.Engine, log *EventLog, 
 		state: protocol.SessionStateIdle, pending: map[string]*approval{},
 		allowAll: map[string]bool{},
 	}
+}
+
+// EmitCarried puts the continued conversation in the log, behind a marker.
+//
+// Called once, right after the session announces itself. Everything follows
+// from it being in the log rather than beside it: the client draws the screen
+// from events, the record is written from events, and the next session to
+// continue this one rebuilds from the record. One placement answers all three,
+// and any other placement answers at most one.
+func (s *Session) EmitCarried() {
+	if len(s.Carried) == 0 && s.CarriedFrom == "" {
+		return
+	}
+	s.Emit(protocol.EventSessionResumed, protocol.SessionResumed{
+		SourceID: s.CarriedFrom,
+		Turns:    s.CarriedTurns,
+	})
+	for _, ev := range s.Carried {
+		// Re-appended rather than copied: the sequence and the session id must
+		// be this session's, or a client cannot tell a replayed event from one
+		// it already has.
+		s.Emit(ev.Type, json.RawMessage(ev.Payload))
+	}
+	s.Carried = nil
 }
 
 // Describe returns the wire view.

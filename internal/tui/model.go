@@ -205,6 +205,19 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Window = s.ContextWindow
 		}
 
+	case protocol.EventSessionResumed:
+		// The events that follow happened in another session. Saying so is what
+		// stops a continued conversation from reading as work this one did —
+		// and, for somebody who ran `-r` and expected to find their afternoon,
+		// it is the line that says it is there.
+		var d protocol.SessionResumed
+		if err := json.Unmarshal(ev.Payload, &d); err == nil {
+			m.Entries = append(m.Entries, Entry{
+				Kind: KindNote, Seq: ev.Seq,
+				Summary: fmt.Sprintf(Text(m.Lang).Resumed, d.SourceID, d.Turns),
+			})
+		}
+
 	case protocol.EventTurnSteered:
 		// The person's own words, in the stream as the person. From the event
 		// rather than echoed locally, for the reason turn.started already
