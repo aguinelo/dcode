@@ -56,8 +56,9 @@ var tuiInvariants = map[string]string{
 	"preserva as quebras e não envia":                    "TestAMultiLinePasteDoesNotSendAnything",
 
 	// Copy mode.
-	"ela é dona do teclado": "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
-	"A cópia sai por `Esc`": "TestEveryWayOutOfCopyModeWorks",
+	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
+	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
+	"A cópia sai por `Esc`":         "TestEveryWayOutOfCopyModeWorks",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

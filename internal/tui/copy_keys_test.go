@@ -8,7 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// enterCopy opens copy mode the way a person does: `v` on an empty input line.
+// enterCopy opens copy mode the way a person does: browsing the stream, then `v`.
 func enterCopy(t *testing.T, p *program) {
 	t.Helper()
 	p.model.Entries = []Entry{
@@ -16,9 +16,10 @@ func enterCopy(t *testing.T, p *program) {
 		{Kind: KindAssistant, Summary: "second"},
 		{Kind: KindAssistant, Summary: "third"},
 	}
+	p.model.Cursor = len(p.model.Entries) - 1
 	p.Update(key("v"))
 	if !p.model.Copy.Active {
-		t.Fatal("`v` on an empty line did not open copy mode")
+		t.Fatal("`v` while browsing did not open copy mode")
 	}
 }
 
@@ -143,11 +144,10 @@ func TestTypingWhileCopyingDoesNotReachTheInputLine(t *testing.T) {
 // refusing.
 func TestCopyingNothingSaysSoRatherThanEmptyingTheClipboard(t *testing.T) {
 	p, _ := newProgram(t)
+	// Copy mode open over nothing. Set directly rather than through the key,
+	// because what this measures is the empty selection, not the binding.
 	p.model.Entries = nil
-	p.Update(key("v"))
-	if !p.model.Copy.Active {
-		t.Fatal("copy mode did not open on an empty stream")
-	}
+	p.model.Copy = CopyState{Active: true}
 
 	_, cmd := p.Update(key("y"))
 	if cmd != nil {
@@ -158,5 +158,45 @@ func TestCopyingNothingSaysSoRatherThanEmptyingTheClipboard(t *testing.T) {
 	}
 	if p.model.Copy.Active {
 		t.Error("copy mode stayed open")
+	}
+}
+
+// A letter people type is not a shortcut.
+//
+// `v` opened copy mode whenever the input line was empty — which is where every
+// message starts. The first character of anything beginning with v was eaten:
+// "voce" arrived as "oce". Reported from use.
+func TestVIsALetterWhileTyping(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Entries = []Entry{{Kind: KindUser, Summary: "something"}}
+	p.model.Cursor = -1 // the input line has focus, which is where typing happens
+
+	p.Update(key("v"))
+	if p.model.Copy.Active {
+		t.Fatal("typing v opened copy mode")
+	}
+	if p.model.Input != "v" {
+		t.Errorf("input = %q, want the letter that was typed", p.model.Input)
+	}
+
+	for _, r := range "oce" {
+		p.Update(key(string(r)))
+	}
+	if p.model.Input != "voce" {
+		t.Errorf("input = %q, want the whole word", p.model.Input)
+	}
+}
+
+// Browsing the stream is where the shortcut belongs: the cursor is in the
+// stream, nothing is being typed, and copying what is on screen is the obvious
+// thing to want.
+func TestVOpensCopyWhileBrowsingTheStream(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Entries = []Entry{{Kind: KindUser, Summary: "something"}}
+	p.model.Cursor = 0
+
+	p.Update(key("v"))
+	if !p.model.Copy.Active {
+		t.Error("v did not open copy mode while browsing")
 	}
 }

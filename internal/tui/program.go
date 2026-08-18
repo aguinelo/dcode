@@ -517,7 +517,15 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "v":
 		// The debt RN-1 took on: the alternate screen costs the terminal's own
 		// selection, and this is it given back.
-		if p.model.Input == "" {
+		//
+		// Only while browsing the stream, never while typing. An empty input
+		// line is where every message starts, so binding a mode to a plain
+		// letter there ate the first character of anything beginning with v —
+		// "voce" arrived as "oce". A letter people type is not a shortcut.
+		//
+		// The stream cursor is what tells the two apart: below zero means the
+		// input line has focus, and the product already uses it that way.
+		if p.model.Cursor >= 0 {
 			p.model = p.model.EnterCopy(len(p.renderedStream()) - 1)
 			return p, nil
 		}
