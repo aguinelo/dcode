@@ -156,6 +156,15 @@ type Strings struct {
 	BarFiles   string
 	BarWaiting string
 	NoPlan     string
+	// The session picker.
+	PickerTitle     string
+	PickerKeys      string
+	PickerEmpty     string
+	PickerUntitled  string
+	PickerYesterday string
+	// PickerTurns takes a count.
+	PickerTurns string
+
 	// Resumed opens a continued conversation. It takes the session it came
 	// from and how many turns, in that order.
 	Resumed string
@@ -241,7 +250,8 @@ Usage:
   dcode login [flags]        store the model credential, read without echo
   dcode config [key]         the effective configuration and where it came from
   dcode sessions [show <id>] what dcode has done here, and what it did
-  dcode -r                   continue the most recent session here
+  dcode -c                   continue the most recent session here
+  dcode -r                   choose which session to continue
   dcode update [flags]       install the latest release
 
 Examples:
@@ -265,16 +275,22 @@ Environment:
   DCODE_SOCKET             daemon socket path
 `,
 
-		CopySelected: "%d line(s) selected",
-		CopyKeys:     "↑ ↓ extend · y copy · esc leave",
-		CopyDone:     "copied to the clipboard",
-		CopyEmpty:    "nothing selected",
-		Interrupt:    "esc interrupts",
-		Queued:       "queued",
-		BarFiles:     "files",
-		BarWaiting:   "wait",
-		Resumed:      "continuing %s — %d turn(s) from before",
-		NoPlan:       "There is no plan yet.",
+		CopySelected:    "%d line(s) selected",
+		CopyKeys:        "↑ ↓ extend · y copy · esc leave",
+		CopyDone:        "copied to the clipboard",
+		CopyEmpty:       "nothing selected",
+		Interrupt:       "esc interrupts",
+		Queued:          "queued",
+		BarFiles:        "files",
+		BarWaiting:      "wait",
+		Resumed:         "continuing %s — %d turn(s) from before",
+		PickerTitle:     "Continue a conversation",
+		PickerKeys:      "↑↓ move · enter continue · esc start fresh",
+		PickerEmpty:     "nothing recorded in this workspace yet",
+		PickerUntitled:  "(nothing asked yet)",
+		PickerYesterday: "yesterday",
+		PickerTurns:     "%d turn(s)",
+		NoPlan:          "There is no plan yet.",
 	},
 	PtBR: {
 		VerifiedLabel:    "conferido",
@@ -349,7 +365,8 @@ Uso:
   dcode login [flags]        guarda a credencial do modelo, lida sem eco
   dcode config [chave]       a configuração efetiva e de onde ela veio
   dcode sessions [show <id>] o que o dcode fez aqui, e o que ele fez
-  dcode -r                   continua a sessão mais recente daqui
+  dcode -c                   continua a sessão mais recente daqui
+  dcode -r                   escolhe qual sessão continuar
   dcode update [flags]       instala a última versão
 
 Exemplos:
@@ -373,16 +390,22 @@ Ambiente:
   DCODE_SOCKET             caminho do socket do daemon
 `,
 
-		CopySelected: "%d linha(s) selecionada(s)",
-		CopyKeys:     "↑ ↓ estende · y copia · esc sai",
-		CopyDone:     "copiado para a área de transferência",
-		CopyEmpty:    "nada selecionado",
-		Interrupt:    "esc interrompe",
-		Queued:       "na fila",
-		BarFiles:     "arq",
-		BarWaiting:   "espera",
-		Resumed:      "continuando %s — %d turno(s) de antes",
-		NoPlan:       "Ainda não há plano.",
+		CopySelected:    "%d linha(s) selecionada(s)",
+		CopyKeys:        "↑ ↓ estende · y copia · esc sai",
+		CopyDone:        "copiado para a área de transferência",
+		CopyEmpty:       "nada selecionado",
+		Interrupt:       "esc interrompe",
+		Queued:          "na fila",
+		BarFiles:        "arq",
+		BarWaiting:      "espera",
+		Resumed:         "continuando %s — %d turno(s) de antes",
+		PickerTitle:     "Continuar uma conversa",
+		PickerKeys:      "↑↓ move · enter continua · esc começa do zero",
+		PickerEmpty:     "nada gravado neste workspace ainda",
+		PickerUntitled:  "(nada perguntado ainda)",
+		PickerYesterday: "ontem",
+		PickerTurns:     "%d turno(s)",
+		NoPlan:          "Ainda não há plano.",
 	},
 }
 

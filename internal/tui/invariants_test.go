@@ -64,6 +64,14 @@ var tuiInvariants = map[string]string{
 	"em que algo foi perguntado":        "TestContinuingSkipsASessionNobodyAskedAnythingIn",
 	"Só haver registro vazio":           "TestNothingButEmptyRecordsSaysSo",
 	"Conversa continuada é **exibida**": "TestAContinuedConversationIsOnTheScreenAndSaysWhereItCameFrom",
+
+	// The picker.
+	"carrega a pergunta que foi feita": "TestThePickerShowsWhatEachConversationWasAbout",
+	"cursor para nas duas pontas":      "TestTheCursorStopsAtBothEnds",
+	"marcada **sem cor**":              "TestTheSelectedRowIsMarkedWithoutColour",
+	"sair sem escolher":                "TestChoosingReturnsTheOneUnderTheCursorAndCancellingReturnsNothing",
+	"não oferece sessão em que nada":   "TestThePickListLeavesOutSessionsNobodyAskedAnythingIn",
+	"`-c` continua a última":           "TestResumeAsksAndContinueTakesTheLast",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
