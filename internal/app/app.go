@@ -23,6 +23,7 @@ import (
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/credential"
 	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/memory"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/provider"
@@ -135,6 +136,13 @@ type Options struct {
 	// approver. Nil is a session nobody can steer, which is every non-daemon
 	// path and was the only behaviour until now.
 	Steer func() string
+
+	// Memory reads what earlier sessions in this workspace learned. Off is the
+	// product from before this existed.
+	Memory bool
+	// MemoryMax is how many memories reach the prefix. See the .config spec:
+	// the default is a starting value, not a defended number.
+	MemoryMax int
 	// CredentialBackend selects the store. Empty chooses.
 	//
 	// Configuration rather than a per-command flag: a flag on the command that
@@ -287,6 +295,8 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Backend:           r.String("sandbox.backend", sandbox.BackendAuto),
 		AllowNetwork:      r.Bool("sandbox.allow_network", false),
 		Parallel:          r.Int("limits.parallel", 4),
+		Memory:            r.Bool("memory.enabled", true),
+		MemoryMax:         r.Int("memory.max_entries", memory.DefaultMax),
 		DumpPrompt:        r.Bool("doctrine.dump", false),
 		CredentialBackend: r.String("credential.backend", ""),
 		Rules:             resolveRules(r),
@@ -477,6 +487,29 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			if instructions[i].Source == behavior.SourceLocked {
 				instructions[i].Locked = true
 			}
+		}
+	}
+
+	// What earlier sessions in this workspace learned, read back as the weakest
+	// instruction there is. Frozen here with the chain and for the same reason:
+	// a memory written during this session must not change this session's
+	// prefix, which is what the cache is keyed on.
+	if opts.Memory {
+		learned, merr := memory.Read(opts.Workspace)
+		if merr != nil {
+			// A memory nobody can read is worth saying and not worth stopping
+			// for: refusing to open a session over it would be the memory
+			// holding the product hostage, which is what the record already
+			// refuses to do.
+			emitter.Emit(protocol.EventSessionError, protocol.Error{
+				Code: "memory_unreadable", Message: merr.Error(),
+			})
+		} else if block := memory.Render(learned, opts.MemoryMax, knownCommits(opts.Workspace, learned)); block != "" {
+			instructions = append(instructions, behavior.Instruction{
+				Source: behavior.SourceLearned,
+				Scope:  memory.FileName,
+				Text:   block,
+			})
 		}
 	}
 
@@ -1076,4 +1109,22 @@ func (b background) Start(ctx context.Context, workdir, command string) (tools.H
 		return nil, err
 	}
 	return p, nil
+}
+
+// knownCommits asks the repository which of the memories' commits it still has.
+//
+// Nil whenever nothing could be asked, and the renderer reads that as "we did
+// not look" rather than "they are gone". A memory marked stale because git was
+// missing would be the heuristic deciding on no evidence at all.
+func knownCommits(workspace string, f memory.File) map[string]bool {
+	var shas []string
+	seen := map[string]bool{}
+	for _, e := range f.Entries {
+		if e.Commit == "" || seen[e.Commit] {
+			continue
+		}
+		seen[e.Commit] = true
+		shas = append(shas, e.Commit)
+	}
+	return vcs.Known(context.Background(), workspace, shas)
 }

@@ -142,3 +142,48 @@ func itoa(n int) string {
 	}
 	return string(b[i:])
 }
+
+// Known reports which of these commits the repository still has.
+//
+// One process for the whole list: `git cat-file --batch-check` takes them on
+// stdin and answers each in order, so checking forty memories costs one call
+// rather than forty. Forty processes at session start would be felt as a slow
+// start, and the answer is not worth that.
+//
+// Nil when nothing could be asked — no git, no repository, a failed call. The
+// caller must read that as "we did not look" rather than "we looked and they are
+// gone": marking a memory stale because git was missing would be the heuristic
+// deciding on no evidence at all.
+func Known(ctx context.Context, dir string, shas []string) map[string]bool {
+	if len(shas) == 0 {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, deadline)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "cat-file", "--batch-check")
+	cmd.Dir = dir
+	cmd.Env = append(cmd.Environ(), "GIT_OPTIONAL_LOCKS=0", "LC_ALL=C", "GIT_PAGER=cat")
+	cmd.Stdin = strings.NewReader(strings.Join(shas, "\n") + "\n")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	// A line is either "<sha> commit <size>" or "<name> missing".
+	known := map[string]bool{}
+	for i, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		if i >= len(shas) {
+			break
+		}
+		if fields := strings.Fields(line); len(fields) >= 2 && fields[1] != "missing" {
+			known[shas[i]] = true
+		}
+	}
+	if len(known) == 0 {
+		// Every one missing is indistinguishable from a repository that answered
+		// nothing useful, and the safe reading of that is that we did not look.
+		return nil
+	}
+	return known
+}

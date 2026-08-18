@@ -224,3 +224,61 @@ func TestTheRemoteDecidesTheMainBranch(t *testing.T) {
 		t.Errorf("main branch = %q, want trunk — the remote's default, not a guess", got.MainBranch)
 	}
 }
+
+// Which commits the repository still has, in one call.
+func TestKnownAnswersForEveryCommitAtOnce(t *testing.T) {
+	dir := repo(t)
+	write(t, dir, "a.txt", "one\n")
+	git(t, dir, "add", "a.txt")
+	git(t, dir, "commit", "-qm", "first")
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	real := strings.TrimSpace(string(out))
+
+	got := Known(context.Background(), dir, []string{real, "0000000000000000000000000000000000000000"})
+	if !got[real] {
+		t.Errorf("a commit that is here was reported missing: %v", got)
+	}
+	if got["0000000000000000000000000000000000000000"] {
+		t.Error("a commit that is not here was reported present")
+	}
+}
+
+// Nothing asked is nothing answered, and the caller must not read that as
+// "they are all gone".
+func TestKnownWithNothingToAskAnswersNothing(t *testing.T) {
+	if got := Known(context.Background(), repo(t), nil); got != nil {
+		t.Errorf("got %v, want nil", got)
+	}
+}
+
+// Somewhere that is not a repository cannot answer, and nil is how it says so —
+// distinct from an answer that every commit is missing. Marking a memory stale
+// because git was absent would be the heuristic deciding on no evidence.
+func TestKnownSomewhereThatCannotAnswerReturnsNil(t *testing.T) {
+	if got := Known(context.Background(), t.TempDir(), []string{"abc1234"}); got != nil {
+		t.Errorf("got %v, want nil — nothing could be asked", got)
+	}
+}
+
+// Every commit missing is indistinguishable from a repository that answered
+// nothing useful, and the safe reading is that we did not look.
+func TestKnownWithEveryCommitMissingAnswersNothing(t *testing.T) {
+	dir := repo(t)
+	write(t, dir, "a.txt", "one\n")
+	git(t, dir, "add", "a.txt")
+	git(t, dir, "commit", "-qm", "first")
+
+	got := Known(context.Background(), dir, []string{
+		"0000000000000000000000000000000000000000",
+		"1111111111111111111111111111111111111111",
+	})
+	if got != nil {
+		t.Errorf("got %v, want nil", got)
+	}
+}
