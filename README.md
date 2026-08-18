@@ -250,6 +250,7 @@ Details in [`docs/conventions/SDD-HARNESS.md`](docs/conventions/SDD-HARNESS.md).
 | [configuration](docs/specs/architecture/configuration/) | deterministic | XDG layout, precedence chain, commands |
 | [client-tui](docs/specs/architecture/client-tui/) | deterministic | layout, plan panel, approval modal |
 | [distribution](docs/specs/architecture/distribution/) | deterministic | install, signed release, update |
+| [learned-memory](docs/specs/architecture/learned-memory/) | mixed | what the agent discovers, versioned where people read it — **design only, not built** |
 
 ---
 
@@ -390,7 +391,7 @@ Enter denies.
 
 | Phase | Delivers | Status |
 |---|---|---|
-| **0** | `go.mod`, CI with `-race`, 90% gate, `CGO_ENABLED=0` | ✅ |
+| **0** | `go.mod`, CI with `-race`, coverage gate, `CGO_ENABLED=0` | ✅ |
 | **1** | protocol type vocabulary | ✅ 100% covered |
 | **2** | context engine — the pure `Assemble` | ✅ 99% |
 | **3** | provider — transport × family, both dialects | ✅ 91% |
@@ -401,12 +402,12 @@ Enter denies.
 | **8** | event log, unix socket, SSE, reference client | ✅ 95% / 92% / 93% |
 | **9** | TUI client, commands, skills, reminders, distribution | ✅ 95% / 96% / 92% |
 
-Every package is above the 90% gate; the suite runs under `-race`.
+The aggregate gate is **95%** and every package clears its own 90% floor; the suite runs under `-race` on macOS and Linux.
 
 Beyond MVP: multiple providers, MCP, plugins, session sharing, desktop, IDE.
 
 **Self-hosting milestone.** A pull request to dcode written end to end by dcode, passing
-review and the 90% gate with no manual edits. It is the best eval the project has: its
+review and the coverage gate with no manual edits. It is the best eval the project has: its
 own test suite and review checklist become the fitness function. Its bias mitigation is
 mandatory — keep a non-Go codebase in the eval fixtures, or the agent gets excellent at
 Go and mediocre elsewhere without the metric noticing.
@@ -493,7 +494,7 @@ red is not a safety net.
 confirm it fails for the reported symptom, then fix it, and the same test passes
 unmodified. A `fix:` PR without a new test is blocked. Regression tests are permanent.
 
-**90% coverage gate**, with an explicit denominator: deterministic code in `internal/` and
+**95% aggregate coverage gate, 90% per package**, with an explicit denominator: deterministic code in `internal/` and
 `pkg/`. Generated code, `main` wiring, and model-mediated paths are excluded — the last
 because it cannot be verified by assertion at all, only by measured thresholds over
 fixtures. That exclusion is deliberate pressure in the right direction.
