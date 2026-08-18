@@ -98,6 +98,13 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 
 	opts := d.opts.Base
 	opts.Workspace = ws
+	var (
+		carried      []protocol.Event
+		carriedFrom  string
+		carriedTurns int
+		turns        int
+		cerr         error
+	)
 	if req.Model != "" {
 		opts.Model = req.Model
 	}
@@ -107,12 +114,23 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		// quietly starting fresh: someone who asked to continue and got an
 		// empty session would not find out until the model had forgotten
 		// everything.
-		history, herr := session.Rebuild(filepath.Join(d.opts.RecordDir, req.Resume+".jsonl"))
+		path := filepath.Join(d.opts.RecordDir, req.Resume+".jsonl")
+		history, herr := session.Rebuild(path)
 		if herr != nil {
 			return nil, protocol.Errorf(protocol.CodeSessionNotFound,
 				"session %s cannot be continued: %v", req.Resume, herr)
 		}
 		opts.History = history
+		// Read a second time, as events rather than messages. The model needs
+		// what was said; the person needs to see that it survived, and the next
+		// session to continue this one needs both — so the events go in this
+		// session's log and the file behind it.
+		carried, turns, cerr = session.Carry(path)
+		if cerr != nil {
+			return nil, protocol.Errorf(protocol.CodeSessionNotFound,
+				"session %s cannot be continued: %v", req.Resume, cerr)
+		}
+		carriedFrom, carriedTurns = req.Resume, turns
 	}
 	if req.SandboxMode != "" {
 		mode, perr := parseMode(req.SandboxMode)
@@ -181,6 +199,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
 		appSession.Engine, log, time.Now)
 	sess.ContextWindow = appSession.ContextWindow
+	sess.Carried, sess.CarriedFrom, sess.CarriedTurns = carried, carriedFrom, carriedTurns
 
 	// The same record the sandbox is asking, not a second copy: two would
 	// answer differently the moment one of them is granted.

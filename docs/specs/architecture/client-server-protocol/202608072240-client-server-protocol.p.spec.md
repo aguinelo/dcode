@@ -195,6 +195,8 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Desfazer durante um turno em curso é recusado.
 - Continuar cria sessão **nova** carregando a conversa; a antiga acabou com o cliente que a rodou.
 - Continuar sessão inexistente falha; nunca começa em branco em silêncio.
+- A conversa continuada entra no log da sessão nova atrás de `session.resumed`, com a sequência e o id dela.
+- Continuar uma continuação carrega a conversa inteira, não só o último trecho.
 - Chamada de ferramenta sem resultado não entra no histórico reconstruído.
 - Listagem de sessões vem do registro em disco, ordenada da mais recente, filtrada pelo workspace por default.
 - Sessão é titulada pela primeira pergunta; sem pergunta ainda, aparece assim mesmo.
@@ -215,3 +217,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 ## 10. Changelog
 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
+- [202608181900 — Continuar mostra o que carrega](changelog/202608181900-continuar-mostra-o-que-carrega.md)

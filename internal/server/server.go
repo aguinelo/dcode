@@ -198,6 +198,11 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 
 	desc := sess.Describe()
 	sess.Emit(protocol.EventSessionCreated, desc)
+	// Immediately after, so the record opens with this session and the very
+	// next thing in it is the conversation being continued. A client attaching
+	// at any point reads them in that order, including one that attaches later
+	// and replays from the file.
+	sess.EmitCarried()
 	writeJSON(w, http.StatusCreated, desc)
 }
 

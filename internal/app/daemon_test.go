@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -558,5 +559,145 @@ func TestContinuingAMissingSessionIsAnError(t *testing.T) {
 		Workspace: t.TempDir(), Model: "MiniMax-M3", Resume: "never-existed",
 	}); err == nil {
 		t.Fatal("continuing a session that does not exist reported success")
+	}
+}
+
+// Continuing shows the conversation it continues, and records it.
+//
+// The history reached the model and never the person: the screen is built from
+// events, and nothing emitted one for what was carried. Someone who continued a
+// session saw a blank window and the only available reading was that the work
+// was gone.
+//
+// Recording it is the same fix for a second failure. A new session's record
+// held only its own turns, so continuing something that was itself a
+// continuation dropped everything before the last hop — that one losing the
+// model too, silently.
+func TestContinuingShowsAndRecordsWhatItCarries(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"seq":1,"type":"session.created","at":"2026-08-14T12:00:00Z","payload":{"id":"old","workspace":"/w"}}
+{"seq":2,"type":"turn.started","at":"2026-08-14T12:00:01Z","payload":{"turn_id":"t1","text":"what does Rows do?"}}
+{"seq":3,"type":"message.delta","at":"2026-08-14T12:00:02Z","payload":{"turn_id":"t1","text":"count minus one"}}
+{"seq":4,"type":"turn.completed","at":"2026-08-14T12:00:03Z","payload":{"turn_id":"t1"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "old.jsonl"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           baseOpts(t),
+	})
+	sess, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Model: "MiniMax-M3", Resume: "old",
+	})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	defer sess.Close()
+
+	sess.Emit(protocol.EventSessionCreated, sess.Describe())
+	sess.EmitCarried()
+
+	events, err := sess.Log.Replay(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saw []protocol.EventType
+	for _, ev := range events {
+		saw = append(saw, ev.Type)
+	}
+	want := []protocol.EventType{
+		protocol.EventSessionCreated,
+		protocol.EventSessionResumed,
+		protocol.EventTurnStarted,
+		protocol.EventMessageDelta,
+		protocol.EventTurnCompleted,
+	}
+	if len(saw) != len(want) {
+		t.Fatalf("the stream is %v, want %v", saw, want)
+	}
+	for i := range want {
+		if saw[i] != want[i] {
+			t.Fatalf("the stream is %v, want %v", saw, want)
+		}
+	}
+
+	// The marker says where it came from. Without it the replayed conversation
+	// reads as something that happened in this session, which it did not.
+	var r protocol.SessionResumed
+	if err := json.Unmarshal(events[1].Payload, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.SourceID != "old" {
+		t.Errorf("the marker names %q, want the session it continues", r.SourceID)
+	}
+	if r.Turns != 1 {
+		t.Errorf("the marker carries %d turns, want 1", r.Turns)
+	}
+
+	// The carried events keep this session's identity and its sequence. Two
+	// events with the same seq is a replay a client cannot tell apart.
+	for i, ev := range events {
+		if ev.SessionID != sess.ID {
+			t.Errorf("event %d belongs to %q, not to this session", i, ev.SessionID)
+		}
+		if ev.Seq != uint64(i+1) {
+			t.Errorf("event %d has seq %d, want %d", i, ev.Seq, i+1)
+		}
+	}
+}
+
+// A second hop carries everything, not just the last leg.
+func TestContinuingAContinuationKeepsTheWholeConversation(t *testing.T) {
+	dir := t.TempDir()
+	first := `{"seq":1,"type":"session.created","at":"2026-08-14T12:00:00Z","payload":{"id":"a","workspace":"/w"}}
+{"seq":2,"type":"turn.started","at":"2026-08-14T12:00:01Z","payload":{"turn_id":"t1","text":"the first question"}}
+{"seq":3,"type":"message.delta","at":"2026-08-14T12:00:02Z","payload":{"turn_id":"t1","text":"the first answer"}}
+{"seq":4,"type":"turn.completed","at":"2026-08-14T12:00:03Z","payload":{"turn_id":"t1"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "a.jsonl"), []byte(first), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           baseOpts(t),
+	})
+	b, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Model: "MiniMax-M3", Resume: "a",
+	})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	b.Emit(protocol.EventSessionCreated, b.Describe())
+	b.EmitCarried()
+	b.Close()
+
+	// B never asked anything of its own. Everything it can offer came from A,
+	// which is exactly the case that used to come back empty.
+	carried, turns, err := session.Carry(filepath.Join(dir, b.ID+".jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if turns != 1 {
+		t.Fatalf("the second hop counts %d turns, want the one from the first", turns)
+	}
+	var asked string
+	for _, ev := range carried {
+		if ev.Type != protocol.EventTurnStarted {
+			continue
+		}
+		var d protocol.TurnStarted
+		if json.Unmarshal(ev.Payload, &d) == nil {
+			asked = d.Text
+		}
+	}
+	if asked != "the first question" {
+		t.Errorf("the second hop carries %q, want the question from the first session", asked)
 	}
 }

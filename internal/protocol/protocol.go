@@ -19,6 +19,14 @@ type EventType string
 // Event types. Payload shapes are defined in section 5.1 of the planning spec.
 const (
 	EventSessionCreated EventType = "session.created"
+	// EventSessionResumed opens the conversation this session continues.
+	//
+	// The events after it happened somewhere else, and a marker is what keeps
+	// the transcript honest about that: without one, a replayed conversation
+	// reads as work this session did. It also carries the only thing the reader
+	// cannot reconstruct from the events themselves — which session they came
+	// from.
+	EventSessionResumed EventType = "session.resumed"
 	EventTurnStarted    EventType = "turn.started"
 	EventMessageDelta   EventType = "message.delta"
 	// EventMessageReasoning carries the model's thinking, which is not its
@@ -369,5 +377,16 @@ type (
 	SessionCompacted struct {
 		FromSeq uint64 `json:"from_seq"`
 		ToSeq   uint64 `json:"to_seq"`
+	}
+
+	// SessionResumed names the conversation the events after it came from.
+	//
+	// Turns is what happened there, counted before the replay rather than by
+	// the reader, so a client that joins late reads the same number as one that
+	// was there.
+	SessionResumed struct {
+		SourceID  string    `json:"source_id"`
+		Turns     int       `json:"turns"`
+		StartedAt time.Time `json:"started_at,omitempty"`
 	}
 )
