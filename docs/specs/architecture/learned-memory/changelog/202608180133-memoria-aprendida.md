@@ -220,3 +220,66 @@ qualidade inteiro deste desenho.
 O lembrete de Camada 2 (passo 5) e os três contratos comportamentais (passo 6).
 Os dois dependem de medição: o lembrete é contrapeso para o modelo não chamar a
 ferramenta, e não se constrói contrapeso antes de medir o peso.
+
+---
+
+# A primeira medição, e o que ela custou descobrir
+
+**Data:** 2026-08-18
+
+Commit `6782893`, MiniMax-M3, 20 execuções por contrato.
+
+| contrato | medido |
+|---|---|
+| `remembers-what-cost-time` | **0,0%** |
+| `does-not-remember-activity` | **100,0%** |
+| `uses-what-it-remembers` | **5,0%** |
+
+## O que os dois primeiros dizem juntos
+
+**O modelo nunca chama `remember`.** Nenhuma vez em 40 execuções.
+
+E isso significa que `does-not-remember-activity` está passando **em vazio**. Ele
+não mede contenção — mede a mesma ausência que o primeiro, pelo outro lado. Um
+contrato que dá 100% porque a ferramenta nunca é usada não prova nada sobre
+disciplina, e vai continuar dando 100% mesmo que a disciplina desapareça.
+
+Isso não invalida o contrato: ele passa a valer no dia em que o primeiro subir.
+Mas até lá o número dele é decorativo, e registrar isso é o que impede alguém de
+o ler como garantia.
+
+## O terceiro é o que muda a leitura
+
+**5%.** A memória está no prefixo, responde diretamente à tarefa, e o agente age
+sobre ela uma vez em vinte.
+
+Não é só que ele não escreve — ele quase não lê.
+
+## O defeito de instrumento que eu mesmo criei
+
+O harness só imprimia transcrição quando o contrato **falha**. Com limiar em
+zero nada falha, então a primeira medição voltou com três números e **nenhuma
+evidência**.
+
+Escolher zero para não inventar limiar foi certo. Não perceber que isso desligava
+o digest foi erro, e é da mesma família dos que esta suíte encontra: uma decisão
+correta cujo efeito colateral ninguém verificou.
+
+Corrigido: limiar zero significa "meça e me diga", e agora imprime as
+transcrições **porque** não está julgando.
+
+## O que ainda não se sabe, e por quê importa
+
+Se 5% é o produto ou o juiz.
+
+`uses-what-it-remembers` mede `CalledWith("bash", "generate")`, e há pelo menos
+três formas de honrar o contrato sem casar com isso: dizer em prosa que é preciso
+gerar antes, desistir do shell depois da primeira recusa do harness, ou concluir
+que compila sem rodar build nenhum.
+
+É exatamente a família de defeito já encontrada no
+`warns-when-task-exceeds-budget`, onde **duas de três** transcrições mostravam o
+contrato honrado em palavras que a lista do juiz não continha.
+
+Nenhum limiar sobe antes de ler o digest. Baixar ou subir limiar contra
+instrumento não verificado é gravar o defeito na spec.
