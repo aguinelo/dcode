@@ -97,7 +97,7 @@ func runTUI(args []string) error {
 
 	carry := *resume
 	if *cont && carry == "" {
-		if carry, err = latestSession(ws, resolved); err != nil {
+		if carry, err = latestSession(recordDir(resolved), ws); err != nil {
 			return err
 		}
 	}
@@ -309,15 +309,29 @@ func lookup(r config.Resolved) func(string) (string, bool) {
 // unfiltered latest would hand someone the session from another project, which
 // is worse than finding none: they would notice none, and might not notice the
 // wrong one until the model answered from it.
-func latestSession(ws string, resolved config.Resolved) (string, error) {
-	found, err := session.Browse(recordDir(resolved), ws)
+func latestSession(dir, ws string) (string, error) {
+	found, err := session.Browse(dir, ws)
 	if err != nil {
 		return "", err
 	}
 	if len(found) == 0 {
 		return "", fmt.Errorf("no recorded session for this workspace to continue")
 	}
-	return found[0].ID, nil
+	// The newest session that was actually used, not simply the newest.
+	//
+	// A record is opened before the first question, so an interface closed
+	// without asking anything — or one that failed to open at all — leaves an
+	// empty record behind. Continuing that one carries nothing, and the run
+	// that did it leaves another empty record for the next: taken literally,
+	// `--continue` destroys its own target every time it is used.
+	for _, s := range found {
+		if s.Turns > 0 {
+			return s.ID, nil
+		}
+	}
+	// Distinguished from having no session at all, because they are different
+	// situations and the fix for each is different.
+	return "", fmt.Errorf("the recorded sessions for this workspace are ones where nothing was asked — nothing to continue")
 }
 
 // acceptsImages asks the family that owns this model whether it reads pictures.

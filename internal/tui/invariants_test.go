@@ -59,6 +59,10 @@ var tuiInvariants = map[string]string{
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
 	"A cópia sai por `Esc`":         "TestEveryWayOutOfCopyModeWorks",
+
+	// Continuing. The flag lives in the command, one directory up from here.
+	"em que algo foi perguntado": "TestContinuingSkipsASessionNobodyAskedAnythingIn",
+	"Só haver registro vazio":    "TestNothingButEmptyRecordsSaysSo",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
@@ -66,7 +70,8 @@ func TestEveryInvariantHasATest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := specguard.Check(root, "client-tui", []string{"."}, tuiInvariants)
+	findings, err := specguard.Check(root, "client-tui",
+		[]string{".", filepath.Join("..", "..", "cmd", "dcode")}, tuiInvariants)
 	if err != nil {
 		t.Fatal(err)
 	}
