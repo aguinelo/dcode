@@ -15,6 +15,7 @@ var memoryDirs = []string{
 	".",
 	filepath.Join("..", "behavior"),
 	filepath.Join("..", "app"),
+	filepath.Join("..", "tools"),
 }
 
 var memoryInvariants = map[string]string{
@@ -29,6 +30,14 @@ var memoryInvariants = map[string]string{
 	"Workspace sem memória":           "TestAWorkspaceWithNoMemoryIsUnchanged",
 	"continua pura com memória":       "TestTheLearnedBlockIsPure",
 	"Workspace sem `.dcode/memory.md": "TestAWorkspaceWithNoMemoryReadsAsEmpty",
+
+	// The tool.
+	"recusa tipo fora dos três":       "TestAKindOutsideTheThreeIsRefusedByName",
+	"recusa assunto vazio":            "TestAMemoryWithNoSubjectIsRefused",
+	"acrescenta e nunca reescreve":    "TestRememberingAppendsAndLeavesWhatWasThere",
+	"declara escrita no caminho":      "TestRememberDeclaresTheMemoryAndNothingElse",
+	"carrega data e commit":           "TestEveryMemoryCarriesItsProvenance",
+	"vale a partir da próxima sessão": "TestTheResultSaysItLandsNextSession",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

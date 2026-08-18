@@ -168,3 +168,55 @@ PROJECT-RULE: arquivos abaixo de 500 linhas.
 
 O aprendido vem primeiro, que é a posição de menor peso. A regra do projeto vem
 depois. A memória do commit que sumiu está marcada e continua lá.
+
+---
+
+# A metade da escrita, construída
+
+**Data:** 2026-08-18
+
+Passo 4 do `.i`. O agente grava com `remember`, e o ciclo fecha.
+
+## Duas coisas que a descrição da ferramenta faz de propósito
+
+**Diz para que NÃO serve, e não só para que serve.** *"NOT for what you did —
+that is already recorded, and a memory of activity is noise by next week."* A
+descrição é a única coisa que o modelo lê antes de decidir chamar, e o modo de
+falha desse mecanismo não é gravar de menos: é gravar atividade por hábito até
+o arquivo virar ruído.
+
+**Diz que a memória vale a partir da próxima sessão.** Sem isso o modelo grava e
+espera que o prefixo mude — e ele não muda, porque foi congelado na abertura.
+Deixar isso implícito seria o produto sabendo algo que o modelo descobre errando.
+
+## O commit vem do mesmo instantâneo que o prefixo
+
+A leitura do git subiu para antes da montagem das ferramentas, para haver **um**
+instantâneo servindo os dois. Duas leituras do git na mesma sessão podem
+discordar, e discordar sobre onde a sessão está é pior que não saber.
+
+## Verificado à mão, o ciclo inteiro
+
+Repositório novo, duas sessões:
+
+1. Sessão 1 abre sem memória — o prefixo não menciona nada. Grava uma `gotcha`.
+   **O prefixo da sessão 1 não muda**, e a ferramenta diz isso na resposta.
+2. Sessão 2 abre e lê a memória, com procedência e na posição mais fraca.
+
+No disco fica um bloco que uma pessoa lê sem ferramenta nenhuma:
+
+```markdown
+## gotcha: make test precisa de go generate antes
+<!-- learned 2026-08-17 · commit eeac0df -->
+
+os arquivos gerados ficam velhos e a build quebra.
+```
+
+E aparece no `git status` como qualquer outra mudança, que é o portão de
+qualidade inteiro deste desenho.
+
+## O que ainda falta
+
+O lembrete de Camada 2 (passo 5) e os três contratos comportamentais (passo 6).
+Os dois dependem de medição: o lembrete é contrapeso para o modelo não chamar a
+ferramenta, e não se constrói contrapeso antes de medir o peso.
