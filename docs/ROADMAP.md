@@ -162,7 +162,79 @@ measurement, or is it the thing that makes the measurement impossible?
 
 ---
 
-## 7. Smaller, and each with its evidence
+## 7. Nobody has ever run a genuinely long turn
+
+**The gap is evidence, not design.** Contracts run 12 to 20 rounds. v16 measured
+1,270 short runs. A turn of 200 rounds, with compaction firing several times and
+a summary merging into itself repeatedly, is a path **no test walks**.
+
+That is different from knowing it works. The compaction boundary logic is careful
+and reasoned — it walks back to a point where no assistant message is still
+waiting on a tool result — but reasoning is not measurement, and every defect
+this project has found lived in the gap between the two.
+
+**What it would take.** Not a contract: this is not about the model. A test that
+drives a scripted provider through hundreds of rounds with a small window, and
+asserts what has to survive — no orphaned tool call, the summary accumulating
+rather than replacing, the protected turns intact, and the whole thing still
+reproducible.
+
+**Why it is worth doing before the long-running story is claimed.** "Ready for
+long sessions" is a claim about behaviour at a scale nobody has observed. Saying
+it without the test is the same shape as a threshold declared before measuring.
+
+---
+
+## 8. How to index a codebase that does not fit — the analysis, before the code
+
+**The question.** dcode's answer today is `glob`, `grep`, `symbol` and `explore`
+— a read-only sub-agent that reads the repository and returns the answer without
+spending the parent's window. That is a good answer for a large repository. It is
+an untested answer for a **very** large one, and nobody has drawn the line
+between the two.
+
+**What this item is.** An analysis, not an implementation. What the options
+actually are, what each costs, and which of them survives this project's
+constraints — written down before anyone writes code, the way the memory spec
+was.
+
+**What has to be in it.**
+
+The constraint that eliminates most of the market: `CGO_ENABLED=0`, a single
+static binary, and a CI step that fails on any `import "C"` outside the isolated
+package. `sqlite-vec` is the serious answer in this space and it is C. That is
+not a preference — it is what gives a binary that cross-compiles — so any
+embedded index has to be pure Go or it is not a candidate.
+
+The argument against embeddings for code, which needs testing rather than
+repeating: vector search returns semantically *similar* code, and what a person
+needs is usually the *exact* thing. `grep` and `symbol` are precise. The failure
+mode of an index is confident wrongness.
+
+The staleness problem, which is the strongest argument and the one least often
+made: **the agent edits files constantly.** An index needs invalidation on every
+write, and a stale index answers with confidence about code that no longer
+exists. That is the same shape as the sandbox defect fixed in #168 — something
+that describes a state that has moved.
+
+What the reference systems in this space concluded, and it agrees with this
+project's doctrine: FTS5 plus link expansion handles most queries, with
+embeddings as optional re-ranking. Simple storage, simple index, no vector
+database.
+
+**And the question that comes first.** "Large codebase" can mean at least three
+different problems: `glob` returning too much, `grep` being slow, or the model
+not knowing where to start. Three problems with three answers, and **only the
+third comes anywhere near embeddings.** The analysis should establish which one
+is actually being felt before comparing solutions to it.
+
+**What would break.** Nothing yet — this is reading and writing. The risk is in
+skipping it: building an index because indexes are what large codebases get, and
+discovering afterwards that the felt problem was `glob` with no depth limit.
+
+---
+
+## 9. Smaller, and each with its evidence
 
 **A threshold of zero used to print no evidence.** Fixed in the same session:
 zero means "measure and tell me", and a number with no transcript behind it is
@@ -206,12 +278,17 @@ has not weakened.
 |---|---|
 | **1** — the round ceiling is invisible | The only one with measured evidence of harm, and the machinery already exists. Wiring, not invention. |
 | **6** — audit the contracts against the shell rule | Cheap, and it decides whether other numbers in this suite mean what they claim. One contract read 5% while doing the right thing. |
+| **7** — a genuinely long turn | Before "ready for long sessions" is said out loud. It is a test, not a feature, and it closes a gap that is pure absence of evidence. |
 | **5** — the gate's margin | Small, and it is costing red CI on unrelated PRs right now. |
+| **8** — the indexing analysis | Reading and writing, no code. Do it before anyone is tempted to build an index, and start by establishing which of the three problems is actually being felt. |
 | **2** — retryable versus hopeless | The detector already sees it; this is a second consumer of information already collected. Narrow start. |
 | **4** — a scenario that forces a discovery | Genuinely hard, possibly not solvable as a scripted fixture. Do it when there is an idea, not on a schedule. |
 | **3** — the vacuous contract | Nothing to do until 4 moves. |
-| **7** — the small ones | Whenever they are in the way. |
+| **9** — the small ones | Whenever they are in the way. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
 and each redesign was pushing the model toward a behaviour rather than measuring
 it. The next attempt needs a different idea, not another workspace.
+
+**Do not start 8 by choosing a library.** The first question is which problem is
+being felt, and two of the three answers have nothing to do with indexing.
