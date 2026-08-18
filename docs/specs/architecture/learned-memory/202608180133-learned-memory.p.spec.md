@@ -103,10 +103,24 @@ duas coisas têm de concordar sobre onde a sessão está.
 
 ## 8. Como entra no prefixo
 
-Bloco próprio, depois das instruções de projeto e antes de nada mais, carregado
-com a cadeia e congelado na criação da sessão — pelo mesmo motivo que a cadeia é:
-memória que muda no meio da sessão é prefixo que muda no meio da sessão, e isso
-invalida o cache e quebra a reprodutibilidade que `context-engine` garante.
+**Como uma instrução da cadeia, não como bloco próprio.**
+
+> Isto corrige o que esta seção dizia antes. Ela pedia bloco separado, depois das
+> instruções de projeto. A implementação mostrou que instrução da cadeia é
+> melhor, e por um motivo que vale mais que a preferência: a cadeia **já** ordena
+> por autoridade e **já** emite procedência. Um bloco próprio precisaria da
+> própria ordenação, e ordenação em dois lugares é como as duas divergem — com a
+> mais importante divergindo em silêncio.
+
+Consequência de aparecer na cadeia: o bloco sai sob o título de instruções de
+projeto, que não é o que ele é. Duas coisas desfazem a confusão, e as duas são
+lidas antes de qualquer memória: o comentário de procedência que a cadeia emite
+(`<!-- learned: .dcode/memory.md -->`), e a primeira frase do próprio bloco,
+que diz de quem são aquelas notas e onde pesá-las.
+
+Congelado na criação da sessão, com a cadeia e pelo mesmo motivo: memória que
+muda no meio da sessão é prefixo que muda no meio da sessão, e isso invalida o
+cache e quebra a reprodutibilidade que `context-engine` garante.
 
 Uma memória escrita nesta sessão **não** aparece nesta sessão. Ela aparece na
 próxima, que é o único momento em que ela é útil de qualquer forma.
@@ -124,23 +138,25 @@ verdade num commit que não está mais aqui" e pesa por conta própria.
 
 **Sem decaimento por acesso** (RN-10).
 
-## 10. Invariantes a garantir
-
-> **Ainda não é `## Invariantes verificáveis`, e a diferença é literal.** Aquele
-> título significa "há teste cobrando isto", e o `specguard` o lê para exigir um
-> guarda por família. Aqui não há código, logo não há o que verificar — chamar a
-> seção de verificável seria a mesma afirmação vazia que este repositório passa
-> a vida encontrando.
->
-> Renomear é o **passo 0** do `.i`, junto com o guarda. Enquanto o título for
-> este, a lista é dívida declarada e não garantia.
-
-
+## 10. Invariantes verificáveis
 - Nada aprendido ordena acima de qualquer fonte humana, em nenhuma combinação de
   fontes.
 - Nenhuma chave de configuração altera a ordem da fonte aprendida.
 - O prefixo nomeia a procedência aprendida como aprendida, distinta de instrução
   de projeto.
+- Bloco torto no arquivo é reportado e o resto sobrevive; nenhum bloco some em
+  silêncio.
+- Memória sem procedência é memória válida: arquivo escrito à mão não é rejeitado.
+- Lista de tipos fechada em três; qualquer outro é recusado.
+- Workspace sem memória, e memória desligada, produzem o prefixo de antes.
+
+## 11. Invariantes ainda sem cobrança
+
+> Fora da seção acima **de propósito**. O `specguard` cobra tudo que estiver sob
+> `## Invariantes verificáveis`, e uma invariante listada lá sem teste é a
+> afirmação vazia que esta spec existe para não repetir. Estas ficam aqui até o
+> passo 4 do `.i`; movê-las para cima é parte do commit que as implementa.
+
 - `remember` recusa tipo fora dos três e nomeia os três na recusa.
 - `remember` recusa assunto vazio.
 - `remember` acrescenta e nunca reescreve o que já estava no arquivo.
@@ -148,13 +164,8 @@ verdade num commit que não está mais aqui" e pesa por conta própria.
 - Memória escrita durante a sessão não altera o prefixo dessa sessão (RN-5 de
   `context-engine`); não há caminho de código para isso.
 - Toda memória gravada carrega data e commit.
-- Memória cujo commit não existe mais é marcada, e continua no arquivo.
-- Prefixo com memória além do teto declara o corte.
-- Workspace sem `.dcode/memory.md` produz prefixo byte-idêntico ao de antes deste
-  componente existir.
-- `Build` continua pura com memória: mesma entrada, mesmo prefixo.
 
-## 11. Contratos comportamentais
+## 12. Contratos comportamentais
 
 Vivem em `internal/evals` e medem a metade mediada por modelo.
 
@@ -170,6 +181,6 @@ Vivem em `internal/evals` e medem a metade mediada por modelo.
 Limiares não são declarados aqui: o primeiro número honesto vem da primeira
 medição, e limiar antes de medição é limiar que a medição depois justifica.
 
-## 12. Changelog
+## 13. Changelog
 
 - [202608180133 — Memória aprendida](changelog/202608180133-memoria-aprendida.md)

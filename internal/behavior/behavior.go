@@ -42,12 +42,21 @@ const (
 	SourceDirectory InstructionSource = "directory"
 	SourceProject   InstructionSource = "project"
 	SourceUser      InstructionSource = "user"
+	// SourceLearned is what the agent noted for itself, read back from the
+	// workspace. It exists to be OUTRANKED: see the authority table.
+	SourceLearned InstructionSource = "learned"
 )
 
 // authority orders sources from least to most specific. Instructions stack
 // rather than replace, and the most specific one appears last, which is the
 // position of greatest weight.
+// Learned sits below every human source, and there is no configuration key that
+// moves it. A guarantee a setting can switch off is not a guarantee — the same
+// reasoning that keeps Safety out of the doctrine overlay. Without this row the
+// memory would be the path by which the agent slowly rewrites its own
+// constraints, one note per session.
 var authority = map[InstructionSource]int{
+	SourceLearned:   0,
 	SourceUser:      1,
 	SourceProject:   2,
 	SourceDirectory: 3,

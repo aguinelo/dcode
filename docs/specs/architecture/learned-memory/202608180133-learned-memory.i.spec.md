@@ -8,10 +8,14 @@ antes de haver o que aprender.
 
 ### 0. Promover a lista de invariantes
 
-- [ ] Renomear `## 10. Invariantes a garantir` para
+- [x] Renomear `## 10. Invariantes a garantir` para
       `## 10. Invariantes verificáveis` no `.p`.
-- [ ] Criar o guarda de invariantes do pacote de memória, nomeando
-      `learned-memory`, no mesmo formato dos outros dez.
+- [x] Criar o guarda de invariantes em `internal/memory/invariants_test.go`,
+      nomeando `learned-memory`.
+- [x] O que a ferramenta ainda não cumpre saiu para `## 11. Invariantes ainda
+      sem cobrança`. O `specguard` cobra **tudo** sob o título da seção 10, e
+      subseção não o detém — invariante listada lá sem teste é a afirmação vazia
+      que esta spec existe para não repetir.
 
 > Os caminhos de arquivo aqui estão escritos sem crase de propósito. O
 > `specguard` trata caminho em crase num `.i` como **afirmação de que o arquivo
@@ -26,10 +30,10 @@ cobrada no mesmo commit que a implementa.
 
 ### 1. A fonte, e sua posição na tabela
 
-- [ ] `behavior.SourceLearned`, com autoridade `0`.
-- [ ] Teste que falha se `learned` ordenar acima de qualquer fonte humana, em
+- [x] `behavior.SourceLearned`, com autoridade `0`.
+- [x] Teste que falha se `learned` ordenar acima de qualquer fonte humana, em
       toda combinação.
-- [ ] Teste que falha se alguma chave de configuração alcançar a tabela.
+- [x] Teste que falha se alguma chave de configuração alcançar a tabela.
 
 **Antes de tudo o mais, e sozinho.** Se esta parte estiver errada, todo o resto é
 um caminho para o agente reescrever as próprias restrições devagar. É a mesma
@@ -37,13 +41,13 @@ razão pela qual `Safety` foi construída antes de a sobreposição existir.
 
 ### 2. Leitura e procedência
 
-- [ ] `internal/memory`: ler `.dcode/memory.md`, devolver as memórias tipadas.
-- [ ] Arquivo ausente devolve nada, sem erro. Diretório sem `.dcode` idem.
-- [ ] Arquivo malformado devolve o que deu para ler **e diz o que não deu** —
+- [x] `internal/memory`: ler `.dcode/memory.md`, devolver as memórias tipadas.
+- [x] Arquivo ausente devolve nada, sem erro. Diretório sem `.dcode` idem.
+- [x] Arquivo malformado devolve o que deu para ler **e diz o que não deu** —
       falhar a sessão por causa de um bloco torto seria a memória tomando o
       produto de refém, o mesmo raciocínio que a gravação já segue.
-- [ ] O prefixo nomeia a procedência como aprendida.
-- [ ] Teste: workspace sem memória produz prefixo **byte-idêntico** ao anterior.
+- [x] O prefixo nomeia a procedência como aprendida.
+- [x] Teste: workspace sem memória produz prefixo **byte-idêntico** ao anterior.
 
 Neste ponto o componente é útil sozinho: uma pessoa pode escrever `.dcode/memory.md`
 à mão e o agente passa a ler. **Vale parar aqui e usar assim por um tempo** — é a
@@ -52,9 +56,9 @@ escreva.
 
 ### 3. Limite e obsolescência
 
-- [ ] Teto de `memory.max_entries`, mais recentes primeiro, corte declarado.
-- [ ] Memória cujo commit não existe mais é marcada e **permanece**.
-- [ ] Teste do corte, e teste de que nada é removido do arquivo.
+- [x] Teto de `memory.max_entries`, mais recentes primeiro, corte declarado.
+- [x] Memória cujo commit não existe mais é marcada e **permanece**.
+- [x] Teste do corte, e teste de que nada é removido do arquivo.
 
 A checagem de commit usa o instantâneo que `internal/vcs` já tira, não uma
 leitura nova: duas leituras do git na mesma sessão podem discordar, e discordar
