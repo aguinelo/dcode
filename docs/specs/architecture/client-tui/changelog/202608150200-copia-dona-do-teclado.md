@@ -47,3 +47,34 @@ teste:
   fluxo nem à linha de entrada.
 - A cópia sai por `Esc`, `q` e `Ctrl+C`, e copiar fecha o modo dizendo o que
   houve.
+
+---
+
+# `v` é uma letra
+
+**Data:** 2026-08-18
+
+Reportado de uso: *"se a primeira letra que vou digitar for `v`, ele não aceita —
+vou escrever 'voce' e sai 'oce'."*
+
+## O que era
+
+`v` abria o modo de cópia sempre que a linha de entrada estivesse **vazia** — que
+é onde toda mensagem começa. O `case "v"` devolvia antes do `Insert`, então a
+primeira letra de qualquer palavra iniciada por v era comida.
+
+No build de 13 de agosto o modo de cópia não fazia nada, então as letras
+seguintes passavam e o sintoma era só a letra faltando. Depois do #166, que fez a
+cópia realmente dominar o teclado, o mesmo atalho passaria a engolir a palavra
+inteira. **A correção de um defeito tornou o outro pior**, e só apareceu porque
+alguém usou.
+
+## O que passou a valer
+
+`v` abre a cópia **navegando o fluxo**, nunca digitando. O cursor do fluxo é o
+que separa os dois estados, e o produto já o usa assim: abaixo de zero significa
+que a linha de entrada tem o foco.
+
+**Letra que as pessoas escrevem não é atalho.** Um modo ligado a uma tecla
+comum, num estado em que toda digitação começa, é um modo que dispara por
+acidente todo dia.
