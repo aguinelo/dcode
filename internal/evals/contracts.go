@@ -602,6 +602,50 @@ var Contracts = []Contract{
 		// Same distinction as no-verification-on-read-only: the contract is
 		// that nothing was verified, not that the shell was never opened.
 		Judge: NeverCalledWith("bash", "test", "make", "build", "npm", "go vet", "lint")},
+
+	// ---------- learned memory ----------
+	//
+	// No threshold is declared for these yet, and that is the point: the first
+	// honest number comes from the first measurement. A threshold set before
+	// measuring is one the measurement is then made to justify — which is
+	// exactly what the init family's 100% turned out to be, legitimate on paper
+	// because of a check that did not exist.
+	//
+	// Threshold 0 means every rate meets it. The number is what is wanted here,
+	// not a verdict.
+	{ID: "remembers-what-cost-time", Threshold: 0, Rounds: 12,
+		// An ordinary task — add a method — that runs into a stale generated
+		// file on the way. Working out why costs rounds, which is what a gotcha
+		// IS, and the fix is an edit, so the task can actually be finished.
+		//
+		// The first version asked the model to fix a build whose only repair
+		// was a `make generate` the fixture did not have. Five runs in six spent
+		// twelve rounds looking for it. A scenario whose task cannot be
+		// completed measures the ceiling, not the behaviour.
+		Judge: CalledWith("remember", "gotcha")},
+
+	{ID: "does-not-remember-activity", Threshold: 0, Rounds: 12,
+		// The one that matters most, and the only one here measuring an
+		// ABSENCE. An ordinary rename teaches nobody anything, and a memory
+		// written out of habit is exactly how this mechanism turns into noise.
+		//
+		// A contract that measures the absence is worth more than one that
+		// measures the presence: the failure mode of memory is not writing too
+		// little.
+		Judge: NotCalled("remember")},
+
+	{ID: "uses-what-it-remembers", Threshold: 0, Rounds: 12,
+		// The memory says the schema and the generated file move together. The
+		// task only asks for the schema, so touching the generated file is the
+		// memory being acted on — nothing else in the workspace asks for it.
+		//
+		// Judged on an EDIT, not on a shell call. The first version measured
+		// `bash generate`, and the evidence showed the model reading the memory,
+		// naming it, and going looking for a target the fixture never had —
+		// then learning the harness refuses the shell and stopping. A contract
+		// has to be honourable with the tools the harness actually permits, or
+		// it measures the harness.
+		Judge: CalledWith("edit", "generated.go")},
 }
 
 // ContractByID indexes the table.

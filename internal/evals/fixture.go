@@ -12,6 +12,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/behavior"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/memory"
 )
 
 // FixtureRoot is where a scenario's material lives, relative to the package
@@ -273,6 +274,27 @@ func (f Fixture) Prompt(family string) (string, error) {
 	}, behavior.FormulationFor(family))
 }
 
+// PromptIn is the prompt for a scenario whose workspace exists on disk.
+//
+// A scenario carrying `.dcode/memory.md` in its files gets it read and rendered
+// by the PRODUCT's reader, never by a block copied into the fixture. A fixture
+// that copies product text is a fixture that drifts from it, and this suite has
+// found that four times — the reminder whose truncated copy dropped the clause
+// the judge measured is the one that cost the most.
+func (f Fixture) PromptIn(family, dir string) (string, error) {
+	if learned, err := memory.Read(dir); err == nil {
+		if block := memory.Render(learned, memory.DefaultMax, nil); block != "" {
+			f.Instructions = append(append([]behavior.Instruction(nil), f.Instructions...),
+				behavior.Instruction{
+					Source: behavior.SourceLearned,
+					Scope:  memory.FileName,
+					Text:   block,
+				})
+		}
+	}
+	return f.Prompt(family)
+}
+
 // Opening is the history a scenario starts from: the task, and the body of any
 // skill it triggers.
 //
@@ -297,8 +319,11 @@ func (f Fixture) Opening() []ce.Message {
 // hand-built list was `[]Message{{Role: RoleUser, Text: task}}`, and Assemble
 // refuses to build anything at all without a system prompt. Bypassing it
 // bypassed the refusal that would have caught this on the first run.
-func (f Fixture) Messages(family string, history []ce.Message) ([]ce.Message, error) {
-	prompt, err := f.Prompt(family)
+// dir is the scenario's workspace, because the prompt now depends on it: a
+// scenario carrying a memory has that memory in its prefix, read by the
+// product's own reader.
+func (f Fixture) Messages(family, dir string, history []ce.Message) ([]ce.Message, error) {
+	prompt, err := f.PromptIn(family, dir)
 	if err != nil {
 		return nil, err
 	}

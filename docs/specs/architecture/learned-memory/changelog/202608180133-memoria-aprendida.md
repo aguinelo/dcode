@@ -220,3 +220,128 @@ qualidade inteiro deste desenho.
 O lembrete de Camada 2 (passo 5) e os três contratos comportamentais (passo 6).
 Os dois dependem de medição: o lembrete é contrapeso para o modelo não chamar a
 ferramenta, e não se constrói contrapeso antes de medir o peso.
+
+---
+
+# A primeira medição, e o que ela custou descobrir
+
+**Data:** 2026-08-18
+
+Commit `6782893`, MiniMax-M3, 20 execuções por contrato.
+
+| contrato | medido |
+|---|---|
+| `remembers-what-cost-time` | **0,0%** |
+| `does-not-remember-activity` | **100,0%** |
+| `uses-what-it-remembers` | **5,0%** |
+
+## O que os dois primeiros dizem juntos
+
+**O modelo nunca chama `remember`.** Nenhuma vez em 40 execuções.
+
+E isso significa que `does-not-remember-activity` está passando **em vazio**. Ele
+não mede contenção — mede a mesma ausência que o primeiro, pelo outro lado. Um
+contrato que dá 100% porque a ferramenta nunca é usada não prova nada sobre
+disciplina, e vai continuar dando 100% mesmo que a disciplina desapareça.
+
+Isso não invalida o contrato: ele passa a valer no dia em que o primeiro subir.
+Mas até lá o número dele é decorativo, e registrar isso é o que impede alguém de
+o ler como garantia.
+
+## O terceiro é o que muda a leitura
+
+**5%.** A memória está no prefixo, responde diretamente à tarefa, e o agente age
+sobre ela uma vez em vinte.
+
+Não é só que ele não escreve — ele quase não lê.
+
+## O defeito de instrumento que eu mesmo criei
+
+O harness só imprimia transcrição quando o contrato **falha**. Com limiar em
+zero nada falha, então a primeira medição voltou com três números e **nenhuma
+evidência**.
+
+Escolher zero para não inventar limiar foi certo. Não perceber que isso desligava
+o digest foi erro, e é da mesma família dos que esta suíte encontra: uma decisão
+correta cujo efeito colateral ninguém verificou.
+
+Corrigido: limiar zero significa "meça e me diga", e agora imprime as
+transcrições **porque** não está julgando.
+
+## O que ainda não se sabe, e por quê importa
+
+Se 5% é o produto ou o juiz.
+
+`uses-what-it-remembers` mede `CalledWith("bash", "generate")`, e há pelo menos
+três formas de honrar o contrato sem casar com isso: dizer em prosa que é preciso
+gerar antes, desistir do shell depois da primeira recusa do harness, ou concluir
+que compila sem rodar build nenhum.
+
+É exatamente a família de defeito já encontrada no
+`warns-when-task-exceeds-budget`, onde **duas de três** transcrições mostravam o
+contrato honrado em palavras que a lista do juiz não continha.
+
+Nenhum limiar sobe antes de ler o digest. Baixar ou subir limiar contra
+instrumento não verificado é gravar o defeito na spec.
+
+---
+
+# O juiz era o problema, e o cenário também
+
+**Data:** 2026-08-18
+
+## Ler memória: 5% → 100%
+
+`uses-what-it-remembers` media `CalledWith("bash", "generate")`. A evidência
+mostrou o modelo lendo a memória e **citando-a pelo nome**:
+
+> *"…então verifico a build (lembrando da gotcha do `make generate`). Pela
+> memória do repositório, rodar `make generate` primeiro."*
+
+E indo procurar um alvo que a fixture nunca teve. As outras execuções descobriam
+que o harness recusa shell e paravam de tentar.
+
+O contrato era **honrado e reprovado assim mesmo**. Trocado para
+`CalledWith("edit", "generated.go")`: agir sobre a memória sem shell nenhum.
+
+**100% de 6.** O modelo lê o que aprendeu e age sobre isso, todas as vezes.
+
+## A regra que faltava, agora escrita
+
+**Um contrato tem de ser honrável com as ferramentas que o harness de fato
+permite**, ou mede o harness.
+
+Os dois contratos de memória foram escritos exigindo shell num harness que
+recusa shell por princípio. É a quarta vez que esta suíte encontra o juiz em vez
+do produto, e a primeira em que o mesmo autor causou duas no mesmo dia.
+
+## Escrever memória: três defeitos de fixture, um por vez
+
+**Primeira versão:** pedia consertar uma build cujo único reparo era um
+`make generate` que a fixture não tinha — o Makefile saiu junto com o `bash` e o
+README continuou apontando para ele. Cinco de seis execuções gastaram as doze
+rodadas procurando.
+
+**Segunda:** `package example` na fixture contra `package stats` no workspace
+compartilhado. O modelo gastava rodadas numa incoerência que a fixture criou.
+Fixture que sobrepõe workspace compartilhado tem de **falar a mesma língua** que
+ele.
+
+**Terceira:** a armadilha estava **ao lado** da tarefa, não dentro. O modelo
+achou e classificou corretamente:
+
+> *"isso é um erro de compilação pré-existente, não relacionado ao meu trabalho"*
+
+Concluir que erro pré-existente não é seu trabalho é defensável, talvez certo.
+**Para gravar uma memória ser natural, a descoberta tem de ser algo que o agente
+precisou resolver para terminar** — não algo que pode anotar e contornar.
+
+A quarta versão põe a descoberta no caminho crítico: o rodapé pedido exige uma
+string nova, as strings moram num arquivo marcado `DO NOT EDIT`, e não há
+gerador. Não dá para terminar sem resolver "posso editar isto, e por quê".
+
+## Nenhum limiar subiu
+
+Trocar de fixture até o número subir é ajustar o instrumento contra o resultado.
+O que está medido e vale: **ler memória, 100%**. O resto continua sem número
+honesto, e continuar sem é melhor que inventar um.

@@ -106,7 +106,15 @@ func TestEveryContract(t *testing.T) {
 			r := Measure(context.Background(), runCfg, contract.ID, contract.Threshold, attempt)
 			r.Retries = retries
 			measured = append(measured, r)
-			if !r.Met() {
+			// Evidence on failure, and evidence whenever the contract is
+			// measuring rather than judging.
+			//
+			// A threshold of zero means "measure and tell me", and a number
+			// with no transcript behind it is half of what was asked for: the
+			// first run of these came back 0%, 100% and 5% with nothing to say
+			// whether that was the product or the judge — and this suite has
+			// found the judge four times.
+			if !r.Met() || contract.Threshold == 0 {
 				if s := evidence.String(); s != "" {
 					t.Log(s)
 				}
@@ -141,7 +149,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		rounds = 1
 	}
 	for i := 0; i < rounds; i++ {
-		msgs, err := f.Messages(p.Family().Name(), history)
+		msgs, err := f.Messages(p.Family().Name(), w.Dir, history)
 		if err != nil {
 			return Transcript{}, err
 		}
