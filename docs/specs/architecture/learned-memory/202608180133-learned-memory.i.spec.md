@@ -75,10 +75,10 @@ sobre onde a sessão está é pior que não saber.
 
 ### 5. O lembrete de Camada 2
 
-- [ ] Detectar mesmo código de erro de ferramenta, mesmo caminho, duas vezes no
+- [x] Detectar mesmo código de erro de ferramenta, mesmo caminho, duas vezes no
       turno.
-- [ ] Emitir uma vez por turno; rearmar quando a situação deixar de existir.
-- [ ] Teste de que não carrega contagem no texto — número que varia entre
+- [x] Emitir uma vez por turno; rearmar quando a situação deixar de existir.
+- [x] Teste de que não carrega contagem no texto — número que varia entre
       execuções idênticas quebra a reprodutibilidade (RN-7 de `context-engine`).
 
 **Por último, e só se necessário.** É o contrapeso para o modelo não chamar

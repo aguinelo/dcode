@@ -16,6 +16,7 @@ var memoryDirs = []string{
 	filepath.Join("..", "behavior"),
 	filepath.Join("..", "app"),
 	filepath.Join("..", "tools"),
+	filepath.Join("..", "loop"),
 }
 
 var memoryInvariants = map[string]string{
@@ -38,6 +39,14 @@ var memoryInvariants = map[string]string{
 	"declara escrita no caminho":      "TestRememberDeclaresTheMemoryAndNothingElse",
 	"carrega data e commit":           "TestEveryMemoryCarriesItsProvenance",
 	"vale a partir da próxima sessão": "TestTheResultSaysItLandsNextSession",
+
+	// The Layer 2 counterweight, built because measurement said the prompt was
+	// not enough: four scenario designs, never one call.
+	"duas vezes num turno pede":     "TestTheSameWallTwiceAsksForItToBeRemembered",
+	"caminhos diferentes não pedem": "TestTwoDifferentFailuresAskForNothing",
+	"sai **uma vez** por turno":     "TestTheWallIsMentionedOnce",
+	"não é mandada chamá-la":        "TestWithoutTheToolNothingIsAsked",
+	"não carrega contagem":          "TestTheWallNoticeCarriesNoCount",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

@@ -345,3 +345,52 @@ gerador. Não dá para terminar sem resolver "posso editar isto, e por quê".
 Trocar de fixture até o número subir é ajustar o instrumento contra o resultado.
 O que está medido e vale: **ler memória, 100%**. O resto continua sem número
 honesto, e continuar sem é melhor que inventar um.
+
+---
+
+# O contrapeso, agora com peso medido
+
+**Data:** 2026-08-18
+
+Passo 5 do `.i`. Construído **depois** da medição, que era a condição.
+
+## O que a medição disse
+
+Quatro desenhos de cenário para `remembers-what-cost-time`, e **zero chamadas** à
+ferramenta em todos. O último com a tarefa completável, nenhuma execução
+estourando rodadas, e o agente terminando o trabalho sem gravar nada.
+
+Isso deixou de ser ruído. O prompt pedindo não bastou, e uma quinta frase na
+doutrina seria a terceira vez que essa abordagem falha — o mesmo caminho que o
+`plan-depth-complex` já percorreu.
+
+## O que o lembrete faz
+
+Mesma ferramenta, mesmo código de erro, **mesmo caminho**, duas vezes num turno.
+
+O caminho na chave é o que separa sinal de ruído: `read` falhando duas vezes em
+dois arquivos diferentes são dois enganos comuns; duas vezes no **mesmo** arquivo,
+do mesmo jeito, é o repositório dizendo algo que ninguém escreveu.
+
+Uma vez por turno. Lembrete que repete é lembrete que o modelo aprende a pular.
+
+## Duas coisas que o texto faz de propósito
+
+**Diz quando NÃO gravar.** *"Se foi erro seu e não algo que o repositório ensina,
+pule: memória de erro comum é ruído que a próxima sessão paga."* Sem isso o
+contrapeso vira a causa do problema que o `does-not-remember-activity` mede.
+
+**Não carrega número.** Contagem no texto varia entre execuções idênticas e
+quebra a reprodutibilidade que o `context-engine` garante (RN-7).
+
+## E não pede o que a sessão não tem
+
+Build sem a ferramenta `remember` não é mandada chamá-la. Mandar o modelo para
+uma capacidade inexistente é o defeito que este repositório já consertou uma vez
+numa mensagem de erro de ferramenta.
+
+## O que ainda não se sabe
+
+Se o lembrete faz o número subir. Ele foi construído porque a medição justificou
+a existência dele, não porque alguém provou que funciona — e medir isso é a
+próxima corrida, não esta.
