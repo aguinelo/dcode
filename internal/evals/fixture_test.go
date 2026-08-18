@@ -125,7 +125,7 @@ func TestTheAssembledCallCarriesTheDoctrine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgs, err := f.Messages("", []ce.Message{{Role: ce.RoleUser, Text: f.Task}})
+	msgs, err := f.Messages("", t.TempDir(), []ce.Message{{Role: ce.RoleUser, Text: f.Task}})
 	if err != nil {
 		t.Fatal(err)
 	}

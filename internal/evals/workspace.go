@@ -82,6 +82,10 @@ func ProductRegistry() *tools.Registry {
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{}, tools.Symbol{},
 		tools.Plan{}, tools.Bash{}, &tools.Explore{}, tools.Fetch{},
+		// Fixed provenance so a scenario's result does not change with the
+		// clock: a memory stamped with today's date would make two identical
+		// runs produce different files, and the contracts read those files.
+		tools.Remember{Commit: "eva1c0m", Today: "2026-01-01"},
 	)
 }
 

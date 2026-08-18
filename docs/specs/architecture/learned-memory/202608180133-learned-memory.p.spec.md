@@ -160,17 +160,32 @@ verdade num commit que não está mais aqui" e pesa por conta própria.
 
 Vivem em `internal/evals` e medem a metade mediada por modelo.
 
-- **`remembers-what-cost-time`** — dada uma sessão que bateu duas vezes no mesmo
-  erro de ferramenta e o resolveu, o agente grava uma `gotcha`.
-- **`does-not-remember-activity`** — dada uma sessão comum que apenas leu e
-  editou arquivos, o agente **não** grava nada. Memória escrita por hábito é como
-  isso vira ruído, e o contrato que mede a ausência é mais importante que o que
-  mede a presença.
-- **`uses-what-it-remembers`** — dada uma memória no prefixo que responde a
-  pergunta da tarefa, o agente age sobre ela em vez de redescobrir.
+| contrato | situação | comportamento esperado | limiar | fixture |
+|---|---|---|---|---|
+| `remembers-what-cost-time` | a causa de uma build quebrada custa rodadas para descobrir | grava uma `gotcha` | ≥ 0% | `testdata/evals/remembers-what-cost-time/` |
+| `does-not-remember-activity` | um rename mecânico que não ensina nada | **não grava nada** | ≥ 0% | `testdata/evals/does-not-remember-activity/` |
+| `uses-what-it-remembers` | o prefixo traz uma gotcha que responde a tarefa | age sobre ela em vez de redescobrir | ≥ 0% | `testdata/evals/uses-what-it-remembers/` |
 
-Limiares não são declarados aqui: o primeiro número honesto vem da primeira
-medição, e limiar antes de medição é limiar que a medição depois justifica.
+### Os limiares são zero, e isso não é um erro
+
+**Zero significa "meça e me diga", não "qualquer coisa serve".**
+
+O primeiro número honesto vem da primeira medição. Limiar declarado antes de
+medir é limiar que a medição depois justifica — que foi exatamente o que os 100%
+da família `init` acabaram sendo: legítimos no papel por causa de um
+conferimento que não existia.
+
+Cada zero sobe assim que houver uma corrida completa, com changelog dizendo o
+que foi observado e por que aquele número.
+
+### O que mede a ausência vale mais
+
+`does-not-remember-activity` é o mais importante dos três, e é o único que
+reprova o agente por **fazer** alguma coisa.
+
+O modo de falha da memória não é gravar de menos. É gravar atividade por hábito
+até o arquivo virar ruído que ninguém lê e que custa janela em toda sessão
+seguinte. Um contrato que mede a presença aprova um agente que grava tudo.
 
 ## 12. Changelog
 

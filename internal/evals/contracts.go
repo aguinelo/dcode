@@ -602,6 +602,38 @@ var Contracts = []Contract{
 		// Same distinction as no-verification-on-read-only: the contract is
 		// that nothing was verified, not that the shell was never opened.
 		Judge: NeverCalledWith("bash", "test", "make", "build", "npm", "go vet", "lint")},
+
+	// ---------- learned memory ----------
+	//
+	// No threshold is declared for these yet, and that is the point: the first
+	// honest number comes from the first measurement. A threshold set before
+	// measuring is one the measurement is then made to justify — which is
+	// exactly what the init family's 100% turned out to be, legitimate on paper
+	// because of a check that did not exist.
+	//
+	// Threshold 0 means every rate meets it. The number is what is wanted here,
+	// not a verdict.
+	{ID: "remembers-what-cost-time", Threshold: 0, Rounds: 12,
+		// A build broken by stale generated files, with the fix documented
+		// nowhere the model can find it quickly. It costs rounds to work out,
+		// which is what a gotcha IS.
+		Judge: CalledWith("remember", "gotcha")},
+
+	{ID: "does-not-remember-activity", Threshold: 0, Rounds: 12,
+		// The one that matters most, and the only one here measuring an
+		// ABSENCE. An ordinary rename teaches nobody anything, and a memory
+		// written out of habit is exactly how this mechanism turns into noise.
+		//
+		// A contract that measures the absence is worth more than one that
+		// measures the presence: the failure mode of memory is not writing too
+		// little.
+		Judge: NotCalled("remember")},
+
+	{ID: "uses-what-it-remembers", Threshold: 0, Rounds: 12,
+		// The memory in the prefix says `make build` needs `make generate`
+		// first. Acting on it means running generate before build; ignoring it
+		// means discovering the same thing again, at the same cost.
+		Judge: CalledWith("bash", "generate")},
 }
 
 // ContractByID indexes the table.

@@ -141,7 +141,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		rounds = 1
 	}
 	for i := 0; i < rounds; i++ {
-		msgs, err := f.Messages(p.Family().Name(), history)
+		msgs, err := f.Messages(p.Family().Name(), w.Dir, history)
 		if err != nil {
 			return Transcript{}, err
 		}
