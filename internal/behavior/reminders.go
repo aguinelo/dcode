@@ -19,6 +19,7 @@ const (
 	ReminderUnmetCriteria           ReminderKind = "unmet_criteria"
 	ReminderVerificationUnavailable ReminderKind = "verification_unavailable"
 	ReminderUnplannedChange         ReminderKind = "unplanned_change"
+	ReminderWorthRemembering        ReminderKind = "worth_remembering"
 	ReminderProtectedTouched        ReminderKind = "protected_touched"
 	ReminderInterrupted             ReminderKind = "interrupted"
 )
@@ -106,6 +107,17 @@ type SessionState struct {
 	// identical runs and reach the model through the text, which is what RN-7
 	// of the context engine forbids and why the budget texts are constants too.
 	UnplannedChange bool
+
+	// WorthRemembering reports that the turn hit the same wall twice: the same
+	// tool, the same failure, the same path. Once is a mistake; twice is the
+	// repository teaching something nobody wrote down.
+	//
+	// It exists because measurement said so. Four scenarios, four designs, and
+	// the model never once called `remember` on its own — so the prompt asking
+	// for it was not enough, and a fifth sentence in the same place would be the
+	// third time that failed. A reminder is the other layer: nothing until the
+	// situation exists, and delivered at the moment it is being missed.
+	WorthRemembering bool
 	// VerificationUnavailable reports that files changed and no criterion was
 	// able to run at all.
 	//
@@ -185,6 +197,19 @@ func Emit(s SessionState) []Reminder {
 				"The person watching sees the plan, not this reasoning — without one " +
 				"they cannot follow the work or stop it early, which is the whole " +
 				"reason the plan is a tool and not a paragraph.",
+		})
+	}
+
+	if s.WorthRemembering {
+		out = append(out, Reminder{
+			Kind: ReminderWorthRemembering,
+			Text: "You have hit the same wall twice in this turn. If working it out " +
+				"cost you rounds, it will cost the next session the same unless it is " +
+				"written down: call `remember` with a `gotcha`. " +
+				"Not what you did — what this repository does that nobody documented. " +
+				"If it was your own mistake rather than something the repository " +
+				"teaches, skip it: a memory of an ordinary error is noise the next " +
+				"session pays for.",
 		})
 	}
 

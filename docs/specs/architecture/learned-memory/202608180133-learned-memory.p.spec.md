@@ -155,6 +155,11 @@ verdade num commit que não está mais aqui" e pesa por conta própria.
 - `remember` declara escrita no caminho da memória, e em nenhum outro.
 - Toda memória gravada carrega data e commit, do mesmo instantâneo que o prefixo.
 - O resultado de `remember` diz que a memória vale a partir da próxima sessão.
+- Mesma ferramenta, mesmo código de erro, mesmo caminho, duas vezes num turno pede uma `gotcha`.
+- Dois erros em caminhos diferentes não pedem nada.
+- O pedido sai **uma vez** por turno.
+- Sessão sem a ferramenta `remember` não é mandada chamá-la.
+- O pedido não carrega contagem: número que varia entre execuções idênticas quebra a reprodutibilidade (RN-7 de `context-engine`).
 
 ## 11. Contratos comportamentais
 

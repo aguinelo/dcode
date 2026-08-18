@@ -158,6 +158,15 @@ type Engine struct {
 	// seenDirs carries — but a session that plans, finishes, and sprawls again
 	// on a second task is in the position it was in the first time.
 	toldUnplanned bool
+
+	// walls counts, per turn, how often a tool failed the same way on the same
+	// path. Keyed by tool, code and path, because "read failed" twice on two
+	// different files is two ordinary misses; twice on the SAME file is the
+	// repository saying something.
+	walls map[string]int
+	// toldWorthRemembering latches the notice. Once per turn: repeating it every
+	// round would be nagging about a fact that has not changed.
+	toldWorthRemembering bool
 	// lastReport is what the most recent done check found, so the client can
 	// show the seal and the turn can report what was left.
 	lastReport Report
@@ -438,6 +447,10 @@ type batchFacts struct {
 	Denied      []string
 	TouchedDirs []string
 	Compacted   bool
+	// Walls are the failures this batch produced, keyed by tool, code and path.
+	// Collected here for the same reason Denied is: once a result is in history
+	// there is no way to tell one failure from another.
+	Walls []string
 	// BudgetCrossed is set only on the iteration a band is crossed upward.
 	BudgetCrossed ce.Band
 }
@@ -460,6 +473,7 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 
 	results := make([]ce.Message, len(execs))
 	denied := make([]string, len(execs))
+	walls := make([]string, len(execs))
 	facts := batchFacts{}
 
 	for _, ex := range execs {
@@ -486,8 +500,9 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 				// Results land at the emission index, never at completion
 				// order. That is what keeps history reproducible and
 				// golden-testable regardless of which call finished first.
-				msg, refused := e.runOne(ctx, turnID, ex)
+				msg, refused, wall := e.runOne(ctx, turnID, ex)
 				results[ex.Index] = msg
+				walls[ex.Index] = wall
 				if refused {
 					denied[ex.Index] = ex.Call.Name
 				}
@@ -499,6 +514,11 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 	for _, name := range denied {
 		if name != "" {
 			facts.Denied = append(facts.Denied, name)
+		}
+	}
+	for _, w := range walls {
+		if w != "" {
+			facts.Walls = append(facts.Walls, w)
 		}
 	}
 	return results, facts
@@ -524,6 +544,7 @@ func (e *Engine) reminders(f batchFacts) []ce.Message {
 	}
 	st.OutOfChain = e.outOfChain(f.TouchedDirs)
 	st.UnplannedChange = e.unplannedChange()
+	st.WorthRemembering = e.hitTheSameWallTwice(f)
 
 	var out []ce.Message
 	for _, r := range behavior.Emit(st) {
@@ -563,7 +584,7 @@ func (e *Engine) outOfChain(dirs []string) []behavior.OutOfChainInstruction {
 // runOne evaluates policy, asks for approval if needed, and executes. The
 // second return reports a refusal by the user, which is not the same thing as
 // an error and must not be reported as one.
-func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (ce.Message, bool) {
+func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (ce.Message, bool, string) {
 	fail := func(msg string) ce.Message {
 		return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 			ToolCallID: ex.Call.ID, Output: msg, IsError: true,
@@ -571,11 +592,11 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 	}
 
 	if ex.Err != nil {
-		return fail(ex.Err.Error()), false
+		return fail(ex.Err.Error()), false, ""
 	}
 	tool, ok := e.cfg.Tools.Get(ex.Call.Name)
 	if !ok {
-		return fail(fmt.Sprintf("tool %q is not available", ex.Call.Name)), false
+		return fail(fmt.Sprintf("tool %q is not available", ex.Call.Name)), false, ""
 	}
 
 	// Every execution passes through the evaluator. There is no alternative
@@ -584,11 +605,11 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 	if verdict.Decision == policy.DecisionEscalate {
 		d, err := e.askApproval(ctx, turnID, ex, verdict)
 		if err != nil || d == protocol.ApprovalDeny {
-			return fail(fmt.Sprintf("denied: %s", verdict.Reason)), true
+			return fail(fmt.Sprintf("denied: %s", verdict.Reason)), true, ""
 		}
 	}
 	if verdict.Decision == policy.DecisionDeny {
-		return fail(fmt.Sprintf("not permitted: %s", verdict.Reason)), false
+		return fail(fmt.Sprintf("not permitted: %s", verdict.Reason)), false, ""
 	}
 
 	// Measured around Execute only: the wait for an approval is the user's
@@ -602,7 +623,7 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 	// duration: which of two concurrent calls actually went first is a fact a
 	// duration cannot answer.
 	if err != nil {
-		return fail(err.Error()), false
+		return fail(err.Error()), false, ""
 	}
 
 	e.emit(protocol.EventToolCompleted, protocol.ToolCompleted{
@@ -623,7 +644,28 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 	return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 		ToolCallID: ex.Call.ID, Output: res.Output,
 		IsError: res.IsError, Truncated: res.Truncated,
-	}}, false
+	}}, false, wallKey(ex, res)
+}
+
+// wallKey identifies a failure precisely enough that hitting it twice means
+// something.
+//
+// Tool, code and path together. "read failed" twice on two different files is
+// two ordinary misses; twice on the SAME file, the same way, is the repository
+// saying something nobody wrote down. Without the path it would fire on any two
+// unrelated errors, which is how a reminder becomes noise and gets ignored.
+func wallKey(ex ToolExecution, res tools.Result) string {
+	if !res.IsError {
+		return ""
+	}
+	var path string
+	for _, a := range ex.Declare.Paths {
+		if a.Path != "" {
+			path = a.Path
+			break
+		}
+	}
+	return ex.Call.Name + "|" + res.Code + "|" + path
 }
 
 func (e *Engine) evaluate(req policy.Request) policy.Verdict {
@@ -1092,4 +1134,42 @@ func (e *Engine) deliverSteering(turnID string) {
 			ce.Message{Role: ce.RoleUser, Text: text})
 		e.emit(protocol.EventTurnSteered, protocol.TurnSteered{TurnID: turnID, Text: text})
 	}
+}
+
+// hitTheSameWallTwice reports that this turn has failed the same way twice on
+// the same path, and that nobody has been told yet.
+//
+// It exists because measurement said the prompt was not enough: across four
+// scenario designs the model never once called `remember` on its own. A fifth
+// sentence in the doctrine would be the third time that approach failed. A
+// reminder is the other layer — nothing until the situation exists, delivered
+// at the moment it is being missed.
+//
+// Latched per turn. Repeating it every round would be nagging about a fact that
+// has not changed, and a reminder that repeats is one the model learns to skip.
+func (e *Engine) hitTheSameWallTwice(f batchFacts) bool {
+	if e.cfg.Tools == nil {
+		return false
+	}
+	if _, ok := e.cfg.Tools.Get("remember"); !ok {
+		// Nothing to ask for. Telling the model to call a tool this build does
+		// not carry sends it somewhere that does not exist — the defect this
+		// codebase already fixed once in a tool error message.
+		return false
+	}
+	if e.walls == nil {
+		e.walls = map[string]int{}
+	}
+	hit := false
+	for _, w := range f.Walls {
+		e.walls[w]++
+		if e.walls[w] >= 2 {
+			hit = true
+		}
+	}
+	if !hit || e.toldWorthRemembering {
+		return false
+	}
+	e.toldWorthRemembering = true
+	return true
 }
