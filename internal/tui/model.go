@@ -205,6 +205,18 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Window = s.ContextWindow
 		}
 
+	case protocol.EventTurnSteered:
+		// The person's own words, in the stream as the person. From the event
+		// rather than echoed locally, for the reason turn.started already
+		// records: the only copy would live in the client that did the typing,
+		// and a second client would see the turn change direction for no
+		// visible reason.
+		var d protocol.TurnSteered
+		_ = json.Unmarshal(ev.Payload, &d)
+		if d.Text != "" {
+			m.Entries = append(m.Entries, Entry{Kind: KindUser, Summary: d.Text})
+		}
+
 	case protocol.EventTurnStarted:
 		var d protocol.TurnStarted
 		_ = json.Unmarshal(ev.Payload, &d)

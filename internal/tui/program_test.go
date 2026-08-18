@@ -20,12 +20,14 @@ import (
 type fakeTransport struct {
 	mu         sync.Mutex
 	submitted  []string
+	steered    []string
 	interrupts int
 	resolved   []protocol.ApprovalDecision
 	created    []protocol.CreateSessionRequest
 	sessions   []protocol.Session
 
 	submitErr error
+	steerErr  error
 	listErr   error
 	createErr error
 	getErr    error
@@ -76,6 +78,19 @@ func (f *fakeTransport) Submit(_ context.Context, _, text string, imgs ...protoc
 	f.submitted = append(f.submitted, text)
 	f.submittedImages = append(f.submittedImages, len(imgs))
 	return f.submitErr
+}
+
+func (f *fakeTransport) Steer(_ context.Context, _, text string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.steered = append(f.steered, text)
+	return f.steerErr
+}
+
+func (f *fakeTransport) steers() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.steered...)
 }
 
 func (f *fakeTransport) Undo(context.Context, string) (protocol.UndoResult, error) {
@@ -201,41 +216,90 @@ func TestBlankInputSubmitsNothing(t *testing.T) {
 	}
 }
 
-// The protocol refuses a concurrent turn; queueing is what turns the refusal
-// into a usable experience.
-func TestInputIsQueuedWhileRunningAndDrainsAsOneTurn(t *testing.T) {
+// Words typed while a turn runs steer it: they reach the running turn at its
+// next round rather than waiting for it to end.
+//
+// This replaces queuing for ordinary input, and the invariant it replaces was
+// true for a good reason that no longer holds — the protocol refuses a second
+// TURN, and a correction is not one. Watching a turn go wrong with two options,
+// let it finish or kill it and lose what it learned, is what queuing cost.
+func TestWordsTypedMidTurnSteerIt(t *testing.T) {
 	p, tr := newProgram(t)
 	p.model.State = protocol.SessionStateRunning
 
-	run(t, p, typeLine(t, p, "one"))
-	run(t, p, typeLine(t, p, "two"))
-	if len(tr.submits()) != 0 {
-		t.Fatalf("nothing may be sent mid-turn, got %v", tr.submits())
-	}
+	run(t, p, typeLine(t, p, "use tabs"))
+	run(t, p, typeLine(t, p, "and stop at three"))
 
-	// A third is refused loudly rather than dropped.
-	run(t, p, typeLine(t, p, "three"))
-	var refused bool
+	if got := tr.submits(); len(got) != 0 {
+		t.Errorf("a correction opened a second turn: %v", got)
+	}
+	got := tr.steers()
+	if len(got) != 2 || got[0] != "use tabs" || got[1] != "and stop at three" {
+		t.Errorf("steered %v, want both in typing order", got)
+	}
+	if len(p.model.Queue) != 0 {
+		t.Errorf("a correction was queued as well: %v", p.model.Queue)
+	}
+	// Not echoed locally: turn.steered carries it, exactly as turn.started does
+	// for the question that opens a turn. Echoing too would show it twice.
 	for _, e := range p.model.Entries {
-		if e.Kind == KindError && strings.Contains(e.Summary, "queue is full") {
-			refused = true
+		if e.Kind == KindUser && strings.Contains(e.Summary, "use tabs") {
+			t.Error("the correction was echoed locally as well as by the event")
 		}
 	}
-	if !refused {
-		t.Error("a full queue must say so")
-	}
+}
 
-	// Going idle drains everything into one turn.
-	_, cmd := p.Update(eventMsg(ev(t, 1, protocol.EventTurnCompleted,
-		protocol.TurnCompleted{TurnID: "t1"})))
-	drainBatch(t, p, cmd)
+// The event is what puts it on screen, so a second client watching the same
+// session sees the turn change direction and why.
+func TestASteeredTurnShowsWhatWasSaid(t *testing.T) {
+	p, _ := newProgram(t)
+	p.Update(eventMsg(ev(t, 1, protocol.EventTurnSteered,
+		protocol.TurnSteered{TurnID: "t1", Text: "use tabs"})))
+
+	var found bool
+	for _, e := range p.model.Entries {
+		if e.Kind == KindUser && strings.Contains(e.Summary, "use tabs") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a correction reached the session and nothing showed it")
+	}
+}
+
+// An attached picture holds the message back. An image is about a question, and
+// the steering path carries text only — sending half the pair now would ask the
+// model about something it cannot see.
+func TestAnAttachedImageHoldsTheMessageBack(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.State = protocol.SessionStateRunning
+	p.model.Attached = []protocol.TurnImage{{MediaType: "image/png", Data: "eA=="}}
+
+	run(t, p, typeLine(t, p, "what is wrong here"))
+
+	if len(tr.steers()) != 0 {
+		t.Error("a message with a picture was steered without its picture")
+	}
+	if len(p.model.Queue) != 1 {
+		t.Errorf("queue = %v, want the message held for the next turn", p.model.Queue)
+	}
+}
+
+// The turn can end between the keystroke and the request. Losing the message
+// there would lose the most deliberate thing a person does during a turn, so a
+// refusal becomes what would have happened had they typed it a moment later.
+func TestACorrectionThatArrivedTooLateBecomesAMessage(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.State = protocol.SessionStateIdle
+
+	run(t, p, func() tea.Cmd {
+		_, cmd := p.Update(steerLateMsg{"use tabs"})
+		return cmd
+	}())
 
 	got := tr.submits()
-	if len(got) != 1 {
-		t.Fatalf("the queue must become exactly one turn, got %v", got)
-	}
-	if !strings.Contains(got[0], "one") || !strings.Contains(got[0], "two") {
-		t.Errorf("got %q", got[0])
+	if len(got) != 1 || got[0] != "use tabs" {
+		t.Errorf("submitted %v, want the late correction sent as a message", got)
 	}
 }
 
@@ -1021,7 +1085,11 @@ func TestEnterSendsWithTheMenuOpen(t *testing.T) {
 func TestCtrlXRemovesTheOldestQueuedMessage(t *testing.T) {
 	p, _ := newProgram(t)
 	p.model.State = protocol.SessionStateRunning
+	// A picture is what still puts typed text in the queue: ordinary words now
+	// steer, and half a pair is not sent.
+	p.model.Attached = []protocol.TurnImage{{MediaType: "image/png", Data: "eA=="}}
 	run(t, p, typeLine(t, p, "primeira"))
+	p.model.Attached = []protocol.TurnImage{{MediaType: "image/png", Data: "eA=="}}
 	run(t, p, typeLine(t, p, "segunda"))
 	if len(p.model.Queue) != 2 {
 		t.Fatalf("setup: %v", p.model.Queue)

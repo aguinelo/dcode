@@ -152,6 +152,15 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	// a crossing through the log and blocks until a client answers, which is
 	// what lets any attached client resolve it.
 	var sess *session.Session
+	// Bound late, like the emitter and the approver above it: the engine is
+	// built before the session that holds the queue exists.
+	opts.Steer = func() string {
+		if sess == nil {
+			return ""
+		}
+		return sess.TakeSteering()
+	}
+
 	appSession, err := New(opts,
 		emitterFunc(func(t protocol.EventType, payload any) {
 			if sess != nil {

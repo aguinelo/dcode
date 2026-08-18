@@ -26,6 +26,9 @@ type Session struct {
 
 	Log    *EventLog
 	engine *loop.Engine
+	// steering is what the person said while a turn was running, waiting for
+	// the next round to deliver it.
+	steering []string
 
 	// Standing is the record of decisions that outlive the session. Optional:
 	// without one the session asks every time, which is what it did before.
@@ -123,6 +126,17 @@ func (s *Session) Submit(text string, images ...ce.Image) error {
 
 	go func() {
 		defer func() {
+			// Anything still queued was meant for the turn that just ended.
+			// Carrying it forward would deliver "no, do it the other way"
+			// about work the model is no longer doing, so it is dropped and
+			// said out loud rather than silently.
+			if left := s.dropSteering(); len(left) > 0 {
+				s.Emit(protocol.EventSessionError, protocol.Error{
+					Code: protocol.CodeNoActiveTurn,
+					Message: fmt.Sprintf("the turn ended before %d message(s) reached it; send them again",
+						len(left)),
+				})
+			}
 			s.mu.Lock()
 			if s.state != protocol.SessionStateClosed {
 				s.state = protocol.SessionStateIdle

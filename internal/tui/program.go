@@ -26,6 +26,7 @@ type Transport interface {
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
 	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
 	Interrupt(ctx context.Context, id string) error
+	Steer(ctx context.Context, id, text string) error
 	Undo(ctx context.Context, id string) (protocol.UndoResult, error)
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
 	Subscribe(ctx context.Context, id string, from uint64) (<-chan protocol.Event, <-chan error)
@@ -245,6 +246,16 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, p.waitForEvent())
 		return p, tea.Batch(cmds...)
+
+	case steerLateMsg:
+		// The turn ended between the keystroke and the request. Queue it, which
+		// is what would have happened had they typed it a moment later.
+		if p.model.State == protocol.SessionStateIdle {
+			return p, p.submit(msg.text)
+		}
+		m, _ := p.model.Enqueue(msg.text, p.opts.QueueMax)
+		p.model = m
+		return p, nil
 
 	case errMsg:
 		p.fatal = msg.err.Error()
@@ -606,6 +617,19 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 	// A line that starts a turn is NOT echoed: turn.started carries it, and
 	// echoing as well would show it twice.
 	if p.model.State != protocol.SessionStateIdle {
+		// Mid-turn, ordinary words steer: they reach the running turn at its
+		// next round instead of waiting for it to end. Watching a turn go wrong
+		// with two options — let it finish, or kill it and lose what it learned
+		// — is the friction this removes.
+		//
+		// A picture still waits. An image is about a question and the steering
+		// path carries text only; sending half the pair now would ask the model
+		// about something it cannot see.
+		if len(p.model.Attached) == 0 {
+			// Not echoed here: turn.steered carries it, and echoing as well
+			// would show it twice — the same rule turn.started already follows.
+			return p, p.steer(r.Text)
+		}
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindUser, Summary: line})
 		m, ok := p.model.Enqueue(r.Text, p.opts.QueueMax)
 		p.model = m
@@ -687,6 +711,12 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 	return note("/" + r.Name + " is not implemented")
 }
 
+// sendOrQueue is for built-ins, which cost a whole turn.
+//
+// They queue rather than steer, and the difference is the point: `/init` mid-turn
+// is not a correction to the work in flight, it is a second job. Steering carries
+// what the person wants CHANGED about what is happening; a built-in carries
+// something else to do next.
 func (p *program) sendOrQueue(text string) (tea.Model, tea.Cmd) {
 	if p.model.State != protocol.SessionStateIdle {
 		m, _ := p.model.Enqueue(text, p.opts.QueueMax)
@@ -695,6 +725,30 @@ func (p *program) sendOrQueue(text string) (tea.Model, tea.Cmd) {
 	}
 	return p, p.submit(text)
 }
+
+// steer sends a correction to the running turn, and falls back to the queue
+// when the turn ended in the meantime.
+//
+// The race is real and unavoidable: the turn can finish between the keystroke
+// and the request. Dropping the message there would lose the most deliberate
+// thing a person does during a turn, so a refusal becomes the queue — which is
+// what would have happened had they typed it a moment later.
+func (p *program) steer(text string) tea.Cmd {
+	return func() tea.Msg {
+		err := p.opts.Transport.Steer(p.ctx, p.opts.SessionID, text)
+		if err == nil {
+			return nil
+		}
+		var perr *protocol.Error
+		if errors.As(err, &perr) && perr.Code == protocol.CodeNoActiveTurn {
+			return steerLateMsg{text}
+		}
+		return errMsg{err}
+	}
+}
+
+// steerLateMsg is a correction that arrived after its turn ended.
+type steerLateMsg struct{ text string }
 
 func (p *program) onApprovalKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	id := p.model.Pending.ApprovalID

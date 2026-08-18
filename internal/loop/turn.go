@@ -111,6 +111,15 @@ type Config struct {
 	//
 	// Nil leaves the seal as it was — staleness unknown, never asserted.
 	WriteSeq func() uint64
+	// Steer hands over what the person said while this turn was running, or ""
+	// when they said nothing. Called once at the top of every round.
+	//
+	// A puller rather than a channel: the session owns the engine, so the
+	// session is what holds the queue, and a channel here would be a second
+	// place for a message to sit and be forgotten. Nil is the old behaviour and
+	// costs nothing.
+	Steer func() string
+
 	// Sleep is how the loop waits out a backoff. Injectable for the same reason
 	// Now is: a test that asserts retry behaviour should not spend fifteen
 	// seconds proving it. Nil means the real one.
@@ -233,6 +242,10 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 		if err := ctx.Err(); err != nil {
 			return e.finishInterrupted(out), nil
 		}
+
+		// Before compaction, so a correction is part of what compaction sees
+		// rather than something appended to a window already measured.
+		e.deliverSteering(turnID)
 
 		// Compaction is checked exactly once per iteration, here and nowhere
 		// else. A second check point is how compaction becomes incremental by
@@ -1055,4 +1068,28 @@ func (e *Engine) Undo() (restored, refused []string, err error) {
 		return nil, nil, nil
 	}
 	return e.cfg.State.Undo()
+}
+
+// deliverSteering puts what the person said mid-turn into the conversation.
+//
+// As the person, never as a reminder. A reminder is the product talking, and
+// filing a correction as one misattributes the most important thing anybody
+// says during a turn — the model would weigh it as machinery rather than as the
+// user changing their mind.
+//
+// Drained until empty, in order: two corrections reordered is one instruction
+// answering the wrong question.
+func (e *Engine) deliverSteering(turnID string) {
+	if e.cfg.Steer == nil {
+		return
+	}
+	for {
+		text := e.cfg.Steer()
+		if strings.TrimSpace(text) == "" {
+			return
+		}
+		e.session.History = append(e.session.History,
+			ce.Message{Role: ce.RoleUser, Text: text})
+		e.emit(protocol.EventTurnSteered, protocol.TurnSteered{TurnID: turnID, Text: text})
+	}
 }

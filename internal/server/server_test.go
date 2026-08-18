@@ -12,8 +12,12 @@ import (
 	"testing"
 	"time"
 
+	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/session"
+	"github.com/aguinelo/dcode/internal/tools"
 	"github.com/aguinelo/dcode/pkg/client"
 )
 
@@ -845,5 +849,108 @@ func TestAMalformedImageIsRefused(t *testing.T) {
 		MediaType: "image/png", Data: "not base64 at all!!",
 	}); err == nil {
 		t.Fatal("a malformed image was accepted")
+	}
+}
+
+// Steering travels the same wire as everything else, so the correction reaches
+// the session a second client is watching.
+func TestSteeringOverTheWire(t *testing.T) {
+	c, mgr := newDaemon(t)
+	ctx := context.Background()
+
+	s, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Nothing is running, so it is refused — and the refusal is the one that
+	// says there is nothing to correct, not the one that says wait.
+	err = c.Steer(ctx, s.ID, "use tabs")
+	if err == nil {
+		t.Fatal("steering an idle session reported success")
+	}
+	if !strings.Contains(err.Error(), protocol.CodeNoActiveTurn) {
+		t.Errorf("err = %v, want no_active_turn", err)
+	}
+
+	// With a turn actually running it is accepted and comes back out for the
+	// loop. A real turn, not a flag flipped in a test: what the handler does is
+	// map the session's answer, and a session pretending to run would not have
+	// one to map.
+	live := runningSession(t, mgr)
+	if err := c.Steer(ctx, live.ID, "use tabs"); err != nil {
+		t.Fatalf("steering a running turn failed: %v", err)
+	}
+	if got := live.TakeSteering(); got != "use tabs" {
+		t.Errorf("the correction did not reach the session: %q", got)
+	}
+}
+
+// blockingProvider holds a turn open until its context is cancelled, which is
+// what a long turn looks like from the outside.
+type blockingProvider struct{}
+
+func (blockingProvider) Family() provider.Family       { return nil }
+func (blockingProvider) Transport() provider.Transport { return nil }
+func (blockingProvider) Window(string) (int, error)    { return 1_000_000, nil }
+func (blockingProvider) Limits() provider.Limits       { return provider.Limits{} }
+
+func (blockingProvider) Stream(ctx context.Context, _ provider.Request) (<-chan provider.StreamEvent, error) {
+	ch := make(chan provider.StreamEvent)
+	go func() {
+		defer close(ch)
+		<-ctx.Done()
+	}()
+	return ch, nil
+}
+
+// runningSession adds a session with a turn genuinely under way.
+func runningSession(t *testing.T, mgr *session.Manager) *session.Session {
+	t.Helper()
+	eng := loop.New(loop.Config{
+		Provider: blockingProvider{},
+		Limits:   loop.DefaultLimits(),
+		Tools:    tools.NewRegistry(),
+	}, ce.Session{Instructions: "x"})
+	s := session.New("running-1", "/tmp", "m", "read-only", eng,
+		session.NewEventLog("running-1", 10, nil), time.Now)
+	if err := mgr.Add(s); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+
+	if err := s.Submit("go"); err != nil {
+		t.Fatalf("starting a turn: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if s.State() == protocol.SessionStateRunning {
+			return s
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("the turn never started")
+	return nil
+}
+
+// A session that is not there is a 404 the caller can act on, not a silent
+// success that looks like the correction landed.
+func TestSteeringAnUnknownSessionIsRefused(t *testing.T) {
+	c, _ := newDaemon(t)
+	if err := c.Steer(context.Background(), "never-existed", "hello"); err == nil {
+		t.Fatal("steering a session that does not exist reported success")
+	}
+}
+
+// Nothing to say is refused at the edge rather than reaching the session.
+func TestSteeringWithNothingToSayIsRefused(t *testing.T) {
+	c, _ := newDaemon(t)
+	ctx := context.Background()
+	s, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Steer(ctx, s.ID, "   "); err == nil {
+		t.Fatal("an empty correction was accepted")
 	}
 }
