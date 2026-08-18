@@ -23,10 +23,6 @@ import (
 // allowlist would grow silently every time someone found this test
 // inconvenient; a reason has to be written and can be argued with.
 var exportedWithoutUser = map[string]string{
-	// Satisfying an interface someone else calls.
-	"Init":   "tea.Model; bubbletea calls it, nothing here does",
-	"Update": "tea.Model; bubbletea calls it, nothing here does",
-
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.
 	"DeleteSession": "pkg/client is the public API; a consumer deletes sessions",

@@ -79,7 +79,7 @@ func dispatch(args []string) error {
 // flag would make `dcode "-v is not being passed"` an error nobody expects.
 func opensTheInterface(args []string) bool {
 	switch args[0] {
-	case "-r", "--continue", "-continue", "--resume", "-resume":
+	case "-r", "-c", "--continue", "-continue", "--resume", "-resume":
 		return true
 	}
 	return false

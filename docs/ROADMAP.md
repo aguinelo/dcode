@@ -250,6 +250,15 @@ directory in a `defer`; a TUI killed outside that path leaves it. Seven of them 
 four days of use, zero bytes each. A leak of count rather than of space, and
 unlike the session record it has no pruning policy at all.
 
+**The unused-name guard cannot tell a second declaration from a user.** It counts
+identifier occurrences and calls a name used when the count exceeds one. Adding a
+second bubbletea model made `Init` and `Update` look used — nothing in the
+repository calls either; the count rose because two types now declare them. The
+excuses had to be removed to stay green, so those two names are now unguarded and
+the map no longer records why they were exempt. Counting declarations separately
+from uses would fix it, and until then any interface method implemented twice
+loses its excuse silently.
+
 **Learned memory has no user-level scope.** Deliberately out of scope in the
 spec: a gotcha from one project applied to another is worse than none. Revisit
 only with evidence from project scope.

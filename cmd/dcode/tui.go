@@ -39,10 +39,16 @@ func runTUI(args []string) error {
 		// Continuing and attaching look alike and are not. Attaching joins a
 		// session that is still running; continuing starts a new one carrying
 		// the conversation of one that ended.
-		cont   = fs.Bool("continue", false, "continue the most recent session for this workspace")
-		resume = fs.String("resume", "", "continue a recorded session by id")
+		cont = fs.Bool("continue", false, "continue the most recent session for this workspace")
+		// Picking and continuing are also different, and the split is the one
+		// people already know from other harnesses: continue takes the last
+		// one, resume asks which. Asking is the safer default for a workspace
+		// somebody has used all week, and taking the last is the faster one for
+		// the session they just closed.
+		pick = fs.Bool("resume", false, "choose which recorded session to continue")
 	)
-	fs.BoolVar(cont, "r", false, "shorthand for --continue")
+	fs.BoolVar(cont, "c", false, "shorthand for --continue")
+	fs.BoolVar(pick, "r", false, "shorthand for --resume")
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "dcode tui — open the terminal interface\n\nFlags:\n")
 		fs.PrintDefaults()
@@ -95,9 +101,16 @@ func runTUI(args []string) error {
 		c = embedded
 	}
 
-	carry := *resume
+	// An id given as a bare argument continues that one without asking, which
+	// is what `dcode -r <id>` reads as and what `dcode sessions` prints ids for.
+	carry := fs.Arg(0)
 	if *cont && carry == "" {
 		if carry, err = latestSession(recordDir(resolved), ws); err != nil {
+			return err
+		}
+	}
+	if *pick && carry == "" {
+		if carry, err = pickSession(ctx, recordDir(resolved), ws, geometry(*noPanel), resolved); err != nil {
 			return err
 		}
 	}
@@ -118,13 +131,7 @@ func runTUI(args []string) error {
 		return err
 	}
 
-	w, h := terminalSize()
-	geo := tui.DefaultGeometry(w, h)
-	if *noPanel {
-		geo.PanelMode = tui.PanelHidden
-	}
-	geo.Unicode = supportsUnicode(os.Getenv)
-	geo.Palette = tui.Palette{Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)}
+	geo := geometry(*noPanel)
 
 	return tui.Run(ctx, tui.Options{
 		SessionID:     sess.ID,
@@ -139,16 +146,68 @@ func runTUI(args []string) error {
 		Lookup:        lookup(resolved),
 		// Resolved at the edge, once. The client package renders and never
 		// reads the environment, the same way it never builds its own palette.
-		Lang: tui.Resolve(func(k string) string {
-			if k == "DCODE_LANG" {
-				if v := resolved.String("ui.lang", ""); v != "" {
-					return v
-				}
-			}
-			return os.Getenv(k)
-		}),
+		Lang:   langOf(resolved),
 		Notice: versionNotice,
 	})
+}
+
+// geometry reads the terminal once. Built here rather than in the client for
+// the reason the language is: the client renders and never reads the
+// environment.
+func geometry(noPanel bool) tui.Geometry {
+	w, h := terminalSize()
+	geo := tui.DefaultGeometry(w, h)
+	if noPanel {
+		geo.PanelMode = tui.PanelHidden
+	}
+	geo.Unicode = supportsUnicode(os.Getenv)
+	geo.Palette = tui.Palette{Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)}
+	return geo
+}
+
+// langOf resolves the interface language at the edge, once. The client package
+// renders and never reads the environment, the same way it never builds its own
+// palette.
+func langOf(resolved config.Resolved) tui.Lang {
+	return tui.Resolve(func(k string) string {
+		if k == "DCODE_LANG" {
+			if v := resolved.String("ui.lang", ""); v != "" {
+				return v
+			}
+		}
+		return os.Getenv(k)
+	})
+}
+
+// pickSession asks which conversation to continue.
+//
+// An empty answer is not a failure: somebody who opened the list and changed
+// their mind gets a fresh session, which is what Esc means everywhere else
+// here.
+func pickSession(ctx context.Context, dir, ws string, geo tui.Geometry, resolved config.Resolved) (string, error) {
+	found, err := session.Browse(dir, ws)
+	if err != nil {
+		return "", err
+	}
+	return tui.Pick(ctx, choicesFrom(found), geo, langOf(resolved))
+}
+
+// choicesFrom is the listing as a list somebody picks from.
+//
+// A session nobody asked anything in is nothing to continue, and it is most of
+// what a record directory holds: one is written every time the interface opens.
+// Offering them would bury the four real conversations under thirty empty ones.
+func choicesFrom(found []session.Summary) []tui.SessionChoice {
+	var out []tui.SessionChoice
+	for _, s := range found {
+		if s.Turns == 0 {
+			continue
+		}
+		out = append(out, tui.SessionChoice{
+			ID: s.ID, Title: s.Title, Turns: s.Turns, When: s.Started,
+		})
+	}
+	return out
 }
 
 // healthy reports whether a daemon answers, with a short deadline: this runs
