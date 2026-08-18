@@ -425,6 +425,17 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	toolLimits := tools.DefaultLimits()
 	toolLimits.EditEchoDiff = opts.EditEchoDiff
 	toolLimits.SymbolMaxMatches = opts.SymbolMaxMatches
+	// Frozen here, with the instruction chain and for the same reason: a fact
+	// that changed halfway through a session is worse than one the model knows
+	// is a snapshot. The read is bounded and a directory that is not a
+	// repository produces nothing at all.
+	//
+	// Read before the tools rather than beside the prompt, because `remember`
+	// stamps a memory with the same commit the prefix describes. Two readings of
+	// git in one session can disagree, and disagreeing about where the session
+	// is is worse than not knowing.
+	repo := vcs.Read(context.Background(), opts.Workspace)
+
 	// explore is registered as a pointer because its delegator is the engine,
 	// which does not exist yet: the registry is what the engine is built with.
 	// The knot is tied after, and it is the only one of its kind here.
@@ -448,6 +459,12 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	}
 	if opts.Delegate {
 		toolset = append(toolset, explore)
+	}
+	if opts.Memory {
+		toolset = append(toolset, tools.Remember{
+			Commit: headOf(repo),
+			Today:  time.Now().Format(time.DateOnly),
+		})
 	}
 	registry := tools.NewRegistry(toolset...)
 	// After the registry, because the session's tool names are what an error
@@ -557,12 +574,6 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// sentence is the silent-filter failure refused everywhere else. What
 	// changes is that the attempt is now visible.
 	safetyNotices := behavior.SafetyClaims(instructions)
-
-	// Frozen here, with the instruction chain and for the same reason: a fact
-	// that changed halfway through a session is worse than one the model knows
-	// is a snapshot. The read is bounded and a directory that is not a
-	// repository produces nothing at all.
-	repo := vcs.Read(context.Background(), opts.Workspace)
 
 	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts), repo)
 	if err != nil {
@@ -1127,4 +1138,18 @@ func knownCommits(workspace string, f memory.File) map[string]bool {
 		shas = append(shas, e.Commit)
 	}
 	return vcs.Known(context.Background(), workspace, shas)
+}
+
+// headOf is the commit a memory written now was true at.
+//
+// Taken from the snapshot the prefix already describes rather than asked of git
+// again: the two have to agree about where the session is. The log's first line
+// is "<short sha> <subject>", and the short sha is what `git cat-file` accepts
+// when the memory is checked for staleness later.
+func headOf(r *behavior.Repo) string {
+	if r == nil || len(r.Commits) == 0 {
+		return ""
+	}
+	sha, _, _ := strings.Cut(r.Commits[0], " ")
+	return sha
 }

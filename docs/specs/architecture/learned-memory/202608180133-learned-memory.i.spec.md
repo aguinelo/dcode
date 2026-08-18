@@ -66,12 +66,12 @@ sobre onde a sessão está é pior que não saber.
 
 ### 4. A ferramenta
 
-- [ ] `tools.Remember`: tipo, assunto, corpo.
-- [ ] Declara escrita no caminho da memória, e em nenhum outro.
-- [ ] Recusa tipo fora da lista, nomeando os três.
-- [ ] Recusa assunto vazio.
-- [ ] Acrescenta; nunca reescreve o que estava lá.
-- [ ] Teste de que a memória escrita **não** altera o prefixo da sessão corrente.
+- [x] `tools.Remember`: tipo, assunto, corpo.
+- [x] Declara escrita no caminho da memória, e em nenhum outro.
+- [x] Recusa tipo fora da lista, nomeando os três.
+- [x] Recusa assunto vazio.
+- [x] Acrescenta; nunca reescreve o que estava lá.
+- [x] Teste de que a memória escrita **não** altera o prefixo da sessão corrente.
 
 ### 5. O lembrete de Camada 2
 

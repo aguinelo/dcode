@@ -149,23 +149,14 @@ verdade num commit que não está mais aqui" e pesa por conta própria.
 - Memória sem procedência é memória válida: arquivo escrito à mão não é rejeitado.
 - Lista de tipos fechada em três; qualquer outro é recusado.
 - Workspace sem memória, e memória desligada, produzem o prefixo de antes.
-
-## 11. Invariantes ainda sem cobrança
-
-> Fora da seção acima **de propósito**. O `specguard` cobra tudo que estiver sob
-> `## Invariantes verificáveis`, e uma invariante listada lá sem teste é a
-> afirmação vazia que esta spec existe para não repetir. Estas ficam aqui até o
-> passo 4 do `.i`; movê-las para cima é parte do commit que as implementa.
-
 - `remember` recusa tipo fora dos três e nomeia os três na recusa.
 - `remember` recusa assunto vazio.
 - `remember` acrescenta e nunca reescreve o que já estava no arquivo.
 - `remember` declara escrita no caminho da memória, e em nenhum outro.
-- Memória escrita durante a sessão não altera o prefixo dessa sessão (RN-5 de
-  `context-engine`); não há caminho de código para isso.
-- Toda memória gravada carrega data e commit.
+- Toda memória gravada carrega data e commit, do mesmo instantâneo que o prefixo.
+- O resultado de `remember` diz que a memória vale a partir da próxima sessão.
 
-## 12. Contratos comportamentais
+## 11. Contratos comportamentais
 
 Vivem em `internal/evals` e medem a metade mediada por modelo.
 
@@ -181,6 +172,6 @@ Vivem em `internal/evals` e medem a metade mediada por modelo.
 Limiares não são declarados aqui: o primeiro número honesto vem da primeira
 medição, e limiar antes de medição é limiar que a medição depois justifica.
 
-## 13. Changelog
+## 12. Changelog
 
 - [202608180133 — Memória aprendida](changelog/202608180133-memoria-aprendida.md)
