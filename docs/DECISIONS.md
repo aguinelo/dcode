@@ -797,3 +797,79 @@ vida, então não há janela em que alguém consentiu com um instante e concedeu
 era. E a regra de tempo de vida vira **posse** — a tabela de processos mora no
 estado de sessão — em vez de um passo de faxina que alguém precisa lembrar de
 escrever.
+
+---
+
+## Learned memory — designed, not built
+
+### Write via tool, read via prefix
+
+The line that decided git state in the prefix, applied again. A fact needed
+every turn belongs in the prefix; an act with consequences is a tool. The branch
+is a fact, so it went into the prefix. Remembering is an act, so it is a tool —
+and reading what was remembered is a fact, so it goes back into the prefix.
+
+One sentence settles both halves, and neither needs a mechanism of its own. It
+also settles the objection that would otherwise be fair: if a tool the model
+must remember to call was the wrong shape for git, why is it the right shape
+here? Because the two are different kinds of thing, and the rule names the
+difference rather than the case.
+
+### The memory lives in the user's repository
+
+Not in a state directory, not in a database, not in a parallel wiki. A wrong
+memory does not sit still: the agent reads its own mistake back as fact and acts
+on it with more confidence than the first time. Decay by disuse does not fix
+that. Only somebody seeing it in a diff fixes it.
+
+Review is the only quality gate this design has, so every other choice in the
+format exists to keep review possible — append rather than rewrite, plain
+markdown, no front matter, no identifiers. A three-line change that renders as a
+whole-file diff is a review that does not happen.
+
+### Nothing learned outranks anything a person wrote
+
+`learned` sits at authority 0, below `user`, with no configuration key to invert
+it. The same reasoning that keeps `Safety` out of the doctrine overlay: a
+guarantee a setting can switch off is not a guarantee.
+
+Without this rule, the memory is the path by which the agent slowly rewrites its
+own constraints — each session appending a note that the next session reads as
+established fact.
+
+### No end-of-session consolidator
+
+The reference design in this space runs an LLM at session end to distil
+observations into pages. Three things rule it out here: it is a model call
+nobody asked for, running after the person stopped watching; it is the
+daemon-with-hooks shape this project already refused twice; and it writes where
+nobody reviews.
+
+The strongest evidence against it came from the author of that system, who
+reports **six weeks of silent data loss** from a wrong hook key. That is what
+happens when a product depends on a coupling neither side verifies — the same
+shape of defect this repository keeps finding in itself.
+
+What is worth copying from there, and was already doctrine here: simple storage,
+simple index, no vector database.
+
+### The contract that matters measures absence
+
+Of the three behavioural contracts planned, `does-not-remember-activity` is the
+important one: an ordinary session that only read and edited must record
+nothing.
+
+Memory written out of habit is exactly how this mechanism turns into noise, and
+a contract that measures the absence is worth more than one that measures the
+presence.
+
+### What the spec deliberately leaves open
+
+The 40-entry prefix cap is a starting value with no observation behind it, and
+the `.config` says so in as many words. Fixing a ceiling by reasoning and never
+revisiting it is the mistake `EVAL_TIMEOUT` made twice, killing one run at 180m
+and another at 480m.
+
+The three contract thresholds are undeclared. The first honest number comes from
+the first measurement; a threshold set before measuring is a threshold the
+measurement is then made to justify.

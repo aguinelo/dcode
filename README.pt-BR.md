@@ -249,6 +249,7 @@ Detalhes em [`docs/conventions/SDD-HARNESS.pt-BR.md`](docs/conventions/SDD-HARNE
 | [configuration](docs/specs/architecture/configuration/) | determinístico | layout XDG, cadeia de precedência, comandos |
 | [client-tui](docs/specs/architecture/client-tui/) | determinístico | layout, painel de plano, modal de aprovação |
 | [distribution](docs/specs/architecture/distribution/) | determinístico | instalação, release assinado, atualização |
+| [learned-memory](docs/specs/architecture/learned-memory/) | misto | o que o agente descobre, versionado onde gente lê — **só desenho, não construído** |
 
 ---
 
@@ -389,7 +390,7 @@ aprovação, Enter nega.
 
 | Fase | Entrega | Estado |
 |---|---|---|
-| **0** | `go.mod`, CI com `-race`, gate de 90%, `CGO_ENABLED=0` | ✅ |
+| **0** | `go.mod`, CI com `-race`, gate de cobertura, `CGO_ENABLED=0` | ✅ |
 | **1** | vocabulário de tipos do protocolo | ✅ 100% coberto |
 | **2** | motor de contexto — o `Assemble` puro | ✅ 99% |
 | **3** | provider — transporte × família, os dois dialetos | ✅ 91% |
@@ -400,12 +401,12 @@ aprovação, Enter nega.
 | **8** | log de eventos, socket unix, SSE, cliente de referência | ✅ 95% / 92% / 93% |
 | **9** | cliente TUI, comandos, skills, lembretes, distribuição | ✅ 95% / 96% / 92% |
 
-Todo pacote está acima do gate de 90%; a suíte roda sob `-race`.
+O gate agregado é de **95%** e todo pacote passa do próprio piso de 90%; a suíte roda sob `-race` no macOS e no Linux.
 
 Depois do MVP: múltiplos providers, MCP, plugins, sessão compartilhada, desktop, IDE.
 
 **Marco de auto-hospedagem.** Um pull request ao dcode escrito de ponta a ponta pelo
-dcode, aprovado na revisão e passando o gate de 90%, sem edição manual. É a melhor eval
+dcode, aprovado na revisão e passando o gate de cobertura, sem edição manual. É a melhor eval
 que o projeto tem: a própria suíte de testes e o checklist de revisão viram função de
 aptidão. A mitigação de viés é obrigatória — manter uma base de código não-Go nas fixtures
 de eval, senão o agente fica excelente em Go e medíocre no resto sem a métrica acusar.
@@ -493,7 +494,7 @@ vermelho não é rede de segurança.
 confirme que ele falha pelo sintoma relatado, então corrija, e o mesmo teste passa sem ser
 alterado. PR de `fix:` sem teste novo é bloqueado. Teste de regressão é permanente.
 
-**Gate de cobertura de 90%**, com denominador explícito: código determinístico em
+**Gate de cobertura: 95% agregado, 90% por pacote**, com denominador explícito: código determinístico em
 `internal/` e `pkg/`. Código gerado, wiring de `main` e caminhos mediados por modelo ficam
 de fora — o último porque não é verificável por asserção de forma alguma, só por limiar
 medido sobre fixtures. Essa exclusão é pressão deliberada na direção certa.
