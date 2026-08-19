@@ -212,6 +212,10 @@ type Sandbox interface {
 - As regras efetivas são inspecionáveis por `--config`, com procedência.
 - Workspace sob `/tmp` continua visível dentro do sandbox: o `tmpfs` é montado antes dele, nunca por cima.
 
+- Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
+- Socket de runtime de contêiner é coberto no Linux, e um socket real deixa de ser socket dentro do sandbox.
+- `full-access` mantém a concessão ampla: modo que não promete fronteira não finge estreitá-la.
+
 - `workspace-write` concede os diretórios que uma toolchain precisa para compilar: cache e temporário do usuário.
 - Nenhuma regra concede o diretório home; o que é concedido é nomeado um a um.
 - `read-only` não concede nenhum deles — o modo significa o mesmo nos dois backends.

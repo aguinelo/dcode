@@ -120,8 +120,28 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 		return "", fmt.Errorf("sandbox: unknown mode %q", mode)
 	}
 
-	if permits(s.allowNetwork) || mode == policy.ModeFullAccess {
+	switch {
+	case mode == policy.ModeFullAccess:
+		// This mode claims no boundary. Narrowing it would be pretending to
+		// confine something that says it does not.
 		b.WriteString("(allow network*)\n")
+	case permits(s.allowNetwork):
+		// The grant is for the network, not for this machine's own daemons.
+		// `(allow network*)` also covers unix sockets, and a unix socket is
+		// how an unconfined privileged process is reached: hand over
+		// /var/run/docker.sock and `docker run -v /:/host` writes anywhere on
+		// the machine, as root, from inside workspace-write.
+		//
+		// Found by the harness in itself. Asked to fix a guard, and reasoning
+		// about the Linux side of CI, a model ran `docker version`, `docker
+		// images` and then `docker run --rm ubuntu:26.10 ...` from inside the
+		// sandbox. All three succeeded, and nothing was asked.
+		b.WriteString("(allow network-outbound (remote ip \"*:*\"))\n")
+		// Denying every unix socket denies name resolution too: getaddrinfo
+		// talks to mDNSResponder over one. It is named because it resolves
+		// names — it does not act on the caller's behalf, which is the
+		// property that separates it from a container runtime's socket.
+		b.WriteString("(allow network-outbound (literal \"/private/var/run/mDNSResponder\"))\n")
 	}
 	return b.String(), nil
 }
@@ -140,6 +160,11 @@ type bubblewrap struct {
 	bin          string
 	allowNetwork func() bool
 	scratch      []string
+	// sockets are the unix sockets that lead out of the sandbox — see
+	// LocalSockets. Named here rather than consulted from the environment,
+	// for the same reason scratch is: this package builds profiles and does
+	// not read the world.
+	sockets []string
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -252,6 +277,31 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 			"--die-with-parent", "--chdir", workdir}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown mode %q", mode)
+	}
+
+	if mode != policy.ModeFullAccess {
+		// A unix socket on a path is not in any network namespace, so
+		// --unshare-net does not cover it and the read-only bind of / does not
+		// either: connecting to a socket is not a write. Each one is covered
+		// with /dev/null, which is not a socket, so connect fails in the
+		// kernel.
+		//
+		// This is a list, and a list is weaker than a boundary — on macOS the
+		// profile denies every unix socket instead. Here the whole filesystem
+		// is bound by design, so the sockets have to be named. Naming them is
+		// worse than denying them and better than handing them over.
+		for _, p := range b.sockets {
+			// bubblewrap refuses a bind whose source or target is absent, and
+			// the refusal takes down the whole command rather than the one
+			// mount.
+			if !exists(p) {
+				continue
+			}
+			// Not canonicalised: bubblewrap resolves the target itself, and
+			// a path that resolves differently here than inside would cover
+			// the wrong thing.
+			args = append(args, "--ro-bind", "/dev/null", p)
+		}
 	}
 
 	if !permits(b.allowNetwork) && mode != policy.ModeFullAccess {
