@@ -212,8 +212,13 @@ type Sandbox interface {
 - As regras efetivas são inspecionáveis por `--config`, com procedência.
 - Workspace sob `/tmp` continua visível dentro do sandbox: o `tmpfs` é montado antes dele, nunca por cima.
 
+- `workspace-write` concede os diretórios que uma toolchain precisa para compilar: cache e temporário do usuário.
+- Nenhuma regra concede o diretório home; o que é concedido é nomeado um a um.
+- `read-only` não concede nenhum deles — o modo significa o mesmo nos dois backends.
+- Ambiente ausente ou nulo não concede nada, e não derruba a sessão.
 ## 7. Changelog
 
 - [202608091700 — Regras por caminho e por comando](changelog/202608091700-regras-por-caminho-e-comando.md)
 - [202608150300 — Workspace sob /tmp](changelog/202608150300-workspace-sob-tmp.md)
 - [202608190030 — Trabalho comum não pergunta, destruição pergunta sempre](changelog/202608190030-trabalho-comum-nao-pergunta.md)
+- [202608190130 — Uma toolchain alcança o próprio cache](changelog/202608190130-a-toolchain-alcanca-o-proprio-cache.md)

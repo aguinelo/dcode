@@ -32,6 +32,7 @@ func canonical(p string) string {
 type seatbelt struct {
 	bin          string
 	allowNetwork func() bool
+	scratch      []string
 }
 
 func (s *seatbelt) Name() string { return BackendSeatbelt }
@@ -41,7 +42,7 @@ func (s *seatbelt) Available() error {
 }
 
 func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
-	profile, err := s.profile(workdir, mode)
+	profile, err := s.profile(workdir, mode, s.scratch)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode polic
 //
 // Deny by default, then grant the minimum: anything not named here is refused
 // by the kernel rather than by us.
-func (s *seatbelt) profile(workdir string, mode policy.SandboxMode) (string, error) {
+func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, caches []string) (string, error) {
 	if workdir == "" {
 		return "", fmt.Errorf("sandbox: workdir is required")
 	}
@@ -79,6 +80,12 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode) (string, err
 		// like the sandbox is broken rather than doing its job.
 		for _, p := range []string{"/tmp", "/private/tmp", "/private/var/tmp", "/dev"} {
 			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", p)
+		}
+		// And the toolchain's own caches, which live outside the workspace
+		// because they are shared across projects. Named one by one rather
+		// than by granting the home that contains them.
+		for _, p := range caches {
+			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", canonical(p))
 		}
 	case policy.ModeFullAccess:
 		b.WriteString("(allow file-write*)\n")
@@ -105,6 +112,7 @@ func permits(decide func() bool) bool { return decide != nil && decide() }
 type bubblewrap struct {
 	bin          string
 	allowNetwork func() bool
+	scratch      []string
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -144,7 +152,7 @@ On Ubuntu 24.04 and later this is usually AppArmor; see
 /etc/apparmor.d/ and the kernel.apparmor_restrict_unprivileged_userns sysctl.`
 
 func (b *bubblewrap) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
-	args, err := b.args(workdir, mode)
+	args, err := b.args(workdir, mode, b.scratch)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +162,7 @@ func (b *bubblewrap) Wrap(ctx context.Context, workdir, command string, mode pol
 	return cmd, nil
 }
 
-func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, error) {
+func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, caches []string) ([]string, error) {
 	if workdir == "" {
 		return nil, fmt.Errorf("sandbox: workdir is required")
 	}
@@ -184,6 +192,16 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, er
 		}
 	case policy.ModeWorkspaceWrite:
 		args = append(args, "--tmpfs", "/tmp", "--bind", workdir, workdir)
+		// The toolchain's caches, bound writable one by one. A cache under
+		// /tmp is already covered by the tmpfs and binding it again would put
+		// the host's copy back over the fresh one.
+		for _, p := range caches {
+			p = canonical(p)
+			if under(p, "/tmp") || under(p, workdir) {
+				continue
+			}
+			args = append(args, "--bind", p, p)
+		}
 	case policy.ModeFullAccess:
 		args = []string{"--bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
 			"--die-with-parent", "--chdir", workdir}

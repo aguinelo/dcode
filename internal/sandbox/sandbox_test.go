@@ -74,7 +74,7 @@ func TestRunnerWithoutASandboxRefuses(t *testing.T) {
 
 func TestSeatbeltProfileDeniesByDefault(t *testing.T) {
 	s := &seatbelt{bin: "sandbox-exec"}
-	p, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	p, err := s.profile("/w", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestSeatbeltProfileDeniesByDefault(t *testing.T) {
 
 func TestSeatbeltReadOnlyGrantsNoWrite(t *testing.T) {
 	s := &seatbelt{bin: "sandbox-exec"}
-	p, err := s.profile("/w", policy.ModeReadOnly)
+	p, err := s.profile("/w", policy.ModeReadOnly, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestSeatbeltReadOnlyGrantsNoWrite(t *testing.T) {
 
 func TestSeatbeltWorkspaceWriteIsScopedToTheWorkspace(t *testing.T) {
 	s := &seatbelt{bin: "sandbox-exec"}
-	p, err := s.profile("/Users/x/proj", policy.ModeWorkspaceWrite)
+	p, err := s.profile("/Users/x/proj", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,13 +110,13 @@ func TestSeatbeltWorkspaceWriteIsScopedToTheWorkspace(t *testing.T) {
 
 func TestSeatbeltNetworkIsDeniedUnlessGranted(t *testing.T) {
 	denied := &seatbelt{bin: "sandbox-exec"}
-	p, _ := denied.profile("/w", policy.ModeWorkspaceWrite)
+	p, _ := denied.profile("/w", policy.ModeWorkspaceWrite, nil)
 	if strings.Contains(p, "(allow network") {
 		t.Errorf("network must be denied by default:\n%s", p)
 	}
 
 	granted := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return true }}
-	p, _ = granted.profile("/w", policy.ModeWorkspaceWrite)
+	p, _ = granted.profile("/w", policy.ModeWorkspaceWrite, nil)
 	if !strings.Contains(p, "(allow network") {
 		t.Errorf("network should be granted when configured:\n%s", p)
 	}
@@ -124,17 +124,17 @@ func TestSeatbeltNetworkIsDeniedUnlessGranted(t *testing.T) {
 
 func TestSeatbeltRejectsAnUnknownMode(t *testing.T) {
 	s := &seatbelt{bin: "sandbox-exec"}
-	if _, err := s.profile("/w", policy.SandboxMode("yolo")); err == nil {
+	if _, err := s.profile("/w", policy.SandboxMode("yolo"), nil); err == nil {
 		t.Error("an unknown mode must be rejected, never treated as permissive")
 	}
-	if _, err := s.profile("", policy.ModeWorkspaceWrite); err == nil {
+	if _, err := s.profile("", policy.ModeWorkspaceWrite, nil); err == nil {
 		t.Error("an empty workdir must be rejected")
 	}
 }
 
 func TestBubblewrapUnsharesTheNetworkUnlessGranted(t *testing.T) {
 	b := &bubblewrap{bin: "bwrap"}
-	args, err := b.args("/w", policy.ModeWorkspaceWrite)
+	args, err := b.args("/w", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestBubblewrapUnsharesTheNetworkUnlessGranted(t *testing.T) {
 	}
 
 	b.allowNetwork = func() bool { return true }
-	args, _ = b.args("/w", policy.ModeWorkspaceWrite)
+	args, _ = b.args("/w", policy.ModeWorkspaceWrite, nil)
 	if contains(args, "--unshare-net") {
 		t.Errorf("network should stay when granted: %v", args)
 	}
@@ -151,7 +151,7 @@ func TestBubblewrapUnsharesTheNetworkUnlessGranted(t *testing.T) {
 
 func TestBubblewrapReadOnlyBindsNothingWritable(t *testing.T) {
 	b := &bubblewrap{bin: "bwrap"}
-	args, err := b.args("/w", policy.ModeReadOnly)
+	args, err := b.args("/w", policy.ModeReadOnly, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestBubblewrapReadOnlyBindsNothingWritable(t *testing.T) {
 
 func TestBubblewrapWorkspaceWriteBindsOnlyTheWorkspace(t *testing.T) {
 	b := &bubblewrap{bin: "bwrap"}
-	args, err := b.args("/home/u/proj", policy.ModeWorkspaceWrite)
+	args, err := b.args("/home/u/proj", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,10 +189,10 @@ func TestBubblewrapWorkspaceWriteBindsOnlyTheWorkspace(t *testing.T) {
 
 func TestBubblewrapRejectsBadInput(t *testing.T) {
 	b := &bubblewrap{bin: "bwrap"}
-	if _, err := b.args("/w", policy.SandboxMode("nope")); err == nil {
+	if _, err := b.args("/w", policy.SandboxMode("nope"), nil); err == nil {
 		t.Error("an unknown mode must be rejected")
 	}
-	if _, err := b.args("", policy.ModeWorkspaceWrite); err == nil {
+	if _, err := b.args("", policy.ModeWorkspaceWrite, nil); err == nil {
 		t.Error("an empty workdir must be rejected")
 	}
 }
@@ -318,7 +318,7 @@ func TestTheNetworkDecisionIsAskedPerCommandNotOncePerSession(t *testing.T) {
 	granted := false
 	s := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return granted }}
 
-	before, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	before, err := s.profile("/w", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +328,7 @@ func TestTheNetworkDecisionIsAskedPerCommandNotOncePerSession(t *testing.T) {
 
 	granted = true
 
-	after, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	after, err := s.profile("/w", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestTheNetworkDecisionIsAskedPerCommandNotOncePerSession(t *testing.T) {
 // was asked about, and a panic takes down the session over a nil field.
 func TestAnAbsentNetworkDecisionIsRefusedRatherThanAssumed(t *testing.T) {
 	s := &seatbelt{bin: "sandbox-exec"} // nothing wired
-	profile, err := s.profile("/w", policy.ModeWorkspaceWrite)
+	profile, err := s.profile("/w", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestAnAbsentNetworkDecisionIsRefusedRatherThanAssumed(t *testing.T) {
 	}
 
 	b := &bubblewrap{bin: "bwrap"}
-	args, err := b.args("/w", policy.ModeWorkspaceWrite)
+	args, err := b.args("/w", policy.ModeWorkspaceWrite, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

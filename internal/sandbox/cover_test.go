@@ -160,7 +160,7 @@ func TestCanonicalFallsBackToTheInput(t *testing.T) {
 }
 
 func TestFullAccessProfileGrantsEverything(t *testing.T) {
-	p, err := (&seatbelt{bin: "x"}).profile("/w", policy.ModeFullAccess)
+	p, err := (&seatbelt{bin: "x"}).profile("/w", policy.ModeFullAccess, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestFullAccessProfileGrantsEverything(t *testing.T) {
 		t.Errorf("full-access must grant both:\n%s", p)
 	}
 
-	args, err := (&bubblewrap{bin: "x"}).args("/w", policy.ModeFullAccess)
+	args, err := (&bubblewrap{bin: "x"}).args("/w", policy.ModeFullAccess, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

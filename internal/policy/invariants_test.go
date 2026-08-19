@@ -24,6 +24,11 @@ var sandboxDirs = []string{
 }
 
 var sandboxInvariants = map[string]string{
+	"que uma toolchain precisa":              "TestAToolchainCanWriteToItsOwnCache",
+	"Nenhuma regra concede o diretório home": "TestTheHomeDirectoryIsNeverGranted",
+	"não concede nenhum deles":               "TestReadOnlyGrantsNoCache",
+	"não concede nada, e não derruba":        "TestANilEnvironmentGrantsNothingAndDoesNotPanic",
+
 	"é pura: mesma entrada":            "TestEvaluateIsPure",
 	"Toda combinação das tabelas":      "TestModeTableIsComplete",
 	"nunca devolve `allow` para":       "TestReadOnlyNeverAllowsAWrite",
