@@ -8,13 +8,22 @@
 set -euo pipefail
 
 PROFILE="${1:-coverage.out}"
-# Agregado e por pacote sao numeros diferentes, e passaram a ser dois ajustes.
+# Agregado e por pacote sao 90, e sao o mesmo numero de proposito.
 #
-# O agregado sobe para 95: o piso de 90 foi alcancado e ficar nele deixa a
-# margem virar folga onde codigo novo entra sem teste. O por pacote fica em 90,
-# que e o que os cinco .i.spec.md exigem — subir esse tambem transformaria a
-# regra das specs em outra coisa, sem changelog que o diga.
-MIN="${DCODE_COVERAGE_MIN:-95}"
+# O agregado esteve em 95 por um tempo, no valor exato que a arvore media. Um
+# gate colado no medido reprova por geografia e por arredondamento, nao por
+# codigo sem teste, e foi o que aconteceu: tres PRs numa noite, nenhum deles por
+# falta de teste. Volta para 90, que e o que os seis .i.spec.md pedem.
+#
+# O que muda de natureza e o por pacote. Ele era impresso e ignorado — regra
+# declarada que um lado le e nenhum lado escreve, a forma que este repositorio
+# nao para de encontrar em si mesmo. Com o agregado em 90 ele passa a ser o
+# unico piso que morde: media boa escondendo pacote fraco e exatamente o que
+# ninguem procura.
+#
+# Percentual nao cobra cenario critico. Isso e invariante em spec, e quem cobra
+# e o specguard — ver docs/conventions/TESTING.md secao 3.
+MIN="${DCODE_COVERAGE_MIN:-90}"
 MIN_PKG="${DCODE_COVERAGE_MIN_PKG:-90}"
 
 [ -f "$PROFILE" ] || { echo "cobertura: perfil '$PROFILE' nao encontrado"; exit 1; }
@@ -54,10 +63,12 @@ PER_PKG="$(tail -n +2 "$FILTERED" | awk '
 
 BELOW="$(printf '%s\n' "$PER_PKG" | awk -v m="$MIN_PKG" '$2+0 < m+0 { printf "  %s %s%%\n", $1, $2 }')"
 if [ -n "$BELOW" ]; then
-  printf 'pacotes abaixo de %s%% por conta propria:\n%s' "$MIN_PKG" "$BELOW"
+  printf 'FALHA: pacotes abaixo de %s%% por conta propria:\n%s\n' "$MIN_PKG" "$BELOW"
+  go tool cover -func="$FILTERED" | awk -v m="$MIN_PKG" '$3+0 < m+0 && $1 != "total:" { print "  " $0 }'
+  exit 1
 fi
 awk -v t="$TOTAL" -v m="$MIN" 'BEGIN { exit !(t+0 >= m+0) }' || {
-  echo "FALHA: cobertura abaixo do gate"
+  echo "FALHA: cobertura agregada abaixo do gate"
   go tool cover -func="$FILTERED" | awk -v m="$MIN_PKG" '$3+0 < m+0 && $1 != "total:" { print "  " $0 }'
   exit 1
 }

@@ -895,3 +895,32 @@ emit a profile of every package. What cannot be mixed is the mode, so
 Measured on the run that failed: Ubuntu 94.9%, macOS 95.0%, union 95.0%. The
 union is not a rounding trick — it is the only number that describes the
 program rather than a runner.
+
+### Coverage relaxes to the floor the specs ask for
+
+The aggregate gate goes back to 90%, and the per-package floor of 90% starts
+failing instead of merely printing.
+
+95% was set at the exact value the tree measured. A gate pinned to the measured
+value fails on rounding and on platform geography rather than on untested code,
+which is what it then did: three pull requests in one night, none of them for a
+missing test. It also broke the sentence in the testing convention two
+paragraphs above it — never raise to a number the tree does not clear
+comfortably.
+
+90% is not a new number. Six `.i.spec.md` files already require it per package,
+and the tree clears it everywhere: the thinnest is `internal/credential` at
+90.9% on the union of the matrix.
+
+What changes character is the per-package line. It was computed, printed and
+ignored — a declared rule that one side reads and no side writes, which is the
+defect this repository keeps finding in itself. While the aggregate sat at 95 it
+did the per-package job by accident; at 90 it does none, so the floor has to
+bite.
+
+The counterweight to a looser percentage is not a tighter percentage. It is
+naming what must be asserted regardless: security-boundary crossings, paths
+where the user's data can disappear, every bug seen once, and every invariant
+declared in an `.i.spec.md`. Only the last is machine-enforced, by `specguard`,
+which is exactly why a critical scenario should be written as an invariant
+rather than trusted to prose.
