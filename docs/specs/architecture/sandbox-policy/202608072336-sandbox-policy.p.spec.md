@@ -213,6 +213,8 @@ type Sandbox interface {
 - Workspace sob `/tmp` continua visível dentro do sandbox: o `tmpfs` é montado antes dele, nunca por cima.
 
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
+- Rede concedida inclui escutar: uma suíte que não abre porta não roda.
+- Socket unix é alcançável exatamente onde já se pode escrever — e `read-only`, que não escreve em lugar nenhum, não alcança nenhum.
 - Socket de runtime de contêiner é coberto no Linux, e um socket real deixa de ser socket dentro do sandbox.
 - `full-access` mantém a concessão ampla: modo que não promete fronteira não finge estreitá-la.
 
