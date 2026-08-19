@@ -51,11 +51,15 @@ func TestEveryContract(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// The first failing run is kept so the report can show what the
-			// model actually did. A rate on its own cannot be acted on: 0% of
-			// 20 reads as "the model gets this wrong" and is just as often
-			// "the scenario cannot reach the behaviour it judges", and those
-			// two need opposite fixes.
+			// Up to MaxEvidence distinct failing transcripts are kept, so the
+			// report can show what the model actually did. A rate on its own
+			// cannot be acted on: 0% of 20 reads as "the model gets this
+			// wrong" and is just as often "the scenario cannot reach the
+			// behaviour it judges", and those two need opposite fixes.
+			//
+			// Distinct, because twenty runs failing the same way are one
+			// finding — spending the cap on copies is how the second cause
+			// stays invisible.
 			evidence := NewEvidence(MaxEvidence)
 			retries := 0
 			// A transport error is not behaviour. Two full runs came back
