@@ -54,20 +54,48 @@ obvious that the case exists because something actually broke once.
 
 ---
 
-## 3. Coverage gate: 95% aggregate, 90% per package
+## 3. Coverage: a 90% floor, and critical scenarios tested
 
-CI fails below **95%** line coverage over the whole denominator, and reports any
-package under **90%** on its own.
+CI fails below **90%** line coverage over the whole denominator, **and** below
+**90%** in any single package on its own.
 
-Two numbers, because they answer different questions. The per-package floor is
-what five `.i.spec.md` files require, and it exists so a weak package cannot
-hide behind stronger ones. The aggregate is the one that ratchets: 90% was
-reached and staying there turned the margin into slack where new code arrived
-untested.
+The two numbers are equal on purpose. The aggregate answers "is there a package
+with no tests at all?"; the per-package floor answers "is there a weak package
+hiding behind a strong one?". While the aggregate sat at 95 it did the second
+job by accident, and the floor could be printed and ignored. With the aggregate
+at 90 the floor is the only one that bites, so it now fails rather than reports.
+
+### Why 90 and not 95
+
+The aggregate sat at 95, at the exact value the tree measured. A gate pinned to
+the measured value fails on rounding and on platform geography, not on untested
+code — and that is what happened: three pull requests in one night, none of them
+for a missing test. 90 is the number the six `.i.spec.md` files already ask for
+in their own package, and the number the tree clears comfortably.
 
 Raise the aggregate when it is comfortably clear, never to a number the tree
 does not already meet — a gate that is red on arrival is a gate people learn to
-ignore.
+ignore. That is the sentence the move to 95 broke, on the page that writes it.
+
+### Critical scenarios are tested, whatever the percentage says
+
+A percentage measures how much code ran, never what was asserted. These have
+tests because they are what the product promises, and no good number excuses
+any of them:
+
+- **every crossing of a security boundary** — a policy decision, sandbox
+  containment, reading or writing a credential;
+- **every path where the user's data can disappear** — session recording, the
+  event log, context compaction;
+- **every bug seen once**, with the reproducing test from section 2;
+- **every invariant declared** under `## N. Invariantes verificáveis` in an
+  `.i.spec.md`.
+
+The last is the only one a machine enforces, and that is why it exists:
+`specguard` fails an invariant that names no existing test, and fails a family
+that declares invariants without a guard. A critical scenario that never becomes
+an invariant is worth what a sentence is worth — and this repository knows that
+price. When you find one, write the invariant.
 
 ```bash
 go test -race -coverprofile=coverage.out ./...
@@ -153,7 +181,8 @@ exactly verifiable. That is the same architectural goal described in `SDD-HARNES
 - [ ] New code came from a test that failed first.
 - [ ] `fix:` ships with a reproducing test that failed before the fix.
 - [ ] `go test -race ./...` is clean.
-- [ ] Coverage ≥ 95% over the defined denominator, and no package under 90%.
+- [ ] Coverage ≥ 90% over the defined denominator, and no package under 90%.
+- [ ] Any critical scenario the change touches is asserted, and written as an invariant.
 - [ ] No new test without assertions.
 - [ ] Any new coverage exclusion is justified in the pull request description.
 - [ ] Spec kept in sync, if technical behavior changed.

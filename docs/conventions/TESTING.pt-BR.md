@@ -42,18 +42,48 @@ Teste de reprodução nunca é removido, nem "simplificado" em refatoração. No
 
 ---
 
-## 3. Gate de cobertura: 95% agregado, 90% por pacote
+## 3. Cobertura: piso de 90%, e cenário crítico testado
 
-A CI falha abaixo de **95%** de cobertura de linha sobre o denominador inteiro,
-e reporta todo pacote abaixo de **90%** por conta própria.
+A CI falha abaixo de **90%** de cobertura de linha sobre o denominador inteiro,
+**e** abaixo de **90%** em qualquer pacote por conta própria.
 
-São dois números porque respondem a perguntas diferentes. O piso por pacote é o
-que os cinco `.i.spec.md` exigem, e existe para que pacote fraco não se esconda
-atrás de pacote forte. O agregado é o que sobe: os 90% foram alcançados, e ficar
-neles transformava a margem em folga por onde código novo entrava sem teste.
+Os dois números são iguais de propósito. O agregado responde "existe pacote sem
+teste nenhum?"; o piso por pacote responde "existe pacote fraco escondido atrás
+de um forte?". Enquanto o agregado esteve em 95 ele fazia o segundo trabalho por
+tabela, e o piso podia ficar sendo impresso e ignorado. Com o agregado em 90 o
+piso é o único que morde, então ele passa a reprovar em vez de apenas relatar.
+
+### Por que 90 e não 95
+
+O agregado esteve em 95, no valor exato que a árvore media. Um gate colado no
+medido reprova por arredondamento e por geografia de plataforma, não por código
+sem teste — e foi o que aconteceu: três PRs numa noite, nenhum por falta de
+teste. 90 é o número que os seis `.i.spec.md` já pedem no próprio pacote, e é o
+número que a árvore cumpre com folga.
 
 O agregado sobe quando já está folgado, nunca para um número que a árvore ainda
 não cumpre — gate vermelho na chegada é gate que as pessoas aprendem a ignorar.
+Foi essa frase que a subida para 95 violou, na mesma página que a escreve.
+
+### Cenário crítico é testado, independentemente de percentual
+
+Percentual mede quanto do código rodou, nunca o que foi asserido. Estes têm
+teste porque são o que o produto promete, e nenhum deles é dispensado por um
+número bom:
+
+- **toda travessia de fronteira de segurança** — decisão de política, contenção
+  de sandbox, leitura e escrita de credencial;
+- **todo caminho onde dado do usuário pode sumir** — gravação de sessão, log de
+  eventos, compactação de contexto;
+- **todo bug já visto uma vez**, com o teste de reprodução da seção 2;
+- **todo invariante declarado** em `## N. Invariantes verificáveis` de um
+  `.i.spec.md`.
+
+O último é o único que uma máquina cobra, e é por isso que ele existe: o
+`specguard` reprova invariante que não nomeia um teste existente, e reprova
+família que declara invariante sem guarda. Cenário crítico que não vira
+invariante fica valendo o que vale uma frase — e este repositório já sabe quanto
+é. Ao escrever um, escreva o invariante.
 
 ```bash
 go test -race -coverprofile=coverage.out ./...
@@ -124,7 +154,8 @@ Comportamento que emerge da interação com o LLM não é verificável por asser
 - [ ] Código novo veio de teste que falhou primeiro.
 - [ ] `fix:` acompanha teste de reprodução que falhava antes da correção.
 - [ ] `go test -race ./...` limpo.
-- [ ] Cobertura ≥ 95% no denominador definido, e nenhum pacote abaixo de 90%.
+- [ ] Cobertura ≥ 90% no denominador definido, e nenhum pacote abaixo de 90%.
+- [ ] Cenário crítico tocado pelo PR está asserido, e escrito como invariante.
 - [ ] Nenhum teste novo sem asserção.
 - [ ] Exclusão de cobertura nova, se houver, justificada na descrição do PR.
 - [ ] Spec sincronizada, se o comportamento técnico mudou.

@@ -157,10 +157,17 @@ of them would buy a point. Whether to do that is a real question and the answer
 is not obvious: a point of headroom bought by writing tests for the number is
 the gate becoming a target, which the convention two paragraphs up forbids.
 
-The honest options remain the two already named — earn margin where the test is
-worth having anyway (the failure paths in `credential`, `update` and `server`
-are real behaviour), or give the threshold a band. What changed is that neither
-is now urgent, because the failures that made it urgent had another cause.
+**Decided.** The threshold drops to 90% aggregate, which is the number the six
+`.i.spec.md` files already ask for per package, and the per-package floor of 90%
+stops being printed and starts failing. The counterweight to a looser percentage
+is not a tighter percentage: it is naming what must be asserted regardless — a
+security-boundary crossing, a path where the user's data can disappear, a bug
+seen once, an invariant in a spec. See `TESTING.md` section 3.
+
+That leaves one thin number where there used to be another: `internal/credential`
+clears the per-package floor by 0.9 points. Earning margin there is worth doing
+for its own sake — those are the failure paths of reading and writing a
+credential — and not because of the gate.
 
 ---
 
