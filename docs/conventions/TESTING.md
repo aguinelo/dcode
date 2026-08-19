@@ -88,7 +88,25 @@ explicit.
 | Generated code | not authored; test the generator, not its output |
 | `cmd/**` — `main` wiring | dependency assembly, no logic; covered by a smoke test |
 | Model-mediated paths behind build tags | not verifiable by assertion — see section 4 |
-| OS-specific sandbox package, off its platform | not executable there; covered in that platform's CI matrix |
+| OS-specific code, off its platform | not executable there; covered in that platform's CI matrix |
+
+### The gate measures the matrix, not one runner
+
+The line above sat declared for months with nothing honouring it: the gate ran
+inside each matrix job, so a branch reachable only on macOS counted as uncovered
+on Ubuntu. It failed three pull requests in one night, always for that reason,
+and always on code that was tested — on the other platform.
+
+In CI the gate runs once, over the union of the profiles:
+
+```bash
+./scripts/merge-coverage.sh profiles/*/coverage.out > coverage.out
+./scripts/coverage.sh coverage.out
+```
+
+`make check` still measures only the platform you are on. That is a stricter
+approximation than CI's, not a looser one — whatever it rejects CI would reject
+by another route, and the reverse is what this arrangement fixes.
 
 A new exclusion requires justification in the pull request. "Hard to test" is not a
 justification — it is usually a symptom of coupling, and the fix is the design, not the

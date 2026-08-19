@@ -45,9 +45,13 @@ jobs:
       - name: gofmt
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - run: go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
-      - run: ./scripts/coverage.sh coverage.out
-      # Um gate que reprova sem entregar o perfil obriga a adivinhar a partir do
-      # log, e adivinhar num runner que não se tem em mãos é caro.
+      # O gate não roda aqui. Cada plataforma mede só o que ela consegue
+      # executar, e reprovar por um ramo que a outra cobre é reprovar por
+      # geografia — ver o job `coverage`. O perfil é a saída deste job.
+      #
+      # `always()` porque um gate que reprova sem entregar o perfil obriga a
+      # adivinhar a partir do log, e adivinhar num runner que não se tem em
+      # mãos é caro.
       - name: perfil de cobertura
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,6 +59,28 @@ jobs:
           name: coverage-${{ matrix.os }}
           path: coverage.out
           retention-days: 7
+
+  # O gate mede o programa, e o programa é as duas plataformas. A convenção de
+  # testes já dizia isso — "coberto na matriz de CI da plataforma
+  # correspondente" — sem que nada cumprisse: com o gate dentro do job da
+  # matriz, um ramo só alcançável no macOS contava como descoberto no Ubuntu.
+  # Reprovou três PRs numa noite, sempre assim.
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      # `go tool cover -func` lê o fonte para nomear as funções, por isso o
+      # checkout e o toolchain acima.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: perfis
+      - name: união da matriz
+        run: ./scripts/merge-coverage.sh perfis/*/coverage.out > coverage.out
+      - run: ./scripts/coverage.sh coverage.out
 
   build:
     runs-on: ubuntu-latest

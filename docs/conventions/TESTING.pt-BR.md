@@ -73,7 +73,25 @@ Um gate sem denominador definido é ou inalcançável ou vazio. Aqui ele é expl
 | Código gerado | não é autorado; testar gerador, não saída |
 | `cmd/**` — wiring de `main` | montagem de dependência, sem lógica; coberto por teste de fumaça |
 | Caminhos mediados por modelo, atrás de build tag | não é verificável por asserção — ver seção 4 |
-| Pacote de sandbox específico de SO, fora da plataforma do runner | não é executável ali; coberto na matriz de CI da plataforma correspondente |
+| Código específico de SO, fora da plataforma do runner | não é executável ali; coberto na matriz de CI da plataforma correspondente |
+
+### O gate mede a matriz, não um runner
+
+A linha acima ficou meses declarada sem nada que a cumprisse: o gate rodava
+dentro de cada job da matriz, então um ramo alcançável só no macOS contava como
+descoberto no Ubuntu. Reprovou três PRs numa noite, sempre pelo mesmo motivo, e
+sempre em código que estava testado — na outra plataforma.
+
+Na CI o gate roda uma vez, sobre a união dos perfis:
+
+```bash
+./scripts/merge-coverage.sh perfis/*/coverage.out > coverage.out
+./scripts/coverage.sh coverage.out
+```
+
+`make check` continua medindo só a plataforma de quem roda. É uma aproximação
+mais severa que a da CI, não mais frouxa — o que ela reprova a CI também
+reprovaria por outro caminho, e o contrário é o que este arranjo conserta.
 
 Exclusão nova exige justificativa no PR. "Difícil de testar" não é justificativa — costuma ser sintoma de acoplamento, e a correção é o desenho, não a exceção.
 
