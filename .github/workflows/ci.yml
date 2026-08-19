@@ -28,12 +28,16 @@ jobs:
         # de segurar o PR inteiro.
         timeout-minutes: 8
         run: |
-          # E o espelho morto é a causa, não o sintoma. O log de uma das
-          # falhas mostra `Ign:` repetido para azure.archive.ubuntu.com antes
-          # de cair para archive.ubuntu.com: o apt espera o timeout DELE, de
-          # cerca de dois minutos por repositório, e o nosso acaba primeiro.
-          # Dar mais tempo seria pagar a espera; desistir depressa é não
-          # entrar nela.
+          # O espelho morto é a causa, e o nome dele está no log: as imagens
+          # do runner apontam para azure.archive.ubuntu.com através de
+          # /etc/apt/apt-mirrors.txt, e é ele que emudece. Baixar o prazo do
+          # apt não bastou — as três tentativas seguiram estourando os 120s
+          # nossos, porque o problema não é ele desistir devagar, é ele estar
+          # esperando um espelho que não responde.
+          #
+          # Nomear um que responde resolve na origem. archive.ubuntu.com é o
+          # que o próprio log mostra atendendo, depois da espera.
+          echo 'http://archive.ubuntu.com/ubuntu/' | sudo tee /etc/apt/apt-mirrors.txt
           APT="-o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 -o Acquire::Retries=1"
           for attempt in 1 2 3; do
             if sudo timeout 120 apt-get $APT update; then break; fi
