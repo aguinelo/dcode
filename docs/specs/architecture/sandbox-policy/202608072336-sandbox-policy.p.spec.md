@@ -219,6 +219,10 @@ type Sandbox interface {
 - Nada nomeado esconde os cofres de credencial mesmo assim; o home inteiro nunca é um nome válido.
 - A própria credencial do dcode está entre os escondidos por default.
 - O nome do arquivo de credencial escondido acompanha o que o cofre escreve.
+- Socket concedido por nome é alcançável; o não concedido continua fora.
+- Caminho concedido é gravável fora do workspace, e `read-only` não ganha nenhum.
+- A chave privada entra nos escondidos assim que o agente é alcançável, e não antes.
+- Token de agente sem agente rodando concede nada, nunca a string vazia.
 - Socket unix é alcançável exatamente onde já se pode escrever — e `read-only`, que não escreve em lugar nenhum, não alcança nenhum.
 - Socket de runtime de contêiner é coberto no Linux, e um socket real deixa de ser socket dentro do sandbox.
 - `full-access` mantém a concessão ampla: modo que não promete fronteira não finge estreitá-la.

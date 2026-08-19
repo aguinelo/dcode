@@ -79,6 +79,10 @@ type Options struct {
 	// Unreadable are paths this session may not read at all — a credential
 	// store put out of reach. Resolved at the edge, from configuration.
 	Unreadable []string
+	// Granted are unix sockets named as reachable, and Writable are paths
+	// named as writable outside the workspace. Both resolved at the edge.
+	Granted  []string
+	Writable []string
 	// DelegateMaxIterations caps a child turn.
 	DelegateMaxIterations int
 	// DelegateMaxResultBytes caps the child's report.
@@ -279,7 +283,9 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		DoneFile:               r.String("done.file", ""),
 		MaxStallCycles:         r.Int("limits.max_stall_cycles", 2),
 		Delegate:               r.Bool("delegate.enabled", true),
-		Unreadable:             sandbox.Unreadable(r.String("sandbox.unreadable", ""), env),
+		Granted:                sandbox.Paths(r.String("sandbox.sockets", ""), env),
+		Writable:               sandbox.Paths(r.String("sandbox.writable", ""), env),
+		Unreadable:             sandbox.Unreadable(r.String("sandbox.unreadable", ""), env, sandbox.Paths(r.String("sandbox.sockets", ""), env)),
 		DelegateMaxIterations:  r.Int("delegate.max_iterations", 100),
 		DelegateMaxResultBytes: r.Int("delegate.max_result_bytes", 32768),
 		InstructionNotice:      r.Bool("instruction.notice", true),
@@ -426,6 +432,8 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Scratch:    sandbox.Scratch(opts.Env),
 		Sockets:    sandbox.LocalSockets(opts.Env),
 		Unreadable: opts.Unreadable,
+		Granted:    opts.Granted,
+		Writable:   opts.Writable,
 	}, opts.SandboxMode)
 	if err != nil {
 		return nil, err

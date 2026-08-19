@@ -50,6 +50,8 @@ var KnownKeys = map[string]string{
 	"tools.edit_echo_diff":          "DCODE_EDIT_ECHO_DIFF",
 	"tools.symbol_max_matches":      "DCODE_SYMBOL_MAX_MATCHES",
 	"sandbox.unreadable":            "DCODE_SANDBOX_UNREADABLE",
+	"sandbox.sockets":               "DCODE_SANDBOX_SOCKETS",
+	"sandbox.writable":              "DCODE_SANDBOX_WRITABLE",
 	"tools.fetch_enabled":           "DCODE_FETCH_ENABLED",
 	"tools.fetch_max_bytes":         "DCODE_FETCH_MAX_BYTES",
 	"delegate.enabled":              "DCODE_DELEGATE_ENABLED",

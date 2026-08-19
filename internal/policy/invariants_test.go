@@ -67,6 +67,10 @@ var sandboxInvariants = map[string]string{
 	"esconde os cofres de credencial mesmo assim":          "TestUnreadableDefaultsToHidingCredentialStores",
 	"própria credencial do dcode está entre os escondidos": "TestTheDefaultHidesDcodesOwnCredential",
 	"acompanha o que o cofre escreve":                      "TestTheHiddenCredentialNameMatchesTheStore",
+	"Socket concedido por nome é alcançável":               "TestSeatbeltReachesAGrantedSocket",
+	"gravável fora do workspace, e `read-only` não ganha":  "TestSeatbeltReadOnlyIgnoresAGrantedPath",
+	"assim que o agente é alcançável":                      "TestTheKeyIsHiddenOnceTheAgentIsReachable",
+	"sem agente rodando concede nada":                      "TestTheAgentTokenGrantsNothingWhenNoAgentIsRunning",
 	"deixa de ser socket dentro":                           "TestARealRuntimeSocketIsCoveredInside",
 	"mantém a concessão ampla":                             "TestSeatbeltFullAccessKeepsTheBlanketGrant",
 }

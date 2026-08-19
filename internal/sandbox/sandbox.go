@@ -86,6 +86,12 @@ type Config struct {
 	// is. Empty is the old behaviour, and the old behaviour let a command read
 	// a private key.
 	Unreadable []string
+	// Granted are unix sockets named as reachable even though nothing grants
+	// the directory they sit in — the ssh-agent's, above all.
+	Granted []string
+	// Writable are paths named as writable outside the workspace, so a first
+	// ssh connection is not a failure.
+	Writable []string
 }
 
 // New returns the sandbox for cfg.
@@ -119,9 +125,9 @@ func New(cfg Config, mode policy.SandboxMode) (Sandbox, error) {
 	var s Sandbox
 	switch backend {
 	case BackendSeatbelt:
-		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch, unreadable: cfg.Unreadable}
+		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch, unreadable: cfg.Unreadable, granted: cfg.Granted, writable: cfg.Writable}
 	case BackendBubblewrap:
-		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets, unreadable: cfg.Unreadable}
+		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets, unreadable: cfg.Unreadable, granted: cfg.Granted, writable: cfg.Writable}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown backend %q; valid: %s, %s, %s, %s",
 			backend, BackendAuto, BackendSeatbelt, BackendBubblewrap, BackendNone)
