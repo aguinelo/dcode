@@ -124,8 +124,11 @@ func hasPath(list []string, want string) bool {
 // covered. A cache under /tmp is inside the fresh tmpfs, and binding the host's
 // copy back over it would undo the isolation the tmpfs exists for.
 func TestBubblewrapBindsCachesAndSkipsWhatIsCovered(t *testing.T) {
-	home := t.TempDir()
-	cache := filepath.Join(home, ".cache", "go-build")
+	// A literal path, not one derived from t.TempDir(): on Linux the temporary
+	// directory lives under /tmp, so the fixture would land inside the tmpfs
+	// and be skipped by the very rule this test exists to check. The fixture
+	// must not depend on where the platform puts its scratch space.
+	cache := "/home/someone/.cache/go-build"
 	b := &bubblewrap{}
 	args, err := b.args("/w", policy.ModeWorkspaceWrite, []string{cache, "/tmp/inside"})
 	if err != nil {
@@ -143,7 +146,7 @@ func TestBubblewrapBindsCachesAndSkipsWhatIsCovered(t *testing.T) {
 // Read-only binds no cache on Linux either — the two backends have to mean the
 // same thing, or the mode means whichever platform you happen to be on.
 func TestBubblewrapReadOnlyBindsNoCache(t *testing.T) {
-	cache := filepath.Join(t.TempDir(), ".cache")
+	cache := "/home/someone/.cache"
 	b := &bubblewrap{}
 	args, err := b.args("/w", policy.ModeReadOnly, []string{cache})
 	if err != nil {
