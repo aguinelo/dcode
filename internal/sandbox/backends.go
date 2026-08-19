@@ -134,6 +134,17 @@ func (b *bubblewrap) Available() error {
 	return nil
 }
 
+// exists reports whether a bind source is there, injectable so the mount rules
+// can be asserted without a fixture directory. A test that has to create a real
+// directory outside /tmp cannot be written portably — on Linux the temporary
+// directory IS under /tmp — and the version of this test that worked around it
+// with a skip left the Linux mount path unchecked on the one platform that uses
+// it.
+var exists = func(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
+}
+
 // under reports whether path sits inside dir.
 //
 // Path-prefix, not string-prefix: "/tmpfoo" is not under "/tmp", and treating it
@@ -205,7 +216,7 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 			// refusal takes down the whole command rather than the one mount.
 			// A cache directory that does not exist yet is ordinary: nothing
 			// has compiled on this machine.
-			if _, err := os.Stat(p); err != nil {
+			if !exists(p) {
 				continue
 			}
 			args = append(args, "--bind", p, p)
