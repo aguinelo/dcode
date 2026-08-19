@@ -64,7 +64,7 @@ O motor de contexto (`202608072333-context-engine`) precisa estar no Passo 3 —
 **Primeira família implementada — é o modelo principal do projeto.**
 
 - [ ] `Models()`, `Transports()` devolvendo `["openai", "anthropic"]`, `Window`.
-- [ ] `DefaultLimits()` com `MaxIterations: 200`.
+- [ ] `DefaultLimits()` com `MaxIterations: 2000`.
 - [ ] `Encode` para o transporte `openai`, com golden file.
 - [ ] `Decode` de `WireEvent` em `StreamEvent`.
 - [ ] Validação de tool call contra o schema declarado; falha vira `ErrClassToolSchema`, nunca `EventToolCall` (RN-8).

@@ -91,10 +91,10 @@ type Request struct {
 
 | Família | `Models()` | `Transports()` | `MaxIterations` |
 |---|---|---|---|
-| `minimax-m3` | `MiniMax-M3`, `minimax-m3` | `openai`, `anthropic` | **200** |
+| `minimax-m3` | `MiniMax-M3`, `minimax-m3` | `openai`, `anthropic` | **2.000** |
 | `claude` | `claude-` | `anthropic` | **50** |
 
-**Por que 200 para M3 e 50 para Claude.** O default de 50 foi dimensionado pelo caso de um refactor cruzando dez arquivos. M3 é treinado para horizonte longo — a MiniMax demonstrou uma execução com 1.959 tool calls — e 50 truncaria trabalho legítimo. O detector de repetição em 3 chamadas idênticas continua sendo o mecanismo real contra loop patológico; o teto é backstop, e backstop acompanha o horizonte do modelo.
+**Por que 2.000 para M3 e 50 para Claude.** O default de 50 foi dimensionado pelo caso de um refactor cruzando dez arquivos. M3 é treinado para horizonte longo — a MiniMax demonstrou uma execução com 1.959 tool calls — e 50 truncaria trabalho legítimo. O número foi 200 até esta citação ser levada a sério: o teto ficava em um décimo da execução que o justificava, e truncou uma real. O detector de repetição em 3 chamadas idênticas continua sendo o mecanismo real contra loop patológico; o teto é backstop, e backstop acompanha o horizonte do modelo.
 
 `minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
 
