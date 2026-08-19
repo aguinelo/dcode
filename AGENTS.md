@@ -1,412 +1,103 @@
-# harness
+# dcode
 
-> Multi-agent orchestration framework for agentic coding
+An agentic coding harness written in Go: a daemon, a terminal client, and the
+agent loop between them, shipped as one static binary. No cgo outside the
+isolated package.
 
-## Project Overview
+These are the instructions for **any** agent working in this repository —
+`dcode` itself reads this file, and so does Claude Code through `CLAUDE.md`.
+Keep it about the repository. Tool-specific configuration belongs in the file
+of the tool that has it.
 
-A Claude Flow powered project
+## Rules
 
-**Tech Stack**: TypeScript, Node.js
-**Architecture**: Domain-Driven Design with bounded contexts
+- Do what has been asked; nothing more, nothing less
+- NEVER create files unless absolutely necessary — prefer editing existing files
+- NEVER create documentation files unless explicitly requested
+- NEVER save working files or tests to the root
+- ALWAYS read a file before editing it
+- NEVER commit secrets, credentials, or `.env` files
+- NEVER add a `Co-Authored-By` trailer to a commit. It is authorship attribution
+  under git and GitHub convention; a tool is the facilitator, not a co-author.
+- Keep files under 500 lines
+- Validate input at system boundaries
 
-## Quick Start
+## Working agreement — branches, staging, CI
 
-### Installation
-```bash
-npm install
-```
+Every rule below exists because it was broken, and each names the failure so it
+can be recognised before it repeats rather than after.
 
-### Build
-```bash
-npm run build
-```
+### One theme, one branch, one PR
 
-### Test
-```bash
-npm test
-```
+- A theme is what fits in a PR title **without the word "and"**. If the title
+  needs an "and", it is two branches.
+- Before starting work whose title would not fit the open PR, cut a new branch
+  from an updated `main`. Continuing on the open branch because it is already
+  checked out is how a PR reaches 11 commits and 17k lines — unreviewable, and
+  merged on trust rather than on reading.
+- A defect found while doing something else gets **its own branch**, unless
+  fixing it is what unblocks the current work. "It was right there" is not a
+  reason to widen a PR.
+- Repeated approval to continue (`segue`, `pode ir`) grants **the work**, never
+  the branch. Ask which branch, or start a new one.
 
-### Development
-```bash
-npm run dev
-```
+### Stage explicitly
 
-## Agent Coordination
+- **Never `git add -A` or `git add .`.** Stage named paths. A 41KB HTML mock
+  entered a PR unnoticed exactly this way.
+- Run `git status` before committing and account for **every** listed file. A
+  file you cannot explain is a file that does not belong in the commit.
 
-### Swarm Configuration
+### A push is not finished until CI is read
 
-This project uses hierarchical swarm coordination for complex tasks:
+- After every push, check CI (`gh pr checks`). A push whose result was never
+  read is a push that was never finished.
+- **Never report green from a local run alone.** `make check` passing locally
+  and CI passing are different claims. When they disagree it is usually because
+  the working tree and the repository differ — which is precisely the failure
+  local runs cannot see.
+- Never merge a red PR, and never merge without having read the checks.
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| Topology | `hierarchical` | Queen-led coordination (anti-drift) |
-| Max Agents | 8 | Optimal team size |
-| Strategy | `specialized` | Clear role boundaries |
-| Consensus | `raft` | Leader-based consistency |
+### What the build depends on must be in the repository
 
-### When to Use Swarms
+- After creating a file the build, the gate or CI depends on, verify it is
+  actually tracked: `git check-ignore -v <path>` and `git ls-files <path>`.
+- `.gitignore` patterns without a leading `/` match at **any depth**.
+  `coverage.*` swallowed `scripts/coverage.sh`, so the coverage gate never ran
+  in CI while every local run reported it green.
 
-**Invoke swarm for:**
-- Multi-file changes (3+ files)
-- New feature implementation
-- Cross-module refactoring
-- API changes with tests
-- Security-related changes
-- Performance optimization
-
-**Skip swarm for:**
-- Single file edits
-- Simple bug fixes (1-2 lines)
-- Documentation updates
-- Configuration changes
-
-### Available Skills
-
-Use `$skill-name` syntax to invoke:
-
-| Skill | Use Case |
-|-------|----------|
-| `$swarm-orchestration` | Multi-agent task coordination |
-| `$memory-management` | Pattern storage and retrieval |
-| `$sparc-methodology` | Structured development workflow |
-| `$security-audit` | Security scanning and CVE detection |
-| `$performance-analysis` | Profiling and optimization |
-| `$github-automation` | CI/CD and PR management |
-
-### Agent Types
-
-| Type | Role | Use Case |
-|------|------|----------|
-| `researcher` | Requirements analysis | Understanding scope |
-| `architect` | System design | Planning structure |
-| `coder` | Implementation | Writing code |
-| `tester` | Test creation | Quality assurance |
-| `reviewer` | Code review | Security and quality |
-
-## Execution Model
-
-- **claude-flow** = LEDGER (coordinates: memory, routing, swarm state)
-- **Codex** = EXECUTOR (writes code, runs tests, creates files)
-
-**Critical rule:** DON'T STOP after calling claude-flow commands. Coordination commands return instantly — continue immediately with the next implementation step.
-
-## Ruflo + Codex Automated Workflow
-
-Ruflo is the coordination ledger and policy decision point; Codex workers execute code, tests, and commands. A Ruflo coordination call records work but never replaces implementation.
-
-Use `guidance_brain({ mode: "recommend", task: "..." })` when the task can
-benefit from Ruflo-specific capabilities. Its live registry is authoritative
-for tool presence; registration alone does not prove configuration,
-reachability, health, or authorization. If it is not registered, use compatible
-`guidance_recommend`, CLI discovery, and repository instructions.
-
-1. **Recall** — search AgentDB memory and relevant ADRs for patterns and constraints.
-2. **Inspect** — read source, runtime, dependency, policy, and health state.
-3. **Route** — choose the smallest capable topology, agents, skills, and tools.
-4. **Plan** — define acceptance criteria, safety envelope, ownership, and validation.
-5. **Execute** — Codex workers implement in isolated scopes; Ruflo records coordination.
-6. **Test** — run focused tests, regression tests, and failure-path checks.
-7. **Validate** — check types, security, policy, compatibility, and artifact integrity.
-8. **Benchmark** — compare a source-bound candidate with a source-bound baseline.
-9. **Optimize** — improve measured bottlenecks without weakening the safety envelope.
-10. **Receipt** — bind claims, evidence, and decisions to exact source/build inputs.
-11. **Handoff** — reconcile concurrent work and disclose unresolved limitations.
-12. **Publish** — only an independently authorized release gate may publish immutable artifacts.
-
-### Concurrency and authority invariants
-
-- Never allow two writers in one worktree.
-- Read-only research agents may share a checkout; writing agents may not.
-- A child may drop capabilities but can never add tools, servers, namespaces, network access, spend, concurrency, or delegation depth.
-- Cancel dependent and not-yet-started sibling work when policy denies an action or a required dependency fails.
-- MetaHarness may benchmark candidates concurrently, but it cannot promote, serve, or expand its own SafetyEnvelope.
-- Only the integration agent changes shared manifests or lockfiles.
-- Do not auto-commit, push, merge, release, or delete worktrees unless the user authorized that operation.
-- Every consequential action must produce a policy decision receipt; production, destructive, spend, and promotion actions may require human approval.
-
-### Repository harness adapter
-
-When tracked repository instructions define a local collaboration harness:
-
-1. Assign the isolated worktree before starting a writing session.
-2. Start or register the session, inspect current claims, and acquire only the
-   exact paths, resources, and development ports needed for the task.
-3. Renew leases during long work, check acknowledged inbox messages at integration
-   boundaries, and release claims when handing off or ending.
-4. Record focused and integration evidence against the exact source state,
-   then let the designated integration owner decide release.
-
-A repository lease coordinates ownership; it does not grant authorization.
-In-memory reference adapters demonstrate semantics but are not distributed,
-restart-durable release authorities.
-The worker still needs the current ADR-324/325 action capability and fencing
-epoch for every protected side effect. Heartbeat and lease expiry establish
-liveness; a PID is diagnostic only. HEAD alone is not an exact source-state
-identity when tracked or untracked changes exist, so a release receipt must
-bind a clean commit or an immutable snapshot including those changes.
-
-
-## MCP Integration
-
-Use MCP tools for coordination, then keep coding:
-
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `swarm_init` | Start coordination | `swarm_init({topology: "hierarchical"})` |
-| `memory_store` | Save patterns | `memory_store({key: "auth", value: "JWT"})` |
-| `memory_search` | Find patterns | `memory_search({query: "auth patterns"})` |
-| `task_orchestrate` | Assign work | `task_orchestrate({task: "implement"})` |
-
-## Code Standards
-
-### File Organization
-- **NEVER** save to root folder
-- `/src` - Source code files
-- `/tests` - Test files
-- `/docs` - Documentation
-- `/config` - Configuration files
-
-### Quality Rules
-- Files under 500 lines
-- No hardcoded secrets
-- Input validation at boundaries
-- Typed interfaces for public APIs
-- TDD London School (mock-first) preferred
-
-### Commit Messages
-```
-<type>(<scope>): <description>
-
-[optional body]
-```
-
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
-
-Do not add a `Co-Authored-By` trailer unless the repository explicitly
-configures and authorizes that attribution.
-
-## Security
-
-### Critical Rules
-- NEVER commit secrets, credentials, or .env files
-- NEVER hardcode API keys
-- Always validate user input
-- Use parameterized queries for SQL
-- Sanitize output to prevent XSS
-
-### Path Security
-- Validate all file paths
-- Prevent directory traversal (../)
-- Use absolute paths internally
-
-## Memory System
-
-### Storing Patterns
-```bash
-npx @claude-flow/cli memory store \
-  --key "pattern-name" \
-  --value "pattern description" \
-  --namespace patterns
-```
-
-### Searching Memory
-```bash
-npx @claude-flow/cli memory search \
-  --query "search terms" \
-  --namespace patterns
-```
-
-## Quick Commands
+## Build and test
 
 ```bash
-npx @claude-flow/cli memory search --query "relevant patterns"
-npx @claude-flow/cli hooks route --task "current task description"
-npx @claude-flow/cli swarm init --topology hierarchical
-npx @claude-flow/cli hooks pre-task --description "task summary"
+make check   # lint, race, coverage gate, build — the whole gate
+make test    # the suite alone
+make cover   # the suite with the coverage gate
+make install # build and install into ~/.local/bin
 ```
 
-## Links
+`make check` is the local approximation of CI, and CI is the claim that counts.
 
-- Documentation: https://github.com/ruvnet/ruflo
-- Issues: https://github.com/ruvnet/ruflo/issues
+Behavioural contracts live behind the `eval` build tag and are **not** in
+`make check`: each scenario runs against a real model and costs money. Run them
+with `make eval`, and run `make eval-build` in any pull request that touches
+`internal/evals` — nothing in `make check` compiles code behind that tag, so it
+rots in silence.
 
-## Performance Targets
+## Where the rules are written
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| HNSW Search | 150x-12,500x faster | Vector operations |
-| Memory Reduction | 50-75% | Int8 quantization |
-| MCP Response | <100ms | API latency |
-| CLI Startup | <500ms | Cold start |
-| SONA Adaptation | <0.05ms | Neural learning |
+These four are the source of truth. Do not restate them here; a fifth copy is a
+copy that drifts.
 
-## Testing
+| Document | What it governs |
+|---|---|
+| `docs/conventions/SDD-HARNESS.md` | the spec protocol: `.r` → `.p` → `.config` / `.i`, and `changelog/` |
+| `docs/conventions/TESTING.md` | TDD, reproducing tests, the coverage gate, critical scenarios |
+| `docs/conventions/GO-CODE-REVIEW.md` | what Go code in this repository looks like |
+| `docs/conventions/LANGUAGE.md` | which language each artefact is written in |
 
-### Running Tests
-```bash
-# Unit tests
-npm test
+The short version of the last one, because it is the one most easily broken:
+**specs and changelogs in Portuguese; code, comments, commit messages and pull
+request titles in English.**
 
-# Integration tests
-npm run test:integration
-
-# Coverage
-npm run test:coverage
-
-# Security tests
-npm run test:security
-```
-
-### Test Philosophy
-- TDD London School (mock-first)
-- Unit tests for business logic
-- Integration tests for boundaries
-- E2E tests for critical paths
-- Security tests for sensitive operations
-
-### Coverage Requirements
-- Minimum 80% line coverage
-- 100% coverage for security-critical code
-- All public APIs must have tests
-
-## MCP Integration
-
-Claude Flow exposes tools via Model Context Protocol:
-
-```bash
-# Start MCP server
-npx ruflo mcp start
-
-# List available tools
-npx ruflo mcp tools
-```
-
-### Available Tools
-
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `swarm_init` | Initialize swarm coordination | `swarm_init({topology: "hierarchical"})` |
-| `agent_spawn` | Spawn new agents | `agent_spawn({type: "coder", name: "dev-1"})` |
-| `memory_store` | Store in AgentDB | `memory_store({key: "pattern", value: "..."})` |
-| `memory_search` | Semantic search | `memory_search({query: "auth patterns"})` |
-| `task_orchestrate` | Task coordination | `task_orchestrate({task: "implement feature"})` |
-| `neural_train` | Train neural patterns | `neural_train({iterations: 10})` |
-| `benchmark_run` | Performance benchmarks | `benchmark_run({type: "all"})` |
-
-## Hooks System
-
-Claude Flow uses hooks for lifecycle automation:
-
-### Core Hooks
-
-| Hook | Trigger | Purpose |
-|------|---------|---------|
-| `pre-task` | Before task starts | Get context, load patterns |
-| `post-task` | After task completes | Record completion, train |
-| `pre-edit` | Before file changes | Validate, backup |
-| `post-edit` | After file changes | Train patterns, verify |
-| `pre-command` | Before shell commands | Security check |
-| `post-command` | After shell commands | Log results |
-
-### Session Hooks
-
-| Hook | Purpose |
-|------|---------|
-| `session-start` | Initialize context, load memory |
-| `session-end` | Export metrics, consolidate memory |
-| `session-restore` | Resume from checkpoint |
-| `notify` | Send notifications |
-
-### Intelligence Hooks
-
-| Hook | Purpose |
-|------|---------|
-| `route` | Route task to appropriate agents |
-| `explain` | Generate explanations |
-| `pretrain` | Pre-train neural patterns |
-| `build-agents` | Build specialized agents |
-| `transfer` | Transfer learning between domains |
-
-### Example Usage
-```bash
-# Before starting a task
-npx @claude-flow/cli hooks pre-task \
-  --description "implementing authentication"
-
-# After completing a task
-npx @claude-flow/cli hooks post-task \
-  --task-id "task-123" \
-  --success true
-
-# Route a task to agents
-npx @claude-flow/cli hooks route \
-  --task "implement OAuth2 login flow"
-```
-
-## Background Workers
-
-12 background workers provide continuous optimization:
-
-| Worker | Priority | Purpose |
-|--------|----------|---------|
-| `ultralearn` | normal | Deep knowledge acquisition |
-| `optimize` | high | Performance optimization |
-| `consolidate` | low | Memory consolidation |
-| `predict` | normal | Predictive preloading |
-| `audit` | critical | Security analysis |
-| `map` | normal | Codebase mapping |
-| `preload` | low | Resource preloading |
-| `deepdive` | normal | Deep code analysis |
-| `document` | normal | Auto-documentation |
-| `refactor` | normal | Refactoring suggestions |
-| `benchmark` | normal | Performance benchmarking |
-| `testgaps` | normal | Test coverage analysis |
-
-### Managing Workers
-```bash
-# List workers
-npx @claude-flow/cli hooks worker list
-
-# Trigger specific worker
-npx @claude-flow/cli hooks worker dispatch --trigger audit
-
-# Check worker status
-npx @claude-flow/cli hooks worker status
-```
-
-## Intelligence System
-
-The RuVector Intelligence System provides neural learning:
-
-### Components
-- **SONA**: Self-Optimizing Neural Architecture (<0.05ms adaptation)
-- **MoE**: Mixture of Experts for specialized routing
-- **HNSW**: Hierarchical Navigable Small World for fast search
-- **EWC++**: Elastic Weight Consolidation (prevents forgetting)
-- **Flash Attention**: Optimized attention mechanism
-
-### 4-Step Pipeline
-1. **RETRIEVE** - Fetch relevant patterns via HNSW
-2. **JUDGE** - Evaluate with verdicts (success/failure)
-3. **DISTILL** - Extract key learnings via LoRA
-4. **CONSOLIDATE** - Prevent catastrophic forgetting via EWC++
-
-## Debugging
-
-### Log Levels
-```bash
-# Set log level
-export CLAUDE_FLOW_LOG_LEVEL=debug
-
-# Enable verbose mode
-npx @claude-flow/cli --verbose <command>
-```
-
-### Health Checks
-```bash
-# Run diagnostics
-npx @claude-flow/cli doctor --fix
-
-# Check system status
-npx @claude-flow/cli status
-```
+`docs/ROADMAP.md` is what is known and not yet done. `docs/DECISIONS.md` records
+why the specs say what they say where the reason came from the code.
