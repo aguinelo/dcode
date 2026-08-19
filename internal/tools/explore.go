@@ -69,12 +69,17 @@ type ExploreInput struct {
 func (Explore) Name() string { return "explore" }
 
 func (Explore) Description() string {
-	return "Delegate a read-only investigation to a fresh context, and get back a short answer. " +
-		"Use it when answering would mean reading many files you will not need afterwards — " +
-		"the files it reads do not consume your context, only its answer does. " +
-		"It can only read: no editing, no commands, and it cannot delegate further. " +
-		"Do not use it for something you have already read, or for a single known file: " +
-		"a delegated turn costs more than one read."
+	return "Delegate a piece of work to a fresh context, and get back a short answer. " +
+		"Use it when the work would mean reading many files you will not need afterwards — " +
+		"what it reads does not consume your context, only its answer does. " +
+		"By default it only reads. Give it `owns` — the paths it may write — and it " +
+		"writes them too, which is how independent pieces of work get done side by side: " +
+		"one child per piece, and no two children owning the same path. " +
+		"It never runs commands and it cannot delegate further, and it does not check " +
+		"the tree afterwards — that is yours to do, once, when the children are done. " +
+		"Do not use it for something you have already read, for a single known file, or " +
+		"for changes that have to stay consistent with each other: a delegated turn costs " +
+		"more than one read, and work that must agree with itself belongs in one head."
 }
 
 func (Explore) Schema() json.RawMessage {

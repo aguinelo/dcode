@@ -126,6 +126,7 @@ Com N filhos, N−1 respostas é caso normal, não excepcional.
 - O teto de concorrência é da sessão; nenhum pedido do modelo o amplia.
 - Tokens de filho que escreve são debitados do pai, como os de filho que lê.
 - Filho não carrega critério de pronto, e é dito a ele que conferir não é seu trabalho.
+- A descrição da ferramenta não nega a capacidade que o schema oferece.
 
 ## 9. Ordem de entrega
 
