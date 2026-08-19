@@ -43,7 +43,7 @@ var sandboxInvariants = map[string]string{
 	"impede a criação da sessão":       "TestNewFailsWhenTheSandboxCannotBeEstablished",
 	"travada por administrador":        "TestTheLockedLayerBeatsEveryOtherSource",
 	"nunca transforma negação":         "TestARuleNeverRescuesSomethingContainmentRefused",
-	"nunca é avaliada sob política":    "TestTheApprovalPolicyStillGovernsRules",
+	"nunca vira pergunta":              "TestTheApprovalPolicyStillGovernsRules",
 	"com ninguém para perguntar":       "TestNeverAnswersARuleWithNo",
 	"Rede concedida deixa de ser":      "TestWithdrawingTheNetworkGrantAsksAgain",
 	"nunca contenção":                  "TestTheGrantNeverOpensWhatTheSandboxCloses",
