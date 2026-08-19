@@ -57,6 +57,17 @@ them knew it was on round ten of twelve. A model that knew would have done the
 right thing — say what it found and stop — which is exactly what the context
 version already asks for.
 
+**The evidence, from the fourth self-development run.** It wrote the fix it was
+asked for — reproducing test first, both excuses restored with their reasons,
+`make check` green at 95.1% — and then ended at `max_iterations` on round 200
+without ever saying it was done. **The work survived; the answer did not.** Read
+from the outside, a run that hits the ceiling is indistinguishable from a run
+that failed.
+
+The ceiling has since gone to 2,000 (#195), which makes the encounter rarer
+without making it legible. Raising a ceiling is not the same as telling someone
+where it is.
+
 **Already there.** `CeilingReached(round, rounds, calls)` since #146, the
 reminder channel, and the band pattern the budget notice already uses. This is
 wiring, not invention.
@@ -283,6 +294,16 @@ excuses had to be removed to stay green, so those two names are now unguarded an
 the map no longer records why they were exempt. Counting declarations separately
 from uses would fix it, and until then any interface method implemented twice
 loses its excuse silently.
+
+**A test cache written inside the sandbox poisons a measurement taken outside.**
+Go caches a passing test by its inputs, not by the confinement it ran under. An
+agent that runs `make check` inside the sandbox leaves `ok` entries recorded
+under a narrower environment, and the next run outside reuses them — reporting a
+coverage number that no run actually produced. Measured on the fourth
+self-development run: the same tree read 93.5% with the cache warm and 95.1%
+after `go clean -testcache`, and the difference was read as a failing change
+until the baseline was measured. Whatever the fix is, the trap is that the wrong
+number looks like an ordinary one.
 
 **Learned memory has no user-level scope.** Deliberately out of scope in the
 spec: a gotcha from one project applied to another is worse than none. Revisit
