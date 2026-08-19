@@ -31,6 +31,13 @@ jobs:
           # And prove it, because a step that quietly fails to do what it says is
           # what put us here. This is the same probe the sandbox runs at startup.
           bwrap --ro-bind / / --dev /dev true
+      # The same proof on the other platform, and for the same reason. Seatbelt
+      # ships with macOS so nothing needs installing — but a runner that could
+      # not apply a profile would skip every boundary test and report green,
+      # which is precisely the silence this job exists to break.
+      - name: seatbelt (macos)
+        if: runner.os == 'macOS'
+        run: sandbox-exec -p '(version 1)(allow default)' true
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

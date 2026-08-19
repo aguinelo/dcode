@@ -39,8 +39,34 @@ type seatbelt struct {
 func (s *seatbelt) Name() string { return BackendSeatbelt }
 
 func (s *seatbelt) Available() error {
-	return lookPath(s.bin, "It ships with macOS; on other systems use a different backend.")
+	if err := lookPath(s.bin, "It ships with macOS; on other systems use a different backend."); err != nil {
+		return err
+	}
+	// Presence is not enough, which is the same lesson the Linux backend
+	// already carries: the kernel refuses to apply a profile from inside a
+	// process that is already confined, and reports
+	// `sandbox_apply: Operation not permitted`.
+	//
+	// Without this, a session running inside dcode failed six boundary tests at
+	// once, and nothing in that failure distinguishes "this environment cannot
+	// nest" from "the work is wrong". An agent reading it spent a session
+	// fixing the harness.
+	//
+	// The probe profile grants everything on purpose: what is being asked is
+	// whether the kernel will accept any profile at all from here, not whether
+	// a particular one is right.
+	probe := exec.Command(s.bin, "-p", "(version 1)(allow default)", "true")
+	if out, err := probe.CombinedOutput(); err != nil {
+		return fmt.Errorf("%w: %s cannot apply a profile here: %s\n%s",
+			ErrUnavailable, s.bin, strings.TrimSpace(string(out)), nestedHint)
+	}
+	return nil
 }
+
+// nestedHint names the cause people actually hit, because the kernel's own
+// message does not.
+const nestedHint = "This usually means the process is already inside a sandbox; " +
+	"a profile cannot be applied from within one."
 
 func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
 	profile, err := s.profile(workdir, mode, s.scratch)
