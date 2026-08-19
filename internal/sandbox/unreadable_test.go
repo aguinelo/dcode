@@ -90,7 +90,7 @@ func TestUnreadableExpandsHomeAndRefusesIt(t *testing.T) {
 		}
 		return ""
 	}
-	got := Unreadable("~/.aws:/etc/secrets: :~", env)
+	got := Unreadable("~/.aws:/etc/secrets: :~", env, nil)
 
 	want := []string{"/Users/me/.aws", "/etc/secrets"}
 	if len(got) != len(want) {
@@ -104,10 +104,10 @@ func TestUnreadableExpandsHomeAndRefusesIt(t *testing.T) {
 }
 
 func TestUnreadableWithNothingConfiguredNamesNothing(t *testing.T) {
-	if got := Unreadable("", nil); got != nil {
+	if got := Unreadable("", nil, nil); got != nil {
 		t.Errorf("nothing configured must name nothing, got %v", got)
 	}
-	if got := Unreadable("   ", nil); got != nil {
+	if got := Unreadable("   ", nil, nil); got != nil {
 		t.Errorf("blank configured must name nothing, got %v", got)
 	}
 }
@@ -121,7 +121,7 @@ func TestUnreadableDefaultsToHidingCredentialStores(t *testing.T) {
 		}
 		return ""
 	}
-	got := strings.Join(Unreadable("", env), " ")
+	got := strings.Join(Unreadable("", env, nil), " ")
 
 	for _, want := range []string{
 		"/Users/me/.aws", "/Users/me/.gnupg", "/Users/me/.kube",
@@ -143,7 +143,7 @@ func TestTheDefaultHidesDcodesOwnCredential(t *testing.T) {
 		}
 		return ""
 	}
-	got := strings.Join(Unreadable("", env), " ")
+	got := strings.Join(Unreadable("", env, nil), " ")
 	if !strings.Contains(got, credentialFileName) {
 		t.Errorf("dcode's own key is readable by default: %s", got)
 	}
@@ -163,11 +163,11 @@ func TestTheHiddenCredentialNameMatchesTheStore(t *testing.T) {
 func TestUnreadableCanBeReplacedOrCleared(t *testing.T) {
 	env := func(string) string { return "/Users/me" }
 
-	got := Unreadable("/only/this", env)
+	got := Unreadable("/only/this", env, nil)
 	if len(got) != 1 || got[0] != "/only/this" {
 		t.Errorf("setting the key must replace the default, got %v", got)
 	}
-	if got := Unreadable("none", env); got != nil {
+	if got := Unreadable("none", env, nil); got != nil {
 		t.Errorf(`"none" must hide nothing, got %v`, got)
 	}
 }

@@ -32,13 +32,27 @@ precisa lê-lo como subprocesso de um comando comum.** É isso que torna esconde
 gratuito. `aws` e `kubectl` são as exceções que aparecem primeiro, e são a razão
 de a variável **substituir** a lista em vez de somar a ela.
 
-**`~/.ssh` ainda não está no default, e a ausência é a linha mais alta desta
-seção.** Chave privada é o segredo canônico — e escondê-la hoje pararia `git
-push` e todo `ssh` de dentro do sandbox, porque o `ssh` lê a chave ele mesmo. A
-saída é o agente: com `SSH_AUTH_SOCK` alcançável, o `ssh` pede ao agente para
-assinar e nunca lê a chave, e aí esconder sai de graça. Esse socket é recusado
-hoje pela regra que mantém runtime de contêiner de fora; conceder por nome é o
-passo seguinte, e `~/.ssh` entra junto — não antes.
+**`~/.ssh` entra no default assim que o socket do agente é concedido**, e essa
+condição é o desenho inteiro. Chave privada é o segredo canônico, mas escondê-la
+enquanto o `ssh` precisa lê-la para todo `git push` e toda conexão. Com
+`SSH_AUTH_SOCK` alcançável, o `ssh` pede ao agente para assinar e **nunca abre a
+chave** — aí esconder sai de graça, e o default esconde. Separados, cada lado é
+um trade ruim; juntos não há trade.
+
+## 1.1 Recursos concedidos por nome
+
+| Variável | Tipo | Default | Uso |
+|---|---|---|---|
+| `DCODE_SANDBOX_SOCKETS` | lista de caminhos | vazio | Sockets unix alcançáveis mesmo que nada conceda o diretório onde eles vivem. O literal `ssh-agent` vale por `$SSH_AUTH_SOCK`, que é por boot e por login e nenhum arquivo de configuração poderia nomear. Agente ausente concede nada, nunca a string vazia. |
+| `DCODE_SANDBOX_WRITABLE` | lista de caminhos | vazio | Caminhos graváveis fora do workspace — `~/.ssh/known_hosts` é o caso que aparece primeiro, porque sem ele a **primeira** conexão a um host novo falha. Ignorado em `read-only`, que não escreve em lugar nenhum e não ganha um por alguém nomear. |
+
+A regra que os dois contornam continua inteira: **socket unix é alcançável
+exatamente onde já se pode escrever**, e é isso que mantém runtime de contêiner
+de fora. Conceder é dizer a exceção em voz alta, não afrouxar a regra.
+
+**Config, e não pergunta no meio da sessão.** O perfil é montado a partir destes
+valores antes de existir qualquer turno, e permissão que só vale depois de
+reiniciar é permissão que o usuário vê falhar.
 
 ## 2. Rede
 

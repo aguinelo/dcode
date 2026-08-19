@@ -72,9 +72,9 @@ func LocalSockets(env func(string) string) []string {
 // Setting it REPLACES the default, so a session that needs one of them back can
 // say so; the literal "none" hides nothing at all, which is the only way to say
 // that without a magic empty string.
-func Unreadable(spec string, env func(string) string) []string {
+func Unreadable(spec string, env func(string) string, granted []string) []string {
 	if strings.TrimSpace(spec) == "" {
-		return DefaultUnreadable(env)
+		return DefaultUnreadable(env, granted)
 	}
 	if strings.TrimSpace(spec) == "none" {
 		return nil
@@ -116,16 +116,13 @@ func Unreadable(spec string, env func(string) string) []string {
 // first, and they are the reason the setting REPLACES this list rather than
 // adding to it.
 //
-// `~/.ssh` is deliberately NOT here yet, and its absence is the loudest thing on
-// this list. A private key is the canonical secret, and hiding it stops `git
-// push` and every `ssh` from inside the sandbox — because ssh reads the key
-// itself. The way out is the agent: with SSH_AUTH_SOCK reachable, ssh asks the
-// agent to sign and never reads the key, so the key can be hidden at no cost.
-// That socket is refused today by the rule that keeps a container runtime out,
-// and granting it by name is the next step. `~/.ssh` joins this list then, and
-// not before — a default that breaks the ordinary case is one people switch off
-// entirely, which protects nothing.
-func DefaultUnreadable(env func(string) string) []string {
+// `~/.ssh` joins the list only when the agent's socket has been granted, and
+// that condition is the whole design. A private key is the canonical secret,
+// but hiding it while ssh must read it stops `git push` and every connection.
+// With SSH_AUTH_SOCK reachable, ssh asks the agent to sign and never opens the
+// key — so hiding it costs nothing, and the default takes it. Apart, each half
+// is a bad trade; together there is none.
+func DefaultUnreadable(env func(string) string, granted []string) []string {
 	if env == nil {
 		return nil
 	}
@@ -146,6 +143,15 @@ func DefaultUnreadable(env func(string) string) []string {
 		filepath.Join(home, ".pypirc"),
 		filepath.Join(home, ".docker", "config.json"),
 	}
+	// The private key, but only once the agent can sign in its place.
+	//
+	// The two halves are worthless apart: hiding the key while ssh must read
+	// it stops every connection, and granting the agent while the key stays
+	// readable protects nothing. Together there is no trade, and this line is
+	// where they meet.
+	if agent := env("SSH_AUTH_SOCK"); agent != "" && contains(granted, agent) {
+		out = append(out, filepath.Join(home, ".ssh"))
+	}
 	// And dcode's own key. A session that can read the credential it runs on
 	// can hand it to anything it can write to, and the redaction that keeps it
 	// out of transcripts does nothing about a file read.
@@ -163,3 +169,60 @@ func DefaultUnreadable(env func(string) string) []string {
 // imported because this package builds profiles and must not depend on the
 // store it is hiding; the guard below is the test that keeps the two in step.
 const credentialFileName = "credentials"
+
+// SSHAgentToken is what a user writes instead of a path they cannot know.
+//
+// The agent's socket is per-boot and per-login — /var/run/com.apple.launchd.*
+// on macOS, $XDG_RUNTIME_DIR elsewhere — so no configuration file can name it
+// and no default can guess it. The token stands for whatever SSH_AUTH_SOCK
+// holds at the time.
+const SSHAgentToken = "ssh-agent"
+
+// Paths parses one of the configured path lists, expanding `~` and the
+// ssh-agent token, in the same shape Unreadable already reads.
+//
+// Shared by the granted-socket list and the writable list because they are the
+// same kind of value said about different things, and two parsers would drift
+// into disagreeing about what a tilde means.
+func Paths(spec string, env func(string) string) []string {
+	if strings.TrimSpace(spec) == "" {
+		return nil
+	}
+	var home, agent string
+	if env != nil {
+		home = env("HOME")
+		agent = env("SSH_AUTH_SOCK")
+	}
+
+	var out []string
+	for _, p := range strings.Split(spec, string(os.PathListSeparator)) {
+		p = strings.TrimSpace(p)
+		switch {
+		case p == "":
+			continue
+		case p == SSHAgentToken:
+			// Nothing to grant when no agent is running, and granting the
+			// empty string would name the whole filesystem in some backends.
+			if agent == "" {
+				continue
+			}
+			p = agent
+		case home != "" && p == "~":
+			p = home
+		case home != "" && strings.HasPrefix(p, "~/"):
+			p = filepath.Join(home, p[2:])
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// contains reports membership, for the one condition above.
+func contains(hay []string, needle string) bool {
+	for _, h := range hay {
+		if h == needle {
+			return true
+		}
+	}
+	return false
+}

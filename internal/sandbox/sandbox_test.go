@@ -274,15 +274,6 @@ func realSandbox(t *testing.T) Sandbox {
 	return s
 }
 
-func contains(hay []string, needle string) bool {
-	for _, h := range hay {
-		if h == needle {
-			return true
-		}
-	}
-	return false
-}
-
 func TestShellQuoteHandlesQuotes(t *testing.T) {
 	if got := shellQuote("it's"); got != `'it'\''s'` {
 		t.Errorf("got %s", got)

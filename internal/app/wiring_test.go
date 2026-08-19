@@ -54,6 +54,8 @@ var wiringTable = []configOption{
 	{"AllowNetwork", "sandbox.allow_network", "Bool", ""},
 	{"Backend", "sandbox.backend", "String", ""},
 	{"Unreadable", "sandbox.unreadable", "String", ""},
+	{"Granted", "sandbox.sockets", "String", ""},
+	{"Writable", "sandbox.writable", "String", ""},
 
 	{"Parallel", "limits.parallel", "Int", "Parallel"},
 	{"Limits", "limits.max_iterations", "Int", ""},

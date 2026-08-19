@@ -45,11 +45,15 @@ func canonical(p string) string {
 // default people switch off entirely.
 type seatbelt struct {
 	bin string
-	// unreadable are paths put out of reach for this session. See
-	// unreadableDoc.
+	// unreadable are paths put out of reach for this session, for the reason
+	// written above.
 	unreadable   []string
 	allowNetwork func() bool
 	scratch      []string
+	// granted are unix sockets named as reachable, one by one.
+	granted []string
+	// writable are paths named as writable outside the workspace.
+	writable []string
 }
 
 func (s *seatbelt) Name() string { return BackendSeatbelt }
@@ -144,6 +148,10 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 		for _, p := range scratch {
 			writable = append(writable, canonical(p))
 		}
+		// And whatever was named. A grant is the exception spoken out loud:
+		// the rule that a socket is reachable exactly where writing is stays
+		// whole, and this widens the writing rather than bending the rule.
+		writable = append(writable, s.writable...)
 	case policy.ModeFullAccess:
 		b.WriteString("(allow file-write*)\n")
 	default:
@@ -195,6 +203,12 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 			fmt.Fprintf(&b, "(allow network-bind (subpath %q))\n", p)
 			fmt.Fprintf(&b, "(allow network-outbound (subpath %q))\n", p)
 		}
+		// A socket named on its own, without granting the directory it sits
+		// in. The ssh-agent's lives under a path nobody would want writable,
+		// and reaching it is not writing there.
+		for _, p := range s.granted {
+			fmt.Fprintf(&b, "(allow network-outbound (literal %q))\n", p)
+		}
 	}
 	return b.String(), nil
 }
@@ -221,6 +235,10 @@ type bubblewrap struct {
 	// unreadable are paths put out of reach for this session, for the reason
 	// written above seatbelt.
 	unreadable []string
+	// granted are unix sockets named as reachable, one by one.
+	granted []string
+	// writable are paths named as writable outside the workspace.
+	writable []string
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -355,7 +373,18 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 			}
 			args = append(args, "--tmpfs", p)
 		}
+		for _, p := range b.writable {
+			if !exists(p) {
+				continue
+			}
+			args = append(args, "--bind", p, p)
+		}
 		for _, p := range b.sockets {
+			// Named as reachable, so not covered. Here the covering IS the
+			// rule, so granting is simply not doing it.
+			if contains(b.granted, p) {
+				continue
+			}
 			// bubblewrap refuses a bind whose source or target is absent, and
 			// the refusal takes down the whole command rather than the one
 			// mount.
@@ -374,3 +403,17 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 	}
 	return args, nil
 }
+
+// Both backends carry `granted` and `writable`, and the reason is written once
+// here.
+//
+// The rule they bend around stays whole: a unix socket is reachable exactly
+// where writing already is, which is what keeps a container runtime out. A
+// session that coordinates machines needs specific things back — the ssh-agent's
+// socket, so ssh can sign without reading the key; known_hosts, so a first
+// connection is not a failure — and naming them is how that is said without
+// saying "any socket" or "anywhere".
+//
+// Config, not a question asked mid-session. The profile is built from these
+// before any turn exists, and a permission that cannot take effect until a
+// restart is a permission the user watches fail.
