@@ -28,12 +28,19 @@ jobs:
         # de segurar o PR inteiro.
         timeout-minutes: 8
         run: |
+          # E o espelho morto é a causa, não o sintoma. O log de uma das
+          # falhas mostra `Ign:` repetido para azure.archive.ubuntu.com antes
+          # de cair para archive.ubuntu.com: o apt espera o timeout DELE, de
+          # cerca de dois minutos por repositório, e o nosso acaba primeiro.
+          # Dar mais tempo seria pagar a espera; desistir depressa é não
+          # entrar nela.
+          APT="-o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 -o Acquire::Retries=1"
           for attempt in 1 2 3; do
-            if sudo timeout 120 apt-get update; then break; fi
+            if sudo timeout 120 apt-get $APT update; then break; fi
             echo "apt-get update nao respondeu (tentativa $attempt de 3)"
             if [ "$attempt" = 3 ]; then exit 1; fi
           done
-          sudo timeout 180 apt-get install -y bubblewrap
+          sudo timeout 180 apt-get $APT install -y bubblewrap
           # Installing it was not enough, and the step above said it was for
           # months. Ubuntu 24.04 restricts unprivileged user namespaces through
           # AppArmor, so bwrap arrives, answers "Permission denied" on its first
