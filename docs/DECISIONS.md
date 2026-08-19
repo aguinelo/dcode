@@ -873,3 +873,25 @@ and another at 480m.
 The three contract thresholds are undeclared. The first honest number comes from
 the first measurement; a threshold set before measuring is a threshold the
 measurement is then made to justify.
+
+### The coverage gate reads the whole matrix
+
+The testing convention already excluded "OS-specific code, off its platform —
+covered in that platform's CI matrix". Nothing honoured it: the gate ran inside
+each matrix job, so a branch reachable only under Seatbelt counted as uncovered
+on the Ubuntu runner.
+
+It failed three pull requests in one night, each time on code that was tested on
+the other platform, and each time the fix was to make the branch injectable so
+both runners could reach it. That works one case at a time and cannot work at
+all for separately tagged files like `clipboard_darwin.go`.
+
+CI now gates once, on the union of the uploaded profiles. Merging is
+concatenation because `go tool cover` sums repeated blocks — which this
+repository already relies on, since `-coverpkg=./...` makes every test binary
+emit a profile of every package. What cannot be mixed is the mode, so
+`scripts/merge-coverage.sh` refuses profiles that disagree on it.
+
+Measured on the run that failed: Ubuntu 94.9%, macOS 95.0%, union 95.0%. The
+union is not a rounding trick — it is the only number that describes the
+program rather than a runner.
