@@ -197,7 +197,7 @@ type Sandbox interface {
 - `Available()` falhando impede a criação da sessão; nenhum caminho executa sem fronteira.
 - Config travada por administrador não é sobrescrita por variável de ambiente nem por flag (RN-7).
 - Regra nunca transforma negação em pergunta.
-- Regra nunca é avaliada sob política `never`.
+- Regra avaliada sob política `never` nunca vira pergunta.
 - `never` **nega** o que uma regra escalonaria: com ninguém para perguntar, a autorização expressa não chega.
 - Rede concedida deixa de ser pergunta; retirada a concessão, volta a ser.
 - Concessão de rede é autorização, nunca contenção — não abre o que o modo fechou.
