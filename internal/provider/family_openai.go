@@ -38,8 +38,14 @@ func (MiniMaxM3) Window(string) (int, error) { return 1_000_000, nil }
 // 1,959 tool calls — and a cap sized for a ten-file refactor would truncate
 // legitimate work. The repeat detector remains the real defence; this is the
 // backstop, and a backstop tracks the model's horizon.
+//
+// 200 was below that horizon, and the citation above already said so: the run
+// this number was justified by is ten times the number that was written down.
+// It truncated a real one — an unattended session on this repository wrote the
+// fix it was asked for, complete and passing the gate, and then hit the ceiling
+// before it could say it was done. The work survived; the answer did not.
 func (MiniMaxM3) DefaultLimits() Limits {
-	return Limits{MaxIterations: 200}
+	return Limits{MaxIterations: 2000}
 }
 
 func (f MiniMaxM3) Encode(req Request, transport string) (WireRequest, error) {
