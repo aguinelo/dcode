@@ -87,6 +87,7 @@ var delegatedWritingInvariants = map[string]string{
 	"nenhum pedido do modelo o amplia":             "TestAChildDoesNotWidenTheSessionsConcurrency",
 	"escreve são debitados do pai":                 "TestAWritingChildIsPaidForByTheParent",
 	"não carrega critério de pronto":               "TestAChildCarriesNoDefinitionOfDone",
+	"não nega a capacidade que o schema oferece":   "TestTheDelegationToolDoesNotDenyWhatItOffers",
 }
 
 func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {
