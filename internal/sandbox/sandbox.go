@@ -73,6 +73,13 @@ type Config struct {
 	// Empty is the old behaviour, and the old behaviour could not run `go
 	// test`.
 	Scratch []string
+	// Sockets are the unix sockets on this machine that lead OUT of the
+	// sandbox — a container runtime listening for orders. Resolved by the
+	// caller from the environment, for the same reason Scratch is.
+	//
+	// Empty is the old behaviour, and the old behaviour handed the Docker
+	// daemon to anything running inside.
+	Sockets []string
 }
 
 // New returns the sandbox for cfg.
@@ -108,7 +115,7 @@ func New(cfg Config, mode policy.SandboxMode) (Sandbox, error) {
 	case BackendSeatbelt:
 		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch}
 	case BackendBubblewrap:
-		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch}
+		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown backend %q; valid: %s, %s, %s, %s",
 			backend, BackendAuto, BackendSeatbelt, BackendBubblewrap, BackendNone)

@@ -420,6 +420,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		// Without these a compiled language cannot build inside the sandbox,
 		// so the agent can change files and never check them.
 		Scratch: sandbox.Scratch(opts.Env),
+		Sockets: sandbox.LocalSockets(opts.Env),
 	}, opts.SandboxMode)
 	if err != nil {
 		return nil, err
