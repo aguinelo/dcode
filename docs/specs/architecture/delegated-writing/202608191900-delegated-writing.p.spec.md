@@ -118,17 +118,19 @@ Com N filhos, N−1 respostas é caso normal, não excepcional.
 - Estreitar um filho não estreita o pai.
 - Filho que escreve não carrega ferramenta opaca nem a de delegar.
 
+- As escritas do filho entram no conjunto de desfazimento do turno do pai.
+- O desfazimento guarda a fotografia que o pai tirou primeiro, nunca a do filho.
+- O relatório do filho nomeia os caminhos que escreveu, além dos que leu.
+- Filho que não respondeu é nomeado, nunca resumido.
+
 ## 8.1 Invariantes previstas
 
-> Entram como **verificáveis**, com teste reivindicado, nos PRs 2 e 3 da §9.
+> Entram como **verificáveis**, com teste reivindicado, no PR 3 da §9.
 
 - Filho nunca pede aprovação; escrita que escalaria é negada e reportada.
-- As escritas do filho entram no conjunto de desfazimento do turno do pai.
-- O relatório do filho nomeia os caminhos que escreveu, além dos que leu.
 - O teto de concorrência é da sessão; nenhum pedido do modelo o amplia.
 - Tokens do filho são debitados do orçamento do pai.
 - A definição de pronto não roda dentro de um filho.
-- Filho que não respondeu é nomeado no relatório do pai.
 
 ## 9. Ordem de entrega
 

@@ -79,6 +79,10 @@ var delegatedWritingInvariants = map[string]string{
 	"não o traz para dentro":                       "TestOwningNeverReachesOutsideTheWorkspace",
 	"Estreitar um filho não estreita o pai":        "TestOwningLeavesTheParentResolverAlone",
 	"não carrega ferramenta opaca":                 "TestAWritingChildCarriesWritingToolsAndNothingOpaque",
+	"conjunto de desfazimento do turno do pai":     "TestTheParentCanUndoWhatItsChildWrote",
+	"fotografia que o pai tirou primeiro":          "TestAdoptKeepsTheSnapshotTheParentTookFirst",
+	"nomeia os caminhos que escreveu":              "TestAWritingChildReportsWhatItWrote",
+	"nomeado, nunca resumido":                      "TestAChildThatDidNotAnswerIsNamed",
 }
 
 func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {

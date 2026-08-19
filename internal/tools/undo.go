@@ -123,3 +123,70 @@ func movedSince(path string, files map[string]fileState) bool {
 	}
 	return hashOf(string(body)) != files[path].hash
 }
+
+// Adopt takes over what a delegated child recorded, so the turn that asked for
+// the work is the turn that can undo it.
+//
+// Undo is per turn and delegation happens inside one. Without this the parent's
+// undo would reach everything except the part it delegated, and undoing half of
+// a division of work leaves a tree nobody designed.
+//
+// Three things move, and each for its own reason:
+//
+//   - the snapshots, so there is something to put back. The parent's own
+//     snapshot wins where both have one: the first of the turn is what the turn
+//     started from, and the child's later one records a state the turn itself
+//     produced.
+//   - the file records, because undo refuses a file that moved since the turn
+//     left it, and that judgement needs the hash of what was actually written.
+//     Here the child's wins, because the child wrote last and the disk agrees
+//     with it.
+//   - the written set, because "did this session change anything" is the fact
+//     the definition of done reads, and work done by a child is still work done.
+func (s *State) Adopt(child *State) {
+	if child == nil {
+		return
+	}
+
+	child.mu.Lock()
+	snaps := make(map[string]snapshot, len(child.snaps))
+	for p, sn := range child.snaps {
+		snaps[p] = sn
+	}
+	files := make(map[string]fileState, len(child.files))
+	for p, f := range child.files {
+		files[p] = f
+	}
+	written := make([]string, 0, len(child.written))
+	for p := range child.written {
+		written = append(written, p)
+	}
+	child.mu.Unlock()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.snaps == nil {
+		s.snaps = map[string]snapshot{}
+	}
+	for p, sn := range snaps {
+		if _, ok := s.snaps[p]; ok {
+			continue
+		}
+		s.snaps[p] = sn
+	}
+	if s.files == nil {
+		s.files = map[string]fileState{}
+	}
+	for p, f := range files {
+		s.files[p] = f
+	}
+	if s.written == nil {
+		s.written = map[string]struct{}{}
+	}
+	for _, p := range written {
+		if _, ok := s.written[p]; !ok {
+			s.writeSeq++
+		}
+		s.written[p] = struct{}{}
+	}
+}

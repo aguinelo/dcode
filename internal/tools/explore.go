@@ -23,7 +23,7 @@ type Delegator interface {
 	// when owns is empty, and otherwise the PARENT's mode, intersected with
 	// the owned paths. The caller never chooses either, which is why owns is a
 	// request rather than a grant.
-	Explore(ctx context.Context, task, path string, owns []string) (conclusion string, read, unread []string, truncated bool, err error)
+	Explore(ctx context.Context, task, path string, owns []string) (conclusion string, read, wrote, unread []string, truncated bool, err error)
 }
 
 // Explore delegates reading, so the cost of it does not come back.
@@ -130,9 +130,14 @@ func (e Explore) Execute(ctx context.Context, input json.RawMessage, s *State) (
 			"no delegator is configured").Result(), nil
 	}
 
-	conclusion, read, unread, truncated, err := e.Delegator.Explore(ctx, in.Task, in.Path, in.Owns)
+	conclusion, read, wrote, unread, truncated, err := e.Delegator.Explore(ctx, in.Task, in.Path, in.Owns)
 	if err != nil {
-		return errf(e.Name(), CodeNotFound, "", "the delegated turn failed: %v", err).Result(), nil
+		// Named, never summarised away. With several children in flight, one
+		// that did not answer has to be identifiable — an incomplete result
+		// wearing the face of a complete one is the defect this whole tool
+		// exists to avoid producing.
+		return errf(e.Name(), CodeNotFound, "",
+			"the delegated turn failed: %v (task: %s)", err, in.Task).Result(), nil
 	}
 
 	var b strings.Builder
@@ -145,6 +150,11 @@ func (e Explore) Execute(ctx context.Context, input json.RawMessage, s *State) (
 	// that can be spot-checked.
 	if len(read) > 0 {
 		b.WriteString("\n\nlooked at: " + strings.Join(read, ", "))
+	}
+	// What it changed, beside where it looked. A divided piece of work raises
+	// "which child touched what" before it raises anything else.
+	if len(wrote) > 0 {
+		b.WriteString("\nwrote: " + strings.Join(wrote, ", "))
 	}
 	if len(unread) > 0 {
 		// Never swallowed. A conclusion with an undeclared hole is a wrong
