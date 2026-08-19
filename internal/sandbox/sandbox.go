@@ -80,6 +80,12 @@ type Config struct {
 	// Empty is the old behaviour, and the old behaviour handed the Docker
 	// daemon to anything running inside.
 	Sockets []string
+	// Unreadable are paths this session may not read at all.
+	//
+	// Resolved by the caller from configuration, for the same reason Scratch
+	// is. Empty is the old behaviour, and the old behaviour let a command read
+	// a private key.
+	Unreadable []string
 }
 
 // New returns the sandbox for cfg.
@@ -113,9 +119,9 @@ func New(cfg Config, mode policy.SandboxMode) (Sandbox, error) {
 	var s Sandbox
 	switch backend {
 	case BackendSeatbelt:
-		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch}
+		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch, unreadable: cfg.Unreadable}
 	case BackendBubblewrap:
-		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets}
+		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets, unreadable: cfg.Unreadable}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown backend %q; valid: %s, %s, %s, %s",
 			backend, BackendAuto, BackendSeatbelt, BackendBubblewrap, BackendNone)

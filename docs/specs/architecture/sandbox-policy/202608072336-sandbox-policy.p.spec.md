@@ -214,6 +214,11 @@ type Sandbox interface {
 
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
 - Rede concedida inclui escutar: uma suíte que não abre porta não roda.
+- Caminho nomeado como não legível não é lido de dentro do sandbox, e o mesmo caminho sem ser nomeado continua legível.
+- `full-access` não esconde nada: modo que não promete fronteira não mantém uma escondida.
+- Nada nomeado esconde os cofres de credencial mesmo assim; o home inteiro nunca é um nome válido.
+- A própria credencial do dcode está entre os escondidos por default.
+- O nome do arquivo de credencial escondido acompanha o que o cofre escreve.
 - Socket unix é alcançável exatamente onde já se pode escrever — e `read-only`, que não escreve em lugar nenhum, não alcança nenhum.
 - Socket de runtime de contêiner é coberto no Linux, e um socket real deixa de ser socket dentro do sandbox.
 - `full-access` mantém a concessão ampla: modo que não promete fronteira não finge estreitá-la.
