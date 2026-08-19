@@ -10,8 +10,8 @@ Duas ausências são consequência disso, e ambas são o repositório funcionand
 - **A seção de invariantes chama-se "previstas".** Aqui uma invariante
   verificável é reivindicação sobre um teste que existe, e não há o que
   reivindicar antes do código. É renomeada e cobrada pela guarda no PR da
-  implementação. **A §8 já foi renomeada**: o PR 1 da §9 entregou nove delas, e
-  a §8.1 guarda as que faltam.
+  implementação. **A §8 já foi renomeada e a §8.1 deixou de existir**: os três
+  PRs da §9 entregaram todas.
 - **Não há `.i.spec.md`.** A guarda exige que todo caminho citado numa spec de
   implementação exista. A `.i` entra com o código; a ordem de entrega em §9 é o
   que existe até lá.
@@ -122,15 +122,10 @@ Com N filhos, N−1 respostas é caso normal, não excepcional.
 - O desfazimento guarda a fotografia que o pai tirou primeiro, nunca a do filho.
 - O relatório do filho nomeia os caminhos que escreveu, além dos que leu.
 - Filho que não respondeu é nomeado, nunca resumido.
-
-## 8.1 Invariantes previstas
-
-> Entram como **verificáveis**, com teste reivindicado, no PR 3 da §9.
-
-- Filho nunca pede aprovação; escrita que escalaria é negada e reportada.
+- Filho nunca pede aprovação, e escrita recusada é reportada como escrita.
 - O teto de concorrência é da sessão; nenhum pedido do modelo o amplia.
-- Tokens do filho são debitados do orçamento do pai.
-- A definição de pronto não roda dentro de um filho.
+- Tokens de filho que escreve são debitados do pai, como os de filho que lê.
+- Filho não carrega critério de pronto, e é dito a ele que conferir não é seu trabalho.
 
 ## 9. Ordem de entrega
 

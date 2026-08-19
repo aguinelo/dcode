@@ -83,6 +83,10 @@ var delegatedWritingInvariants = map[string]string{
 	"fotografia que o pai tirou primeiro":          "TestAdoptKeepsTheSnapshotTheParentTookFirst",
 	"nomeia os caminhos que escreveu":              "TestAWritingChildReportsWhatItWrote",
 	"nomeado, nunca resumido":                      "TestAChildThatDidNotAnswerIsNamed",
+	"recusada é reportada como escrita":            "TestARefusedWriteIsReportedAsAWrite",
+	"nenhum pedido do modelo o amplia":             "TestAChildDoesNotWidenTheSessionsConcurrency",
+	"escreve são debitados do pai":                 "TestAWritingChildIsPaidForByTheParent",
+	"não carrega critério de pronto":               "TestAChildCarriesNoDefinitionOfDone",
 }
 
 func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {

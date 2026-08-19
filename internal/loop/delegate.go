@@ -51,6 +51,14 @@ type DelegateResult struct {
 	// with an undeclared hole is a wrong conclusion wearing the face of a
 	// complete one.
 	Unread []string
+	// Unwritten are the changes a rule refused.
+	//
+	// Separate from Unread because they answer different questions. An unread
+	// path is a hole in what the child knows; an unwritten one is work the
+	// parent asked for that did not happen, and reporting it as "could not
+	// read" would say the child never looked when in fact it looked, decided,
+	// and was stopped.
+	Unwritten []string
 	// Truncated reports that the conclusion was cut.
 	Truncated bool
 }
@@ -71,6 +79,9 @@ func (r DelegateResult) String() string {
 	if len(r.Unread) > 0 {
 		fmt.Fprintf(&b, "\ncould not read: %s", strings.Join(r.Unread, ", "))
 	}
+	if len(r.Unwritten) > 0 {
+		fmt.Fprintf(&b, "\ncould not write: %s", strings.Join(r.Unwritten, ", "))
+	}
 	return b.String()
 }
 
@@ -85,15 +96,37 @@ func (r DelegateResult) String() string {
 // delegating bought — and they have no context to judge a request they did not
 // make. Not silence either, because a conclusion with an undeclared hole is a
 // wrong conclusion that looks complete.
-type denyAll struct{ denied []string }
+// The two lists are kept apart because they mean different things to whoever
+// reads the report: an unread path is a hole in the answer, and an unwritten one
+// is work that did not happen. While a child could only read there was one kind
+// of refusal and one name for it; a writing child makes that name wrong.
+type denyAll struct {
+	unread    []string
+	unwritten []string
+}
 
 func (d *denyAll) Approve(_ context.Context, req protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
 	target := req.Command
 	if target == "" {
 		target = req.Tool
 	}
-	d.denied = append(d.denied, target)
+	if refusedAWrite(req.BoundaryCrossed) {
+		d.unwritten = append(d.unwritten, target)
+	} else {
+		d.unread = append(d.unread, target)
+	}
 	return protocol.ApprovalDeny, nil
+}
+
+// refusedAWrite reads the boundary rather than the tool name, because the
+// boundary is what the policy decided and the name is only what the model
+// called it.
+func refusedAWrite(boundary string) bool {
+	switch policy.Boundary(boundary) {
+	case policy.BoundaryPathRuleWrite, policy.BoundaryWorkspaceWrite, policy.BoundaryFilesystemWrit:
+		return true
+	}
+	return false
 }
 
 // Delegate runs a read-only sub-turn and returns its report.
@@ -137,7 +170,8 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 		Conclusion: lastText(child.Session()),
 		Read:       child.cfg.State.ReadPaths(),
 		Wrote:      child.cfg.State.Written(),
-		Unread:     uniqueSortedStrings(approver.denied),
+		Unread:     uniqueSortedStrings(approver.unread),
+		Unwritten:  uniqueSortedStrings(approver.unwritten),
 	}
 	if n := lim.MaxResultBytes; n > 0 && len(res.Conclusion) > n {
 		res.Conclusion = res.Conclusion[:n]
