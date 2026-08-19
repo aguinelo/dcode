@@ -24,6 +24,9 @@ var sandboxDirs = []string{
 }
 
 var sandboxInvariants = map[string]string{
+	"depois de **provar**":   "TestSeatbeltProbesRatherThanTrustingThePath",
+	"pular dizendo o motivo": "TestABoundaryTestSkipsLoudlyRatherThanPassingQuietly",
+
 	"que uma toolchain precisa":              "TestAToolchainCanWriteToItsOwnCache",
 	"Nenhuma regra concede o diretório home": "TestTheHomeDirectoryIsNeverGranted",
 	"não concede nenhum deles":               "TestReadOnlyGrantsNoCache",

@@ -216,9 +216,12 @@ type Sandbox interface {
 - Nenhuma regra concede o diretório home; o que é concedido é nomeado um a um.
 - `read-only` não concede nenhum deles — o modo significa o mesmo nos dois backends.
 - Ambiente ausente ou nulo não concede nada, e não derruba a sessão.
+- Backend só se declara disponível depois de **provar** que consegue aplicar uma fronteira, nos dois sistemas.
+- Fronteira indisponível faz o teste **pular dizendo o motivo**, nunca falhar como se o trabalho estivesse errado.
 ## 7. Changelog
 
 - [202608091700 — Regras por caminho e por comando](changelog/202608091700-regras-por-caminho-e-comando.md)
 - [202608150300 — Workspace sob /tmp](changelog/202608150300-workspace-sob-tmp.md)
 - [202608190030 — Trabalho comum não pergunta, destruição pergunta sempre](changelog/202608190030-trabalho-comum-nao-pergunta.md)
 - [202608190130 — Uma toolchain alcança o próprio cache](changelog/202608190130-a-toolchain-alcanca-o-proprio-cache.md)
+- [202608190230 — Uma fronteira aninhada é detectada, não adivinhada](changelog/202608190230-uma-fronteira-aninhada-e-detectada.md)
