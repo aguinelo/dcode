@@ -71,11 +71,16 @@ Containment is the sandbox, and only the sandbox.`
 // destructiveCommands are the commands worth a question even when everything
 // else is granted.
 //
-// Two kinds, and they are here for different reasons. Some destroy work that
+// Three kinds, and they are here for different reasons. Some destroy work that
 // cannot be recovered from the repository — a forced push, a hard reset, a
 // recursive delete. Others reach the outside irreversibly: publishing is not
 // destruction, but it cannot be taken back either, and "I did not know it would
 // publish" is the same afternoon lost.
+//
+// The third kind leaves the machine, and it is different in a way that matters:
+// for the first two the sandbox still bounds where the damage lands, and for
+// this one it bounds nothing. The question is not a second line of defence
+// there — it is the only one.
 //
 // The spec has declared this list since before it existed. DefaultRules shipped
 // none of it, so the promise of confirmation was made in documentation and
@@ -97,6 +102,27 @@ var destructiveCommands = []string{
 	"*curl*|*sh*", "*curl*|*bash*", "*wget*|*sh*", "*wget*|*bash*",
 	// Opening permissions on everything.
 	"*chmod -R 777*", "*chmod 777 /*", "*chown -R*/*",
+	// Leaving the machine, which is the one kind the sandbox cannot follow.
+	//
+	// Every other entry on this list destroys work or publishes irreversibly,
+	// and containment still bounds WHERE it can happen. These happen somewhere
+	// containment has no reach at all: `ssh host 'systemctl stop postgres'`
+	// runs on a machine this process has no boundary on, and nothing can be
+	// undone from here. So the question fires on the crossing itself rather
+	// than on what is being asked over there — the far side cannot be read,
+	// and pretending to judge it would be worse than admitting we cannot.
+	//
+	// Anchored at the start, and at the usual chaining, so `cat ~/.ssh/config`
+	// is not a connection to anywhere. A command is text and this is attention,
+	// not a boundary: attention that fires on every push is attention nobody
+	// reads.
+	"ssh *", "*&& ssh *", "*; ssh *", "*| ssh *",
+	"scp *", "*&& scp *", "*; scp *",
+	"rsync *:*",
+	"kubectl exec*", "kubectl cp*", "kubectl port-forward*",
+	"ansible*",
+	"aws ssm start-session*", "aws ssm send-command*",
+	"docker -H *", "docker --host *", "*DOCKER_HOST=*",
 	// Taking the machine with it.
 	"*shutdown*", "*reboot*", "*halt*", "*:(){*",
 }

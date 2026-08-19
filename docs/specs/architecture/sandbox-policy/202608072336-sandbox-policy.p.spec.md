@@ -202,6 +202,8 @@ type Sandbox interface {
 - Rede concedida deixa de ser pergunta; retirada a concessão, volta a ser.
 - Concessão de rede é autorização, nunca contenção — não abre o que o modo fechou.
 - Comando destrutivo pede confirmação por default, em qualquer modo, e a regra que disparou é nomeada.
+- Comando que sai da máquina pede confirmação: a contenção não vai junto.
+- Trabalho comum de repositório não pede, inclusive `git push`, que alcança um remoto sem ser execução remota.
 - Trabalho comum não pergunta: build, teste e commit passam sem escalonar.
 - Regra dispara em `full-access`: os eixos são ortogonais e regra vive no de aprovação.
 - Escrita é perguntada antes de leitura quando a mesma chamada faz as duas.
