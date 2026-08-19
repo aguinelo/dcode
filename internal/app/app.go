@@ -174,7 +174,7 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			"sandbox.mode":            string(policy.ModeWorkspaceWrite),
 			"sandbox.approval_policy": string(policy.PolicyOnRequest),
 			"sandbox.backend":         sandbox.BackendAuto,
-			"sandbox.allow_network":   "false",
+			"sandbox.allow_network":   "true",
 			"limits.parallel":         "4",
 			// The rules live here rather than only in code, so `--config` can
 			// show them with an origin. A rule that governs behaviour and
@@ -293,7 +293,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		SandboxMode:       mode,
 		Policy:            pol,
 		Backend:           r.String("sandbox.backend", sandbox.BackendAuto),
-		AllowNetwork:      r.Bool("sandbox.allow_network", false),
+		AllowNetwork:      r.Bool("sandbox.allow_network", true),
 		Parallel:          r.Int("limits.parallel", 4),
 		Memory:            r.Bool("memory.enabled", true),
 		MemoryMax:         r.Int("memory.max_entries", memory.DefaultMax),
@@ -606,7 +606,12 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		AfterTurn: func(written []string) {
 			StampGenerated(opts.Workspace, foreignFiles(opts.InstructionForeign), written)
 		},
-		Rules:            opts.Rules,
+		Rules: opts.Rules,
+		// The same answer the sandbox is given, so the question and the
+		// boundary cannot disagree: asking about a network the sandbox already
+		// opened is a question whose answer changes nothing.
+		NetworkGrant: policy.NetworkGrantFunc(
+			func() bool { return opts.AllowNetwork || standing.NetworkNow() }),
 		Summarise:        summariser(p, opts.Model),
 		Skills:           skills,
 		InstructionChain: chain,

@@ -176,8 +176,11 @@ func (w *Workspace) evaluate(req policy.Request) policy.Verdict {
 		}
 		resolved.Paths = append(resolved.Paths, acc)
 	}
+	// The fixture grants the network and carries no rules: a scenario measures
+	// behaviour, and a question nobody is there to answer would measure the
+	// harness instead.
 	return policy.Evaluate(resolved, policy.ModeWorkspaceWrite, policy.PolicyNever,
-		policy.Rules{}, w.resolver.InWorkspace)
+		policy.Rules{}, policy.GrantedNetwork{}, w.resolver.InWorkspace)
 }
 
 // WorkspaceRoot is the miniature repository every scenario explores.

@@ -456,7 +456,8 @@ func TestPlanNeverCrossesABoundary(t *testing.T) {
 		for _, pol := range []policy.ApprovalPolicy{
 			policy.PolicyUntrusted, policy.PolicyOnRequest, policy.PolicyNever,
 		} {
-			v := policy.Evaluate(req, mode, pol, policy.Rules{}, func(policy.Access) bool { return true })
+			v := policy.Evaluate(req, mode, pol, policy.Rules{}, policy.WithheldNetwork{},
+				func(policy.Access) bool { return true })
 			if v.Decision != policy.DecisionAllow {
 				t.Errorf("mode=%s policy=%s: plan got %s", mode, pol, v.Decision)
 			}

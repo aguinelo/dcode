@@ -147,10 +147,22 @@ func TestDefaultRulesCoverTheEscapeAndTheSecrets(t *testing.T) {
 		}
 	}
 
-	// No command rules by default: the sandbox contains, and a list that pauses
-	// on someone else's idea of dangerous is noise until it is configured.
-	if len(r.ConfirmCommand) != 0 {
-		t.Errorf("got %v", r.ConfirmCommand)
+	// Command rules ship with defaults, and this assertion used to say the
+	// opposite: none by default, because the sandbox contains and a list that
+	// pauses on someone else's idea of dangerous is noise until configured.
+	//
+	// The containment half was right and is unchanged. What was wrong is that
+	// the spec had documented these defaults all along, so the product promised
+	// confirmation before destruction and delivered it nowhere — and an
+	// unattended run needs a floor that does not depend on somebody having
+	// configured one.
+	if len(r.ConfirmCommand) == 0 {
+		t.Error("nothing is confirmed before it destroys something")
+	}
+	for _, ordinary := range []string{"make check", "go build ./...", "git status"} {
+		if pattern, ok := r.MatchCommand(ordinary); ok {
+			t.Errorf("%q asks, matching %q — ordinary work must not", ordinary, pattern)
+		}
 	}
 }
 

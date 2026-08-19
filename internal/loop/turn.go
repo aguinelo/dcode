@@ -59,6 +59,10 @@ type Config struct {
 	ReadFile func(path string) (string, error)
 	// Rules are the patterns that ask a question the sandbox cannot.
 	Rules policy.Rules
+	// NetworkGrant answers whether reaching out is already authorized. Looked
+	// up per call rather than read once, because somebody can grant it while a
+	// turn is running.
+	NetworkGrant policy.NetworkGrant
 	// ShowReasoning forwards the model's thinking to clients.
 	ShowReasoning bool
 	// Reminders disables the appended-notice channel when false.
@@ -683,7 +687,12 @@ func (e *Engine) evaluate(req policy.Request) policy.Verdict {
 		}
 		resolved.Paths = append(resolved.Paths, acc)
 	}
-	return policy.Evaluate(resolved, e.cfg.Mode, e.cfg.Policy, e.cfg.Rules, resolver.InWorkspace)
+	grant := e.cfg.NetworkGrant
+	if grant == nil {
+		// A caller that wired nothing gets the question, not the grant.
+		grant = policy.WithheldNetwork{}
+	}
+	return policy.Evaluate(resolved, e.cfg.Mode, e.cfg.Policy, e.cfg.Rules, grant, resolver.InWorkspace)
 }
 
 func (e *Engine) askApproval(ctx context.Context, turnID string, ex ToolExecution, v policy.Verdict) (

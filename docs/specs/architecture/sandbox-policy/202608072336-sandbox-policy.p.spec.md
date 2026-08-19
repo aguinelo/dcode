@@ -198,7 +198,11 @@ type Sandbox interface {
 - Config travada por administrador não é sobrescrita por variável de ambiente nem por flag (RN-7).
 - Regra nunca transforma negação em pergunta.
 - Regra nunca é avaliada sob política `never`.
-- `never` é ao menos tão permissivo quanto `on-request` em tudo que regra toca.
+- `never` **nega** o que uma regra escalonaria: com ninguém para perguntar, a autorização expressa não chega.
+- Rede concedida deixa de ser pergunta; retirada a concessão, volta a ser.
+- Concessão de rede é autorização, nunca contenção — não abre o que o modo fechou.
+- Comando destrutivo pede confirmação por default, em qualquer modo, e a regra que disparou é nomeada.
+- Trabalho comum não pergunta: build, teste e commit passam sem escalonar.
 - Regra dispara em `full-access`: os eixos são ortogonais e regra vive no de aprovação.
 - Escrita é perguntada antes de leitura quando a mesma chamada faz as duas.
 - Regra escrita contra o workspace não alcança caminho fora dele.
@@ -212,3 +216,4 @@ type Sandbox interface {
 
 - [202608091700 — Regras por caminho e por comando](changelog/202608091700-regras-por-caminho-e-comando.md)
 - [202608150300 — Workspace sob /tmp](changelog/202608150300-workspace-sob-tmp.md)
+- [202608190030 — Trabalho comum não pergunta, destruição pergunta sempre](changelog/202608190030-trabalho-comum-nao-pergunta.md)
