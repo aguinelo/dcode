@@ -10,6 +10,7 @@ import (
 
 // fakeDelegator stands in for the loop, which owns turns.
 type fakeDelegator struct {
+	owns       []string
 	conclusion string
 	read       []string
 	unread     []string
@@ -18,7 +19,8 @@ type fakeDelegator struct {
 	task, path string
 }
 
-func (f *fakeDelegator) Explore(_ context.Context, task, path string) (string, []string, []string, bool, error) {
+func (f *fakeDelegator) Explore(_ context.Context, task, path string, owns []string) (string, []string, []string, bool, error) {
+	f.owns = owns
 	f.task, f.path = task, path
 	return f.conclusion, f.read, f.unread, f.truncated, f.err
 }

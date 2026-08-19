@@ -22,7 +22,7 @@ func fullRegistry() *tools.Registry {
 // The child cannot write, and not because a condition says so: the tools that
 // write are not in its registry.
 func TestTheChildGetsOnlyReadingTools(t *testing.T) {
-	reg, names := readOnlyRegistry(fullRegistry())
+	reg, names := childRegistry2(fullRegistry())
 
 	for _, forbidden := range []string{"write", "edit", "bash", "plan"} {
 		if _, ok := reg.Get(forbidden); ok {
@@ -42,7 +42,7 @@ func TestTheChildGetsOnlyReadingTools(t *testing.T) {
 // Nesting is impossible rather than forbidden. Nested delegation is exponential
 // cost and the error lands far from its cause.
 func TestTheChildCannotDelegateAgain(t *testing.T) {
-	reg, names := readOnlyRegistry(fullRegistry())
+	reg, names := childRegistry2(fullRegistry())
 	if _, ok := reg.Get(ExploreToolName); ok {
 		t.Fatal("the child's registry contains the delegating tool")
 	}
@@ -57,7 +57,7 @@ func TestTheChildCannotDelegateAgain(t *testing.T) {
 // it. That is the safe direction to be wrong in.
 func TestAToolAddedLaterIsExcludedUntilConsidered(t *testing.T) {
 	parent := tools.NewRegistry(tools.Read{}, unknownTool{})
-	reg, _ := readOnlyRegistry(parent)
+	reg, _ := childRegistry2(parent)
 	if _, ok := reg.Get("deploy"); ok {
 		t.Fatal("a tool nobody classified reached the child")
 	}
@@ -113,7 +113,7 @@ func TestChildTokensAreDebitedFromTheParent(t *testing.T) {
 		{text("the parent answer"), spent(11, 3)},
 	})
 
-	if _, err := e.Delegate(context.Background(), "where is it", "", DelegateLimits{MaxIterations: 3}); err != nil {
+	if _, err := e.Delegate(context.Background(), "where is it", "", DelegateLimits{MaxIterations: 3}, nil); err != nil {
 		t.Fatal(err)
 	}
 	out, err := e.Run(context.Background(), "go on")

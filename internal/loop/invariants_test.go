@@ -58,3 +58,39 @@ func TestEveryInvariantHasATest(t *testing.T) {
 		t.Errorf("agent-loop: %s", f)
 	}
 }
+
+// The delegated-writing family spans three packages, and the split is the same
+// one as everywhere else here: the loop decides what a child turn is, the
+// policy package answers containment, and the tools package is where the
+// declaration is made.
+var delegatedWritingDirs = []string{
+	".",
+	filepath.Join("..", "policy"),
+	filepath.Join("..", "tools"),
+}
+
+var delegatedWritingInvariants = map[string]string{
+	"ausente produz um filho somente-leitura":      "TestAChildWithoutOwnsIsStillReadOnly",
+	"não produz filho que escreve":                 "TestAWritingChildIsRefusedWhenTheParentCannotWrite",
+	"vazio é erro de declaração":                   "TestExploreWithAnEmptyOwnsIsADeclarationError",
+	"declaram conflito antes":                      "TestTwoChildrenOwningTheSamePathDeclareAConflict",
+	"fora do que possui é negado pela contenção":   "TestANarrowedResolverRefusesAWriteOutsideWhatIsOwned",
+	"por componente de caminho, nunca por prefixo": "TestOwnershipIsByComponentNotByPrefix",
+	"não o traz para dentro":                       "TestOwningNeverReachesOutsideTheWorkspace",
+	"Estreitar um filho não estreita o pai":        "TestOwningLeavesTheParentResolverAlone",
+	"não carrega ferramenta opaca":                 "TestAWritingChildCarriesWritingToolsAndNothingOpaque",
+}
+
+func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "delegated-writing", delegatedWritingDirs, delegatedWritingInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("delegated-writing: %s", f)
+	}
+}

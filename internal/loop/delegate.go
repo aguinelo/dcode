@@ -93,32 +93,18 @@ func (d *denyAll) Approve(_ context.Context, req protocol.ApprovalRequest) (prot
 // its registry — so nesting is impossible rather than forbidden. Compare
 // DoctrineOverlay, where Safety is not a field: the guarantee is the absence,
 // not a condition somewhere that could be edited out.
-func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLimits) (DelegateResult, error) {
-	reg, readable := readOnlyRegistry(e.cfg.Tools)
-
-	approver := &denyAll{}
-	child := New(Config{
-		Provider: e.cfg.Provider,
-		Tools:    reg,
-		State:    tools.NewState(e.cfg.State.Resolver, e.cfg.State.Limits, readable),
-		Emitter:  nil, // the child's steps are not the parent session's events
-		Approver: approver,
-		// Read-only, fixed here. It is not a field of the tool input and the
-		// model never gets to pass it.
-		Mode:      policy.ModeReadOnly,
-		Policy:    e.cfg.Policy,
-		Model:     e.cfg.Model,
-		Parallel:  e.cfg.Parallel,
-		CtxConfig: e.cfg.CtxConfig,
-		Rules:     e.cfg.Rules,
-		Limits:    Limits{MaxIterations: lim.MaxIterations, MaxIdenticalCalls: e.cfg.Limits.MaxIdenticalCalls},
-		Reminders: e.cfg.Reminders,
-	}, ce.Session{
+func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLimits, owns []string) (DelegateResult, error) {
+	cfg, err := e.childConfig(lim, owns)
+	if err != nil {
+		return DelegateResult{}, err
+	}
+	approver := cfg.Approver.(*denyAll)
+	child := New(cfg, ce.Session{
 		// The task, not the parent's history. That is the entire point:
 		// copying the history back would return the cost delegation exists to
 		// avoid.
-		Instructions: delegateInstructions(readable),
-		Tools:        reg.Defs(),
+		Instructions: delegateInstructions(cfg.Tools.Names(), owns),
+		Tools:        cfg.Tools.Defs(),
 	})
 
 	out, err := child.Run(ctx, delegateTask(task, path))
@@ -144,16 +130,63 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 	return res, nil
 }
 
-// readOnlyRegistry is the child's tool set: everything that only reads, and
-// nothing that delegates.
+// childConfig builds the child turn, and is where every guarantee about it
+// lives.
+//
+// Separated from Delegate so the guarantees can be asserted without running a
+// turn against a model. A guarantee that can only be checked by running the
+// thing it guards is a guarantee nobody checks.
+func (e *Engine) childConfig(lim DelegateLimits, owns []string) (Config, error) {
+	mode := policy.ModeReadOnly
+	resolver := e.cfg.State.Resolver
+
+	if len(owns) > 0 {
+		// A child may drop capability and never add it. The request is
+		// intersected with what the parent already has, so the mode is
+		// INHERITED — still not a field the model passes.
+		if e.cfg.Mode == policy.ModeReadOnly {
+			return Config{}, fmt.Errorf(
+				"delegation: this session is read-only, so a child cannot write %s",
+				strings.Join(owns, ", "))
+		}
+		mode = e.cfg.Mode
+		// And the containment is narrowed to what was declared. Ownership is a
+		// boundary answered by the machinery that already refuses a write
+		// outside the workspace, never a promise checked at review time.
+		resolver = resolver.Owning(owns)
+	}
+
+	reg, names := childRegistry(e.cfg.Tools, len(owns) > 0)
+	return Config{
+		Provider:  e.cfg.Provider,
+		Tools:     reg,
+		State:     tools.NewState(resolver, e.cfg.State.Limits, names),
+		Emitter:   nil, // the child's steps are not the parent session's events
+		Approver:  &denyAll{},
+		Mode:      mode,
+		Policy:    e.cfg.Policy,
+		Model:     e.cfg.Model,
+		Parallel:  e.cfg.Parallel,
+		CtxConfig: e.cfg.CtxConfig,
+		Rules:     e.cfg.Rules,
+		Limits:    Limits{MaxIterations: lim.MaxIterations, MaxIdenticalCalls: e.cfg.Limits.MaxIdenticalCalls},
+		Reminders: e.cfg.Reminders,
+	}, nil
+}
+
+// childRegistry is the child's tool set: everything that only reads, the
+// writing tools when it owns something, and nothing that delegates.
 //
 // The absence of the delegating tool is what makes nesting impossible. Nested
 // delegation is exponential cost, and the error lands far from its cause.
-func readOnlyRegistry(parent *tools.Registry) (*tools.Registry, []string) {
+func childRegistry(parent *tools.Registry, writes bool) (*tools.Registry, []string) {
 	var kept []tools.Tool
 	var names []string
 	for _, name := range parent.Names() {
-		if name == ExploreToolName || !readOnlyTools[name] {
+		if name == ExploreToolName {
+			continue
+		}
+		if !readOnlyTools[name] && !(writes && writingTools[name]) {
 			continue
 		}
 		if t, ok := parent.Get(name); ok {
@@ -175,11 +208,37 @@ var readOnlyTools = map[string]bool{
 	"symbol": true,
 }
 
+// writingTools are added when the child owns paths, and the list is short on
+// purpose.
+//
+// `bash` is not here. A shell command is opaque — the scheduler already runs
+// one alone for that reason — so nothing can be proven about what it would
+// touch, and containment narrowed to owned paths would be arguing with a
+// process rather than with a declaration. Whether a writing child may run a
+// command is an open question in the research spec; excluding it is the safe
+// direction to be wrong in until that question has an answer.
+var writingTools = map[string]bool{
+	"write": true,
+	"edit":  true,
+}
+
 // ExploreToolName is the delegating tool, named here so the child's registry can
 // exclude it without importing the tools package's own definition.
 const ExploreToolName = "explore"
 
-func delegateInstructions(toolNames []string) string {
+func delegateInstructions(toolNames []string, owns []string) string {
+	if len(owns) > 0 {
+		return "You are doing one piece of work in a codebase, for another agent.\n\n" +
+			"You have " + strings.Join(toolNames, ", ") + " and nothing else — " +
+			"no commands, no delegating.\n\n" +
+			"You may write ONLY these paths: " + strings.Join(owns, ", ") + ". " +
+			"Anything else is refused by the boundary, not by convention. " +
+			"Another agent may be writing elsewhere at the same time.\n\n" +
+			"Do not run the test suite or try to verify the tree: it is still " +
+			"changing, and checking it is not your job. Say what you wrote and " +
+			"what you could not, in a few paragraphs.\n\n" +
+			"If something was unreadable, say so rather than concluding around it."
+	}
 	return "You are answering one question about a codebase, for another agent.\n\n" +
 		"You can only read. You have " + strings.Join(toolNames, ", ") +
 		" and nothing else — no writing, no commands, no delegating.\n\n" +
@@ -226,11 +285,11 @@ func uniqueSortedStrings(in []string) []string {
 // The adapter lives here rather than in the tools package because everything it
 // decides — read-only mode, the reduced registry, the denying approver, the
 // budget debit — is a property of what a turn is, and turns belong to the loop.
-func (e *Engine) Explore(ctx context.Context, task, path string) (string, []string, []string, bool, error) {
+func (e *Engine) Explore(ctx context.Context, task, path string, owns []string) (string, []string, []string, bool, error) {
 	res, err := e.Delegate(ctx, task, path, DelegateLimits{
 		MaxIterations:  e.cfg.DelegateMaxIterations,
 		MaxResultBytes: e.cfg.DelegateMaxResultBytes,
-	})
+	}, owns)
 	if err != nil {
 		return "", nil, nil, false, err
 	}

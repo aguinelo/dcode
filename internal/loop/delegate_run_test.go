@@ -55,7 +55,7 @@ func TestADelegatedTurnReturnsAConclusionAndWhereItLooked(t *testing.T) {
 
 	res, err := e.Delegate(context.Background(), "where is payment validated", "", DelegateLimits{
 		MaxIterations: 5, MaxResultBytes: 8192,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestTheChildIsGivenTheTaskAndNotTheParentHistory(t *testing.T) {
 		Role: ce.RoleUser, Text: "a long and expensive conversation the parent already had",
 	})
 
-	if _, err := e.Delegate(context.Background(), "find the thing", "sub/dir", DelegateLimits{MaxIterations: 3}); err != nil {
+	if _, err := e.Delegate(context.Background(), "find the thing", "sub/dir", DelegateLimits{MaxIterations: 3}, nil); err != nil {
 		t.Fatal(err)
 	}
 	seen := e.cfg.Provider.(*scriptedProvider).seen
@@ -107,7 +107,7 @@ func TestALongReportIsCutAndSaysSo(t *testing.T) {
 
 	res, err := e.Delegate(context.Background(), "explain", "", DelegateLimits{
 		MaxIterations: 3, MaxResultBytes: 200,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestExploreAdaptsTheEngineToTheToolInterface(t *testing.T) {
 		{call("c1", "read", `{"path":"pay.go"}`), done()},
 		{text("found it"), done()},
 	})
-	conclusion, read, unread, truncated, err := e.Explore(context.Background(), "find it", "")
+	conclusion, read, unread, truncated, err := e.Explore(context.Background(), "find it", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestExploreAdaptsTheEngineToTheToolInterface(t *testing.T) {
 }
 
 func TestTheChildInstructionsNameOnlyTheToolsItHas(t *testing.T) {
-	got := delegateInstructions([]string{"read", "grep"})
+	got := delegateInstructions2([]string{"read", "grep"})
 	if !strings.Contains(got, "read, grep") {
 		t.Errorf("the child was not told what it has:\n%s", got)
 	}
@@ -247,7 +247,7 @@ func TestTheChildIsReadOnlyEvenWithAWritingToolInReach(t *testing.T) {
 		DelegateMaxResultBytes: 8192,
 	}, ce.Session{Instructions: "You are dcode."})
 
-	if _, err := e.Delegate(context.Background(), "look around", "", DelegateLimits{MaxIterations: 3}); err != nil {
+	if _, err := e.Delegate(context.Background(), "look around", "", DelegateLimits{MaxIterations: 3}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(ws, "scribbled.txt")); err == nil {
