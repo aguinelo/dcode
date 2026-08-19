@@ -305,6 +305,14 @@ after `go clean -testcache`, and the difference was read as a failing change
 until the baseline was measured. Whatever the fix is, the trap is that the wrong
 number looks like an ordinary one.
 
+**Um filho em cinco não relatou o que escreveu.** Na primeira medição da
+delegação com escrita, cinco filhos escreveram cinco arquivos e quatro
+relatórios trouxeram `wrote:`. O caminho do código está certo — o rodapé é
+acrescentado depois da conclusão, então truncar a conclusão não o tira. Resta a
+hipótese não confirmada de que `ReadPaths()` e `Written()` voltaram vazios para
+aquele filho. Um relatório que às vezes omite o que foi escrito é pior que um que
+nunca diz, porque o silêncio passa por resposta.
+
 **Learned memory has no user-level scope.** Deliberately out of scope in the
 spec: a gotcha from one project applied to another is worse than none. Revisit
 only with evidence from project scope.
