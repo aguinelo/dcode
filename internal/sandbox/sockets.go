@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -51,6 +52,54 @@ func LocalSockets(env func(string) string) []string {
 	// of defaults can never guess.
 	if host := env("DOCKER_HOST"); strings.HasPrefix(host, "unix://") {
 		out = append(out, strings.TrimPrefix(host, "unix://"))
+	}
+	return out
+}
+
+// Unreadable parses the configured list of paths this session may not read.
+//
+// A list separated by the platform's path separator, like PATH itself, because
+// that is the one convention every shell and every user already knows for "a
+// list of paths in an environment variable".
+//
+// `~` is expanded here rather than left to the shell: the value arrives from a
+// config file as often as from an export, and a tilde that works in one and not
+// the other is a setting that looks broken.
+//
+// There is no default, and the absence is a decision. Every candidate is needed
+// by some ordinary tool — hiding ~/.ssh breaks `git push`, hiding ~/.aws breaks
+// the aws CLI — and a default that breaks the ordinary case is a default people
+// switch off entirely, which protects nothing at all. Naming what to hide is
+// the caller's call, because only the caller knows what this session is for.
+func Unreadable(spec string, env func(string) string) []string {
+	if strings.TrimSpace(spec) == "" {
+		return nil
+	}
+	var home string
+	if env != nil {
+		home = env("HOME")
+	}
+
+	var out []string
+	for _, p := range strings.Split(spec, string(os.PathListSeparator)) {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if home != "" {
+			if p == "~" {
+				p = home
+			} else if strings.HasPrefix(p, "~/") {
+				p = filepath.Join(home, p[2:])
+			}
+		}
+		// The home directory itself is refused, for the same reason Scratch
+		// refuses to grant it: a rule that covers everything under it is not a
+		// named set, it is a different mode wearing one.
+		if home != "" && p == home {
+			continue
+		}
+		out = append(out, p)
 	}
 	return out
 }

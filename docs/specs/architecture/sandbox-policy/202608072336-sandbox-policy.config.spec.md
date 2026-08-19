@@ -12,6 +12,17 @@
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
 | `DCODE_SANDBOX_BACKEND` | enum | `auto` | `auto`, `seatbelt`, `bubblewrap`, `none`. `auto` escolhe pelo sistema operacional. `none` **só é aceito** junto de `DCODE_SANDBOX_MODE=full-access` — em qualquer outro modo é erro de inicialização, porque prometeria fronteira que não existe (RN-3). |
+| `DCODE_SANDBOX_UNREADABLE` | lista de caminhos | **vazio** | Caminhos que a sessão **não lê**, separados como `PATH`. `~` é expandido; o próprio home é recusado, porque cobrir tudo abaixo dele não é conjunto nomeado, é outro modo com nome emprestado. Ignorado em `full-access`, que não promete fronteira e não deve manter uma escondida. |
+
+**Por que não há default.** Leitura é concedida em todo lugar de propósito —
+recusá-la impede o interpretador de carregar antes de o comando rodar — e o
+preço é que a sandbox não protege segredo nenhum: medido nesta base, um comando
+sob `workspace-write` leu uma chave SSH privada sem um pio.
+
+Todo candidato a default quebra alguma ferramenta comum. Esconder `~/.ssh`
+quebra `git push`; esconder `~/.aws` quebra a CLI da AWS. **Default que quebra o
+caso comum é default que as pessoas desligam inteiro**, e aí não protege nada.
+Quem sabe para que a sessão existe é quem a abre, e é quem nomeia.
 
 ## 2. Rede
 

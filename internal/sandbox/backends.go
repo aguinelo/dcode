@@ -30,8 +30,24 @@ func canonical(p string) string {
 // seatbelt confines through sandbox-exec, which ships with macOS. Driving the
 // binary rather than calling sandbox_init through cgo is what keeps the static
 // binary and cross-compilation working.
+// Both backends carry an `unreadable` field, and the reason is written once here.
+//
+// Reading is allowed everywhere on purpose: refusing it outright stops the
+// interpreter loading before the command runs. The cost is that the sandbox
+// protects no secret — measured here, a command under workspace-write read a
+// private SSH key without a murmur. For editing code that is a fair trade; for
+// a session that reaches servers it leaves the most valuable thing on the
+// machine on the table.
+//
+// A named set is the answer, not a blanket rule. Every candidate for a default
+// is needed by some ordinary tool — hiding ~/.ssh breaks `git push`, hiding
+// ~/.aws breaks the aws CLI — and a default that breaks the ordinary case is a
+// default people switch off entirely.
 type seatbelt struct {
-	bin          string
+	bin string
+	// unreadable are paths put out of reach for this session. See
+	// unreadableDoc.
+	unreadable   []string
 	allowNetwork func() bool
 	scratch      []string
 }
@@ -96,6 +112,16 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 	b.WriteString("(allow process-exec)\n(allow process-fork)\n")
 	b.WriteString("(allow sysctl-read)\n(allow mach-lookup)\n")
 	b.WriteString("(allow signal (target self))\n")
+
+	// After the blanket allow, never before: Seatbelt takes the LAST matching
+	// rule, so a deny written above would be overruled by the line that grants
+	// everything. Not in full-access, which promises no boundary and must not
+	// quietly keep one.
+	if mode != policy.ModeFullAccess {
+		for _, p := range s.unreadable {
+			fmt.Fprintf(&b, "(deny file-read* (subpath %q))\n", p)
+		}
+	}
 
 	// The writable set, collected once and used twice: file writes below, and
 	// unix sockets further down. Two rules reading the same list is what keeps
@@ -192,6 +218,9 @@ type bubblewrap struct {
 	// for the same reason scratch is: this package builds profiles and does
 	// not read the world.
 	sockets []string
+	// unreadable are paths put out of reach for this session, for the reason
+	// written above seatbelt.
+	unreadable []string
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -317,6 +346,15 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 		// profile denies every unix socket instead. Here the whole filesystem
 		// is bound by design, so the sockets have to be named. Naming them is
 		// worse than denying them and better than handing them over.
+		// A named store is covered with a fresh tmpfs: the mount is what the
+		// kernel reads, so there is nothing left to allow or deny. Same move
+		// as the sockets below, and for the same reason.
+		for _, p := range b.unreadable {
+			if !exists(p) {
+				continue
+			}
+			args = append(args, "--tmpfs", p)
+		}
 		for _, p := range b.sockets {
 			// bubblewrap refuses a bind whose source or target is absent, and
 			// the refusal takes down the whole command rather than the one

@@ -58,11 +58,14 @@ var sandboxInvariants = map[string]string{
 	"inspecionáveis por `--config`":    "TestTheEffectiveRulesAreInspectableWithTheirProvenance",
 	"Workspace sob `/tmp`":             "TestAWorkspaceUnderTmpSurvivesTheWritableTmpfs",
 
-	"não entrega socket unix":       "TestSeatbeltGrantsTheNetworkWithoutTheMachinesOwnSockets",
-	"Rede concedida inclui escutar": "TestAPortCanBeBoundInsideTheSandbox",
-	"onde já se pode escrever":      "TestAUnixSocketIsReachableWhereWritingIs",
-	"deixa de ser socket dentro":    "TestARealRuntimeSocketIsCoveredInside",
-	"mantém a concessão ampla":      "TestSeatbeltFullAccessKeepsTheBlanketGrant",
+	"não entrega socket unix":               "TestSeatbeltGrantsTheNetworkWithoutTheMachinesOwnSockets",
+	"Rede concedida inclui escutar":         "TestAPortCanBeBoundInsideTheSandbox",
+	"onde já se pode escrever":              "TestAUnixSocketIsReachableWhereWritingIs",
+	"não é lido de dentro do sandbox":       "TestARealNamedStoreCannotBeReadFromInside",
+	"não esconde nada":                      "TestSeatbeltFullAccessHidesNothing",
+	"o home inteiro nunca é um nome válido": "TestUnreadableExpandsHomeAndRefusesIt",
+	"deixa de ser socket dentro":            "TestARealRuntimeSocketIsCoveredInside",
+	"mantém a concessão ampla":              "TestSeatbeltFullAccessKeepsTheBlanketGrant",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
