@@ -140,9 +140,27 @@ not clear comfortably — a gate that is red on arrival is a gate people learn t
 ignore.* It was raised to the observed value with no headroom, which is the same
 mistake in the same sentence that warns against it.
 
-**What to do.** Either earn real margin, or accept that a hard threshold at the
-observed value is the wrong instrument and give it a band. Both are decisions
-about the gate rather than about coverage.
+**What was done** (#190). The drift was not drift. It was 29 blocks that one
+platform executes and the other cannot, counted as uncovered on the runner that
+could never reach them — while the testing convention already excluded exactly
+that, in a line nothing honoured. The gate now runs once, over the union of the
+matrix profiles. Measured on the run that failed: Ubuntu 94.9%, macOS 95.0%,
+union 95.0%.
+
+That removes the cause of every failure on record here. It does not create
+margin: the union sits at 95.0% against a gate of 95, so the slack is a handful
+of statements.
+
+**What is left.** 371 statements are uncovered, and almost all of them are
+one-statement `if err != nil` returns spread across every package. Covering ~75
+of them would buy a point. Whether to do that is a real question and the answer
+is not obvious: a point of headroom bought by writing tests for the number is
+the gate becoming a target, which the convention two paragraphs up forbids.
+
+The honest options remain the two already named — earn margin where the test is
+worth having anyway (the failure paths in `credential`, `update` and `server`
+are real behaviour), or give the threshold a band. What changed is that neither
+is now urgent, because the failures that made it urgent had another cause.
 
 ---
 
