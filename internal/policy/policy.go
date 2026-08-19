@@ -105,6 +105,27 @@ const (
 	BoundaryFilesystemWrit Boundary = "filesystem_write"
 )
 
+// NetworkGrant answers whether reaching out is already authorized.
+//
+// A function rather than a value because the answer changes inside a session:
+// somebody can grant it while a turn is running, and a value read at startup
+// would still be saying no an hour later.
+type NetworkGrant interface{ Granted() bool }
+
+// GrantedNetwork and WithheldNetwork are the two standing answers.
+type GrantedNetwork struct{}
+
+func (GrantedNetwork) Granted() bool { return true }
+
+type WithheldNetwork struct{}
+
+func (WithheldNetwork) Granted() bool { return false }
+
+// NetworkGrantFunc adapts a closure, for the answer that is looked up live.
+type NetworkGrantFunc func() bool
+
+func (f NetworkGrantFunc) Granted() bool { return f != nil && f() }
+
 // Verdict is the outcome of Evaluate.
 type Verdict struct {
 	Decision Decision
@@ -122,19 +143,25 @@ type Verdict struct {
 // is the one that will be wrong.
 //
 // inWorkspace reports containment; the caller supplies it from Resolve.
-func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy, rules Rules, inWorkspace func(Access) bool) Verdict {
-	v := evaluateMode(r, mode, inWorkspace)
+func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy, rules Rules, net NetworkGrant, inWorkspace func(Access) bool) Verdict {
+	v := evaluateMode(r, mode, net, inWorkspace)
 	// Only what the sandbox would have permitted anyway. A rule adds a
 	// question; it never grants one, and it never rescues something already
 	// denied — otherwise the boundary would be negotiable by configuration.
 	//
-	// And only where somebody is going to be asked. A rule is a request for a
-	// person's attention; with `never` there is no person, so there is no
-	// question — and turning an unaskable question into a denial would make
-	// `never` *more* restrictive than `on-request`, which is the opposite of
-	// what it says. The sandbox is untouched either way, and the sandbox is
-	// what contains.
-	if v.Decision == DecisionAllow && pol != PolicyNever {
+	// Rules run under every policy, including `never`.
+	//
+	// They used to be skipped there, and the reasoning was that a rule asks for
+	// a person's attention, so with no person there is no question — making
+	// `never` no more restrictive than `on-request`. That held while the rules
+	// were only about attention on paths.
+	//
+	// It stopped holding when they took on destruction. `never` then allowed
+	// `rm -rf /` outright: the one configuration with nobody watching was the
+	// one that would not stop. Under `never` an escalation becomes a denial,
+	// which is what applyPolicy already does — the refusal is the express
+	// authorization never arriving.
+	if v.Decision == DecisionAllow {
 		if rv, ok := evaluateRules(r, rules); ok {
 			v = rv
 		}
@@ -170,7 +197,7 @@ func evaluateRules(r Request, rules Rules) (Verdict, bool) {
 }
 
 // evaluateMode applies the sandbox axis: what is physically possible.
-func evaluateMode(r Request, mode SandboxMode, inWorkspace func(Access) bool) Verdict {
+func evaluateMode(r Request, mode SandboxMode, net NetworkGrant, inWorkspace func(Access) bool) Verdict {
 	if mode == ModeFullAccess {
 		return Verdict{Decision: DecisionAllow, Reason: "full access"}
 	}
@@ -179,7 +206,19 @@ func evaluateMode(r Request, mode SandboxMode, inWorkspace func(Access) bool) Ve
 		if mode == ModeReadOnly {
 			return Verdict{Decision: DecisionDeny, Boundary: BoundaryNetwork, Reason: "network is unavailable in read-only mode"}
 		}
-		return Verdict{Decision: DecisionEscalate, Boundary: BoundaryNetwork, Reason: "this would reach the network"}
+		// Granted, the network stops being a question. A shell command declares
+		// the network because a command is opaque and the worst case is what
+		// gets declared — so asking about the declaration meant asking about
+		// every build, every test run and every commit.
+		//
+		// Wherever nobody was there to answer, that denied the whole shell, and
+		// an agent that can edit but never verify produces change nobody
+		// checked. The grant is authorization and never containment: it cannot
+		// open what the sandbox closed, which is why read-only is answered
+		// above and not here.
+		if !net.Granted() {
+			return Verdict{Decision: DecisionEscalate, Boundary: BoundaryNetwork, Reason: "this would reach the network"}
+		}
 	}
 
 	// Writes are checked before reads: a call that both reads and writes is a

@@ -13,7 +13,7 @@ func TestARuleNeverRescuesSomethingContainmentRefused(t *testing.T) {
 	// question the user could say yes to.
 	got := Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/w/a", Rel: "a", Write: true}}},
-		ModeReadOnly, PolicyOnRequest, rules, inside)
+		ModeReadOnly, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if got.Decision != DecisionDeny {
 		t.Errorf("got %s, want deny", got.Decision)
 	}
@@ -23,7 +23,7 @@ func TestARuleNeverRescuesSomethingContainmentRefused(t *testing.T) {
 	got = Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/elsewhere", Write: true}}},
 		ModeWorkspaceWrite, PolicyOnRequest, rules,
-		func(a Access) bool { return a.Rel != "" })
+		WithheldNetwork{}, func(a Access) bool { return a.Rel != "" })
 	if got.Boundary != BoundaryFilesystemWrit {
 		t.Errorf("containment must answer first, got %s", got.Boundary)
 	}
@@ -36,7 +36,7 @@ func TestARuleAsksInsideTheWorkspace(t *testing.T) {
 
 	ordinary := Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/w/src/main.go", Rel: "src/main.go", Write: true}}},
-		ModeWorkspaceWrite, PolicyOnRequest, rules, inside)
+		ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if ordinary.Decision != DecisionAllow {
 		t.Fatalf("ordinary work must not ask, got %s", ordinary.Decision)
 	}
@@ -44,7 +44,7 @@ func TestARuleAsksInsideTheWorkspace(t *testing.T) {
 	hook := Evaluate(
 		Request{Tool: "write", Paths: []Access{
 			{Path: "/w/.git/hooks/pre-commit", Rel: ".git/hooks/pre-commit", Write: true}}},
-		ModeWorkspaceWrite, PolicyOnRequest, rules, inside)
+		ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if hook.Decision != DecisionEscalate {
 		t.Fatalf("a git hook must ask, got %s", hook.Decision)
 	}
@@ -67,14 +67,14 @@ func TestReadingASecretAsks(t *testing.T) {
 	rules := DefaultRules()
 	got := Evaluate(
 		Request{Tool: "read", Paths: []Access{{Path: "/w/.env", Rel: ".env"}}},
-		ModeWorkspaceWrite, PolicyOnRequest, rules, inside)
+		ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if got.Decision != DecisionEscalate || got.Boundary != BoundaryPathRuleRead {
 		t.Fatalf("got %s/%s", got.Decision, got.Boundary)
 	}
 	// And an ordinary read stays silent, or the rule is just noise.
 	quiet := Evaluate(
 		Request{Tool: "read", Paths: []Access{{Path: "/w/README.md", Rel: "README.md"}}},
-		ModeWorkspaceWrite, PolicyOnRequest, rules, inside)
+		ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if quiet.Decision != DecisionAllow {
 		t.Errorf("got %s", quiet.Decision)
 	}
@@ -86,7 +86,7 @@ func TestACommandRuleAsks(t *testing.T) {
 	rules := Rules{ConfirmCommand: []string{"rm -rf*"}}
 	got := Evaluate(
 		Request{Tool: "bash", Command: "rm -rf build/"},
-		ModeWorkspaceWrite, PolicyOnRequest, rules, inside)
+		ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if got.Decision != DecisionEscalate || got.Boundary != BoundaryCommandRule {
 		t.Fatalf("got %s/%s", got.Decision, got.Boundary)
 	}
@@ -102,10 +102,10 @@ func TestTheApprovalPolicyStillGovernsRules(t *testing.T) {
 	req := Request{Tool: "write", Paths: []Access{
 		{Path: "/w/.git/config", Rel: ".git/config", Write: true}}}
 
-	if got := Evaluate(req, ModeWorkspaceWrite, PolicyNever, rules, inside); got.Decision == DecisionEscalate {
+	if got := Evaluate(req, ModeWorkspaceWrite, PolicyNever, rules, WithheldNetwork{}, inside); got.Decision == DecisionEscalate {
 		t.Errorf("policy `never` asks nobody, got %s", got.Decision)
 	}
-	if got := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, rules, inside); got.Decision != DecisionEscalate {
+	if got := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside); got.Decision != DecisionEscalate {
 		t.Errorf("got %s", got.Decision)
 	}
 }
@@ -123,7 +123,7 @@ func TestTheApprovalPolicyStillGovernsRules(t *testing.T) {
 func TestFullAccessStillAsksWhereARuleFires(t *testing.T) {
 	got := Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/w/.git/config", Rel: ".git/config", Write: true}}},
-		ModeFullAccess, PolicyOnRequest, DefaultRules(), inside)
+		ModeFullAccess, PolicyOnRequest, DefaultRules(), WithheldNetwork{}, inside)
 	if got.Decision != DecisionEscalate {
 		t.Errorf("got %s, want escalate", got.Decision)
 	}
@@ -131,16 +131,18 @@ func TestFullAccessStillAsksWhereARuleFires(t *testing.T) {
 	// And ordinary work in full-access stays silent, as it always did.
 	quiet := Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/w/src/main.go", Rel: "src/main.go", Write: true}}},
-		ModeFullAccess, PolicyOnRequest, DefaultRules(), inside)
+		ModeFullAccess, PolicyOnRequest, DefaultRules(), WithheldNetwork{}, inside)
 	if quiet.Decision != DecisionAllow {
 		t.Errorf("got %s", quiet.Decision)
 	}
 
-	// `never` is how the questions are turned off, in any mode.
+	// `never` does not turn the question off — it answers it. With nobody to
+	// ask, the express authorization a rule exists to obtain never arrives, so
+	// the answer is no.
 	off := Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/w/.git/config", Rel: ".git/config", Write: true}}},
-		ModeFullAccess, PolicyNever, DefaultRules(), inside)
-	if off.Decision != DecisionAllow {
+		ModeFullAccess, PolicyNever, DefaultRules(), WithheldNetwork{}, inside)
+	if off.Decision != DecisionDeny {
 		t.Errorf("got %s", off.Decision)
 	}
 }
@@ -154,7 +156,7 @@ func TestAWriteIsAskedAboutBeforeARead(t *testing.T) {
 			{Path: "/w/README.md", Rel: "README.md"},
 			{Path: "/w/main.go", Rel: "main.go", Write: true},
 		}},
-		ModeWorkspaceWrite, PolicyOnRequest, rules, inside)
+		ModeWorkspaceWrite, PolicyOnRequest, rules, WithheldNetwork{}, inside)
 	if got.Boundary != BoundaryPathRuleWrite {
 		t.Errorf("got %s", got.Boundary)
 	}
@@ -167,39 +169,44 @@ func TestARuleIgnoresWhatIsOutsideTheWorkspace(t *testing.T) {
 	got := Evaluate(
 		Request{Tool: "read", Paths: []Access{{Path: "/elsewhere/x", Rel: ""}}},
 		ModeWorkspaceWrite, PolicyOnRequest, rules,
-		func(a Access) bool { return a.Rel != "" })
+		WithheldNetwork{}, func(a Access) bool { return a.Rel != "" })
 	// Containment answers, and it answers with its own boundary.
 	if got.Boundary == BoundaryPathRuleRead {
 		t.Errorf("a workspace rule must not claim something outside it: %+v", got)
 	}
 }
 
-// A rule is a request for a person's attention. With `never` there is no
-// person, so there is no question — and turning an unaskable question into a
-// denial would make `never` more restrictive than `on-request`, which is the
-// opposite of what the name says.
+// With nobody to ask, a rule denies. This assertion used to say the opposite,
+// and its reasoning was that a rule requests a person's attention: with no
+// person there is no question, so turning an unaskable question into a denial
+// would make `never` more restrictive than `on-request`.
 //
-// The sandbox is untouched either way, and the sandbox is what contains.
-func TestNeverDoesNotTurnARuleIntoADenial(t *testing.T) {
+// That held while rules were attention on paths. It stopped holding when they
+// took on destruction, because `never` then allowed `rm -rf /` outright — the
+// one configuration with nobody watching was the one that would not stop.
+//
+// `never` is now more restrictive than `on-request` wherever a rule fires, and
+// that is what it should have said all along: it does not switch the questions
+// off, it answers them, and the only safe answer with nobody present is no.
+func TestNeverAnswersARuleWithNo(t *testing.T) {
 	req := Request{Tool: "write", Paths: []Access{
 		{Path: "/w/.git/config", Rel: ".git/config", Write: true}}}
 
-	got := Evaluate(req, ModeWorkspaceWrite, PolicyNever, DefaultRules(), inside)
-	if got.Decision != DecisionAllow {
-		t.Fatalf("got %s, want allow", got.Decision)
+	got := Evaluate(req, ModeWorkspaceWrite, PolicyNever, DefaultRules(), WithheldNetwork{}, inside)
+	if got.Decision != DecisionDeny {
+		t.Fatalf("got %s, want deny", got.Decision)
 	}
 
-	// And `never` stays at least as permissive as `on-request` for anything a
-	// rule touches, which is the property that was wrong.
-	asked := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, DefaultRules(), inside)
+	// The same call with somebody present is a question, not a refusal.
+	asked := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, DefaultRules(), WithheldNetwork{}, inside)
 	if asked.Decision != DecisionEscalate {
-		t.Fatalf("setup: on-request should ask, got %s", asked.Decision)
+		t.Fatalf("with somebody to ask it should ask, got %s", asked.Decision)
 	}
 
 	// What `never` does deny is unchanged: a real crossing with nobody to ask.
 	outside := Evaluate(
 		Request{Tool: "write", Paths: []Access{{Path: "/elsewhere", Write: true}}},
-		ModeWorkspaceWrite, PolicyNever, DefaultRules(),
+		ModeWorkspaceWrite, PolicyNever, DefaultRules(), WithheldNetwork{},
 		func(a Access) bool { return a.Rel != "" })
 	if outside.Decision != DecisionDeny {
 		t.Errorf("containment with nobody to ask still denies, got %s", outside.Decision)

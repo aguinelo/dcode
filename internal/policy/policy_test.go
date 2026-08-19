@@ -51,7 +51,7 @@ func TestModeTableIsComplete(t *testing.T) {
 		{"network / full-access", net(), alwaysIn, ModeFullAccess, DecisionAllow},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Evaluate(tc.req, tc.mode, PolicyOnRequest, Rules{}, tc.in)
+			got := Evaluate(tc.req, tc.mode, PolicyOnRequest, Rules{}, WithheldNetwork{}, tc.in)
 			if got.Decision != tc.want {
 				t.Errorf("got %s want %s (%s)", got.Decision, tc.want, got.Reason)
 			}
@@ -82,7 +82,7 @@ func TestPolicyFilterIsComplete(t *testing.T) {
 		{"crossing / never", net(), alwaysIn, PolicyNever, DecisionDeny},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Evaluate(tc.req, ModeWorkspaceWrite, tc.pol, Rules{}, tc.in)
+			got := Evaluate(tc.req, ModeWorkspaceWrite, tc.pol, Rules{}, WithheldNetwork{}, tc.in)
 			if got.Decision != tc.want {
 				t.Errorf("got %s want %s (%s)", got.Decision, tc.want, got.Reason)
 			}
@@ -95,7 +95,7 @@ func TestPolicyFilterIsComplete(t *testing.T) {
 func TestReadOnlyNeverAllowsAWrite(t *testing.T) {
 	for _, pol := range []ApprovalPolicy{PolicyUntrusted, PolicyOnRequest, PolicyNever} {
 		for _, in := range []func(Access) bool{alwaysIn, neverIn} {
-			got := Evaluate(write("/w/a"), ModeReadOnly, pol, Rules{}, in)
+			got := Evaluate(write("/w/a"), ModeReadOnly, pol, Rules{}, WithheldNetwork{}, in)
 			if got.Decision == DecisionAllow {
 				t.Errorf("policy %s: read-only allowed a write", pol)
 			}
@@ -106,7 +106,7 @@ func TestReadOnlyNeverAllowsAWrite(t *testing.T) {
 func TestNeverPolicyNeverEscalates(t *testing.T) {
 	for _, mode := range []SandboxMode{ModeReadOnly, ModeWorkspaceWrite, ModeFullAccess} {
 		for _, req := range []Request{read("/x"), write("/x"), net()} {
-			got := Evaluate(req, mode, PolicyNever, Rules{}, neverIn)
+			got := Evaluate(req, mode, PolicyNever, Rules{}, WithheldNetwork{}, neverIn)
 			if got.Decision == DecisionEscalate {
 				t.Errorf("mode %s: 'never' produced an escalation it cannot resolve", mode)
 			}
@@ -121,7 +121,7 @@ func TestMixedReadWriteIsTreatedAsWrite(t *testing.T) {
 		{Path: "/w/in", Write: false},
 		{Path: "/outside", Write: true},
 	}}
-	got := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, Rules{}, func(a Access) bool {
+	got := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, Rules{}, WithheldNetwork{}, func(a Access) bool {
 		return strings.HasPrefix(a.Path, "/w/")
 	})
 	if got.Decision != DecisionEscalate || got.Boundary != BoundaryFilesystemWrit {
@@ -131,9 +131,9 @@ func TestMixedReadWriteIsTreatedAsWrite(t *testing.T) {
 
 func TestEvaluateIsPure(t *testing.T) {
 	req := Request{Tool: "bash", Paths: []Access{{Path: "/w/a", Write: true}}, Network: true}
-	first := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, Rules{}, alwaysIn)
+	first := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, Rules{}, WithheldNetwork{}, alwaysIn)
 	for i := 0; i < 100; i++ {
-		if got := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, Rules{}, alwaysIn); got != first {
+		if got := Evaluate(req, ModeWorkspaceWrite, PolicyOnRequest, Rules{}, WithheldNetwork{}, alwaysIn); got != first {
 			t.Fatalf("run %d differs: %+v vs %+v", i, got, first)
 		}
 	}

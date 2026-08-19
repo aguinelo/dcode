@@ -39,13 +39,66 @@ type Rules struct {
 //     is exactly where a `.env` lives.
 func DefaultRules() Rules {
 	return Rules{
-		ConfirmWrite: []string{".git/**", ".dcode/**"},
+		ConfirmWrite: []string{
+			".git/**", ".dcode/**",
+			// Secrets are confirmed on the way in as well as on the way out. A
+			// list that guards reading and not writing protects the value and
+			// not the file, and the file is what somebody else depends on.
+			".env", ".env.*", "**/.env", "**/.env.*",
+			// Lock files are the build's memory. Rewriting one is a change to
+			// every machine that installs afterwards, and it is the change
+			// least visible in a diff.
+			"**/go.sum", "**/package-lock.json", "**/yarn.lock",
+			"**/pnpm-lock.yaml", "**/Cargo.lock", "**/poetry.lock",
+		},
 		ConfirmRead: []string{
 			".env", ".env.*", "**/.env", "**/.env.*",
 			"**/*.pem", "**/*.key", "**/id_rsa", "**/id_ed25519",
-			"**/.npmrc", "**/.netrc",
+			"**/.npmrc", "**/.netrc", "**/credentials", "**/credentials.*",
 		},
+		ConfirmCommand: destructiveCommands,
 	}
+}
+
+// rulesDoc is the reasoning behind the command list, kept next to it because a
+// list of patterns with no reasoning is a list that grows by superstition.
+const rulesDoc = `The command rules are attention, not a boundary — they are
+not a boundary and cannot be one. A command is text, and the same destruction
+can always be spelled another way: through a script, an alias, a variable. What
+the list buys is friction against the accident, which is what actually happens.
+Containment is the sandbox, and only the sandbox.`
+
+// destructiveCommands are the commands worth a question even when everything
+// else is granted.
+//
+// Two kinds, and they are here for different reasons. Some destroy work that
+// cannot be recovered from the repository — a forced push, a hard reset, a
+// recursive delete. Others reach the outside irreversibly: publishing is not
+// destruction, but it cannot be taken back either, and "I did not know it would
+// publish" is the same afternoon lost.
+//
+// The spec has declared this list since before it existed. DefaultRules shipped
+// none of it, so the promise of confirmation was made in documentation and
+// nowhere else.
+var destructiveCommands = []string{
+	// Deleting, recursively and without asking.
+	"*rm -rf*", "*rm -fr*", "*rm -r -f*", "*rm -f -r*",
+	// Running as somebody else, which leaves the workspace by definition.
+	"*sudo *", "*doas *",
+	// Rewriting history somebody else may already have.
+	"*git push*--force*", "*git push*-f *", "*git reset --hard*",
+	"*git clean*-f*", "*git branch*-D*", "*git filter-branch*",
+	// Publishing: not destruction, and just as irreversible.
+	"*npm publish*", "*cargo publish*", "*gem push*", "*twine upload*",
+	"*gh release create*", "*docker push*",
+	// Writing straight to a device, or making a filesystem on one.
+	"*mkfs*", "*dd if=*of=/dev/*", "*> /dev/sd*", "*> /dev/nvme*",
+	// Fetching and running in one breath, which is trust with no reading.
+	"*curl*|*sh*", "*curl*|*bash*", "*wget*|*sh*", "*wget*|*bash*",
+	// Opening permissions on everything.
+	"*chmod -R 777*", "*chmod 777 /*", "*chown -R*/*",
+	// Taking the machine with it.
+	"*shutdown*", "*reboot*", "*halt*", "*:(){*",
 }
 
 // MatchPath reports the first pattern that claims a path.
