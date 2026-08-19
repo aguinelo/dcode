@@ -118,12 +118,28 @@ func TestExploreDeclaresOnlyARead(t *testing.T) {
 func TestExploreDescribesWhenNotToUseIt(t *testing.T) {
 	var probe Explore
 	d := probe.Description()
-	// The cheap failure mode is delegating everything, so the description has
-	// to say when not to.
-	for _, want := range []string{"already read", "single known file", "cannot delegate"} {
+
+	// This used to demand warnings about "already read" and "single known
+	// file". Both were written when a child could only read, and the only
+	// thing delegating saved was reading — so anything already read was worth
+	// keeping.
+	//
+	// With `owns` the delegated unit became "read this and write that", and
+	// reading first is how every writing task starts. Measured twice on the
+	// easiest possible case — five independent files, said to be independent —
+	// the model delegated none of them and never once considered it. The
+	// description was telling it not to.
+	//
+	// The failure mode the warning exists for has not gone away; it moved.
+	// Delegating everything is still the cheap mistake, and the case to keep
+	// is work that has to agree with itself.
+	for _, want := range []string{"must agree", "cannot delegate"} {
 		if !strings.Contains(d, want) {
 			t.Errorf("the description does not warn about %q:\n%s", want, d)
 		}
+	}
+	if strings.Contains(d, "already read") {
+		t.Error("having read something is no longer a reason to keep the work")
 	}
 	var e Explore
 	if e.Name() != "explore" {

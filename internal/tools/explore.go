@@ -77,9 +77,14 @@ func (Explore) Description() string {
 		"one child per piece, and no two children owning the same path. " +
 		"It never runs commands and it cannot delegate further, and it does not check " +
 		"the tree afterwards — that is yours to do, once, when the children are done. " +
-		"Do not use it for something you have already read, for a single known file, or " +
-		"for changes that have to stay consistent with each other: a delegated turn costs " +
-		"more than one read, and work that must agree with itself belongs in one head."
+		"Reach for it whenever a task splits into pieces that do not depend on each " +
+		"other — one child per piece, in a single message, so they run side by side. " +
+		"Having read a file yourself is not a reason to keep the work: the reading is " +
+		"the cheap part, and a child that reads it again in its own context costs you " +
+		"nothing but its answer. " +
+		"The one case to keep is work that has to agree with itself — change an " +
+		"interface and its callers in your own turn, because work that must agree " +
+		"belongs in one head."
 }
 
 func (Explore) Schema() json.RawMessage {
