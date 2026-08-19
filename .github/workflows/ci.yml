@@ -20,8 +20,20 @@ jobs:
       # skips, and a skipped boundary test reads as a passing one.
       - name: bubblewrap (linux)
         if: runner.os == 'Linux'
+        # `apt-get update` já parou de responder no meio da lista de espelhos
+        # três vezes, e sem prazo o job fica pendurado até alguém perceber e
+        # cancelar — 25 minutos na pior delas. Espelho mudo é a falha mais
+        # provável desta linha e a que menos diz sobre o código; o passo passa a
+        # tentar de novo e, se ainda assim não vier, a reprovar depressa em vez
+        # de segurar o PR inteiro.
+        timeout-minutes: 8
         run: |
-          sudo apt-get update && sudo apt-get install -y bubblewrap
+          for attempt in 1 2 3; do
+            if sudo timeout 120 apt-get update; then break; fi
+            echo "apt-get update nao respondeu (tentativa $attempt de 3)"
+            if [ "$attempt" = 3 ]; then exit 1; fi
+          done
+          sudo timeout 180 apt-get install -y bubblewrap
           # Installing it was not enough, and the step above said it was for
           # months. Ubuntu 24.04 restricts unprivileged user namespaces through
           # AppArmor, so bwrap arrives, answers "Permission denied" on its first
