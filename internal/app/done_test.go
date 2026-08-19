@@ -99,7 +99,7 @@ func TestAMalformedDurationFallsBackRatherThanFailing(t *testing.T) {
 func TestExploreIsWiredToTheEngine(t *testing.T) {
 	e := &loop.Engine{}
 	var _ interface {
-		Explore(ctx context.Context, task, path string) (string, []string, []string, bool, error)
+		Explore(ctx context.Context, task, path string, owns []string) (string, []string, []string, bool, error)
 	} = e
 }
 

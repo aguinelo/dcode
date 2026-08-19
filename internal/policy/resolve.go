@@ -13,6 +13,49 @@ import (
 type Resolver struct {
 	// Workspace is the trust root, already canonical.
 	Workspace string
+	// owned narrows WRITES to a subset of the workspace, and empty means the
+	// whole of it. It exists for a delegated child that declared the paths it
+	// owns: ownership promised and unverified is the shape of defect this
+	// repository keeps finding in itself, so ownership is answered by the same
+	// containment the workspace boundary already uses.
+	//
+	// Reads are deliberately untouched. A child that catalogues a repository
+	// reads all of it and writes one file; narrowing reads too would make the
+	// capability useless for the case it exists for.
+	owned []string
+}
+
+// Owning returns a resolver whose WRITES are confined to paths, and leaves this
+// one alone.
+//
+// A new value rather than a mutation, because a child must never be able to
+// widen its parent and a shared mutable resolver would be exactly that. The
+// workspace stays the outer boundary: owning a path outside it does not put it
+// inside, since narrowing may only ever drop capability.
+//
+// Owning nothing owns nothing. An empty set is not "everything" — nothing said
+// is never a yes.
+func (r *Resolver) Owning(paths []string) *Resolver {
+	out := &Resolver{Workspace: r.Workspace, owned: make([]string, 0, len(paths))}
+	for _, p := range paths {
+		// Relative against the workspace, never the process working directory
+		// — the same reading Resolve already gives, and for the same reason:
+		// behaviour must not depend on how the server was launched.
+		if !filepath.IsAbs(p) {
+			p = filepath.Join(r.Workspace, p)
+		}
+		if real, err := canonical(p); err == nil {
+			out.owned = append(out.owned, real)
+			continue
+		}
+		// A path that does not exist yet is ordinary: the child is about to
+		// create it. Canonicalising its parent is what keeps a symlinked
+		// directory from being an escape.
+		if real, err := canonical(filepath.Dir(p)); err == nil {
+			out.owned = append(out.owned, filepath.Join(real, filepath.Base(p)))
+		}
+	}
+	return out
 }
 
 // NewResolver canonicalises the workspace root once. Everything downstream
@@ -72,6 +115,9 @@ func (r *Resolver) Resolve(path string, write bool) (Access, error) {
 // A prefix comparison is the most common boundary bug there is: it lets
 // /home/user/proj2 pass for /home/user/proj.
 func (r *Resolver) InWorkspace(a Access) bool {
+	if a.Write && r.owned != nil && !r.owns(a.Path) {
+		return false
+	}
 	rel, err := filepath.Rel(r.Workspace, a.Path)
 	if err != nil {
 		return false
@@ -116,4 +162,23 @@ func canonical(path string) (string, error) {
 		trailing = append([]string{leaf}, trailing...)
 		dir, leaf = parent, filepath.Base(dir)
 	}
+}
+
+// owns reports whether path sits inside the owned set, by path component and
+// never by string prefix — /w/docs2 is not inside /w/docs, and treating it as
+// such is the most common boundary bug there is.
+func (r *Resolver) owns(path string) bool {
+	for _, o := range r.owned {
+		rel, err := filepath.Rel(o, path)
+		if err != nil {
+			continue
+		}
+		if rel == "." {
+			return true
+		}
+		if !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != ".." {
+			return true
+		}
+	}
+	return false
 }

@@ -10,7 +10,8 @@ Duas ausências são consequência disso, e ambas são o repositório funcionand
 - **A seção de invariantes chama-se "previstas".** Aqui uma invariante
   verificável é reivindicação sobre um teste que existe, e não há o que
   reivindicar antes do código. É renomeada e cobrada pela guarda no PR da
-  implementação.
+  implementação. **A §8 já foi renomeada**: o PR 1 da §9 entregou nove delas, e
+  a §8.1 guarda as que faltam.
 - **Não há `.i.spec.md`.** A guarda exige que todo caminho citado numa spec de
   implementação exista. A `.i` entra com o código; a ordem de entrega em §9 é o
   que existe até lá.
@@ -105,20 +106,25 @@ Com N filhos, N−1 respostas é caso normal, não excepcional.
   `undo` do turno já alcança tudo.
 - Um filho negado por contenção reporta a negação, nunca a esconde.
 
-## 8. Invariantes previstas
-
-> Entram como **verificáveis**, com teste reivindicado, no PR da implementação.
-> Ver §1.
+## 8. Invariantes verificáveis
 
 - `owns` ausente produz um filho somente-leitura, idêntico ao de hoje.
-- `owns` é interceptado com o que o pai pode escrever, nunca somado.
+- Sessão somente-leitura não produz filho que escreve.
 - `owns` vazio é erro de declaração, nunca permissão total.
-- Dois filhos com `owns` que se cruzam nunca correm no mesmo grupo.
+- Dois filhos que possuem o mesmo caminho declaram conflito antes de qualquer um rodar.
 - Filho que escreve fora do que possui é negado pela contenção, não por revisão.
+- Posse é por componente de caminho, nunca por prefixo de string.
+- Possuir caminho fora do workspace não o traz para dentro.
+- Estreitar um filho não estreita o pai.
+- Filho que escreve não carrega ferramenta opaca nem a de delegar.
+
+## 8.1 Invariantes previstas
+
+> Entram como **verificáveis**, com teste reivindicado, nos PRs 2 e 3 da §9.
+
 - Filho nunca pede aprovação; escrita que escalaria é negada e reportada.
 - As escritas do filho entram no conjunto de desfazimento do turno do pai.
 - O relatório do filho nomeia os caminhos que escreveu, além dos que leu.
-- Um filho não pode delegar, com ou sem `owns`.
 - O teto de concorrência é da sessão; nenhum pedido do modelo o amplia.
 - Tokens do filho são debitados do orçamento do pai.
 - A definição de pronto não roda dentro de um filho.
