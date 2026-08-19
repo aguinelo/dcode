@@ -42,15 +42,43 @@ sessão **não lê**. Vazia por padrão.
 - **`full-access` ignora a lista.** Modo que não promete fronteira não deve
   manter uma escondida.
 
-## Por que não há default, e a decisão é essa
+## O default esconde, sem ninguém pedir
 
-Todo candidato quebra alguma ferramenta comum: esconder `~/.ssh` quebra
-`git push`, esconder `~/.aws` quebra a CLI da AWS.
+**Nobody asking is not nobody caring.** Uma sessão que nunca ouviu falar desta
+variável também não deve conseguir ler uma credencial de nuvem.
 
-**Default que quebra o caso comum é default que as pessoas desligam inteiro**, e
-aí não protege nada — a mesma lógica que este repositório aplicou ao gate de
-cobertura e ao teto de rodadas. Quem sabe para que a sessão existe é quem a
-abre, e é quem nomeia.
+```
+~/.aws  ~/.gnupg  ~/.kube  ~/.config/gcloud  ~/.azure
+~/.netrc  ~/.git-credentials  ~/.npmrc  ~/.pypirc  ~/.docker/config.json
+<config-root>/credentials          ← a própria chave do dcode
+```
+
+O critério para entrar é estreito: **guarda segredo, e nenhuma ferramenta comum
+precisa lê-lo como subprocesso de um comando comum.** É isso que torna esconder
+gratuito. `aws` e `kubectl` são as exceções que aparecem primeiro, e são a razão
+de a variável **substituir** a lista em vez de somar — quem precisa de uma de
+volta diz qual.
+
+A própria credencial do dcode entra pelo motivo mais direto de todos: uma sessão
+que lê a chave com que roda pode entregá-la a qualquer lugar onde escreve, e a
+redação que a mantém fora das transcrições não faz nada contra uma leitura de
+arquivo. O nome do arquivo é duplicado em vez de importado — este pacote monta
+perfis e não deve depender do cofre que esconde — e por isso a duplicação tem
+guarda: renomear de um lado sem o outro deixaria a chave legível em silêncio.
+
+## `~/.ssh` ainda não está, e a ausência é o ponto mais alto daqui
+
+Chave privada é o segredo canônico. Escondê-la **hoje** pararia `git push` e todo
+`ssh` de dentro do sandbox, porque o `ssh` lê a chave ele mesmo.
+
+A saída é o agente. Com `SSH_AUTH_SOCK` alcançável, o `ssh` pede ao agente para
+assinar e **nunca lê a chave** — e aí esconder sai de graça. Esse socket é
+recusado hoje pela regra que mantém runtime de contêiner de fora.
+
+Sozinho, cada lado é um trade ruim: conceder o socket sem esconder a chave não
+protege nada, esconder a chave sem o socket quebra o trabalho. **Juntos não há
+trade**, e é por isso que a concessão nomeada de socket vem em seguida e `~/.ssh`
+entra junto com ela — não antes.
 
 O home inteiro é recusado como nome, pelo mesmo motivo que `Scratch` recusa
 concedê-lo: cobrir tudo abaixo dele não é conjunto nomeado, é outro modo com

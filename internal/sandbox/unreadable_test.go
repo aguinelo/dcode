@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/credential"
 	"github.com/aguinelo/dcode/internal/policy"
 )
 
@@ -108,5 +109,65 @@ func TestUnreadableWithNothingConfiguredNamesNothing(t *testing.T) {
 	}
 	if got := Unreadable("   ", nil); got != nil {
 		t.Errorf("blank configured must name nothing, got %v", got)
+	}
+}
+
+// Nobody asking is not nobody caring. A session that never set the key should
+// still not be able to read a cloud credential.
+func TestUnreadableDefaultsToHidingCredentialStores(t *testing.T) {
+	env := func(k string) string {
+		if k == "HOME" {
+			return "/Users/me"
+		}
+		return ""
+	}
+	got := strings.Join(Unreadable("", env), " ")
+
+	for _, want := range []string{
+		"/Users/me/.aws", "/Users/me/.gnupg", "/Users/me/.kube",
+		"/Users/me/.config/gcloud", "/Users/me/.netrc",
+		"/Users/me/.git-credentials", "/Users/me/.docker/config.json",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s is readable by default: %s", want, got)
+		}
+	}
+}
+
+// A session that can read the credential it runs on can hand it to anything it
+// can write to, and redacting transcripts does nothing about a file read.
+func TestTheDefaultHidesDcodesOwnCredential(t *testing.T) {
+	env := func(k string) string {
+		if k == "HOME" {
+			return "/Users/me"
+		}
+		return ""
+	}
+	got := strings.Join(Unreadable("", env), " ")
+	if !strings.Contains(got, credentialFileName) {
+		t.Errorf("dcode's own key is readable by default: %s", got)
+	}
+}
+
+// The file name is duplicated rather than imported, so that duplication has to
+// be checked: a rename on one side that misses the other would leave the key
+// readable and nothing would say so.
+func TestTheHiddenCredentialNameMatchesTheStore(t *testing.T) {
+	if credentialFileName != credential.FileName {
+		t.Errorf("hiding %q while the store writes %q", credentialFileName, credential.FileName)
+	}
+}
+
+// Setting the key replaces the default, and "none" hides nothing — the only way
+// to say that without an empty string meaning two different things.
+func TestUnreadableCanBeReplacedOrCleared(t *testing.T) {
+	env := func(string) string { return "/Users/me" }
+
+	got := Unreadable("/only/this", env)
+	if len(got) != 1 || got[0] != "/only/this" {
+		t.Errorf("setting the key must replace the default, got %v", got)
+	}
+	if got := Unreadable("none", env); got != nil {
+		t.Errorf(`"none" must hide nothing, got %v`, got)
 	}
 }

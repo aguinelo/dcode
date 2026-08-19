@@ -66,13 +66,17 @@ func LocalSockets(env func(string) string) []string {
 // config file as often as from an export, and a tilde that works in one and not
 // the other is a setting that looks broken.
 //
-// There is no default, and the absence is a decision. Every candidate is needed
-// by some ordinary tool — hiding ~/.ssh breaks `git push`, hiding ~/.aws breaks
-// the aws CLI — and a default that breaks the ordinary case is a default people
-// switch off entirely, which protects nothing at all. Naming what to hide is
-// the caller's call, because only the caller knows what this session is for.
+// Unset means the default set below, not "nothing". A session that never asked
+// the question should still not be able to read a cloud credential.
+//
+// Setting it REPLACES the default, so a session that needs one of them back can
+// say so; the literal "none" hides nothing at all, which is the only way to say
+// that without a magic empty string.
 func Unreadable(spec string, env func(string) string) []string {
 	if strings.TrimSpace(spec) == "" {
+		return DefaultUnreadable(env)
+	}
+	if strings.TrimSpace(spec) == "none" {
 		return nil
 	}
 	var home string
@@ -103,3 +107,59 @@ func Unreadable(spec string, env func(string) string) []string {
 	}
 	return out
 }
+
+// DefaultUnreadable are the credential stores hidden when nobody said otherwise.
+//
+// The rule for being on this list is narrow: it holds a secret, and no ordinary
+// tool needs to read it as a subprocess of an ordinary command. That is what
+// makes hiding it free. `aws` and `kubectl` are the exceptions people will meet
+// first, and they are the reason the setting REPLACES this list rather than
+// adding to it.
+//
+// `~/.ssh` is deliberately NOT here yet, and its absence is the loudest thing on
+// this list. A private key is the canonical secret, and hiding it stops `git
+// push` and every `ssh` from inside the sandbox — because ssh reads the key
+// itself. The way out is the agent: with SSH_AUTH_SOCK reachable, ssh asks the
+// agent to sign and never reads the key, so the key can be hidden at no cost.
+// That socket is refused today by the rule that keeps a container runtime out,
+// and granting it by name is the next step. `~/.ssh` joins this list then, and
+// not before — a default that breaks the ordinary case is one people switch off
+// entirely, which protects nothing.
+func DefaultUnreadable(env func(string) string) []string {
+	if env == nil {
+		return nil
+	}
+	home := env("HOME")
+	if home == "" {
+		return nil
+	}
+
+	out := []string{
+		filepath.Join(home, ".aws"),
+		filepath.Join(home, ".gnupg"),
+		filepath.Join(home, ".kube"),
+		filepath.Join(home, ".config", "gcloud"),
+		filepath.Join(home, ".azure"),
+		filepath.Join(home, ".netrc"),
+		filepath.Join(home, ".git-credentials"),
+		filepath.Join(home, ".npmrc"),
+		filepath.Join(home, ".pypirc"),
+		filepath.Join(home, ".docker", "config.json"),
+	}
+	// And dcode's own key. A session that can read the credential it runs on
+	// can hand it to anything it can write to, and the redaction that keeps it
+	// out of transcripts does nothing about a file read.
+	for _, root := range []string{
+		filepath.Join(home, "Library", "Application Support", "dcode"),
+		filepath.Join(home, ".config", "dcode"),
+		filepath.Join(home, ".dcode"),
+	} {
+		out = append(out, filepath.Join(root, credentialFileName))
+	}
+	return out
+}
+
+// credentialFileName mirrors credential.FileName. Named here rather than
+// imported because this package builds profiles and must not depend on the
+// store it is hiding; the guard below is the test that keeps the two in step.
+const credentialFileName = "credentials"
