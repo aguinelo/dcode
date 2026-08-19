@@ -30,6 +30,54 @@ func TestSeatbeltGrantsTheNetworkWithoutTheMachinesOwnSockets(t *testing.T) {
 	}
 }
 
+// A suite that cannot listen cannot run. The first version of this rule granted
+// only outbound traffic, and every test standing up a server failed at
+// `bind: operation not permitted`.
+func TestSeatbeltGrantsTheNetworkIncludingListening(t *testing.T) {
+	s := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return true }}
+	p, _ := s.profile("/w", policy.ModeWorkspaceWrite, nil)
+
+	for _, want := range []string{
+		`(allow network-bind (local ip "*:*"))`,
+		`(allow network-inbound (local ip "*:*"))`,
+	} {
+		if !strings.Contains(p, want) {
+			t.Errorf("%s is missing:\n%s", want, p)
+		}
+	}
+}
+
+// A unix socket is reachable exactly where writing already is, and the two
+// rules read the same list so they cannot drift into different answers about
+// the same boundary.
+func TestSeatbeltReachesAUnixSocketOnlyWhereItMayWrite(t *testing.T) {
+	s := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return true }}
+	p, _ := s.profile("/w", policy.ModeWorkspaceWrite, []string{"/cache"})
+
+	for _, want := range []string{
+		`(allow network-bind (subpath "/w"))`,
+		`(allow network-outbound (subpath "/w"))`,
+		`(allow network-outbound (subpath "/cache"))`,
+	} {
+		if !strings.Contains(p, want) {
+			t.Errorf("%s is missing:\n%s", want, p)
+		}
+	}
+	if strings.Contains(p, `(subpath "/var/run")`) {
+		t.Errorf("nothing grants /var/run, so nothing may reach a socket there:\n%s", p)
+	}
+}
+
+// Read-only writes nowhere, so it reaches no unix socket at all.
+func TestSeatbeltReadOnlyReachesNoUnixSocket(t *testing.T) {
+	s := &seatbelt{bin: "sandbox-exec", allowNetwork: func() bool { return true }}
+	p, _ := s.profile("/w", policy.ModeReadOnly, []string{"/cache"})
+
+	if strings.Contains(p, "network-bind (subpath") || strings.Contains(p, "network-outbound (subpath") {
+		t.Errorf("read-only grants no writable place, so it grants no socket path:\n%s", p)
+	}
+}
+
 // Denying every unix socket denies name resolution too: on macOS getaddrinfo
 // talks to mDNSResponder over one. It is named because it resolves names — it
 // does not act on the caller's behalf, which is the property that separates it

@@ -97,27 +97,35 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 	b.WriteString("(allow sysctl-read)\n(allow mach-lookup)\n")
 	b.WriteString("(allow signal (target self))\n")
 
+	// The writable set, collected once and used twice: file writes below, and
+	// unix sockets further down. Two rules reading the same list is what keeps
+	// them from drifting into two different answers about the same boundary.
+	var writable []string
+
 	switch mode {
 	case policy.ModeReadOnly:
-		// No file-write rule at all. Writes fail in the kernel.
+		// Nothing writable, so no file-write rule at all. Writes fail in the
+		// kernel.
 	case policy.ModeWorkspaceWrite:
-		fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", workdir)
+		writable = append(writable, workdir)
 		// Temporary directories are where compilers and test runners stage
 		// work; refusing them makes ordinary builds fail in ways that look
 		// like the sandbox is broken rather than doing its job.
-		for _, p := range []string{"/tmp", "/private/tmp", "/private/var/tmp", "/dev"} {
-			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", p)
-		}
+		writable = append(writable, "/tmp", "/private/tmp", "/private/var/tmp", "/dev")
 		// And the toolchain's own caches, which live outside the workspace
 		// because they are shared across projects. Named one by one rather
 		// than by granting the home that contains them.
 		for _, p := range scratch {
-			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", canonical(p))
+			writable = append(writable, canonical(p))
 		}
 	case policy.ModeFullAccess:
 		b.WriteString("(allow file-write*)\n")
 	default:
 		return "", fmt.Errorf("sandbox: unknown mode %q", mode)
+	}
+
+	for _, p := range writable {
+		fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", p)
 	}
 
 	switch {
@@ -137,11 +145,30 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 		// images` and then `docker run --rm ubuntu:26.10 ...` from inside the
 		// sandbox. All three succeeded, and nothing was asked.
 		b.WriteString("(allow network-outbound (remote ip \"*:*\"))\n")
+		// Listening is not reaching out, and a suite that cannot listen cannot
+		// run: httptest binds a port, and so does anything that tests a
+		// server. Granting only outbound left every such test failing at
+		// `bind: operation not permitted`, which is how the first version of
+		// this rule broke the suite it was meant to protect.
+		b.WriteString("(allow network-bind (local ip \"*:*\"))\n")
+		b.WriteString("(allow network-inbound (local ip \"*:*\"))\n")
 		// Denying every unix socket denies name resolution too: getaddrinfo
 		// talks to mDNSResponder over one. It is named because it resolves
 		// names — it does not act on the caller's behalf, which is the
 		// property that separates it from a container runtime's socket.
 		b.WriteString("(allow network-outbound (literal \"/private/var/run/mDNSResponder\"))\n")
+		// And a unix socket is reachable exactly where writing already is.
+		//
+		// That is the whole rule, and it is the mode's own boundary rather
+		// than a second one invented beside it: a socket the process may
+		// create is a socket it may talk to, and /var/run — where a container
+		// runtime listens — is not somewhere workspace-write can write.
+		// Naming the writable set twice keeps the two answers from drifting
+		// apart.
+		for _, p := range writable {
+			fmt.Fprintf(&b, "(allow network-bind (subpath %q))\n", p)
+			fmt.Fprintf(&b, "(allow network-outbound (subpath %q))\n", p)
+		}
 	}
 	return b.String(), nil
 }
