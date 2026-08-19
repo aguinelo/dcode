@@ -417,6 +417,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		// Configuration says yes, or the user did — and the second can happen
 		// while the session is running.
 		AllowNetwork: func() bool { return opts.AllowNetwork || standing.NetworkNow() },
+		// Without these a compiled language cannot build inside the sandbox,
+		// so the agent can change files and never check them.
+		Scratch: sandbox.Scratch(opts.Env),
 	}, opts.SandboxMode)
 	if err != nil {
 		return nil, err

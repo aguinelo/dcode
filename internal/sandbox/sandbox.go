@@ -64,6 +64,15 @@ type Config struct {
 	// Nil means denied, which is the reading that holds when nobody said
 	// otherwise.
 	AllowNetwork func() bool
+	// Caches are directories outside the workspace that a toolchain must write
+	// to in order to build at all. Resolved by the caller, from the
+	// environment — this package builds profiles and does not consult the
+	// world, the same reason the language and the palette are resolved at the
+	// edge.
+	//
+	// Empty is the old behaviour, and the old behaviour could not run `go
+	// test`.
+	Scratch []string
 }
 
 // New returns the sandbox for cfg.
@@ -97,9 +106,9 @@ func New(cfg Config, mode policy.SandboxMode) (Sandbox, error) {
 	var s Sandbox
 	switch backend {
 	case BackendSeatbelt:
-		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow}
+		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch}
 	case BackendBubblewrap:
-		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow}
+		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown backend %q; valid: %s, %s, %s, %s",
 			backend, BackendAuto, BackendSeatbelt, BackendBubblewrap, BackendNone)

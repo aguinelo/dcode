@@ -3,6 +3,7 @@ package sandbox
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,7 @@ func canonical(p string) string {
 type seatbelt struct {
 	bin          string
 	allowNetwork func() bool
+	scratch      []string
 }
 
 func (s *seatbelt) Name() string { return BackendSeatbelt }
@@ -41,7 +43,7 @@ func (s *seatbelt) Available() error {
 }
 
 func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
-	profile, err := s.profile(workdir, mode)
+	profile, err := s.profile(workdir, mode, s.scratch)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +56,7 @@ func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode polic
 //
 // Deny by default, then grant the minimum: anything not named here is refused
 // by the kernel rather than by us.
-func (s *seatbelt) profile(workdir string, mode policy.SandboxMode) (string, error) {
+func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []string) (string, error) {
 	if workdir == "" {
 		return "", fmt.Errorf("sandbox: workdir is required")
 	}
@@ -79,6 +81,12 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode) (string, err
 		// like the sandbox is broken rather than doing its job.
 		for _, p := range []string{"/tmp", "/private/tmp", "/private/var/tmp", "/dev"} {
 			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", p)
+		}
+		// And the toolchain's own caches, which live outside the workspace
+		// because they are shared across projects. Named one by one rather
+		// than by granting the home that contains them.
+		for _, p := range scratch {
+			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", canonical(p))
 		}
 	case policy.ModeFullAccess:
 		b.WriteString("(allow file-write*)\n")
@@ -105,6 +113,7 @@ func permits(decide func() bool) bool { return decide != nil && decide() }
 type bubblewrap struct {
 	bin          string
 	allowNetwork func() bool
+	scratch      []string
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -123,6 +132,17 @@ func (b *bubblewrap) Available() error {
 			ErrUnavailable, b.bin, strings.TrimSpace(string(out)), namespaceHint)
 	}
 	return nil
+}
+
+// exists reports whether a bind source is there, injectable so the mount rules
+// can be asserted without a fixture directory. A test that has to create a real
+// directory outside /tmp cannot be written portably — on Linux the temporary
+// directory IS under /tmp — and the version of this test that worked around it
+// with a skip left the Linux mount path unchecked on the one platform that uses
+// it.
+var exists = func(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }
 
 // under reports whether path sits inside dir.
@@ -144,7 +164,7 @@ On Ubuntu 24.04 and later this is usually AppArmor; see
 /etc/apparmor.d/ and the kernel.apparmor_restrict_unprivileged_userns sysctl.`
 
 func (b *bubblewrap) Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error) {
-	args, err := b.args(workdir, mode)
+	args, err := b.args(workdir, mode, b.scratch)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +174,7 @@ func (b *bubblewrap) Wrap(ctx context.Context, workdir, command string, mode pol
 	return cmd, nil
 }
 
-func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, error) {
+func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []string) ([]string, error) {
 	if workdir == "" {
 		return nil, fmt.Errorf("sandbox: workdir is required")
 	}
@@ -184,6 +204,23 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode) ([]string, er
 		}
 	case policy.ModeWorkspaceWrite:
 		args = append(args, "--tmpfs", "/tmp", "--bind", workdir, workdir)
+		// The toolchain's caches, bound writable one by one. A cache under
+		// /tmp is already covered by the tmpfs and binding it again would put
+		// the host's copy back over the fresh one.
+		for _, p := range scratch {
+			p = canonical(p)
+			if under(p, "/tmp") || under(p, workdir) {
+				continue
+			}
+			// bubblewrap refuses to bind a source that is not there, and the
+			// refusal takes down the whole command rather than the one mount.
+			// A cache directory that does not exist yet is ordinary: nothing
+			// has compiled on this machine.
+			if !exists(p) {
+				continue
+			}
+			args = append(args, "--bind", p, p)
+		}
 	case policy.ModeFullAccess:
 		args = []string{"--bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
 			"--die-with-parent", "--chdir", workdir}

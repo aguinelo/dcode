@@ -41,7 +41,7 @@ func TestAWorkspaceUnderTmpSurvivesTheWritableTmpfs(t *testing.T) {
 	for _, mode := range []policy.SandboxMode{policy.ModeReadOnly, policy.ModeWorkspaceWrite} {
 		t.Run(string(mode), func(t *testing.T) {
 			b := &bubblewrap{bin: "bwrap"}
-			args, err := b.args("/tmp/session-1234/ws", mode)
+			args, err := b.args("/tmp/session-1234/ws", mode, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +72,7 @@ func TestAWorkspaceUnderTmpSurvivesTheWritableTmpfs(t *testing.T) {
 func TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable(t *testing.T) {
 	b := &bubblewrap{bin: "bwrap"}
 
-	args, err := b.args("/tmp/ws", policy.ModeReadOnly)
+	args, err := b.args("/tmp/ws", policy.ModeReadOnly, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable(t *testing.T) {
 
 	// Outside /tmp nothing changes: the whole filesystem is already mounted, so
 	// a second mount of the workspace would be noise in the argument list.
-	outside, err := b.args("/home/u/proj", policy.ModeReadOnly)
+	outside, err := b.args("/home/u/proj", policy.ModeReadOnly, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
