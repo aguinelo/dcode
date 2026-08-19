@@ -77,8 +77,8 @@ func TestADelegatedTurnNeverAsksAndReportsWhatItCouldNotRead(t *testing.T) {
 	if dec != protocol.ApprovalDeny {
 		t.Fatalf("decision = %v, want deny: a child must never prompt the user for a question they did not ask", dec)
 	}
-	if len(a.denied) != 1 || a.denied[0] != "secrets/keys.env" {
-		t.Fatalf("denied = %v, want the refused path recorded so the report can declare it", a.denied)
+	if len(a.unread) != 1 || a.unread[0] != "secrets/keys.env" {
+		t.Fatalf("unread = %v, want the refused path recorded so the report can declare it", a.unread)
 	}
 }
 

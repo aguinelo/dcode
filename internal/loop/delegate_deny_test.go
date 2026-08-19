@@ -31,13 +31,17 @@ func TestASubTurnDeniesAndSaysWhatItDenied(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(d.denied) != 2 {
-		t.Fatalf("recorded %v, want both refusals", d.denied)
+	// Neither request names a boundary, so both land on the read side. Which
+	// list a refusal goes to is asserted separately, in
+	// TestARefusedWriteIsReportedAsAWrite; what this one asserts is that a
+	// refusal is identifiable at all.
+	if len(d.unread) != 2 {
+		t.Fatalf("recorded %v, want both refusals", d.unread)
 	}
-	if d.denied[0] != "rm -rf /" {
-		t.Errorf("recorded %q, want the command", d.denied[0])
+	if d.unread[0] != "rm -rf /" {
+		t.Errorf("recorded %q, want the command", d.unread[0])
 	}
-	if d.denied[1] != "write" {
-		t.Errorf("recorded %q, want the tool name when there is no command", d.denied[1])
+	if d.unread[1] != "write" {
+		t.Errorf("recorded %q, want the tool name when there is no command", d.unread[1])
 	}
 }
