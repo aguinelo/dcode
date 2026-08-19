@@ -17,13 +17,20 @@ import (
 // None of them is optional. Delegation without a ceiling is a cost multiplier,
 // not a saving.
 type DelegateLimits struct {
-	// MaxIterations is the child's own cap, smaller than the parent's on
-	// purpose: the child answers ONE question, and a child that needs fifty
-	// iterations is a question that should have been split.
+	// MaxIterations is the child's own cap, still smaller than the parent's:
+	// a child does ONE piece of work, and one that needs hundreds of rounds is
+	// a piece that should have been split.
+	//
+	// It was 20, sized when a child could only answer a question. A child that
+	// reads a package and writes a note about it does more than answer, and 20
+	// truncates that before it starts.
 	MaxIterations int
 	// MaxResultBytes caps the report. Exceeded, it truncates and declares it.
-	// A child returning 50KB defeats the point — the cost of reading comes back
-	// through the answer.
+	// A child returning its whole context defeats the point — the cost of
+	// reading comes back through the answer.
+	//
+	// The cap is on the ANSWER, not on the work. Sized so a child can describe
+	// what it did without the parent paying to re-read what it read.
 	MaxResultBytes int
 }
 
