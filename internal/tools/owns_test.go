@@ -3,6 +3,8 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -89,4 +91,36 @@ func mustJSON(t *testing.T, v any) json.RawMessage {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// A child that did not answer is named, never summarised away.
+//
+// With several children in flight, N−1 answers is the ordinary case, not the
+// exceptional one. Returning N−1 quietly is an incomplete result wearing the
+// face of a complete one — the shape of defect this repository keeps finding in
+// itself.
+func TestAChildThatDidNotAnswerIsNamed(t *testing.T) {
+	s, _ := setup(t)
+	res := run(t, Explore{Delegator: &fakeDelegator{err: errors.New("stream closed")}}, s,
+		ExploreInput{Task: "catalogue the billing repo", Path: "repos/billing"})
+
+	if !res.IsError {
+		t.Fatal("a failed child must be an error, not an empty answer")
+	}
+	if !strings.Contains(res.Output, "catalogue the billing repo") {
+		t.Errorf("the failure does not say which child it was:\n%s", res.Output)
+	}
+}
+
+// What the child wrote reaches the parent's history, beside where it looked.
+func TestExploreReportsWhatTheChildWrote(t *testing.T) {
+	s, _ := setup(t)
+	res := run(t, Explore{Delegator: &fakeDelegator{
+		conclusion: "catalogued",
+		wrote:      []string{"repos/billing/ARCHITECTURE.md"},
+	}}, s, ExploreInput{Task: "catalogue it", Owns: []string{"repos/billing/ARCHITECTURE.md"}})
+
+	if !strings.Contains(res.Output, "wrote: repos/billing/ARCHITECTURE.md") {
+		t.Errorf("the parent cannot see what the child changed:\n%s", res.Output)
+	}
 }

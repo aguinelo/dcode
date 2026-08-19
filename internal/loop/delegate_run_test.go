@@ -125,7 +125,7 @@ func TestExploreAdaptsTheEngineToTheToolInterface(t *testing.T) {
 		{call("c1", "read", `{"path":"pay.go"}`), done()},
 		{text("found it"), done()},
 	})
-	conclusion, read, unread, truncated, err := e.Explore(context.Background(), "find it", "", nil)
+	conclusion, read, _, unread, truncated, err := e.Explore(context.Background(), "find it", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

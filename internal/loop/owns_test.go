@@ -2,6 +2,8 @@ package loop
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -115,4 +117,58 @@ func childRegistry2(parent *tools.Registry) (*tools.Registry, []string) {
 
 func delegateInstructions2(names []string) string {
 	return delegateInstructions(names, nil)
+}
+
+// What the child wrote travels with the conclusion, for the same reason the
+// paths it read already do: it does not prove the work was right, but it turns
+// "trust me" into something a person can spot-check.
+func TestAWritingChildReportsWhatItWrote(t *testing.T) {
+	e, ws := delegateEngine(t, [][]provider.StreamEvent{
+		{call("c1", "write", `{"path":"ARCHITECTURE.md","content":"# arch"}`), done()},
+		{text("catalogued"), done()},
+	})
+	e.cfg.Mode = policy.ModeWorkspaceWrite
+	e.cfg.State.BeginTurn()
+
+	res, err := e.Delegate(context.Background(), "catalogue it", "",
+		DelegateLimits{MaxIterations: 3}, []string{"ARCHITECTURE.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Wrote) != 1 || res.Wrote[0] != "ARCHITECTURE.md" {
+		t.Fatalf("wrote = %v, want the owned path", res.Wrote)
+	}
+	if !strings.Contains(res.String(), "wrote: ARCHITECTURE.md") {
+		t.Errorf("the report does not say what was written:\n%s", res.String())
+	}
+	if _, err := os.Stat(filepath.Join(ws, "ARCHITECTURE.md")); err != nil {
+		t.Fatalf("the child did not actually write: %v", err)
+	}
+}
+
+// Undo is per turn, and delegation happens inside one. The turn that asked for
+// the work is the turn that can put it back.
+func TestTheParentCanUndoWhatItsChildWrote(t *testing.T) {
+	e, ws := delegateEngine(t, [][]provider.StreamEvent{
+		{call("c1", "write", `{"path":"ARCHITECTURE.md","content":"# arch"}`), done()},
+		{text("catalogued"), done()},
+	})
+	e.cfg.Mode = policy.ModeWorkspaceWrite
+	e.cfg.State.BeginTurn()
+
+	if _, err := e.Delegate(context.Background(), "catalogue it", "",
+		DelegateLimits{MaxIterations: 3}, []string{"ARCHITECTURE.md"}); err != nil {
+		t.Fatal(err)
+	}
+
+	restored, refused, err := e.cfg.State.Undo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refused) != 0 || len(restored) != 1 {
+		t.Fatalf("restored=%v refused=%v, want the child's file back", restored, refused)
+	}
+	if _, err := os.Stat(filepath.Join(ws, "ARCHITECTURE.md")); !os.IsNotExist(err) {
+		t.Error("undoing the delegation left the child's file behind")
+	}
 }

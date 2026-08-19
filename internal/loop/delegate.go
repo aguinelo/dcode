@@ -40,6 +40,13 @@ type DelegateResult struct {
 	// proves it looked, and it turns "trust me" into something a person can
 	// spot-check.
 	Read []string
+	// Wrote are the paths the child changed.
+	//
+	// Travelling with the conclusion for the same reason Read does: it does not
+	// prove the work was right, but it turns "trust me" into something a person
+	// can spot-check — and here it also says which of several children touched
+	// what, which is the question a divided piece of work raises first.
+	Wrote []string
 	// Unread are paths a rule refused. Reported, never swallowed: a conclusion
 	// with an undeclared hole is a wrong conclusion wearing the face of a
 	// complete one.
@@ -57,6 +64,9 @@ func (r DelegateResult) String() string {
 	}
 	if len(r.Read) > 0 {
 		fmt.Fprintf(&b, "\n\nlooked at: %s", strings.Join(r.Read, ", "))
+	}
+	if len(r.Wrote) > 0 {
+		fmt.Fprintf(&b, "\nwrote: %s", strings.Join(r.Wrote, ", "))
 	}
 	if len(r.Unread) > 0 {
 		fmt.Fprintf(&b, "\ncould not read: %s", strings.Join(r.Unread, ", "))
@@ -118,9 +128,15 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 	e.delegated.OutputTokens += out.Usage.OutputTokens
 	e.delegated.CacheReadTokens += out.Usage.CacheReadTokens
 
+	// The turn that asked for the work is the turn that can put it back. Undo
+	// is per turn and delegation happens inside one, so without this the
+	// parent's undo would reach everything except the part it delegated.
+	e.cfg.State.Adopt(child.cfg.State)
+
 	res := DelegateResult{
 		Conclusion: lastText(child.Session()),
 		Read:       child.cfg.State.ReadPaths(),
+		Wrote:      child.cfg.State.Written(),
 		Unread:     uniqueSortedStrings(approver.denied),
 	}
 	if n := lim.MaxResultBytes; n > 0 && len(res.Conclusion) > n {
@@ -285,13 +301,13 @@ func uniqueSortedStrings(in []string) []string {
 // The adapter lives here rather than in the tools package because everything it
 // decides — read-only mode, the reduced registry, the denying approver, the
 // budget debit — is a property of what a turn is, and turns belong to the loop.
-func (e *Engine) Explore(ctx context.Context, task, path string, owns []string) (string, []string, []string, bool, error) {
+func (e *Engine) Explore(ctx context.Context, task, path string, owns []string) (string, []string, []string, []string, bool, error) {
 	res, err := e.Delegate(ctx, task, path, DelegateLimits{
 		MaxIterations:  e.cfg.DelegateMaxIterations,
 		MaxResultBytes: e.cfg.DelegateMaxResultBytes,
 	}, owns)
 	if err != nil {
-		return "", nil, nil, false, err
+		return "", nil, nil, nil, false, err
 	}
-	return res.Conclusion, res.Read, res.Unread, res.Truncated, nil
+	return res.Conclusion, res.Read, res.Wrote, res.Unread, res.Truncated, nil
 }
