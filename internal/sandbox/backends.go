@@ -3,6 +3,7 @@ package sandbox
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -55,7 +56,7 @@ func (s *seatbelt) Wrap(ctx context.Context, workdir, command string, mode polic
 //
 // Deny by default, then grant the minimum: anything not named here is refused
 // by the kernel rather than by us.
-func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, caches []string) (string, error) {
+func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []string) (string, error) {
 	if workdir == "" {
 		return "", fmt.Errorf("sandbox: workdir is required")
 	}
@@ -84,7 +85,7 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, caches []str
 		// And the toolchain's own caches, which live outside the workspace
 		// because they are shared across projects. Named one by one rather
 		// than by granting the home that contains them.
-		for _, p := range caches {
+		for _, p := range scratch {
 			fmt.Fprintf(&b, "(allow file-write* (subpath %q))\n", canonical(p))
 		}
 	case policy.ModeFullAccess:
@@ -162,7 +163,7 @@ func (b *bubblewrap) Wrap(ctx context.Context, workdir, command string, mode pol
 	return cmd, nil
 }
 
-func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, caches []string) ([]string, error) {
+func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []string) ([]string, error) {
 	if workdir == "" {
 		return nil, fmt.Errorf("sandbox: workdir is required")
 	}
@@ -195,9 +196,16 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, caches []stri
 		// The toolchain's caches, bound writable one by one. A cache under
 		// /tmp is already covered by the tmpfs and binding it again would put
 		// the host's copy back over the fresh one.
-		for _, p := range caches {
+		for _, p := range scratch {
 			p = canonical(p)
 			if under(p, "/tmp") || under(p, workdir) {
+				continue
+			}
+			// bubblewrap refuses to bind a source that is not there, and the
+			// refusal takes down the whole command rather than the one mount.
+			// A cache directory that does not exist yet is ordinary: nothing
+			// has compiled on this machine.
+			if _, err := os.Stat(p); err != nil {
 				continue
 			}
 			args = append(args, "--bind", p, p)

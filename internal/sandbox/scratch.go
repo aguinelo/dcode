@@ -5,6 +5,12 @@ import (
 	"runtime"
 )
 
+// goos is the platform, injectable so both branches below are reachable from a
+// test. A branch that only one platform can execute is a branch only one
+// platform can check, and this one decides where a compiler is allowed to
+// write.
+var goos = runtime.GOOS
+
 // Scratch are the directories outside the workspace that a toolchain must write
 // to in order to build at all.
 //
@@ -62,7 +68,7 @@ func Scratch(env func(string) string) []string {
 	out = add(out, env("TMPDIR"))
 	// Go: the build cache is written on every compile, the module cache on
 	// every dependency resolution.
-	if runtime.GOOS == "darwin" {
+	if goos == "darwin" {
 		out = add(out, env("GOCACHE"), "Library", "Caches", "go-build")
 	} else {
 		out = add(out, env("GOCACHE"), ".cache", "go-build")

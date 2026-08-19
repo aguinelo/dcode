@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -124,16 +125,29 @@ func hasPath(list []string, want string) bool {
 // covered. A cache under /tmp is inside the fresh tmpfs, and binding the host's
 // copy back over it would undo the isolation the tmpfs exists for.
 func TestBubblewrapBindsCachesAndSkipsWhatIsCovered(t *testing.T) {
+	if under(canonical(t.TempDir()), "/tmp") {
+		t.Skip("this platform puts temporary directories under /tmp, which the tmpfs already covers")
+	}
 	// A literal path, not one derived from t.TempDir(): on Linux the temporary
 	// directory lives under /tmp, so the fixture would land inside the tmpfs
 	// and be skipped by the very rule this test exists to check. The fixture
 	// must not depend on where the platform puts its scratch space.
-	cache := "/home/someone/.cache/go-build"
+	// A directory that exists and is not under /tmp: bubblewrap refuses to
+	// bind a source that is not there, and the fixture has to be a real one or
+	// it would be testing the skip rather than the bind. Not t.TempDir() —
+	// on Linux that IS under /tmp.
+	cache := filepath.Join(t.TempDir(), "cache")
+	if err := os.MkdirAll(cache, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	b := &bubblewrap{}
-	args, err := b.args("/w", policy.ModeWorkspaceWrite, []string{cache, "/tmp/inside"})
+	args, err := b.args("/nowhere", policy.ModeWorkspaceWrite, []string{cache, "/tmp/inside"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Compared canonical: the profile resolves symlinks before naming a path,
+	// because the boundary the kernel enforces is the resolved one.
+	cache = canonical(cache)
 	joined := strings.Join(args, " ")
 	if !strings.Contains(joined, "--bind "+cache+" "+cache) {
 		t.Errorf("the cache is not bound writable: %v", args)
@@ -194,5 +208,44 @@ func TestAnUnsetTemporaryDirectoryInventsNothing(t *testing.T) {
 		if strings.HasSuffix(p, "/T") || filepath.Base(p) == "tmp" {
 			t.Errorf("a temporary directory was invented: %q", p)
 		}
+	}
+}
+
+// A cache that is not there yet is skipped rather than bound. bubblewrap fails
+// the whole command on a missing bind source, so a machine that has never
+// compiled would be unable to run anything at all.
+func TestAnAbsentCacheIsSkippedRatherThanBound(t *testing.T) {
+	b := &bubblewrap{}
+	args, err := b.args("/nowhere", policy.ModeWorkspaceWrite,
+		[]string{"/definitely/not/here/go-build"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.Join(args, " "), "/definitely/not/here") {
+		t.Errorf("a missing directory was bound, which fails every command: %v", args)
+	}
+}
+
+// Both platform defaults are reachable from either platform. A branch only one
+// machine can execute is a branch only one machine can check, and this one
+// decides where a compiler may write.
+func TestBothPlatformDefaultsAreReachable(t *testing.T) {
+	home := t.TempDir()
+	env := func(k string) string {
+		if k == "HOME" {
+			return home
+		}
+		return ""
+	}
+	original := goos
+	t.Cleanup(func() { goos = original })
+
+	goos = "darwin"
+	if !hasPath(Scratch(env), filepath.Join(home, "Library", "Caches", "go-build")) {
+		t.Error("the macOS build cache is missing")
+	}
+	goos = "linux"
+	if !hasPath(Scratch(env), filepath.Join(home, ".cache", "go-build")) {
+		t.Error("the Linux build cache is missing")
 	}
 }
