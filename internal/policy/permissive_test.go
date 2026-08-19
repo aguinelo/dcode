@@ -117,3 +117,20 @@ func TestTheCommandListSaysWhatItIsNot(t *testing.T) {
 		t.Error("the default command rules do not say they are not a boundary")
 	}
 }
+
+// The closure form answers live, because a grant can arrive while a turn is
+// running — and a nil one answers no. Wiring nothing must not read as consent.
+func TestTheLiveGrantAnswersAndANilOneRefuses(t *testing.T) {
+	yes := true
+	live := NetworkGrantFunc(func() bool { return yes })
+	if !live.Granted() {
+		t.Error("a granted closure said no")
+	}
+	yes = false
+	if live.Granted() {
+		t.Error("the answer was read once instead of being asked again")
+	}
+	if NetworkGrantFunc(nil).Granted() {
+		t.Error("wiring nothing read as consent")
+	}
+}
