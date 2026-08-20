@@ -62,3 +62,39 @@ Se o número muda. As medições anteriores — 75%, 66,7%, 50% e 50% de cinquen
 foram todas contra o harness que desencorajava delegar. A próxima é a primeira
 que mede o dcode em vez da mistura, e o limiar em 25% continua onde está até que
 ela exista.
+
+---
+
+## Correção: a previsão não se sustentou
+
+Este changelog terminava com *"se o número muda"* em aberto. Mudou pouco, e no
+contrato errado.
+
+| contrato | harness que recusava | harness que roda o filho |
+|---|---|---|
+| `keeps-writing-that-must-cohere` | 96,0% | **100,0%** |
+| `names-the-child-that-did-not-answer` | 98,0% | **100,0%** |
+| `delegates-writing-when-disjoint` | 50,0% | **52,0%** |
+
+Cinquenta execuções cada, 92 minutos.
+
+**A explicação escrita acima estava errada.** Afirmei que a recusa convencia o
+modelo a parar de delegar e que consertá-la faria o terceiro número subir. Com
+n=50 a dispersão é de cerca de sete pontos: **dois pontos é ruído.** A causa das
+não-delegações é outra e não é conhecida.
+
+O que a evidência sustentava — o digest dizendo *"the eval harness doesn't run
+delegated turns, so I'll do the work directly"* — mostrava o modelo **explicando
+o que fez**, não necessariamente a razão de ter feito. Tomei uma racionalização
+por causa, que é o erro que este repositório documenta em outros lugares e que eu
+cometi aqui.
+
+**O conserto não foi inútil, e o ganho está nos outros dois.** Agora o modelo tem
+uma opção de delegação que funciona, e **ainda assim** recusa dividir trabalho que
+precisa concordar consigo. Antes ele recusava num mundo onde delegar era
+impossível — o que media muito menos, e é por isso que 96% virou 100%.
+
+O terceiro contrato segue medindo o que declara medir, com o limiar em 25% e o
+mesmo aviso: piso contra regressão, não certificado de qualidade. Por que o dcode
+divide o trabalho em metade das execuções continua sendo pergunta aberta, e agora
+sem a resposta fácil que eu tinha inventado.
