@@ -51,6 +51,16 @@ can be recognised before it repeats rather than after.
   Enquanto não houver guarda que a cobre, ela vale o que vale a disciplina de
   quem lê — e está escrita aqui em vez de combinada.
 
+### A versão é derivada, não decidida
+
+- `./scripts/version.sh` diz qual é a próxima, a partir dos commits desde a
+  última tag. `./scripts/changelog.sh` gera o esqueleto da seção — **o porquê de
+  cada linha é escrito à mão**, porque não sai de gerador nenhum.
+- Comportamento faz parte do contrato: contrato removido, limiar que desce, ou
+  descrição de ferramenta que muda de sentido é **no mínimo MINOR**. O SemVer lê
+  assinaturas, e a superfície deste produto é em parte feita de frases.
+- O detalhe está em `docs/conventions/VERSIONING.md`.
+
 ### Stage explicitly
 
 - **Never `git add -A` or `git add .`.** Stage named paths. A 41KB HTML mock

@@ -1,131 +1,135 @@
 # Changelog
 
-Registro vivo do que muda no dcode. **Toda alteração entra aqui**, no topo, na
-mesma branch que a faz — não depois, não em lote.
+🇧🇷 [Versão em português](CHANGELOG.pt-BR.md)
 
-O estado atual fica na primeira seção e é reescrito junto com cada entrada. São
-um arquivo só de propósito: status que mora separado do log é status que
-envelhece sozinho, e este repositório já tem cicatriz de coisa declarada que
-ninguém mantém.
+A living record of what changes in dcode. **Every change lands here**, at the
+top, on the branch that makes it — not afterwards, not in batches.
 
-Detalhe fino de decisão continua nos changelogs por família, em
-`docs/specs/architecture/<família>/changelog/`. Aqui fica o que mudou e por quê,
-em uma linha cada.
+The current state is the first section and is rewritten alongside each entry.
+One file rather than two on purpose: a status that lives apart from the log is a
+status that ages on its own, and this repository has scar tissue from declared
+things nobody maintains.
+
+The fine detail of a decision stays in the per-family changelogs, under
+`docs/specs/architecture/<family>/changelog/`. What lives here is what changed
+and why, one line each.
 
 ---
 
-## Estado atual — 20 de agosto de 2026
+## Current state — 20 August 2026
 
-**O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
-terminal e o laço do agente entre os dois, num binário estático único, sem cgo
-fora do pacote isolado.
+**What it is.** An agentic coding harness in Go: a daemon, a terminal client and
+the agent loop between them, as a single static binary, with no cgo outside the
+isolated package.
 
-**Onde está.**
+**Where it stands.**
 
 | | |
 |---|---|
-| famílias de spec | 13, com 63 changelogs de decisão |
-| contratos comportamentais | 42 declarados |
-| **contratos medidos contra modelo** | **3** |
-| cobertura | 95,0%, com gate em 90% |
-| CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **nenhuma** — não há tag; o build é `0.0.0-dev+<sha>` |
+| spec families | 13, with 63 decision changelogs |
+| behavioural contracts | 42 declared |
+| **contracts measured against a model** | **3** |
+| coverage | 95.0%, gate at 90% |
+| CI | macOS + Linux matrix, gated on the **union** of the profiles |
+| published version | **none** — there is no tag; builds are `0.0.0-dev+<sha>` |
 
-**Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
-bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
-Autorização é a política de aprovação mais as regras. Os dois são ortogonais, e
-essa separação é o que permite ser permissivo sem ser inseguro.
+**Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
+bubblewrap on Linux, with the boundary tested against the kernel and exercised
+in CI. Authorisation is the approval policy plus the rules. The two are
+orthogonal, and that separation is what makes it possible to be permissive
+without being unsafe.
 
-Hoje o sandbox: esconde os cofres de credencial por default (`~/.aws`,
-`~/.gnupg`, `~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` e a própria
-chave do dcode); mantém o socket de runtime de contêiner fora de alcance;
-concede socket e caminho gravável **por nome**; e esconde `~/.ssh` assim que o
-socket do `ssh-agent` é concedido — porque aí o `ssh` assina sem ler a chave e
-esconder sai de graça.
+The sandbox today: hides the credential stores by default (`~/.aws`, `~/.gnupg`,
+`~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` and dcode's own key);
+keeps a container runtime's socket out of reach; grants a socket or a writable
+path **by name**; and hides `~/.ssh` as soon as the `ssh-agent` socket is
+granted — because then ssh signs without reading the key and hiding costs
+nothing.
 
-**Delegação.** Um filho delegado escreve, dentro do que declarou possuir, com a
-contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
+**Delegation.** A delegated child writes, inside what it declared it owns, with
+the parent's containment narrowed to that set. Ownership is a boundary, not an
+agreement.
 
-**O que este documento não diz.** Que o sistema está verificado. Trinta e nove
-dos quarenta e dois contratos nunca rodaram contra um modelo, e o relatório da
-suíte imprime isso em toda execução para impedir a leitura contrária.
+**What this document does not say.** That the system is verified. Thirty-nine of
+the forty-two contracts have never run against a model, and the suite prints
+that on every run to stop the opposite reading.
 
 ---
 
-## Não lançado
+## Unreleased
 
-### Instrumento de medição
+### Measurement instrument
 
-- **Medição contra o harness consertado.** Os três contratos, 50 execuções cada,
-  92 minutos:
+- **Measured against the fixed harness.** Three contracts, fifty runs each,
+  ninety-two minutes:
 
-  | contrato | antes | depois |
+  | contract | before | after |
   |---|---|---|
-  | `keeps-writing-that-must-cohere` | 96,0% | **100,0%** |
-  | `names-the-child-that-did-not-answer` | 98,0% | **100,0%** |
-  | `delegates-writing-when-disjoint` | 50,0% | **52,0%** |
+  | `keeps-writing-that-must-cohere` | 96.0% | **100.0%** |
+  | `names-the-child-that-did-not-answer` | 98.0% | **100.0%** |
+  | `delegates-writing-when-disjoint` | 50.0% | **52.0%** |
 
-  **A previsão do autor estava errada.** O #216 foi escrito afirmando que a
-  recusa do harness convencia o modelo a parar de delegar, e que consertar isso
-  faria o terceiro número subir. Com n=50 o desvio é ~7 pontos: **dois pontos é
-  ruído.** A causa das não-delegações é outra e ainda não é conhecida.
+  **The author's prediction was wrong.** #216 was written claiming the harness's
+  refusal was talking the model out of delegating, and that fixing it would raise
+  the third number. At n=50 the spread is about seven points: **two points is
+  noise.** Why the work goes undivided is open again.
 
-  O conserto não foi inútil, e o ganho está nos outros dois: agora o modelo tem
-  uma opção de delegação que **funciona**, e ainda assim recusa dividir trabalho
-  que precisa concordar consigo. Antes ele recusava num mundo onde delegar era
-  impossível, o que media muito menos.
-- **O harness de eval roda um turno filho** (#216). A recusa antiga era honesta
-  mas dizia "do the reading yourself", e isso instruía o abandono. Continua sendo
-  o comportamento certo a consertar; o que não se sustentou foi a previsão sobre
-  o efeito dele.
-- **Três contratos para trabalho dividido** (#214, #215). O limiar do terceiro
-  desceu de 80% para 25% depois de quatro medições com dispersão de 25 pontos —
-  piso contra regressão, não certificado de qualidade.
-- **O release alcança um espelho que responde** (#218). O pipeline de release era
-  uma cópia da CI que parou de ser atualizada: sem prazo no `apt`, sem
-  `apparmor_restrict_unprivileged_userns`, sem sonda — então **todo teste de
-  fronteira pulava calado** no pipeline que decide se publica.
+  The fix earned its keep in the other two: the model now has a delegation option
+  that **works** and still declines to split work that has to cohere. Before, it
+  declined in a world where delegating was impossible, which measured far less.
+- **The eval harness runs a delegated turn** (#216). The old refusal was honest
+  but said "do the reading yourself", which instructs abandonment. Still the
+  right behaviour to fix; what did not hold up was the prediction about its
+  effect.
+- **Three contracts for divided work** (#214, #215). The third's threshold fell
+  from 80% to 25% after four measurements spread twenty-five points — a floor
+  against regression, not a certificate of quality.
+- **The release reaches a mirror that answers** (#218). The release pipeline was
+  a copy of CI that stopped being updated: no deadline on `apt`, no
+  `apparmor_restrict_unprivileged_userns`, no probe — so **every boundary test
+  skipped in silence** in the pipeline that decides whether to publish.
 
-### Coordenar máquinas
+### Coordinating machines
 
-- **Comando que sai da máquina pergunta** (#212). `ssh`, `scp`, `rsync` para host,
-  `kubectl exec`, `ansible`, `aws ssm`, `docker -H`. `git push` não pergunta.
-- **Recurso de fora concedido por nome** (#211). `DCODE_SANDBOX_SOCKETS` e
-  `DCODE_SANDBOX_WRITABLE`; o literal `ssh-agent` vale por `$SSH_AUTH_SOCK`.
-- **Cofre de credencial fora de alcance** (#210). `DCODE_SANDBOX_UNREADABLE`, com
-  default que esconde sem ninguém pedir.
+- **A command that leaves the machine asks** (#212). `ssh`, `scp`, `rsync` to a
+  host, `kubectl exec`, `ansible`, `aws ssm`, `docker -H`. `git push` does not.
+- **An outside resource can be granted by name** (#211). `DCODE_SANDBOX_SOCKETS`
+  and `DCODE_SANDBOX_WRITABLE`; the literal `ssh-agent` stands for
+  `$SSH_AUTH_SOCK`.
+- **A credential store can be put out of reach** (#210). `DCODE_SANDBOX_UNREADABLE`,
+  with a default that hides without being asked.
 
 ### Sandbox
 
-- **Socket é alcançável onde já se escreve** (#199). Conserta a regressão do #196,
-  que fechou o `bind` de porta e derrubou metade da suíte.
-- **Rede concedida não é socket privilegiado** (#196). O dcode encontrou a
-  própria fuga: rodou `docker run` de dentro de `workspace-write`, e funcionou.
-- **Sandbox aninhado é detectado, não adivinhado** (#189).
-- **Toolchain alcança o próprio cache** (#188).
+- **A socket is reachable where writing already is** (#199). Fixes the regression
+  from #196, which closed port binding and took half the suite down with it.
+- **A granted network is not a privileged socket** (#196). dcode found its own
+  escape: it ran `docker run` from inside `workspace-write`, and it worked.
+- **A nested sandbox is detected, not guessed** (#189).
+- **A toolchain can reach its own cache** (#188).
 
-### Delegação que escreve
+### Delegation that writes
 
-- **Escrita recusada diz que era escrita** (#206).
-- **O filho diz o que escreveu** (#205). `Wrote` no relatório, e o desfazimento
-  do turno do pai alcança o que o filho fez.
-- **Filho delegado escreve só o que possui** (#204). `owns` é pedido que só
-  estreita, e a contenção responde por ele.
-- **Pesquisa e planejamento** (#201, #202).
+- **A refused write says it was a write** (#206).
+- **A child says what it wrote** (#205). `Wrote` in the report, and the parent's
+  turn undo reaches what the child did.
+- **A delegated child writes only what it owns** (#204). `owns` is a request that
+  can only narrow, and containment answers for it.
+- **Research and planning** (#201, #202).
 
-### Laço e configuração
+### Loop and configuration
 
-- **O backstop acompanha o horizonte do modelo** (#195). Teto de 200 para 2.000 —
-  a citação que o justificava falava de 1.959 chamadas.
-- **As instruções do projeto descrevem este projeto** (#194). 76% do prompt
-  descrevia um projeto Node; caiu de 16.904 para 8.757 bytes.
-- **A ferramenta descreve o que sabe fazer** (#207, #208). A descrição negava a
-  escrita que o schema oferecia, e o modelo não delegava por causa disso.
+- **The backstop matches the model's horizon** (#195). A ceiling of 200 became
+  2,000 — the citation justifying it spoke of 1,959 calls.
+- **The project instructions describe this project** (#194). 76% of the prompt
+  described a Node project; it fell from 16,904 to 8,757 bytes.
+- **The tool describes what it can do** (#207, #208). The description denied the
+  writing its schema offered, and the model would not delegate because of it.
 
-### CI e cobertura
+### CI and coverage
 
-- **A CI nomeia um espelho que responde** (#203). O passo do `apt` saiu de 6
-  minutos de timeout para 13 segundos.
-- **Cobertura afrouxa para o piso que as specs pedem** (#192). Agregado em 90%, e
-  o piso por pacote passa a reprovar em vez de só imprimir.
-- **O gate de cobertura lê a matriz inteira** (#190).
+- **CI names a mirror that answers** (#203). The `apt` step went from six minutes
+  of timeouts to thirteen seconds.
+- **Coverage relaxes to the floor the specs ask for** (#192). The aggregate goes
+  to 90%, and the per-package floor starts failing rather than only printing.
+- **The coverage gate reads the whole matrix** (#190).

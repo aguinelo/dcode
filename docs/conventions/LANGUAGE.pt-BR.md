@@ -36,6 +36,7 @@ título, para que quem chegar em qualquer um dos dois consiga trocar.
 | Artefato | Idiomas | Canônico |
 |---|---|---|
 | `README` | ambos | inglês |
+| `CHANGELOG` | ambos | inglês |
 | `docs/conventions/**` | ambos | inglês |
 | `docs/brand/**` | ambos | inglês |
 | Templates de issue e PR | ambos | inglês |

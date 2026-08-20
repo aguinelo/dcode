@@ -36,6 +36,7 @@ so a reader who lands on either one can switch.
 | Artifact | Languages | Canonical |
 |---|---|---|
 | `README` | both | English |
+| `CHANGELOG` | both | English |
 | `docs/conventions/**` | both | English |
 | `docs/brand/**` | both | English |
 | Issue and PR templates | both | English |
