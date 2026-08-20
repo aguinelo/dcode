@@ -41,6 +41,16 @@ can be recognised before it repeats rather than after.
 - Repeated approval to continue (`segue`, `pode ir`) grants **the work**, never
   the branch. Ask which branch, or start a new one.
 
+### Toda alteração entra no `CHANGELOG.md`
+
+- Na **mesma branch** que a faz, no topo, e o "Estado atual" é reescrito junto.
+  Changelog escrito depois é changelog reconstruído de memória.
+- Uma linha por mudança: **o que mudou e por quê**. O detalhe da decisão continua
+  no changelog da família, em `docs/specs/architecture/<família>/changelog/`.
+- Esta regra é prosa, que é a camada mais fraca que este repositório reconhece.
+  Enquanto não houver guarda que a cobre, ela vale o que vale a disciplina de
+  quem lê — e está escrita aqui em vez de combinada.
+
 ### Stage explicitly
 
 - **Never `git add -A` or `git add .`.** Stage named paths. A 41KB HTML mock
