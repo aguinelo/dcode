@@ -69,6 +69,29 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Cliente TUI
+
+- **O teclado do v5 decidido por convenção, e nada declarado ainda.** O handoff
+  de design propõe cinco teclas e três colidem: `^E` é fim de linha, `^N` já é
+  "descer" no picker, e `^Z` é SIGTSTP em todo terminal que existe.
+
+  Decidido no lugar: `^B` para a coluna lateral (o que o VS Code fez a palavra
+  significar), `^R` para a trilha de sessões (o *reverse-i-search* do readline —
+  sessão **é** histórico, então tomar o acorde emprestado reforça o sentido), e
+  `r`/`F2` para renomear com a trilha dona do teclado. A seção ARQUIVOS não ganha
+  **tecla nenhuma**: editor nenhum dá acorde global a cada seção da barra
+  lateral, então `^B` abre a coluna e as duas seções estão simplesmente lá. Isso
+  apaga uma tecla em vez de acrescentar.
+
+  `^Z` é recusado duas vezes — reatribuir a tecla de suspender é hostil, e
+  `/undo` já existe deliberadamente, já alcançando o trabalho delegado pelo
+  estado que o pai adota.
+
+  A tabela da seção 7 fica **intacta**. Cada tecla entra nela no PR que a
+  implementa, com o teste que a cobra: tecla declarada em spec que nenhum código
+  executa é o mesmo defeito que o changelog da cópia dona do teclado registra
+  contra si próprio.
+
 ### Documentação
 
 - **Referências de design vivem em `refs/design/`, e há uma só.** O handoff v2

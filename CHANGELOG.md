@@ -72,6 +72,29 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Client TUI
+
+- **The v5 keyboard is decided by convention, and nothing is declared yet.**
+  The design handoff proposes five keys and three of them collide: `^E` is
+  line-end, `^N` is already "down" in the picker, and `^Z` is SIGTSTP in every
+  terminal that exists.
+
+  Decided instead: `^B` for the sidebar (what VS Code made the word mean), `^R`
+  for the session rail (readline's reverse-i-search — a session **is** history,
+  so borrowing the chord reinforces its meaning), and `r`/`F2` to rename while
+  the rail owns the keyboard. The FILES section gets **no key at all**: no
+  editor gives every sidebar section a global chord, so `^B` opens the column
+  and both sections are simply there. That deletes a key instead of adding one.
+
+  `^Z` is refused twice over — rebinding suspend is hostile, and `/undo` already
+  exists deliberately, already reaching delegated work through the state the
+  parent adopts.
+
+  The section 7 table is **unchanged**. Each key joins it in the PR that
+  implements it, with the test that holds it: a key declared in a spec that no
+  code executes is the same defect the copy-mode changelog records against
+  itself.
+
 ### Documentation
 
 - **Design references live in `refs/design/`, and there is one of them.** The
