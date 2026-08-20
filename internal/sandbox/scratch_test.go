@@ -130,13 +130,17 @@ func TestBubblewrapBindsCachesAndSkipsWhatIsCovered(t *testing.T) {
 	// must not depend on where the platform puts its scratch space.
 	cache := "/home/someone/.cache/go-build"
 	present(t, cache)
+	// args() mounts the canonical spelling, so that is what to look for. A
+	// hard-coded literal made this depend on whether the platform resolves the
+	// ancestors of the fixture path.
+	bound := canonical(cache)
 	b := &bubblewrap{}
 	args, err := b.args("/nowhere", policy.ModeWorkspaceWrite, []string{cache, "/tmp/inside"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "--bind "+cache+" "+cache) {
+	if !strings.Contains(joined, "--bind "+bound+" "+bound) {
 		t.Errorf("the cache is not bound writable: %v", args)
 	}
 	if strings.Contains(joined, "/tmp/inside") {

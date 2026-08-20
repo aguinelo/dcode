@@ -69,6 +69,31 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Sandbox
+
+- **Decisão de fronteira segue o modo, não o sistema de arquivos.** O
+  `canonical()` devolvia o caminho cru quando ele ainda não existia — o
+  `EvalSymlinks` só resolve o que existe —, então o mesmo diretório canonicalizava
+  de dois jeitos conforme *quando* se perguntava: `/tmp/ws` antes de criado,
+  `/private/tmp/ws` depois. As comparações de `/tmp` então o testavam contra o
+  literal `"/tmp"`, e remontar ou não o workspace por cima do `tmpfs` passava a
+  depender do que estivesse no disco.
+
+  Agora ele resolve o ancestral mais profundo que existe e recoloca o resto, e as
+  comparações rodam contra `/tmp` como o próprio `canonical()` o reporta.
+
+  Foi achado como um teste que passava ou falhava conforme a máquina, escondido
+  um dia atrás do cache de testes do Go. Mas a mesma função alimenta o profile do
+  **seatbelt**, e o comentário acima dela já nomeava o perigo que ela causava: no
+  macOS, profile nomeando caminho não resolvido *"não concede nada e toda escrita
+  falha sem explicação"*. Em produção o `bubblewrap` só roda no Linux, onde as
+  duas grafias já coincidem, então nenhuma lista de argumentos muda lá.
+
+  O `TestCanonicalFallsBackToTheInput` afirmava o contrato antigo pelo nome e foi
+  reescrito para o novo, não afrouxado; três asserções que fixavam a grafia crua
+  de fixtures passam a comparar contra `canonical(...)`, que é o que o `args()`
+  de fato monta.
+
 ### Documentação
 
 - **O que o design v5 pede e o produto não tem está escrito.** Uma seção nova no

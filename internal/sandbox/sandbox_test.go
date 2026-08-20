@@ -175,7 +175,7 @@ func TestBubblewrapWorkspaceWriteBindsOnlyTheWorkspace(t *testing.T) {
 	}
 	found := false
 	for i := 0; i < len(args)-2; i++ {
-		if args[i] == "--bind" && args[i+1] == "/home/u/proj" {
+		if args[i] == "--bind" && args[i+1] == canonical("/home/u/proj") {
 			found = true
 		}
 		if args[i] == "--bind" && args[i+1] == "/" {
