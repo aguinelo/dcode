@@ -26,12 +26,26 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 63 decision changelogs |
+| spec families | 13, with 68 decision changelogs |
 | behavioural contracts | 42 declared |
 | **contracts measured against a model** | **3** |
 | coverage | 95.0%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.0.1** |
+| published version | **0.1.0** |
+
+**Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
+installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
+external verification tool, and a first install is the worst moment to ask.
+
+The SHA-256 always runs. What says the digest should be that value arrives by two
+independent routes, and **either covers a substituted release**: the digest the
+installer carries, committed to `main` where changing a line is a visible commit,
+and the cosign signature, used when it happens to be on PATH. `dcode update`
+applies the same rule by reading the digests from the installer on `main`.
+
+Homebrew is not a channel yet — the tap was published to for one release and had
+never been created. Removed rather than left running; `docs/ROADMAP.md` §9 says
+what creating it would take.
 
 **Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
 bubblewrap on Linux, with the boundary tested against the kernel and exercised
@@ -57,6 +71,19 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.1.0 — 20 August 2026
+
+The release the install path actually needed. 0.0.1 was published and then found
+to be uninstallable by its own documented command, and everything below follows
+from pulling that thread — including the discovery that the premise was wrong
+twice before it was right.
+
+The short version: **nothing has to be installed first**, and the digest that
+says what the download should be now travels by a route the download cannot
+touch.
 
 ### Distribution
 
