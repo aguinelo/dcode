@@ -148,6 +148,18 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             checksums.txt
 
+      # Depois da verificacao, e nao antes: os digests que o instalador passa a
+      # carregar tem de sair de um checksums.txt que ja foi assinado E conferido.
+      # Fixar antes seria carregar digest que ninguem atestou — a falha que esta
+      # funcionalidade existe para impedir, reproduzida dentro do pipeline que a
+      # implementa.
+      - name: pin the installer to this release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          scripts/installer.sh "$VERSION" dist/checksums.txt install.sh
+          cp install.sh dist/install.sh
+          sed -n '/BEGIN PINNED/,/END PINNED/p' dist/install.sh
+
       # Derivada do checksums.txt que acabou de ser assinado, nunca escrita a
       # mao: o SHA-256 na formula e o do artefato assinado por construcao. Uma
       # formula com digest digitado passa em todo teste local, instala em todo
@@ -166,6 +178,19 @@ jobs:
             --title "${{ github.ref_name }}" \
             --generate-notes \
             dist/*
+
+      # Depois do release existir, pelo mesmo motivo do tap: falhar aqui nao
+      # despublica nada, pinta de vermelho um release que deu certo. Toda falha
+      # recuperavel sai com zero e avisa alto, e a decisao vive no script.
+      #
+      # A main precisa disto, e nao apenas o asset: a URL que o README publica e
+      # `main/install.sh`, entao um pino so no release nunca alcanca quem
+      # instala. E e onde mora o argumento de seguranca inteiro — asset de
+      # release se troca sem rastro publico, linha de arquivo versionado nao.
+      - name: carry the pinned installer to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/publish-installer.sh "${GITHUB_REF_NAME#v}" dist/install.sh
 
       # A decisao de publicar ou nao vive no script, nao no `if:` do passo.
       # Um passo que define TAP_TOKEN no proprio bloco `env` e o consulta na
