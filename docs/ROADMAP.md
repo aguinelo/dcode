@@ -305,6 +305,18 @@ after `go clean -testcache`, and the difference was read as a failing change
 until the baseline was measured. Whatever the fix is, the trap is that the wrong
 number looks like an ordinary one.
 
+**O harness de eval não responde uma chamada delegada, e isso muda o que ele
+mede.** A recusa é honesta — ele não finge que um filho rodou —, mas a frase
+*"Do the reading yourself with the tools you have"* **instrui o abandono**: um
+`explore` de reconhecimento devolve isso, o modelo acredita, e não delega mais na
+execução inteira. Medido: `delegates-writing-when-disjoint` em 75% de 12, com as
+três falhas todas nessa forma, e as nove aprovações sendo as que emitiram os
+filhos numa mensagem só antes de a recusa chegar. Enquanto isso não mudar, todo
+limiar de delegação é piso sobre a taxa do produto e não a taxa. O conserto é um
+delegador de mentira que responda alguma coisa plausível sem rodar turno filho —
+e ele tem a armadilha do `shellRefusal` pela frente, porque fingir que rodou foi
+justamente o que fez um modelo queimar rodadas numa mentira.
+
 **Learned memory has no user-level scope.** Deliberately out of scope in the
 spec: a gotcha from one project applied to another is worse than none. Revisit
 only with evidence from project scope.

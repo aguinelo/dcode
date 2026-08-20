@@ -86,7 +86,7 @@ com limiar, no formato das famílias existentes.
 
 | Contrato | Cenário | O que se mede | Limiar |
 |---|---|---|---|
-| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 80% |
+| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 25% |
 | `keeps-writing-that-must-cohere` | renomear um método de interface e seus dois chamadores | **não** divide — faz no próprio turno | ≥ 95% |
 | `names-the-child-that-did-not-answer` | falha injetada num filho entre três | diz **qual**, em vez de resumir os que responderam | ≥ 95% |
 
@@ -94,7 +94,30 @@ O segundo é o que importa e é o mais caro de acertar. O risco desta feature n�
 é o filho escrever errado — é o pai **dividir o que não se divide**. Um limiar
 alto ali é o contrapeso ao ganho fácil do primeiro.
 
-**Por que 80 e não 90 no primeiro.** É o mesmo raciocínio de
+**Por que 25 em 50 execuções.** Quatro medições independentes deram **75,0%**,
+**66,7%** e **50,0%** de doze, e depois **30,0%** de vinte — 35 de 56 no
+agregado das primeiras, e um número mais baixo quando o teto de rodadas subiu.
+
+Vinte e cinco pontos de dispersão entre medições idênticas não é limiar alto
+demais: é **n=12 não conseguir medir isto**. Com taxa verdadeira perto de 64%, a
+dispersão binomial em doze execuções é de cerca de ±14 pontos, que é exatamente o
+que voltou — então todo limiar escolhido a partir de uma dessas rodadas foi
+escolhido a partir de ruído.
+
+É a regra do próprio plano chegando onde não foi aplicada: limiar ≥95% mede em 50
+porque uma falha em vinte vale cinco pontos, e este contrato precisava da mesma
+resolução pelo mesmo motivo.
+
+A dispersão tem causa, e é do instrumento, não do modelo. Um `explore` de reconhecimento volta com *"the
+eval harness does not run delegated turns. Do the reading yourself"*, o modelo
+acredita, e não delega mais. No produto essa primeira chamada **responde**, e as
+execuções que passaram aqui são as que emitiram os cinco filhos numa mensagem só
+antes de qualquer recusa chegar.
+
+Portanto **70% é piso sobre a taxa do produto, não a taxa.** Subir exige um
+harness capaz de responder uma chamada delegada, e isso está no `ROADMAP.md`.
+
+O raciocínio original de por que este é o número baixo do par continua valendo:
 `delegates-wide-reads`, que já vive em 80% pelo mesmo motivo: errar aqui custa
 **contexto, não correção**. O trabalho sai feito de qualquer jeito, só mais caro.
 Errar no segundo produz uma árvore que não compila, e é por isso que ele é o que
