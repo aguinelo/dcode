@@ -26,12 +26,25 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 63 changelogs de decisão |
+| famílias de spec | 13, com 68 changelogs de decisão |
 | contratos comportamentais | 42 declarados |
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 95,0%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.0.1** |
+| versão publicada | **0.1.0** |
+
+**Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
+ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
+externa de verificação, e a primeira instalação é o pior momento para pedir.
+
+O SHA-256 roda sempre. O que diz que o digest deve ser aquele chega por duas rotas
+independentes, e **qualquer uma cobre release substituído**: o digest que o
+instalador carrega, commitado na `main`, onde mudar uma linha é um commit visível,
+e a assinatura cosign, usada quando por acaso está no PATH. O `dcode update`
+aplica a mesma regra lendo os digests do instalador da `main`.
+
+Homebrew ainda não é canal — publicava-se num tap que nunca havia sido criado.
+Removido em vez de deixado rodando; o `docs/ROADMAP.md` §9 diz o que seria preciso.
 
 **Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
 bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
@@ -55,6 +68,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.1.0 — 20 de agosto de 2026
+
+O release de que o caminho de instalação precisava. O 0.0.1 foi publicado e então
+descoberto ininstalável pelo próprio comando documentado, e tudo abaixo sai de
+puxar esse fio — incluindo descobrir que a premissa estava errada duas vezes antes
+de acertar.
+
+A versão curta: **nada precisa ser instalado antes**, e o digest que diz qual deve
+ser o download passa a viajar por uma rota que o download não alcança.
 
 ### Distribuição
 
