@@ -49,3 +49,21 @@ confirmada.
 
 Fica aberto, sem palpite. Um relatório que às vezes não diz o que foi escrito é
 pior que um que nunca diz, porque o silêncio passa por resposta.
+
+---
+
+## Correção: a anomalia era a tela
+
+Registrado acima como defeito sem explicação, e não era defeito.
+
+`internal/app/app.go:1017` corta a **exibição** em 12 linhas e escreve
+`… N more lines`. Os rodapés `looked at:` e `wrote:` vêm no fim do relatório do
+filho, então qualquer relatório mais comprido perde o rodapé **na tela**.
+
+`indent()` é chamada num lugar só, escrevendo na saída do CLI. **O modelo recebe
+o relatório inteiro.** Uma rodada seguinte, com relatórios mais longos, perdeu os
+cinco rodapés em vez de um — o que confirma a explicação em vez de aprofundar o
+mistério.
+
+Fica registrado porque a hipótese errada estava no `ROADMAP.md`, e roadmap que
+manda alguém caçar um defeito que não existe custa mais que silêncio.
