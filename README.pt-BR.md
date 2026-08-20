@@ -292,10 +292,14 @@ instalador que carrega os digests deste release. Nunca um pacote a instalar.
 os digests de exatamente um release, então a instalação fixada de outra versão é o
 instalador daquela versão: `https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
 
-`dcode update` instala uma versão nova sob demanda, e nunca sozinho. Verifica o checksum e a
-assinatura, confere que o binário baixado de fato executa, e só então troca — de modo que
-qualquer falha deixa o binário atual intacto. Ao contrário do script de instalação, ele
-ainda **exige** o cosign, porque não tem uma segunda rota para o digest esperado.
+`dcode update` instala uma versão nova sob demanda, nunca sozinho, e também não precisa de
+pacote adicional. Ele aplica a mesma regra do script de instalação — o digest carregado
+**ou** a assinatura, qualquer uma basta — lendo os digests do instalador da `main`. Depois
+confere que o binário baixado de fato executa, e só então troca, de modo que qualquer falha
+deixa o binário atual intacto.
+
+Uma diferença: onde o script de instalação avisa, o `update` **recusa**. Há um binário
+funcionando na máquina, então parar custa uma versão e preserva tudo.
 
 ### Do fonte, para trabalhar no próprio dcode
 

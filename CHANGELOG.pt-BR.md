@@ -58,6 +58,31 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Distribuição
 
+- **O `dcode update` também não exige mais cosign.** Era o último lugar que
+  pedia um pacote — de uma máquina que já tem um dcode funcionando, o que torna
+  o pedido mais difícil de justificar, não mais fácil.
+
+  O binário passa a ler os digests do instalador da `main`, o mesmo arquivo que
+  o script de instalação carrega dentro de si, então ele tem a mesma segunda
+  rota: um digest que não viajou junto do artefato. A regra é a do instalador —
+  o digest carregado **ou** a assinatura, qualquer uma basta.
+
+  Uma diferença, deliberada: onde o script de instalação avisa, o `update`
+  **recusa**. Há um binário funcionando na máquina, então parar custa uma versão
+  e preserva tudo. Assinatura que *falha* continua abortando, seja qual for o
+  digest carregado; tornar uma verificação opcional não pode torná-la
+  decorativa.
+
+  O `ErrNoVerifier` deixou de ser veredito e virou o que sempre foi: uma rota
+  indisponível. A mensagem dele não diz mais "dcode will not install something
+  it could not check", porque essa frase *era* a exigência.
+
+  O `DCODE_UPDATE_INSTALLER_URL` sobrescreve de onde a segunda rota é lida, e
+  espelho que sobrescreve `DCODE_UPDATE_URL` precisa sobrescrever este também,
+  senão o digest independente continua vindo de upstream. A ligação é asserida
+  lendo o comando como dado: campo que o updater lê e nenhum comando escreve é o
+  defeito do carimbo de build outra vez.
+
 - **O instalador nunca pede outro pacote.** Ninguém instala ferramenta adicional
   para instalar um binário, e a pesquisa que originou o #223 já trazia a prova —
   de rustup, bun, deno, nvm, k3s e uv, **nenhum** exige ferramenta externa de
