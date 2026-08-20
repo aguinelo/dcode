@@ -16,6 +16,10 @@ var distributionDirs = []string{".", filepath.Join("..", "version")}
 var distributionInvariants = map[string]string{
 	"quando a assinatura não confere": "TestASignatureThatDoesNotVerifyInstallsNothingAndLeavesNoResidue",
 	"quando o SHA-256 do artefato":    "TestAChecksumMismatchInstallsNothing",
+	"Sem cosign na máquina":           "TestAMissingCosignStillChecksTheChecksumAndInstalls",
+	"o SHA-256 divergente continua":   "TestAMissingCosignStillRefusesAMismatchedChecksum",
+	"nomeia a ferramenta":             "TestAMissingCosignSaysTheSignatureWasNotVerified",
+	"não baixa assinatura nem":        "TestAMissingCosignDoesNotDownloadTheSignatureItCannotCheck",
 	"aborta listando as suportadas":   "TestAnUnsupportedPlatformAbortsAndListsWhatIsSupported",
 	"com artefato corrompido":         "TestApplyLeavesTheCurrentBinaryIntactOnEveryFailure",
 	"binário novo que não executa":    "TestApplyRefusesABinaryThatDoesNotRun",

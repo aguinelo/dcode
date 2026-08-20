@@ -28,6 +28,7 @@ type installFixture struct {
 	tmp     string // TMPDIR, so the work directory can be checked afterwards
 	target  string // DCODE_INSTALL_DIR
 	cosign  string // "0" or "1" — the exit code the stub cosign returns
+	absent  bool   // cosign is nowhere on PATH — the ordinary user's machine
 	unameS  string
 	unameM  string
 	version string
@@ -119,13 +120,35 @@ name="${url##*/}"
 [ -f %q/"$name" ] || exit 22
 if [ -n "$dest" ]; then cp %q/"$name" "$dest"; else cat %q/"$name"; fi
 `, f.dir, f.dir, f.dir))
-	put("cosign", fmt.Sprintf("exit %s\n", f.cosign))
+	if !f.absent {
+		put("cosign", fmt.Sprintf("exit %s\n", f.cosign))
+	}
 	put("uname", fmt.Sprintf(`
 case "$1" in
   -s) printf '%%s\n' %q ;;
   -m) printf '%%s\n' %q ;;
 esac
 `, f.unameS, f.unameM))
+}
+
+// searchPath puts the stubs first. When the test wants cosign absent, every
+// directory that carries one is dropped: "absent" has to mean absent from the
+// machine, not merely missing from the stub directory, or the test would pass
+// or fail according to who runs it.
+func (f *installFixture) searchPath() string {
+	dirs := []string{f.bin}
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if dir == "" {
+			continue
+		}
+		if f.absent {
+			if info, err := os.Stat(filepath.Join(dir, "cosign")); err == nil && !info.IsDir() {
+				continue
+			}
+		}
+		dirs = append(dirs, dir)
+	}
+	return strings.Join(dirs, string(os.PathListSeparator))
 }
 
 func (f *installFixture) run(t *testing.T) (string, error) {
@@ -137,7 +160,7 @@ func (f *installFixture) run(t *testing.T) (string, error) {
 	}
 	cmd := exec.Command("sh", filepath.Join(root, "install.sh"))
 	cmd.Env = append(os.Environ(),
-		"PATH="+f.bin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"PATH="+f.searchPath(),
 		"TMPDIR="+f.tmp,
 		"DCODE_VERSION="+f.version,
 		"DCODE_INSTALL_DIR="+f.target,
@@ -348,5 +371,124 @@ func TestTheReleasePipelineStampsEveryFieldTheBinaryReportsOn(t *testing.T) {
 	// And the build must actually use what it assembled.
 	if !strings.Contains(yaml, `-ldflags "$LDFLAGS"`) {
 		t.Error("the build step does not use the assembled LDFLAGS")
+	}
+}
+
+// The first real user ran the documented command and got
+// "dcode: cosign is required but not installed" — no binary, and no check
+// performed either. Every test above stubs cosign into existence, so the one
+// configuration every ordinary machine is in was the one never exercised.
+//
+// The two checks are independent and were wired in series: `need cosign` sat
+// immediately before the signature check, and the SHA-256 comparison came
+// after it, so the absence of the stronger check cancelled the weaker one. The
+// outcome is the worst available — nothing installed AND nothing verified —
+// from a script whose own header argues against exactly that.
+//
+// The release here is complete, so the run reaches the reported symptom rather
+// than tripping earlier on a missing file. What it must not do is stop.
+func TestAMissingCosignStillChecksTheChecksumAndInstalls(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent = true
+	completeRelease(t, f)
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("a machine without cosign could not install: %v\n%s", err, out)
+	}
+	if !f.installed() {
+		t.Errorf("nothing was installed:\n%s", out)
+	}
+	if got := f.leftovers(t); len(got) != 0 {
+		t.Errorf("the work directory survived a successful run: %v", got)
+	}
+}
+
+// Installing without the signature is acceptable; installing without saying so
+// is not. The distinction the original conflated is between unverified and
+// unverified-in-silence, and only the second one is indefensible.
+//
+// The message has to name the tool, or the user cannot act on it.
+func TestAMissingCosignSaysTheSignatureWasNotVerified(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent = true
+	completeRelease(t, f)
+
+	out, _ := f.run(t)
+	for _, want := range []string{"signature", "cosign"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the installer never mentions %q, so the user cannot tell "+
+				"what was skipped or how to check it:\n%s", want, out)
+		}
+	}
+}
+
+// Degrading the signature check must not degrade the checksum. If a missing
+// cosign turned the SHA-256 comparison into a formality too, the fix would
+// have replaced a loud failure with a quiet one — the trade this repository
+// keeps finding itself on the wrong side of.
+//
+// The signature files are present and unused: their absence would abort the
+// run earlier, and this has to fail on the checksum specifically.
+func TestAMissingCosignStillRefusesAMismatchedChecksum(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent = true
+	name := "dcode_1.2.3_linux_amd64.tar.gz"
+	f.artifact(t, name, "#!/bin/sh\necho dcode 1.2.3\n")
+	f.write(t, "checksums.txt", strings.Repeat("0", 64)+"  "+name+"\n")
+	f.write(t, "checksums.txt.sig", "signature")
+	f.write(t, "checksums.txt.pem", "certificate")
+
+	out, err := f.run(t)
+	if err == nil {
+		t.Fatalf("a mismatched artifact installed on a machine without cosign:\n%s", out)
+	}
+	if f.installed() {
+		t.Error("a binary was installed despite the checksum not matching")
+	}
+	if !strings.Contains(out, "mismatch") {
+		t.Errorf("the failure does not report a checksum mismatch:\n%s", out)
+	}
+	if got := f.leftovers(t); len(got) != 0 {
+		t.Errorf("the download survived the failure: %v", got)
+	}
+}
+
+// Nothing is gained by fetching a signature no tool on this machine can check,
+// and something is lost: a release published without them would fail to
+// install for a reason that has nothing to do with the user.
+//
+// The stub curl refuses a file it was not given, so a run that still asks for
+// the signature fails here — which is what makes the claim testable at all.
+func TestAMissingCosignDoesNotDownloadTheSignatureItCannotCheck(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent = true
+	name := "dcode_1.2.3_linux_amd64.tar.gz"
+	sum := f.artifact(t, name, "#!/bin/sh\necho dcode 1.2.3\n")
+	f.write(t, "checksums.txt", sum+"  "+name+"\n")
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("the installer asked for a signature it cannot use: %v\n%s", err, out)
+	}
+	if !f.installed() {
+		t.Errorf("nothing was installed:\n%s", out)
+	}
+}
+
+// And where cosign IS present it still has teeth: a bad signature aborts.
+// Asserted next to the degradation so the two cannot drift apart — the danger
+// in making a check optional is that it quietly becomes decorative.
+func TestCosignStillAbortsWhenItIsPresentAndTheSignatureIsBad(t *testing.T) {
+	f := newInstallFixture(t)
+	completeRelease(t, f)
+	f.cosign = "1"
+
+	out, err := f.run(t)
+	if err == nil {
+		t.Fatalf("a bad signature installed anyway:\n%s", out)
+	}
+	if f.installed() {
+		t.Error("a binary was installed despite the signature failing")
 	}
 }

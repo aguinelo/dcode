@@ -58,7 +58,28 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Distribution
+
+- **A missing cosign no longer cancels the checksum.** `install.sh` required
+  cosign and put that requirement immediately before the signature check, with
+  the SHA-256 comparison after it. On a machine without cosign — every ordinary
+  one — the install aborted having verified nothing: no binary **and** no check,
+  the worst outcome available, produced by the rule written to prevent it. Found
+  by the first person to run the documented command.
+
+  The two checks are independent and are now treated as such: the checksum
+  always runs, the signature runs when cosign is here, and its absence is said
+  out loud at the point of skipping and again on the last line. The line worth
+  holding was never "verified or nothing" — it is **never unverified in
+  silence**. Signature present and failing still aborts, and that is asserted
+  next to the degradation so the two cannot drift apart.
+
+  It also stops downloading the `.sig` and `.pem` it cannot read, which was one
+  more way to fail for a reason that is not the user's.
+
+  Every existing test stubbed cosign into existence, so the one configuration
+  every user is in was the one never exercised. Four reproducing tests now cover
+  it, all four red on the reported symptom first.
 
 ## 0.0.1 — 20 August 2026
 
