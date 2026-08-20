@@ -31,7 +31,7 @@ isolated package.
 | **contracts measured against a model** | **3** |
 | coverage | 95.0%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **none** — there is no tag; builds are `0.0.0-dev+<sha>` |
+| published version | **0.0.1** |
 
 **Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
 bubblewrap on Linux, with the boundary tested against the kernel and exercised
@@ -57,6 +57,19 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.0.1 — 20 August 2026
+
+The first tagged release. It does not open a stable surface: `0.x` says the
+shape is still moving, and this one is the point from which changes start being
+counted rather than the point at which they stop.
+
+The entries below are the work of the days leading to it. Everything before that
+lives in the per-family changelogs, where it was written when the decision was
+taken.
+
 
 ### Measurement instrument
 

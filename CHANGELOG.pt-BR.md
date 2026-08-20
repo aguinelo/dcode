@@ -31,7 +31,7 @@ fora do pacote isolado.
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 95,0%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **nenhuma** — não há tag; o build é `0.0.0-dev+<sha>` |
+| versão publicada | **0.0.1** |
 
 **Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
 bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
@@ -55,6 +55,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.0.1 — 20 de agosto de 2026
+
+O primeiro release com tag. Ele **não** abre superfície estável: `0.x` diz que a
+forma ainda se mexe, e este é o ponto a partir do qual as mudanças passam a ser
+contadas, não o ponto em que elas param.
+
+As entradas abaixo são o trabalho dos dias que levaram até aqui. Tudo antes disso
+vive nos changelogs por família, onde foi escrito quando a decisão foi tomada.
+
 
 ### Instrumento de medição
 
