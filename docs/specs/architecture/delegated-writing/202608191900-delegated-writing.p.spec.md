@@ -86,7 +86,7 @@ com limiar, no formato das famílias existentes.
 
 | Contrato | Cenário | O que se mede | Limiar |
 |---|---|---|---|
-| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 40% |
+| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 25% |
 | `keeps-writing-that-must-cohere` | renomear um método de interface e seus dois chamadores | **não** divide — faz no próprio turno | ≥ 95% |
 | `names-the-child-that-did-not-answer` | falha injetada num filho entre três | diz **qual**, em vez de resumir os que responderam | ≥ 95% |
 
@@ -94,8 +94,9 @@ O segundo é o que importa e é o mais caro de acertar. O risco desta feature n�
 é o filho escrever errado — é o pai **dividir o que não se divide**. Um limiar
 alto ali é o contrapeso ao ganho fácil do primeiro.
 
-**Por que 40 em 50 execuções.** Três medições independentes de doze deram
-**75,0%**, **66,7%** e **50,0%** — 23 de 36 no agregado, **63,9%**.
+**Por que 25 em 50 execuções.** Quatro medições independentes deram **75,0%**,
+**66,7%** e **50,0%** de doze, e depois **30,0%** de vinte — 35 de 56 no
+agregado das primeiras, e um número mais baixo quando o teto de rodadas subiu.
 
 Vinte e cinco pontos de dispersão entre medições idênticas não é limiar alto
 demais: é **n=12 não conseguir medir isto**. Com taxa verdadeira perto de 64%, a

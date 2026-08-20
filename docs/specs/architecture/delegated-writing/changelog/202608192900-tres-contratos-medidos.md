@@ -9,7 +9,7 @@ três têm número, e um deles trouxe um achado sobre o instrumento.
 |---|---|---|
 | `keeps-writing-that-must-cohere` | **96,0% de 50** | ≥ 95% |
 | `names-the-child-that-did-not-answer` | **98,0% de 50** | ≥ 95% |
-| `delegates-writing-when-disjoint` | **75,0%, 66,7% e 50,0% de 12** | ≥ 40% em 50 (era 80 em 12) |
+| `delegates-writing-when-disjoint` | **75,0% · 66,7% · 50,0% · 30,0%** | ≥ 25% em 50 execuções (era 80) |
 
 Modelo `MiniMax-M3`. 38 minutos para os dois de 50, mais 7 para o de 12.
 
@@ -80,10 +80,31 @@ mede em 50 porque uma falha em vinte vale cinco pontos.** Este contrato precisav
 da mesma resolução pelo mesmo motivo aritmético, e ninguém tinha aplicado a regra
 fora da faixa em que ela foi escrita.
 
-O contrato passa a **50 execuções**, e o limiar a **40%** — abaixo da pior das
-três medições, com folga. O que ele afirma muda junto: **piso contra regressão,
-não certificado de qualidade.** Enquanto o harness não souber responder uma
-chamada delegada, o trabalho dele é pegar uma queda para zero.
+## E aí eu editei o campo errado
+
+Escrevi `Rounds: 50` acreditando estar pedindo cinquenta **execuções**. `Rounds`
+é o teto de trocas **dentro de uma** execução — os digests que eu tinha lido
+diziam "7 round(s)", "5 round(s)", e era isso o tempo todo.
+
+A medição seguinte veio **30,0% de vinte**: mediu a mesma coisa com a coleira
+mais comprida, não mediu mais vezes. Uma edição que **lia certo e fazia outra
+coisa** — a forma de defeito que este changelog inteiro é sobre.
+
+O campo certo é `Runs`, o mesmo que `DemandingRuns` já eleva para limiar de 95%.
+
+## Onde parou
+
+`Runs: 50`, limiar **25%**, abaixo da pior das quatro medições.
+
+Quatro medições independentes: **75,0%**, **66,7%**, **50,0%** e **30,0%**. A
+dispersão não fechou, e o número caiu conforme a amostra cresceu — o que é
+compatível com uma taxa verdadeira bem abaixo do que a primeira rodada de cinco
+(100%) sugeriu.
+
+O que o contrato afirma muda junto, e é o registro honesto do dia: **piso contra
+regressão, não certificado de qualidade.** Enquanto o harness disser ao modelo
+que delegação não funciona, este número mede a mistura entre o que o dcode faz e
+o que o instrumento atrapalha — e não vale como afirmação sobre o produto.
 
 ## O que este resultado não é
 
