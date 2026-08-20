@@ -85,6 +85,26 @@ The short version: **nothing has to be installed first**, and the digest that
 says what the download should be now travels by a route the download cannot
 touch.
 
+> **Upgrading from 0.0.1 needs the install script, not `dcode update`.**
+>
+> ```
+> curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
+> ```
+>
+> A 0.0.1 binary carries the code from before the fix, so it still demands cosign
+> and stops:
+>
+> ```
+> Updating dcode 0.0.1 → v0.1.0
+> dcode: cannot verify the release signature: cosign is not installed…
+> ```
+>
+> The repair travels **inside** 0.1.0, which is the release the broken code would
+> have to fetch — a bootstrap problem with no fix available from that side. Found
+> by running the upgrade rather than assuming it, and written here because a
+> migration note that is not recorded the day it is discovered is one nobody
+> writes at all. From 0.1.0 onward `dcode update` takes the new path.
+
 ### Distribution
 
 - **The release stops publishing to a tap that does not exist.**
