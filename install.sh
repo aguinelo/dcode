@@ -46,12 +46,18 @@ UNSIGNED=0
 PINNED_OK=0
 SUPPORTED="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64"
 
-# BEGIN PINNED — gerado por scripts/installer.sh a partir do checksums.txt
-# assinado. Vazio ate um release preencher, e o vazio e silencioso: avisar em
-# toda instalacao sobre um pino que nunca foi aplicado ensina a ignorar a linha
-# que importa.
-PINNED_VERSION=""
-pinned_sum() { :; }
+# BEGIN PINNED — gerado por scripts/installer.sh a partir do checksums.txt assinado.
+# Nao edite a mao. Estes sao os digests dos artefatos que foram assinados, e a
+# graca deles e viverem no historico do git, longe do host que serve o tarball.
+PINNED_VERSION="0.1.0"
+pinned_sum() {
+  case "$1" in
+    dcode_0.1.0_darwin_amd64.tar.gz) echo 5d6fa9d2ec8bc929d606dfd814f86988d366c891df83f39d9b3077c126128177 ;;
+    dcode_0.1.0_darwin_arm64.tar.gz) echo 3bede08ce31bc5a3ba00d058d3b5bfc61d66987d57c2135e444c64ea5c0f0efb ;;
+    dcode_0.1.0_linux_amd64.tar.gz) echo f651f1ddac48be8c10029d5b6cc204b3ae671878f34a7d6cf37add1829bada76 ;;
+    dcode_0.1.0_linux_arm64.tar.gz) echo b330f705efcb46c91e926899f896a77815465c0fa3adac797fdb7a890056eb14 ;;
+  esac
+}
 # END PINNED
 
 die() { printf 'dcode: %s\n' "$*" >&2; exit 1; }
