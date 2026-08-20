@@ -13,7 +13,8 @@
 # weaker check conditional on the stronger one, so a machine without it got no
 # binary AND no verification — which is the outcome this file exists to avoid.
 # The line worth holding is not "verified or nothing", it is "never unverified
-# in silence": what could not be checked is said out loud, twice.
+# in silence": what could not be checked is said out loud, and at the size of
+# what was actually missed.
 #
 # Spec: docs/specs/architecture/distribution/202608072352-*.
 #
@@ -36,6 +37,7 @@ VERSION="${DCODE_VERSION:-latest}"
 INSTALL_DIR="${DCODE_INSTALL_DIR:-$HOME/.local/bin}"
 SKIP_VERIFY="${DCODE_SKIP_VERIFY:-false}"
 UNSIGNED=0
+PINNED_OK=0
 SUPPORTED="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64"
 
 # BEGIN PINNED — gerado por scripts/installer.sh a partir do checksums.txt
@@ -146,11 +148,9 @@ main() {
         "$WORK/checksums.txt" >/dev/null 2>&1 ||
         die "the release signature did not verify — nothing was installed"
     else
+      # Noted, not printed. What the absence costs depends on whether the digest
+      # below is carried, and that is not known yet.
       UNSIGNED=1
-      printf '\n  !   cosign is not installed, so the release signature was not\n'
-      printf '  !   verified. The checksum below still is, which catches a corrupted\n'
-      printf '  !   download but not a substituted release.\n'
-      printf '  !   To check the signature too: install cosign and run this again.\n\n'
     fi
 
     got="$(sha256_of "$WORK/$artifact")"
@@ -168,6 +168,7 @@ main() {
     if [ -n "$pinned" ]; then
       [ "$pinned" = "$got" ] ||
         die "checksum mismatch for $artifact — this installer carries $pinned, the download is $got. Nothing was installed"
+      PINNED_OK=1
     elif [ -n "$PINNED_VERSION" ]; then
       # Asked for a release other than the one pinned here. Fall back to the
       # list, and name the installer that can do better — an installer is
@@ -186,9 +187,26 @@ main() {
     [ -n "$want" ] || die "$artifact is not listed in checksums.txt"
     [ "$want" = "$got" ] ||
       die "checksum mismatch for $artifact — expected $want, got $got. Nothing was installed"
+
+    # 7. And now say what went unchecked — no more than that.
+    #
+    #    Without a carried digest, nothing here covers a substituted release,
+    #    and four lines plus a reminder at the end is proportionate. With one,
+    #    substitution IS covered, and repeating the loud version would state
+    #    something untrue. A notice that overstates is one people learn to skip,
+    #    including on the run where it finally means something.
+    if [ "$UNSIGNED" = 1 ] && [ "$PINNED_OK" = 1 ]; then
+      printf '\n  ·   Signature not checked (cosign is not installed). The digest\n'
+      printf '  ·   this installer carries matched, which covers a swapped release.\n\n'
+    elif [ "$UNSIGNED" = 1 ]; then
+      printf '\n  !   cosign is not installed, so the release signature was not\n'
+      printf '  !   verified. The checksum below still is, which catches a corrupted\n'
+      printf '  !   download but not a substituted release.\n'
+      printf '  !   To check the signature too: install cosign and run this again.\n\n'
+    fi
   fi
 
-  # 7. Extract and install.
+  # 8. Extract and install.
   tar -xzf "$WORK/$artifact" -C "$WORK" || die "could not extract $artifact"
   [ -f "$WORK/dcode" ] || die "$artifact does not contain a dcode binary"
   chmod +x "$WORK/dcode"
@@ -196,14 +214,17 @@ main() {
   mkdir -p "$INSTALL_DIR" || die "could not create $INSTALL_DIR"
   mv "$WORK/dcode" "$INSTALL_DIR/dcode" || die "could not install into $INSTALL_DIR"
 
-  # 8. Confirm the installed binary runs here, before claiming success.
+  # 9. Confirm the installed binary runs here, before claiming success.
   "$INSTALL_DIR/dcode" --version >/dev/null 2>&1 ||
     die "the installed binary does not run on this machine"
 
   info "Installed $("$INSTALL_DIR/dcode" --version) to $INSTALL_DIR/dcode"
   # Said twice on purpose. The warning above is several screens back by now, and
   # an install that ends on an unqualified success line is remembered as one.
-  if [ "$UNSIGNED" = 1 ]; then
+  # Repeated only when the notice above was the loud one. Saying it twice exists
+  # so a long scroll cannot bury a real gap; there is no gap to bury when the
+  # carried digest matched, and a second line there is just noise.
+  if [ "$UNSIGNED" = 1 ] && [ "$PINNED_OK" != 1 ]; then
     info "The release signature was not verified — cosign is not installed."
   fi
   case ":$PATH:" in
