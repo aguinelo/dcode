@@ -257,17 +257,45 @@ Details in [`docs/conventions/SDD-HARNESS.md`](docs/conventions/SDD-HARNESS.md).
 ## Installing
 
 ```bash
+# the install script
+curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
+
 # from source
 go install github.com/aguinelo/dcode/cmd/dcode@latest
-
-# or the install script — verifies the release signature and the checksum,
-# and installs nothing if either fails
-curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
 ```
 
+### What the install script checks
+
+**The SHA-256 always**, and a failure installs nothing and leaves nothing behind.
+
+Two independent sources say what that digest should be:
+
+| Source | Covers | Needs |
+|---|---|---|
+| the digest the script carries | a **substituted release** | nothing |
+| `checksums.txt` from the release | a corrupted or truncated download | nothing |
+| the cosign signature over that file | a substituted release | `cosign` on PATH |
+
+The carried digest is the one worth explaining. `checksums.txt` travels from the same host
+as the tarball, so on its own it cannot catch a swapped release — whoever replaces one
+replaces the other, and the pair stays consistent with itself. The digest in the script
+arrived by a different route: it is committed to `main`, where a release asset can be
+replaced leaving no public trace and a line in a tracked file cannot, because changing it
+is a commit.
+
+**cosign is optional, and its absence is said out loud** — at the point of skipping, and
+again on the last line. Requiring it used to abort the install, which left a machine
+without cosign holding no binary *and* no verification: the worst outcome available. What
+is never acceptable is not "unverified", it is **unverified in silence**.
+
+`DCODE_VERSION` pins a version, `DCODE_INSTALL_DIR` chooses where. An installer pinned to
+one release and asked for another says so and names the installer that carries the right
+digests — `https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
+
 `dcode update` installs a newer release on request, and never on its own. It verifies the
-signature and the checksum, checks that the downloaded binary actually runs, and only then
-swaps it — so every failure leaves the working binary untouched.
+checksum and the signature, checks that the downloaded binary actually runs, and only then
+swaps it — so every failure leaves the working binary untouched. Unlike the install script
+it still **requires** cosign, because it has no second route to the expected digest.
 
 ### From source, for working on dcode itself
 

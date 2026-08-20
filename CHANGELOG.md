@@ -58,6 +58,22 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Documentation
+
+- **The README describes the install that ships.** It still claimed the script
+  *"verifies the release signature and the checksum, and installs nothing if
+  either fails"* — untrue since cosign became optional, and silent about the
+  digest the installer now carries. It now says what each of the three sources
+  covers and what each needs, and why the carried digest is the one that catches
+  a substituted release.
+
+  Homebrew was going to be added at the same time, since every release publishes
+  a formula. Checking first: `aguinelo/homebrew-dcode` **does not exist** — 404.
+  `publish-tap.sh` exits zero and warns when it cannot reach the tap, by design,
+  so v0.0.1 reported success with that channel never having been created. The
+  README documents the three channels that work, and the tap is a decision to
+  take rather than a line to write.
+
 ### Distribution
 
 - **The release pins the installer it publishes.** The pipeline now verifies the

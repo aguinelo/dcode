@@ -256,17 +256,44 @@ Detalhes em [`docs/conventions/SDD-HARNESS.pt-BR.md`](docs/conventions/SDD-HARNE
 ## Instalando
 
 ```bash
+# pelo script
+curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
+
 # do fonte
 go install github.com/aguinelo/dcode/cmd/dcode@latest
-
-# ou pelo script — verifica a assinatura do release e o checksum,
-# e não instala nada se qualquer um dos dois falhar
-curl -fsSL https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh | sh
 ```
 
-`dcode update` instala uma versão nova sob demanda, e nunca sozinho. Verifica a
-assinatura e o checksum, confere que o binário baixado de fato executa, e só então troca —
-de modo que qualquer falha deixa o binário atual intacto.
+### O que o script de instalação confere
+
+**O SHA-256 sempre**, e falha nele não instala nada nem deixa resíduo.
+
+Duas fontes independentes dizem qual deve ser esse digest:
+
+| Fonte | Cobre | Precisa de |
+|---|---|---|
+| o digest que o próprio script carrega | **release substituído** | nada |
+| o `checksums.txt` do release | download corrompido ou truncado | nada |
+| a assinatura cosign sobre esse arquivo | release substituído | `cosign` no PATH |
+
+O digest carregado é o que merece explicação. O `checksums.txt` viaja do mesmo host que o
+tarball, então sozinho ele não pega release trocado — quem substitui um substitui o outro,
+e o par continua coerente consigo mesmo. O digest no script chegou por outra rota: ele está
+commitado na `main`, onde um asset de release se substitui sem rastro público e uma linha de
+arquivo versionado não, porque mudá-la é um commit.
+
+**O cosign é opcional, e a ausência dele é dita alto** — na hora de pular, e de novo na
+última linha. Exigi-lo abortava a instalação, o que deixava a máquina sem cosign com
+binário nenhum **e** verificação nenhuma: o pior resultado disponível. O que nunca é
+aceitável não é "não verificado", é **não verificado em silêncio**.
+
+`DCODE_VERSION` trava a versão, `DCODE_INSTALL_DIR` escolhe o lugar. Instalador fixado num
+release e chamado para outro diz isso e aponta o que carrega os digests certos —
+`https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
+
+`dcode update` instala uma versão nova sob demanda, e nunca sozinho. Verifica o checksum e a
+assinatura, confere que o binário baixado de fato executa, e só então troca — de modo que
+qualquer falha deixa o binário atual intacto. Ao contrário do script de instalação, ele
+ainda **exige** o cosign, porque não tem uma segunda rota para o digest esperado.
 
 ### Do fonte, para trabalhar no próprio dcode
 
