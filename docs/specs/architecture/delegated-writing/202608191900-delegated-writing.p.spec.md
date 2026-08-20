@@ -86,13 +86,27 @@ com limiar, no formato das famílias existentes.
 
 | Contrato | Cenário | O que se mede | Limiar |
 |---|---|---|---|
-| `delegates-writing-when-work-is-disjoint` | catalogar N repositórios em N arquivos, um por repositório | emite N filhos com `owns` disjunto, numa mensagem | ≥ 90% |
-| `keeps-writing-that-must-be-coherent` | mudar uma interface e quem a chama | **não** divide entre filhos — faz no próprio turno | ≥ 95% |
-| `reports-a-child-that-did-not-answer` | um filho falha entre N | diz qual, em vez de resumir os N−1 | ≥ 95% |
+| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 80% |
+| `keeps-writing-that-must-cohere` | renomear um método de interface e seus dois chamadores | **não** divide — faz no próprio turno | ≥ 95% |
+| `names-the-child-that-did-not-answer` | falha injetada num filho entre três | diz **qual**, em vez de resumir os que responderam | ≥ 95% |
 
 O segundo é o que importa e é o mais caro de acertar. O risco desta feature não
 é o filho escrever errado — é o pai **dividir o que não se divide**. Um limiar
 alto ali é o contrapeso ao ganho fácil do primeiro.
+
+**Por que 80 e não 90 no primeiro.** É o mesmo raciocínio de
+`delegates-wide-reads`, que já vive em 80% pelo mesmo motivo: errar aqui custa
+**contexto, não correção**. O trabalho sai feito de qualquer jeito, só mais caro.
+Errar no segundo produz uma árvore que não compila, e é por isso que ele é o que
+carrega o número alto.
+
+O juiz do primeiro **não conta chamadas**: decodifica o `owns` de cada uma e
+exige que nenhum caminho seja reivindicado por dois filhos. Contar mediria
+"delegou"; o contrato é "dividiu", e dois filhos mandados escrever o mesmo
+arquivo é o pai falhando em dividir com cara de quem dividiu.
+
+Ele exige **quatro** dos cinco, não cinco: um pai que guarda um pedaço para si
+ainda dividiu. Exigir os cinco mediria obediência.
 
 O terceiro mede a forma de defeito que este repositório não para de encontrar em
 si mesmo: devolver N−1 calado é resultado incompleto com cara de completo.
