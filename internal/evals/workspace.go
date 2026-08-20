@@ -34,6 +34,14 @@ import (
 type Workspace struct {
 	Dir      string
 	Registry *tools.Registry
+	// Delegate runs a child turn and returns what the parent would have been
+	// shown, with the error flag a tool result carries.
+	//
+	// A field rather than a method, and set by whoever holds the provider —
+	// the same shape the product uses, where the tool declares and the loop
+	// decides what a child turn is allowed to be. Nil means the harness cannot
+	// run one, and then it says so instead of inventing a result.
+	Delegate func(ctx context.Context, task, path string, owns []string) (string, bool)
 	state    *tools.State
 	resolver *policy.Resolver
 }
@@ -105,7 +113,11 @@ const shellRefusal = "the eval harness does not execute shell commands. " +
 const fetchRefusal = "the eval harness does not reach the network. " +
 	"Answer from what is in the workspace, and state what you could not look up."
 
-// delegationRefusal is what a scenario answers when the model delegates.
+// delegationRefusal is what a scenario answers when nothing can run a child.
+//
+// Kept, because a harness without a delegator has to say so rather than invent
+// a result — the shellRefusal lesson, and it has not stopped being true. What
+// changed is that it is now the exception rather than the rule.
 const delegationRefusal = "the eval harness does not run delegated turns. " +
 	"Do the reading yourself with the tools you have, and say what you could not cover."
 
@@ -123,12 +135,30 @@ func (w *Workspace) Execute(ctx context.Context, name string, input json.RawMess
 		// measurement nobody can reproduce is not a measurement.
 		return fetchRefusal, true
 	case "explore":
-		// Same reasoning as the shell: the harness runs no sub-agent, and both
-		// delegation contracts are about the reach — one that it happens, one
-		// that it does not. Leaving `explore` out of the tool set entirely is
-		// what made `does-not-delegate-trivial` pass by having nothing to
-		// delegate to, which is not restraint.
-		return delegationRefusal, true
+		// A delegated call is answered by running a child turn, when the
+		// harness has been given something that can run one.
+		//
+		// It used to be refused outright, and the refusal was honest about not
+		// running a sub-agent. What it was not honest about was its effect:
+		// the message told the model to "do the reading yourself", the model
+		// believed it, and every later delegation in that run disappeared. A
+		// contract about reaching for delegation was measuring a harness that
+		// had just talked the model out of it — visible in three measurements
+		// that spread twenty-five points and in the digest of every failing
+		// run, each of which said in as many words that the harness does not
+		// run delegated turns.
+		if w.Delegate == nil {
+			return delegationRefusal, true
+		}
+		var in struct {
+			Task string   `json:"task"`
+			Path string   `json:"path"`
+			Owns []string `json:"owns"`
+		}
+		if err := json.Unmarshal(input, &in); err != nil {
+			return fmt.Sprintf("explore: %v", err), true
+		}
+		return w.Delegate(ctx, in.Task, in.Path, in.Owns)
 	}
 	tool, ok := w.Registry.Get(name)
 	if !ok {

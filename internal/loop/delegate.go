@@ -153,7 +153,7 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 		// The task, not the parent's history. That is the entire point:
 		// copying the history back would return the cost delegation exists to
 		// avoid.
-		Instructions: delegateInstructions(cfg.Tools.Names(), owns),
+		Instructions: DelegateInstructions(cfg.Tools.Names(), owns),
 		Tools:        cfg.Tools.Defs(),
 	})
 
@@ -283,7 +283,13 @@ var writingTools = map[string]bool{
 // exclude it without importing the tools package's own definition.
 const ExploreToolName = "explore"
 
-func delegateInstructions(toolNames []string, owns []string) string {
+// DelegateInstructions is what a child turn is told, exported so a harness that
+// runs one uses the product's own words rather than a copy.
+//
+// The same reason BudgetText is exported: a fixture that paraphrases the
+// product measures the paraphrase. The copy drifts, and the drift is invisible
+// until a contract fails for a reason nobody can find.
+func DelegateInstructions(toolNames []string, owns []string) string {
 	if len(owns) > 0 {
 		return "You are doing one piece of work in a codebase, for another agent.\n\n" +
 			"You have " + strings.Join(toolNames, ", ") + " and nothing else — " +

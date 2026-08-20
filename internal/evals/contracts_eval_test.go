@@ -12,10 +12,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/provider"
 )
 
@@ -72,6 +74,11 @@ func TestEveryContract(t *testing.T) {
 				if err != nil {
 					return false, err
 				}
+				// The harness can run a child turn, so it runs one. Refusing
+				// used to talk the model out of delegating for the rest of the
+				// run, which made a contract about reaching for delegation
+				// measure the harness talking instead.
+				w.Delegate = childTurn(p, cfg.Model, f, w)
 				// The deadline belongs to the run, not to the contract. It
 				// used to cover all of them at once, which meant one hung
 				// stream ate the whole budget and every run after it failed
@@ -199,4 +206,92 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		}
 	}
 	return tr, nil
+}
+
+// childRounds is the ceiling on a delegated turn inside a scenario.
+//
+// Smaller than the parent's, for the product's own reason: a child does ONE
+// piece of work, and one that needs many rounds is a piece that should have
+// been split. Small here also bounds what measuring delegation costs — five
+// children in fifty runs is two hundred and fifty child turns, and each round
+// of each of them is a paid call.
+const childRounds = 4
+
+// childTurn answers a delegated call by running one, against the same provider
+// the parent is talking to.
+//
+// The child gets the PRODUCT's instructions, imported rather than copied, for
+// the reason BudgetText is exported: a harness that paraphrases measures the
+// paraphrase. It gets a fresh history holding only the task — copying the
+// parent's would return exactly the cost delegation exists to avoid — and the
+// reading tools, plus the writing ones when it owns paths.
+//
+// What it does NOT reproduce is the product's containment: narrowing the
+// child's resolver to `owns` lives in internal/policy and is asserted there,
+// against the kernel and by unit test. What the contracts measure here is the
+// PARENT's decision to divide the work, and that is visible in the call it
+// emits before any child runs.
+func childTurn(p provider.Provider, model string, f Fixture, w *Workspace) func(context.Context, string, string, []string) (string, bool) {
+	return func(ctx context.Context, task, path string, owns []string) (string, bool) {
+		names := []string{"read", "glob", "grep", "symbol"}
+		if len(owns) > 0 {
+			names = append(names, "write", "edit")
+		}
+		// The child's tool set is a subset of the scenario's, filtered by name.
+		// Taken from the fixture rather than rebuilt, so a child is never
+		// offered something the scenario does not carry.
+		var defs []ce.ToolDef
+		for _, d := range f.Tools {
+			for _, want := range names {
+				if d.Name == want {
+					defs = append(defs, d)
+					break
+				}
+			}
+		}
+
+		history := []ce.Message{{Role: ce.RoleUser, Text: delegateTask(task, path)}}
+		var conclusion string
+
+		for i := 0; i < childRounds; i++ {
+			msgs := append([]ce.Message{{
+				Role: ce.RoleSystem,
+				Text: loop.DelegateInstructions(names, owns),
+			}}, history...)
+
+			calls, text, err := exchange(ctx, p, model, msgs, defs)
+			if err != nil {
+				// Named, never swallowed: the parent is told which child did
+				// not answer, which is the third contract's whole subject.
+				return fmt.Sprintf("the delegated turn failed: %v (task: %s)", err, task), true
+			}
+			if strings.TrimSpace(text) != "" {
+				conclusion = strings.TrimSpace(text)
+			}
+			if len(calls) == 0 {
+				break
+			}
+			history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
+			history = append(history, answers(ctx, w, Contract{}, calls, false)...)
+		}
+
+		if conclusion == "" {
+			conclusion = "the delegated turn produced no answer."
+		}
+		// The paths travel with the conclusion, as the product's do: they do
+		// not prove the child understood, they prove what it touched.
+		if read := w.state.ReadPaths(); len(read) > 0 {
+			conclusion += "\n\nlooked at: " + strings.Join(read, ", ")
+		}
+		return conclusion, false
+	}
+}
+
+// delegateTask mirrors what the product hands a child: the task, and where to
+// look when the parent said.
+func delegateTask(task, path string) string {
+	if strings.TrimSpace(path) == "" {
+		return task
+	}
+	return task + "\n\nLook under: " + path
 }

@@ -114,7 +114,7 @@ func TestAChildCarriesNoDefinitionOfDone(t *testing.T) {
 	if len(cfg.Done.Criteria) != 0 {
 		t.Errorf("a child must carry no criteria, got %d", len(cfg.Done.Criteria))
 	}
-	if !strings.Contains(delegateInstructions(cfg.Tools.Names(), []string{"docs/x.md"}), "not your job") {
+	if !strings.Contains(DelegateInstructions(cfg.Tools.Names(), []string{"docs/x.md"}), "not your job") {
 		t.Error("the child is not told that checking the tree is not its job")
 	}
 }
