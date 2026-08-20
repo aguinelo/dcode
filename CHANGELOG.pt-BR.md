@@ -56,7 +56,28 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Distribuição
+
+- **A falta do cosign não cancela mais o checksum.** O `install.sh` exigia
+  cosign, e punha a exigência imediatamente antes da verificação de assinatura,
+  com a comparação de SHA-256 depois dela. Numa máquina sem cosign — toda máquina
+  comum — a instalação abortava sem ter conferido nada: nem binário **nem**
+  verificação, o pior resultado disponível, produzido pela regra escrita para
+  evitá-lo. Achado pela primeira pessoa a rodar o comando documentado.
+
+  As duas verificações são independentes e passam a ser tratadas assim: o
+  checksum roda sempre, a assinatura roda quando há cosign, e a ausência dela é
+  dita alto na hora de pular e de novo na última linha. A linha que se sustenta
+  nunca foi "verificado ou nada" — é **nunca não-verificado em silêncio**.
+  Assinatura presente que não confere continua abortando, e isso está asserido ao
+  lado da degradação para que as duas não se separem.
+
+  Ele também para de baixar o `.sig` e o `.pem` que não consegue ler, que era
+  mais um jeito de falhar por motivo que não é do usuário.
+
+  Todo teste existente colocava o cosign no PATH, então a única configuração em
+  que todo usuário está era a única nunca exercitada. Quatro testes de reprodução
+  passam a cobri-la, os quatro vermelhos primeiro pelo sintoma relatado.
 
 ## 0.0.1 — 20 de agosto de 2026
 

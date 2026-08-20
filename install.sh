@@ -1,10 +1,14 @@
 #!/usr/bin/env sh
 # dcode installer.
 #
-# Verifies the release signature and the artifact checksum before installing.
-# Either check failing aborts and removes everything that was downloaded —
-# "installed, but unverified" is the worst of both worlds, because the user ends
-# up with a binary and the impression that it went fine.
+# Verifies the artifact checksum always, and the release signature when cosign
+# is here. A check that fails aborts and removes everything that was downloaded.
+#
+# The two are independent and are treated as such. Requiring cosign made the
+# weaker check conditional on the stronger one, so a machine without it got no
+# binary AND no verification — which is the outcome this file exists to avoid.
+# The line worth holding is not "verified or nothing", it is "never unverified
+# in silence": what could not be checked is said out loud, twice.
 #
 # Spec: docs/specs/architecture/distribution/202608072352-*.
 #
@@ -15,12 +19,18 @@
 #   DCODE_VERSION       version to install (default: latest)
 #   DCODE_INSTALL_DIR   destination (default: $HOME/.local/bin)
 #   DCODE_SKIP_VERIFY   debugging the release pipeline only — never in real use
+#
+# Optional:
+#   cosign              verifies the release signature when present. Absent, the
+#                       checksum still runs and the installer says what it could
+#                       not check.
 set -eu
 
 REPO="aguinelo/dcode"
 VERSION="${DCODE_VERSION:-latest}"
 INSTALL_DIR="${DCODE_INSTALL_DIR:-$HOME/.local/bin}"
 SKIP_VERIFY="${DCODE_SKIP_VERIFY:-false}"
+UNSIGNED=0
 SUPPORTED="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64"
 
 die() { printf 'dcode: %s\n' "$*" >&2; exit 1; }
@@ -105,19 +115,30 @@ main() {
     printf '  !!  This exists to debug the release pipeline. Using it for a\n'
     printf '  !!  real install turns this channel into a supply-chain vector.\n\n'
   else
-    download "$base/checksums.txt.sig" "$WORK/checksums.txt.sig"
-    download "$base/checksums.txt.pem" "$WORK/checksums.txt.pem"
-
-    # 4. Verify the signature over the checksums file. One signature covers the
-    #    whole release; per-artifact verification is the SHA-256 below.
-    need cosign
-    cosign verify-blob \
-      --certificate "$WORK/checksums.txt.pem" \
-      --signature "$WORK/checksums.txt.sig" \
-      --certificate-identity-regexp "^https://github.com/$REPO/" \
-      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-      "$WORK/checksums.txt" >/dev/null 2>&1 ||
-      die "the release signature did not verify — nothing was installed"
+    # 4. Verify the signature over the checksums file, when there is something
+    #    here that can. One signature covers the whole release; the per-artifact
+    #    check is the SHA-256 below, and that one runs either way.
+    #
+    #    Nothing is downloaded for a check that cannot happen: asking for a
+    #    signature no tool here can read only adds a way to fail for a reason
+    #    that is not the user's.
+    if command -v cosign >/dev/null 2>&1; then
+      download "$base/checksums.txt.sig" "$WORK/checksums.txt.sig"
+      download "$base/checksums.txt.pem" "$WORK/checksums.txt.pem"
+      cosign verify-blob \
+        --certificate "$WORK/checksums.txt.pem" \
+        --signature "$WORK/checksums.txt.sig" \
+        --certificate-identity-regexp "^https://github.com/$REPO/" \
+        --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+        "$WORK/checksums.txt" >/dev/null 2>&1 ||
+        die "the release signature did not verify — nothing was installed"
+    else
+      UNSIGNED=1
+      printf '\n  !   cosign is not installed, so the release signature was not\n'
+      printf '  !   verified. The checksum below still is, which catches a corrupted\n'
+      printf '  !   download but not a substituted release.\n'
+      printf '  !   To check the signature too: install cosign and run this again.\n\n'
+    fi
 
     # 5. Verify this artifact against the signed list.
     want="$(grep " \*\{0,1\}$artifact\$" "$WORK/checksums.txt" | awk '{print $1}' | head -1)"
@@ -140,6 +161,11 @@ main() {
     die "the installed binary does not run on this machine"
 
   info "Installed $("$INSTALL_DIR/dcode" --version) to $INSTALL_DIR/dcode"
+  # Said twice on purpose. The warning above is several screens back by now, and
+  # an install that ends on an unqualified success line is remembered as one.
+  if [ "$UNSIGNED" = 1 ]; then
+    info "The release signature was not verified — cosign is not installed."
+  fi
   case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;
     *) info "Add it to your PATH:  export PATH=\"$INSTALL_DIR:\$PATH\"" ;;
