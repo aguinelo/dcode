@@ -293,6 +293,22 @@ to be rebuilt. Note the naming trap that was already there — the spec advertis
 whose brew shorthand is `aguinelo/dcode/dcode`. Whichever name is chosen, the two
 have to agree, and a test should hold them together.
 
+**A boundary test passes or fails according to what is on the machine.**
+`TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable` asks for
+`--ro-bind /tmp/ws` and gets it — unless `/tmp/ws` happens to exist on the disk
+of whoever runs it. `canonical()` resolves symlinks with `filepath.EvalSymlinks`,
+which only resolves a path that EXISTS, so on macOS an existing `/tmp/ws` becomes
+`/private/tmp/ws` and stops matching the `/tmp` prefix at `backends.go:327`. On
+CI the directory does not exist, resolution fails, the path stays `/tmp/ws`, and
+the test passes.
+
+Production is fine — bubblewrap is Linux-only, where `/tmp` is not a symlink. The
+defect is that a test of a security boundary reports a different answer on
+different machines, and it stayed invisible for a whole day behind Go's test
+cache: every `make check` said green until `go clean -testcache`. That is the
+same trap as the cached coverage number two paragraphs down, arriving by a
+different road.
+
 **A threshold of zero used to print no evidence.** Fixed in the same session:
 zero means "measure and tell me", and a number with no transcript behind it is
 half of what was asked for. Left here because the same shape may exist elsewhere
@@ -344,6 +360,56 @@ only with evidence from project scope.
 
 ---
 
+## 10. What the v5 design asks for and the product does not have
+
+**Source: `refs/design/HANDOFF.md` (v5).** These are the parts of the design that
+could not be built as client work, kept here so the specification that comes next
+knows where the request came from. Everything else in the design is either built
+or scheduled in the phases that follow #233.
+
+**A tool reports nothing while it runs.** The protocol has `tool.requested` and
+`tool.completed` and nothing between them, so the design's running column —
+`184/184 varridos`, `7/12 testes`, `n de 240 lines` — has no origin. A card can
+show what a call DID (`ToolCompleted` already carries `Lines`, `Files`, `Added`,
+`Removed`, `ExitCode`, `DurationMS`, `Diff`, and its own comment already forbids
+parsing them back out of the output) but not what it is doing.
+
+The shape is a `tool.progress` event, and the cost is that it is four layers, not
+one: the event, the tools emitting it, the server forwarding it, the client
+drawing it. It is a versioned surface, so it is MINOR at minimum and needs a
+changelog in `client-server-protocol`. It blocks the card's progress bar and
+nothing else — the card itself ships without it, showing `…` where there is no
+count, which is what the design says to do.
+
+Worth deciding deliberately rather than by default: a progress event is a stream
+of messages nobody stores, on a protocol whose every other event is a fact worth
+replaying. Whether it joins the log or travels beside it is the first question,
+not the last.
+
+**The session rail reads the disk, and one day that will stop being true.** The
+rail lists recorded conversations, and it takes them from `recordDir` the way
+`dcode -r` already does — a decision taken with the design, on the grounds that
+it changes no protocol and that co-location is a premise the product already has
+rather than a new one.
+
+It is still a premise. `dcode serve` and `dcode tui` are separable, so the day
+someone attaches a client to a daemon on another machine, the rail simply lists
+nothing. That silence is the trigger for specifying an endpoint for recorded
+sessions — and the reason to write it down now is that a rail that lists nothing
+reads as a broken rail, not as an architectural boundary being reached.
+
+**The card is a thin rule, and a full border was the road not taken.** Spacing
+plus a `─` under the header was chosen over `┌ ┐ └ ┘ │ ─` around every tool call:
+it costs no columns, survives `NO_COLOR` and ASCII without a special case, and
+stays out of what copy mode selects — which the spec treats as surface.
+
+The full border remains a legitimate visual preference, with a known price: two
+columns and two lines per card, an ASCII variant, and the border joining the
+selection when someone copies. If it ever ships it is a setting, not a change of
+mind.
+
+---
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -372,6 +438,7 @@ has not weakened.
 | **2** — retryable versus hopeless | The detector already sees it; this is a second consumer of information already collected. Narrow start. |
 | **4** — a scenario that forces a discovery | Genuinely hard, possibly not solvable as a scripted fixture. Do it when there is an idea, not on a schedule. |
 | **3** — the vacuous contract | Nothing to do until 4 moves. |
+| **10** — what v5 asks for and we do not have | After the client phases land. The card ships without progress, so the protocol event is not blocking anything visible — and deciding it under pressure from a half-built card is how a versioned surface gets the wrong shape. |
 | **9** — the small ones | Whenever they are in the way. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried

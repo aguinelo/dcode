@@ -72,6 +72,28 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Documentation
+
+- **What the v5 design asks for and the product does not have is written down.**
+  A new `docs/ROADMAP.md` section names `refs/design/HANDOFF.md` as its source,
+  so the specification that comes next knows where the request came from.
+
+  Three items. A tool reports **nothing while it runs** — the protocol has
+  `tool.requested` and `tool.completed` and nothing between, so the design's
+  running counts have no origin; that is four layers and MINOR at minimum, and
+  it blocks the card's progress bar and nothing else. The session rail **reads
+  the disk**, which is a premise rather than a fact, and the day a client
+  attaches to a daemon elsewhere the rail lists nothing — silence that reads as
+  a bug unless it was written down first. And the full card border stays
+  recorded as a visual preference with its price named, rather than as a change
+  of mind waiting to happen.
+
+  A fourth, not from the design: **a boundary test passes or fails according to
+  what is on the machine.** `TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable`
+  depends on whether `/tmp/ws` exists, because `EvalSymlinks` only resolves paths
+  that do. It hid for a day behind Go's test cache — the same trap as the cached
+  coverage number, by another road.
+
 ### Client TUI
 
 - **The v5 keyboard is decided by convention, and nothing is declared yet.**
