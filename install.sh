@@ -4,6 +4,11 @@
 # Verifies the artifact checksum always, and the release signature when cosign
 # is here. A check that fails aborts and removes everything that was downloaded.
 #
+# When a release has pinned it, this file also carries the digests of that
+# release's artifacts. Those arrived by a different route from the tarball — in
+# git history rather than beside the download — which is what makes the
+# signature optional without making the checksum decorative.
+#
 # The two are independent and are treated as such. Requiring cosign made the
 # weaker check conditional on the stronger one, so a machine without it got no
 # binary AND no verification — which is the outcome this file exists to avoid.
@@ -32,6 +37,14 @@ INSTALL_DIR="${DCODE_INSTALL_DIR:-$HOME/.local/bin}"
 SKIP_VERIFY="${DCODE_SKIP_VERIFY:-false}"
 UNSIGNED=0
 SUPPORTED="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64"
+
+# BEGIN PINNED — gerado por scripts/installer.sh a partir do checksums.txt
+# assinado. Vazio ate um release preencher, e o vazio e silencioso: avisar em
+# toda instalacao sobre um pino que nunca foi aplicado ensina a ignorar a linha
+# que importa.
+PINNED_VERSION=""
+pinned_sum() { :; }
+# END PINNED
 
 die() { printf 'dcode: %s\n' "$*" >&2; exit 1; }
 info() { printf '%s\n' "$*"; }
@@ -140,15 +153,42 @@ main() {
       printf '  !   To check the signature too: install cosign and run this again.\n\n'
     fi
 
-    # 5. Verify this artifact against the signed list.
+    got="$(sha256_of "$WORK/$artifact")"
+
+    # 5. The digest this installer carries, when it carries one for this
+    #    artifact. It matters because it did NOT travel with the tarball.
+    #
+    #    checksums.txt comes from the same host as the artifact, so whoever can
+    #    replace one can replace the other and the pair stays self-consistent.
+    #    This digest lives in the installer, and the installer lives in git
+    #    history: a release asset can be swapped leaving no public trace, a line
+    #    in a tracked file cannot. That is what lets the signature be optional
+    #    without the checksum becoming decorative.
+    pinned="$(pinned_sum "$artifact")"
+    if [ -n "$pinned" ]; then
+      [ "$pinned" = "$got" ] ||
+        die "checksum mismatch for $artifact — this installer carries $pinned, the download is $got. Nothing was installed"
+    elif [ -n "$PINNED_VERSION" ]; then
+      # Asked for a release other than the one pinned here. Fall back to the
+      # list, and name the installer that can do better — an installer is
+      # pinned to exactly one release, so the pinned install of another version
+      # is that version's own installer.
+      printf '\n  !   This installer carries the digests of %s, not %s, so %s is\n' \
+        "$PINNED_VERSION" "$bare" "$bare"
+      printf '  !   checked against the release'"'"'s own checksums file instead.\n'
+      printf '  !   For a pinned install of this version:\n'
+      printf '  !     %s/install.sh\n\n' "$base"
+    fi
+
+    # 6. And against the list published with it, which catches the corruption
+    #    the pinned digest would also catch, plus the case of no pin at all.
     want="$(grep " \*\{0,1\}$artifact\$" "$WORK/checksums.txt" | awk '{print $1}' | head -1)"
     [ -n "$want" ] || die "$artifact is not listed in checksums.txt"
-    got="$(sha256_of "$WORK/$artifact")"
     [ "$want" = "$got" ] ||
       die "checksum mismatch for $artifact — expected $want, got $got. Nothing was installed"
   fi
 
-  # 6. Extract and install.
+  # 7. Extract and install.
   tar -xzf "$WORK/$artifact" -C "$WORK" || die "could not extract $artifact"
   [ -f "$WORK/dcode" ] || die "$artifact does not contain a dcode binary"
   chmod +x "$WORK/dcode"
@@ -156,7 +196,7 @@ main() {
   mkdir -p "$INSTALL_DIR" || die "could not create $INSTALL_DIR"
   mv "$WORK/dcode" "$INSTALL_DIR/dcode" || die "could not install into $INSTALL_DIR"
 
-  # 7. Confirm the installed binary runs here, before claiming success.
+  # 8. Confirm the installed binary runs here, before claiming success.
   "$INSTALL_DIR/dcode" --version >/dev/null 2>&1 ||
     die "the installed binary does not run on this machine"
 

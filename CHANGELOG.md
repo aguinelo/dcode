@@ -60,6 +60,36 @@ that on every run to stop the opposite reading.
 
 ### Distribution
 
+- **The installer verifies against a digest it carries.** `install.sh` gained a
+  `PINNED` block that `scripts/installer.sh` fills from the *already signed*
+  `checksums.txt`. When the downloaded artifact has a pinned digest, that is
+  what it is checked against — and a mismatch aborts even when the release's own
+  `checksums.txt` agrees with the download.
+
+  This is the structural half of the entry below. `checksums.txt` travels from
+  the same host as the tarball, so on its own it catches a corrupted download
+  and not a substituted release: whoever can replace one can replace the other,
+  and the pair stays self-consistent. Making the signature optional was right,
+  but optional must not mean decorative — and what stops that is the expected
+  value living in **git history**, where a release asset can be swapped with no
+  public trace and a line in a tracked file cannot.
+
+  The block starts empty, and empty is silent: an unpinned installer falls back
+  to `checksums.txt` without complaining, because warning about a pin nobody
+  applied trains people to ignore the line that matters. Pinned to one release
+  and asked for another, it says which it carries and names the installer that
+  carries the right ones.
+
+  Taken from `uv`, the only one of six installers examined (rustup, bun, deno,
+  nvm, k3s, uv) stricter than this one — four of them verify nothing at all, and
+  **none requires an external verification tool.** uv's separation is better
+  than ours: its installer comes from one host and its artifacts from another.
+  Without a domain of our own, git history against release asset is the best
+  available, and saying so is part of having it.
+
+  The pipeline that fills the block is the next change; this one is the
+  mechanism, with the generator and six tests.
+
 - **A missing cosign no longer cancels the checksum.** `install.sh` required
   cosign and put that requirement immediately before the signature check, with
   the SHA-256 comparison after it. On a machine without cosign — every ordinary

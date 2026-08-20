@@ -58,6 +58,35 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Distribuição
 
+- **O instalador confere contra um digest que ele carrega.** O `install.sh`
+  ganhou um bloco `PINNED` que o `scripts/installer.sh` preenche a partir do
+  `checksums.txt` **já assinado**. Quando o artefato baixado tem digest fixado, é
+  contra ele que se compara — e divergência aborta mesmo que o `checksums.txt`
+  do próprio release concorde com o download.
+
+  É a metade estrutural da entrada abaixo. O `checksums.txt` viaja do mesmo host
+  que o tarball, então sozinho ele pega download corrompido e não pega release
+  substituído: quem troca um troca o outro, e o par continua coerente consigo
+  mesmo. Tornar a assinatura opcional foi certo, mas opcional não pode virar
+  decorativa — e o que impede isso é o valor esperado passar a viver no
+  **histórico do git**, onde um asset de release pode ser trocado sem rastro
+  público e uma linha versionada não pode.
+
+  O bloco nasce vazio, e o vazio é silencioso: instalador sem pino cai no
+  `checksums.txt` sem reclamar, porque avisar sobre um pino que ninguém aplicou
+  ensina a ignorar a linha que importa. Fixado num release e chamado para outro,
+  ele diz qual carrega e aponta o instalador que carrega os certos.
+
+  Tirado do `uv`, o único de seis instaladores examinados (rustup, bun, deno,
+  nvm, k3s, uv) mais rigoroso que este — quatro deles não verificam nada, e
+  **nenhum dos seis exige ferramenta externa de verificação.** A separação do uv
+  é melhor que a nossa: o instalador dele vem de um host e os artefatos de
+  outro. Sem domínio próprio, histórico do git contra asset de release é a melhor
+  disponível, e dizer isso faz parte de tê-la.
+
+  O pipeline que preenche o bloco é a mudança seguinte; esta é o mecanismo, com
+  o gerador e seis testes.
+
 - **A falta do cosign não cancela mais o checksum.** O `install.sh` exigia
   cosign, e punha a exigência imediatamente antes da verificação de assinatura,
   com a comparação de SHA-256 depois dela. Numa máquina sem cosign — toda máquina

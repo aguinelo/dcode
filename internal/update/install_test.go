@@ -25,10 +25,12 @@ import (
 type installFixture struct {
 	dir     string // the fake release, served by the stub curl
 	bin     string // stub executables, first on PATH
+	root    string // the fixture root, for files that must not look like residue
 	tmp     string // TMPDIR, so the work directory can be checked afterwards
 	target  string // DCODE_INSTALL_DIR
 	cosign  string // "0" or "1" — the exit code the stub cosign returns
 	absent  bool   // cosign is nowhere on PATH — the ordinary user's machine
+	pin     string // pin the installer to this release before running it
 	unameS  string
 	unameM  string
 	version string
@@ -43,7 +45,8 @@ func newInstallFixture(t *testing.T) *installFixture {
 	}
 	root := t.TempDir()
 	f := &installFixture{
-		dir: filepath.Join(root, "release"), bin: filepath.Join(root, "bin"),
+		root: root,
+		dir:  filepath.Join(root, "release"), bin: filepath.Join(root, "bin"),
 		tmp: filepath.Join(root, "tmp"), target: filepath.Join(root, "install"),
 		cosign: "0", unameS: "Linux", unameM: "x86_64", version: "v1.2.3",
 	}
@@ -151,6 +154,37 @@ func (f *installFixture) searchPath() string {
 	return strings.Join(dirs, string(os.PathListSeparator))
 }
 
+// script returns the installer to run. With no pin that is the repository's own
+// file; with one it is a copy that scripts/installer.sh has pinned to a
+// release, which is exactly what a published installer is. Pinning a copy keeps
+// the "exercised as shipped" property: the thing under test is the generator's
+// output, not a hand-written approximation of it.
+func (f *installFixture) script(t *testing.T, root string) string {
+	t.Helper()
+	if f.pin == "" {
+		return filepath.Join(root, "install.sh")
+	}
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash")
+	}
+	src, err := os.ReadFile(filepath.Join(root, "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Outside TMPDIR on purpose: the residue check reads that directory, and a
+	// test fixture sitting in it would read as a download the installer forgot.
+	copied := filepath.Join(f.root, "pinned-install.sh")
+	if err := os.WriteFile(copied, src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gen := exec.Command(filepath.Join(root, "scripts", "installer.sh"),
+		f.pin, filepath.Join(f.dir, "checksums.txt"), copied)
+	if out, err := gen.CombinedOutput(); err != nil {
+		t.Fatalf("scripts/installer.sh could not pin the installer: %v\n%s", err, out)
+	}
+	return copied
+}
+
 func (f *installFixture) run(t *testing.T) (string, error) {
 	t.Helper()
 	f.stubs(t)
@@ -158,7 +192,7 @@ func (f *installFixture) run(t *testing.T) (string, error) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("sh", filepath.Join(root, "install.sh"))
+	cmd := exec.Command("sh", f.script(t, root))
 	cmd.Env = append(os.Environ(),
 		"PATH="+f.searchPath(),
 		"TMPDIR="+f.tmp,
@@ -490,5 +524,251 @@ func TestCosignStillAbortsWhenItIsPresentAndTheSignatureIsBad(t *testing.T) {
 	}
 	if f.installed() {
 		t.Error("a binary was installed despite the signature failing")
+	}
+}
+
+// fourPlatformChecksums writes a checksums.txt covering every published
+// platform, with the real digest for the one under test. The generator refuses
+// a release that is missing a platform — deliberately, since a release short
+// one artifact is broken — so a fixture that lists only its own would fail for
+// a reason that has nothing to do with the test.
+func fourPlatformChecksums(t *testing.T, f *installFixture, name, sum string) {
+	t.Helper()
+	lines := ""
+	for _, p := range []string{"darwin_amd64", "darwin_arm64", "linux_amd64", "linux_arm64"} {
+		other := "dcode_1.2.3_" + p + ".tar.gz"
+		if other == name {
+			lines += sum + "  " + other + "\n"
+			continue
+		}
+		lines += strings.Repeat("b", 64) + "  " + other + "\n"
+	}
+	f.write(t, "checksums.txt", lines)
+}
+
+// The whole point of carrying the digest, and the only test that can show it.
+//
+// checksums.txt travels from the same host as the tarball, so on its own it
+// catches a corrupted download and not a substituted release: whoever can
+// replace one can replace the other, and the pair stays self-consistent. Here
+// they ARE consistent — the list vouches for the swapped artifact — and the
+// installer must still refuse, because the digest it carries came by a
+// different route and says otherwise.
+//
+// That route is the reason cosign can be optional (#222) without the checksum
+// becoming decorative: a release asset can be replaced with no public trace,
+// while this digest lives in git history, where changing it is a commit.
+func TestACarriedDigestRefusesAnArtifactTheSignedListAccepts(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent, f.pin = true, "1.2.3"
+	name := "dcode_1.2.3_linux_amd64.tar.gz"
+
+	// Pin the installer to the honest release.
+	honest := f.artifact(t, name, "#!/bin/sh\necho dcode 1.2.3\n")
+	fourPlatformChecksums(t, f, name, honest)
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinned := f.script(t, root)
+
+	// Now swap both the artifact and the list it is checked against.
+	swapped := f.artifact(t, name, "#!/bin/sh\necho pwned\n")
+	if swapped == honest {
+		t.Fatal("the fixture did not actually change the artifact")
+	}
+	fourPlatformChecksums(t, f, name, swapped)
+	f.pin = "" // the copy is already pinned; do not regenerate it against the swap
+
+	f.stubs(t)
+	cmd := exec.Command("sh", pinned)
+	cmd.Env = append(os.Environ(),
+		"PATH="+f.searchPath(), "TMPDIR="+f.tmp,
+		"DCODE_VERSION="+f.version, "DCODE_INSTALL_DIR="+f.target,
+		"DCODE_SKIP_VERIFY=false")
+	raw, err := cmd.CombinedOutput()
+	out := string(raw)
+
+	if err == nil {
+		t.Fatalf("a substituted release installed, and its own list vouched for it:\n%s", out)
+	}
+	if f.installed() {
+		t.Error("a substituted binary was installed")
+	}
+	if !strings.Contains(out, "mismatch") {
+		t.Errorf("the failure does not report a mismatch:\n%s", out)
+	}
+	if got := f.leftovers(t); len(got) != 0 {
+		t.Errorf("the download survived the failure: %v", got)
+	}
+}
+
+// The honest release still installs, pinned. Without this the test above is
+// satisfied by an installer that refuses everything.
+func TestACarriedDigestInstallsTheReleaseItWasPinnedTo(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent, f.pin = true, "1.2.3"
+	name := "dcode_1.2.3_linux_amd64.tar.gz"
+	sum := f.artifact(t, name, "#!/bin/sh\necho dcode 1.2.3\n")
+	fourPlatformChecksums(t, f, name, sum)
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("a pinned installer refused its own release: %v\n%s", err, out)
+	}
+	if !f.installed() {
+		t.Errorf("nothing was installed:\n%s", out)
+	}
+}
+
+// An installer pinned to one release, asked for another, cannot check what it
+// does not carry. It falls back to the release's own list and says so, naming
+// the installer that does carry the right digests — the same answer uv gives,
+// and the only one that is both usable and honest.
+func TestAnInstallerAskedForAnotherReleaseSaysItCannotCheckIt(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent, f.pin = true, "9.9.9"
+	name := "dcode_1.2.3_linux_amd64.tar.gz"
+	sum := f.artifact(t, name, "#!/bin/sh\necho dcode 1.2.3\n")
+	// Pinned against a release whose names do not match the one being installed.
+	f.write(t, "checksums.txt", strings.Join([]string{
+		strings.Repeat("b", 64) + "  dcode_9.9.9_darwin_amd64.tar.gz",
+		strings.Repeat("b", 64) + "  dcode_9.9.9_darwin_arm64.tar.gz",
+		strings.Repeat("b", 64) + "  dcode_9.9.9_linux_amd64.tar.gz",
+		strings.Repeat("b", 64) + "  dcode_9.9.9_linux_arm64.tar.gz",
+	}, "\n")+"\n")
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinned := f.script(t, root)
+
+	// The release actually being served is 1.2.3, and its list is honest.
+	f.write(t, "checksums.txt", sum+"  "+name+"\n")
+
+	f.stubs(t)
+	cmd := exec.Command("sh", pinned)
+	cmd.Env = append(os.Environ(),
+		"PATH="+f.searchPath(), "TMPDIR="+f.tmp,
+		"DCODE_VERSION="+f.version, "DCODE_INSTALL_DIR="+f.target,
+		"DCODE_SKIP_VERIFY=false")
+	raw, err := cmd.CombinedOutput()
+	out := string(raw)
+
+	if err != nil {
+		t.Fatalf("an installer pinned elsewhere refused to fall back: %v\n%s", err, out)
+	}
+	if !f.installed() {
+		t.Errorf("nothing was installed:\n%s", out)
+	}
+	if !strings.Contains(out, "9.9.9") {
+		t.Errorf("the notice does not say which release this installer carries:\n%s", out)
+	}
+	if !strings.Contains(out, "releases/download/v1.2.3/install.sh") {
+		t.Errorf("the notice does not name the installer that can check v1.2.3:\n%s", out)
+	}
+}
+
+// The installer in the repository carries no digests until a release pins it,
+// and that state has to be quiet: warning on every install about a pin that
+// was never applied trains people to ignore the line that matters.
+func TestAnUnpinnedInstallerFallsBackWithoutComplaining(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent = true
+	completeRelease(t, f)
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("the unpinned installer failed: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "carries") {
+		t.Errorf("an installer with no pins complained about not having them:\n%s", out)
+	}
+}
+
+// The generator writes the digests of the artifacts that were signed, for every
+// published platform. Hand-typing one passes every local test, installs
+// everywhere, and one day points at a binary nobody signed — the reasoning
+// scripts/formula.sh already carries, in the other channel.
+func TestTheGeneratorCarriesEveryPublishedDigest(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	sums, lines := filepath.Join(dir, "checksums.txt"), ""
+	want := map[string]string{}
+	for i, p := range []string{"darwin_amd64", "darwin_arm64", "linux_amd64", "linux_arm64"} {
+		digest := strings.Repeat(string(rune('a'+i)), 64)
+		want["dcode_4.5.6_"+p+".tar.gz"] = digest
+		lines += digest + "  dcode_4.5.6_" + p + ".tar.gz\n"
+	}
+	if err := os.WriteFile(sums, []byte(lines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join(root, "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "install.sh")
+	if err := os.WriteFile(target, src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gen := exec.Command(filepath.Join(root, "scripts", "installer.sh"), "4.5.6", sums, target)
+	if out, err := gen.CombinedOutput(); err != nil {
+		t.Fatalf("the generator failed: %v\n%s", err, out)
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for artifact, digest := range want {
+		if !strings.Contains(string(got), artifact) {
+			t.Errorf("the pinned installer does not mention %s", artifact)
+		}
+		if !strings.Contains(string(got), digest) {
+			t.Errorf("the pinned installer does not carry the digest of %s", artifact)
+		}
+	}
+	if !strings.Contains(string(got), `PINNED_VERSION="4.5.6"`) {
+		t.Error("the pinned installer does not record which release it carries")
+	}
+}
+
+// A release short one platform is broken, and the generator has to say so
+// rather than write an empty digest — which would verify nothing while looking
+// exactly like a digest that verified.
+func TestTheGeneratorRefusesAReleaseMissingAPlatform(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	sums := filepath.Join(dir, "checksums.txt")
+	if err := os.WriteFile(sums,
+		[]byte(strings.Repeat("a", 64)+"  dcode_4.5.6_linux_amd64.tar.gz\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join(root, "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "install.sh")
+	if err := os.WriteFile(target, src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gen := exec.Command(filepath.Join(root, "scripts", "installer.sh"), "4.5.6", sums, target)
+	out, err := gen.CombinedOutput()
+	if err == nil {
+		t.Fatalf("the generator pinned an incomplete release:\n%s", out)
+	}
+	if !strings.Contains(string(out), "darwin_amd64") {
+		t.Errorf("the failure does not name the platform that is missing:\n%s", out)
 	}
 }
