@@ -69,6 +69,29 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Documentação
+
+- **O que o design v5 pede e o produto não tem está escrito.** Uma seção nova no
+  `docs/ROADMAP.md` nomeia o `refs/design/HANDOFF.md` como fonte, para que a
+  especificação seguinte saiba de onde veio o pedido.
+
+  Três itens. Ferramenta **não reporta nada enquanto roda** — o protocolo tem
+  `tool.requested` e `tool.completed` e nada entre eles, então as contagens em
+  andamento do design não têm origem; são quatro camadas e MINOR no mínimo, e
+  isso bloqueia a barra de progresso do card e mais nada. A trilha de sessões
+  **lê do disco**, o que é premissa e não fato, e no dia em que um cliente se
+  ligar a um daemon noutra máquina a trilha não lista nada — silêncio que se lê
+  como defeito se não estiver escrito antes. E a borda completa do card fica
+  registrada como preferência visual com o preço nomeado, em vez de virar
+  mudança de ideia esperando acontecer.
+
+  Um quarto, que não vem do design: **um teste de fronteira passa ou falha
+  conforme o que existe na máquina.** O
+  `TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable` depende de `/tmp/ws`
+  existir, porque o `EvalSymlinks` só resolve caminho que existe. Ficou um dia
+  escondido atrás do cache de testes do Go — a mesma armadilha do número de
+  cobertura cacheado, por outro caminho.
+
 ### Cliente TUI
 
 - **O teclado do v5 decidido por convenção, e nada declarado ainda.** O handoff
