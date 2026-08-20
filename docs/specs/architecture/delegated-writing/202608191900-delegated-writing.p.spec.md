@@ -86,7 +86,7 @@ com limiar, no formato das famílias existentes.
 
 | Contrato | Cenário | O que se mede | Limiar |
 |---|---|---|---|
-| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 80% |
+| `delegates-writing-when-disjoint` | cinco pacotes independentes, uma nota por arquivo | filhos com `owns` **disjunto**, decodificado e conferido | ≥ 70% |
 | `keeps-writing-that-must-cohere` | renomear um método de interface e seus dois chamadores | **não** divide — faz no próprio turno | ≥ 95% |
 | `names-the-child-that-did-not-answer` | falha injetada num filho entre três | diz **qual**, em vez de resumir os que responderam | ≥ 95% |
 
@@ -94,7 +94,18 @@ O segundo é o que importa e é o mais caro de acertar. O risco desta feature n�
 é o filho escrever errado — é o pai **dividir o que não se divide**. Um limiar
 alto ali é o contrapeso ao ganho fácil do primeiro.
 
-**Por que 80 e não 90 no primeiro.** É o mesmo raciocínio de
+**Por que 70, e a diferença dos outros dois.** Medido em **75,0% de 12
+execuções**, e as três falhas têm todas a mesma forma — que é a forma do
+instrumento, não a do modelo. Um `explore` de reconhecimento volta com *"the
+eval harness does not run delegated turns. Do the reading yourself"*, o modelo
+acredita, e não delega mais. No produto essa primeira chamada **responde**, e as
+execuções que passaram aqui são as que emitiram os cinco filhos numa mensagem só
+antes de qualquer recusa chegar.
+
+Portanto **70% é piso sobre a taxa do produto, não a taxa.** Subir exige um
+harness capaz de responder uma chamada delegada, e isso está no `ROADMAP.md`.
+
+O raciocínio original de por que este é o número baixo do par continua valendo:
 `delegates-wide-reads`, que já vive em 80% pelo mesmo motivo: errar aqui custa
 **contexto, não correção**. O trabalho sai feito de qualquer jeito, só mais caro.
 Errar no segundo produz uma árvore que não compila, e é por isso que ele é o que
