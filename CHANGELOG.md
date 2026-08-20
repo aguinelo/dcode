@@ -56,14 +56,35 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Instrumento de medição
 
+- **Medição contra o harness consertado.** Os três contratos, 50 execuções cada,
+  92 minutos:
+
+  | contrato | antes | depois |
+  |---|---|---|
+  | `keeps-writing-that-must-cohere` | 96,0% | **100,0%** |
+  | `names-the-child-that-did-not-answer` | 98,0% | **100,0%** |
+  | `delegates-writing-when-disjoint` | 50,0% | **52,0%** |
+
+  **A previsão do autor estava errada.** O #216 foi escrito afirmando que a
+  recusa do harness convencia o modelo a parar de delegar, e que consertar isso
+  faria o terceiro número subir. Com n=50 o desvio é ~7 pontos: **dois pontos é
+  ruído.** A causa das não-delegações é outra e ainda não é conhecida.
+
+  O conserto não foi inútil, e o ganho está nos outros dois: agora o modelo tem
+  uma opção de delegação que **funciona**, e ainda assim recusa dividir trabalho
+  que precisa concordar consigo. Antes ele recusava num mundo onde delegar era
+  impossível, o que media muito menos.
 - **O harness de eval roda um turno filho** (#216). A recusa antiga era honesta
-  mas dizia "do the reading yourself", e isso instruía o abandono: o modelo
-  parava de delegar pelo resto da execução, e um contrato sobre procurar
-  delegação media o harness convencendo-o a não procurar.
-- **Três contratos para trabalho dividido** (#214, #215). Medidos:
-  `keeps-writing-that-must-cohere` 96% de 50, `names-the-child-that-did-not-answer`
-  98% de 50, `delegates-writing-when-disjoint` 50% de 50 com limiar em 25% — piso
-  contra regressão, não certificado de qualidade.
+  mas dizia "do the reading yourself", e isso instruía o abandono. Continua sendo
+  o comportamento certo a consertar; o que não se sustentou foi a previsão sobre
+  o efeito dele.
+- **Três contratos para trabalho dividido** (#214, #215). O limiar do terceiro
+  desceu de 80% para 25% depois de quatro medições com dispersão de 25 pontos —
+  piso contra regressão, não certificado de qualidade.
+- **O release alcança um espelho que responde** (#218). O pipeline de release era
+  uma cópia da CI que parou de ser atualizada: sem prazo no `apt`, sem
+  `apparmor_restrict_unprivileged_userns`, sem sonda — então **todo teste de
+  fronteira pulava calado** no pipeline que decide se publica.
 
 ### Coordenar máquinas
 
