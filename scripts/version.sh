@@ -31,7 +31,20 @@ if ! printf '%s' "$last" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
 fi
 
 range="$last..HEAD"
-subjects="$(git log --format='%s' "$range")"
+
+# O pipeline de release deixa um commit na main DEPOIS de criar a tag: ele
+# reescreve o bloco de digests do install.sh, e esses digests so existem depois
+# dos artefatos estarem construidos e assinados.
+#
+# Conta-lo faria toda consulta pos-release responder "ha mudancas desde a tag"
+# quando nada humano mudou, e a derivacao passaria a subir PATCH sozinha. E a
+# forma que este repositorio nao para de encontrar: automacao deixando um rastro
+# que outro mecanismo le como sinal.
+#
+# A isencao e do assunto EXATO que o pipeline escreve, nunca do prefixo. Isentar
+# `chore(release):` inteiro daria a qualquer pessoa uma forma de nao ser contada.
+PIN_SUBJECT='^chore\(release\): pin the installer to v[0-9]+\.[0-9]+\.[0-9]+$'
+subjects="$(git log --format='%s' "$range" | grep -vE "$PIN_SUBJECT" || true)"
 if [ -z "$subjects" ]; then
   echo "$last" # nada mudou; a versao e a que ja existe
   exit 0

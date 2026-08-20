@@ -58,6 +58,36 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Distribuição
 
+- **O release fixa o instalador que publica.** O pipeline passa a verificar a
+  assinatura que acabou de produzir, **então** preencher o bloco `PINNED` a
+  partir daquele arquivo de checksums, **então** publicar — com o instalador
+  fixado entre os artefatos —, **então** levá-lo para a `main`.
+
+  Cada relação de ordem pesa. Fixar antes de verificar tiraria digests que
+  ninguém atestou, que é a falha que a funcionalidade existe para impedir,
+  reproduzida dentro do pipeline que a implementa. Publicar antes de fixar
+  anexaria o instalador sem pino. Escrever na `main` antes de publicar deixaria
+  uma falha ali reprovar um release que já deu certo — por isso esse passo, como
+  o do tap, sai com zero e avisa alto em toda condição recuperável, com uma
+  exceção: arquivo fixado ausente **reprova**, porque deixar a `main` com os
+  digests do release anterior faria todo install cair no `checksums.txt` **em
+  silêncio**, que é o comportamento correto de um instalador sem pino e
+  portanto invisível.
+
+  A `main` importa, e o asset sozinho não: a URL que o README publica é
+  `main/install.sh`, e um pino que não chega lá não chega a ninguém.
+
+- **O `scripts/version.sh` ignora o commit de pino do próprio pipeline.** Esse
+  commit cai depois da tag, já que os digests só existem depois dos artefatos
+  construídos. Contá-lo faria toda consulta pós-release responder "há commits
+  desde a tag" com nada humano tendo mudado, e a derivação subiria PATCH sozinha
+  — automação deixando rastro que outro mecanismo lê como sinal, forma que este
+  repositório não para de encontrar.
+
+  A isenção é do assunto exato, nunca do prefixo: isentar `chore(release):`
+  inteiro daria a qualquer pessoa uma forma de não ser contada. Testado dos dois
+  lados. O `scripts/version.sh` não tinha teste nenhum até aqui.
+
 - **O instalador confere contra um digest que ele carrega.** O `install.sh`
   ganhou um bloco `PINNED` que o `scripts/installer.sh` preenche a partir do
   `checksums.txt` **já assinado**. Quando o artefato baixado tem digest fixado, é

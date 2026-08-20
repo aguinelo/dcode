@@ -60,6 +60,36 @@ that on every run to stop the opposite reading.
 
 ### Distribution
 
+- **The release pins the installer it publishes.** The pipeline now verifies the
+  signature it just produced, *then* fills the `PINNED` block from that
+  checksums file, *then* publishes — with the pinned installer among the
+  artifacts — *then* carries it to `main`.
+
+  Each ordering carries weight. Pinning before verifying would take digests
+  nobody vouched for, which is the failure the feature exists to prevent,
+  reproduced inside the pipeline that implements it. Publishing before pinning
+  would attach the unpinned installer. Writing to `main` before publishing would
+  let a failure there redden a release that already succeeded — so that step,
+  like the tap, exits zero and warns loudly on every recoverable condition, with
+  one exception: a missing pinned file stops, because leaving `main` on the
+  previous release's digests would make every install fall back **silently**,
+  which is the correct behaviour for an unpinned installer and therefore
+  invisible.
+
+  `main` matters and the asset alone does not: the URL the README publishes is
+  `main/install.sh`, and a pin that never reaches it never reaches anyone.
+
+- **`scripts/version.sh` ignores the pipeline's own pin commit.** That commit
+  lands after the tag, since the digests do not exist until the artifacts are
+  built. Counting it would make every post-release query answer "there are
+  commits since the tag" with nothing human changed, and the derivation would
+  start raising PATCH on its own — automation leaving a trace another mechanism
+  reads as a signal, which is a shape this repository keeps finding.
+
+  The exemption is for the exact subject, never the prefix: exempting
+  `chore(release):` wholesale would give anyone a way not to be counted. Tested
+  both ways. `scripts/version.sh` had no test at all until now.
+
 - **The installer verifies against a digest it carries.** `install.sh` gained a
   `PINNED` block that `scripts/installer.sh` fills from the *already signed*
   `checksums.txt`. When the downloaded artifact has a pinned digest, that is
