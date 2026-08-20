@@ -56,6 +56,24 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Distribuição
+
+- **O aviso tem o tamanho do que ficou por conferir.** Perguntado se dava para
+  tirar o aviso do cosign. Não dá — "nunca não-verificado em silêncio" é a linha
+  que quatro mudanças gastaram estabelecendo —, mas ele estava grande demais, e
+  prestes a ficar falso.
+
+  Ele afirmava que o checksum *"pega download corrompido mas não release
+  substituído"*. Verdade sem pino. No instante em que um release fixa o
+  instalador, o digest carregado cobre substituição exatamente, que é a razão
+  inteira de ele existir. Então, com digest carregado e conferido, o aviso cai
+  para duas linhas, perde essa afirmação e deixa de se repetir no fim; sem pino
+  ele mantém cada palavra e a repetição, porque a rolagem de um `curl | sh`
+  enterra o que apareceu no começo.
+
+  Aviso que exagera é aviso que as pessoas aprendem a pular, inclusive na
+  execução em que ele finalmente significa alguma coisa.
+
 ### Documentação
 
 - **O README descreve a instalação que existe.** Ele ainda afirmava que o script

@@ -304,3 +304,72 @@ func TestTheReleasePinsTheInstallerFromChecksumsItAlreadyVerified(t *testing.T) 
 			"redden a release that never published")
 	}
 }
+
+// -- how much the notice says --------------------------------------------------
+
+// countLines reports how many lines of out contain want.
+func countLines(out, want string) int {
+	n := 0
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, want) {
+			n++
+		}
+	}
+	return n
+}
+
+// A notice has to be as large as what was not checked, and no larger.
+//
+// Without a pin, "the checksum catches a corrupted download but not a
+// substituted release" is true and worth four lines. With one it is false: the
+// digest committed to main covers substitution exactly, which is the whole
+// reason it exists. Repeating the loud version there spends the reader's
+// attention on a claim that is no longer accurate — and a warning that
+// overstates is one people learn to skip, including on the release where it
+// finally matters.
+func TestAPinnedInstallDoesNotClaimSubstitutionWentUnchecked(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent, f.pin = true, "1.2.3"
+	name := "dcode_1.2.3_linux_amd64.tar.gz"
+	sum := f.artifact(t, name, "#!/bin/sh\necho dcode 1.2.3\n")
+	fourPlatformChecksums(t, f, name, sum)
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("the pinned install failed: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "substituted release") {
+		t.Errorf("the notice claims substitution went unchecked, and the carried "+
+			"digest is exactly what checks it:\n%s", out)
+	}
+	// Still said, because the signature genuinely was not verified.
+	if !strings.Contains(out, "cosign") {
+		t.Errorf("the notice stopped naming what was skipped:\n%s", out)
+	}
+	// Once. The second mention exists so a long scroll cannot bury the loud
+	// case; there is no loud case to bury here.
+	if n := countLines(out, "cosign"); n != 1 {
+		t.Errorf("the reduced notice is repeated %d times, not once:\n%s", n, out)
+	}
+}
+
+// And the unpinned case keeps every word of it, because there the claim is
+// true: nothing checked substitution.
+func TestAnUnpinnedInstallStillSaysSubstitutionWentUnchecked(t *testing.T) {
+	f := newInstallFixture(t)
+	f.absent = true
+	completeRelease(t, f)
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("the unpinned install failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "substituted release") {
+		t.Errorf("the notice stopped saying substitution went unchecked, and here "+
+			"nothing checked it:\n%s", out)
+	}
+	if n := countLines(out, "cosign"); n < 2 {
+		t.Errorf("the loud notice is not repeated at the end, so a long scroll "+
+			"buries it: %d mentions\n%s", n, out)
+	}
+}

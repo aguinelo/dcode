@@ -58,6 +58,24 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Distribution
+
+- **The notice is as large as what went unchecked.** Asked whether the cosign
+  warning could go away. It cannot — "never unverified in silence" is the line
+  four changes were spent establishing — but it was oversized, and about to
+  become false.
+
+  It claimed the checksum *"catches a corrupted download but not a substituted
+  release"*. True with no pin. The moment a release pins the installer, the
+  carried digest covers substitution exactly, which is the entire reason it
+  exists. So with a digest carried and matched, the notice drops to two lines,
+  loses that claim, and is no longer repeated at the end; with no pin it keeps
+  every word and the repetition, because a `curl | sh` scroll buries whatever
+  appeared at the top.
+
+  A warning that overstates is one people learn to skip, including on the run
+  where it finally means something.
+
 ### Documentation
 
 - **The README describes the install that ships.** It still claimed the script

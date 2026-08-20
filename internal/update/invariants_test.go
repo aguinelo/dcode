@@ -32,6 +32,8 @@ var distributionInvariants = map[string]string{
 	"em vez de deixar a `main` com":   "TestAMissingPinnedInstallerStopsRatherThanLeavingMainStale",
 	"Republicar o mesmo instalador":   "TestPublishingTheSameInstallerTwiceIsNotAFailure",
 	"apenas o assunto exato dele":     "TestTheVersionIgnoresThePipelinesOwnPinCommit",
+	"não afirma que substituição":     "TestAPinnedInstallDoesNotClaimSubstitutionWentUnchecked",
+	"e se repete no fim":              "TestAnUnpinnedInstallStillSaysSubstitutionWentUnchecked",
 	"aborta listando as suportadas":   "TestAnUnsupportedPlatformAbortsAndListsWhatIsSupported",
 	"com artefato corrompido":         "TestApplyLeavesTheCurrentBinaryIntactOnEveryFailure",
 	"binário novo que não executa":    "TestApplyRefusesABinaryThatDoesNotRun",
