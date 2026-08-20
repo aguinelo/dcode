@@ -60,6 +60,26 @@ that on every run to stop the opposite reading.
 
 ### Distribution
 
+- **The release stops publishing to a tap that does not exist.**
+  `aguinelo/homebrew-dcode` was never created, and `TAP_TOKEN` was never set, so
+  the step exited zero and warned on every release — correct by design, since
+  failing there would redden a release that had already succeeded, and the effect
+  was that v0.0.1 reported success with a channel that never existed.
+
+  Machinery that runs and delivers nothing is worse than absence: it occupies the
+  place of a decision nobody has taken and makes the release look complete.
+  `scripts/publish-tap.sh`, its tests and the workflow step are gone.
+
+  The formula stays — generated from the signed checksums, attached to the
+  release, and the artefact a tap would consume. What went with the step is the
+  documented command, because `brew install aguinelo/tap/dcode` pointed at a tap
+  that does not exist and, had it existed, under the wrong name: the script
+  pushed to `homebrew-dcode`, whose brew shorthand is `aguinelo/dcode/dcode`. The
+  two never agreed, and nothing held them together.
+
+  Recorded in `docs/ROADMAP.md` with what creating it would take, and the naming
+  trap to avoid.
+
 - **`dcode update` does not require cosign either.** It was the last place that
   demanded a package — of a machine that already has a working dcode, which
   makes the demand harder to justify, not easier.

@@ -58,6 +58,26 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Distribuição
 
+- **O release para de publicar num tap que não existe.** O
+  `aguinelo/homebrew-dcode` nunca foi criado e o `TAP_TOKEN` nunca foi
+  configurado, então o passo saía com zero e avisava a cada release — correto por
+  desenho, já que falhar ali reprovaria um release que já tinha dado certo, e o
+  efeito foi o v0.0.1 reportar sucesso com um canal que nunca existiu.
+
+  Maquinário que roda e não entrega nada é pior que ausência: ocupa o lugar da
+  decisão que ninguém tomou e faz o release parecer completo. O
+  `scripts/publish-tap.sh`, os testes dele e o passo do workflow saíram.
+
+  A fórmula fica — gerada a partir do `checksums.txt` assinado, anexada ao
+  release, e é o artefato que um tap consumiria. O que saiu junto com o passo foi
+  o comando documentado, porque `brew install aguinelo/tap/dcode` apontava para um
+  tap que não existe e, se existisse, com o nome errado: o script empurrava para
+  `homebrew-dcode`, cujo atalho no brew é `aguinelo/dcode/dcode`. Os dois nunca
+  concordaram, e nada os segurava juntos.
+
+  Registrado em `docs/ROADMAP.md` com o que seria preciso para criar, e a
+  armadilha de nome a evitar.
+
 - **O `dcode update` também não exige mais cosign.** Era o último lugar que
   pedia um pacote — de uma máquina que já tem um dcode funcionando, o que torna
   o pedido mais difícil de justificar, não mais fácil.
