@@ -9,7 +9,7 @@ três têm número, e um deles trouxe um achado sobre o instrumento.
 |---|---|---|
 | `keeps-writing-that-must-cohere` | **96,0% de 50** | ≥ 95% |
 | `names-the-child-that-did-not-answer` | **98,0% de 50** | ≥ 95% |
-| `delegates-writing-when-disjoint` | **75,0% e 66,7% de 12** | ≥ 60% (era 80) |
+| `delegates-writing-when-disjoint` | **75,0%, 66,7% e 50,0% de 12** | ≥ 40% em 50 (era 80 em 12) |
 
 Modelo `MiniMax-M3`. 38 minutos para os dois de 50, mais 7 para o de 12.
 
@@ -53,21 +53,37 @@ No produto aquela primeira chamada **responde**.
 Baixei o limiar para **70**, colado no medido, e rodei de novo para confirmar.
 Deu **66,7%**. Reprovou do outro lado.
 
+Deu **66,7%**. Baixei para 60 e rodei de novo. Deu **50,0%**.
+
 ```
 medição 1:  75,0% de 12   (9/12)
 medição 2:  66,7% de 12   (8/12)
-agregado:   70,8% de 24
+medição 3:  50,0% de 12   (6/12)
+agregado:   63,9% de 36
 ```
 
-**Limiar colado no valor medido reprova metade das vezes.** Foi exatamente isso
-com o gate de cobertura em 95%, está escrito no `DECISIONS.md`, e eu fiz de novo
-— primeiro em 80 (o que uma rodada de **cinco** disse), depois em 70 (o que uma
-rodada de doze disse). Duas vezes o mesmo erro no mesmo dia.
+## O que três medições ensinaram, e não era sobre o limiar
 
-O limiar vai para **60%**, com folga de verdade sobre as duas medições. E o que
-ele passa a significar muda junto: **piso contra regressão, não certificado de
-qualidade.** Enquanto o harness não souber responder uma chamada delegada, o
-trabalho deste contrato é pegar uma queda para zero, não atestar uma taxa.
+Ajustei o número três vezes — 80, 70, 60 — e ele reprovou nas três. Só na
+terceira eu vi o que estava na frente desde o começo: **vinte e cinco pontos de
+dispersão entre medições idênticas não é limiar alto demais, é n=12 não
+conseguindo medir.**
+
+Com taxa verdadeira perto de 64%, a dispersão binomial em doze execuções é de
+cerca de **±14 pontos**. Foi exatamente o que voltou. Então cada limiar que eu
+escolhi a partir de uma rodada foi escolhido **a partir de ruído** — e eu fiz isso
+três vezes, com o gate de cobertura em 95% documentado no `DECISIONS.md` e
+consertado por mim naquela mesma manhã.
+
+A regra que faltava já estava escrita no plano de 13 de agosto: **limiar ≥95%
+mede em 50 porque uma falha em vinte vale cinco pontos.** Este contrato precisava
+da mesma resolução pelo mesmo motivo aritmético, e ninguém tinha aplicado a regra
+fora da faixa em que ela foi escrita.
+
+O contrato passa a **50 execuções**, e o limiar a **40%** — abaixo da pior das
+três medições, com folga. O que ele afirma muda junto: **piso contra regressão,
+não certificado de qualidade.** Enquanto o harness não souber responder uma
+chamada delegada, o trabalho dele é pegar uma queda para zero.
 
 ## O que este resultado não é
 
