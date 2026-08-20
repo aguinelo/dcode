@@ -9,7 +9,7 @@ três têm número, e um deles trouxe um achado sobre o instrumento.
 |---|---|---|
 | `keeps-writing-that-must-cohere` | **96,0% de 50** | ≥ 95% |
 | `names-the-child-that-did-not-answer` | **98,0% de 50** | ≥ 95% |
-| `delegates-writing-when-disjoint` | **75,0% · 66,7% · 50,0% · 30,0%** | ≥ 25% em 50 execuções (era 80) |
+| `delegates-writing-when-disjoint` | **50,0% de 50** | ≥ 25% em 50 execuções (era 80 em 20) |
 
 Modelo `MiniMax-M3`. 38 minutos para os dois de 50, mais 7 para o de 12.
 
@@ -94,12 +94,27 @@ O campo certo é `Runs`, o mesmo que `DemandingRuns` já eleva para limiar de 95
 
 ## Onde parou
 
-`Runs: 50`, limiar **25%**, abaixo da pior das quatro medições.
+`Runs: 50`, limiar **25%**, e a medição com resolução: **50,0% de 50 execuções**,
+27 minutos.
 
-Quatro medições independentes: **75,0%**, **66,7%**, **50,0%** e **30,0%**. A
-dispersão não fechou, e o número caiu conforme a amostra cresceu — o que é
-compatível com uma taxa verdadeira bem abaixo do que a primeira rodada de cinco
-(100%) sugeriu.
+A sequência inteira, e ela é o registro mais útil deste changelog:
+
+| execuções | medido | limiar na hora | resultado |
+|---|---|---|---|
+| 5 | 100,0% | 80% | passou — e não media nada |
+| 12 | 75,0% | 80% | reprovou |
+| 12 | 66,7% | 70% | reprovou |
+| 12 | 50,0% | 60% | reprovou |
+| 20 | 30,0% | 40% | reprovou (campo errado) |
+| **50** | **50,0%** | **25%** | **passou, com 25 pontos de folga** |
+
+O número subiu de 30 para 50 quando a amostra dobrou, e a primeira rodada de
+cinco dizia 100%. **Cada limiar que escolhi antes veio de ruído**, e a única
+medição que significa alguma coisa é a última — n=50, dispersão de ±7 pontos,
+taxa verdadeira em algum lugar entre 36% e 64%.
+
+O limiar em 25% é o primeiro com folga de verdade, e é o primeiro que a medição
+seguinte não viu antes de ele ser escolhido.
 
 O que o contrato afirma muda junto, e é o registro honesto do dia: **piso contra
 regressão, não certificado de qualidade.** Enquanto o harness disser ao modelo
