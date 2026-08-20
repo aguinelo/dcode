@@ -3,7 +3,7 @@
 **Data:** 2026-08-09
 **Specs afetadas:** `202608081250-client-tui` (`.p`), `202608072240-client-server-protocol` (`.p`), `202608072341-tool-suite` (`.p`)
 
-Adoção do handoff de design em `docs/design_handoff_dcode_tui/`, com uma
+Adoção do handoff de design em `refs/design/`, com uma
 divergência deliberada, registrada abaixo.
 
 ## O que mudou

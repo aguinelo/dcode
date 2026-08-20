@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#121212; }
+  a { color:#d7af5f; text-decoration:none; }
+  a:hover { color:#efc066; }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+</style>
+</helmet>
+
+<div style="font-family:'JetBrains Mono',ui-monospace,monospace;color:#d0d0d0;padding:44px;display:flex;flex-direction:column;gap:40px;background:#121212">
+
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:1060px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div style="font-size:22px;font-weight:700;color:#eeeeee">DCode — cliente TUI</div>
+      <div style="font-size:12px;color:#585858">proposta v3 · Bubble Tea · Lip Gloss</div>
+    </div>
+    <div style="font-size:13px;line-height:1.7;color:#767676;text-wrap:pretty">Uma tela, quatro regiões fixas e uma quinta que só existe enquanto há trabalho. A proposta mantém o que a spec <span style="color:#d0d0d0">client-tui</span> já fixou e fecha três lacunas do v2: a <span style="color:#d0d0d0">barra inferior</span> (onde estou · o que mudou · o que espera por mim), o <span style="color:#d0d0d0">raciocínio na tela</span> com cauda aberta e colapso de uma linha, e as duas superfícies de teclado — <span style="color:#d0d0d0">modo de cópia</span> e o <span style="color:#d0d0d0">seletor de sessão</span> do <span style="color:#d0d0d0">-r</span>.</div>
+  </div>
+
+  <!-- ═════ 00 ANATOMIA ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">00</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Anatomia</span><span style="font-size:12px;color:#585858">JoinVertical(status, JoinHorizontal(fluxo, painel), trabalho, entrada, barra)</span></div>
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+      <div style="width:660px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+        <div style="padding:6px 12px;border-bottom:1px solid #262626;background:#1f1f1f;color:#767676;font-size:12px">status · 1 linha · sempre visível</div>
+        <div style="display:flex;height:180px">
+          <div style="flex:1;padding:12px;border-right:1px solid #262626;display:flex;align-items:center;justify-content:center;color:#767676;font-size:12px">fluxo · viewport · resto da altura</div>
+          <div style="width:220px;padding:12px;display:flex;align-items:center;justify-content:center;text-align:center;color:#767676;font-size:12px">painel de plano<br><span style="color:#585858">clamp(16, w/4, 34) col.</span></div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;color:#767676;font-size:12px">trabalho · 1 linha · <span style="color:#585858">só enquanto um turno roda</span></div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;color:#767676;font-size:12px">entrada · 1 linha</div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;background:#1f1f1f;color:#767676;font-size:12px">barra inferior · 1 linha · <span style="color:#585858">nunca duas</span></div>
+      </div>
+      <div style="width:340px;display:flex;flex-direction:column;gap:14px;font-size:12px;line-height:1.7;color:#767676">
+        <div><span style="color:#d7af5f">Topo descreve a sessão.</span> Modelo, sandbox, contexto — muda quando a sessão muda.</div>
+        <div><span style="color:#d7af5f">Base descreve o trabalho.</span> Worktree, diff acumulado, pendência — continua verdadeira independentemente do que o fluxo mostra.</div>
+        <div><span style="color:#d7af5f">Ordem de queda, direita para esquerda.</span> Sai primeiro o que a pessoa reconstrói em outro lugar; o nome do worktree é cortado, nunca removido.</div>
+        <div><span style="color:#d7af5f">Segmento sem dado não desenha.</span> Badge que mostra zero é badge que se aprende a não ler.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 01 ESTADO VAZIO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">01</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Estado vazio</span><span style="font-size:12px;color:#585858">stateEmpty · some no primeiro turno e não volta · nunca em sessão retomada</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span>
+      </div>
+      <div style="height:210px;display:flex;align-items:center;padding-left:56px;gap:46px">
+        <div style="line-height:1.05;font-size:15px">
+          <div style="white-space:pre;color:#efc066">    ▄▄▄▄</div>
+          <div style="white-space:pre;color:#e0a030">    █<span style="color:#a8452a">▀▀</span>█</div>
+          <div style="white-space:pre;color:#e0a030">    ████</div>
+          <div style="white-space:pre;color:#efc066">  ▄▄▄▄▄▄▄▄</div>
+          <div style="white-space:pre;color:#e0a030">  ████████</div>
+          <div style="white-space:pre;color:#efc066">▄▄▄▄▄▄▄▄▄▄▄▄</div>
+          <div style="white-space:pre;color:#e0a030">████████████</div>
+          <div style="white-space:pre;color:#b87d1e"> ▀▀      ▀▀</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="color:#eeeeee;font-weight:700">DCode</div>
+          <div style="color:#767676">MiniMax-M3</div>
+          <div style="color:#767676">workspace-write</div>
+          <div style="height:10px"></div>
+          <div style="color:#585858"><span style="color:#767676">?</span> help&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#767676">^C</span> interrupt&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#767676">^P</span> panel</div>
+        </div>
+      </div>
+      <div style="padding:6px 12px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#585858">descreva a tarefa</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        <div style="padding:4px 10px;color:#585858">nenhuma mudança</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 02 TURNO RODANDO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">02</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Turno rodando · raciocínio aberto</span><span style="font-size:12px;color:#585858">stateRunning · a cauda do pensamento, 4 linhas, esmaecida</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d7af5f">⠹</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#767676">ctx 34%</span>
+      </div>
+      <div style="display:flex;height:344px">
+        <div style="flex:1;padding:10px 14px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:3px;overflow:hidden">
+          <div style="display:flex;gap:8px"><span style="color:#d7af5f">›</span><span style="color:#eeeeee;font-weight:700">adicionar validação de CPF no checkout</span></div>
+          <div style="height:6px"></div>
+          <div style="padding-left:2ch;color:#585858;display:flex;flex-direction:column;gap:1px">
+            <div>✻ pensando · 3.1s</div>
+            <div style="padding-left:2ch">o handler grava antes de validar, então o ponto de</div>
+            <div style="padding-left:2ch">inserção é antes do Persist — e já existe um</div>
+            <div style="padding-left:2ch">validador de CNPJ neste pacote, o formato dele é o</div>
+            <div style="padding-left:2ch">contrato a seguir</div>
+          </div>
+          <div style="height:6px"></div>
+          <div style="white-space:pre;color:#d0d0d0"><span style="color:#e0a030">⏺</span> read  <span style="color:#d0d0d0">src/checkout/handler.go</span>   <span style="color:#767676">240 lines</span></div>
+          <div style="white-space:pre;color:#d0d0d0"><span style="color:#e0a030">⏺</span> grep  <span style="color:#d0d0d0">func validate[A-Z]</span>      <span style="color:#767676">4 matches in 2 files</span></div>
+          <div style="white-space:pre;color:#d0d0d0"><span style="color:#e0a030">⏺</span> edit  <span style="color:#d0d0d0">src/checkout/validate.go</span>  <span style="color:#5faf5f">+24</span> <span style="color:#d75f5f">−2</span>  <span style="color:#767676">1.2s</span></div>
+          <div style="padding-left:4ch;border-left:1px solid #303030;margin-left:2ch;padding-top:2px">
+            <div style="color:#767676">@@ -18,6 +18,28 @@ func (h *Handler) Checkout(</div>
+            <div style="color:#5faf5f">+	if err := validateCPF(req.Doc); err != nil {</div>
+            <div style="color:#5faf5f">+		return badRequest(w, err)</div>
+            <div style="color:#d75f5f">−	store.Persist(req)</div>
+            <div style="color:#585858">⋯ 19 lines · Tab expande</div>
+          </div>
+        </div>
+        <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+        <div style="width:250px;padding:10px 14px;display:flex;flex-direction:column">
+          <div style="color:#d7af5f;font-weight:700;letter-spacing:.08em;font-size:12px">PLAN</div>
+          <div style="height:8px"></div>
+          <div style="display:flex;flex-direction:column;gap:3px;font-size:13px">
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 1 Mapear o fluxo</div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 2 Achar o validador</div>
+            <div style="color:#eeeeee"><span style="color:#d7af5f">▸</span> 3 Implementar CPF</div>
+            <div style="color:#767676">&nbsp;&nbsp; 4 Cobrir com teste</div>
+            <div style="color:#767676">&nbsp;&nbsp; 5 Rodar a suíte</div>
+          </div>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:3px;font-size:12px">
+            <div style="color:#767676">2 of 5</div>
+            <div style="color:#585858">[^p] hide panel</div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      <div style="padding:5px 14px;border-top:1px solid #262626;display:flex;gap:14px;align-items:center">
+        <span style="color:#d7af5f">⠹</span><span style="color:#d0d0d0">edit</span><span style="color:#767676">src/checkout/validate.go</span><span style="color:#767676">4.2s</span><span style="color:#767676">1.2k tok</span><span style="margin-left:auto;color:#585858">^C interrompe</span>
+      </div>
+      <div style="padding:6px 14px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+124</span> <span style="color:#d75f5f">−18</span> em 3 arquivos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 03 RACIOCÍNIO COLAPSADO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">03</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Raciocínio colapsado</span><span style="font-size:12px;color:#585858">agiu → uma linha. Em turno com ferramenta o pensamento é 5–11× a resposta e enterraria o resultado.</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#5faf5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#d7d75f">ctx 78%</span>
+      </div>
+      <div style="display:flex;height:210px">
+        <div style="flex:1;padding:10px 14px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:3px">
+          <div style="color:#585858">✻ thought for 4.2s · <span style="color:#767676">Tab</span></div>
+          <div style="padding-left:2ch;color:#d0d0d0">Validando antes de persistir, no mesmo formato do validador de CNPJ que já existia no pacote.</div>
+          <div style="height:6px"></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> write <span style="color:#d0d0d0">src/checkout/cpf_test.go</span>  <span style="color:#767676">created, 120 lines</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">go test ./src/checkout/</span>   <span style="color:#5faf5f">exit 0</span>  <span style="color:#767676">8.4s</span></div>
+          <div style="height:6px"></div>
+          <div style="padding-left:2ch;color:#d0d0d0">12 testes passam. O diff está em dois arquivos e nada fora do workspace foi tocado.</div>
+        </div>
+        <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+        <div style="width:250px;padding:10px 14px;display:flex;flex-direction:column">
+          <div style="color:#d7af5f;font-weight:700;letter-spacing:.08em;font-size:12px">PLAN</div>
+          <div style="height:8px"></div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 3 Implementar CPF</div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 4 Cobrir com teste</div>
+            <div style="color:#eeeeee"><span style="color:#d7af5f">▸</span> 5 Rodar a suíte</div>
+          </div>
+          <div style="margin-top:auto;color:#767676;font-size:12px">4 of 5</div>
+        </div>
+        </sc-if>
+      </div>
+      <div style="padding:6px 14px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+148</span> <span style="color:#d75f5f">−20</span> em 4 arquivos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 04 O LAÇO DO TURNO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">04</span><span style="font-size:14px;font-weight:700;color:#eeeeee">O laço do turno</span><span style="font-size:12px;color:#585858">iteração, agrupamento do scheduler e o selo de conclusão — o que o loop já garante, dito na tela</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d7af5f">⠼</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#767676">ctx 47%</span>
+      </div>
+      <div style="display:flex;height:334px">
+        <div style="flex:1;padding:10px 14px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:3px;overflow:hidden">
+          <div style="display:flex;gap:8px"><span style="color:#d7af5f">›</span><span style="color:#eeeeee;font-weight:700">renomear Store.Save e ajustar os chamadores</span></div>
+          <div style="height:4px"></div>
+          <div style="color:#585858">⎯ iteração 3 · <span style="color:#767676">3 em paralelo</span> · <span style="color:#585858">caminhos disjuntos</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> read  <span style="color:#d0d0d0">internal/store/store.go</span>   <span style="color:#767676">180 lines</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> read  <span style="color:#d0d0d0">internal/api/handler.go</span>   <span style="color:#767676">240 lines</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> grep  <span style="color:#d0d0d0">\.Save\(</span>                 <span style="color:#767676">11 matches in 4 files</span></div>
+          <div style="height:4px"></div>
+          <div style="color:#585858">⎯ iteração 4 · <span style="color:#767676">serializado</span> · <span style="color:#585858">mesma escrita em store.go</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> edit  <span style="color:#d0d0d0">internal/store/store.go</span>   <span style="color:#5faf5f">+6</span> <span style="color:#d75f5f">−6</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> edit  <span style="color:#d0d0d0">internal/store/store.go</span>   <span style="color:#d75f5f">no match</span>  <span style="color:#767676">1 ambíguo</span></div>
+          <div style="padding-left:2ch;color:#767676">releu o arquivo em vez de repetir a edição no escuro</div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> edit  <span style="color:#d0d0d0">internal/store/store.go</span>   <span style="color:#5faf5f">+4</span> <span style="color:#d75f5f">−4</span></div>
+          <div style="height:4px"></div>
+          <div style="color:#585858">⎯ iteração 5 · <span style="color:#767676">sozinho</span> · <span style="color:#585858">comando é opaco</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">go build ./...</span>            <span style="color:#5faf5f">exit 0</span>  <span style="color:#767676">2.1s</span></div>
+          <div style="height:6px"></div>
+          <div style="color:#d7d75f">⚠ unverified · <span style="color:#767676">go test não rodou depois da última edição</span></div>
+        </div>
+        <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+        <div style="width:250px;padding:10px 14px;display:flex;flex-direction:column">
+          <div style="color:#d7af5f;font-weight:700;letter-spacing:.08em;font-size:12px">PLAN</div>
+          <div style="height:8px"></div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 1 Achar os chamadores</div>
+            <div style="color:#eeeeee"><span style="color:#d7af5f">▸</span> 2 Renomear e ajustar</div>
+            <div style="color:#767676">&nbsp;&nbsp; 3 Rodar o gate</div>
+          </div>
+          <div style="height:12px"></div>
+          <div style="border-top:1px solid #262626;padding-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12px">
+            <div style="color:#585858">TURNO</div>
+            <div style="color:#767676">iter 5 <span style="color:#585858">de 100</span></div>
+            <div style="color:#767676">2 em vôo <span style="color:#585858">teto 4</span></div>
+            <div style="color:#767676">6 caminhos fotografados</div>
+            <div style="color:#585858">^Z desfaz o turno</div>
+          </div>
+          <div style="margin-top:auto;color:#585858;font-size:12px">[^p] hide panel</div>
+        </div>
+        </sc-if>
+      </div>
+      <div style="padding:5px 14px;border-top:1px solid #262626;display:flex;gap:14px;align-items:center">
+        <span style="color:#d7af5f">⠼</span><span style="color:#d0d0d0">bash</span><span style="color:#767676">go test ./...</span><span style="color:#767676">6.9s</span><span style="color:#767676">4.8k tok</span><span style="color:#585858">iter 5/100</span><span style="margin-left:auto;color:#585858">^C interrompe</span>
+      </div>
+      <div style="padding:6px 14px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/rename-save</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+22</span> <span style="color:#d75f5f">−22</span> em 6 arquivos</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1060px;font-size:12px;line-height:1.75;color:#767676">
+      <div><span style="color:#d7af5f">A linha de iteração é do scheduler.</span> Ela não descreve intenção do modelo: diz por que aquelas chamadas foram juntas — disjuntas em paralelo, mesma escrita serializada, comando sozinho porque é opaco.</div>
+      <div><span style="color:#d7af5f">Recuperação aparece como recuperação.</span> Edição que não casa é uma linha de erro seguida do que o agente fez a respeito — reler, nunca repetir no escuro.</div>
+      <div><span style="color:#d7af5f">O fim do turno é um selo, não uma frase.</span> <span style="color:#5faf5f">✓ verified</span> quando a definição de pronto rodou depois da última edição, <span style="color:#d7d75f">⚠ unverified</span> quando não rodou, <span style="color:#ffffff;background:#af0000;padding:0 4px">!! NOT verified !!</span> quando rodou e falhou.</div>
+    </div>
+  </div>
+
+  <!-- ═════ 05 DELEGAÇÃO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">05</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Delegação com escrita</span><span style="font-size:12px;color:#585858">o pai propõe a forma, o harness fixa o teto · filho que não respondeu é nomeado, nunca resumido</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d7af5f">⠴</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#767676">ctx 38%</span>
+      </div>
+      <div style="display:flex;height:352px">
+        <div style="flex:1;padding:10px 14px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:3px;overflow:hidden">
+          <div style="display:flex;gap:8px"><span style="color:#d7af5f">›</span><span style="color:#eeeeee;font-weight:700">catalogar cada pacote em ARCHITECTURE.md</span></div>
+          <div style="height:4px"></div>
+          <div style="color:#585858">⎯ iteração 2 · <span style="color:#767676">4 filhos em paralelo</span> · <span style="color:#585858">propriedade disjunta · teto 4</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> explore <span style="color:#d0d0d0">internal/alpha</span>  <span style="color:#767676">owns internal/alpha/ARCH.md</span>  <span style="color:#767676">read 9 · wrote 1</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> explore <span style="color:#d0d0d0">internal/bravo</span>  <span style="color:#767676">owns internal/bravo/ARCH.md</span>  <span style="color:#d75f5f">não respondeu</span></div>
+          <div style="padding-left:2ch;border-left:2px solid #d75f5f;margin-left:2ch;color:#d0d0d0">stream closed <span style="color:#767676">(task: escrever a nota de internal/bravo)</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> explore <span style="color:#d0d0d0">internal/cli</span>    <span style="color:#767676">owns internal/cli/ARCH.md</span>    <span style="color:#767676">read 14 · wrote 1</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> explore <span style="color:#d0d0d0">internal/delta</span>  <span style="color:#767676">owns internal/delta/ARCH.md</span>  <span style="color:#767676">read 6 · wrote 1</span></div>
+          <div style="padding-left:2ch;border-left:1px solid #303030;margin-left:2ch;color:#767676">⊘ negado: escrever <span style="color:#d0d0d0">docs/INDEX.md</span> — fora do que o filho possui</div>
+          <div style="height:6px"></div>
+          <div style="padding-left:2ch;color:#d0d0d0">Três notas escritas. <span style="color:#eeeeee">internal/bravo não foi catalogado</span> — o filho caiu antes de responder; refaço esse sozinho. O índice que um filho tentou tocar não era dele, então escrevo eu.</div>
+          <div style="height:6px"></div>
+          <div style="color:#585858">⎯ iteração 3 · <span style="color:#767676">sozinho</span> · <span style="color:#585858">definição de pronto, uma vez, na árvore inteira</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">make gate</span>                <span style="color:#5faf5f">exit 0</span>  <span style="color:#767676">31.2s</span></div>
+          <div style="color:#5faf5f">✓ verified · <span style="color:#767676">2 checks depois da última edição</span></div>
+        </div>
+        <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+        <div style="width:250px;padding:10px 14px;display:flex;flex-direction:column">
+          <div style="color:#d7af5f;font-weight:700;letter-spacing:.08em;font-size:12px">PLAN</div>
+          <div style="height:8px"></div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 1 Listar os pacotes</div>
+            <div style="color:#eeeeee"><span style="color:#d7af5f">▸</span> 2 Uma nota por pacote</div>
+            <div style="padding-left:2ch;color:#767676">└ 3 de 4 filhos</div>
+            <div style="color:#767676">&nbsp;&nbsp; 3 Refazer bravo</div>
+            <div style="color:#767676">&nbsp;&nbsp; 4 Escrever o índice</div>
+          </div>
+          <div style="height:12px"></div>
+          <div style="border-top:1px solid #262626;padding-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12px">
+            <div style="color:#585858">FILHOS</div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> alpha <span style="color:#585858">· 1 escrito</span></div>
+            <div style="color:#767676"><span style="color:#d75f5f">⊘</span> bravo <span style="color:#585858">· sem resposta</span></div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> cli <span style="color:#585858">· 1 escrito</span></div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> delta <span style="color:#585858">· 1 escrito · 1 negado</span></div>
+            <div style="color:#585858">8.4k tok debitados do pai</div>
+          </div>
+          <div style="margin-top:auto;color:#585858;font-size:12px">[^p] hide panel</div>
+        </div>
+        </sc-if>
+      </div>
+      <div style="padding:6px 14px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/catalogo</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+312</span> <span style="color:#d75f5f">−0</span> em 3 arquivos <span style="color:#585858">· ^Z desfaz a delegação inteira</span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1060px;font-size:12px;line-height:1.75;color:#767676">
+      <div><span style="color:#d7af5f">O filho aparece como ferramenta, não como aba.</span> Uma linha por filho na mesma coluna de <span style="color:#d0d0d0">⏺</span>: alvo é onde ele olhou, e o resumo diz <span style="color:#d0d0d0">owns</span> e o que ele leu e escreveu. Sem <span style="color:#d0d0d0">owns</span>, é o filho somente-leitura de hoje.</div>
+      <div><span style="color:#d7af5f">N−1 é caso normal.</span> Quem não respondeu é <span style="color:#d0d0d0">nomeado</span> com o motivo, na altura da própria linha — devolver três calado é resultado incompleto com cara de completo. Um filho que caiu não desfaz os outros.</div>
+      <div><span style="color:#d7af5f">Filho nunca pergunta.</span> Escrita fora do que ele possui é negada pela contenção e <span style="color:#d0d0d0">reportada como escrita</span>, nunca escondida. Nenhum modal nasce de um filho — quem tem com quem falar é o pai.</div>
+    </div>
+  </div>
+
+  <!-- ═════ 06 APROVAÇÃO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">06</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Aprovação</span><span style="font-size:12px;color:#585858">stateApproval · Enter nega · mostra o comando renderizado · não mostra o plano</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden;position:relative">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#767676">ctx 41%</span>
+      </div>
+      <div style="height:250px;display:flex;position:relative">
+        <div style="flex:1;padding:10px 14px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:3px;opacity:.32">
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> read  <span style="color:#d0d0d0">go.mod</span>                   <span style="color:#767676">42 lines</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">go get ./...</span>             <span style="color:#767676">…</span></div>
+        </div>
+        <div style="width:250px;padding:10px 14px;opacity:.32">
+          <div style="color:#d7af5f;font-weight:700;letter-spacing:.08em;font-size:12px">PLAN</div>
+        </div>
+        <div style="position:absolute;left:50%;top:26px;transform:translateX(-50%);width:600px;border:1px solid #d7af5f;border-radius:4px;background:#1c1c1c;box-shadow:0 14px 40px rgba(0,0,0,.6)">
+          <div style="padding:6px 12px;border-bottom:1px solid #303030;color:#d7af5f;font-weight:700">Approval needed</div>
+          <div style="padding:12px;display:flex;flex-direction:column;gap:9px">
+            <div style="color:#d0d0d0">bash cruza o limite: <span style="color:#d75f5f">network</span></div>
+            <div style="background:#161616;border-left:2px solid #303030;padding:6px 10px;color:#eeeeee;white-space:pre-wrap">go get github.com/testcontainers/testcontainers-go@v0.31.0</div>
+            <div style="display:flex;gap:20px"><span style="color:#d0d0d0"><span style="color:#d7af5f">[d]</span> deny</span><span style="color:#d0d0d0"><span style="color:#d7af5f">[a]</span> allow</span><span style="color:#d0d0d0"><span style="color:#d7af5f">[A]</span> allow whole session</span></div>
+            <div style="color:#767676;font-size:12px">Enter denies.</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:6px 14px;border-top:1px solid #262626;display:flex;gap:10px;opacity:.4"><span style="color:#d7af5f">›</span><span style="color:#585858">entrada bloqueada</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+148</span> <span style="color:#d75f5f">−20</span></div>
+        <div style="margin-left:auto;background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">1 aguardando você</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 05 ERRO E BLOQUEIO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">07</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Erro e item bloqueado</span><span style="font-size:12px;color:#585858">falha vem expandida; sucesso vem recolhido</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d75f5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#d75f5f">ctx 91%</span>
+      </div>
+      <div style="display:flex;height:250px">
+        <div style="flex:1;padding:10px 14px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:3px">
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">go test ./internal/store/</span>  <span style="color:#d75f5f">exit 1</span>  <span style="color:#767676">8.4s</span></div>
+          <div style="margin-left:2ch;padding-left:10px;border-left:2px solid #d75f5f;display:flex;flex-direction:column;gap:1px">
+            <div style="color:#d0d0d0">--- FAIL: TestStore_Persist (0.00s)</div>
+            <div style="color:#d0d0d0">    store_test.go:41: dial tcp 127.0.0.1:5432: connect: refused</div>
+            <div style="color:#767676">FAIL	dcode/internal/store	8.402s</div>
+            <div style="color:#585858">⋯ 34 lines truncated · Tab expande</div>
+          </div>
+          <div style="height:6px"></div>
+          <div style="padding-left:2ch;color:#d0d0d0">A suíte de integração precisa de Postgres e o pacote testcontainers não está no módulo. Parei o item 5 em vez de trocar por um teste que não cobre o mesmo.</div>
+        </div>
+        <sc-if value="{{ showPanel }}" hint-placeholder-val="{{ true }}">
+        <div style="width:250px;padding:10px 14px;display:flex;flex-direction:column">
+          <div style="color:#d7af5f;font-weight:700;letter-spacing:.08em;font-size:12px">PLAN</div>
+          <div style="height:8px"></div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 2 Achar o validador</div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 3 Implementar CPF</div>
+            <div style="color:#767676"><span style="color:#5faf5f">✓</span> 4 Cobrir com teste</div>
+            <div style="color:#eeeeee"><span style="color:#d75f5f">⊘</span> 5 Rodar a suíte</div>
+            <div style="padding-left:2ch;color:#767676">└ falta testcontainers</div>
+          </div>
+          <div style="margin-top:auto;display:flex;flex-direction:column;gap:3px;font-size:12px">
+            <div style="color:#767676">4 of 5 · <span style="color:#d75f5f">1 blocked</span></div>
+            <div style="color:#585858">[^p] hide panel</div>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      <div style="padding:6px 14px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+148</span> <span style="color:#d75f5f">−20</span></div>
+        <div style="margin-left:auto;background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">1 bloqueado</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 06 FILA E ROLAGEM PAUSADA ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">08</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Fila e rolagem pausada</span><span style="font-size:12px;color:#585858">rolar para cima para de acompanhar · a fila drena como um único turno</span></div>
+    <div style="width:1060px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+      <div style="display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+        <span style="color:#d7af5f">⠸</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="color:#767676">workspace-write</span><span style="margin-left:auto;color:#767676">ctx 52%</span>
+      </div>
+      <div style="height:220px;padding:10px 14px;display:flex;flex-direction:column;gap:3px;position:relative">
+        <div style="white-space:pre"><span style="color:#e0a030">⏺</span> write <span style="color:#d0d0d0">internal/store/pg_test.go</span> <span style="color:#767676">created, 120 lines</span></div>
+        <div style="margin-left:2ch;padding-left:10px;border-left:1px solid #303030;display:flex;flex-direction:column;gap:1px">
+          <div style="color:#767676">@@ -0,0 +1,120 @@ internal/store/pg_test.go</div>
+          <div style="color:#5faf5f">+func TestStore_Persist(t *testing.T) {</div>
+          <div style="color:#5faf5f">+	db := newTestDB(t)</div>
+          <div style="color:#5faf5f">+	defer db.Close()</div>
+        </div>
+        <div style="margin-top:auto;align-self:flex-end;background:#303030;color:#d0d0d0;padding:1px 8px;font-size:12px">↓ 42 lines below · End to follow</div>
+      </div>
+      <div style="padding:5px 14px;border-top:1px solid #262626;display:flex;gap:14px;align-items:center">
+        <span style="color:#d7af5f">⠸</span><span style="color:#d0d0d0">bash</span><span style="color:#767676">go test ./...</span><span style="color:#767676">12.7s</span><span style="color:#767676">3.4k tok</span><span style="margin-left:auto;color:#585858">^C interrompe</span>
+      </div>
+      <div style="border-top:1px solid #262626;padding:6px 14px;display:flex;flex-direction:column;gap:3px">
+        <div style="color:#767676"><span style="color:#d7af5f">⇥</span> 1 rodar o linter depois <span style="color:#585858">· ^X remove</span></div>
+        <div style="color:#767676"><span style="color:#d7af5f">⇥</span> 2 atualizar o CHANGELOG</div>
+        <div style="display:flex;gap:10px;padding-top:2px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0">e o README também</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span><span style="margin-left:auto;color:#585858">2 na fila</span></div>
+      </div>
+      <div style="display:flex;gap:2px;align-items:stretch;border-top:1px solid #262626;font-size:12px">
+        <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+268</span> <span style="color:#d75f5f">−20</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 07 ESTREITO + AUTOCOMPLETE ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">09</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Abaixo de 100 colunas · autocomplete</span><span style="font-size:12px;color:#585858">contador e tecla migram para o status; preferência explícita vence nos dois sentidos</span></div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="width:516px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+        <div style="display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center;font-size:12px">
+          <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">M3</span><span style="margin-left:auto;color:#767676">4 of 5 · <span style="color:#d75f5f">1 blocked</span> · ^p</span>
+        </div>
+        <div style="height:170px;padding:10px 12px;display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;gap:8px"><span style="color:#d7af5f">›</span><span style="color:#eeeeee;font-weight:700">rodar a suíte</span></div>
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">go test ./...</span>  <span style="color:#d75f5f">exit 1</span></div>
+          <div style="margin-left:2ch;padding-left:10px;border-left:2px solid #d75f5f;color:#d0d0d0">--- FAIL: TestStore_Persist</div>
+          <div style="padding-left:2ch;color:#d0d0d0">falta testcontainers no módulo</div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+        <div style="display:flex;gap:2px;border-top:1px solid #262626;font-size:12px">
+          <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+          <div style="margin-left:auto;background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">1 bloqueado</div>
+        </div>
+      </div>
+      <div style="width:516px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+        <div style="display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center;font-size:12px">
+          <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="color:#767676">MiniMax-M3</span><span style="margin-left:auto;color:#767676">ctx 12%</span>
+        </div>
+        <div style="height:92px;padding:10px 12px;color:#585858">sessão nova · nada executado</div>
+        <div style="border-top:1px solid #262626;display:flex;flex-direction:column">
+          <div style="background:#303030;padding:2px 12px;display:flex;gap:12px"><span style="color:#d7af5f;width:9ch">/plan</span><span style="color:#767676">mostra o plano completo</span></div>
+          <div style="padding:2px 12px;display:flex;gap:12px"><span style="color:#d7af5f;width:9ch">/model</span><span style="color:#767676">troca de modelo — sessão nova</span></div>
+          <div style="padding:2px 12px;display:flex;gap:12px"><span style="color:#d7af5f;width:9ch">/config</span><span style="color:#767676">valor efetivo e procedência</span></div>
+          <div style="padding:2px 12px;display:flex;gap:12px"><span style="color:#d7af5f;width:9ch">/init</span><span style="color:#767676">escreve DCODE.md do repositório</span></div>
+          <div style="padding:2px 12px 4px;color:#585858;font-size:12px">4 de 7 · ↑↓ navegar · ⇥ completar · esc fechar</div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0">/p</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+        <div style="display:flex;gap:2px;border-top:1px solid #262626;font-size:12px">
+          <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 08 CÓPIA + SELETOR DE SESSÃO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">10</span><span style="font-size:14px;font-weight:700;color:#eeeeee">Duas superfícies que tomam o teclado</span><span style="font-size:12px;color:#585858">cópia (^V) e o seletor do <span style="color:#767676">dcode -r</span> · seleção marcada por caractere, nunca por cor</span></div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="width:516px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+        <div style="display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center;font-size:12px">
+          <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="margin-left:auto;color:#d7af5f">COPY</span>
+        </div>
+        <div style="height:150px;padding:10px 12px;display:flex;flex-direction:column;gap:3px">
+          <div style="color:#585858">✻ thought for 4.2s</div>
+          <div style="background:#303030;color:#eeeeee;padding:0 4px;margin:0 -4px">⏺ bash  go test ./src/checkout/  exit 0</div>
+          <div style="padding-left:2ch;color:#d0d0d0">12 testes passam.</div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;color:#585858;font-size:12px">↑↓ mover · <span style="color:#d7af5f">y</span> copiar · esc sai — <span style="color:#767676">a cópia é dona do teclado</span></div>
+        <div style="display:flex;gap:2px;border-top:1px solid #262626;font-size:12px">
+          <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+          <div style="padding:4px 10px;color:#767676">1 linha copiada</div>
+        </div>
+      </div>
+      <div style="width:516px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+        <div style="display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center;font-size:12px">
+          <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">dcode -r</span><span style="color:#767676">continuar qual conversa</span>
+        </div>
+        <div style="height:150px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+          <div style="white-space:pre;color:#eeeeee">▸ adicionar validação de CPF no che…  <span style="color:#767676">há 20min · 7 turnos</span></div>
+          <div style="white-space:pre;color:#767676">  extrair o cliente HTTP do handler   <span style="color:#585858">ontem · 12 turnos</span></div>
+          <div style="white-space:pre;color:#767676">  por que o log de eventos duplica    <span style="color:#585858">3 dias · 4 turnos</span></div>
+          <div style="white-space:pre;color:#767676">  subir a cobertura de policy         <span style="color:#585858">3 dias · 9 turnos</span></div>
+          <div style="margin-top:auto;color:#585858;font-size:12px">↑↓ não dá a volta · Enter continua · esc começa do zero</div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;color:#585858;font-size:12px">sessão sem pergunta não entra na lista</div>
+        <div style="display:flex;gap:2px;border-top:1px solid #262626;font-size:12px">
+          <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ 09 FULL-ACCESS + DEGRADAÇÃO ═════ -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;gap:10px;align-items:baseline"><span style="font-size:11px;color:#585858">11</span><span style="font-size:14px;font-weight:700;color:#eeeeee">full-access · NO_COLOR · DCODE_ASCII=1</span><span style="font-size:12px;color:#585858">o perigo muda o texto, não só a cor</span></div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="width:516px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden">
+        <div style="display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center">
+          <span style="color:#d7af5f">●</span><span style="color:#eeeeee;font-weight:700">DCode</span><span style="background:#af0000;color:#ffffff;font-weight:700;padding:0 6px">!! FULL-ACCESS !!</span><span style="margin-left:auto;color:#767676;font-size:12px">ctx 22%</span>
+        </div>
+        <div style="height:150px;padding:10px 12px;display:flex;flex-direction:column;gap:3px">
+          <div style="white-space:pre"><span style="color:#e0a030">⏺</span> bash  <span style="color:#d0d0d0">docker compose up -d</span>  <span style="color:#5faf5f">exit 0</span></div>
+          <div style="padding-left:2ch;color:#d0d0d0">Postgres no ar. Nada aqui é contido pelo sandbox — o modo foi pedido explicitamente.</div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626;display:flex;gap:10px"><span style="color:#d7af5f">›</span><span style="color:#d0d0d0;animation:blink 1s step-end infinite">▌</span></div>
+        <div style="display:flex;gap:2px;border-top:1px solid #262626;font-size:12px">
+          <div style="background:#d7af5f;color:#1c1c1c;padding:4px 10px;font-weight:500">feat/cpf</div>
+          <div style="padding:4px 10px;color:#767676"><span style="color:#5faf5f">+268</span> <span style="color:#d75f5f">−20</span></div>
+        </div>
+      </div>
+      <div style="width:516px;border:1px solid #303030;border-radius:6px;background:#1c1c1c;font-size:13px;line-height:1.6;overflow:hidden;color:#d0d0d0">
+        <div style="display:flex;gap:10px;padding:6px 12px;border-bottom:1px solid #262626;align-items:center;font-size:12px">
+          <span>* dcode  MiniMax-M3  workspace-write</span><span style="margin-left:auto">ctx 91%</span>
+        </div>
+        <div style="height:150px;display:flex">
+          <div style="flex:1;padding:10px 12px;border-right:1px solid #262626;display:flex;flex-direction:column;gap:2px">
+            <div style="white-space:pre">&gt; rodar a suite</div>
+            <div style="white-space:pre">(*) bash  go test ./...   exit 1</div>
+            <div style="margin-left:2ch;padding-left:8px;border-left:1px solid #303030">! FAIL: TestStore_Persist</div>
+          </div>
+          <div style="width:190px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+            <div>PLAN</div>
+            <div style="height:6px"></div>
+            <div>x 3 Implementar CPF</div>
+            <div>x 4 Cobrir com teste</div>
+            <div>&gt; 5 Rodar a suite</div>
+            <div style="padding-left:2ch">`- falta dep</div>
+            <div style="margin-top:auto">4 of 5 · 1 blocked</div>
+          </div>
+        </div>
+        <div style="padding:6px 12px;border-top:1px solid #262626">&gt; _</div>
+        <div style="display:flex;gap:12px;border-top:1px solid #262626;font-size:12px;padding:4px 10px">
+          <span>[feat/cpf]</span><span>+268 -20</span><span style="margin-left:auto">1 blocked</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#585858;max-width:1060px;line-height:1.7">Nenhum escape é emitido no modo monocromático — nem o de reset. Nada de conteúdo se perde: <span style="color:#767676">full-access</span> muda o texto, erro tem <span style="color:#767676">!</span>, diff tem <span style="color:#767676">+</span>/<span style="color:#767676">−</span>, e bloqueado (<span style="color:#767676">!</span>) continua diferente de concluído (<span style="color:#767676">x</span>).</div>
+  </div>
+
+  <!-- ═════ PALETA ═════ -->
+  <div style="display:flex;flex-direction:column;gap:14px;border-top:1px solid #262626;padding-top:28px">
+    <div style="font-size:14px;font-weight:700;color:#eeeeee">Papéis, não cores</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:1060px;font-size:12px">
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#d7af5f"></div><div style="color:#d0d0d0">accent · 38;5;179</div><div style="color:#585858">spinner, bullet, prompt, estrutura</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#5faf5f"></div><div style="color:#d0d0d0">added / ok · 32</div><div style="color:#585858">+ no diff, exit 0</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#d75f5f"></div><div style="color:#d0d0d0">removed / error · 31</div><div style="color:#585858">− no diff, falha, bloqueio</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#af0000"></div><div style="color:#d0d0d0">danger · 1;97;41</div><div style="color:#585858">só full-access</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#efc066"></div><div style="color:#d0d0d0">highlight · #EFC066</div><div style="color:#585858">face de cima do mascote</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#e0a030"></div><div style="color:#d0d0d0">body · #E0A030</div><div style="color:#585858">o ⏺ de cada execução</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#b87d1e"></div><div style="color:#d0d0d0">shadow · #B87D1E</div><div style="color:#585858">base e aresta</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="height:34px;background:#a8452a"></div><div style="color:#d0d0d0">eye · #A8452A</div><div style="color:#585858">o olho, e nada mais</div></div>
+    </div>
+  </div>
+
+  <!-- ═════ NOTAS ═════ -->
+  <div style="display:flex;flex-direction:column;gap:16px;border-top:1px solid #262626;padding-top:28px;max-width:1060px">
+    <div style="font-size:14px;font-weight:700;color:#eeeeee">O que esta proposta decide</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:26px;font-size:12px;line-height:1.75;color:#767676">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Barra inferior, uma linha</div>
+        <div>Worktree em âmbar sólido, diff acumulado, pendência em âmbar sólido. Cede espaço derrubando segmentos da direita para a esquerda; o worktree é cortado, nunca removido. Segmento sem dado não desenha.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Âmbar sólido = estrutura e foco</div>
+        <div>Só dois segmentos o usam ao mesmo tempo — worktree e pendência. Um terceiro diria que tudo é estrutura. O ⏺ fica com o âmbar de texto: a marca se repete na tela em vez de ser aplicada por cima.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Raciocínio: cauda, não histórico</div>
+        <div>Aberto transmite 4 linhas esmaecidas. Agiu, colapsa em <span style="color:#d0d0d0">✻ thought for 4.2s · Tab</span>. Nunca entra no que é enviado ao modelo; <span style="color:#d0d0d0">behavior.show_reasoning</span> desliga.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Colunas medidas em células</div>
+        <div>ferramenta 6, alvo 26, depois resumo e duração. Todo cálculo por <span style="color:#d0d0d0">lipgloss.Width</span>/<span style="color:#d0d0d0">go-runewidth</span>, nunca <span style="color:#d0d0d0">len()</span>. Estilo jamais altera largura medida.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Letra nunca é atalho</div>
+        <div>A cópia abre em <span style="color:#d0d0d0">^V</span>, não em <span style="color:#d0d0d0">v</span>, e é dona do teclado enquanto está aberta. Seleção marcada por caractere, para sobreviver ao modo sem cor.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">O laço é visível sem ser ruído</div>
+        <div>Uma linha por iteração, dizendo o agrupamento e por quê. Teto de iterações e de concorrência vivem no painel, do lado do turno — nunca no status, que descreve a sessão.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Delegação não ganha superfície nova</div>
+        <div>Filho é linha de ferramenta, com <span style="color:#d0d0d0">owns</span> no resumo e <span style="color:#d0d0d0">read n · wrote n</span> como prova de onde ele esteve. Nada de aba, split ou painel de frota: isso seria outro produto.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="color:#d7af5f">Redutor puro, View pura</div>
+        <div>O cliente guarda rolagem, visibilidade do painel e fila — nada de estado de sessão. Tick de 120 ms só enquanto um turno roda. Nenhum teste precisa de terminal.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showPanel&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Painel de plano&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { showPanel: this.props.showPanel ?? true };
+  }
+}
+</script>
+</body>
+</html>

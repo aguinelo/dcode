@@ -72,7 +72,26 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Documentation
+
+- **Design references live in `refs/design/`, and there is one of them.** The
+  v2 handoff sat committed in `docs/design_handoff_dcode_tui/`, a byte-identical
+  copy of it sat beside it as `docs/Interface TUI com Tea Bubble.zip`, and the
+  new v3/v4/v5 handoff arrived untracked in `refs/design/`. Three copies of the
+  same material, two of them versioned, none of them saying which one governs.
+
+  All of it is now in `refs/design/`, tracked, with the zip removed and the two
+  prose references that named the old path updated so no link is dead. The
+  README there is an index: what each file is, which one governs, and that the
+  spec wins wherever a handoff and the spec disagree.
+
+  The handoff itself is **verbatim, as delivered**. Five divergences found by
+  checking its claims against the code are recorded beside it rather than edited
+  into it — chief among them that tool progress does not exist in the protocol
+  at all (`tool.requested` → `tool.completed`, nothing between), which makes
+  "task as a card with progress" a four-layer change rather than a TUI one.
+  Rewriting the handoff would erase the difference between what was designed and
+  what was found out afterwards.
 
 ## 0.1.0 — 20 August 2026
 
