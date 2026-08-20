@@ -116,7 +116,7 @@ func childRegistry2(parent *tools.Registry) (*tools.Registry, []string) {
 }
 
 func delegateInstructions2(names []string) string {
-	return delegateInstructions(names, nil)
+	return DelegateInstructions(names, nil)
 }
 
 // What the child wrote travels with the conclusion, for the same reason the
