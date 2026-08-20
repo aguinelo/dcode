@@ -69,7 +69,26 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Documentação
+
+- **Referências de design vivem em `refs/design/`, e há uma só.** O handoff v2
+  estava commitado em `docs/design_handoff_dcode_tui/`, uma cópia byte-idêntica
+  dele estava ao lado como `docs/Interface TUI com Tea Bubble.zip`, e o handoff
+  novo v3/v4/v5 chegou sem rastreamento em `refs/design/`. Três cópias do mesmo
+  material, duas versionadas, nenhuma dizendo qual vale.
+
+  Tudo passa a viver em `refs/design/`, rastreado, com o zip removido e as duas
+  referências em prosa que nomeavam o caminho antigo corrigidas, para que nenhum
+  link fique morto. O README de lá é índice: o que é cada arquivo, qual vale, e
+  que a spec vence onde ela e um handoff divergirem.
+
+  O handoff em si fica **verbatim, como entregue**. As cinco divergências
+  encontradas conferindo as afirmações dele contra o código ficam ao lado, não
+  dentro dele — a maior sendo que progresso de ferramenta não existe no
+  protocolo (`tool.requested` → `tool.completed`, nada entre os dois), o que
+  torna "tarefa como card com progresso" uma mudança de quatro camadas em vez de
+  uma de TUI. Reescrever o handoff apagaria a diferença entre o que foi projetado
+  e o que se descobriu depois.
 
 ## 0.1.0 — 20 de agosto de 2026
 

@@ -598,7 +598,7 @@ rounding to nothing.
 
 ## Phase 12 — Adopting the design handoff
 
-The handoff in `docs/design_handoff_dcode_tui/` was itself derived from what we
+The handoff in `refs/design/` was itself derived from what we
 had already defined, so most of it was confirmation. The value was in three
 things it added and one thing it got wrong.
 
