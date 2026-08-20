@@ -56,6 +56,21 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Documentação
+
+- **O README descreve a instalação que existe.** Ele ainda afirmava que o script
+  *"verifica a assinatura do release e o checksum, e não instala nada se qualquer
+  um dos dois falhar"* — falso desde que o cosign virou opcional, e calado sobre
+  o digest que o instalador agora carrega. Passa a dizer o que cada uma das três
+  fontes cobre e do que cada uma precisa, e por que o digest carregado é o que
+  pega release substituído.
+
+  O Homebrew ia entrar junto, já que todo release publica uma fórmula. Conferindo
+  antes: `aguinelo/homebrew-dcode` **não existe** — 404. O `publish-tap.sh` sai
+  com zero e avisa quando não alcança o tap, por desenho, então o v0.0.1 reportou
+  sucesso com esse canal nunca tendo sido criado. O README documenta os três
+  canais que funcionam, e o tap é decisão a tomar, não linha a escrever.
+
 ### Distribuição
 
 - **O release fixa o instalador que publica.** O pipeline passa a verificar a
