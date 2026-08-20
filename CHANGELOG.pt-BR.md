@@ -58,6 +58,29 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Distribuição
 
+- **O instalador nunca pede outro pacote.** Ninguém instala ferramenta adicional
+  para instalar um binário, e a pesquisa que originou o #223 já trazia a prova —
+  de rustup, bun, deno, nvm, k3s e uv, **nenhum** exige ferramenta externa de
+  verificação, e quatro não verificam nada. Eu tinha o dado e não tirei a
+  conclusão inteira.
+
+  Então o cosign deixa de ser assunto do instalador. O que precisa de duas rotas
+  é **release substituído**, e duas coisas independentes o cobrem: o digest
+  carregado e a assinatura. Qualquer uma basta, então instalação coberta não diz
+  nada — relatar assinatura por conferir enquanto a verificação que importa
+  passou por uma rota que não depende dela é ruído vestido de diligência. Quando
+  nenhuma das duas cobriu, o aviso aponta o instalador que carrega os digests
+  deste release, nunca um pacote a instalar: responder a um problema com "instale
+  outra coisa primeiro" é entregar um segundo problema.
+
+  Isso não afrouxa "nunca não-verificado em silêncio" — é por isso que a regra
+  pôde encolher. Instalação cujo digest carregado conferiu **é** verificada. O
+  SHA-256 roda sempre, o cosign continua sendo usado quando por acaso está no
+  PATH, e assinatura que falha continua abortando.
+
+  Três testes que afirmavam a regra anterior foram substituídos, não afrouxados,
+  e um perdeu uma asserção; o changelog da família nomeia cada um e o porquê.
+
 - **O aviso tem o tamanho do que ficou por conferir.** Perguntado se dava para
   tirar o aviso do cosign. Não dá — "nunca não-verificado em silêncio" é a linha
   que quatro mudanças gastaram estabelecendo —, mas ele estava grande demais, e

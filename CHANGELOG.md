@@ -60,6 +60,29 @@ that on every run to stop the opposite reading.
 
 ### Distribution
 
+- **The installer never asks for another package.** Nobody installs an extra
+  tool in order to install a binary, and the survey behind #223 already carried
+  the proof — of rustup, bun, deno, nvm, k3s and uv, **not one** requires an
+  external verification tool, and four verify nothing at all. I had the data and
+  did not draw the whole conclusion.
+
+  So cosign stops being something the installer talks about. What needs two
+  routes is a **substituted release**, and two independent things cover it: the
+  carried digest and the signature. Either is enough, so a covered install says
+  nothing — reporting an unchecked signature while the check that matters passed
+  by a route that does not depend on it is noise dressed as diligence. When
+  neither covered it, the notice points at the installer that carries this
+  release's digests, never at a package to install: answering a problem with
+  "install something else first" hands over a second problem.
+
+  This does not loosen "never unverified in silence" — it is why the rule could
+  shrink. An install whose carried digest matched **is** verified. The SHA-256
+  always runs, cosign is still used when it happens to be on PATH, and a
+  signature that fails still aborts.
+
+  Three tests asserting the previous rule were replaced rather than weakened,
+  and one lost an assertion; the family changelog names each and why.
+
 - **The notice is as large as what went unchecked.** Asked whether the cosign
   warning could go away. It cannot — "never unverified in silence" is the line
   four changes were spent establishing — but it was oversized, and about to

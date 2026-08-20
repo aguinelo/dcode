@@ -266,15 +266,16 @@ go install github.com/aguinelo/dcode/cmd/dcode@latest
 
 ### What the install script checks
 
-**The SHA-256 always**, and a failure installs nothing and leaves nothing behind.
+**Nothing has to be installed first.** Of rustup, bun, deno, nvm, k3s and uv, not one
+requires an external verification tool, and a first install is the worst moment to ask.
 
-Two independent sources say what that digest should be:
+**The SHA-256 always.** A failure installs nothing and leaves nothing behind.
 
-| Source | Covers | Needs |
+| Source of the expected digest | Covers | Needs |
 |---|---|---|
 | the digest the script carries | a **substituted release** | nothing |
 | `checksums.txt` from the release | a corrupted or truncated download | nothing |
-| the cosign signature over that file | a substituted release | `cosign` on PATH |
+| the cosign signature over that file | a substituted release | `cosign`, if you have it |
 
 The carried digest is the one worth explaining. `checksums.txt` travels from the same host
 as the tarball, so on its own it cannot catch a swapped release — whoever replaces one
@@ -283,14 +284,15 @@ arrived by a different route: it is committed to `main`, where a release asset c
 replaced leaving no public trace and a line in a tracked file cannot, because changing it
 is a commit.
 
-**cosign is optional, and its absence is said out loud** — at the point of skipping, and
-again on the last line. Requiring it used to abort the install, which left a machine
-without cosign holding no binary *and* no verification: the worst outcome available. What
-is never acceptable is not "unverified", it is **unverified in silence**.
+A substituted release is covered by the carried digest **or** by the signature, and either
+is enough. So the script says nothing at all when either held — telling you the signature
+went unchecked while the check that matters passed by a route that does not depend on it is
+noise dressed as diligence. When **neither** covered it, it says so, and points at the
+installer that carries this release's digests. Never at a package to install.
 
-`DCODE_VERSION` pins a version, `DCODE_INSTALL_DIR` chooses where. An installer pinned to
-one release and asked for another says so and names the installer that carries the right
-digests — `https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
+`DCODE_VERSION` pins a version and `DCODE_INSTALL_DIR` chooses where. An installer carries
+exactly one release's digests, so a pinned install of another version is that version's own
+installer: `https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
 
 `dcode update` installs a newer release on request, and never on its own. It verifies the
 checksum and the signature, checks that the downloaded binary actually runs, and only then

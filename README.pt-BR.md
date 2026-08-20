@@ -265,15 +265,16 @@ go install github.com/aguinelo/dcode/cmd/dcode@latest
 
 ### O que o script de instalação confere
 
-**O SHA-256 sempre**, e falha nele não instala nada nem deixa resíduo.
+**Nada precisa ser instalado antes.** De rustup, bun, deno, nvm, k3s e uv, nenhum exige
+ferramenta externa de verificação, e a primeira instalação é o pior momento para pedir.
 
-Duas fontes independentes dizem qual deve ser esse digest:
+**O SHA-256 sempre.** Falha nele não instala nada nem deixa resíduo.
 
-| Fonte | Cobre | Precisa de |
+| Fonte do digest esperado | Cobre | Precisa de |
 |---|---|---|
 | o digest que o próprio script carrega | **release substituído** | nada |
 | o `checksums.txt` do release | download corrompido ou truncado | nada |
-| a assinatura cosign sobre esse arquivo | release substituído | `cosign` no PATH |
+| a assinatura cosign sobre esse arquivo | release substituído | `cosign`, se você tiver |
 
 O digest carregado é o que merece explicação. O `checksums.txt` viaja do mesmo host que o
 tarball, então sozinho ele não pega release trocado — quem substitui um substitui o outro,
@@ -281,14 +282,15 @@ e o par continua coerente consigo mesmo. O digest no script chegou por outra rot
 commitado na `main`, onde um asset de release se substitui sem rastro público e uma linha de
 arquivo versionado não, porque mudá-la é um commit.
 
-**O cosign é opcional, e a ausência dele é dita alto** — na hora de pular, e de novo na
-última linha. Exigi-lo abortava a instalação, o que deixava a máquina sem cosign com
-binário nenhum **e** verificação nenhuma: o pior resultado disponível. O que nunca é
-aceitável não é "não verificado", é **não verificado em silêncio**.
+Release substituído é coberto pelo digest carregado **ou** pela assinatura, e qualquer um
+basta. Então o script não diz nada quando um dos dois valeu — avisar que a assinatura ficou
+por conferir, enquanto a verificação que importa passou por uma rota que não depende dela, é
+ruído vestido de diligência. Quando **nenhum** dos dois cobriu, ele diz isso e aponta o
+instalador que carrega os digests deste release. Nunca um pacote a instalar.
 
-`DCODE_VERSION` trava a versão, `DCODE_INSTALL_DIR` escolhe o lugar. Instalador fixado num
-release e chamado para outro diz isso e aponta o que carrega os digests certos —
-`https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
+`DCODE_VERSION` trava a versão e `DCODE_INSTALL_DIR` escolhe o lugar. Um instalador carrega
+os digests de exatamente um release, então a instalação fixada de outra versão é o
+instalador daquela versão: `https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
 
 `dcode update` instala uma versão nova sob demanda, e nunca sozinho. Verifica o checksum e a
 assinatura, confere que o binário baixado de fato executa, e só então troca — de modo que
