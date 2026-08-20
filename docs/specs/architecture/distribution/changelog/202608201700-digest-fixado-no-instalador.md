@@ -65,3 +65,16 @@ executável direto da árvore, com apenas o pedaço derivado sendo derivado.
 escrita e foi removida antes de virar código: os dois são comparados contra o
 mesmo digest do arquivo baixado, então a checagem cruzada é inalcançável. A
 proteção inteira está em comparar o fixado com o download, e é ali que ela está.
+
+## Alternativa descartada, terceira
+
+**`sed -i` ou `python3` para trocar o bloco.** A troca é feita em `awk`.
+
+`sed -i` diverge entre GNU e BSD, e este repositório já perdeu uma noite com um
+`sed ... t;` que funcionava no Ubuntu e falhava no macOS — numa matriz de duas
+plataformas, é a metade dos jobs que reprova por motivo que não é o código.
+
+`python3` seria uma dependência nova do pipeline de release. O
+`scripts/formula.sh`, que faz o trabalho equivalente no outro canal, é bash puro,
+e no macOS o `python3` nem sempre está lá. Ele chegou a ser usado e foi trocado
+antes do merge.

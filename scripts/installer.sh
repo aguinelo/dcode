@@ -27,6 +27,9 @@ SCRIPT="${3:-install.sh}"
 BEGIN='# BEGIN PINNED'
 END='# END PINNED'
 
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT INT TERM
+
 grep -qF "$BEGIN" "$SCRIPT" || { echo "installer: $SCRIPT nao tem $BEGIN" >&2; exit 1; }
 grep -qF "$END"   "$SCRIPT" || { echo "installer: $SCRIPT nao tem $END" >&2; exit 1; }
 
@@ -47,23 +50,38 @@ for p in $PLATFORMS; do
   CASES="${CASES}    ${name}) echo $(sum_for "$name") ;;"$'\n'
 done
 
-BLOCK="$BEGIN — gerado por scripts/installer.sh a partir do checksums.txt assinado.
+{
+  printf '%s' "$BEGIN"
+  cat <<'HDR'
+ — gerado por scripts/installer.sh a partir do checksums.txt assinado.
 # Nao edite a mao. Estes sao os digests dos artefatos que foram assinados, e a
 # graca deles e viverem no historico do git, longe do host que serve o tarball.
-PINNED_VERSION=\"$VERSION\"
-pinned_sum() {
-  case \"\$1\" in
-${CASES}  esac
-}
-$END"
+HDR
+  echo "PINNED_VERSION=\"$VERSION\""
+  echo 'pinned_sum() {'
+  echo '  case "$1" in'
+  printf '%s' "$CASES"
+  echo '  esac'
+  echo '}'
+  echo "$END"
+} > "$WORK/block"
 
-python3 - "$SCRIPT" "$BEGIN" "$END" "$BLOCK" <<'PY'
-import re, sys
-path, begin, end, block = sys.argv[1:5]
-s = open(path).read()
-pat = re.compile(re.escape(begin) + r".*?" + re.escape(end), re.S)
-assert pat.search(s), "bloco nao encontrado"
-open(path, "w").write(pat.sub(lambda _: block, s, count=1))
-PY
+# awk, nao sed nem python. `sed -i` diverge entre GNU e BSD, e este repositorio
+# ja perdeu uma noite com um `sed ... t;` que so falhava numa das duas
+# plataformas da matriz. python3 seria uma dependencia nova do pipeline de
+# release — o scripts/formula.sh e bash puro — e no macOS ele nem sempre esta la.
+awk -v block="$WORK/block" -v begin="$BEGIN" -v end="$END" '
+  index($0, begin) == 1 && !done { while ((getline line < block) > 0) print line; skip = 1; done = 1; next }
+  skip && index($0, end) == 1 { skip = 0; next }
+  !skip { print }
+' "$SCRIPT" > "$WORK/out"
+
+# O bloco tem de continuar la depois da troca. Um gerador que escreve um arquivo
+# sem pino nenhum produz um instalador que cai no fallback em silencio — que e
+# exatamente o comportamento correto do NAO fixado, e por isso passaria despercebido.
+grep -qF "$BEGIN" "$WORK/out" || { echo "installer: a troca do bloco perdeu o marcador" >&2; exit 1; }
+grep -qF "PINNED_VERSION=\"$VERSION\"" "$WORK/out" ||
+  { echo "installer: a troca do bloco nao fixou $VERSION" >&2; exit 1; }
+cat "$WORK/out" > "$SCRIPT"
 
 echo "installer: $SCRIPT fixado em $VERSION" >&2
