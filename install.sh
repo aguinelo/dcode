@@ -6,8 +6,14 @@
 #
 # When a release has pinned it, this file also carries the digests of that
 # release's artifacts. Those arrived by a different route from the tarball — in
-# git history rather than beside the download — which is what makes the
-# signature optional without making the checksum decorative.
+# git history rather than beside the download — and that is what covers a
+# substituted release without asking the machine for anything.
+#
+# Nothing here requires a package to be installed first. Of rustup, bun, deno,
+# nvm, k3s and uv, not one does, and a first install is the worst moment to ask.
+# cosign is used when it happens to be there and is never mentioned when it is
+# not — what is worth saying is whether a substituted release was covered, and
+# either route covering it is enough.
 #
 # The two are independent and are treated as such. Requiring cosign made the
 # weaker check conditional on the stronger one, so a machine without it got no
@@ -169,16 +175,6 @@ main() {
       [ "$pinned" = "$got" ] ||
         die "checksum mismatch for $artifact — this installer carries $pinned, the download is $got. Nothing was installed"
       PINNED_OK=1
-    elif [ -n "$PINNED_VERSION" ]; then
-      # Asked for a release other than the one pinned here. Fall back to the
-      # list, and name the installer that can do better — an installer is
-      # pinned to exactly one release, so the pinned install of another version
-      # is that version's own installer.
-      printf '\n  !   This installer carries the digests of %s, not %s, so %s is\n' \
-        "$PINNED_VERSION" "$bare" "$bare"
-      printf '  !   checked against the release'"'"'s own checksums file instead.\n'
-      printf '  !   For a pinned install of this version:\n'
-      printf '  !     %s/install.sh\n\n' "$base"
     fi
 
     # 6. And against the list published with it, which catches the corruption
@@ -188,21 +184,26 @@ main() {
     [ "$want" = "$got" ] ||
       die "checksum mismatch for $artifact — expected $want, got $got. Nothing was installed"
 
-    # 7. And now say what went unchecked — no more than that.
+    # 7. Say what was left uncovered. Nothing else.
     #
-    #    Without a carried digest, nothing here covers a substituted release,
-    #    and four lines plus a reminder at the end is proportionate. With one,
-    #    substitution IS covered, and repeating the loud version would state
-    #    something untrue. A notice that overstates is one people learn to skip,
-    #    including on the run where it finally means something.
-    if [ "$UNSIGNED" = 1 ] && [ "$PINNED_OK" = 1 ]; then
-      printf '\n  ·   Signature not checked (cosign is not installed). The digest\n'
-      printf '  ·   this installer carries matched, which covers a swapped release.\n\n'
-    elif [ "$UNSIGNED" = 1 ]; then
-      printf '\n  !   cosign is not installed, so the release signature was not\n'
-      printf '  !   verified. The checksum below still is, which catches a corrupted\n'
-      printf '  !   download but not a substituted release.\n'
-      printf '  !   To check the signature too: install cosign and run this again.\n\n'
+    #    A substituted release is the only thing here that needs two routes, and
+    #    two independent things cover it: the digest this installer carries, and
+    #    the signature. EITHER is enough, so there is nothing to report unless
+    #    both are missing. Telling someone their signature went unchecked while
+    #    the check that matters passed by a route not depending on it is noise
+    #    dressed as diligence.
+    #
+    #    And the way out is never "install a package". Nothing in this class of
+    #    tool requires one — of rustup, bun, deno, nvm, k3s and uv, not one — and
+    #    a first install is the worst moment to ask. An installer that answers a
+    #    problem with "install something else first" has handed over a second
+    #    problem. What gets printed is the installer that carries the digests.
+    if [ "$PINNED_OK" != 1 ] && [ "$UNSIGNED" = 1 ]; then
+      printf '\n  !   Nothing here covered a substituted release: this installer does\n'
+      printf '  !   not carry the digests of %s. The SHA-256 published with the\n' "$bare"
+      printf '  !   release matched, which catches a corrupted download.\n'
+      printf '  !   The installer that carries them:\n'
+      printf '  !     %s/install.sh\n\n' "$base"
     fi
   fi
 
@@ -221,11 +222,10 @@ main() {
   info "Installed $("$INSTALL_DIR/dcode" --version) to $INSTALL_DIR/dcode"
   # Said twice on purpose. The warning above is several screens back by now, and
   # an install that ends on an unqualified success line is remembered as one.
-  # Repeated only when the notice above was the loud one. Saying it twice exists
-  # so a long scroll cannot bury a real gap; there is no gap to bury when the
-  # carried digest matched, and a second line there is just noise.
-  if [ "$UNSIGNED" = 1 ] && [ "$PINNED_OK" != 1 ]; then
-    info "The release signature was not verified — cosign is not installed."
+  # Repeated because a `curl | sh` scroll buries whatever appeared at the top,
+  # and this is the one case where something real was left uncovered.
+  if [ "$PINNED_OK" != 1 ] && [ "$UNSIGNED" = 1 ]; then
+    info "Nothing verified this against a substituted release. See above."
   fi
   case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;

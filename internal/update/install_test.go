@@ -438,25 +438,6 @@ func TestAMissingCosignStillChecksTheChecksumAndInstalls(t *testing.T) {
 	}
 }
 
-// Installing without the signature is acceptable; installing without saying so
-// is not. The distinction the original conflated is between unverified and
-// unverified-in-silence, and only the second one is indefensible.
-//
-// The message has to name the tool, or the user cannot act on it.
-func TestAMissingCosignSaysTheSignatureWasNotVerified(t *testing.T) {
-	f := newInstallFixture(t)
-	f.absent = true
-	completeRelease(t, f)
-
-	out, _ := f.run(t)
-	for _, want := range []string{"signature", "cosign"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("the installer never mentions %q, so the user cannot tell "+
-				"what was skipped or how to check it:\n%s", want, out)
-		}
-	}
-}
-
 // Degrading the signature check must not degrade the checksum. If a missing
 // cosign turned the SHA-256 comparison into a formality too, the fix would
 // have replaced a loud failure with a quiet one — the trade this repository
@@ -661,28 +642,11 @@ func TestAnInstallerAskedForAnotherReleaseSaysItCannotCheckIt(t *testing.T) {
 	if !f.installed() {
 		t.Errorf("nothing was installed:\n%s", out)
 	}
-	if !strings.Contains(out, "9.9.9") {
-		t.Errorf("the notice does not say which release this installer carries:\n%s", out)
-	}
+	// Which release this installer carries used to be named too. The notice
+	// merged into the one about uncovered substitution, and the actionable half
+	// is the URL: knowing it carries 9.9.9 does not tell anyone what to run.
 	if !strings.Contains(out, "releases/download/v1.2.3/install.sh") {
 		t.Errorf("the notice does not name the installer that can check v1.2.3:\n%s", out)
-	}
-}
-
-// The installer in the repository carries no digests until a release pins it,
-// and that state has to be quiet: warning on every install about a pin that
-// was never applied trains people to ignore the line that matters.
-func TestAnUnpinnedInstallerFallsBackWithoutComplaining(t *testing.T) {
-	f := newInstallFixture(t)
-	f.absent = true
-	completeRelease(t, f)
-
-	out, err := f.run(t)
-	if err != nil {
-		t.Fatalf("the unpinned installer failed: %v\n%s", err, out)
-	}
-	if strings.Contains(out, "carries") {
-		t.Errorf("an installer with no pins complained about not having them:\n%s", out)
 	}
 }
 

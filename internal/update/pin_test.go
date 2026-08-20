@@ -305,29 +305,21 @@ func TestTheReleasePinsTheInstallerFromChecksumsItAlreadyVerified(t *testing.T) 
 	}
 }
 
-// -- how much the notice says --------------------------------------------------
+// -- what an install is allowed to ask of the machine -------------------------
 
-// countLines reports how many lines of out contain want.
-func countLines(out, want string) int {
-	n := 0
-	for _, line := range strings.Split(out, "\n") {
-		if strings.Contains(line, want) {
-			n++
-		}
-	}
-	return n
-}
-
-// A notice has to be as large as what was not checked, and no larger.
+// Nothing in this class of tool requires an external verification package, and
+// a first install is the worst moment to ask for one. rustup, bun, deno and nvm
+// verify nothing at all; k3s checks a SHA-256 from the release host; uv carries
+// the digest in the installer and skips even that when the hashing tool is
+// missing. None of the six requires anything to be installed first.
 //
-// Without a pin, "the checksum catches a corrupted download but not a
-// substituted release" is true and worth four lines. With one it is false: the
-// digest committed to main covers substitution exactly, which is the whole
-// reason it exists. Repeating the loud version there spends the reader's
-// attention on a claim that is no longer accurate — and a warning that
-// overstates is one people learn to skip, including on the release where it
-// finally matters.
-func TestAPinnedInstallDoesNotClaimSubstitutionWentUnchecked(t *testing.T) {
+// So cosign stops being something the installer talks about. What matters is
+// whether a substituted release was covered, and two independent things cover
+// it: the digest this installer carries, and the signature. Either one is
+// enough, and when either held there is nothing to report — telling someone the
+// signature went unchecked, while the check that matters passed by a route that
+// does not depend on it, is noise dressed as diligence.
+func TestAnInstallCoveredByItsCarriedDigestSaysNothingAboutCosign(t *testing.T) {
 	f := newInstallFixture(t)
 	f.absent, f.pin = true, "1.2.3"
 	name := "dcode_1.2.3_linux_amd64.tar.gz"
@@ -336,40 +328,52 @@ func TestAPinnedInstallDoesNotClaimSubstitutionWentUnchecked(t *testing.T) {
 
 	out, err := f.run(t)
 	if err != nil {
-		t.Fatalf("the pinned install failed: %v\n%s", err, out)
+		t.Fatalf("the install failed: %v\n%s", err, out)
 	}
-	if strings.Contains(out, "substituted release") {
-		t.Errorf("the notice claims substitution went unchecked, and the carried "+
-			"digest is exactly what checks it:\n%s", out)
-	}
-	// Still said, because the signature genuinely was not verified.
-	if !strings.Contains(out, "cosign") {
-		t.Errorf("the notice stopped naming what was skipped:\n%s", out)
-	}
-	// Once. The second mention exists so a long scroll cannot bury the loud
-	// case; there is no loud case to bury here.
-	if n := countLines(out, "cosign"); n != 1 {
-		t.Errorf("the reduced notice is repeated %d times, not once:\n%s", n, out)
+	if strings.Contains(out, "cosign") {
+		t.Errorf("a covered install still talks about a package the user will "+
+			"never install:\n%s", out)
 	}
 }
 
-// And the unpinned case keeps every word of it, because there the claim is
-// true: nothing checked substitution.
-func TestAnUnpinnedInstallStillSaysSubstitutionWentUnchecked(t *testing.T) {
+// The other half of the same rule. No carried digest, but the signature did
+// verify — substitution is covered by the other route, so again nothing to say.
+func TestAnInstallCoveredByItsSignatureIsAlsoQuiet(t *testing.T) {
+	f := newInstallFixture(t)
+	completeRelease(t, f) // cosign stub present, exits 0
+
+	out, err := f.run(t)
+	if err != nil {
+		t.Fatalf("the install failed: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "substituted release") {
+		t.Errorf("an install whose signature verified was told substitution went "+
+			"unchecked:\n%s", out)
+	}
+}
+
+// And when NEITHER covered it, that is worth saying — but the way out is the
+// installer that carries this release's digests, never a package to install.
+// An installer that answers a problem with "install something else first" has
+// handed the user a second problem.
+func TestAnUncoveredInstallPointsAtThePinnedInstallerAndNotAtAPackage(t *testing.T) {
 	f := newInstallFixture(t)
 	f.absent = true
 	completeRelease(t, f)
 
 	out, err := f.run(t)
 	if err != nil {
-		t.Fatalf("the unpinned install failed: %v\n%s", err, out)
+		t.Fatalf("the install failed: %v\n%s", err, out)
 	}
 	if !strings.Contains(out, "substituted release") {
-		t.Errorf("the notice stopped saying substitution went unchecked, and here "+
-			"nothing checked it:\n%s", out)
+		t.Errorf("nothing covered substitution and the installer did not say so:\n%s", out)
 	}
-	if n := countLines(out, "cosign"); n < 2 {
-		t.Errorf("the loud notice is not repeated at the end, so a long scroll "+
-			"buries it: %d mentions\n%s", n, out)
+	if !strings.Contains(out, "releases/download/v1.2.3/install.sh") {
+		t.Errorf("the notice does not name the installer that carries the digests:\n%s", out)
+	}
+	for _, forbidden := range []string{"install cosign", "Install cosign"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("the installer tells the user to install a package:\n%s", out)
+		}
 	}
 }
