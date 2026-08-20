@@ -272,6 +272,27 @@ discovering afterwards that the felt problem was `glob` with no depth limit.
 
 ## 9. Smaller, and each with its evidence
 
+**The Homebrew tap does not exist, and the release stopped pretending it might.**
+Every release generates `dcode.rb` from the signed checksums, and a step pushed it
+to `aguinelo/homebrew-dcode` — a repository nobody ever created. The step was
+correct by design: without `TAP_TOKEN` it exited zero and warned, so as not to
+redden a release that had already succeeded. The effect was that v0.0.1 reported
+success with a channel that never existed, and no one noticed until the README was
+about to document it.
+
+Machinery that runs and delivers nothing is worse than absence: it occupies the
+place of a decision nobody has taken, and makes the release look complete. The
+push was removed; the formula is still generated and attached, because it is the
+artefact the tap will consume and it is derived from the signed checksums rather
+than typed.
+
+What it would take: create `aguinelo/homebrew-dcode`, add a `TAP_TOKEN` secret,
+restore one workflow step. `scripts/formula.sh` and its test stay, so nothing has
+to be rebuilt. Note the naming trap that was already there — the spec advertised
+`brew install aguinelo/tap/dcode` while the script pushed to `homebrew-dcode`,
+whose brew shorthand is `aguinelo/dcode/dcode`. Whichever name is chosen, the two
+have to agree, and a test should hold them together.
+
 **A threshold of zero used to print no evidence.** Fixed in the same session:
 zero means "measure and tell me", and a number with no transcript behind it is
 half of what was asked for. Left here because the same shape may exist elsewhere

@@ -211,7 +211,8 @@ func TestThePinnedInstallerReachesTheBranchTheReadmePublishes(t *testing.T) {
 // This runs after the release is public and the pinned installer is already
 // attached to it. Failing here does not un-publish anything — it paints a
 // successful release red, the one report nobody can act on. Same reasoning as
-// publish-tap.sh, and the same behaviour.
+// the tap publisher had, which is where the shape came from — it was removed
+// with the tap step, and this is now the only place that carries it.
 func TestAnUnreachableRepositoryDoesNotRedenAPublishedRelease(t *testing.T) {
 	needTools(t, "git", "bash")
 	out, err := publishInstaller(t, filepath.Join(t.TempDir(), "nowhere.git"),
