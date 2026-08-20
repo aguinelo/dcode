@@ -58,7 +58,8 @@ Commits here already follow [Conventional Commits][cc] — `feat:`, `fix:`,
 
 ```bash
 ./scripts/version.sh      # the next version, from the commits since the last tag
-./scripts/changelog.sh    # the section skeleton for it
+./scripts/changelog.sh v0.0.1 en   # the skeleton, in English
+./scripts/changelog.sh v0.0.1 pt   # and in Portuguese
 ```
 
 | commit | effect |
@@ -90,8 +91,10 @@ So: generate the skeleton, then write the reason on each line by hand.
 
 1. `make check` green, and CI green on `main`.
 2. `./scripts/version.sh` for the number.
-3. `./scripts/changelog.sh` for the skeleton; write the reasons; move the
-   entries out of `Não lançado` into the new section and rewrite the status.
+3. `./scripts/changelog.sh` in **both languages** for the skeletons; write the
+   reasons; move the entries out of `Unreleased` into the new section and
+   rewrite the status. The changelog is bilingual like the README, English
+   canonical — see `LANGUAGE.md`.
 4. Merge that, then tag the merge commit: `git tag -a vX.Y.Z -m 'vX.Y.Z'`.
 5. `git push origin vX.Y.Z` — this publishes. The workflow builds every
    platform, checksums, signs with cosign, and creates the GitHub release.

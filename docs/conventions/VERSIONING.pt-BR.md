@@ -58,7 +58,8 @@ Os commits daqui já seguem [Conventional Commits][cc] — `feat:`, `fix:`, `doc
 
 ```bash
 ./scripts/version.sh      # a próxima versão, dos commits desde a última tag
-./scripts/changelog.sh    # o esqueleto da seção dela
+./scripts/changelog.sh v0.0.1 en   # o esqueleto, em inglês
+./scripts/changelog.sh v0.0.1 pt   # e em português
 ```
 
 | commit | efeito |
@@ -89,8 +90,10 @@ Portanto: gerar o esqueleto, e escrever a razão de cada linha à mão.
 
 1. `make check` verde, e CI verde na `main`.
 2. `./scripts/version.sh` para o número.
-3. `./scripts/changelog.sh` para o esqueleto; escrever as razões; mover as
-   entradas de `Não lançado` para a seção nova e reescrever o estado atual.
+3. `./scripts/changelog.sh` **nos dois idiomas** para os esqueletos; escrever as
+   razões; mover as entradas de `Não lançado` para a seção nova e reescrever o
+   estado atual. O changelog é bilíngue como o README, com inglês canônico —
+   ver `LANGUAGE.md`.
 4. Mergear isso, e então marcar o commit do merge: `git tag -a vX.Y.Z -m 'vX.Y.Z'`.
 5. `git push origin vX.Y.Z` — **isto publica.** O workflow compila todas as
    plataformas, gera checksums, assina com cosign e cria o release no GitHub.
