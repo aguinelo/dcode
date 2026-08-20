@@ -592,18 +592,25 @@ var Contracts = []Contract{
 	// risk in this capability is not a child writing badly — it is a parent
 	// dividing what does not divide, and a contract that only rewards
 	// delegating would produce exactly that.
-	// 0.70, and the number carries a caveat the others do not. Measured at
-	// 75.0% of 12; the three failures were all the same shape, and it is the
-	// harness's shape rather than the model's: a scouting `explore` comes back
-	// with "the eval harness does not run delegated turns. Do the reading
-	// yourself", the model believes it, and never delegates again. In the
-	// product that first call answers, and the runs that passed here are the
-	// ones that happened to emit all five children in one message before any
-	// refusal could arrive.
+	// 0.60, and the number is a floor against regression rather than a claim
+	// about quality. Two independent measurements of twelve gave 75.0% and
+	// 66.7% — 17 of 24 pooled, 70.8% — so a threshold at the measured value
+	// fails about half the time. That is the coverage gate's lesson arriving
+	// in another file: 80 was set at what one run of five said, 70 at what one
+	// run of twelve said, and both were pinned to a number the next
+	// measurement did not clear.
 	//
-	// So this is a floor on the product's rate, not the rate. Raising it needs
-	// a harness that can answer a delegated call — see ROADMAP.
-	{ID: "delegates-writing-when-disjoint", Threshold: 0.70, Rounds: 12,
+	// The spread has a cause and it is the harness's, not the model's: a
+	// scouting `explore` comes back with "the eval harness does not run
+	// delegated turns. Do the reading yourself", the model believes it, and
+	// never delegates again. The runs that pass are the ones that emitted all
+	// five children in one message before any refusal could arrive, and
+	// whether a model scouts first is a coin this harness keeps flipping.
+	//
+	// So the contract's job today is to catch a regression to zero, not to
+	// certify a rate. Raising it needs a harness that can answer a delegated
+	// call — see ROADMAP.
+	{ID: "delegates-writing-when-disjoint", Threshold: 0.60, Rounds: 12,
 		// Four rather than five: the contract is that the work was split, and
 		// a parent that keeps one piece for itself has still split. Demanding
 		// all five would measure obedience instead.
