@@ -49,7 +49,12 @@ func runUpdate(args []string) error {
 	}
 
 	u := update.NewGitHub(update.Config{
-		APIURL:              os.Getenv("DCODE_UPDATE_URL"),
+		APIURL: os.Getenv("DCODE_UPDATE_URL"),
+		// The second route to the expected digest. An internal mirror that
+		// overrides DCODE_UPDATE_URL has to override this too, or the only
+		// copy of the digest that did not travel with the artifact still comes
+		// from upstream.
+		InstallerURL:        os.Getenv("DCODE_UPDATE_INSTALLER_URL"),
 		Channel:             ch,
 		Pin:                 os.Getenv("DCODE_PIN_VERSION"),
 		AllowLocalOverwrite: *force,

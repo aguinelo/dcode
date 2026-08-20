@@ -207,16 +207,26 @@ func writeScript(t *testing.T, path, body string) {
 
 // ---------- signature ----------
 
-// "Installed, but unverified" is the worst of both worlds: the user ends up
-// with a binary and the impression that it went fine.
-func TestVerifierFailsClosedWithoutCosign(t *testing.T) {
+// A missing cosign reports one route unavailable, and says so as a fact rather
+// than a verdict. It used to answer "dcode will not install something it could
+// not check", which made it the decision — and made cosign a requirement for
+// updating at all. Apply now weighs it against the digest committed to the
+// installer, so this has to be distinguishable from a signature that failed,
+// and has to stop prescribing.
+func TestAMissingCosignReportsARouteRatherThanARefusal(t *testing.T) {
 	v := CosignVerifier{Look: func(string) (string, error) { return "", errors.New("nope") }}
 	err := v.Verify(context.Background(), []byte("sums"), []byte("sig"), []byte("pem"))
 	if !errors.Is(err, ErrNoVerifier) {
 		t.Fatalf("got %v", err)
 	}
-	if !strings.Contains(err.Error(), "will not install") {
-		t.Errorf("the refusal must be explicit: %v", err)
+	if !strings.Contains(err.Error(), "signature") {
+		t.Errorf("the message does not say which route was unavailable: %v", err)
+	}
+	for _, forbidden := range []string{"Install cosign", "install cosign", "will not install"} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Errorf("a route report is still worded as a refusal, and still asks for a "+
+				"package: %v", err)
+		}
 	}
 }
 

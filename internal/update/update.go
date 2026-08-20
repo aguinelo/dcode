@@ -125,15 +125,15 @@ type Verifier interface {
 	Verify(ctx context.Context, checksums, signature, certificate []byte) error
 }
 
-// ErrNoVerifier is returned when no verification is possible.
+// ErrNoVerifier says the signature could not be checked on this machine.
 //
-// It fails the update rather than downgrading to a warning. "Installed, but
-// unverified" is the worst of both worlds: the user ends up with a binary and
-// the impression that it went fine.
-var ErrNoVerifier = errors.New(
-	"cannot verify the release signature: cosign is not installed. " +
-		"Install cosign, or download the artifact and verify it by hand — " +
-		"dcode will not install something it could not check")
+// It used to fail the update on its own, which made cosign a requirement for
+// updating at all — a package nobody installs, demanded of a machine that
+// already has a working dcode. What actually needs covering is a substituted
+// release, and the digest committed to the installer covers it too. So this is
+// now one route being unavailable rather than a verdict, and Apply refuses only
+// when neither route held.
+var ErrNoVerifier = errors.New("the release signature could not be checked here")
 
 // CosignVerifier verifies with the cosign binary.
 //
@@ -338,6 +338,12 @@ const DefaultBaseURL = "https://github.com/aguinelo/dcode/releases"
 // DefaultAPIURL is where release metadata is read from.
 const DefaultAPIURL = "https://api.github.com/repos/aguinelo/dcode/releases"
 
+// DefaultInstallerURL is the installer on the default branch. The pipeline
+// rewrites its pinned block after publishing, so it carries the digests of the
+// latest release — and it is in git history, which is what makes it a route
+// independent of the release assets.
+const DefaultInstallerURL = "https://raw.githubusercontent.com/aguinelo/dcode/main/install.sh"
+
 // Config configures the updater.
 type Config struct {
 	// APIURL and BaseURL exist for an internal mirror. Signature verification
@@ -347,6 +353,10 @@ type Config struct {
 	Channel  string
 	HTTP     *http.Client
 	Verifier Verifier
+	// InstallerURL is where the installer that carries this release's digests
+	// is read from. It is the second route to the expected SHA-256, and the
+	// only one that does not travel with the artifact.
+	InstallerURL string
 	// TargetPath is the binary to replace. Empty means the running one.
 	TargetPath string
 	// Pin refuses to change version when set.
@@ -375,6 +385,9 @@ func NewGitHub(cfg Config) *GitHub {
 	}
 	if cfg.Verifier == nil {
 		cfg.Verifier = CosignVerifier{}
+	}
+	if cfg.InstallerURL == "" {
+		cfg.InstallerURL = DefaultInstallerURL
 	}
 	if cfg.GOOS == "" {
 		cfg.GOOS = runtime.GOOS
@@ -521,15 +534,45 @@ func (g *GitHub) Apply(ctx context.Context, r Release) error {
 		return err
 	}
 
-	if err := g.verifySignature(ctx, r); err != nil {
+	name := ArtifactName(r.Version, g.cfg.GOOS, g.cfg.GOARCH)
+
+	// The checksum above came from the release, alongside the artifact, so it
+	// catches a corrupted download and not a substituted release. Two things
+	// cover substitution, and EITHER is enough: a digest that reached here by a
+	// route independent of the release, and the signature.
+	covered := false
+
+	if digest := g.carriedDigest(ctx, name); digest != "" {
+		if err := VerifySHA256(archive, digest); err != nil {
+			return fmt.Errorf("update: %s does not match the digest committed to the "+
+				"installer, which is the copy that did not travel with it: %w", name, err)
+		}
+		covered = true
+	}
+
+	switch err := g.verifySignature(ctx, r); {
+	case err == nil:
+		covered = true
+	case !errors.Is(err, ErrNoVerifier):
+		// A signature that fails is a verdict, not a missing route. Making a
+		// check optional must not make it decorative.
 		return err
+	}
+
+	// Refusing here is not the refusal cosign used to force. There is a working
+	// binary on this machine, so stopping costs a version and keeps everything,
+	// and the way forward is a release rather than a package to install.
+	if !covered {
+		return fmt.Errorf("update: nothing here could rule out a substituted release of %s. "+
+			"The installer at %s carries no digest for %s, and the signature could not be "+
+			"checked on this machine. The latest release is the one whose digests that "+
+			"installer carries", r.Version, g.cfg.InstallerURL, name)
 	}
 
 	candidate := filepath.Join(stage, "dcode")
 	if g.cfg.GOOS == "windows" {
 		candidate += ".exe"
 	}
-	name := ArtifactName(r.Version, g.cfg.GOOS, g.cfg.GOARCH)
 	if err := ExtractBinary(name, archive, candidate); err != nil {
 		return err
 	}
@@ -543,6 +586,21 @@ func (g *GitHub) Apply(ctx context.Context, r Release) error {
 		return fmt.Errorf("update: could not replace %s: %w", target, err)
 	}
 	return nil
+}
+
+// carriedDigest reads the digest the published installer carries for an
+// artifact, or empty when there is none to be had.
+//
+// Every failure is empty rather than an error: an unreachable raw host, an
+// installer pinned to another release, a block that cannot be parsed. None of
+// them is a verdict about the artifact — they mean this route is unavailable,
+// and Apply decides what that costs once it knows about the other one.
+func (g *GitHub) carriedDigest(ctx context.Context, artifact string) string {
+	script, err := g.get(ctx, g.cfg.InstallerURL)
+	if err != nil {
+		return ""
+	}
+	return PinnedDigest(script, artifact)
 }
 
 func (g *GitHub) verifySignature(ctx context.Context, r Release) error {

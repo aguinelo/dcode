@@ -294,10 +294,14 @@ installer that carries this release's digests. Never at a package to install.
 exactly one release's digests, so a pinned install of another version is that version's own
 installer: `https://github.com/aguinelo/dcode/releases/download/vX.Y.Z/install.sh`.
 
-`dcode update` installs a newer release on request, and never on its own. It verifies the
-checksum and the signature, checks that the downloaded binary actually runs, and only then
-swaps it — so every failure leaves the working binary untouched. Unlike the install script
-it still **requires** cosign, because it has no second route to the expected digest.
+`dcode update` installs a newer release on request, and never on its own, and needs no
+extra package either. It applies the same rule as the install script — the carried digest
+**or** the signature, either is enough — by reading the digests from the installer on
+`main`. It then checks the downloaded binary actually runs, and only then swaps it, so
+every failure leaves the working binary untouched.
+
+One difference: where the install script warns, `update` **refuses**. There is a working
+binary on the machine, so stopping costs a version and keeps everything.
 
 ### From source, for working on dcode itself
 

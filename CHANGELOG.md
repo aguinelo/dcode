@@ -60,6 +60,30 @@ that on every run to stop the opposite reading.
 
 ### Distribution
 
+- **`dcode update` does not require cosign either.** It was the last place that
+  demanded a package — of a machine that already has a working dcode, which
+  makes the demand harder to justify, not easier.
+
+  The binary now reads the digests from the installer on `main`, the same file
+  the install script carries in itself, so it has the same second route: a
+  digest that did not travel with the artifact. The rule is the installer's
+  rule — the carried digest **or** the signature, either is enough.
+
+  One difference, deliberate: where the install script warns, `update`
+  **refuses**. There is a working binary on the machine, so stopping costs a
+  version and keeps everything. A signature that *fails* still aborts whatever
+  the carried digest said; making a check optional must not make it decorative.
+
+  `ErrNoVerifier` stopped being a verdict and became what it always was — one
+  route unavailable. Its message no longer says "dcode will not install
+  something it could not check", because that sentence was the requirement.
+
+  `DCODE_UPDATE_INSTALLER_URL` overrides where the second route is read from,
+  and a mirror that overrides `DCODE_UPDATE_URL` must override this too or its
+  independent digest still comes from upstream. The wiring is asserted by
+  reading the command as data: a field the updater reads and no command sets is
+  the build-stamp defect again.
+
 - **The installer never asks for another package.** Nobody installs an extra
   tool in order to install a binary, and the survey behind #223 already carried
   the proof — of rustup, bun, deno, nvm, k3s and uv, **not one** requires an
