@@ -561,3 +561,40 @@ func carriedOver(content string) string {
 	}
 	return ""
 }
+
+// OwnsAreDisjoint requires at least min delegated calls that declare `owns`,
+// with no path claimed by two of them.
+//
+// Counting the calls is not enough, and neither is seeing the field. The
+// contract being measured is that the parent SPLIT the work — and two children
+// told to write the same file is the parent failing to split while looking like
+// it did. The scheduler would serialise them and the tree would survive, which
+// is exactly why the judge has to look: the damage this catches is wasted work,
+// not a broken repository.
+func OwnsAreDisjoint(min int) Judge {
+	return func(t Transcript) bool {
+		claimed := map[string]struct{}{}
+		withOwns := 0
+
+		for _, c := range t.Calls {
+			if c.Name != "explore" {
+				continue
+			}
+			var in struct {
+				Owns []string `json:"owns"`
+			}
+			if err := json.Unmarshal(c.Input, &in); err != nil || len(in.Owns) == 0 {
+				continue
+			}
+			withOwns++
+			for _, p := range in.Owns {
+				p = strings.TrimSpace(p)
+				if _, taken := claimed[p]; taken {
+					return false
+				}
+				claimed[p] = struct{}{}
+			}
+		}
+		return withOwns >= min
+	}
+}
