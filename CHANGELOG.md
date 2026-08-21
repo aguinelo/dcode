@@ -74,6 +74,16 @@ that on every run to stop the opposite reading.
 
 ### Client TUI
 
+- **The activity line speaks one language, the way out included.** It said
+  `^C interrupts` in English under a Portuguese interface. The verb made it
+  obvious by sitting right beside it — `lendo grep … ^C interrupts` — and half a
+  sentence in each language reads as a bug in the product rather than as a
+  missing translation.
+
+  Its own catalogue entry rather than the existing `Interrupt`, which is the
+  `esc` hint somewhere else: two keys sharing one sentence is how a hint ends up
+  naming the wrong key in one of the languages.
+
 - **The activity line carries a verb, and the verb never appears alone.** A
   short gerund now rides beside the running tool — `⏺ reading grep \.Save\(` —
   drawn from the phase's set and changing every 20 frames, which is the design's

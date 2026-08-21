@@ -228,3 +228,23 @@ func TestStylingTheActivityLineDoesNotChangeItsWidth(t *testing.T) {
 		}
 	}
 }
+
+// The whole line speaks one language, the way-out included.
+//
+// It said "^C interrupts" in English under a Portuguese interface, which the
+// verb made obvious by sitting right beside it: `lendo grep … ^C interrupts`.
+// Half a sentence in each language is worse than either alone, because it reads
+// as a bug in the product rather than as a missing translation.
+func TestTheWayOutSpeaksTheSameLanguageAsTheLine(t *testing.T) {
+	for _, c := range []struct {
+		lang Lang
+		want string
+	}{{PtBR, "^C interrompe"}, {En, "^C interrupts"}} {
+		m := working("grep", "needle", 0)
+		m.Lang = c.lang
+		line := renderWorking(m, plainGeometry())
+		if !strings.Contains(line, c.want) {
+			t.Errorf("%s: the way out is not in the interface language: %q", c.lang, line)
+		}
+	}
+}

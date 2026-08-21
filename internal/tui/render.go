@@ -672,7 +672,7 @@ func renderWorking(m Model, g Geometry) string {
 		parts = append(parts, p.Apply(StyleDim, tk+" tok"))
 	}
 	// The way out belongs next to the thing you want out of.
-	parts = append(parts, p.Apply(StyleDim, "^C interrupts"))
+	parts = append(parts, p.Apply(StyleDim, Text(m.Lang).WorkingInterrupt))
 
 	return clipStyled(strings.Join(parts, "  "), g.Width)
 }

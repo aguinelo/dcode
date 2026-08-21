@@ -73,6 +73,11 @@ type Strings struct {
 	// it falls back to. Deliberately not one of the rotating verbs: see
 	// activity.go.
 	Working string
+	// WorkingInterrupt is the way out, on the activity line. Its own string
+	// rather than Interrupt, which is the `esc` hint somewhere else: two keys
+	// with one sentence between them is how a hint ends up naming the wrong
+	// key in one of the languages.
+	WorkingInterrupt string
 
 	// Status line
 	VerifiedLabel    string
@@ -183,7 +188,8 @@ type Strings struct {
 // keeps the static, cgo-free binary of ADR-01 whole.
 var catalogue = map[Lang]Strings{
 	En: {
-		Working: "working",
+		Working:          "working",
+		WorkingInterrupt: "^C interrupts",
 
 		VerifiedLabel:    "verified",
 		NotVerifiedLabel: "NOT VERIFIED",
@@ -300,7 +306,8 @@ Environment:
 		NoPlan:          "There is no plan yet.",
 	},
 	PtBR: {
-		Working: "trabalhando",
+		Working:          "trabalhando",
+		WorkingInterrupt: "^C interrompe",
 
 		VerifiedLabel:    "conferido",
 		NotVerifiedLabel: "NÃO CONFERIDO",
