@@ -80,6 +80,9 @@ type Strings struct {
 	ChildOwns       string
 	ChildNoAnswer   string
 	ChildUnnamed    string
+	PanelTurn       string
+	PanelRounds     string
+	PanelInFlight   string
 	RailFiles       string
 	RailSessions    string
 	RailFilter      string
@@ -220,6 +223,9 @@ var catalogue = map[Lang]Strings{
 		ChildOwns:        "owns",
 		ChildNoAnswer:    "no answer",
 		ChildUnnamed:     "a child",
+		PanelTurn:        "turn",
+		PanelRounds:      "round",
+		PanelInFlight:    "in flight",
 		RailFiles:        "files",
 		RailSessions:     "sessions",
 		RailFilter:       "/",
@@ -352,6 +358,9 @@ Environment:
 		ChildOwns:        "possui",
 		ChildNoAnswer:    "sem resposta",
 		ChildUnnamed:     "um filho",
+		PanelTurn:        "turno",
+		PanelRounds:      "iteração",
+		PanelInFlight:    "em vôo",
 		RailFiles:        "arquivos",
 		RailSessions:     "sessões",
 		RailFilter:       "/",

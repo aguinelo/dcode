@@ -269,7 +269,7 @@ func fill(body string, g Geometry) string {
 }
 
 func render(m Model, g Geometry) string {
-	showPanel := g.ShowPanel(len(m.Plan) > 0)
+	showPanel := g.ShowPanel(m.panelHasContent())
 	showRail := g.ShowRail(m.railHasContent())
 
 	var b strings.Builder
@@ -367,7 +367,7 @@ func render(m Model, g Geometry) string {
 // the tail is what made scrolling impossible, since there was nothing above the
 // screen to scroll back to.
 func StreamLines(m Model, g Geometry) []string {
-	w := g.StreamWidth(g.ShowRail(m.railHasContent()), g.ShowPanel(len(m.Plan) > 0))
+	w := g.StreamWidth(g.ShowRail(m.railHasContent()), g.ShowPanel(m.panelHasContent()))
 	if m.ShowEmptyState() {
 		return emptyState(m, g, w)
 	}
@@ -783,7 +783,41 @@ func renderPanel(m Model, g Geometry) []string {
 	if s := m.PlanSummary(); s != "" {
 		out = append(out, clip(" "+s, w))
 	}
+	out = append(out, turnSection(m, g, w)...)
 	out = append(out, "", clip(" [^p] hide panel", w))
+	return out
+}
+
+// turnSection is where the turn stands against its ceilings.
+//
+// It is here rather than in the status line because a ceiling is not a status:
+// it is a thing that is approaching, and the panel is where the reader already
+// goes for what is being worked toward.
+//
+// Nothing is drawn before the daemon has said anything. Zero of a hundred is a
+// number, and a number nobody sent is a number that will be believed.
+func turnSection(m Model, g Geometry, w int) []string {
+	if m.MaxRounds == 0 {
+		return nil
+	}
+	t := Text(m.Lang)
+	p := g.Palette
+
+	out := []string{"", clip(" "+p.Apply(StyleDim, strings.ToUpper(t.PanelTurn)), w)}
+
+	// Dim until it is close, and then not. The ceiling is item 1 of the
+	// roadmap precisely because nothing tells anybody it is coming.
+	style := StyleDim
+	if m.MaxRounds > 0 && m.Rounds*4 >= m.MaxRounds*3 {
+		style = StyleWarn
+	}
+	out = append(out, clip(" "+p.Apply(style,
+		fmt.Sprintf("%s %d/%d", t.PanelRounds, m.Rounds, m.MaxRounds)), w))
+
+	if m.MaxInFlight > 0 {
+		out = append(out, clip(" "+p.Apply(StyleDim,
+			fmt.Sprintf("%s %d·%d", t.PanelInFlight, m.InFlight, m.MaxInFlight)), w))
+	}
 	return out
 }
 

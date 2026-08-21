@@ -93,6 +93,12 @@ type Model struct {
 
 	Entries []Entry
 	Plan    []protocol.PlanItem
+	// Rounds and InFlight are where the turn is against its ceilings, as the
+	// daemon reports them. Kept as the pair rather than as a percentage: the
+	// question a person asks of a ceiling is how many are left, and a share
+	// cannot answer it.
+	Rounds, MaxRounds     int
+	InFlight, MaxInFlight int
 	// Nav is the session list's cursor while the rail has the keyboard.
 	Nav RailNav
 	// Sessions is what this workspace has recorded, for the sidebar. Passed in
@@ -262,6 +268,10 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.activeTurn = d.TurnID
 		m.State = protocol.SessionStateRunning
 		m.TurnStartedAt = m.Now
+		// The counters belong to the turn that is starting. Carrying the last
+		// one's forward would show a round number for work that has not begun,
+		// and the first thing anybody would do is trust it.
+		m.Rounds, m.InFlight = 0, 0
 
 	case protocol.EventMessageReasoning:
 		var d protocol.MessageReasoning
@@ -295,6 +305,24 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Entries = append(m.Entries, Entry{
 				Kind: KindAssistant, Summary: d.Text, Seq: ev.Seq,
 			})
+		}
+
+	case protocol.EventProgress:
+		var d protocol.Progress
+		if err := json.Unmarshal(ev.Payload, &d); err != nil {
+			break
+		}
+		// The turn's own counters. A tool's progress carries a call id and
+		// belongs to that call; nothing draws it yet, so it is ignored rather
+		// than half-applied — half of a number is worse than none of it.
+		if d.ToolCallID != "" {
+			break
+		}
+		switch d.Kind {
+		case protocol.ProgressRounds:
+			m.Rounds, m.MaxRounds = d.Done, d.Total
+		case protocol.ProgressInFlight:
+			m.InFlight, m.MaxInFlight = d.Done, d.Total
 		}
 
 	case protocol.EventToolRequested:
@@ -630,6 +658,19 @@ func firstLine(s string) string {
 		s = s[:i]
 	}
 	return s
+}
+
+// panelHasContent reports whether the panel has anything to say.
+//
+// A plan, or the turn's own numbers. Adding the second is what makes the round
+// ceiling visible at all: most turns have no plan, and the ceiling was hiding
+// in the one panel that only opened when something else was already there.
+//
+// The numbers survive the turn that produced them, so the panel opens on the
+// first turn and stays. A panel that appeared with every turn and left with it
+// would be motion where the screen should be still.
+func (m Model) panelHasContent() bool {
+	return len(m.Plan) > 0 || m.MaxRounds > 0
 }
 
 // railHasContent reports whether the sidebar has anything to say.

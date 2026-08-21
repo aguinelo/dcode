@@ -126,6 +126,7 @@ type Error struct {
 | `tool.completed` | `{"tool_call_id":string,"ok":bool,"output":string,"truncated":bool}` | ferramenta terminou |
 | `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error` |
 | `plan.updated` | `{"items":[{"id":int,"text":string,"status":string,"blocked":string}]}` | plano criado ou alterado |
+| `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
 | `session.compacted` | `{"from_seq":uint64,"to_seq":uint64}` | compactação de contexto (ADR-03) |
 | `session.error` | `Error` | falha não atribuível a um turno |
 
@@ -186,6 +187,12 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 
 
+- `progress` é o único evento que não é fato: ele entra no log e no registro como `message.delta`, com `Seq`, em vez de abrir buraco na sequência.
+- `kind` vem de um conjunto fechado, para o cliente dizer no idioma de quem lê em vez de imprimir o do daemon.
+- O turno reporta a rodada contra o teto, e o teto viaja junto da contagem.
+- Um lote reporta quantas chamadas rodam juntas contra o teto de concorrência da sessão.
+- Turno que respondeu numa passada não reporta rodada nenhuma.
+- Progresso nunca entra no contexto enviado ao modelo.
 - Turno carrega imagem por valor (base64 + tipo), nunca caminho: o daemon pode estar em outra máquina.
 - Base64 malformado é recusado na borda, não chega à sessão como bytes vazios.
 - Imagem conta no orçamento de contexto; faixa que a ignora deriva em silêncio.

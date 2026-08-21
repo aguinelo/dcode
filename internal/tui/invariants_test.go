@@ -9,6 +9,11 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"abre com ela mesmo sem plano":       "TestTheTurnsNumbersAloneOpenThePanel",
+	"antes de o daemon ter dito":         "TestTheTurnSectionSaysNothingBeforeTheDaemonDoes",
+	"zera a contagem e conserva":         "TestANewTurnStartsItsCountersAtZero",
+	"não move os contadores do turno":    "TestProgressForAToolDoesNotMoveTheTurnsCounters",
+	"muda de estilo ao se aproximar":     "TestTheRoundCountWarnsAsItNearsTheCeiling",
 	"a coluna toma o teclado":            "TestTheRailTakesTheKeyboardAndGivesItBack",
 	"nunca só cor, e `↑↓` não dão":       "TestTheRailCursorStopsAtBothEnds",
 	"é **caractere**":                    "TestTheCursorIsACharacterAndNotOnlyAColour",

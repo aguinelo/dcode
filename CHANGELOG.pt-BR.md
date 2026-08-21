@@ -69,7 +69,43 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Protocolo
+
+- **`progress`: um evento para "quão longe já foi".** Ferramenta contando
+  arquivos e turno contando rodadas são a mesma pergunta feita a sujeitos
+  diferentes, então é um evento só, com `tool_call_id` vazio quando o sujeito é o
+  turno. Acrescentar superfície versionada duas vezes para um tipo de pergunta é
+  como ela sai torta — a segunda sempre responde um pouco diferente.
+
+  `kind` é **conjunto fechado, não palavra para imprimir**: o idioma do daemon
+  não é o de quem lê. Só o que alguém de fato emite está declarado, então
+  `rounds` e `in_flight` estão lá e `files`/`lines` chegam quando as ferramentas
+  emitirem. `tests` provavelmente nunca chega — contar teste que passou exige
+  parsear a saída do `bash`, que o próprio comentário do `ToolCompleted` proíbe.
+
+  **Ele entra na sequência**, e essa foi a decisão difícil. Deixá-lo fora do
+  `Seq` abriria buraco na única propriedade sobre a qual o registro é construído,
+  e registro com buraco é registro cuja reprodução não é confiável sobre mais
+  nada. O `message.delta` já é conversador e já está lá; progresso segue ele em
+  vez de inventar exceção.
+
+  O teto viaja junto da contagem, porque contagem sem limite responde *quantas*
+  quando a pergunta é *quão perto*. E turno que respondeu numa passada não
+  reporta rodada nenhuma: não há teto se aproximando, e `0/100` na tela é número
+  que significa que nada está acontecendo.
+
 ### Cliente TUI
+
+- **O painel mostra onde o turno está.** `iteração 2/100` e `em vôo 2·4`, com a
+  contagem mudando de estilo ao se aproximar do teto — esse teto é o item 1 do
+  roadmap, o único com evidência medida de dano, e o que faltava era algo dizendo
+  que ele vinha.
+
+  O painel passa a abrir só com esses números. A maioria dos turnos não tem
+  plano, então o teto ficava escondido justamente no painel que só abria quando
+  outra coisa já estava lá. Os números sobrevivem ao turno que os produziu, então
+  ele abre no primeiro turno e fica, em vez de aparecer e sumir a cada um.
+
 
 - **`^R` dá o teclado à coluna.** `↑↓` movem, letra filtra, `enter` continua a
   conversa sob o cursor, `esc` limpa o filtro e depois fecha. É o segundo dos
