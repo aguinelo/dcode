@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -51,7 +52,9 @@ func TestApplyIsAPureReducer(t *testing.T) {
 		t.Fatalf("got %d and %d entries", len(first.Entries), len(second.Entries))
 	}
 	for i := range first.Entries {
-		if first.Entries[i] != second.Entries[i] {
+		// reflect rather than !=: Entry carries the paths a delegated child
+		// declared it owns, and a slice makes the struct incomparable.
+		if !reflect.DeepEqual(first.Entries[i], second.Entries[i]) {
 			t.Errorf("entry %d differs:\n%+v\n%+v", i, first.Entries[i], second.Entries[i])
 		}
 	}

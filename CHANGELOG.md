@@ -74,25 +74,21 @@ that on every run to stop the opposite reading.
 
 ### Documentation
 
-- **Two pieces of the v5 design were not built, and were not recorded either.**
-  Found by the person running the interface and saying it looked poorer than the
-  drawing, which is the only way a gap like this gets found.
+- **What the v5 design asks for and the client still does not show.** Found by
+  the person running the interface and saying it looked poorer than the drawing,
+  which is the only way a gap like this gets found.
 
-  **Delegation is not drawn at all.** The design's §4 is a card with the
-  children inside — a sub-line per child with `owns <path>`, its own bar and its
-  result, and the one that did not answer named with its reason. None of it
-  exists; an `explore` with four children is one ordinary tool line. It matters
-  more than a card: `delegated-writing` promises that an unanswered child is
-  named with its reason, and the client has no way to show that, so the
-  guarantee holds in the loop and disappears at the screen.
+  Delegation was the large one and is **built** (see below). What remains is the
+  panel's turn numbers — `iteração 2/100`, `em vôo 2 · teto 4` — and that is a
+  **data gap rather than a forgotten render**: the protocol carries
+  `StopMaxIterations` as a reason a turn *ended* and nothing at all while one
+  runs. Recorded as an omission first and corrected after checking, because the
+  two have different fixes and only one is cheap.
 
-  **The panel has no TURN section** — `iteração 2/100`, `em vôo 2 · teto 4`. The
-  round ceiling is item 1 of the roadmap, the one item with measured evidence of
-  harm, and it stays invisible in the place a person is already looking.
-
-  A third, smaller: the sidebar headers have no chevron. Folding the whole
-  column with `^B` instead of one section was deliberate; leaving the chevron
-  out was not.
+  It is the client half of roadmap item 1. That item is about the *model* never
+  learning it is running out of rounds; this is the *person* not learning it
+  either, in the place they are already looking. Whatever event answers one
+  should answer both.
 
 ### Client TUI
 

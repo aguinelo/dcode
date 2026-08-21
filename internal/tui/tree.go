@@ -57,7 +57,7 @@ func touchedFiles(entries []Entry) []FileRow {
 	}
 	seen := map[string]*acc{}
 	for _, e := range entries {
-		if e.Kind != KindTool || e.Target == "" || !looksLikePath(e.Target) {
+		if e.Kind != KindTool || e.Target == "" || !namesAFile(e.Tool) || !looksLikePath(e.Target) {
 			continue
 		}
 		a, ok := seen[e.Target]
@@ -93,6 +93,20 @@ func touchedFiles(entries []Entry) []FileRow {
 		out = append(out, FileRow{Path: p, State: seen[p].state, Added: seen[p].added})
 	}
 	return out
+}
+
+// namesAFile says whether this tool's target is a path at all.
+//
+// A delegated child's target is its NAME, and a name with no punctuation in it
+// looks exactly like a filename — `alpha` and `bravo` walked into the file list
+// and sat there as if they were on disk. Deciding by tool rather than by the
+// shape of the string is the only reading that cannot be fooled.
+func namesAFile(tool string) bool {
+	switch strings.ToLower(tool) {
+	case "explore", "bash", "process", "plan", "remember":
+		return false
+	}
+	return true
 }
 
 func writes(tool string) bool {

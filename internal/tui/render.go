@@ -516,7 +516,7 @@ func renderStream(m Model, g Geometry, w int) []string {
 	//
 	// A call with no body stays a single line. Most calls are one line, and a
 	// card around one line is a box around nothing.
-	blocked := false
+	blocked, skip := false, 0
 	for i, e := range m.Entries {
 		isBlock := false
 		if e.Kind == KindTool {
@@ -527,6 +527,21 @@ func renderStream(m Model, g Geometry, w int) []string {
 			out = gapBefore(out)
 		}
 		blocked = isBlock
+
+		// A delegation is one decision, so it is one block: the header, then a
+		// line per child. Skipping the children the header covered is what
+		// keeps them from being drawn twice.
+		if skip > 0 {
+			skip--
+			continue
+		}
+		if n := delegationRun(m.Entries, i); n > 0 {
+			out = gapBefore(out)
+			out = append(out, renderDelegation(m.Entries[i:i+n], gl, p, w, Text(m.Lang))...)
+			skip = n - 1
+			blocked = true
+			continue
+		}
 
 		selected := i == m.Cursor
 		cursor := "  "
