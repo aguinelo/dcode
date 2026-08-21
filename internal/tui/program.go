@@ -392,6 +392,51 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
+	// The rail owns the keyboard while it is open, and it sits HERE — above the
+	// completion menu — for the reason the copy-mode changelog records: a block
+	// placed inside that guard only ever runs while the menu is open, and the
+	// menu only opens once something has been typed. The mode would have been
+	// decorative and nothing would have said so.
+	if p.model.Nav.Active {
+		visible := p.model.Nav.Visible(p.model.Sessions)
+		switch key := k.String(); key {
+		case "up":
+			p.model.Nav = p.model.Nav.Move(-1, len(visible))
+			return p, nil
+		case "down":
+			p.model.Nav = p.model.Nav.Move(1, len(visible))
+			return p, nil
+		case "enter":
+			id := p.model.Nav.Chosen(p.model.Sessions)
+			p.model.Nav = RailNav{}
+			if id == "" || id == p.model.SessionID {
+				// Already here, or a filter that matched nothing. Doing
+				// nothing beats reloading the conversation somebody is in.
+				return p, nil
+			}
+			return p, p.resume(id)
+		case "esc", "ctrl+r":
+			p.model.Nav = p.model.Nav.Escape()
+			return p, nil
+		case "backspace":
+			p.model.Nav = p.model.Nav.Backspace()
+			return p, nil
+		case "ctrl+c":
+			// The way out of everything stays the way out of everything.
+			p.model.Nav = RailNav{}
+			return p, nil
+		}
+		// A letter is a filter here, not a shortcut: this is a mode that owns
+		// the keyboard, which is the exact case RN-16 leaves room for.
+		if len(k.String()) == 1 {
+			p.model.Nav = p.model.Nav.Type(k.String(), p.model.Sessions)
+			return p, nil
+		}
+		// Everything else is swallowed. A mode that lets keys through is a mode
+		// people leave by accident, halfway through choosing.
+		return p, nil
+	}
+
 	// The menu owns the arrows, Tab and Esc while it is open — and nothing
 	// else, so every other key keeps doing what it always does.
 	if len(p.model.Completions) > 0 {
@@ -467,6 +512,17 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// The oldest goes: it is the one the user has had longest to change
 		// their mind about, and the one nearest the top of the list.
 		p.model = p.model.RemoveFromQueue(0)
+		return p, nil
+
+	case "ctrl+r":
+		// Focus the conversation list. Nothing to choose from means nothing to
+		// focus: a mode that opens onto an empty list is a mode that swallows
+		// the next keystroke for no reason.
+		if len(p.model.Sessions) == 0 {
+			return p, nil
+		}
+		p.geo.RailMode = RailShown
+		p.model.Nav = RailNav{Active: true}
 		return p, nil
 
 	case "ctrl+b":

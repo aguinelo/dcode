@@ -82,6 +82,8 @@ type Strings struct {
 	ChildUnnamed    string
 	RailFiles       string
 	RailSessions    string
+	RailFilter      string
+	RailNoMatch     string
 	RailTouchedOne  string
 	RailTouchedMany string
 
@@ -220,6 +222,8 @@ var catalogue = map[Lang]Strings{
 		ChildUnnamed:     "a child",
 		RailFiles:        "files",
 		RailSessions:     "sessions",
+		RailFilter:       "/",
+		RailNoMatch:      "nothing matches",
 		RailTouchedOne:   "touched",
 		RailTouchedMany:  "touched",
 
@@ -350,6 +354,8 @@ Environment:
 		ChildUnnamed:     "um filho",
 		RailFiles:        "arquivos",
 		RailSessions:     "sessões",
+		RailFilter:       "/",
+		RailNoMatch:      "nada corresponde",
 		RailTouchedOne:   "tocado",
 		RailTouchedMany:  "tocados",
 

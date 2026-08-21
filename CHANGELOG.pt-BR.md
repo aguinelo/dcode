@@ -69,6 +69,31 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Cliente TUI
+
+- **`^R` dá o teclado à coluna.** `↑↓` movem, letra filtra, `enter` continua a
+  conversa sob o cursor, `esc` limpa o filtro e depois fecha. É o segundo dos
+  três modos que o design nomeia; o terceiro, nomear, continua sem onde ser
+  guardado.
+
+  Ser dona do teclado não é floreio: lista que se percorre com teclas que também
+  digitam na linha de entrada é lista em que toda tecla faz duas coisas, e a
+  única vez em que faz a errada abre a tarde de outra pessoa. O bloco fica
+  **acima** do guarda do menu de autocompletar pelo motivo que o changelog da
+  cópia registra — dentro dele, o modo nunca teria rodado, e nada diria.
+
+  Cada decisão pequena com seu motivo: o cursor é caractere e não cor, e vence a
+  marca de conversa aberta, porque com o teclado ali a pergunta é *qual vou
+  abrir*; `↑↓` não dão a volta, reusando o argumento do próprio picker; `esc`
+  recua uma coisa por vez; digitar volta o cursor ao topo, já que a lista na tela
+  passou a ser outra; filtro sem resultado escolhe nada **e diz isso** em vez de
+  ficar em branco; escolher a conversa já aberta não faz nada.
+
+  Uma quinta runa Unicode cravada escapou — o cursor do filtro — e o guarda do
+  #243 não a pegou, porque enumerava as runas à mão. Agora ele **deriva** a lista
+  dos conjuntos de glifos por reflexão, então marca nova entra na proibição
+  sozinha.
+
 ### Documentação
 
 - **O que o design v5 pede e o cliente ainda não mostra.** Achado por quem rodou

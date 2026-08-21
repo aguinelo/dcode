@@ -9,6 +9,13 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"a coluna toma o teclado":            "TestTheRailTakesTheKeyboardAndGivesItBack",
+	"nunca só cor, e `↑↓` não dão":       "TestTheRailCursorStopsAtBothEnds",
+	"é **caractere**":                    "TestTheCursorIsACharacterAndNotOnlyAColour",
+	"limpa o filtro primeiro":            "TestTheRailTakesTheKeyboardAndGivesItBack",
+	"escolhe nada, e a lista diz":        "TestAnEmptyResultSaysSoRatherThanGoingBlank",
+	"conversa já aberta não faz nada":    "TestChoosingTheOpenConversationDoesNothing",
+	"Lista vazia não abre o modo":        "TestTheRailDoesNotOpenOntoAnEmptyList",
 	"adjacentes são um bloco só":         "TestADelegationIsSeparatedFromWhatSurroundsIt",
 	"nunca dobrado junto dos que":        "TestTheChildThatDidNotAnswerIsNamedOnItsOwnLine",
 	"quantos ficaram sem resposta":       "TestTheHeaderCountsTheChildrenAndTheOnesMissing",
