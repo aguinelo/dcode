@@ -10,6 +10,7 @@ import (
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
 	"nunca é desenhado sem a ferramenta": "TestTheVerbNeverAppearsWithoutTheToolItDescribes",
+	"fala um idioma só":                  "TestTheWayOutSpeaksTheSameLanguageAsTheLine",
 	"troca a cada 20 quadros":            "TestTheVerbHoldsForTwentyFramesAndThenChanges",
 	"tira a palavra e não os fatos":      "TestTurningTheVerbsOffLeavesTheFactsAlone",
 	"verbo para toda fase":               "TestEveryLanguageHasAVerbForEveryPhase",

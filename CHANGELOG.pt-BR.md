@@ -71,6 +71,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Cliente TUI
 
+- **A linha de atividade fala um idioma só, a saída inclusive.** Ela dizia
+  `^C interrupts` em inglês sob interface em português. O verbo tornou isso
+  óbvio ao sentar do lado — `lendo grep … ^C interrupts` — e meia frase em cada
+  idioma se lê como defeito do produto, não como tradução faltando.
+
+  Entrada própria no catálogo, e não o `Interrupt` existente, que é a dica do
+  `esc` em outro lugar: duas teclas dividindo uma frase é como uma dica acaba
+  nomeando a tecla errada num dos idiomas.
+
 - **A barra de atividade carrega um verbo, e o verbo nunca aparece sozinho.** Um
   gerúndio curto passa a acompanhar a ferramenta que roda — `⏺ lendo grep
   \.Save\(` —, sorteado do conjunto da fase e trocando a cada 20 quadros, que
