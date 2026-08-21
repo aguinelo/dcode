@@ -83,6 +83,7 @@ type Strings struct {
 	PanelTurn       string
 	PanelRounds     string
 	PanelInFlight   string
+	RailHidden      string
 	RailFiles       string
 	RailSessions    string
 	RailFilter      string
@@ -227,6 +228,7 @@ var catalogue = map[Lang]Strings{
 		PanelTurn:        "turn",
 		PanelRounds:      "round",
 		PanelInFlight:    "in flight",
+		RailHidden:       "sidebar",
 		RailFiles:        "files",
 		RailSessions:     "sessions",
 		RailFilter:       "/",
@@ -363,6 +365,7 @@ Environment:
 		PanelTurn:        "turno",
 		PanelRounds:      "iteração",
 		PanelInFlight:    "em vôo",
+		RailHidden:       "coluna",
 		RailFiles:        "arquivos",
 		RailSessions:     "sessões",
 		RailFilter:       "/",

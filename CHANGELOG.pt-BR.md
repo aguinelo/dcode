@@ -69,6 +69,23 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Cliente TUI
+
+- **Coluna que se esconde diz que existe.** A coluna lateral some abaixo de cem
+  colunas — que é a maioria dos terminais — e **não dizia nada**, então coluna
+  construída se lia como coluna não construída, e a tecla que a traz de volta
+  (`^B`) estava documentada só dentro da coluna que não estava na tela.
+
+  Achado do único jeito possível: alguém abriu o produto e disse que a interface
+  não era a que tinha desenhado. Toda verificação por trás dela tinha sido teste
+  Go chamando `Render` em memória, nas larguras que eu escolhi — nunca o binário
+  num terminal.
+
+  O limiar continua em cem, porque a razão se sustenta: coluna de 20 num terminal
+  de 80 deixa 59 para o fluxo, e diff em 59 colunas é ruim. O defeito era o
+  silêncio. O painel do plano já tinha pago essa dívida e já carregava a dica; a
+  coluna herdou o comportamento sem ela.
+
 ### Protocolo
 
 - **Uma conversa pode receber nome, guardado no registro dela.** Três lugares

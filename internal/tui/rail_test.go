@@ -271,3 +271,48 @@ func unicodeGlyphs() []string {
 	}
 	return out
 }
+
+// -- a column that hides itself says so --------------------------------------
+
+// The sidebar disappears below a hundred columns, which is most terminals, and
+// it said nothing at all. A column that had been built read as a column that
+// had not — and the key that brings it back was documented only inside the
+// column that was not on screen.
+//
+// The plan panel already carried this debt and already paid it; the sidebar
+// inherited the behaviour and not the hint.
+func TestASidebarHiddenByWidthSaysSoAndNamesTheKey(t *testing.T) {
+	m := railModel(Entry{Kind: KindTool, Tool: "read", Target: "a.go"})
+	g := railGeometry(80)
+
+	if g.ShowRail(m.railHasContent()) {
+		t.Fatal("the fixture is not narrow enough to hide the column")
+	}
+	status := renderStatus(m, g, false)
+	if !strings.Contains(status, "^b") {
+		t.Errorf("a hidden column does not name the key that brings it back: %q", status)
+	}
+}
+
+// And it stops saying so once it is on screen: a hint for something already
+// visible is noise, and noise is what teaches people to stop reading the line.
+func TestAVisibleSidebarSaysNothingAboutItself(t *testing.T) {
+	m := railModel(Entry{Kind: KindTool, Tool: "read", Target: "a.go"})
+	g := railGeometry(140)
+
+	if !g.ShowRail(m.railHasContent()) {
+		t.Fatal("the fixture should show the column")
+	}
+	if status := renderStatus(m, g, false); strings.Contains(status, "^b") {
+		t.Errorf("a visible column advertises itself: %q", status)
+	}
+}
+
+// Nothing to show is not something to advertise. Offering a key for an empty
+// column sends somebody to look at nothing.
+func TestAnEmptySidebarIsNotAdvertised(t *testing.T) {
+	m := Model{Lang: En, Cursor: -1}
+	if status := renderStatus(m, railGeometry(80), false); strings.Contains(status, "^b") {
+		t.Errorf("an empty column was advertised: %q", status)
+	}
+}

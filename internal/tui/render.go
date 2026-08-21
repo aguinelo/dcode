@@ -441,6 +441,18 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 			fields = append(fields, field{p.Apply(StyleDim, s+" · ^p"), 1})
 		}
 	}
+	// The same debt, and it cost more. The sidebar disappears below a hundred
+	// columns — which is most terminals — and said nothing at all, so a column
+	// that had been built read as a column that had not. The key that brings it
+	// back was documented only inside the column that was not on screen.
+	//
+	// It gives ground before the plan summary does: what the sidebar holds is
+	// still reachable another way (`dcode sessions`, the stream itself), and a
+	// plan nobody can see has no second route.
+	if !g.ShowRail(m.railHasContent()) && m.railHasContent() {
+		fields = append(fields, field{
+			p.Apply(StyleDim, Text(m.Lang).RailHidden+" · ^b"), 4})
+	}
 
 	render := func(fs []field) string {
 		parts := make([]string, 0, len(fs))
