@@ -16,8 +16,12 @@ import (
 // learn what a session is. Whoever opens the picker maps one to the other, and
 // that mapping is the only place the two vocabularies meet.
 type SessionChoice struct {
-	ID    string
+	ID string
+	// Title is derived from the first question; Name is what a person called
+	// it. Kept apart so the listing can say which it is showing — a derived
+	// title and a chosen one are not the same claim.
 	Title string
+	Name  string
 	Turns int
 	When  time.Time
 }

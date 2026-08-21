@@ -76,6 +76,9 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		Manager:     d.manager,
 		Build:       d.build,
 		MaxSessions: opts.MaxSessions,
+		// Where transcripts live, so a conversation can be named without
+		// being loaded. The daemon already knows it; the server did not.
+		RecordDir: opts.RecordDir,
 		// Raised once at boot rather than per session, so it is read before
 		// anything runs rather than scrolling past during work.
 		DefaultMode:   opts.Base.SandboxMode,

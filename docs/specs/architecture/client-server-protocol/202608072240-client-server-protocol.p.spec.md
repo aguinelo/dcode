@@ -126,6 +126,7 @@ type Error struct {
 | `tool.completed` | `{"tool_call_id":string,"ok":bool,"output":string,"truncated":bool}` | ferramenta terminou |
 | `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error` |
 | `plan.updated` | `{"items":[{"id":int,"text":string,"status":string,"blocked":string}]}` | plano criado ou alterado |
+| `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
 | `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
 | `session.compacted` | `{"from_seq":uint64,"to_seq":uint64}` | compactação de contexto (ADR-03) |
 | `session.error` | `Error` | falha não atribuível a um turno |
@@ -188,6 +189,12 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 
 - `progress` é o único evento que não é fato: ele entra no log e no registro como `message.delta`, com `Seq`, em vez de abrir buraco na sequência.
+- Nomear escreve no registro da própria conversa, e o nome morre com a transcrição que ele nomeia.
+- A sequência é lida antes de acrescentar, nunca presumida.
+- Renomear duas vezes é mudar de ideia: o último nome vence.
+- Nome vazio devolve o título derivado; não é erro.
+- Caractere de controle não chega ao registro, e nome longo demais é **recusado**, não aparado.
+- Nomear conversa inexistente diz isso, e não cria registro.
 - Varredura reporta quão longe foi, e o relato nomeia a chamada de onde veio.
 - `grep` conhece a lista antes de varrer e diz `n de N`; `glob` está descobrindo e manda só a contagem.
 - Duas varreduras rodando juntas não reportam uma pela outra: o relator viaja no contexto da chamada, não no estado da sessão.

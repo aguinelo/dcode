@@ -221,7 +221,7 @@ func choicesFrom(found []session.Summary) []tui.SessionChoice {
 			continue
 		}
 		out = append(out, tui.SessionChoice{
-			ID: s.ID, Title: s.Title, Turns: s.Turns, When: s.Started,
+			ID: s.ID, Title: s.Title, Name: s.Name, Turns: s.Turns, When: s.Started,
 		})
 	}
 	return out

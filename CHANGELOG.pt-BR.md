@@ -71,6 +71,47 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Protocolo
 
+- **Uma conversa pode receber nome, guardado no registro dela.** Três lugares
+  foram considerados: arquivo ao lado da sessão, índice por workspace, e o
+  registro. O registro vence pelo critério que decide — **nome de conversa que
+  não existe mais é pior que nome nenhum.** A poda apaga transcrições, então o
+  vizinho vira órfão e o índice guarda títulos de sessões que ninguém abre. Aqui
+  o nome morre com o que ele nomeia.
+
+  E mantém a conta em um: depósito ao lado do log é uma segunda coisa que pode
+  discordar dele. Não custa leitura — o `Browse` já varre cada linha de cada
+  registro para contar turnos.
+
+  A sequência é **lida antes de acrescentar, nunca presumida**: pôr um número que
+  já está no arquivo deixaria duplicata num log cujo contrato inteiro é que não há
+  nenhuma. Renomear duas vezes é mudar de ideia, então o último vence.
+
+  Nome vazio devolve o título derivado e não é erro — uma operação com valor zero
+  que significa algo é uma coisa a acertar em vez de duas. Caractere de controle
+  nunca chega ao registro, porque ele é lido de volta linha por linha e uma quebra
+  dentro de um nome faria uma linha parecer duas. Nome longo demais é **recusado,
+  não aparado**: guardar metade do que foi digitado em silêncio é como alguém
+  acaba com um nome que não escolheu.
+
+  Escreve no registro e não na sessão viva, porque a trilha lista o que o
+  workspace gravou e quase nada disso está carregado — um rename que só
+  funcionasse na conversa aberta funcionaria na única linha que não precisa dele.
+
+### Cliente TUI
+
+- **`r` e `F2` nomeiam a conversa sob o cursor.** Nomear é modo próprio dentro da
+  lista, porque é a única coisa ali que muda algo: enquanto está aberto **toda
+  tecla é do nome**, então nada mais é alcançável sem querer no meio.
+
+  O rascunho parte do **nome**, nunca do título derivado. Oferecer o título
+  transformaria *dê um nome a isto* em *confirme o que te deram*, e o primeiro
+  Enter promoveria um título derivado a nome escolhido sem ninguém decidir. `esc`
+  cancela e mantém o que havia.
+
+  Nome dado leva `·`. Sem a marca a coluna mostra dois tipos de afirmação —
+  derivado e escolhido — e nada os distingue.
+
+
 - **Varredura diz quão longe foi, e resultado pousa na chamada dele.**
   `kind: "files"` entra no conjunto declarado: o `grep` diz `n de N` porque tem a
   lista antes de começar, o `glob` manda só a contagem porque ainda está

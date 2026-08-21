@@ -74,6 +74,50 @@ that on every run to stop the opposite reading.
 
 ### Protocol
 
+- **A conversation can be given a name, stored in its own record.** Three places
+  were considered: a sidecar per session, one index per workspace, and the
+  record. The record wins on the thing that decides it — **a name for a
+  conversation that no longer exists is worse than no name.** Pruning removes
+  transcripts, so a sidecar is orphaned and an index keeps titles for sessions
+  nobody can open. Here the name dies with what it named.
+
+  It also keeps the count at one: a store beside the log is a second thing that
+  can disagree with it. And it costs nothing to read — `Browse` already scans
+  every line of every record to count turns.
+
+  The sequence is **read before appending, never assumed**: putting a number
+  already in the file would leave a duplicate in a log whose whole contract is
+  that there are none. Renaming twice is somebody changing their mind, so the
+  last one wins.
+
+  An empty name restores the derived title and is not an error — one operation
+  with a meaningful zero value is one thing to get right. Control characters
+  never reach the record, because it is read back line by line and a newline
+  inside a name would make one line look like two. A name too long is
+  **refused rather than trimmed**: silently keeping half of what was typed is how
+  somebody ends up with a name they did not choose.
+
+  It writes to the record rather than to the live session, because the rail
+  lists what a workspace has recorded and almost none of it is loaded — a rename
+  that only worked on the open conversation would work on the one row nobody
+  needs it for.
+
+### Client TUI
+
+- **`r` and `F2` name the conversation under the cursor.** Naming is its own mode
+  inside the list, because it is the one thing there that changes something:
+  while it is open **every key belongs to the name**, so nothing else is
+  reachable by accident halfway through.
+
+  The draft starts from the **name**, never from the derived title. Offering the
+  title would turn *give this a name* into *confirm the one you were given*, and
+  the first Enter would promote a derived title into a chosen one with nobody
+  deciding. `esc` cancels and keeps what was there.
+
+  A given name carries a `·`. Without the mark the column shows two kinds of
+  claim — derived and chosen — and nothing tells them apart.
+
+
 - **A scan says how far it has got, and a result lands on its own call.**
   `kind: "files"` joins the declared set: `grep` says `n of N` because it has the
   list before it starts, `glob` sends the count alone because it is still

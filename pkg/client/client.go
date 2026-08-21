@@ -76,6 +76,16 @@ func (c *Client) ListSessions(ctx context.Context) ([]protocol.Session, error) {
 	return out, err
 }
 
+// RenameSession names a conversation, live or not.
+//
+// An empty name restores the title derived from the first question. That is the
+// way back rather than a second call for undoing: one operation with a
+// meaningful zero value is one thing to get right.
+func (c *Client) RenameSession(ctx context.Context, id, name string) error {
+	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/name",
+		protocol.RenameSessionRequest{Name: name}, nil)
+}
+
 // GetSession returns one session.
 func (c *Client) GetSession(ctx context.Context, id string) (protocol.Session, error) {
 	var out protocol.Session
