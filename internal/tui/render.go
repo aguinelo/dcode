@@ -447,14 +447,14 @@ func renderStream(m Model, g Geometry, w int) []string {
 			body, limit := toolBody(e, g)
 			out = append(out, clipStyled(renderToolLine(e, cursor, gl, p, w), w))
 			if body != "" {
-				out = append(out, detailLines(body, w, g, limit)...)
+				out = append(out, detailLines(body, w, g, limit, Text(m.Lang))...)
 			}
 
 		case KindError:
 			head := cursor + p.Apply(StyleError, "! "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
 		case KindCompletion:
@@ -471,7 +471,7 @@ func renderStream(m Model, g Geometry, w int) []string {
 			head := cursor + p.Apply(style, mark+" "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
 		case KindReasoning:
@@ -615,7 +615,7 @@ func reverse(s string) string {
 // detailLines renders expanded output, colouring it as a diff when it looks
 // like one. The diff is what gets reviewed, so it is the one place where colour
 // is doing work rather than decorating.
-func detailLines(detail string, w int, g Geometry, limit int) []string {
+func detailLines(detail string, w int, g Geometry, limit int, t Strings) []string {
 	lines := strings.Split(strings.TrimRight(detail, "\n"), "\n")
 	hidden := 0
 	if limit > 0 && len(lines) > limit {
@@ -634,7 +634,8 @@ func detailLines(detail string, w int, g Geometry, limit int) []string {
 		if !g.Unicode {
 			mark = "..."
 		}
-		note := fmt.Sprintf("    %s %s · Tab expande", mark, plural(hidden, "line", "lines"))
+		note := fmt.Sprintf("    %s %s · %s", mark,
+			plural(hidden, t.LineOne, t.LineMany), t.ExpandHint)
 		out = append(out, clipStyled(g.Palette.Apply(StyleDim, note), w))
 	}
 	return out

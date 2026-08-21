@@ -71,6 +71,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Cliente TUI
 
+- **A dica de expansão fala o idioma da interface.** Sob corpo recolhido ela dizia
+  `⋯ 42 lines · Tab expande` — uma linha, dois idiomas, nas **duas** interfaces: a
+  contagem cravada em inglês e o verbo cravado em português, e nenhum dos dois
+  seguia o que o usuário escolheu.
+
+  Mesma família do #238 e achado do mesmo jeito, lendo a saída em vez do diff.
+
 - **Chamada de ferramenta que carrega corpo é um bloco.** Uma linha em branco a
   separa do que está em volta; chamada sem corpo continua uma linha só, porque a
   maioria é de uma linha e moldura em volta de uma linha é caixa em volta de

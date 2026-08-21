@@ -16,6 +16,7 @@ var tuiInvariants = map[string]string{
 	"termina em linha em branco":         "TestTheStreamDoesNotEndOnABlankLine",
 	"nunca é desenhado sem a ferramenta": "TestTheVerbNeverAppearsWithoutTheToolItDescribes",
 	"fala um idioma só":                  "TestTheWayOutSpeaksTheSameLanguageAsTheLine",
+	"dica de expansão sob corpo":         "TestTheExpansionHintSpeaksTheInterfaceLanguage",
 	"troca a cada 20 quadros":            "TestTheVerbHoldsForTwentyFramesAndThenChanges",
 	"tira a palavra e não os fatos":      "TestTurningTheVerbsOffLeavesTheFactsAlone",
 	"verbo para toda fase":               "TestEveryLanguageHasAVerbForEveryPhase",
