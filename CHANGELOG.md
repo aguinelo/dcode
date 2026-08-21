@@ -74,6 +74,15 @@ that on every run to stop the opposite reading.
 
 ### Client TUI
 
+- **No box-drawing rune reaches a terminal that cannot draw one.** Four separate
+  literals in this package assumed Unicode — the column divider, the diff
+  gutter, the running marker and the path ellipsis — and each was found by
+  looking at an ASCII render, **after** the previous one had been fixed. The
+  divider went in #241; the other three went here.
+
+  So the guard is over the whole screen rather than over one glyph at a time. A
+  fifth would otherwise wait for a fifth pair of eyes.
+
 - **The sidebar lists this workspace's conversations.** Under the files, with the
   open one marked by a character rather than only by colour. It is `dcode -r`
   promoted to a permanent column, in the mode the design calls *passive*.

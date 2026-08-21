@@ -9,6 +9,7 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"terminal que declarou não desenhá":  "TestNoBoxDrawingRuneSurvivesAsciiMode",
 	"marcada por caractere, não só":      "TestTheOpenConversationIsMarkedByACharacter",
 	"Conversas sozinhas já abrem":        "TestConversationsAloneAreEnoughToOpenTheSidebar",
 	"diz que foi cortado":                "TestATruncatedTitleSaysItWasTruncated",

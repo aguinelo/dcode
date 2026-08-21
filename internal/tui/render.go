@@ -222,7 +222,7 @@ func (g Geometry) StreamWidth(showRail, showPanel bool) int {
 }
 
 // marks carries the glyphs for a status, with an ASCII fallback.
-type marks struct{ pending, active, done, blocked, bullet, thought string }
+type marks struct{ pending, active, done, blocked, bullet, thought, gutter, ell string }
 
 // glyphs returns the mark set.
 //
@@ -231,9 +231,11 @@ type marks struct{ pending, active, done, blocked, bullet, thought string }
 // the worst possible error in this panel.
 func glyphs(unicode bool) marks {
 	if unicode {
-		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻"}
+		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
+			gutter: "│", ell: "…"}
 	}
-	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~"}
+	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
+		gutter: "|", ell: "..."}
 }
 
 // Render draws the whole screen. Pure over model and geometry, which is what
@@ -663,7 +665,7 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 	if targetW < 8 {
 		targetW = 8
 	}
-	target := ellipsis(e.Target, targetW)
+	target := ellipsis(e.Target, targetW, gl.ell)
 
 	head := fmt.Sprintf("%s%s %-*s %-*s",
 		cursor, bullet, toolNameWidth, e.Tool, targetW, target)
@@ -671,7 +673,7 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 	switch {
 	case e.Running:
 		// No summary yet, and saying nothing reads as finished-with-no-output.
-		head += " " + p.Apply(StyleDim, "…")
+		head += " " + p.Apply(StyleDim, gl.ell)
 	case e.Summary != "":
 		style := StyleDim
 		if e.IsError {
@@ -691,15 +693,16 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 //
 // The end is the part that identifies a file; the directories leading to it are
 // what everything in a repository has in common.
-func ellipsis(s string, w int) string {
+func ellipsis(s string, w int, mark string) string {
 	if w <= 0 || clipWidth(s) <= w {
 		return s
 	}
-	if w <= 2 {
+	mw := runewidth.StringWidth(mark)
+	if w <= mw {
 		return clip(s, w)
 	}
-	tail := runewidth.Truncate(reverse(s), w-1, "")
-	return "…" + reverse(tail)
+	tail := runewidth.Truncate(reverse(s), w-mw, "")
+	return mark + reverse(tail)
 }
 
 func reverse(s string) string {
@@ -714,6 +717,7 @@ func reverse(s string) string {
 // like one. The diff is what gets reviewed, so it is the one place where colour
 // is doing work rather than decorating.
 func detailLines(detail string, w int, g Geometry, limit int, t Strings) []string {
+	gl := glyphs(g.Unicode)
 	lines := strings.Split(strings.TrimRight(detail, "\n"), "\n")
 	hidden := 0
 	if limit > 0 && len(lines) > limit {
@@ -723,16 +727,12 @@ func detailLines(detail string, w int, g Geometry, limit int, t Strings) []strin
 	out := make([]string, 0, len(lines)+1)
 	for _, l := range lines {
 		body := g.Palette.Apply(DiffStyle(l), l)
-		out = append(out, clipStyled("    │ "+body, w))
+		out = append(out, clipStyled("    "+gl.gutter+" "+body, w))
 	}
 	if hidden > 0 {
 		// How much is hidden and how to see it. "truncated" alone leaves the
 		// reader unable to judge whether it matters.
-		mark := "⋯"
-		if !g.Unicode {
-			mark = "..."
-		}
-		note := fmt.Sprintf("    %s %s · %s", mark,
+		note := fmt.Sprintf("    %s %s · %s", gl.ell,
 			plural(hidden, t.LineOne, t.LineMany), t.ExpandHint)
 		out = append(out, clipStyled(g.Palette.Apply(StyleDim, note), w))
 	}

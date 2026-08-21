@@ -71,6 +71,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Cliente TUI
 
+- **Nenhuma runa de desenho de caixa chega a terminal que não as desenha.**
+  Quatro literais separados neste pacote presumiam Unicode — o divisor de coluna,
+  a calha do diff, o marcador de rodando e a reticência de caminho — e cada um foi
+  achado olhando um render em ASCII, **depois** de o anterior ter sido corrigido.
+  O divisor saiu no #241; os outros três saem aqui.
+
+  Então o guarda é sobre a tela inteira, e não glifo a glifo. Um quinto ficaria
+  esperando um quinto par de olhos.
+
 - **A coluna lateral lista as conversas deste workspace.** Sob os arquivos, com a
   aberta marcada por caractere e não só por cor. É o `dcode -r` promovido a
   coluna permanente, no modo que o design chama de *passiva*.
