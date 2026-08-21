@@ -229,7 +229,7 @@ func (sy Symbol) Execute(_ context.Context, input json.RawMessage, s *State) (Re
 			return rel == only
 		}
 		return fileRe == nil || fileRe.MatchString(rel)
-	})
+	}, nil)
 	if err != nil {
 		return errf(sy.Name(), CodeNotFound, "", "could not search: %v", err).Result(), nil
 	}

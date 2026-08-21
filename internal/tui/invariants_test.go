@@ -9,6 +9,9 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"mostra o que já percorreu":          "TestACallInFlightShowsWhatItHasGotThrough",
+	"nunca na última que começou":        "TestAResultLandsOnItsOwnCallAndNotTheLastOneStarted",
+	"pousa na chamada que ele nomeia":    "TestACallsProgressLandsOnThatCall",
 	"abre com ela mesmo sem plano":       "TestTheTurnsNumbersAloneOpenThePanel",
 	"antes de o daemon ter dito":         "TestTheTurnSectionSaysNothingBeforeTheDaemonDoes",
 	"zera a contagem e conserva":         "TestANewTurnStartsItsCountersAtZero",

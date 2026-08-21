@@ -74,6 +74,36 @@ that on every run to stop the opposite reading.
 
 ### Protocol
 
+- **A scan says how far it has got, and a result lands on its own call.**
+  `kind: "files"` joins the declared set: `grep` says `n of N` because it has the
+  list before it starts, `glob` sends the count alone because it is still
+  discovering, and the card shows `150/184` where an ellipsis used to be.
+
+  The reporter travels **on the call's context, not on `State`**. State is per
+  session and shared, so two scans running in parallel would write their counts
+  through one field and the screen would show one's progress under the other's
+  name. `Progress(ctx)` never returns nil: a tool should say how far it has got
+  without first asking whether anybody is listening.
+
+  Still no kind for lines or tests, and that is a finding rather than an
+  omission. `read` takes the whole file and splits it, so it learns the total at
+  the same moment it learns the content — there is no point at which "n of 240"
+  is true. Counting passing tests would mean parsing `bash` output, which
+  `ToolCompleted`'s own comment forbids. **A kind that could only be filled
+  dishonestly does not get declared.**
+
+  Reports go out every twenty-five files rather than every file: one per file
+  would put ten thousand lines nobody reads into the record of a ten-thousand
+  file scan.
+
+  **A latent defect surfaced on the way.** `ToolCompleted` matched the *last
+  running* entry, which is right exactly while one call runs at a time — with
+  two in flight, the first result landed on the second call's line. Real numbers
+  on the wrong row. `Entry.CallID` fixes the routing of both the result and the
+  progress, and it was found because progress needed the same addressing, not
+  because anybody noticed the wrong screen.
+
+
 - **`progress`: one event for "how far along".** A tool counting files and a turn
   counting rounds are the same question asked of different subjects, so it is one
   event with a `tool_call_id` that is empty when the subject is the turn.

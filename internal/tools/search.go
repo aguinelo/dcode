@@ -13,6 +13,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/aguinelo/dcode/internal/policy"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // ---------- glob ----------
@@ -55,7 +57,7 @@ func (Glob) root(in GlobInput) string {
 	return "."
 }
 
-func (g Glob) Execute(_ context.Context, input json.RawMessage, s *State) (Result, error) {
+func (g Glob) Execute(ctx context.Context, input json.RawMessage, s *State) (Result, error) {
 	var in GlobInput
 	if err := decode(g.Name(), input, &in); err != nil {
 		return err.(*ToolError).Result(), nil
@@ -70,12 +72,15 @@ func (g Glob) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	}
 
 	root, only := searchRoot(root)
+	// No total: the walk is what discovers how many there are, so the count on
+	// its own is the only honest thing to send.
+	step := Reporter(ctx, protocol.ProgressFiles, 0)
 	matches, err := walkFiles(root, s.Limits.RespectGitignore, func(rel string) bool {
 		if only != "" {
 			return rel == only
 		}
 		return re.MatchString(rel)
-	})
+	}, step)
 	if err != nil {
 		return errf(g.Name(), CodeNotFound, "", "could not search %s: %v", in.Path, err).Result(), nil
 	}
@@ -153,7 +158,7 @@ func (g Grep) Declare(input json.RawMessage) (policy.Request, error) {
 	return policy.Request{Tool: g.Name(), Paths: []policy.Access{{Path: p}}}, nil
 }
 
-func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Result, error) {
+func (g Grep) Execute(ctx context.Context, input json.RawMessage, s *State) (Result, error) {
 	var in GrepInput
 	if err := decode(g.Name(), input, &in); err != nil {
 		return err.(*ToolError).Result(), nil
@@ -187,7 +192,7 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 			return rel == only
 		}
 		return fileRe == nil || fileRe.MatchString(rel)
-	})
+	}, nil)
 	if err != nil {
 		return errf(g.Name(), CodeNotFound, "", "could not search: %v", err).Result(), nil
 	}
@@ -213,7 +218,12 @@ func (g Grep) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	limit := s.Limits.GrepMaxMatches
 	truncated := false
 
-	for _, rel := range files {
+	// The list is known before the scan starts, so this one can say `n of N`.
+	// Its own walk stays quiet: two phases with different totals would show a
+	// count that climbs, restarts and climbs again, which reads as a mistake.
+	step := Reporter(ctx, protocol.ProgressFiles, len(files))
+	for i, rel := range files {
+		step(i + 1)
 		raw, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil || !utf8.Valid(raw) {
 			continue
@@ -306,9 +316,17 @@ func searchRoot(root string) (dir, only string) {
 	return root, ""
 }
 
-func walkFiles(root string, respectGitignore bool, keep func(rel string) bool) ([]string, error) {
+// walkFiles collects the paths a search will look at.
+//
+// seen is called with the running count as it goes, and may be nil. It exists
+// for the caller that is DISCOVERING as it walks — glob has no total until the
+// walk ends, so the count on its own is the only honest thing to report.
+func walkFiles(root string, respectGitignore bool, keep func(rel string) bool, seen func(int)) ([]string, error) {
 	ig := loadIgnores(root, respectGitignore)
 	var out []string
+	if seen == nil {
+		seen = func(int) {}
+	}
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -335,6 +353,7 @@ func walkFiles(root string, respectGitignore bool, keep func(rel string) bool) (
 		}
 		if keep(rel) {
 			out = append(out, rel)
+			seen(len(out))
 		}
 		return nil
 	})

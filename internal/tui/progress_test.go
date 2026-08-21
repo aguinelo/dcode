@@ -131,3 +131,76 @@ func TestTheTurnSectionSpeaksTheInterfaceLanguage(t *testing.T) {
 		}
 	}
 }
+
+// -- a call's own progress ---------------------------------------------------
+
+func toolRequested(seq uint64, id, name, input string) protocol.Event {
+	raw, _ := json.Marshal(protocol.ToolRequested{
+		TurnID: "t1", ToolCallID: id, Name: name, Input: json.RawMessage(input)})
+	return protocol.Event{Seq: seq, Type: protocol.EventToolRequested, Payload: raw}
+}
+
+func toolCompleted(seq uint64, id, out string) protocol.Event {
+	raw, _ := json.Marshal(protocol.ToolCompleted{ToolCallID: id, OK: true, Output: out, Files: 4})
+	return protocol.Event{Seq: seq, Type: protocol.EventToolCompleted, Payload: raw}
+}
+
+// Progress lands on the call it names, and on no other.
+func TestACallsProgressLandsOnThatCall(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(toolRequested(1, "c1", "grep", `{"pattern":"x"}`))
+	m = m.Apply(toolRequested(2, "c2", "glob", `{"pattern":"**/*.go"}`))
+	m = m.Apply(progressEvent(3, protocol.Progress{
+		TurnID: "t1", ToolCallID: "c1", Kind: protocol.ProgressFiles, Done: 25, Total: 184}))
+
+	for _, e := range m.Entries {
+		switch e.CallID {
+		case "c1":
+			if e.Done != 25 || e.Total != 184 {
+				t.Errorf("c1 reports %d/%d", e.Done, e.Total)
+			}
+		case "c2":
+			if e.Done != 0 {
+				t.Errorf("c2 borrowed c1's count: %d", e.Done)
+			}
+		}
+	}
+}
+
+// A result lands on the call it belongs to, which is a fix rather than a
+// feature: the old reading took the LAST running entry, which is right exactly
+// while one call runs at a time. With two in flight the first result landed on
+// the second call's line — real numbers on the wrong row.
+func TestAResultLandsOnItsOwnCallAndNotTheLastOneStarted(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(toolRequested(1, "c1", "read", `{"path":"a.go"}`))
+	m = m.Apply(toolRequested(2, "c2", "read", `{"path":"b.go"}`))
+	m = m.Apply(toolCompleted(3, "c1", "the first one finished"))
+
+	for _, e := range m.Entries {
+		if e.CallID == "c1" && e.Running {
+			t.Error("the call that finished is still running")
+		}
+		if e.CallID == "c2" && !e.Running {
+			t.Error("a result landed on a call that had not reported back")
+		}
+	}
+}
+
+// The count on screen, and the ellipsis only when there is nothing to say.
+func TestACallInFlightShowsWhatItHasGotThrough(t *testing.T) {
+	gl := glyphs(true)
+	for _, c := range []struct {
+		done, total int
+		want        string
+	}{
+		{25, 184, "25/184"},
+		{25, 0, "25"},
+		{0, 0, gl.ell},
+	} {
+		got := runningMeta(Entry{Done: c.done, Total: c.total, Running: true}, gl)
+		if got != c.want {
+			t.Errorf("%d of %d rendered %q, want %q", c.done, c.total, got, c.want)
+		}
+	}
+}

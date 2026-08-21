@@ -271,7 +271,18 @@ const (
 	// ProgressInFlight is how many tool calls are running together, against
 	// the concurrency ceiling this session allows.
 	ProgressInFlight = "in_flight"
+	// ProgressFiles is a scan working through files. Total is known when the
+	// tool had the list before it started and absent when it is still walking.
+	ProgressFiles = "files"
 )
+
+// There is no kind for lines, and that is a finding rather than an omission.
+//
+// `read` takes the whole file and splits it, so it learns the total at the same
+// moment it learns the content: there is no point at which "n of 240" is true.
+// Counting passing tests is worse — it would mean parsing `bash` output, which
+// ToolCompleted's own comment forbids in as many words. A kind that could only
+// be filled dishonestly is a kind that does not get declared.
 
 // Payloads for the remaining event types.
 type (

@@ -71,6 +71,36 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Protocolo
 
+- **Varredura diz quão longe foi, e resultado pousa na chamada dele.**
+  `kind: "files"` entra no conjunto declarado: o `grep` diz `n de N` porque tem a
+  lista antes de começar, o `glob` manda só a contagem porque ainda está
+  descobrindo, e o card mostra `150/184` onde havia reticência.
+
+  O relator viaja **no contexto da chamada, não no `State`**. O State é por
+  sessão e compartilhado, então duas varreduras em paralelo escreveriam suas
+  contagens pelo mesmo campo e a tela mostraria o progresso de uma sob o nome da
+  outra. `Progress(ctx)` nunca devolve nil: ferramenta deve dizer quão longe foi
+  sem antes perguntar se alguém escuta.
+
+  Continua sem `kind` para linhas nem testes, e isso é achado, não esquecimento.
+  O `read` lê o arquivo inteiro e divide, então aprende o total no mesmo instante
+  em que aprende o conteúdo — não existe momento em que "n de 240" seja verdade.
+  Contar teste que passou exigiria parsear a saída do `bash`, que o comentário do
+  `ToolCompleted` proíbe. **Kind que só poderia ser preenchido desonestamente não
+  se declara.**
+
+  Os relatos saem a cada vinte e cinco arquivos, não a cada arquivo: um por
+  arquivo poria dez mil linhas que ninguém lê no registro de uma varredura de dez
+  mil arquivos.
+
+  **Um defeito latente apareceu no caminho.** O `ToolCompleted` casava com a
+  *última entrada rodando*, o que está certo exatamente enquanto uma chamada roda
+  por vez — com duas em vôo, o primeiro resultado pousava na linha da segunda.
+  Números reais na linha errada. O `Entry.CallID` conserta o roteamento do
+  resultado e do progresso, e foi achado porque o progresso precisava do mesmo
+  endereçamento, não porque alguém notou a tela errada.
+
+
 - **`progress`: um evento para "quão longe já foi".** Ferramenta contando
   arquivos e turno contando rodadas são a mesma pergunta feita a sujeitos
   diferentes, então é um evento só, com `tool_call_id` vazio quando o sujeito é o

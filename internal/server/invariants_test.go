@@ -18,6 +18,10 @@ var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join(".."
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
 	"em vez de abrir buraco na sequência":  "TestProgressJoinsTheSequenceLikeAnyOtherEvent",
+	"nomeia a chamada de onde veio":        "TestAScanReportsHowFarItHasGot",
+	"está descobrindo e manda só":          "TestAWalkThatIsStillDiscoveringSendsNoTotal",
+	"não reportam uma pela outra":          "TestTwoScansDoNotReportThroughEachOther",
+	"sem perguntar se alguém escuta":       "TestAToolCanReportWithNobodyListening",
 	"conjunto fechado":                     "TestEveryKindEmittedIsOneTheProtocolDeclares",
 	"o teto viaja junto da contagem":       "TestATurnReportsItsRoundAgainstItsCeiling",
 	"quantas chamadas rodam juntas":        "TestABatchReportsHowManyRunTogether",

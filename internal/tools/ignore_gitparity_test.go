@@ -69,7 +69,7 @@ func TestGitignoreMatchesGit(t *testing.T) {
 		t.Skipf("git init failed: %v: %s", err, out)
 	}
 
-	got, err := walkFiles(ws, true, func(string) bool { return true })
+	got, err := walkFiles(ws, true, func(string) bool { return true }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestAnUnreadableRuleIncludesRatherThanHides(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(ws, "a.go"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := walkFiles(ws, true, func(string) bool { return true })
+	got, err := walkFiles(ws, true, func(string) bool { return true }, nil)
 	if err != nil {
 		t.Fatalf("a malformed rule broke the walk: %v", err)
 	}
