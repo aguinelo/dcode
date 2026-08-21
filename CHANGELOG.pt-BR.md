@@ -71,6 +71,28 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Cliente TUI
 
+- **Chamada de ferramenta que carrega corpo é um bloco.** Uma linha em branco a
+  separa do que está em volta; chamada sem corpo continua uma linha só, porque a
+  maioria é de uma linha e moldura em volta de uma linha é caixa em volta de
+  nada.
+
+  É pouco assim porque quase todo o §3 do design já estava construído — o `…`
+  enquanto roda, a duração só a partir de 500 ms, e a coluna "meta pronta"
+  inteira (`240 lines`, `created, 38 lines`, `+24 −2`, matches em arquivos,
+  `exit 0`) no `summariseResult`. E o card já existia em unidade de terminal: o
+  `detailLines` desenha um `│` à esquerda de toda linha de corpo, que é a espinha
+  amarrando corpo e cabeçalho. Faltava o respiro que o handoff pede, não uma
+  moldura.
+
+  A borda de runas fica registrada como preferência com o preço nomeado — duas
+  colunas e duas linhas por chamada, variante ASCII, e a borda entrando na
+  seleção do modo de cópia — e não faria nada que a calha já não faça.
+
+  **O gap vai antes, nunca depois**, e isso foi medido e não chutado: posto
+  depois, ele empurrou a linha alterada de um diff para fora de um terminal de 40
+  linhas, porque a janela é ancorada no fim e branco final custa uma linha do que
+  aconteceu para não mostrar nada.
+
 - **A linha de atividade fala um idioma só, a saída inclusive.** Ela dizia
   `^C interrupts` em inglês sob interface em português. O verbo tornou isso
   óbvio ao sentar do lado — `lendo grep … ^C interrupts` — e meia frase em cada

@@ -9,6 +9,11 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"carrega corpo é bloco":              "TestACallWithABodyIsSeparatedFromWhatCameBefore",
+	"e do que vem depois dela":           "TestWhatFollowsABlockIsSeparatedFromIt",
+	"continua uma linha só":              "TestCallsWithoutBodiesStayPacked",
+	"duas linhas em branco seguidas":     "TestTwoBlocksAreSeparatedByExactlyOneBlankLine",
+	"termina em linha em branco":         "TestTheStreamDoesNotEndOnABlankLine",
 	"nunca é desenhado sem a ferramenta": "TestTheVerbNeverAppearsWithoutTheToolItDescribes",
 	"fala um idioma só":                  "TestTheWayOutSpeaksTheSameLanguageAsTheLine",
 	"troca a cada 20 quadros":            "TestTheVerbHoldsForTwentyFramesAndThenChanges",
