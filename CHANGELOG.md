@@ -74,6 +74,27 @@ that on every run to stop the opposite reading.
 
 ### Client TUI
 
+- **A tool call that carries a body reads as a block.** One blank line separates
+  it from what is around it; a call with no body stays a single line, because
+  most calls are one line and a card around one line is a box around nothing.
+
+  It is this small because almost all of the design's §3 was already built —
+  the `…` while running, the duration only past 500ms, and the whole finished
+  meta column (`240 lines`, `created, 38 lines`, `+24 −2`, matches in files,
+  `exit 0`) in `summariseResult`. And the card itself already existed in the
+  units a terminal has: `detailLines` draws a `│` down the left of every body
+  line, which is the spine tying body to header. What was missing was the
+  breathing room the handoff asks for, not a frame.
+
+  The rune border stays a recorded preference with its price — two columns and
+  two rows per call, an ASCII variant, and the border joining what copy mode
+  selects — and it would do nothing the gutter does not.
+
+  **The gap goes before, never after**, and that was measured rather than
+  guessed: put after, it pushed the changed line of a diff off a 40-row
+  terminal, because the window is anchored to the end and a trailing blank costs
+  a row of what happened to show nothing.
+
 - **The activity line speaks one language, the way out included.** It said
   `^C interrupts` in English under a Portuguese interface. The verb made it
   obvious by sitting right beside it — `lendo grep … ^C interrupts` — and half a

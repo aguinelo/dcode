@@ -368,12 +368,66 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 	return clipStyled(line, g.Width)
 }
 
+// toolBody is what a call carries under its header, and how much of it shows.
+//
+// The diff wins over the raw output and shows without being asked for: it is
+// what gets reviewed. Collapsed it is a preview; Tab reveals the rest, which is
+// what makes the hint honest.
+func toolBody(e Entry, g Geometry) (string, int) {
+	if e.Diff != "" {
+		if e.Expanded {
+			return e.Diff, g.DiffMaxLines
+		}
+		return e.Diff, g.DiffPreviewLines
+	}
+	if e.Expanded && e.Detail != "" {
+		return e.Detail, g.DiffMaxLines
+	}
+	return "", 0
+}
+
+// gapBefore puts one blank line in, and never two.
+//
+// Before rather than after, always. A trailing blank costs a row of the window
+// the stream is anchored to, so the last thing that happened scrolls off to
+// make room for nothing — measured, not guessed: it dropped the changed line
+// out of a diff on a 40-row terminal.
+func gapBefore(out []string) []string {
+	if len(out) == 0 || out[len(out)-1] == "" {
+		return out
+	}
+	return append(out, "")
+}
+
 func renderStream(m Model, g Geometry, w int) []string {
 	gl := glyphs(g.Unicode)
 	p := g.Palette
 	var out []string
 
+	// A call that carries a body reads as a block: a blank line separates it
+	// from whatever is around it, so the header, the gutter and the body hold
+	// together as one thing.
+	//
+	// This is the design's card, in the units a terminal has. The spine is
+	// already there — detailLines draws a `│` down the left of every body line
+	// — so what was missing was the breathing room, not a frame. A frame would
+	// cost two columns and two rows per call, join what copy mode selects, and
+	// need an ASCII variant, and it would do nothing the gutter does not.
+	//
+	// A call with no body stays a single line. Most calls are one line, and a
+	// card around one line is a box around nothing.
+	blocked := false
 	for i, e := range m.Entries {
+		isBlock := false
+		if e.Kind == KindTool {
+			b, _ := toolBody(e, g)
+			isBlock = b != ""
+		}
+		if isBlock || blocked {
+			out = gapBefore(out)
+		}
+		blocked = isBlock
+
 		selected := i == m.Cursor
 		cursor := "  "
 		if selected {
@@ -390,18 +444,10 @@ func renderStream(m Model, g Geometry, w int) []string {
 			}
 
 		case KindTool:
+			body, limit := toolBody(e, g)
 			out = append(out, clipStyled(renderToolLine(e, cursor, gl, p, w), w))
-			// The diff is what gets reviewed, so it wins over the raw output
-			// and shows without being asked for. Collapsed it is a preview;
-			// Tab reveals the rest, which is what makes the hint honest.
-			if body := e.Diff; body != "" {
-				limit := g.DiffPreviewLines
-				if e.Expanded {
-					limit = g.DiffMaxLines
-				}
+			if body != "" {
 				out = append(out, detailLines(body, w, g, limit)...)
-			} else if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines)...)
 			}
 
 		case KindError:
