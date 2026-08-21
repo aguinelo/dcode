@@ -93,6 +93,8 @@ type Model struct {
 
 	Entries []Entry
 	Plan    []protocol.PlanItem
+	// Nav is the session list's cursor while the rail has the keyboard.
+	Nav RailNav
 	// Sessions is what this workspace has recorded, for the sidebar. Passed in
 	// by the caller like the language and the command set: the client reads no
 	// disk, and a list it went and fetched itself would be a second answer to a

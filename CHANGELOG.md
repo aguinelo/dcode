@@ -72,6 +72,33 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Client TUI
+
+- **`^R` gives the sidebar the keyboard.** `↑↓` move, a letter filters, `enter`
+  continues the conversation under the cursor, `esc` clears the filter and then
+  closes. The second of the design's three rail modes; the third, naming, still
+  has nowhere to be stored.
+
+  Owning the keyboard is not a flourish: a list you move through with keys that
+  also type into the input line is a list where every keystroke does two things,
+  and the one time it does the wrong one it opens somebody else's afternoon. The
+  block sits **above** the completion-menu guard for the reason the copy-mode
+  changelog records — placed inside it, the mode would never have run at all,
+  and nothing would have said so.
+
+  Each small decision carries its reason: the cursor is a character rather than
+  a colour and wins over the open-conversation mark, because with the keyboard
+  here the question is *which one am I about to open*; `↑↓` do not wrap, reusing
+  the picker's own argument; `esc` backs out one thing at a time; typing returns
+  the cursor to the top, since the list on screen is now a different one; a
+  filter matching nothing chooses nothing **and says so** rather than going
+  blank; choosing the conversation already open does nothing.
+
+  A fifth hard-coded Unicode rune slipped in — the filter caret — and #243's
+  guard did not catch it, because it enumerated the runes by hand. It now
+  **derives** them from the glyph sets by reflection, so a new mark joins the
+  prohibition on its own.
+
 ### Documentation
 
 - **What the v5 design asks for and the client still does not show.** Found by

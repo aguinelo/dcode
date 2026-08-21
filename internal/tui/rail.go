@@ -16,13 +16,13 @@ import (
 // apart. Movement is never the only clue: a pulsing row and a still one must
 // still differ when nothing can pulse, so a running row carries a mark of its
 // own rather than only a colour or an animation.
-type railMarks struct{ folder, file, running, done, failed, open string }
+type railMarks struct{ folder, file, running, done, failed, open, cursor, caret string }
 
 func railGlyphs(unicode bool) railMarks {
 	if !unicode {
-		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">"}
+		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">", cursor: "*", caret: "_"}
 	}
-	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●"}
+	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●", cursor: "▸", caret: "▌"}
 }
 
 // renderRail draws the sidebar, one row per line, already clipped to width.
@@ -63,12 +63,32 @@ func renderRail(m Model, g Geometry, height int) []string {
 	// truncated list of what is being written right now.
 	if len(m.Sessions) > 0 && len(out)+2 < height {
 		out = append(out, "")
-		out = append(out, clipStyled(p.Apply(StyleDim, strings.ToUpper(t.RailSessions)), w))
-		for _, c := range m.Sessions {
+
+		// The header says the key while the rail is not focused, and shows what
+		// has been typed while it is. Two facts, one row, and never both — the
+		// key is only useful before you press it.
+		head := strings.ToUpper(t.RailSessions)
+		style := StyleDim
+		if m.Nav.Active {
+			style = StyleAccent
+			head += "  " + t.RailFilter + m.Nav.Filter + gl.caret
+		} else {
+			head += "  ^r"
+		}
+		out = append(out, clipStyled(p.Apply(style, head), w))
+
+		visible := m.Nav.Visible(m.Sessions)
+		if len(visible) == 0 {
+			// Said, rather than left blank. A list that empties itself under a
+			// filter reads as a list that lost its contents.
+			out = append(out, clipStyled(p.Apply(StyleDim, "  "+t.RailNoMatch), w))
+		}
+		for i, c := range visible {
 			if len(out) >= height {
 				break
 			}
-			out = append(out, clipStyled(sessionRow(c, c.ID == m.SessionID, gl, p, w), w))
+			under := m.Nav.Active && i == m.Nav.Cursor
+			out = append(out, clipStyled(sessionRow(c, c.ID == m.SessionID, under, gl, p, w), w))
 		}
 	}
 
@@ -81,10 +101,23 @@ func renderRail(m Model, g Geometry, height int) []string {
 // sessionRow is one recorded conversation. The open one is marked by a
 // character and not only by colour, so it is still the open one on a terminal
 // without any.
-func sessionRow(c SessionChoice, open bool, gl railMarks, p Palette, w int) string {
+func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w int) string {
 	mark, style := " ", StyleDim
 	if open {
 		mark, style = gl.open, StyleAccent
+	}
+	// The cursor is a CHARACTER, never only a colour. A row picked out in
+	// colour alone is not picked out at all on a terminal without any, and this
+	// is a list where choosing the wrong row opens the wrong afternoon's work.
+	//
+	// It wins over the open mark, because while the rail has the keyboard the
+	// question on screen is "which one am I about to open", not "which one am I
+	// in" — and the open one still carries its own colour.
+	if under {
+		mark = gl.cursor
+		if !open {
+			style = StyleAccent
+		}
 	}
 	title := c.Title
 	if title == "" {

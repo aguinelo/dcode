@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -235,12 +236,38 @@ func TestNoBoxDrawingRuneSurvivesAsciiMode(t *testing.T) {
 	g.Palette = Palette{}
 	g.Unicode = false
 
-	// Every rune the Unicode set uses, and the ones the layout reached for
-	// directly without going through it.
-	for _, forbidden := range []string{"│", "…", "⋯", "▾", "◦", "✓", "⊘", "⏺", "●", "✻", "▸"} {
-		if strings.Contains(Render(m, g), forbidden) {
+	// The forbidden set is DERIVED from the Unicode glyph sets rather than
+	// listed here. Listing them is what let the filter caret slip in as the
+	// fifth of these: a new glyph would have to be remembered in two places,
+	// and the second place is a test nobody edits when adding a mark.
+	m.Nav = RailNav{Active: true, Filter: "co"}
+	out := Render(m, g)
+	for _, forbidden := range unicodeGlyphs() {
+		if forbidden == "" || forbidden == " " {
+			continue
+		}
+		if strings.Contains(out, forbidden) {
 			t.Errorf("%q reached a terminal that declared it cannot draw one:\n%s",
-				forbidden, Render(m, g))
+				forbidden, out)
 		}
 	}
+	// The two the layout reaches for directly, outside either set.
+	for _, forbidden := range []string{"⋯", "│"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("%q reached a terminal that declared it cannot draw one:\n%s",
+				forbidden, out)
+		}
+	}
+}
+
+// unicodeGlyphs is every mark either set draws when the terminal can.
+func unicodeGlyphs() []string {
+	var out []string
+	for _, v := range []any{glyphs(true), railGlyphs(true)} {
+		rv := reflect.ValueOf(v)
+		for i := 0; i < rv.NumField(); i++ {
+			out = append(out, rv.Field(i).String())
+		}
+	}
+	return out
 }
