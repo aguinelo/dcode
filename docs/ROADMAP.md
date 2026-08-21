@@ -293,21 +293,21 @@ to be rebuilt. Note the naming trap that was already there — the spec advertis
 whose brew shorthand is `aguinelo/dcode/dcode`. Whichever name is chosen, the two
 have to agree, and a test should hold them together.
 
-**A boundary test passes or fails according to what is on the machine.**
-`TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable` asks for
-`--ro-bind /tmp/ws` and gets it — unless `/tmp/ws` happens to exist on the disk
-of whoever runs it. `canonical()` resolves symlinks with `filepath.EvalSymlinks`,
-which only resolves a path that EXISTS, so on macOS an existing `/tmp/ws` becomes
-`/private/tmp/ws` and stops matching the `/tmp` prefix at `backends.go:327`. On
-CI the directory does not exist, resolution fails, the path stays `/tmp/ws`, and
-the test passes.
+**A boundary test passed or failed according to what was on the machine.**
+Fixed in #235, and left here because the shape is the point.
+`TestKeepingTheWorkspaceVisibleDoesNotMakeItWritable` asked for
+`--ro-bind /tmp/ws` and got it — unless `/tmp/ws` happened to exist, because
+`canonical()` resolved symlinks with `EvalSymlinks`, which only resolves a path
+that EXISTS. The same directory canonicalised two ways depending on when it was
+asked about, and the `/tmp` comparison tested that against a literal string.
 
-Production is fine — bubblewrap is Linux-only, where `/tmp` is not a symlink. The
-defect is that a test of a security boundary reports a different answer on
-different machines, and it stayed invisible for a whole day behind Go's test
-cache: every `make check` said green until `go clean -testcache`. That is the
-same trap as the cached coverage number two paragraphs down, arriving by a
-different road.
+Two lessons generalise. **A function that answers differently for the same input
+depending on the filesystem cannot sit under a boundary decision** — and this one
+also fed the seatbelt profile, where the comment above it already named the
+damage it was doing. And it stayed invisible for a day behind Go's test cache:
+every `make check` said green until `go clean -testcache`, which is the same trap
+as the cached coverage number two paragraphs down, arriving by a different road.
+Worth asking of any test that has never been seen red: has it ever run?
 
 **A threshold of zero used to print no evidence.** Fixed in the same session:
 zero means "measure and tell me", and a number with no transcript behind it is
