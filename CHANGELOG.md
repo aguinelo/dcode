@@ -74,6 +74,14 @@ that on every run to stop the opposite reading.
 
 ### Client TUI
 
+- **The expansion hint speaks the interface language.** Under a collapsed body it
+  read `⋯ 42 lines · Tab expande` — one line, two languages, in **both**
+  interfaces: the count was hard-coded English and the verb hard-coded
+  Portuguese, and neither followed what the user had chosen.
+
+  Same family as #238 and found the same way, by reading the output rather than
+  the diff.
+
 - **A tool call that carries a body reads as a block.** One blank line separates
   it from what is around it; a call with no body stays a single line, because
   most calls are one line and a card around one line is a box around nothing.

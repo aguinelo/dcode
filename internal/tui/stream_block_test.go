@@ -100,3 +100,30 @@ func TestWhatFollowsABlockIsSeparatedFromIt(t *testing.T) {
 		t.Errorf("the body ran straight into what came after:\n%s", strings.Join(lines, "\n"))
 	}
 }
+
+// The hint under a collapsed body said "Tab expande" in Portuguese beside a
+// count in English — one line, two languages, in BOTH interfaces. Neither half
+// followed what the user had chosen.
+func TestTheExpansionHintSpeaksTheInterfaceLanguage(t *testing.T) {
+	long := strings.Repeat("a line of output\n", 60)
+	for _, c := range []struct {
+		lang       Lang
+		want, gone string
+	}{
+		{PtBR, "Tab expande", "lines"},
+		{En, "Tab expands", "linhas"},
+	} {
+		m := Model{Lang: c.lang, Cursor: -1, Entries: []Entry{
+			{Kind: KindTool, Tool: "bash", Target: "x", Summary: "ok", Detail: long, Expanded: true},
+		}}
+		g := DefaultGeometry(100, 40)
+		g.Palette = Palette{}
+		out := strings.Join(StreamLines(m, g), "\n")
+		if !strings.Contains(out, c.want) {
+			t.Errorf("%s: the hint is not in the interface language:\n%s", c.lang, out)
+		}
+		if strings.Contains(out, c.gone) {
+			t.Errorf("%s: the other language leaked into the hint:\n%s", c.lang, out)
+		}
+	}
+}

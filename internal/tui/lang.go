@@ -73,6 +73,14 @@ type Strings struct {
 	// it falls back to. Deliberately not one of the rotating verbs: see
 	// activity.go.
 	Working string
+	// LineOne and LineMany count hidden lines in a collapsed body, and
+	// ExpandHint says how to see them. All three because the hint said
+	// "Tab expande" in Portuguese next to a count in English, on one line, in
+	// both interfaces.
+	LineOne    string
+	LineMany   string
+	ExpandHint string
+
 	// WorkingInterrupt is the way out, on the activity line. Its own string
 	// rather than Interrupt, which is the `esc` hint somewhere else: two keys
 	// with one sentence between them is how a hint ends up naming the wrong
@@ -190,6 +198,9 @@ var catalogue = map[Lang]Strings{
 	En: {
 		Working:          "working",
 		WorkingInterrupt: "^C interrupts",
+		LineOne:          "line",
+		LineMany:         "lines",
+		ExpandHint:       "Tab expands",
 
 		VerifiedLabel:    "verified",
 		NotVerifiedLabel: "NOT VERIFIED",
@@ -308,6 +319,9 @@ Environment:
 	PtBR: {
 		Working:          "trabalhando",
 		WorkingInterrupt: "^C interrompe",
+		LineOne:          "linha",
+		LineMany:         "linhas",
+		ExpandHint:       "Tab expande",
 
 		VerifiedLabel:    "conferido",
 		NotVerifiedLabel: "NÃO CONFERIDO",
