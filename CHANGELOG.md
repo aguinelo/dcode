@@ -72,6 +72,24 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Client TUI
+
+- **A column that hides itself says so.** The sidebar disappears below a hundred
+  columns — which is most terminals — and said **nothing at all**, so a column
+  that had been built read as a column that had not, and the key that brings it
+  back (`^B`) was documented only inside the column that was not on screen.
+
+  Found the only way it could be: by somebody opening the product and saying the
+  interface was not what they designed. Every verification behind it had been a
+  Go test calling `Render` in memory, at widths I chose — never the binary in a
+  terminal.
+
+  The threshold stays at a hundred, because the reasoning holds: a 20-column
+  sidebar on an 80-column terminal leaves 59 for the stream, and a diff in 59
+  columns is bad. The defect was the silence. The plan panel had already paid
+  this debt and already carried a hint; the sidebar inherited the behaviour
+  without it.
+
 ### Protocol
 
 - **A conversation can be given a name, stored in its own record.** Three places
