@@ -613,6 +613,17 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 		return fail(fmt.Sprintf("tool %q is not available", ex.Call.Name)), false, ""
 	}
 
+	// How far this call has got, named by the call it belongs to. On the
+	// context because a report belongs to ONE call: State is per session and
+	// shared, and two scans running together would report through the same
+	// field and show one's progress under the other's name.
+	ctx = tools.WithProgress(ctx, func(kind string, done, total int) {
+		e.emit(protocol.EventProgress, protocol.Progress{
+			TurnID: turnID, ToolCallID: ex.Call.ID,
+			Kind: kind, Done: done, Total: total,
+		})
+	})
+
 	// Every execution passes through the evaluator. There is no alternative
 	// path, in any mode, for any tool.
 	verdict := e.evaluate(ex.Declare)

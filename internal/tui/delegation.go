@@ -99,7 +99,7 @@ func delegationChild(e Entry, gl marks, p Palette, w int, t Strings) string {
 	// block exists to make visible.
 	result := e.Summary
 	if e.Running {
-		result = gl.ell
+		result = runningMeta(e, gl)
 	}
 	if e.IsError && result == "" {
 		result = t.ChildNoAnswer

@@ -2,9 +2,14 @@ package loop
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/tools"
@@ -163,6 +168,119 @@ func TestProgressNeverEntersTheContextSentToTheModel(t *testing.T) {
 			if strings.Contains(m.Text, protocol.ProgressRounds) {
 				t.Errorf("progress was sent to the provider: %q", m.Text)
 			}
+		}
+	}
+}
+
+// A scan says how far it has got, and the reports name the call they came from.
+//
+// grep knows its list before it starts, so it can say `n of N`. glob is
+// discovering as it walks, so it sends the count alone — a total it has not
+// finished counting would be a number it made up.
+func TestAScanReportsHowFarItHasGot(t *testing.T) {
+	ws := t.TempDir()
+	for _, name := range []string{"a", "b", "c"} {
+		if err := os.WriteFile(filepath.Join(ws, name+".go"), []byte("package x\n// needle\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := tools.NewRegistry(tools.Grep{})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "grep", `{"pattern":"needle"}`), done()},
+		{text("done"), done()},
+	}}
+	res, err := policy.NewResolver(ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, rec := newEngine(t, p, reg, func(c *Config) {
+		c.State = tools.NewState(res, tools.DefaultLimits(), allToolNames)
+	})
+	if _, err := e.Run(context.Background(), "find it"); err != nil {
+		t.Fatal(err)
+	}
+
+	got := progressOf(rec, protocol.ProgressFiles)
+	if len(got) == 0 {
+		t.Fatal("the scan never said how far it had got")
+	}
+	for _, pr := range got {
+		if pr.ToolCallID != "c1" {
+			t.Errorf("a scan's report does not name its call: %q", pr.ToolCallID)
+		}
+		if pr.Done < 1 {
+			t.Errorf("reported %d done", pr.Done)
+		}
+		if pr.Total != 0 && pr.Done > pr.Total {
+			t.Errorf("reported %d of %d", pr.Done, pr.Total)
+		}
+	}
+}
+
+// A tool that reports through the context reports for ITS call, and two running
+// together do not write through one another. State is per session and shared,
+// which is why the reporter is not on it.
+func TestTwoScansDoNotReportThroughEachOther(t *testing.T) {
+	seen := map[string][]int{}
+	var mu sync.Mutex
+	ctxOf := func(id string) context.Context {
+		return tools.WithProgress(context.Background(), func(_ string, done, _ int) {
+			mu.Lock()
+			defer mu.Unlock()
+			seen[id] = append(seen[id], done)
+		})
+	}
+	tools.Progress(ctxOf("a"))("files", 1, 0)
+	tools.Progress(ctxOf("b"))("files", 2, 0)
+
+	if len(seen["a"]) != 1 || seen["a"][0] != 1 {
+		t.Errorf("a got %v", seen["a"])
+	}
+	if len(seen["b"]) != 1 || seen["b"][0] != 2 {
+		t.Errorf("b got %v", seen["b"])
+	}
+}
+
+// A context with no reporter is not a crash. A tool should say how far it has
+// got without first asking whether anybody is listening.
+func TestAToolCanReportWithNobodyListening(t *testing.T) {
+	tools.Progress(context.Background())("files", 1, 2)
+	tools.Reporter(context.Background(), "files", 0)(1)
+}
+
+// glob is discovering as it walks, so it sends the count alone. A total it has
+// not finished counting would be a number it made up, and a denominator that
+// grows while a fraction is on screen is worse than no fraction.
+func TestAWalkThatIsStillDiscoveringSendsNoTotal(t *testing.T) {
+	ws := t.TempDir()
+	for i := 0; i < 30; i++ {
+		if err := os.WriteFile(filepath.Join(ws, fmt.Sprintf("f%02d.go", i)), []byte("package x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := tools.NewRegistry(tools.Glob{})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "glob", `{"pattern":"**/*.go"}`), done()},
+		{text("done"), done()},
+	}}
+	res, err := policy.NewResolver(ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, rec := newEngine(t, p, reg, func(c *Config) {
+		c.State = tools.NewState(res, tools.DefaultLimits(), allToolNames)
+	})
+	if _, err := e.Run(context.Background(), "list them"); err != nil {
+		t.Fatal(err)
+	}
+
+	got := progressOf(rec, protocol.ProgressFiles)
+	if len(got) == 0 {
+		t.Fatal("the walk never said how far it had got")
+	}
+	for _, pr := range got {
+		if pr.Total != 0 {
+			t.Errorf("a walk still discovering reported a total of %d", pr.Total)
 		}
 	}
 }

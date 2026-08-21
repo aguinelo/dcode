@@ -687,8 +687,10 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 
 	switch {
 	case e.Running:
-		// No summary yet, and saying nothing reads as finished-with-no-output.
-		head += " " + p.Apply(StyleDim, gl.ell)
+		// What it has got through, when it says. The ellipsis is the fallback
+		// rather than the rule: saying nothing reads as finished-with-no-output,
+		// and a count says the same thing with a number attached.
+		head += " " + p.Apply(StyleDim, runningMeta(e, gl))
 	case e.Summary != "":
 		style := StyleDim
 		if e.IsError {
@@ -702,6 +704,22 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 		head += "  " + p.Apply(StyleDim, d)
 	}
 	return strings.TrimRight(head, " ")
+}
+
+// runningMeta is what a call in flight has to show for itself.
+//
+// `184/900` when the total is known, `184` when the walk is still discovering
+// it, and the ellipsis when the tool has said nothing. Never a percentage: the
+// question of a scan is how much is left, and a share cannot answer it while
+// the denominator is still moving.
+func runningMeta(e Entry, gl marks) string {
+	switch {
+	case e.Done > 0 && e.Total > 0:
+		return fmt.Sprintf("%d/%d", e.Done, e.Total)
+	case e.Done > 0:
+		return fmt.Sprintf("%d", e.Done)
+	}
+	return gl.ell
 }
 
 // ellipsis shortens the middle of a path, keeping the end.

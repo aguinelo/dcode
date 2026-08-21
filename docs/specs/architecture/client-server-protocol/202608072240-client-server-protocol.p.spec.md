@@ -188,6 +188,10 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 
 - `progress` é o único evento que não é fato: ele entra no log e no registro como `message.delta`, com `Seq`, em vez de abrir buraco na sequência.
+- Varredura reporta quão longe foi, e o relato nomeia a chamada de onde veio.
+- `grep` conhece a lista antes de varrer e diz `n de N`; `glob` está descobrindo e manda só a contagem.
+- Duas varreduras rodando juntas não reportam uma pela outra: o relator viaja no contexto da chamada, não no estado da sessão.
+- Ferramenta reporta sem perguntar se alguém escuta; contexto sem relator não é erro.
 - `kind` vem de um conjunto fechado, para o cliente dizer no idioma de quem lê em vez de imprimir o do daemon.
 - O turno reporta a rodada contra o teto, e o teto viaja junto da contagem.
 - Um lote reporta quantas chamadas rodam juntas contra o teto de concorrência da sessão.

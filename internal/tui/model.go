@@ -61,6 +61,16 @@ type Entry struct {
 	// Running marks a tool call that has not reported back yet, which is what
 	// the spinner attaches to.
 	Running bool
+	// CallID is the tool call this entry is, so a result and a progress report
+	// land on the call they belong to.
+	//
+	// A completion used to be matched to the LAST running entry, which is right
+	// exactly while one call runs at a time. With two in flight the first
+	// result landed on the second call's line — the numbers were real and the
+	// row they appeared on was not.
+	CallID string
+	// Done and Total are how far a running call has got, when it says.
+	Done, Total int
 	// Owns is what a delegated child declared it would write, taken from the
 	// call's input. It is the boundary the child was given, and the screen has
 	// no other way to show what a child was allowed to touch.
@@ -312,10 +322,15 @@ func (m Model) Apply(ev protocol.Event) Model {
 		if err := json.Unmarshal(ev.Payload, &d); err != nil {
 			break
 		}
-		// The turn's own counters. A tool's progress carries a call id and
-		// belongs to that call; nothing draws it yet, so it is ignored rather
-		// than half-applied — half of a number is worse than none of it.
+		// A tool's progress belongs to the call it names, and to no other.
 		if d.ToolCallID != "" {
+			m.Entries = append([]Entry(nil), m.Entries...)
+			for i := range m.Entries {
+				if m.Entries[i].CallID == d.ToolCallID {
+					m.Entries[i].Done, m.Entries[i].Total = d.Done, d.Total
+					break
+				}
+			}
 			break
 		}
 		switch d.Kind {
@@ -333,7 +348,8 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m = m.closeThought()
 		m.Entries = append(m.Entries, Entry{
 			Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
-			Owns: ownsOf(d.Input), Summary: "", Running: true, Seq: ev.Seq,
+			Owns: ownsOf(d.Input), CallID: d.ToolCallID,
+			Summary: "", Running: true, Seq: ev.Seq,
 		})
 
 	case protocol.EventToolCompleted:
@@ -352,6 +368,12 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.Entries = append([]Entry(nil), m.Entries...)
 		for i := len(m.Entries) - 1; i >= 0; i-- {
 			if m.Entries[i].Kind != KindTool || !m.Entries[i].Running {
+				continue
+			}
+			// The call this result belongs to, by name. Taking the last
+			// running one is right exactly while one call runs at a time, and
+			// with two in flight the first result landed on the second's line.
+			if d.ToolCallID != "" && m.Entries[i].CallID != d.ToolCallID {
 				continue
 			}
 			m.Entries[i].Detail = d.Output
