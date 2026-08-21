@@ -135,3 +135,78 @@ func TestTheSidebarHeaderCountsWhatWasTouched(t *testing.T) {
 		t.Errorf("the count is printed twice: %q", head)
 	}
 }
+
+// -- the conversations of this workspace -------------------------------------
+
+func sessionsModel(open string, titles ...string) Model {
+	m := railModel(Entry{Kind: KindTool, Tool: "read", Target: "a.go"})
+	m.SessionID = open
+	for i, ti := range titles {
+		m.Sessions = append(m.Sessions, SessionChoice{ID: string(rune('a' + i)), Title: ti})
+	}
+	return m
+}
+
+// The open conversation is marked by a character, not only by colour. A
+// selection shown in colour alone is no selection on a terminal without any —
+// the rule copy mode already carries.
+func TestTheOpenConversationIsMarkedByACharacter(t *testing.T) {
+	m := sessionsModel("b", "first", "second")
+	g := railGeometry(140)
+	g.Palette = Palette{}
+	lines := strings.Join(renderRail(m, g, 12), "\n")
+
+	for _, want := range []string{"● second", "  first"} {
+		if !strings.Contains(lines, want) {
+			t.Errorf("expected %q in:\n%s", want, lines)
+		}
+	}
+}
+
+// A workspace with conversations and a turn that has touched nothing still has
+// a column worth drawing. Asking only about files emptied it for the first
+// minute of every session.
+func TestConversationsAloneAreEnoughToOpenTheSidebar(t *testing.T) {
+	m := Model{Lang: En, Cursor: -1, Sessions: []SessionChoice{{ID: "a", Title: "x"}}}
+	if !m.railHasContent() {
+		t.Error("a workspace with recorded conversations got no sidebar")
+	}
+	empty := Model{Lang: En, Cursor: -1}
+	if empty.railHasContent() {
+		t.Error("a session with nothing at all opened a column")
+	}
+}
+
+// A title that had to be cut says so. One that merely stops leaves the reader
+// unable to tell a short conversation from a truncated one.
+func TestATruncatedTitleSaysItWasTruncated(t *testing.T) {
+	m := sessionsModel("z", strings.Repeat("catalogar os contratos ", 4))
+	g := railGeometry(120)
+	g.Palette = Palette{}
+	var row string
+	for _, l := range renderRail(m, g, 12) {
+		if strings.Contains(l, "catalogar") {
+			row = l
+			break
+		}
+	}
+	if row == "" {
+		t.Fatal("the conversation is not listed")
+	}
+	if !strings.HasSuffix(strings.TrimRight(row, " "), "…") {
+		t.Errorf("a cut title does not say it was cut: %q", row)
+	}
+	if w := visibleWidth(row); w > g.railWidth() {
+		t.Errorf("the row is %d wide in a %d column", w, g.railWidth())
+	}
+}
+
+// Cut in cells, never in bytes: a rune is not a column.
+func TestATitleIsCutInCellsAndNotInBytes(t *testing.T) {
+	if got := trimTo("sessões", 4); visibleWidth(got) > 4 {
+		t.Errorf("%q is %d columns, wanted at most 4", got, visibleWidth(got))
+	}
+	if trimTo("abc", 0) != "" {
+		t.Error("a zero width produced text")
+	}
+}

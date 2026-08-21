@@ -110,11 +110,11 @@ func (g Geometry) ShowPanel(hasPlan bool) bool {
 
 // ShowRail reports whether the sidebar is drawn.
 //
-// Nothing touched means no sidebar, for the reason an empty panel is worse than
-// none: a column of nothing costs the stream twenty characters and tells the
-// reader that something is missing.
-func (g Geometry) ShowRail(touched bool) bool {
-	if !touched {
+// Nothing to put in it means no sidebar, for the reason an empty panel is worse
+// than none: a column of nothing costs the stream twenty characters and tells
+// the reader that something is missing.
+func (g Geometry) ShowRail(hasContent bool) bool {
+	if !hasContent {
 		return false
 	}
 	switch g.RailMode {
@@ -268,8 +268,7 @@ func fill(body string, g Geometry) string {
 
 func render(m Model, g Geometry) string {
 	showPanel := g.ShowPanel(len(m.Plan) > 0)
-	rows := FileTree(m.Entries)
-	showRail := g.ShowRail(len(rows) > 0)
+	showRail := g.ShowRail(m.railHasContent())
 
 	var b strings.Builder
 	b.WriteString(renderStatus(m, g, showPanel))
@@ -366,7 +365,7 @@ func render(m Model, g Geometry) string {
 // the tail is what made scrolling impossible, since there was nothing above the
 // screen to scroll back to.
 func StreamLines(m Model, g Geometry) []string {
-	w := g.StreamWidth(g.ShowRail(len(FileTree(m.Entries)) > 0), g.ShowPanel(len(m.Plan) > 0))
+	w := g.StreamWidth(g.ShowRail(m.railHasContent()), g.ShowPanel(len(m.Plan) > 0))
 	if m.ShowEmptyState() {
 		return emptyState(m, g, w)
 	}

@@ -9,6 +9,11 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"marcada por caractere, não só":      "TestTheOpenConversationIsMarkedByACharacter",
+	"Conversas sozinhas já abrem":        "TestConversationsAloneAreEnoughToOpenTheSidebar",
+	"diz que foi cortado":                "TestATruncatedTitleSaysItWasTruncated",
+	"mesmo filtro do `dcode -r`":         "TestThePickListLeavesOutSessionsNobodyAskedAnythingIn",
+	"em células e não em bytes":          "TestATitleIsCutInCellsAndNotInBytes",
 	"mesma sessão reaberta, mesma lista": "TestTheSameEntriesProduceTheSameTree",
 	"nenhuma ferramenta tocou não é":     "TestAPathNoToolTouchedIsNotDrawn",
 	"linha de comando não entram":        "TestPatternsAndCommandsStayOutOfTheFileList",

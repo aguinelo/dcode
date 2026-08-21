@@ -142,6 +142,7 @@ func runTUI(args []string) error {
 		Transport:     c,
 		Geometry:      geo,
 		Commands:      commands,
+		Sessions:      recordedSessions(recordDir(resolved), ws),
 		AcceptsImages: acceptsImages(opts.Model),
 		Lookup:        lookup(resolved),
 		// Resolved at the edge, once. The client package renders and never
@@ -198,6 +199,21 @@ func pickSession(ctx context.Context, dir, ws string, geo tui.Geometry, resolved
 // A session nobody asked anything in is nothing to continue, and it is most of
 // what a record directory holds: one is written every time the interface opens.
 // Offering them would bury the four real conversations under thirty empty ones.
+// recordedSessions is the sidebar's list, read once at start.
+//
+// The same source and the same filter as `dcode -r`, deliberately: two ways of
+// listing the conversations of a workspace would eventually disagree about
+// which ones exist. An unreadable record directory is no list rather than a
+// failure to start — the sidebar is a convenience, and refusing to open the
+// interface over it would be the wrong trade.
+func recordedSessions(dir, ws string) []tui.SessionChoice {
+	found, err := session.Browse(dir, ws)
+	if err != nil {
+		return nil
+	}
+	return choicesFrom(found)
+}
+
 func choicesFrom(found []session.Summary) []tui.SessionChoice {
 	var out []tui.SessionChoice
 	for _, s := range found {

@@ -76,6 +76,7 @@ type Strings struct {
 	// RailFiles heads the sidebar, and RailTouchedOne/Many count what the turn
 	// has touched — the header still says something when the column is narrow.
 	RailFiles       string
+	RailSessions    string
 	RailTouchedOne  string
 	RailTouchedMany string
 
@@ -208,6 +209,7 @@ var catalogue = map[Lang]Strings{
 		LineMany:         "lines",
 		ExpandHint:       "Tab expands",
 		RailFiles:        "files",
+		RailSessions:     "sessions",
 		RailTouchedOne:   "touched",
 		RailTouchedMany:  "touched",
 
@@ -332,6 +334,7 @@ Environment:
 		LineMany:         "linhas",
 		ExpandHint:       "Tab expande",
 		RailFiles:        "arquivos",
+		RailSessions:     "sessões",
 		RailTouchedOne:   "tocado",
 		RailTouchedMany:  "tocados",
 

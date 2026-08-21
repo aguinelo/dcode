@@ -74,6 +74,31 @@ that on every run to stop the opposite reading.
 
 ### Client TUI
 
+- **The sidebar lists this workspace's conversations.** Under the files, with the
+  open one marked by a character rather than only by colour. It is `dcode -r`
+  promoted to a permanent column, in the mode the design calls *passive*.
+
+  Same source and same filter as `-r` — `session.Browse` through `choicesFrom`,
+  read once at start by the edge, because two ways of listing a workspace's
+  conversations would eventually disagree about which exist. Conversations
+  nobody asked anything in stay out; that is most of what a record directory
+  holds. The client still reads no disk: the list arrives through `Options`, like
+  the language.
+
+  **Naming a conversation could not ship, and that is written down rather than
+  approximated.** A name the person gives has to outlive the session, and a
+  record directory holds transcripts, not titles — the title is derived from the
+  first question every time it is read. That is a change in `internal/session`,
+  and `docs/ROADMAP.md` now carries it with the three places it could live and
+  why only one survives pruning. `^R` navigation waits on the same decision in
+  part; `/resume` already does the continuing.
+
+  Details the screen decided: conversations alone are enough to open the column,
+  because asking only about files emptied it for the first minute of every
+  session; a cut title says it was cut, and is cut in **cells** rather than
+  bytes, since a rune is not a column and a title with an accent is where that
+  goes wrong.
+
 - **A sidebar shows what the turn touched.** Files, their state, and the line
   count of the ones that finished. `^B` folds and unfolds it. It is
   `clamp(20, w/5, 30)` wide, gone below a hundred columns, and an explicit
