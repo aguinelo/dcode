@@ -72,6 +72,35 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Client TUI
+
+- **The activity line carries a verb, and the verb never appears alone.** A
+  short gerund now rides beside the running tool — `⏺ reading grep \.Save\(` —
+  drawn from the phase's set and changing every 20 frames, which is the design's
+  2.4 seconds at the 120ms tick. `DCODE_ACTIVITY_VERBS=0` turns it off, taking
+  the word and leaving the facts.
+
+  Alone it would be motion pretending to be information: the screen looks alive
+  and the reader learns nothing. So it is only drawn next to a running tool, dim
+  against the fact's bold — what moves is the accompaniment, what is true is the
+  emphasis — and with no tool the line says its one plain word and stays still.
+
+  Found while building it: `working` was both the no-tool word **and** a verb in
+  the `other` set. With one string in both roles, nobody can tell a rotating verb
+  from a still one — not the reader, not a test. The fallback word also joined
+  the language catalogue, where it should have been all along.
+
+- **The tick stops when the session is idle.** It already refused to advance the
+  frame, and the comment said why — *"an idle screen that keeps repainting burns
+  a laptop battery for no information"* — while rescheduling anyway, so the
+  screen repainted eight times a second for a number that never moved. The
+  sentence was right; it just was not being kept.
+
+  It restarts when a turn begins, with a guard so exactly one comes back:
+  without it every event would add a tick and the frame counter would sprint,
+  which is motion claiming the machine is busier than it is. Nothing is lost by
+  stopping — `Now` is refreshed on every event.
+
 ### Sandbox
 
 - **A boundary decision follows the mode, not the filesystem.** `canonical()`

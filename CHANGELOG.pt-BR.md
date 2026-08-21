@@ -69,6 +69,36 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Cliente TUI
+
+- **A barra de atividade carrega um verbo, e o verbo nunca aparece sozinho.** Um
+  gerúndio curto passa a acompanhar a ferramenta que roda — `⏺ lendo grep
+  \.Save\(` —, sorteado do conjunto da fase e trocando a cada 20 quadros, que
+  são os 2,4 s do design no tick de 120 ms. `DCODE_ACTIVITY_VERBS=0` desliga,
+  tirando a palavra e deixando os fatos.
+
+  Sozinho ele seria movimento fingindo informação: a tela parece viva e quem lê
+  não aprende nada. Então só é desenhado ao lado de uma ferramenta rodando, em
+  `dim` contra o `bold` do fato — o que se mexe é o acompanhamento, o que é
+  verdade é a ênfase — e sem ferramenta a linha diz sua palavra única, parada.
+
+  Achado ao construir: `working` era ao mesmo tempo a palavra do estado sem
+  ferramenta **e** um verbo do conjunto `other`. Com uma string nos dois papéis,
+  ninguém distingue verbo girando de verbo parado — nem o leitor, nem o teste. A
+  palavra de fallback também entrou no catálogo de idiomas, onde deveria estar
+  desde sempre.
+
+- **O tick para quando a sessão fica ociosa.** Ele já se recusava a avançar o
+  quadro, e o comentário dizia por quê — *"tela ociosa que fica repintando queima
+  bateria de laptop por informação nenhuma"* — enquanto reagendava assim mesmo,
+  então a tela repintava oito vezes por segundo para um número que não se movia.
+  A frase estava certa; ela apenas não estava sendo cumprida.
+
+  Ele volta quando um turno começa, com uma guarda para religar exatamente um:
+  sem ela todo evento acrescentaria um tick e o contador de quadros dispararia,
+  movimento afirmando que a máquina está mais ocupada do que está. Nada se perde
+  parando — o `Now` é atualizado em todo evento.
+
 ### Sandbox
 
 - **Decisão de fronteira segue o modo, não o sistema de arquivos.** O
