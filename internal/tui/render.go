@@ -11,6 +11,19 @@ import (
 )
 
 // PanelMode is how the plan panel decides whether to show.
+// RailMode is the sidebar's visibility, and it mirrors PanelMode deliberately:
+// the same question was answered once already, and answering it a second way
+// would give the two columns different manners on the same terminal.
+type RailMode int
+
+const (
+	// RailAuto lets the width decide.
+	RailAuto RailMode = iota
+	// RailShown and RailHidden are the user having thought about it.
+	RailShown
+	RailHidden
+)
+
 type PanelMode int
 
 const (
@@ -32,6 +45,14 @@ type Geometry struct {
 	PanelMaxWidth      int
 	PanelMinTotalWidth int
 	PanelMode          PanelMode
+
+	// The sidebar, laid out the way the panel is. clamp(20, w/5, 30), gone
+	// below a hundred columns, and an explicit choice winning at any width.
+	RailWidth         int
+	RailMinWidth      int
+	RailMaxWidth      int
+	RailMinTotalWidth int
+	RailMode          RailMode
 
 	// DiffPreviewLines is how much of a diff shows without asking. A diff is
 	// what gets reviewed, so some of it is always visible — but a whole-file
@@ -56,6 +77,11 @@ func DefaultGeometry(w, h int) Geometry {
 	return Geometry{
 		Width: w, Height: h,
 		PanelWidth: 24, PanelMinWidth: 16, PanelMaxWidth: 34, PanelMinTotalWidth: 100,
+		RailWidth: 22, RailMinWidth: 20, RailMaxWidth: 30, RailMinTotalWidth: 100,
+		// Written out rather than left to the zero value: the default is a
+		// decision, and a decision nobody can find in the defaults is one the
+		// next reader has to infer from a constant's position in a list.
+		RailMode:         RailAuto,
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
 		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
 	}
@@ -80,6 +106,44 @@ func (g Geometry) ShowPanel(hasPlan bool) bool {
 		return false
 	}
 	return g.Width >= g.PanelMinTotalWidth
+}
+
+// ShowRail reports whether the sidebar is drawn.
+//
+// Nothing touched means no sidebar, for the reason an empty panel is worse than
+// none: a column of nothing costs the stream twenty characters and tells the
+// reader that something is missing.
+func (g Geometry) ShowRail(touched bool) bool {
+	if !touched {
+		return false
+	}
+	switch g.RailMode {
+	case RailShown:
+		return true
+	case RailHidden:
+		return false
+	}
+	return g.Width >= g.RailMinTotalWidth
+}
+
+// railWidth is how wide the sidebar actually draws: a fifth of the screen,
+// between its floor and its ceiling, as the design asks.
+func (g Geometry) railWidth() int {
+	w := g.Width / 5
+	floor, ceil := g.RailMinWidth, g.RailMaxWidth
+	if floor <= 0 {
+		floor = 20
+	}
+	if ceil <= 0 {
+		ceil = 30
+	}
+	if w < floor {
+		w = floor
+	}
+	if w > ceil {
+		w = ceil
+	}
+	return w
 }
 
 // panelWidth is how wide the panel actually draws.
@@ -138,11 +202,19 @@ func copyGutter(c CopyState, line int, g Geometry) string {
 	return g.Palette.Apply(StyleAccent, mark) + " "
 }
 
-func (g Geometry) StreamWidth(showPanel bool) int {
-	if !showPanel {
-		return g.Width
+// StreamWidth is what the stream gets once the columns have taken theirs.
+//
+// One function, read by the layout and by the renderer both. Two places
+// computing a width is the defect; where it shows up is only the symptom, and
+// this family has paid for that once already with a painted frame.
+func (g Geometry) StreamWidth(showRail, showPanel bool) int {
+	w := g.Width
+	if showRail {
+		w -= g.railWidth() + 1
 	}
-	w := g.Width - g.panelWidth() - 1
+	if showPanel {
+		w -= g.panelWidth() + 1
+	}
 	if w < 20 {
 		return 20
 	}
@@ -196,6 +268,8 @@ func fill(body string, g Geometry) string {
 
 func render(m Model, g Geometry) string {
 	showPanel := g.ShowPanel(len(m.Plan) > 0)
+	rows := FileTree(m.Entries)
+	showRail := g.ShowRail(len(rows) > 0)
 
 	var b strings.Builder
 	b.WriteString(renderStatus(m, g, showPanel))
@@ -209,8 +283,33 @@ func render(m Model, g Geometry) string {
 		panel = renderPanel(m, g)
 	}
 
-	streamW := g.StreamWidth(showPanel)
+	// The divider follows the same rule as every other glyph: ASCII when the
+	// terminal cannot draw the box character. It was a literal here, so a
+	// terminal in ASCII mode got a box-drawing rune anyway — visible only once
+	// a second column made the same mistake twice.
+	divider := "│"
+	if !g.Unicode {
+		divider = "|"
+	}
+
+	var rail []string
+	if showRail {
+		rail = renderRail(m, g, height)
+	}
+
+	streamW := g.StreamWidth(showRail, showPanel)
 	for i := 0; i < height; i++ {
+		// The sidebar first, and it never scrolls with the stream: it is a
+		// standing answer to "what has this turn touched", not part of the
+		// conversation.
+		if showRail {
+			row := ""
+			if i < len(rail) {
+				row = rail[i]
+			}
+			b.WriteString(padStyled(row, g.railWidth()))
+			b.WriteString(divider)
+		}
 		left := ""
 		if i < len(visible) {
 			left = visible[i]
@@ -232,7 +331,7 @@ func render(m Model, g Geometry) string {
 			right = panel[i]
 		}
 		b.WriteString(padStyled(left, streamW))
-		b.WriteString("│")
+		b.WriteString(divider)
 		b.WriteString(clip(right, g.panelWidth()))
 		b.WriteString("\n")
 	}
@@ -267,7 +366,7 @@ func render(m Model, g Geometry) string {
 // the tail is what made scrolling impossible, since there was nothing above the
 // screen to scroll back to.
 func StreamLines(m Model, g Geometry) []string {
-	w := g.StreamWidth(g.ShowPanel(len(m.Plan) > 0))
+	w := g.StreamWidth(g.ShowRail(len(FileTree(m.Entries)) > 0), g.ShowPanel(len(m.Plan) > 0))
 	if m.ShowEmptyState() {
 		return emptyState(m, g, w)
 	}
@@ -516,7 +615,7 @@ const (
 // was leading to.
 func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 	p := g.Palette
-	w := g.StreamWidth(g.ShowPanel(true))
+	w := g.StreamWidth(false, g.ShowPanel(true))
 
 	if !e.Closed && !e.Expanded {
 		lines := wrap(strings.TrimSpace(e.Summary), w-4)

@@ -287,10 +287,10 @@ func TestWidthHelpersMeasureDisplayCells(t *testing.T) {
 
 func TestStreamWidthNeverGoesBelowAUsableMinimum(t *testing.T) {
 	g := DefaultGeometry(30, 24)
-	if got := g.StreamWidth(true); got < 20 {
+	if got := g.StreamWidth(false, true); got < 20 {
 		t.Errorf("got %d", got)
 	}
-	if got := g.StreamWidth(false); got != 30 {
+	if got := g.StreamWidth(false, false); got != 30 {
 		t.Errorf("got %d", got)
 	}
 }
@@ -391,8 +391,8 @@ func TestTheUserCanForceThePanelOnANarrowTerminal(t *testing.T) {
 		t.Errorf("the forced panel must still fit: %d cells", n)
 	}
 	// The stream cannot be squeezed to nothing to make room.
-	if forced.StreamWidth(true) < 30 {
-		t.Errorf("the stream keeps a usable width, got %d", forced.StreamWidth(true))
+	if forced.StreamWidth(false, true) < 30 {
+		t.Errorf("the stream keeps a usable width, got %d", forced.StreamWidth(false, true))
 	}
 
 	// And hiding it on a wide terminal must still work.

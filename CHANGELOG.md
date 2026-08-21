@@ -74,6 +74,32 @@ that on every run to stop the opposite reading.
 
 ### Client TUI
 
+- **A sidebar shows what the turn touched.** Files, their state, and the line
+  count of the ones that finished. `^B` folds and unfolds it. It is
+  `clamp(20, w/5, 30)` wide, gone below a hundred columns, and an explicit
+  choice wins at any width in both directions — the panel's manners exactly,
+  because answering one question two ways would give two columns different
+  behaviour on one terminal.
+
+  **Derived, not stored.** The handoff puts a `tree` field on the model; this is
+  a pure function over `Entries`, which are already the reduction of the log. A
+  field would be a *second* reduction of the same events, and two reductions can
+  disagree — deriving makes "the same session reopened reproduces the same tree"
+  true by construction rather than by care. `Entry` gained `Added`/`Removed` as
+  numbers, because reading a count back out of the summary sentence is what the
+  protocol comment forbids in as many words.
+
+  **Two levels, not a full tree.** The column is twenty to thirty characters and
+  every level of indentation takes two of them from the only part that
+  identifies a file. The folder row carries its whole path instead.
+
+  Four defects only the screen showed: indentation drifting a level after the
+  first file (path depth is not visual depth once a folder is compacted), the
+  count printed twice, `+38` sitting against the divider and reading as frame,
+  and the divider itself hard-coded to `│` — **which the plan panel already
+  did**, visible only once a second column repeated it. Both now follow
+  `g.Unicode`.
+
 - **The expansion hint speaks the interface language.** Under a collapsed body it
   read `⋯ 42 lines · Tab expande` — one line, two languages, in **both**
   interfaces: the count was hard-coded English and the verb hard-coded
