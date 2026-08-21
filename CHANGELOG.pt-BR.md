@@ -71,6 +71,30 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Cliente TUI
 
+- **A coluna lateral lista as conversas deste workspace.** Sob os arquivos, com a
+  aberta marcada por caractere e não só por cor. É o `dcode -r` promovido a
+  coluna permanente, no modo que o design chama de *passiva*.
+
+  Mesma fonte e mesmo filtro do `-r` — `session.Browse` através de
+  `choicesFrom`, lida uma vez no início pela borda, porque duas maneiras de
+  listar as conversas de um workspace acabariam discordando sobre quais existem.
+  Conversa em que nada foi perguntado continua fora; é a maior parte do que um
+  diretório de gravação guarda. O cliente segue sem ler disco: a lista chega por
+  `Options`, como o idioma.
+
+  **Nomear conversa não pôde entrar, e isso está escrito em vez de aproximado.**
+  O nome que a pessoa dá precisa sobreviver à sessão, e um diretório de gravação
+  guarda transcrições, não títulos — o título é derivado da primeira pergunta
+  toda vez que é lido. É mudança em `internal/session`, e o `docs/ROADMAP.md`
+  passa a carregá-la com os três lugares onde poderia morar e por que só um
+  sobrevive à poda. A navegação com `^R` espera em parte pela mesma decisão; o
+  `/resume` já faz o continuar.
+
+  Detalhes que a tela decidiu: conversas sozinhas já abrem a coluna, porque
+  perguntar só pelos arquivos a esvaziava no primeiro minuto de toda sessão; e
+  título cortado diz que foi cortado, com o corte em **células** e não em bytes,
+  já que runa não é coluna e é em título com acento que isso erra.
+
 - **Uma coluna lateral mostra o que o turno tocou.** Arquivos, o estado de cada
   um, e a contagem de linhas de quem terminou. `^B` dobra e expande. Largura
   `clamp(20, w/5, 30)`, some abaixo de cem colunas, e a escolha explícita vence

@@ -89,6 +89,11 @@ type Model struct {
 
 	Entries []Entry
 	Plan    []protocol.PlanItem
+	// Sessions is what this workspace has recorded, for the sidebar. Passed in
+	// by the caller like the language and the command set: the client reads no
+	// disk, and a list it went and fetched itself would be a second answer to a
+	// question the edge already answers for `dcode -r`.
+	Sessions []SessionChoice
 	// Lang is the interface language, resolved once when the client starts.
 	Lang Lang
 	// Copy is the selection while copy mode is open. The alternate screen costs
@@ -603,6 +608,15 @@ func firstLine(s string) string {
 		s = s[:i]
 	}
 	return s
+}
+
+// railHasContent reports whether the sidebar has anything to say.
+//
+// Either half is enough. A workspace with recorded conversations and a turn
+// that has touched nothing yet still has a column worth drawing, and asking
+// only about the files emptied it for the first minute of every session.
+func (m Model) railHasContent() bool {
+	return len(m.Sessions) > 0 || len(FileTree(m.Entries)) > 0
 }
 
 func plural(n int, one, many string) string {

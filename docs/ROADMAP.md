@@ -386,6 +386,23 @@ of messages nobody stores, on a protocol whose every other event is a fact worth
 replaying. Whether it joins the log or travels beside it is the first question,
 not the last.
 
+**Naming a conversation has nowhere to be stored.** The design's session rail
+has three modes — passive, navigating, naming — and the first shipped. The third
+cannot: a name the person gives has to outlive the session, and a record
+directory holds transcripts, not titles. `session.Summary.Title` is derived from
+the first question every time it is read.
+
+So it is a change in `internal/session` rather than in the client: a place for a
+name, written when it is given and read by `Browse`. Worth deciding whether that
+is a sidecar per session, a header record in the transcript, or one file per
+workspace — the last is the only one that survives a transcript being pruned,
+and pruning is a policy this product already has.
+
+Navigating with `^R` waits on the same decision only in part: moving a cursor
+and continuing a conversation are both possible today, and `/resume` already
+does the continuing. What `^R` adds is doing it without leaving the keyboard,
+and it is worth doing once there is something to name.
+
 **The session rail reads the disk, and one day that will stop being true.** The
 rail lists recorded conversations, and it takes them from `recordDir` the way
 `dcode -r` already does — a decision taken with the design, on the grounds that

@@ -57,6 +57,12 @@ type Options struct {
 	// on the fallback.
 	Lang Lang
 
+	// Sessions is what this workspace has recorded, read once at start by the
+	// caller. Only the conversations something was asked in — the rest is what
+	// a record directory mostly holds, and burying four real ones under thirty
+	// empty ones is what the picker already refuses to do.
+	Sessions []SessionChoice
+
 	// Commands is the user's discovered command set. Frozen at start, like the
 	// instruction chain, so behaviour cannot change mid-session.
 	Commands config.CommandSet
@@ -114,10 +120,14 @@ func Run(ctx context.Context, opts Options) error {
 	defer cancel()
 
 	p := &program{
-		opts:  opts,
-		model: NewModel(opts.SessionID, opts.Workspace, opts.Model, opts.Sandbox, opts.Lang),
-		geo:   opts.Geometry,
-		ctx:   runCtx,
+		opts: opts,
+		model: func() Model {
+			m := NewModel(opts.SessionID, opts.Workspace, opts.Model, opts.Sandbox, opts.Lang)
+			m.Sessions = opts.Sessions
+			return m
+		}(),
+		geo: opts.Geometry,
+		ctx: runCtx,
 	}
 	p.cancel = cancel
 	p.model.Window = opts.Window
@@ -257,6 +267,10 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// history the model no longer has.
 		p.opts.SessionID = msg.session.ID
 		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
+		// The recorded conversations do not belong to the session that was
+		// replaced: they are the workspace's, and the sidebar would otherwise
+		// empty itself the first time somebody ran /clear.
+		p.model.Sessions = p.opts.Sessions
 		p.attach(msg.session.ID)
 		return p, p.waitForEvent()
 
@@ -464,7 +478,7 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// An explicit choice wins at any width, both ways — the same manners as
 		// the panel, because answering one question two ways would give the two
 		// columns different behaviour on the same terminal.
-		if p.geo.ShowRail(len(FileTree(p.model.Entries)) > 0) {
+		if p.geo.ShowRail(p.model.railHasContent()) {
 			p.geo.RailMode = RailHidden
 		} else {
 			p.geo.RailMode = RailShown

@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mattn/go-runewidth"
 )
 
 // The sidebar: what this turn has touched, in the order a reader can scan.
@@ -14,13 +16,13 @@ import (
 // apart. Movement is never the only clue: a pulsing row and a still one must
 // still differ when nothing can pulse, so a running row carries a mark of its
 // own rather than only a colour or an animation.
-type railMarks struct{ folder, file, running, done, failed string }
+type railMarks struct{ folder, file, running, done, failed, open string }
 
 func railGlyphs(unicode bool) railMarks {
 	if !unicode {
-		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!"}
+		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">"}
 	}
-	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘"}
+	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●"}
 }
 
 // renderRail draws the sidebar, one row per line, already clipped to width.
@@ -51,10 +53,68 @@ func renderRail(m Model, g Geometry, height int) []string {
 		}
 		out = append(out, clipStyled(railRow(r, gl, p, w), w))
 	}
+
+	// The conversations of this workspace, under the files. Second because the
+	// files are about the turn happening now and the list is about the ones
+	// that already did — what is moving goes above what is not.
+	//
+	// It gives ground first when the column runs out of rows, for the same
+	// reason: a truncated list of past conversations costs less than a
+	// truncated list of what is being written right now.
+	if len(m.Sessions) > 0 && len(out)+2 < height {
+		out = append(out, "")
+		out = append(out, clipStyled(p.Apply(StyleDim, strings.ToUpper(t.RailSessions)), w))
+		for _, c := range m.Sessions {
+			if len(out) >= height {
+				break
+			}
+			out = append(out, clipStyled(sessionRow(c, c.ID == m.SessionID, gl, p, w), w))
+		}
+	}
+
 	for len(out) < height {
 		out = append(out, "")
 	}
 	return out
+}
+
+// sessionRow is one recorded conversation. The open one is marked by a
+// character and not only by colour, so it is still the open one on a terminal
+// without any.
+func sessionRow(c SessionChoice, open bool, gl railMarks, p Palette, w int) string {
+	mark, style := " ", StyleDim
+	if open {
+		mark, style = gl.open, StyleAccent
+	}
+	title := c.Title
+	if title == "" {
+		title = c.ID
+	}
+	// Cut with a mark, never silently. A title that merely stops leaves the
+	// reader unable to tell a short conversation from a truncated one, and the
+	// start is what identifies it — so the end is what gives way.
+	if room := w - 2; room > 1 && visibleWidth(title) > room {
+		title = trimTo(title, room-1) + "…"
+	}
+	return p.Apply(style, mark) + " " + title
+}
+
+// trimTo cuts to a width in cells, never in bytes: a rune is not a column, and
+// a path or a title with an accent in it is where that goes wrong.
+func trimTo(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	out, used := make([]rune, 0, len(s)), 0
+	for _, r := range s {
+		rw := runewidth.RuneWidth(r)
+		if used+rw > w {
+			break
+		}
+		out = append(out, r)
+		used += rw
+	}
+	return string(out)
 }
 
 func railRow(r FileRow, gl railMarks, p Palette, w int) string {
