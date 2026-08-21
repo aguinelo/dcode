@@ -19,11 +19,44 @@ import (
 // explanation. Falls back to the input when resolution is impossible, so a
 // workspace that does not exist yet still produces a usable profile.
 func canonical(p string) string {
+	if p == "" {
+		return p
+	}
 	if real, err := filepath.EvalSymlinks(p); err == nil {
 		return real
 	}
-	return p
+	// It does not exist yet, and EvalSymlinks only resolves what does. Resolve
+	// the deepest ancestor that exists and put the rest back.
+	//
+	// Returning the input unresolved was the older answer, and it made the same
+	// directory canonicalise two different ways according to WHEN it was asked
+	// about: /tmp/ws before creation, /private/tmp/ws after. A boundary that
+	// moves with the filesystem is a boundary nobody can reason about — and on
+	// macOS the unresolved half is the broken one, for the reason above: a
+	// profile naming /tmp/ws grants nothing once the kernel is looking at
+	// /private/tmp/ws.
+	dir, rest := filepath.Split(filepath.Clean(p))
+	dir = filepath.Clean(dir)
+	if rest == "" || dir == p {
+		return p
+	}
+	return filepath.Join(canonical(dir), rest)
 }
+
+// tmpRoot is /tmp as canonical() would report it, and it exists so that the
+// three decisions below compare like with like.
+//
+// They compared a canonicalised workdir against the literal "/tmp". EvalSymlinks
+// only resolves a path that EXISTS, so where /tmp is a symlink the same
+// directory got two answers: spelled /tmp/ws and absent it kept the spelling and
+// matched; created, it resolved to /private/tmp/ws and stopped matching, losing
+// the mount that keeps it visible under the tmpfs.
+//
+// The decision has to follow the mode, never the filesystem. On Linux — the only
+// place bubblewrap runs — the two spellings are already identical, so this
+// changes no argument list in production; it removes a way for the test of a
+// security boundary to answer differently on different machines.
+func tmpRoot() string { return canonical("/tmp") }
 
 // ---------- macOS: Apple Seatbelt ----------
 
@@ -324,7 +357,7 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 		args = append(args, "--tmpfs", "/tmp")
 		// Read-only, so putting the workspace back is a --ro-bind: keeping it
 		// visible must not be the thing that makes it writable.
-		if under(workdir, "/tmp") {
+		if under(workdir, tmpRoot()) {
 			args = append(args, "--ro-bind", workdir, workdir)
 		}
 	case policy.ModeWorkspaceWrite:
@@ -334,7 +367,7 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 		// the host's copy back over the fresh one.
 		for _, p := range scratch {
 			p = canonical(p)
-			if under(p, "/tmp") || under(p, workdir) {
+			if under(p, tmpRoot()) || under(p, workdir) {
 				continue
 			}
 			// bubblewrap refuses to bind a source that is not there, and the

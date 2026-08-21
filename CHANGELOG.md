@@ -72,6 +72,31 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Sandbox
+
+- **A boundary decision follows the mode, not the filesystem.** `canonical()`
+  returned a path unresolved when it did not exist yet — `EvalSymlinks` only
+  resolves what does — so the same directory canonicalised two different ways
+  according to *when* it was asked about: `/tmp/ws` before creation,
+  `/private/tmp/ws` after. The `/tmp` comparisons then tested it against the
+  literal `"/tmp"`, and whether the workspace was remounted over the tmpfs came
+  down to what happened to be on disk.
+
+  It now resolves the deepest existing ancestor and puts the rest back, and the
+  comparisons run against `/tmp` as `canonical()` itself reports it.
+
+  This was found as a test that passed or failed by machine, hidden for a day
+  behind Go's test cache. But the same function feeds the **seatbelt** profile,
+  and the comment above it already named the danger it was causing: on macOS a
+  profile naming an unresolved path *"grants nothing and every write fails with
+  no explanation"*. Production `bubblewrap` is Linux-only, where both spellings
+  already agree, so no argument list changes there.
+
+  `TestCanonicalFallsBackToTheInput` asserted the old contract by name and was
+  rewritten to the new one rather than weakened; three assertions that hard-coded
+  a fixture's raw spelling now compare against `canonical(...)`, which is what
+  `args()` actually mounts.
+
 ### Documentation
 
 - **What the v5 design asks for and the product does not have is written down.**

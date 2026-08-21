@@ -149,13 +149,31 @@ func TestSeatbeltAvailableReportsAMissingBinary(t *testing.T) {
 	}
 }
 
-func TestCanonicalFallsBackToTheInput(t *testing.T) {
-	// A workspace that does not exist yet still has to produce a usable
-	// profile; failing here would block session creation on a directory the
-	// user is about to create.
-	p := filepath.Join(t.TempDir(), "not-created-yet")
-	if got := canonical(p); got != p {
-		t.Errorf("got %q want %q", got, p)
+// A path that does not exist yet resolves as far as it can, and the answer does
+// not change when it is created.
+//
+// This asserted the opposite — that canonical falls back to the INPUT — on the
+// grounds that a workspace about to be created still has to produce a usable
+// profile. It does, and it still does: what changes is that "usable" now means
+// resolved. The old answer let the same directory canonicalise two different
+// ways according to when it was asked about, and on macOS the unresolved half
+// is the one the comment above canonical() warns about — a profile naming
+// /tmp/ws grants nothing once the kernel is looking at /private/tmp/ws.
+func TestCanonicalResolvesAsFarAsItCanAndStaysPut(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "not-created-yet")
+
+	before := canonical(p)
+	if before != filepath.Join(canonical(dir), "not-created-yet") {
+		t.Errorf("the existing ancestor was not resolved: %q", before)
+	}
+
+	if err := os.MkdirAll(p, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if after := canonical(p); after != before {
+		t.Errorf("creating the directory changed its canonical form: %q then %q",
+			before, after)
 	}
 }
 
