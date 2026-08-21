@@ -329,6 +329,7 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 			if more != nil {
 				e.session.History = append(e.session.History, more...)
 				out.Iterations++
+				e.emitRounds(turnID, out.Iterations)
 				if out.Iterations >= e.cfg.Limits.MaxIterations {
 					return e.finish(out, protocol.StopMaxIterations), nil
 				}
@@ -353,6 +354,7 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 		e.session.History = append(e.session.History, e.reminders(batch)...)
 
 		out.Iterations++
+		e.emitRounds(turnID, out.Iterations)
 		if out.Iterations >= e.cfg.Limits.MaxIterations {
 			return e.finish(out, protocol.StopMaxIterations), nil
 		}
@@ -496,6 +498,14 @@ func (e *Engine) execute(ctx context.Context, turnID string, calls []ce.ToolCall
 		if len(g) > facts.Parallel {
 			facts.Parallel = len(g)
 		}
+		// How many are about to run together, against what this session
+		// allows. Emitted at the group boundary because that is where the
+		// number exists: inside the group every call would report the same
+		// figure, and after it the number is already history.
+		e.emit(protocol.EventProgress, protocol.Progress{
+			TurnID: turnID, Kind: protocol.ProgressInFlight,
+			Done: len(g), Total: e.cfg.Parallel,
+		})
 		var wg sync.WaitGroup
 		for _, ex := range g {
 			wg.Add(1)
@@ -794,6 +804,26 @@ func (e *Engine) finish(out Outcome, reason string) Outcome {
 		e.cfg.AfterTurn(e.written())
 	}
 	return out
+}
+
+// emitRounds says where the turn is against its ceiling.
+//
+// Iterations counts cycles the loop went round AGAIN, so a turn that answered
+// in one pass reports nothing: there is no ceiling approaching, and 0 of 100 on
+// screen is a figure that means nothing is happening.
+//
+// Emitted where the counter MOVES rather than once per loop, and there are two
+// places it moves. Reading the counter somewhere else would be a second source
+// for one number, and the two would disagree the first time a path was added.
+//
+// The ceiling rides with it. A count without its limit answers "how many" and
+// the question is "how close", and a client that carried the limit separately
+// would be carrying a copy of configuration it cannot see change.
+func (e *Engine) emitRounds(turnID string, done int) {
+	e.emit(protocol.EventProgress, protocol.Progress{
+		TurnID: turnID, Kind: protocol.ProgressRounds,
+		Done: done, Total: e.cfg.Limits.MaxIterations,
+	})
 }
 
 func (e *Engine) emit(t protocol.EventType, payload any) {

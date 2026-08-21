@@ -72,7 +72,43 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Protocol
+
+- **`progress`: one event for "how far along".** A tool counting files and a turn
+  counting rounds are the same question asked of different subjects, so it is one
+  event with a `tool_call_id` that is empty when the subject is the turn.
+  Adding a versioned surface twice for one kind of question is how it comes out
+  crooked — the second one always answers slightly differently.
+
+  `kind` is a **closed set rather than a word to print**: the daemon's language
+  is not the reader's. Only what something actually emits is declared, so
+  `rounds` and `in_flight` are there and `files`/`lines` arrive when tools emit
+  them. `tests` probably never will — counting passing tests means parsing
+  `bash` output, which `ToolCompleted`'s own comment forbids.
+
+  **It joins the sequence**, and that was the hard call. Leaving it out of `Seq`
+  would have put a gap in the one property the record is built on, and a record
+  with a hole is a record whose replay cannot be trusted about anything else
+  either. `message.delta` is already chatty and already in there; this follows
+  it rather than inventing an exception.
+
+  The ceiling travels with the count, because a count without its limit answers
+  *how many* when the question is *how close*. And a turn that answered in one
+  pass reports no round at all: there is no ceiling approaching, and `0/100` on
+  screen is a figure that means nothing is happening.
+
 ### Client TUI
+
+- **The panel shows where the turn stands.** `iteração 2/100` and
+  `em vôo 2·4`, and the count changes style as it nears the ceiling — that
+  ceiling is roadmap item 1, the one item with measured evidence of harm, and
+  what it lacked was anything saying it was coming.
+
+  The panel now opens on those numbers alone. Most turns have no plan, so the
+  ceiling was hiding in a panel that only opened when something else was already
+  there. The numbers outlive the turn that produced them, so it opens on the
+  first turn and stays rather than appearing and leaving with every one.
+
 
 - **`^R` gives the sidebar the keyboard.** `↑↓` move, a letter filters, `enter`
   continues the conversation under the cursor, `esc` clears the filter and then

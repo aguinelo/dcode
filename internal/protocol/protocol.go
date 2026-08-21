@@ -45,9 +45,22 @@ const (
 	// cannot tell apart from the model's own words is a turn nobody can audit
 	// afterwards, and "why did it change direction" is the first question asked
 	// of any run that went sideways.
-	EventTurnSteered      EventType = "turn.steered"
-	EventTurnCompleted    EventType = "turn.completed"
-	EventPlanUpdated      EventType = "plan.updated"
+	EventTurnSteered   EventType = "turn.steered"
+	EventTurnCompleted EventType = "turn.completed"
+	EventPlanUpdated   EventType = "plan.updated"
+	// EventProgress answers "how far along", and it is the only event here
+	// that is not a fact worth replaying on its own.
+	//
+	// One event rather than one per question. A tool counting files and a turn
+	// counting rounds are the same question asked of different subjects, and
+	// adding a versioned surface twice for one kind of question is how it comes
+	// out crooked — the second one always answers slightly differently.
+	//
+	// It joins the log and the record like message.delta does: chatty, batched
+	// rather than flushed, and carrying a Seq. Giving it no Seq would have been
+	// the alternative, and it would have put a gap in the one property the
+	// record is built on.
+	EventProgress         EventType = "progress"
 	EventSessionCompacted EventType = "session.compacted"
 	EventSessionError     EventType = "session.error"
 )
@@ -247,6 +260,19 @@ const (
 	StopIncomplete = "incomplete"
 )
 
+// What a Progress counts. A closed set, so a client can say it in the reader's
+// language instead of printing the daemon's.
+//
+// Only what something actually emits is declared. A kind nobody writes is a
+// promise on a versioned surface that no code keeps.
+const (
+	// ProgressRounds is the turn against its iteration ceiling.
+	ProgressRounds = "rounds"
+	// ProgressInFlight is how many tool calls are running together, against
+	// the concurrency ceiling this session allows.
+	ProgressInFlight = "in_flight"
+)
+
 // Payloads for the remaining event types.
 type (
 	// TurnStarted announces an accepted input.
@@ -332,6 +358,27 @@ type (
 		// Diff is the unified diff of a change. Present only for tools that
 		// modify a file, and never part of what the model was sent.
 		Diff string `json:"diff,omitempty"`
+	}
+	// Progress is how far along something running has got.
+	//
+	// Done without Total is honest: a scan that has not finished enumerating
+	// knows how many it has seen and not how many there are. A client shows the
+	// count alone rather than inventing a denominator.
+	//
+	// Kind comes from the closed set below rather than being a word to print.
+	// The daemon's language is not the reader's, and a client that renders the
+	// payload's text shows the wrong one to half its users.
+	//
+	// Never part of the context the model is sent: it is a person's window, the
+	// same rule StartedAt already carries, and a count that changes between two
+	// runs of one session is exactly what ADR-03 forbids in a prefix.
+	Progress struct {
+		TurnID string `json:"turn_id"`
+		// ToolCallID names the call this is about; empty means the turn itself.
+		ToolCallID string `json:"tool_call_id,omitempty"`
+		Kind       string `json:"kind"`
+		Done       int    `json:"done"`
+		Total      int    `json:"total,omitempty"`
 	}
 	// TurnCompleted ends a turn with one of the Stop* reasons.
 	TurnCompleted struct {
