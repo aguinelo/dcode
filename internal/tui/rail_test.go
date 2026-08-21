@@ -210,3 +210,37 @@ func TestATitleIsCutInCellsAndNotInBytes(t *testing.T) {
 		t.Error("a zero width produced text")
 	}
 }
+
+// -- no box-drawing rune reaches a terminal that cannot draw one -------------
+
+// Four separate literals in this package assumed Unicode: the column divider,
+// the diff gutter, the running marker and the path ellipsis. Each was found by
+// looking at an ASCII render rather than at the code, and each was found AFTER
+// the previous one had been fixed.
+//
+// So the assertion is over the whole screen rather than over one of them: a
+// fifth would otherwise wait for a fifth pair of eyes.
+func TestNoBoxDrawingRuneSurvivesAsciiMode(t *testing.T) {
+	m := railModel(
+		Entry{Kind: KindTool, Tool: "read", Target: "docs/ROADMAP.md", Running: true},
+		Entry{Kind: KindTool, Tool: "edit", Target: "internal/tui/rail.go", Added: 38,
+			Diff: "--- a/x\n+++ b/x\n@@ -1,2 +1,3 @@\n+added\n"},
+		Entry{Kind: KindTool, Tool: "read",
+			Target: "internal/very/deeply/nested/path/that/must/be/shortened.go"},
+	)
+	m.Sessions = []SessionChoice{{ID: "s1", Title: "uma conversa"}}
+	m.SessionID = "s1"
+
+	g := DefaultGeometry(118, 18)
+	g.Palette = Palette{}
+	g.Unicode = false
+
+	// Every rune the Unicode set uses, and the ones the layout reached for
+	// directly without going through it.
+	for _, forbidden := range []string{"│", "…", "⋯", "▾", "◦", "✓", "⊘", "⏺", "●", "✻", "▸"} {
+		if strings.Contains(Render(m, g), forbidden) {
+			t.Errorf("%q reached a terminal that declared it cannot draw one:\n%s",
+				forbidden, Render(m, g))
+		}
+	}
+}

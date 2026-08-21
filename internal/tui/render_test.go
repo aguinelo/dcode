@@ -604,7 +604,7 @@ func TestToolSummariesAlignIntoAColumn(t *testing.T) {
 // The end of a path is what identifies a file; the directories leading to it are
 // what everything in a repository has in common.
 func TestALongTargetIsShortenedFromTheFront(t *testing.T) {
-	got := ellipsis("internal/http/handler/very/deep/validate.go", 20)
+	got := ellipsis("internal/http/handler/very/deep/validate.go", 20, "…")
 	if visibleWidth(got) > 20 {
 		t.Errorf("got %d cells: %q", visibleWidth(got), got)
 	}
@@ -615,7 +615,7 @@ func TestALongTargetIsShortenedFromTheFront(t *testing.T) {
 		t.Errorf("the cut must be visible: %q", got)
 	}
 	// Short enough to fit is left alone.
-	if got := ellipsis("a.go", 20); got != "a.go" {
+	if got := ellipsis("a.go", 20, "…"); got != "a.go" {
 		t.Errorf("got %q", got)
 	}
 }

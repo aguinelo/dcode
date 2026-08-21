@@ -41,7 +41,7 @@ func TestThePanelStaysBetweenItsFloorAndItsCeiling(t *testing.T) {
 func TestATooLongPathIsCutAtTheFrontAndFitsItsColumn(t *testing.T) {
 	long := "internal/tui/very/deep/path/render.go"
 
-	got := ellipsis(long, 20)
+	got := ellipsis(long, 20, "…")
 	if runewidth.StringWidth(got) > 20 {
 		t.Errorf("%q is %d wide, want at most 20", got, runewidth.StringWidth(got))
 	}
@@ -53,17 +53,17 @@ func TestATooLongPathIsCutAtTheFrontAndFitsItsColumn(t *testing.T) {
 	}
 
 	// Already short enough: untouched, and no marker added.
-	if got := ellipsis("a.go", 20); got != "a.go" {
+	if got := ellipsis("a.go", 20, "…"); got != "a.go" {
 		t.Errorf("got %q, want it unchanged", got)
 	}
 	// A column too narrow to hold even the marker still returns something that
 	// fits, rather than a string wider than the space it has. Width zero is not
 	// a narrow column but the absence of one, and passes through untouched.
-	if got := ellipsis(long, 0); got != long {
+	if got := ellipsis(long, 0, "…"); got != long {
 		t.Errorf("got %q with no column given, want it unchanged", got)
 	}
 	for _, w := range []int{1, 2, 3} {
-		if got := ellipsis(long, w); runewidth.StringWidth(got) > w {
+		if got := ellipsis(long, w, "…"); runewidth.StringWidth(got) > w {
 			t.Errorf("width %d: %q is wider than the column", w, got)
 		}
 	}
@@ -72,7 +72,7 @@ func TestATooLongPathIsCutAtTheFrontAndFitsItsColumn(t *testing.T) {
 // Non-ASCII must be cut by display width, not by byte, or a wide glyph pushes
 // the line one column past the box and the frame breaks.
 func TestCuttingAPathRespectsWideGlyphs(t *testing.T) {
-	got := ellipsis("caminho/muito/comprido/日本語のファイル.go", 20)
+	got := ellipsis("caminho/muito/comprido/日本語のファイル.go", 20, "…")
 	if runewidth.StringWidth(got) > 20 {
 		t.Errorf("%q is %d wide, want at most 20", got, runewidth.StringWidth(got))
 	}
