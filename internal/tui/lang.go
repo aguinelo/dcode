@@ -73,6 +73,12 @@ type Strings struct {
 	// it falls back to. Deliberately not one of the rotating verbs: see
 	// activity.go.
 	Working string
+	// RailFiles heads the sidebar, and RailTouchedOne/Many count what the turn
+	// has touched — the header still says something when the column is narrow.
+	RailFiles       string
+	RailTouchedOne  string
+	RailTouchedMany string
+
 	// LineOne and LineMany count hidden lines in a collapsed body, and
 	// ExpandHint says how to see them. All three because the hint said
 	// "Tab expande" in Portuguese next to a count in English, on one line, in
@@ -201,6 +207,9 @@ var catalogue = map[Lang]Strings{
 		LineOne:          "line",
 		LineMany:         "lines",
 		ExpandHint:       "Tab expands",
+		RailFiles:        "files",
+		RailTouchedOne:   "touched",
+		RailTouchedMany:  "touched",
 
 		VerifiedLabel:    "verified",
 		NotVerifiedLabel: "NOT VERIFIED",
@@ -322,6 +331,9 @@ Environment:
 		LineOne:          "linha",
 		LineMany:         "linhas",
 		ExpandHint:       "Tab expande",
+		RailFiles:        "arquivos",
+		RailTouchedOne:   "tocado",
+		RailTouchedMany:  "tocados",
 
 		VerifiedLabel:    "conferido",
 		NotVerifiedLabel: "NÃO CONFERIDO",

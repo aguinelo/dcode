@@ -9,6 +9,17 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"mesma sessão reaberta, mesma lista": "TestTheSameEntriesProduceTheSameTree",
+	"nenhuma ferramenta tocou não é":     "TestAPathNoToolTouchedIsNotDrawn",
+	"linha de comando não entram":        "TestPatternsAndCommandsStayOutOfTheFileList",
+	"não tocou nada não abre coluna":     "TestATurnThatTouchedNothingGetsNoSidebar",
+	"abaixo de 100 colunas ela some":     "TestTheSidebarDisappearsOnANarrowTerminal",
+	"vence nos dois sentidos":            "TestAnExplicitChoiceWinsAtAnyWidthBothWays",
+	"nunca lida de volta da frase":       "TestTheCountComesFromTheToolAndNotFromItsSentence",
+	"não ultrapassa a largura dela":      "TestNoSidebarRowOverflowsTheColumn",
+	"ela não emite escape nenhum":        "TestTheSidebarEmitsNoEscapeWithoutColour",
+	"distintos por caractere":            "TestTheStatesStayApartWithoutUnicode",
+	"exatamente uma vez, numa função":    "TestTheStreamPaysForEveryColumnExactlyOnce",
 	"carrega corpo é bloco":              "TestACallWithABodyIsSeparatedFromWhatCameBefore",
 	"e do que vem depois dela":           "TestWhatFollowsABlockIsSeparatedFromIt",
 	"continua uma linha só":              "TestCallsWithoutBodiesStayPacked",

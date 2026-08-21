@@ -71,6 +71,32 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Cliente TUI
 
+- **Uma coluna lateral mostra o que o turno tocou.** Arquivos, o estado de cada
+  um, e a contagem de linhas de quem terminou. `^B` dobra e expande. Largura
+  `clamp(20, w/5, 30)`, some abaixo de cem colunas, e a escolha explícita vence
+  em qualquer largura nos dois sentidos — as maneiras do painel, exatamente,
+  porque responder uma pergunta de dois jeitos daria a duas colunas
+  comportamentos diferentes num terminal só.
+
+  **Derivada, não guardada.** O handoff põe um campo `tree` no modelo; aqui é
+  função pura sobre `Entries`, que já são a redução do log. Um campo seria uma
+  *segunda* redução dos mesmos eventos, e duas reduções podem discordar —
+  derivando, "mesma sessão reaberta reproduz a mesma árvore" vira verdade por
+  construção e não por cuidado. `Entry` ganhou `Added`/`Removed` como números,
+  porque ler a contagem de volta da frase do resumo é o que o comentário do
+  protocolo proíbe com todas as letras.
+
+  **Duas camadas, não uma árvore inteira.** A coluna tem 20 a 30 caracteres e
+  cada nível de indentação tira dois deles da única parte que identifica um
+  arquivo. A linha de pasta carrega o caminho inteiro no lugar.
+
+  Quatro defeitos que só a tela mostrou: a indentação derivando um nível depois
+  do primeiro arquivo (profundidade de caminho não é profundidade visual depois
+  que uma pasta foi compactada), a contagem impressa duas vezes, o `+38`
+  encostado no divisor e lido como moldura, e o divisor cravado em `│` — **o que
+  o painel de plano já fazia**, visível só quando uma segunda coluna repetiu.
+  Agora os dois seguem o `g.Unicode`.
+
 - **A dica de expansão fala o idioma da interface.** Sob corpo recolhido ela dizia
   `⋯ 42 lines · Tab expande` — uma linha, dois idiomas, nas **duas** interfaces: a
   contagem cravada em inglês e o verbo cravado em português, e nenhum dos dois

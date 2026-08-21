@@ -455,6 +455,22 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		p.model = p.model.RemoveFromQueue(0)
 		return p, nil
 
+	case "ctrl+b":
+		// The sidebar toggle, and ^B because that is what VS Code made the word
+		// "sidebar" mean. A control key rather than a letter, for the reason the
+		// rest of this switch is written around: `b` on an empty line would eat
+		// the first character of "bom", "build", "bash".
+		//
+		// An explicit choice wins at any width, both ways — the same manners as
+		// the panel, because answering one question two ways would give the two
+		// columns different behaviour on the same terminal.
+		if p.geo.ShowRail(len(FileTree(p.model.Entries)) > 0) {
+			p.geo.RailMode = RailHidden
+		} else {
+			p.geo.RailMode = RailShown
+		}
+		return p, nil
+
 	case "ctrl+p":
 		// The panel toggle is a control key, not a letter. As a bare `p` it ate
 		// the first character of every message starting with one — "primeiro",

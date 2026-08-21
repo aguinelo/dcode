@@ -61,6 +61,13 @@ type Entry struct {
 	// Running marks a tool call that has not reported back yet, which is what
 	// the spinner attaches to.
 	Running bool
+	// Added and Removed are the line counts the tool reported, kept as numbers.
+	//
+	// Summary already renders them, but as a sentence. The sidebar needs the
+	// figure, and reading it back out of the sentence is the thing the protocol
+	// comment forbids in as many words: a client that parses output to rebuild
+	// these numbers breaks silently the day the wording changes.
+	Added, Removed int
 	// Diff is the unified diff of a change. When present it is what the
 	// expansion shows: it is what gets reviewed, and the tool's prose summary
 	// says nothing a reviewer needs.
@@ -312,6 +319,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Entries[i].Diff = d.Diff
 			m.Entries[i].IsError = !d.OK
 			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d)
+			m.Entries[i].Added, m.Entries[i].Removed = d.Added, d.Removed
 			m.Entries[i].Duration = time.Duration(d.DurationMS) * time.Millisecond
 			m.Entries[i].Running = false
 			// Errors open, successes stay collapsed: failure needs attention,
