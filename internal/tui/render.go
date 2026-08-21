@@ -44,7 +44,11 @@ type Geometry struct {
 	// read where it is going, not enough to push the work off the top.
 	ThoughtLines int
 	Unicode      bool
-	Palette      Palette
+	// ActivityVerbs draws the gerund beside the running tool on the activity
+	// line. Presentation, resolved at the edge like Unicode and the palette,
+	// because this package never reads the environment.
+	ActivityVerbs bool
+	Palette       Palette
 }
 
 // DefaultGeometry returns the documented defaults.
@@ -53,7 +57,7 @@ func DefaultGeometry(w, h int) Geometry {
 		Width: w, Height: h,
 		PanelWidth: 24, PanelMinWidth: 16, PanelMaxWidth: 34, PanelMinTotalWidth: 100,
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
-		ThoughtLines: 4, Unicode: true,
+		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
 	}
 }
 
@@ -632,17 +636,32 @@ func renderWorking(m Model, g Geometry) string {
 	p := g.Palette
 	parts := []string{p.Apply(StyleAccent, Spinner(m.Frame, g.Unicode))}
 
-	verb := "working"
+	tool, fact := "", ""
 	for i := len(m.Entries) - 1; i >= 0; i-- {
 		if m.Entries[i].Running {
-			verb = m.Entries[i].Tool
+			tool = m.Entries[i].Tool
+			fact = tool
 			if tgt := m.Entries[i].Target; tgt != "" {
-				verb += " " + tgt
+				fact += " " + tgt
 			}
 			break
 		}
 	}
-	parts = append(parts, p.Apply(StyleBold, verb))
+
+	// The verb rides BESIDE the fact and never instead of it. Dim against the
+	// fact's bold for the same reason: what moves is the accompaniment, what is
+	// true is the emphasis. With no tool running there is no fact for a verb to
+	// be about, so the line says its one plain word and stays still.
+	if fact == "" {
+		parts = append(parts, p.Apply(StyleBold, Text(m.Lang).Working))
+	} else {
+		if g.ActivityVerbs {
+			if v := ActivityVerb(tool, m.Frame, m.Lang); v != "" {
+				parts = append(parts, p.Apply(StyleDim, v))
+			}
+		}
+		parts = append(parts, p.Apply(StyleBold, fact))
+	}
 
 	if !m.TurnStartedAt.IsZero() && !m.Now.IsZero() {
 		if d := m.Now.Sub(m.TurnStartedAt); d > 0 {

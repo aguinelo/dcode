@@ -69,6 +69,11 @@ func parseLang(v string) (Lang, bool) {
 // so translating invalidates the measurement without breaking anything
 // visibly. The client translates only what it wraps around them.
 type Strings struct {
+	// Working is the activity line with no tool running — the one plain word
+	// it falls back to. Deliberately not one of the rotating verbs: see
+	// activity.go.
+	Working string
+
 	// Status line
 	VerifiedLabel    string
 	NotVerifiedLabel string
@@ -178,6 +183,8 @@ type Strings struct {
 // keeps the static, cgo-free binary of ADR-01 whole.
 var catalogue = map[Lang]Strings{
 	En: {
+		Working: "working",
+
 		VerifiedLabel:    "verified",
 		NotVerifiedLabel: "NOT VERIFIED",
 		UnverifiedLabel:  "unverified",
@@ -293,6 +300,8 @@ Environment:
 		NoPlan:          "There is no plan yet.",
 	},
 	PtBR: {
+		Working: "trabalhando",
+
 		VerifiedLabel:    "conferido",
 		NotVerifiedLabel: "NÃO CONFERIDO",
 		UnverifiedLabel:  "sem conferir",

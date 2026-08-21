@@ -161,6 +161,7 @@ func geometry(noPanel bool) tui.Geometry {
 		geo.PanelMode = tui.PanelHidden
 	}
 	geo.Unicode = supportsUnicode(os.Getenv)
+	geo.ActivityVerbs = tui.ActivityVerbsEnabled(os.Getenv)
 	geo.Palette = tui.Palette{Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)}
 	return geo
 }

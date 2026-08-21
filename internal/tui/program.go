@@ -92,6 +92,11 @@ type program struct {
 	// unsubscribe tears down the current subscription when the session is
 	// replaced by /clear or /model.
 	unsubscribe context.CancelFunc
+
+	// ticking says whether an animation tick is in flight. It exists so the
+	// tick can stop when the session goes idle and be started again exactly
+	// once when a turn begins.
+	ticking bool
 }
 
 // Run starts the TUI. It takes the alternate screen, which is what a fixed
@@ -165,7 +170,20 @@ const tickInterval = 120 * time.Millisecond
 type tickMsg time.Time
 
 func (p *program) tick() tea.Cmd {
+	p.ticking = true
 	return tea.Tick(tickInterval, func(t time.Time) tea.Msg { return tickMsg(t) })
+}
+
+// resumeTicking starts the animation again when a turn begins.
+//
+// The tick stops itself when the session goes idle, so something has to start
+// it, and the guard is what keeps two clocks from running: every event would
+// otherwise add a tick, and the frame counter would sprint.
+func (p *program) resumeTicking() tea.Cmd {
+	if p.ticking || p.model.State != protocol.SessionStateRunning {
+		return nil
+	}
+	return p.tick()
 }
 
 func (p *program) now() time.Time {
@@ -212,11 +230,21 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		p.model.Now = p.now()
-		// The frame only advances while something is running: an idle screen
-		// that keeps repainting burns a laptop battery for no information.
-		if p.model.State == protocol.SessionStateRunning {
-			p.model.Frame++
+		// Idle: stop, rather than reschedule with the counter held still.
+		//
+		// The frame already stopped advancing here, and the comment said an
+		// idle screen that keeps repainting burns a laptop battery for no
+		// information — while the tick rescheduled anyway and the screen
+		// repainted eight times a second for a number that never moved. The
+		// sentence was right; it just was not being kept.
+		//
+		// Nothing is lost by stopping: Now is refreshed on every event, so the
+		// clock a turn starts from is fresh whether or not a tick just ran.
+		if p.model.State != protocol.SessionStateRunning {
+			p.ticking = false
+			return p, nil
 		}
+		p.model.Frame++
 		return p, p.tick()
 
 	case noteMsg:
@@ -239,6 +267,9 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// concurrent turn, so waiting here is what turns a refusal into a
 		// usable experience.
 		var cmds []tea.Cmd
+		if c := p.resumeTicking(); c != nil {
+			cmds = append(cmds, c)
+		}
 		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
 			m, text := p.model.DrainQueue()
 			p.model = m
