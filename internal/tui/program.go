@@ -28,6 +28,7 @@ type Transport interface {
 	Interrupt(ctx context.Context, id string) error
 	Steer(ctx context.Context, id, text string) error
 	Undo(ctx context.Context, id string) (protocol.UndoResult, error)
+	RenameSession(ctx context.Context, id, name string) error
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
 	Subscribe(ctx context.Context, id string, from uint64) (<-chan protocol.Event, <-chan error)
 }
@@ -163,6 +164,9 @@ type eventMsg protocol.Event
 type errMsg struct{ err error }
 type streamClosedMsg struct{}
 type noteMsg string
+
+// renamedMsg is a name that stuck.
+type renamedMsg struct{ id, name string }
 type switchedMsg struct{ session protocol.Session }
 
 func (p *program) Init() tea.Cmd {
@@ -256,6 +260,15 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		p.model.Frame++
 		return p, p.tick()
+
+	case renamedMsg:
+		for i := range p.model.Sessions {
+			if p.model.Sessions[i].ID == msg.id {
+				p.model.Sessions[i].Name = msg.name
+				break
+			}
+		}
+		return p, nil
 
 	case noteMsg:
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: string(msg)})
@@ -399,7 +412,39 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// decorative and nothing would have said so.
 	if p.model.Nav.Active {
 		visible := p.model.Nav.Visible(p.model.Sessions)
+
+		// Naming is its own mode inside the list, because it is the one thing
+		// here that CHANGES something. Every key means the name while it is
+		// open, so nothing else can be reached by accident halfway through.
+		if p.model.Nav.Naming {
+			switch k.String() {
+			case "enter":
+				id, name := p.model.Nav.Chosen(p.model.Sessions), p.model.Nav.Draft
+				p.model.Nav.Naming, p.model.Nav.Draft = false, ""
+				if id == "" {
+					return p, nil
+				}
+				return p, p.rename(id, name)
+			case "esc":
+				p.model.Nav = p.model.Nav.Escape()
+				return p, nil
+			case "backspace":
+				p.model.Nav = p.model.Nav.BackspaceName()
+				return p, nil
+			case "ctrl+c":
+				p.model.Nav = RailNav{}
+				return p, nil
+			}
+			if t := k.String(); len(t) == 1 || t == " " {
+				p.model.Nav = p.model.Nav.TypeName(t)
+			}
+			return p, nil
+		}
+
 		switch key := k.String(); key {
+		case "r", "f2":
+			p.model.Nav = p.model.Nav.StartNaming(p.model.Sessions)
+			return p, nil
 		case "up":
 			p.model.Nav = p.model.Nav.Move(-1, len(visible))
 			return p, nil
@@ -1023,6 +1068,22 @@ func (p *program) newSession(model string) tea.Cmd {
 			return noteMsg("could not open a session: " + err.Error())
 		}
 		return switchedMsg{session: s}
+	}
+}
+
+// rename names a conversation and puts the answer on screen.
+//
+// The list is updated from what was SENT rather than re-read: the daemon
+// answers with nothing, and going back for the whole listing to learn one
+// string is a round trip for a fact already in hand. A failure says so and
+// leaves the row as it was — a name that did not stick must not look like it
+// did.
+func (p *program) rename(id, name string) tea.Cmd {
+	return func() tea.Msg {
+		if err := p.opts.Transport.RenameSession(p.ctx, id, name); err != nil {
+			return errMsg{err: err}
+		}
+		return renamedMsg{id: id, name: name}
 	}
 }
 

@@ -24,12 +24,14 @@ type fakeTransport struct {
 	interrupts int
 	resolved   []protocol.ApprovalDecision
 	created    []protocol.CreateSessionRequest
+	renamed    [][2]string
 	sessions   []protocol.Session
 
 	submitErr error
 	steerErr  error
 	listErr   error
 	createErr error
+	renameErr error
 	getErr    error
 
 	submittedImages []int
@@ -91,6 +93,18 @@ func (f *fakeTransport) steers() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.steered...)
+}
+
+// renamed records what a name was set to, so a test can assert the client
+// sent what the person typed rather than only that it sent something.
+func (f *fakeTransport) RenameSession(_ context.Context, id, name string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.renameErr != nil {
+		return f.renameErr
+	}
+	f.renamed = append(f.renamed, [2]string{id, name})
+	return nil
 }
 
 func (f *fakeTransport) Undo(context.Context, string) (protocol.UndoResult, error) {

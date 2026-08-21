@@ -28,6 +28,10 @@ type Summary struct {
 	Model     string
 	// Title is the first thing that was asked, trimmed to one line.
 	Title string
+	// Name is what a person called this conversation, empty when nobody has.
+	// Kept apart from Title so a listing can say which it is showing — a
+	// derived title and a chosen one are not the same claim.
+	Name string
 	// Turns is how many completed, which is the cheapest honest measure of
 	// how much happened.
 	Turns   int
@@ -125,6 +129,14 @@ func describe(path string) (Summary, error) {
 			}
 		case protocol.EventTurnCompleted:
 			s.Turns++
+		case protocol.EventSessionRenamed:
+			// The name a person gave beats the one derived from the first
+			// question, and the LAST one wins: renaming twice is somebody
+			// changing their mind, not two names.
+			var d protocol.SessionRenamed
+			if json.Unmarshal(ev.Payload, &d) == nil {
+				s.Name = d.Name
+			}
 		}
 	}
 	if !opened {

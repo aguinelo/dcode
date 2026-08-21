@@ -60,7 +60,19 @@ const (
 	// rather than flushed, and carrying a Seq. Giving it no Seq would have been
 	// the alternative, and it would have put a gap in the one property the
 	// record is built on.
-	EventProgress         EventType = "progress"
+	EventProgress EventType = "progress"
+	// EventSessionRenamed is a name a person gave this conversation.
+	//
+	// An event rather than a file beside the record, and the record is where it
+	// belongs for one reason above the others: a name for a conversation that
+	// no longer exists is nothing. Pruning removes the transcript, and a name
+	// stored anywhere else would outlive what it named — a listing full of
+	// titles for sessions nobody can open.
+	//
+	// It also keeps the count at one. A second store beside the log is a second
+	// thing that can disagree with the first, and this protocol's whole shape
+	// is that every observable fact travels the same way.
+	EventSessionRenamed   EventType = "session.renamed"
 	EventSessionCompacted EventType = "session.compacted"
 	EventSessionError     EventType = "session.error"
 )
@@ -197,6 +209,13 @@ func (d ApprovalDecision) Remembered() bool {
 // Grants reports whether a decision permits the crossing at all.
 func (d ApprovalDecision) Grants() bool {
 	return d != ApprovalDeny && d.Valid()
+}
+
+// RenameSessionRequest names a conversation. An empty name restores the title
+// derived from the first question, which is the way back rather than a second
+// command for undoing.
+type RenameSessionRequest struct {
+	Name string `json:"name"`
 }
 
 // ResolveApprovalRequest answers a pending approval. First writer wins.
@@ -390,6 +409,11 @@ type (
 		Kind       string `json:"kind"`
 		Done       int    `json:"done"`
 		Total      int    `json:"total,omitempty"`
+	}
+	// SessionRenamed is the name a person gave, which beats the one derived
+	// from the first question. Empty gives the derived title back.
+	SessionRenamed struct {
+		Name string `json:"name"`
 	}
 	// TurnCompleted ends a turn with one of the Stop* reasons.
 	TurnCompleted struct {

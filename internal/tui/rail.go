@@ -69,10 +69,17 @@ func renderRail(m Model, g Geometry, height int) []string {
 		// key is only useful before you press it.
 		head := strings.ToUpper(t.RailSessions)
 		style := StyleDim
-		if m.Nav.Active {
+		switch {
+		case m.Nav.Naming:
+			// The caret belongs where the typing goes. Two of them, one in the
+			// header and one in the row, would leave the reader guessing which
+			// field the next letter lands in.
+			style = StyleAccent
+			head += "  " + t.RailNaming
+		case m.Nav.Active:
 			style = StyleAccent
 			head += "  " + t.RailFilter + m.Nav.Filter + gl.caret
-		} else {
+		default:
 			head += "  ^r"
 		}
 		out = append(out, clipStyled(p.Apply(style, head), w))
@@ -88,6 +95,10 @@ func renderRail(m Model, g Geometry, height int) []string {
 				break
 			}
 			under := m.Nav.Active && i == m.Nav.Cursor
+			if under && m.Nav.Naming {
+				out = append(out, clipStyled(namingRow(m.Nav.Draft, gl, p, w), w))
+				continue
+			}
 			out = append(out, clipStyled(sessionRow(c, c.ID == m.SessionID, under, gl, p, w), w))
 		}
 	}
@@ -119,9 +130,23 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 			style = StyleAccent
 		}
 	}
-	title := c.Title
+	// A name a person gave beats the one derived from the first question, and
+	// says which it is. Without the mark, a listing shows two kinds of claim in
+	// one column and nothing tells them apart.
+	title, given := c.Title, false
+	if c.Name != "" {
+		title, given = c.Name, true
+	}
 	if title == "" {
 		title = c.ID
+	}
+	if given {
+		// Trimmed to leave room for the mark, so the mark never pushes the
+		// name off its own row.
+		if room := w - 4; room > 1 && visibleWidth(title) > room {
+			title = trimTo(title, room-1) + "…"
+		}
+		title += " ·"
 	}
 	// Cut with a mark, never silently. A title that merely stops leaves the
 	// reader unable to tell a short conversation from a truncated one, and the
@@ -130,6 +155,25 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 		title = trimTo(title, room-1) + "…"
 	}
 	return p.Apply(style, mark) + " " + title
+}
+
+// namingRow is the row while a name is being typed.
+//
+// It replaces the row rather than sitting above it: the thing being named has
+// to be the thing under the cursor, and a field somewhere else makes that a
+// guess.
+func namingRow(draft string, gl railMarks, p Palette, w int) string {
+	room := w - 3
+	shown := draft
+	if room > 1 && visibleWidth(shown)+1 > room {
+		// The END is kept while typing, because the end is where the caret is.
+		r := []rune(shown)
+		for len(r) > 0 && visibleWidth(string(r))+1 > room {
+			r = r[1:]
+		}
+		shown = string(r)
+	}
+	return p.Apply(StyleAccent, gl.cursor) + " " + p.Apply(StyleAccent, shown+gl.caret)
 }
 
 // trimTo cuts to a width in cells, never in bytes: a rune is not a column, and

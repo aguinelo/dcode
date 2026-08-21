@@ -86,6 +86,7 @@ type Strings struct {
 	RailFiles       string
 	RailSessions    string
 	RailFilter      string
+	RailNaming      string
 	RailNoMatch     string
 	RailTouchedOne  string
 	RailTouchedMany string
@@ -229,6 +230,7 @@ var catalogue = map[Lang]Strings{
 		RailFiles:        "files",
 		RailSessions:     "sessions",
 		RailFilter:       "/",
+		RailNaming:       "naming · esc cancels",
 		RailNoMatch:      "nothing matches",
 		RailTouchedOne:   "touched",
 		RailTouchedMany:  "touched",
@@ -364,6 +366,7 @@ Environment:
 		RailFiles:        "arquivos",
 		RailSessions:     "sessões",
 		RailFilter:       "/",
+		RailNaming:       "nomeando · esc cancela",
 		RailNoMatch:      "nada corresponde",
 		RailTouchedOne:   "tocado",
 		RailTouchedMany:  "tocados",

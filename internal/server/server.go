@@ -48,6 +48,11 @@ type Config struct {
 	// at boot, rather than on every session that inherits them.
 	DefaultMode   policy.SandboxMode
 	DefaultPolicy policy.ApprovalPolicy
+	// RecordDir is where transcripts live, so a conversation can be named
+	// without being live. The rail lists what a workspace has recorded, and
+	// almost none of it is loaded — a rename that only worked on the open
+	// session would work on the one row nobody needs it for.
+	RecordDir string
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -154,6 +159,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/sessions", s.listSessions)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/name", s.renameSession)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}/events", s.events)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/turns", s.submitTurn)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/interrupt", s.interrupt)
@@ -204,6 +210,35 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 	// and replays from the file.
 	sess.EmitCarried()
 	writeJSON(w, http.StatusCreated, desc)
+}
+
+// renameSession names a conversation, live or not.
+//
+// It writes to the record rather than to the live session, and that is
+// deliberate: the record is the one thing every conversation has. Routing it
+// through the session would mean a name only worked while the conversation was
+// loaded, which is the case a rail full of past conversations does not have.
+func (s *Server) renameSession(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.RecordDir == "" {
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput,
+			"this daemon keeps no transcripts, so there is nothing to name"))
+		return
+	}
+	var req protocol.RenameSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		return
+	}
+	switch err := session.Rename(s.cfg.RecordDir, r.PathValue("id"), req.Name, nil); {
+	case errors.Is(err, session.ErrNoSuchSession):
+		writeErr(w, protocol.Errorf(protocol.CodeSessionNotFound,
+			"no recorded conversation with that id"))
+		return
+	case err != nil:
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "%v", err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) listSessions(w http.ResponseWriter, _ *http.Request) {

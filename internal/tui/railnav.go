@@ -20,6 +20,12 @@ type RailNav struct {
 	// from leaving the cursor pointing past the end of what is on screen.
 	Cursor int
 	Filter string
+	// Naming says the row under the cursor is being given a name, and Draft is
+	// what has been typed. A separate mode rather than a second meaning for
+	// the filter: one takes you to a conversation and the other changes it, and
+	// a key that sometimes does each is a key nobody trusts.
+	Naming bool
+	Draft  string
 }
 
 // Matches reports whether a conversation survives the filter.
@@ -78,6 +84,30 @@ func (n RailNav) Chosen(all []SessionChoice) string {
 	return v[n.Cursor].ID
 }
 
+// TypeName edits the draft.
+func (n RailNav) TypeName(r string) RailNav {
+	if len([]rune(n.Draft)) >= NameLimit {
+		return n
+	}
+	n.Draft += r
+	return n
+}
+
+// BackspaceName drops a rune from the draft.
+func (n RailNav) BackspaceName() RailNav {
+	if n.Draft == "" {
+		return n
+	}
+	r := []rune(n.Draft)
+	n.Draft = string(r[:len(r)-1])
+	return n
+}
+
+// NameLimit is what the daemon accepts, repeated here so the keyboard stops at
+// the same place the server would refuse. A client that lets somebody type past
+// the limit and then reports a failure has wasted the typing.
+const NameLimit = 120
+
 // Type narrows the filter and pulls the cursor back into range.
 //
 // Back to the top rather than to the nearest surviving row: after typing, what
@@ -100,12 +130,33 @@ func (n RailNav) Backspace() RailNav {
 	return n
 }
 
+// StartNaming opens the name of the row under the cursor for editing, seeded
+// with the name it already has.
+//
+// Seeded with the NAME and not the derived title: offering the title as a draft
+// would turn "give this a name" into "confirm the one you were given", and the
+// first Enter would quietly promote a derived title into a chosen one.
+func (n RailNav) StartNaming(all []SessionChoice) RailNav {
+	v := n.Visible(all)
+	if len(v) == 0 || n.Cursor < 0 || n.Cursor >= len(v) {
+		return n
+	}
+	n.Naming, n.Draft = true, v[n.Cursor].Name
+	return n
+}
+
 // Escape backs out of one thing at a time: the filter first, then the mode.
 //
 // The same layering `esc` already has everywhere else here — close the
 // expansion, then the selection, then the modal. Escape means "back out of what
 // I opened", and the outermost thing opened is the last thing it abandons.
 func (n RailNav) Escape() RailNav {
+	if n.Naming {
+		// The derived title is kept, which is the design's own rule: backing
+		// out of naming leaves what was there rather than clearing it.
+		n.Naming, n.Draft = false, ""
+		return n
+	}
 	if n.Filter != "" {
 		n.Filter, n.Cursor = "", 0
 		return n

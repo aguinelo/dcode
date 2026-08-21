@@ -142,3 +142,124 @@ func TestChoosingTheOpenConversationDoesNothing(t *testing.T) {
 		t.Error("the mode stayed open after choosing")
 	}
 }
+
+// -- naming ------------------------------------------------------------------
+
+// Naming is its own mode inside the list, because it is the one thing here that
+// changes something. Every key means the name while it is open, so nothing else
+// is reachable by accident halfway through.
+func TestNamingTakesEveryKeyWhileItIsOpen(t *testing.T) {
+	p := navProgram("b", "first", "second")
+	p.onKey(ctrl('r'))
+	p.onKey(key("r"))
+	if !p.model.Nav.Naming {
+		t.Fatal("r did not open naming")
+	}
+
+	// `r` would have re-opened naming and `j` would have moved a cursor in
+	// another mode. Here they are letters in a name.
+	for _, c := range []string{"r", "j", "x"} {
+		p.onKey(key(c))
+	}
+	if p.model.Nav.Draft != "rjx" {
+		t.Errorf("the draft is %q", p.model.Nav.Draft)
+	}
+	if p.model.Nav.Cursor != 0 {
+		t.Errorf("a letter moved the cursor to %d", p.model.Nav.Cursor)
+	}
+}
+
+// The draft is seeded with the NAME and not the derived title. Offering the
+// title would turn "give this a name" into "confirm the one you were given",
+// and the first Enter would quietly promote a derived title into a chosen one.
+func TestNamingStartsFromTheNameAndNotTheDerivedTitle(t *testing.T) {
+	n := RailNav{Active: true, Cursor: 0}
+	all := []SessionChoice{{ID: "a", Title: "derived from the question"}}
+	if got := n.StartNaming(all); got.Draft != "" {
+		t.Errorf("the derived title was offered as a draft: %q", got.Draft)
+	}
+
+	named := []SessionChoice{{ID: "a", Title: "derived", Name: "chosen"}}
+	if got := n.StartNaming(named); got.Draft != "chosen" {
+		t.Errorf("the existing name was not offered for editing: %q", got.Draft)
+	}
+}
+
+// Backing out leaves what was there rather than clearing it, which is the
+// design's own rule for esc in this mode.
+func TestEscapingNamingKeepsWhatWasThere(t *testing.T) {
+	p := navProgram("b", "first", "second")
+	p.onKey(ctrl('r'))
+	p.onKey(key("r"))
+	p.onKey(key("z"))
+	p.onKey(special(tea.KeyEscape))
+
+	if p.model.Nav.Naming || p.model.Nav.Draft != "" {
+		t.Errorf("naming survived esc: %+v", p.model.Nav)
+	}
+	if !p.model.Nav.Active {
+		t.Error("esc left the list entirely instead of just the naming")
+	}
+	if p.model.Sessions[0].Name != "" {
+		t.Errorf("a cancelled name was kept: %q", p.model.Sessions[0].Name)
+	}
+}
+
+// Enter sends what was typed, to the conversation under the cursor.
+func TestEnterSendsTheNameForTheRowUnderTheCursor(t *testing.T) {
+	p := navProgram("z", "first", "second")
+	p.onKey(ctrl('r'))
+	p.onKey(special(tea.KeyDown))
+	p.onKey(key("r"))
+	for _, c := range []string{"n", "e", "w"} {
+		p.onKey(key(c))
+	}
+	_, cmd := p.onKey(special(tea.KeyEnter))
+	if cmd == nil {
+		t.Fatal("enter sent nothing")
+	}
+	if p.model.Nav.Naming {
+		t.Error("the mode stayed open after committing")
+	}
+}
+
+// The keyboard stops where the daemon would refuse. Letting somebody type past
+// the limit and then reporting a failure wastes the typing.
+func TestTheDraftStopsAtTheLimitTheDaemonEnforces(t *testing.T) {
+	n := RailNav{Active: true, Naming: true}
+	for i := 0; i < NameLimit+20; i++ {
+		n = n.TypeName("a")
+	}
+	if got := len([]rune(n.Draft)); got != NameLimit {
+		t.Errorf("the draft grew to %d, limit is %d", got, NameLimit)
+	}
+}
+
+func TestBackspaceInANameDropsARuneNotAByte(t *testing.T) {
+	n := RailNav{Active: true, Naming: true, Draft: "sessão"}.BackspaceName()
+	if n.Draft != "sessã" {
+		t.Errorf("got %q", n.Draft)
+	}
+}
+
+// A name a person gave says which it is. Without the mark, a listing shows two
+// kinds of claim in one column and nothing tells them apart.
+func TestAGivenNameIsMarkedAsGiven(t *testing.T) {
+	m := Model{Lang: En, Cursor: -1,
+		Sessions: []SessionChoice{
+			{ID: "a", Title: "derived one"},
+			{ID: "b", Title: "derived two", Name: "chosen"},
+		}}
+	g := railGeometry(160)
+	g.Palette = Palette{}
+	lines := strings.Join(renderRail(m, g, 12), "\n")
+
+	for _, l := range strings.Split(lines, "\n") {
+		if strings.Contains(l, "chosen") && !strings.Contains(l, "·") {
+			t.Errorf("a given name is not marked: %q", l)
+		}
+		if strings.Contains(l, "derived one") && strings.Contains(l, "·") {
+			t.Errorf("a derived title was marked as given: %q", l)
+		}
+	}
+}
