@@ -386,6 +386,33 @@ of messages nobody stores, on a protocol whose every other event is a fact worth
 replaying. Whether it joins the log or travels beside it is the first question,
 not the last.
 
+**Delegation is not drawn at all.** The design's §4 is a card with the children
+inside it: a sub-line per child with its glyph, its name, `owns <path>`, its own
+bar and its result — and the one that did not answer named on its own line, with
+the reason, never summarised in with the ones that did.
+
+None of it exists. An `explore` with four children renders as one ordinary tool
+line, and there is not a single reference to delegation in `render.go`. This is
+the largest thing the v5 work did not deliver, and it was not decided against —
+it was missed, and found by someone looking at the running interface and saying
+it looked poorer than the drawing.
+
+It matters more than a card. `delegated-writing` promises that a child that
+never answered is named with its reason, and the client currently has no way to
+show that: the guarantee holds in the loop and disappears at the screen.
+
+**The panel has no TURN section.** The design puts `iteração 2/100` and
+`em vôo 2 · teto 4` under the plan. The panel shows the plan and `1 of 2` and
+nothing else, so the round ceiling — item 1 of this roadmap, the one with
+measured evidence of harm — stays invisible in the one place a person is
+already looking.
+
+**The sidebar headers have no chevron and no key.** The design's header is
+`▾ ARQUIVOS ^E  ·  n tocados`, and folding a single section rotates the chevron.
+Ours has the label and the count. `^B` folds the whole column rather than a
+section, which was the deliberate call in #233; the chevron was not deliberate,
+it was left out.
+
 **Naming a conversation has nowhere to be stored.** The design's session rail
 has three modes — passive, navigating, naming — and the first shipped. The third
 cannot: a name the person gives has to outlive the session, and a record
