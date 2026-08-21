@@ -69,6 +69,27 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Documentação
+
+- **Duas peças do design v5 não foram construídas, e também não foram
+  registradas.** Achadas por quem rodou a interface e disse que ela parecia mais
+  pobre que o desenho, que é o único jeito de uma lacuna dessas aparecer.
+
+  **Delegação não é desenhada.** O §4 do design é um card com os filhos dentro —
+  uma sub-linha por filho com `owns <caminho>`, barra própria e resultado, e
+  quem não respondeu nomeado com o motivo. Nada disso existe; um `explore` com
+  quatro filhos é uma linha de ferramenta comum. Pesa mais que um card: o
+  `delegated-writing` promete que filho sem resposta é nomeado com o motivo, e o
+  cliente não tem como mostrar isso — a garantia vale no laço e some na tela.
+
+  **O painel não tem seção TURNO** — `iteração 2/100`, `em vôo 2 · teto 4`. O
+  teto de rodadas é o item 1 do roadmap, o único com evidência medida de dano, e
+  fica invisível justamente onde a pessoa já está olhando.
+
+  Uma terceira, menor: os cabeçalhos da coluna não têm chevron. Dobrar a coluna
+  inteira com `^B` em vez de uma seção foi decisão; deixar o chevron de fora não
+  foi.
+
 ### Cliente TUI
 
 - **Nenhuma runa de desenho de caixa chega a terminal que não as desenha.**
