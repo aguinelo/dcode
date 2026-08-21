@@ -9,6 +9,12 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"adjacentes são um bloco só":         "TestADelegationIsSeparatedFromWhatSurroundsIt",
+	"nunca dobrado junto dos que":        "TestTheChildThatDidNotAnswerIsNamedOnItsOwnLine",
+	"quantos ficaram sem resposta":       "TestTheHeaderCountsTheChildrenAndTheOnesMissing",
+	"fronteira que recebeu":              "TestEveryChildShowsTheBoundaryItWasGiven",
+	"nenhum filho é desenhado duas":      "TestChildrenAreNotDrawnTwice",
+	"não pelo formato da string":         "TestAChildsNameIsNotAFile",
 	"terminal que declarou não desenhá":  "TestNoBoxDrawingRuneSurvivesAsciiMode",
 	"marcada por caractere, não só":      "TestTheOpenConversationIsMarkedByACharacter",
 	"Conversas sozinhas já abrem":        "TestConversationsAloneAreEnoughToOpenTheSidebar",

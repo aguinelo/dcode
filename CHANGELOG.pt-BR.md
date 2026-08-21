@@ -71,24 +71,21 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Documentação
 
-- **Duas peças do design v5 não foram construídas, e também não foram
-  registradas.** Achadas por quem rodou a interface e disse que ela parecia mais
-  pobre que o desenho, que é o único jeito de uma lacuna dessas aparecer.
+- **O que o design v5 pede e o cliente ainda não mostra.** Achado por quem rodou
+  a interface e disse que ela parecia mais pobre que o desenho, que é o único
+  jeito de uma lacuna dessas aparecer.
 
-  **Delegação não é desenhada.** O §4 do design é um card com os filhos dentro —
-  uma sub-linha por filho com `owns <caminho>`, barra própria e resultado, e
-  quem não respondeu nomeado com o motivo. Nada disso existe; um `explore` com
-  quatro filhos é uma linha de ferramenta comum. Pesa mais que um card: o
-  `delegated-writing` promete que filho sem resposta é nomeado com o motivo, e o
-  cliente não tem como mostrar isso — a garantia vale no laço e some na tela.
+  A delegação era a grande e está **construída** (abaixo). O que resta são os
+  números do turno no painel — `iteração 2/100`, `em vôo 2 · teto 4` —, e isso é
+  **lacuna de dado, não render esquecido**: o protocolo carrega
+  `StopMaxIterations` como motivo de um turno ter *terminado* e nada enquanto ele
+  roda. Registrado primeiro como esquecimento e corrigido depois de conferir,
+  porque os dois têm consertos diferentes e só um é barato.
 
-  **O painel não tem seção TURNO** — `iteração 2/100`, `em vôo 2 · teto 4`. O
-  teto de rodadas é o item 1 do roadmap, o único com evidência medida de dano, e
-  fica invisível justamente onde a pessoa já está olhando.
-
-  Uma terceira, menor: os cabeçalhos da coluna não têm chevron. Dobrar a coluna
-  inteira com `^B` em vez de uma seção foi decisão; deixar o chevron de fora não
-  foi.
+  É a metade-cliente do item 1 do roadmap. Aquele item é sobre o *modelo* nunca
+  saber que está ficando sem rodadas; este é sobre a *pessoa* também não saber,
+  no lugar onde ela já está olhando. O evento que responder um deve responder os
+  dois.
 
 ### Cliente TUI
 

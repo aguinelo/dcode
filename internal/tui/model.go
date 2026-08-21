@@ -61,6 +61,10 @@ type Entry struct {
 	// Running marks a tool call that has not reported back yet, which is what
 	// the spinner attaches to.
 	Running bool
+	// Owns is what a delegated child declared it would write, taken from the
+	// call's input. It is the boundary the child was given, and the screen has
+	// no other way to show what a child was allowed to touch.
+	Owns []string
 	// Added and Removed are the line counts the tool reported, kept as numbers.
 	//
 	// Summary already renders them, but as a sentence. The sidebar needs the
@@ -299,7 +303,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m = m.closeThought()
 		m.Entries = append(m.Entries, Entry{
 			Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
-			Summary: "", Running: true, Seq: ev.Seq,
+			Owns: ownsOf(d.Input), Summary: "", Running: true, Seq: ev.Seq,
 		})
 
 	case protocol.EventToolCompleted:
@@ -556,6 +560,22 @@ func targetOf(raw json.RawMessage) string {
 // It reads the metadata the tool reported rather than parsing the output. `go
 // test` prints two hundred lines; what the user needs on screen is "12 passed",
 // and rebuilding that by matching prose breaks the day the wording changes.
+// ownsOf reads the paths a delegated call declared it would write.
+//
+// From the input rather than from the result, because it is what the child was
+// ALLOWED to touch and that is worth showing whether or not the child came
+// back. A child that never answered still declared a boundary, and the screen
+// saying which one is half of why the refusal is legible.
+func ownsOf(raw json.RawMessage) []string {
+	var m struct {
+		Owns []string `json:"owns"`
+	}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	return m.Owns
+}
+
 func summariseResult(tool string, d protocol.ToolCompleted) string {
 	if !d.OK {
 		if s := firstLine(d.Output); s != "" {

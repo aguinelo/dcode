@@ -128,3 +128,28 @@ func TestATurnThatTouchedNothingHasNoTree(t *testing.T) {
 		t.Errorf("an empty turn produced rows: %+v", rows)
 	}
 }
+
+// A delegated child's target is its NAME, and a name with no punctuation in it
+// looks exactly like a filename. `alpha` and `bravo` walked into the file list
+// and sat there as if they were on disk — deciding by tool rather than by the
+// shape of the string is the only reading that cannot be fooled.
+func TestAChildsNameIsNotAFile(t *testing.T) {
+	rows := FileTree([]Entry{
+		tool("explore", "alpha", false, false, 0),
+		tool("explore", "bravo", false, true, 0),
+		tool("read", "real.go", false, false, 0),
+	})
+	if got := labels(rows); len(got) != 1 || got[0] != "real.go" {
+		t.Errorf("a child name reached the file list: %v", got)
+	}
+}
+
+// Same reading, for the tools whose target is a command or a note rather than a
+// path. `plan` and `remember` name neither.
+func TestOnlyToolsThatNameAPathReachTheFileList(t *testing.T) {
+	for _, tl := range []string{"bash", "process", "plan", "remember", "explore"} {
+		if rows := FileTree([]Entry{tool(tl, "something", false, false, 0)}); len(rows) != 0 {
+			t.Errorf("%s put %q in the file list", tl, "something")
+		}
+	}
+}
