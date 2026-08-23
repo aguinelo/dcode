@@ -274,13 +274,19 @@ func TestDashVPrintsTheVersion(t *testing.T) {
 }
 
 // And the pair stays a pair: -h keeps working, so neither is the odd one out.
+//
+// Asserted on a subcommand line rather than on the word "Usage". The usage is
+// translated, the runner has no locale and lands on the fallback, and the first
+// version of this test passed on a machine with LANG set and failed on CI —
+// which is a test whose answer depends on the machine, the shape this
+// repository has already paid for once in the sandbox.
 func TestDashHStillPrintsTheUsage(t *testing.T) {
 	out, errOut := capture(t, func() {
 		if err := dispatch([]string{"-h"}); err != nil {
 			t.Error(err)
 		}
 	})
-	if !strings.Contains(out+errOut, "Usage") {
+	if !strings.Contains(out+errOut, "dcode serve") {
 		t.Errorf("-h printed %q / %q", out, errOut)
 	}
 }
