@@ -69,6 +69,35 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Protocolo
+
+- **A chamada de ferramenta aparece enquanto ainda está chegando.** Num `write` de
+  algumas centenas de linhas o modelo transmitia o arquivo inteiro e **a tela não
+  mostrava nada** — nem o nome da ferramenta — até a chamada estar montada, e aí
+  ela surgia já completa. Silêncio exatamente na parte do turno em que o trabalho
+  acontece, que é o que faz uma interface viva se ler como morta.
+
+  Os dois fatos já eram conhecidos e os dois eram jogados fora: o nome e o id em
+  `content_block_start`, a contagem de bytes em cada fragmento. O provedor passa a
+  emitir `tool_call_opened` e `tool_call_progress`, e o laço os converte em
+  `progress` com `kind: "arguments"`.
+
+  **Não é evento novo de protocolo** — é o que já existia, com um campo `Name`,
+  porque sujeito que ainda não existe precisa se nomear: o `tool.requested` carrega
+  o nome e só chega quando a chamada termina de montar.
+
+  Bytes e não linhas, já que o que chegou é fragmento de JSON e contar linha dentro
+  de string escapada pela metade é contar o que ainda não está lá. Sem total: o
+  modelo não diz quanto a chamada vai ter, e denominador que ninguém mandou é
+  denominador em que alguém acredita.
+
+  Throttle de meio kilobyte, **no laço** e não no provedor: o provedor relata o que
+  vê, o protocolo decide o que vale dizer. O primeiro relato é sempre enviado — é
+  ele que põe a linha na tela.
+
+  Consumidor que ignora os dois eventos novos vê exatamente a sequência que via
+  antes, e há teste para isso.
+
 ### Cliente TUI
 
 - **Coluna que se esconde diz que existe.** A coluna lateral some abaixo de cem

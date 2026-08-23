@@ -195,6 +195,9 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Nome vazio devolve o título derivado; não é erro.
 - Caractere de controle não chega ao registro, e nome longo demais é **recusado**, não aparado.
 - Nomear conversa inexistente diz isso, e não cria registro.
+- Chamada de ferramenta se anuncia no instante em que o nome é conhecido, antes de os argumentos terminarem.
+- Argumentos que chegam são reportados em **bytes**, sem total, e com passo — fragmento abaixo do passo não vira evento.
+- Consumidor que ignora os dois eventos novos vê exatamente a sequência que via antes.
 - Varredura reporta quão longe foi, e o relato nomeia a chamada de onde veio.
 - `grep` conhece a lista antes de varrer e diz `n de N`; `glob` está descobrindo e manda só a contagem.
 - Duas varreduras rodando juntas não reportam uma pela outra: o relator viaja no contexto da chamada, não no estado da sessão.

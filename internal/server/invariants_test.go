@@ -18,6 +18,9 @@ var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join(".."
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
 	"em vez de abrir buraco na sequência":  "TestProgressJoinsTheSequenceLikeAnyOtherEvent",
+	"antes de os argumentos terminarem":    "TestACallAnnouncesItselfAndItsArgumentsAsTheyArrive",
+	"abaixo do passo não vira evento":      "TestACallAnnouncesItselfAndItsArgumentsAsTheyArrive",
+	"sequência que via antes":              "TestAToolCallAnnouncesItselfWhileItIsStillArriving",
 	"nomeia a chamada de onde veio":        "TestAScanReportsHowFarItHasGot",
 	"morre com a transcrição":              "TestANameIsStoredInTheConversationsOwnRecord",
 	"lida antes de acrescentar":            "TestARenameContinuesTheSequenceRatherThanGuessingIt",

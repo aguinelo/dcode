@@ -69,6 +69,10 @@ type Entry struct {
 	// result landed on the second call's line — the numbers were real and the
 	// row they appeared on was not.
 	CallID string
+	// Arriving marks a call whose arguments are still coming from the model.
+	// It is running, but not yet running: nothing has been executed, and the
+	// count is bytes of a request rather than work done.
+	Arriving bool
 	// Done and Total are how far a running call has got, when it says.
 	Done, Total int
 	// Owns is what a delegated child declared it would write, taken from the
@@ -328,8 +332,20 @@ func (m Model) Apply(ev protocol.Event) Model {
 			for i := range m.Entries {
 				if m.Entries[i].CallID == d.ToolCallID {
 					m.Entries[i].Done, m.Entries[i].Total = d.Done, d.Total
-					break
+					return m
 				}
+			}
+			// A call still arriving has no entry yet: tool.requested comes
+			// only once the model has finished sending it. The report names
+			// the tool for exactly this — a line appears the moment the call
+			// starts, instead of the screen sitting still through the part of
+			// the turn where the work is happening.
+			if d.Name != "" {
+				m = m.closeThought()
+				m.Entries = append(m.Entries, Entry{
+					Kind: KindTool, Tool: d.Name, CallID: d.ToolCallID,
+					Running: true, Arriving: true, Done: d.Done, Seq: ev.Seq,
+				})
 			}
 			break
 		}
@@ -346,11 +362,26 @@ func (m Model) Apply(ev protocol.Event) Model {
 			break
 		}
 		m = m.closeThought()
-		m.Entries = append(m.Entries, Entry{
-			Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
-			Owns: ownsOf(d.Input), CallID: d.ToolCallID,
-			Summary: "", Running: true, Seq: ev.Seq,
-		})
+		// The call announced itself while it was arriving, so the line is
+		// already there: fill it in rather than drawing a second one.
+		m.Entries = append([]Entry(nil), m.Entries...)
+		filled := false
+		for i := range m.Entries {
+			if m.Entries[i].CallID == d.ToolCallID && m.Entries[i].Arriving {
+				m.Entries[i].Target = targetOf(d.Input)
+				m.Entries[i].Owns = ownsOf(d.Input)
+				m.Entries[i].Arriving, m.Entries[i].Done = false, 0
+				filled = true
+				break
+			}
+		}
+		if !filled {
+			m.Entries = append(m.Entries, Entry{
+				Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
+				Owns: ownsOf(d.Input), CallID: d.ToolCallID,
+				Summary: "", Running: true, Seq: ev.Seq,
+			})
+		}
 
 	case protocol.EventToolCompleted:
 		var d protocol.ToolCompleted

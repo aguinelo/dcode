@@ -204,3 +204,72 @@ func TestACallInFlightShowsWhatItHasGotThrough(t *testing.T) {
 		}
 	}
 }
+
+// -- a call that is still arriving -------------------------------------------
+
+// The line appears the moment the call opens, before a single argument has
+// landed. Waiting for tool.requested meant nothing on screen through the part
+// of the turn where the work is happening — for a large write, most of it.
+func TestACallAppearsWhileItIsStillArriving(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(progressEvent(1, protocol.Progress{
+		TurnID: "t1", ToolCallID: "c1", Name: "write",
+		Kind: protocol.ProgressArguments, Done: 0}))
+
+	if len(m.Entries) != 1 {
+		t.Fatalf("no line was drawn: %+v", m.Entries)
+	}
+	e := m.Entries[0]
+	if e.Tool != "write" || !e.Running || !e.Arriving {
+		t.Errorf("the line does not say what is happening: %+v", e)
+	}
+}
+
+// It is counted in bytes of itself, and says bytes. A bare number beside a tool
+// that has done nothing would read as work already done.
+func TestAnArrivingCallIsCountedInBytesAndSaysSo(t *testing.T) {
+	gl := glyphs(true)
+	if got := runningMeta(Entry{Arriving: true, Done: 0}, gl); got != gl.ell {
+		t.Errorf("nothing arrived yet and it said %q", got)
+	}
+	if got := runningMeta(Entry{Arriving: true, Done: 2048}, gl); got != "2.0k" {
+		t.Errorf("got %q", got)
+	}
+	if got := runningMeta(Entry{Arriving: true, Done: 512}, gl); got != "512B" {
+		t.Errorf("got %q", got)
+	}
+}
+
+// The complete call fills the line that was already there. Drawing a second one
+// would leave the same call on screen twice, once half-arrived and once real.
+func TestTheCompleteCallFillsTheLineRatherThanAddingOne(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(progressEvent(1, protocol.Progress{
+		TurnID: "t1", ToolCallID: "c1", Name: "write",
+		Kind: protocol.ProgressArguments, Done: 900}))
+	m = m.Apply(toolRequested(2, "c1", "write", `{"path":"a.go"}`))
+
+	if n := len(m.Entries); n != 1 {
+		t.Fatalf("the call is on screen %d times: %+v", n, m.Entries)
+	}
+	e := m.Entries[0]
+	if e.Arriving {
+		t.Error("a call that has been requested is still marked as arriving")
+	}
+	if e.Target != "a.go" {
+		t.Errorf("the target did not fill in: %q", e.Target)
+	}
+	if e.Done != 0 {
+		t.Errorf("the byte count survived into execution: %d", e.Done)
+	}
+}
+
+// A provider that says nothing while a call arrives still works: the line
+// appears at tool.requested exactly as it always did.
+func TestAProviderThatSaysNothingStillDrawsTheCall(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(toolRequested(1, "c1", "read", `{"path":"a.go"}`))
+	if len(m.Entries) != 1 || m.Entries[0].Target != "a.go" {
+		t.Errorf("the old path stopped working: %+v", m.Entries)
+	}
+}

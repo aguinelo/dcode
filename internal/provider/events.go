@@ -19,19 +19,35 @@ const (
 	// model that reads its own reasoning back as something it said out loud
 	// starts defending it.
 	EventReasoningDelta StreamEventType = "reasoning_delta"
-	EventToolCall       StreamEventType = "tool_call"
-	EventDone           StreamEventType = "done"
-	EventError          StreamEventType = "error"
+	// EventToolCallOpened says a tool call has begun arriving. The name and
+	// the id are known long before the arguments finish, and throwing them
+	// away is what makes a screen sit still while a model writes a file.
+	EventToolCallOpened StreamEventType = "tool_call_opened"
+	// EventToolCallProgress is how much of a call's arguments have arrived.
+	EventToolCallProgress StreamEventType = "tool_call_progress"
+	EventToolCall         StreamEventType = "tool_call"
+	EventDone             StreamEventType = "done"
+	EventError            StreamEventType = "error"
 )
 
 // StreamEvent is the neutral event the loop consumes.
 //
 // Ordering is guaranteed: zero or more TextDelta and ToolCall interleaved,
 // terminated by exactly one Done or one Error. Never both, never neither.
+//
+// ToolCallOpened and ToolCallProgress may appear before the ToolCall they
+// describe, and a consumer that ignores them still sees exactly the sequence it
+// saw before — which is what lets a provider that cannot report them stay
+// silent rather than pretend.
 type StreamEvent struct {
 	Type     StreamEventType
 	Text     string
 	ToolCall *ce.ToolCall
+	// CallID and CallName identify a call still arriving; Bytes is how much of
+	// its arguments have landed. Set only on the two opened/progress types.
+	CallID   string
+	CallName string
+	Bytes    int
 	Usage    *Usage
 	Err      *ProviderError
 }

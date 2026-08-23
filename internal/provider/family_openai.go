@@ -586,7 +586,15 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 	case "content_block_start":
 		if e.ContentBlock != nil && e.ContentBlock.Type == "tool_use" {
 			// Opened, not complete: the arguments are still coming.
+			//
+			// Said out loud, because the name is knowable HERE and the
+			// arguments can take seconds. Keeping it to ourselves is what left
+			// a screen with nothing on it while a model wrote a file.
 			d.open(e.Index, e.ContentBlock.ID, e.ContentBlock.Name)
+			return []StreamEvent{{
+				Type:   EventToolCallOpened,
+				CallID: e.ContentBlock.ID, CallName: e.ContentBlock.Name,
+			}}, nil
 		}
 
 	case "content_block_delta":
@@ -595,6 +603,15 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		}
 		if e.Delta.PartialJSON != "" {
 			d.append(e.Index, e.Delta.PartialJSON)
+			// Bytes rather than lines: what has arrived is a fragment of JSON,
+			// and counting lines in half an escaped string would be counting
+			// something that is not there yet.
+			if p, ok := d.pending[e.Index]; ok {
+				return []StreamEvent{{
+					Type:   EventToolCallProgress,
+					CallID: p.id, CallName: p.name, Bytes: p.args.Len(),
+				}}, nil
+			}
 			return nil, nil
 		}
 		if e.Delta.Thinking != "" {

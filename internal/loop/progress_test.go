@@ -284,3 +284,48 @@ func TestAWalkThatIsStillDiscoveringSendsNoTotal(t *testing.T) {
 		}
 	}
 }
+
+// A call announces itself the moment its name is known, and reports its
+// arguments as they arrive — throttled, because a fragment can be a handful of
+// bytes and one event per fragment would put thousands of lines in the record
+// of a single large write.
+func TestACallAnnouncesItselfAndItsArgumentsAsTheyArrive(t *testing.T) {
+	reg := tools.NewRegistry(tools.Read{})
+	big := strings.Repeat("x", argumentStep*3)
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{
+			{Type: provider.EventToolCallOpened, CallID: "c1", CallName: "read"},
+			{Type: provider.EventToolCallProgress, CallID: "c1", CallName: "read", Bytes: 10},
+			{Type: provider.EventToolCallProgress, CallID: "c1", CallName: "read", Bytes: argumentStep + 1},
+			{Type: provider.EventToolCallProgress, CallID: "c1", CallName: "read", Bytes: len(big)},
+			call("c1", "read", `{"path":"a"}`), done(),
+		},
+		{text("done"), done()},
+	}}
+	e, rec := newEngine(t, p, reg)
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+
+	got := progressOf(rec, protocol.ProgressArguments)
+	if len(got) == 0 {
+		t.Fatal("the call never announced itself")
+	}
+	if got[0].Done != 0 || got[0].Name != "read" {
+		t.Errorf("the first report does not open the line: %+v", got[0])
+	}
+	for _, pr := range got {
+		if pr.ToolCallID != "c1" {
+			t.Errorf("a report does not name its call: %+v", pr)
+		}
+		if pr.Total != 0 {
+			t.Errorf("a total was invented for a call still arriving: %d", pr.Total)
+		}
+	}
+	// The ten-byte fragment is below the step and must not have been sent.
+	for _, pr := range got {
+		if pr.Done == 10 {
+			t.Error("a fragment below the step was reported")
+		}
+	}
+}
