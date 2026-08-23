@@ -71,6 +71,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### CLI
 
+- **Build local se chama pela versão para a qual vai.** Ele pegava a última tag,
+  então todo build entre dois releases reportava o **anterior**: um binário
+  carregando dois dias de trabalho se chamava `0.1.0`, e a única coisa dizendo o
+  contrário era um hash de commit que ninguém lê. Alguém viu esse número parado e
+  concluiu, com razão, que nada tinha sido instalado. Agora ele deriva do
+  `scripts/version.sh`, e o mesmo build diz `0.2.0-dev+7b27519`.
+
 - **`-v` imprime a versão.** Ele respondia *"flag provided but not defined: -v"*
   e em seguida imprimia o uso inteiro, enterrando a única linha que diz o que deu
   errado sob vinte que não dizem. O `-h` já estava ali do lado, e um par de flags

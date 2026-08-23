@@ -19,6 +19,7 @@ var distributionDirs = []string{
 }
 
 var distributionInvariants = map[string]string{
+	"pela versão para a qual vai":     "TestADevBuildIsNamedForTheVersionItIsHeadingTo",
 	"`-v` imprime a versão":           "TestDashVPrintsTheVersion",
 	"quando a assinatura não confere": "TestASignatureThatDoesNotVerifyInstallsNothingAndLeavesNoResidue",
 	"quando o SHA-256 do artefato":    "TestAChecksumMismatchInstallsNothing",

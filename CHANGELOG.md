@@ -74,6 +74,13 @@ that on every run to stop the opposite reading.
 
 ### CLI
 
+- **A dev build is named for the version it is heading to.** It took the last
+  tag, so every build between two releases reported the **older** one: a binary
+  carrying two days of work called itself `0.1.0`, and the only thing saying
+  otherwise was a commit hash nobody reads. Somebody watched that number sit
+  still and reasonably concluded nothing had been installed. It now derives from
+  `scripts/version.sh`, so the same build reads `0.2.0-dev+7b27519`.
+
 - **`-v` prints the version.** It answered *"flag provided but not defined: -v"*
   and then printed the entire usage, burying the one line that says what went
   wrong under twenty that do not. `-h` was already there beside it, and a pair of

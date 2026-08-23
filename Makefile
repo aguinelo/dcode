@@ -15,7 +15,18 @@ DCODE_INSTALL_DIR ?= $(HOME)/.local/bin
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 GIT_DIRTY  := $(shell git diff --quiet HEAD 2>/dev/null || echo .dirty)
 GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-BASE_VER   := $(if $(GIT_TAG),$(GIT_TAG),0.0.0)
+# A dev build is named for the version it is HEADING TO, not the one it left.
+#
+# It used to take the last tag, so every build between two releases reported the
+# older one — a binary carrying two days of work called itself 0.1.0, and the
+# only thing saying otherwise was a commit hash nobody reads. Somebody watched
+# that number not move and reasonably concluded nothing had been installed.
+#
+# scripts/version.sh already derives the next version from the commits since the
+# tag; falling back to the tag keeps a build possible when it cannot derive one,
+# which is the case a commit outside the convention produces.
+NEXT_VER   := $(shell ./scripts/version.sh 2>/dev/null | sed 's/^v//')
+BASE_VER   := $(if $(NEXT_VER),$(NEXT_VER),$(if $(GIT_TAG),$(GIT_TAG),0.0.0))
 VERSION    := $(BASE_VER)-dev+$(GIT_COMMIT)$(GIT_DIRTY)
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
