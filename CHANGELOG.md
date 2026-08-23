@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 20 August 2026
+## Current state — 23 August 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 68 decision changelogs |
+| spec families | 13, with 80 decision changelogs |
 | behavioural contracts | 42 declared |
 | **contracts measured against a model** | **3** |
 | coverage | 95.0%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.1.0** |
+| published version | **0.2.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -46,6 +46,17 @@ applies the same rule by reading the digests from the installer on `main`.
 Homebrew is not a channel yet — the tap was published to for one release and had
 never been created. Removed rather than left running; `docs/ROADMAP.md` §9 says
 what creating it would take.
+
+**The interface.** A sidebar carries the files this turn touched and the
+conversations this workspace has recorded — `^B` folds it, `^R` gives it the
+keyboard, `r` names a conversation. Delegation is one card with its children
+inside, and the child that did not answer is named there with its reason. A tool
+call appears the moment it begins arriving from the model, counted in bytes,
+rather than after it is complete.
+
+Below a hundred columns the sidebar goes and **says it went**, which it did not
+for two days — long enough for the person it was built for to conclude it had
+never been built.
 
 **Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
 bubblewrap on Linux, with the boundary tested against the kernel and exercised
@@ -71,6 +82,23 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.2.0 — 23 August 2026
+
+The release the interface needed, and the one every entry below was found by
+somebody **using** it rather than by a test.
+
+The v5 design is built: a sidebar with the files this turn touched and the
+conversations this workspace has recorded, delegation drawn as one card with its
+children, a verb on the activity line, and a tool call that appears the moment it
+starts arriving instead of after it has finished.
+
+Four defects in it were found the same way — by opening the product and saying
+what was wrong — and none of them by the tests that were supposed to cover the
+same ground. That is recorded here because it is the most useful thing this
+release taught.
 
 ### CLI
 

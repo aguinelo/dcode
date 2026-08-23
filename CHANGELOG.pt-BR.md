@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 20 de agosto de 2026
+## Estado atual — 23 de agosto de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 68 changelogs de decisão |
+| famílias de spec | 13, com 80 changelogs de decisão |
 | contratos comportamentais | 42 declarados |
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 95,0%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.1.0** |
+| versão publicada | **0.2.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -45,6 +45,16 @@ aplica a mesma regra lendo os digests do instalador da `main`.
 
 Homebrew ainda não é canal — publicava-se num tap que nunca havia sido criado.
 Removido em vez de deixado rodando; o `docs/ROADMAP.md` §9 diz o que seria preciso.
+
+**A interface.** Uma coluna lateral carrega os arquivos que o turno tocou e as
+conversas que o workspace gravou — `^B` dobra, `^R` dá o teclado a ela, `r`
+nomeia uma conversa. Delegação é um card com os filhos dentro, e o filho que não
+respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no instante
+em que começa a chegar do modelo, contada em bytes, em vez de depois de pronta.
+
+Abaixo de cem colunas a coluna some e **diz que sumiu**, o que ela não fazia por
+dois dias — tempo suficiente para a pessoa para quem ela foi construída concluir
+que ela nunca tinha sido.
 
 **Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
 bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
@@ -68,6 +78,22 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.2.0 — 23 de agosto de 2026
+
+O release de que a interface precisava, e aquele em que cada entrada abaixo foi
+achada por alguém **usando** o produto, não por um teste.
+
+O design v5 está construído: coluna lateral com os arquivos que o turno tocou e
+as conversas que o workspace gravou, delegação desenhada como um card com os
+filhos dentro, verbo na barra de atividade, e chamada de ferramenta aparecendo no
+instante em que começa a chegar em vez de depois de pronta.
+
+Quatro defeitos nele foram achados do mesmo jeito — abrindo o produto e dizendo o
+que estava errado — e nenhum pelos testes que deveriam cobrir o mesmo terreno.
+Isso fica registrado aqui porque é a coisa mais útil que este release ensinou.
 
 ### CLI
 
