@@ -11,9 +11,16 @@ import (
 // what matters is not that String() renders a field but that the release
 // pipeline sets it. A field the binary reports and no build writes reads as
 // "local build" to every user of a published release.
-var distributionDirs = []string{".", filepath.Join("..", "version")}
+// cmd/dcode joins the list because how a released binary REPORTS itself is a
+// distribution concern: the build stamp is already asserted from here, and the
+// flag that prints it lives there.
+var distributionDirs = []string{
+	".", filepath.Join("..", "version"), filepath.Join("..", "..", "cmd", "dcode"),
+}
 
 var distributionInvariants = map[string]string{
+	"pela versão para a qual vai":     "TestADevBuildIsNamedForTheVersionItIsHeadingTo",
+	"`-v` imprime a versão":           "TestDashVPrintsTheVersion",
 	"quando a assinatura não confere": "TestASignatureThatDoesNotVerifyInstallsNothingAndLeavesNoResidue",
 	"quando o SHA-256 do artefato":    "TestAChecksumMismatchInstallsNothing",
 	"Sem cosign na máquina":           "TestAMissingCosignStillChecksTheChecksumAndInstalls",

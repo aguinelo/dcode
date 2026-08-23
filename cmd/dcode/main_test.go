@@ -252,3 +252,41 @@ func TestTheEffectiveRulesAreInspectableWithTheirProvenance(t *testing.T) {
 		t.Errorf("a user's own rule is not reported as theirs:\n%s", out)
 	}
 }
+
+// `-v` prints the version, because `-h` sitting next to it already prints the
+// usage and a pair of one-letter flags where only one exists is a pair somebody
+// gets wrong every time.
+//
+// It answered "flag provided but not defined: -v" and then printed the whole
+// usage, which buries the one line saying what went wrong under twenty that do
+// not.
+func TestDashVPrintsTheVersion(t *testing.T) {
+	for _, arg := range []string{"-v", "--version", "version"} {
+		out, _ := capture(t, func() {
+			if err := dispatch([]string{arg}); err != nil {
+				t.Errorf("%s: %v", arg, err)
+			}
+		})
+		if !strings.Contains(out, "dcode") {
+			t.Errorf("%s printed %q", arg, out)
+		}
+	}
+}
+
+// And the pair stays a pair: -h keeps working, so neither is the odd one out.
+//
+// Asserted on a subcommand line rather than on the word "Usage". The usage is
+// translated, the runner has no locale and lands on the fallback, and the first
+// version of this test passed on a machine with LANG set and failed on CI —
+// which is a test whose answer depends on the machine, the shape this
+// repository has already paid for once in the sandbox.
+func TestDashHStillPrintsTheUsage(t *testing.T) {
+	out, errOut := capture(t, func() {
+		if err := dispatch([]string{"-h"}); err != nil {
+			t.Error(err)
+		}
+	})
+	if !strings.Contains(out+errOut, "dcode serve") {
+		t.Errorf("-h printed %q / %q", out, errOut)
+	}
+}

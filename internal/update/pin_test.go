@@ -378,3 +378,28 @@ func TestAnUncoveredInstallPointsAtThePinnedInstallerAndNotAtAPackage(t *testing
 		}
 	}
 }
+
+// A dev build is named for the version it is heading TO.
+//
+// It took the last tag, so every build between two releases reported the older
+// one: a binary carrying two days of work called itself 0.1.0, and the only
+// thing saying otherwise was a commit hash nobody reads. Somebody watched that
+// number not move and reasonably concluded nothing had been installed.
+//
+// Read as data, like release.yml, because nothing in `make check` inspects the
+// Makefile — a build that quietly went back to the tag would say so only in a
+// version string somebody has already learned to distrust.
+func TestADevBuildIsNamedForTheVersionItIsHeadingTo(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join(repoRoot(t), "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	make := string(body)
+	if !strings.Contains(make, "scripts/version.sh") {
+		t.Error("the build does not derive its version from scripts/version.sh, " +
+			"so a dev build reports the release it left rather than the one it is heading to")
+	}
+	if !strings.Contains(make, "NEXT_VER") || !strings.Contains(make, "$(NEXT_VER)") {
+		t.Error("the derived version is computed and not used")
+	}
+}

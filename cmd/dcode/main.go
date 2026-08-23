@@ -49,7 +49,7 @@ func dispatch(args []string) error {
 		case "help", "--help", "-h":
 			usage()
 			return nil
-		case "version", "--version":
+		case "version", "--version", "-v":
 			fmt.Println(version.String())
 			return nil
 		}
