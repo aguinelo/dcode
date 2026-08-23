@@ -69,6 +69,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### CLI
+
+- **`-v` imprime a versão.** Ele respondia *"flag provided but not defined: -v"*
+  e em seguida imprimia o uso inteiro, enterrando a única linha que diz o que deu
+  errado sob vinte que não dizem. O `-h` já estava ali do lado, e um par de flags
+  de uma letra em que só uma existe é o par que se erra toda vez.
+
 ### Protocolo
 
 - **A chamada de ferramenta aparece enquanto ainda está chegando.** Num `write` de

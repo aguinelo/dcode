@@ -72,6 +72,14 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### CLI
+
+- **`-v` prints the version.** It answered *"flag provided but not defined: -v"*
+  and then printed the entire usage, burying the one line that says what went
+  wrong under twenty that do not. `-h` was already there beside it, and a pair of
+  one-letter flags where only one exists is a pair somebody gets wrong every
+  time.
+
 ### Protocol
 
 - **A tool call appears while it is still arriving.** On a write of a few hundred
