@@ -9,6 +9,10 @@ import (
 
 var tuiInvariants = map[string]string{
 	"mesma entrada, mesma saída":         "TestRenderIsPureOverTheModelAndTheGeometry",
+	"contada em bytes de si mesma":       "TestAnArrivingCallIsCountedInBytesAndSaysSo",
+	"nunca desenha uma segunda":          "TestTheCompleteCallFillsTheLineRatherThanAddingOne",
+	"continua desenhando no":             "TestAProviderThatSaysNothingStillDrawsTheCall",
+	"aparece na tela na hora":            "TestACallAppearsWhileItIsStillArriving",
 	"mostra o que já percorreu":          "TestACallInFlightShowsWhatItHasGotThrough",
 	"nunca na última que começou":        "TestAResultLandsOnItsOwnCallAndNotTheLastOneStarted",
 	"pousa na chamada que ele nomeia":    "TestACallsProgressLandsOnThatCall",

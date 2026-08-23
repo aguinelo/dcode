@@ -392,6 +392,10 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 		return "", nil, usage, toProviderError(err)
 	}
 
+	// How much of each arriving call has already been reported, so the next
+	// report is a step further and not a repeat.
+	arriving := map[string]int{}
+
 	for ev := range ch {
 		switch ev.Type {
 		case provider.EventTextDelta:
@@ -413,6 +417,31 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 					TurnID: turnID, Text: ev.Text,
 				})
 			}
+
+		case provider.EventToolCallOpened:
+			// Said the moment the name is known, which is long before the
+			// arguments finish. Withholding it is what left a screen with
+			// nothing on it while a model wrote a file — the part of the turn
+			// where the work is actually happening.
+			arriving[ev.CallID] = 0
+			e.emit(protocol.EventProgress, protocol.Progress{
+				TurnID: turnID, ToolCallID: ev.CallID, Name: ev.CallName,
+				Kind: protocol.ProgressArguments, Done: 0,
+			})
+
+		case provider.EventToolCallProgress:
+			// Throttled here rather than at the provider: a fragment can be a
+			// handful of bytes, and one event per fragment would put thousands
+			// of lines in the record of a single large write. The provider
+			// reports what it sees; the protocol decides what is worth saying.
+			if ev.Bytes-arriving[ev.CallID] < argumentStep {
+				continue
+			}
+			arriving[ev.CallID] = ev.Bytes
+			e.emit(protocol.EventProgress, protocol.Progress{
+				TurnID: turnID, ToolCallID: ev.CallID, Name: ev.CallName,
+				Kind: protocol.ProgressArguments, Done: ev.Bytes,
+			})
 
 		case provider.EventToolCall:
 			calls = append(calls, *ev.ToolCall)
@@ -816,6 +845,13 @@ func (e *Engine) finish(out Outcome, reason string) Outcome {
 	}
 	return out
 }
+
+// argumentStep is how much has to arrive before a call says so again.
+//
+// Half a kilobyte: often enough that a large write visibly moves, rare enough
+// that one file does not put a thousand lines in the record. The first report
+// is always sent, because it is the one that puts the line on screen.
+const argumentStep = 512
 
 // emitRounds says where the turn is against its ceiling.
 //

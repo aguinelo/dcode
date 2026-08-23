@@ -183,9 +183,11 @@ func TestAnthropicDecode(t *testing.T) {
 	}{
 		{"text delta", `{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}`, EventTextDelta},
 		{"thinking", `{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"hmm"}}`, EventReasoningDelta},
-		// A tool block only *opens* here; its arguments are still to come, so
-		// nothing is emitted until the message ends.
-		{"tool use opens", `{"type":"content_block_start","content_block":{"type":"tool_use","id":"c1","name":"read","input":{}}}`, ""},
+		// A tool block only *opens* here, and that is worth saying: the name is
+		// knowable now and the arguments can take seconds to arrive. This used
+		// to emit nothing until the message ended, which is what left a screen
+		// with nothing on it while a model wrote a file.
+		{"tool use opens", `{"type":"content_block_start","content_block":{"type":"tool_use","id":"c1","name":"read","input":{}}}`, EventToolCallOpened},
 		{"message stop", `{"type":"message_stop"}`, EventDone},
 		{"ping is ignored", `{"type":"ping"}`, ""},
 		{"empty frame", ``, ""},
@@ -551,4 +553,68 @@ func TestCanceledEventReportsDeadline(t *testing.T) {
 	if ev.Err.Class != ErrClassCanceled || !strings.Contains(ev.Err.Message, "deadline") {
 		t.Errorf("got %+v", ev.Err)
 	}
+}
+
+// A call announces itself while it is still arriving, and says how much has
+// landed. Both were already known and both were thrown away: the name at
+// content_block_start, the byte count on every fragment.
+//
+// For a write of a few hundred lines that silence is most of the turn, and a
+// screen with nothing on it during the part where the work happens is what
+// makes a live interface read as a dead one.
+func TestAToolCallAnnouncesItselfWhileItIsStillArriving(t *testing.T) {
+	dec := Claude{}.NewDecoder(tools())
+
+	opened, err := dec.Decode(WireEvent{Data: []byte(
+		`{"type":"content_block_start","content_block":{"type":"tool_use","id":"c1","name":"read","input":{}}}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(opened) != 1 || opened[0].Type != EventToolCallOpened {
+		t.Fatalf("the call did not announce itself: %+v", opened)
+	}
+	if opened[0].CallID != "c1" || opened[0].CallName != "read" {
+		t.Errorf("it announced itself without saying what it is: %+v", opened[0])
+	}
+
+	var last int
+	for _, frag := range []string{`{"path":`, `"a.go",`, `"content":"package x"}`} {
+		got, err := dec.Decode(WireEvent{Data: []byte(
+			`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":` +
+				quote(frag) + `}}`)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 1 || got[0].Type != EventToolCallProgress {
+			t.Fatalf("a fragment reported nothing: %+v", got)
+		}
+		if got[0].Bytes <= last {
+			t.Errorf("the count did not grow: %d then %d", last, got[0].Bytes)
+		}
+		last = got[0].Bytes
+	}
+
+	// And the complete call still arrives exactly once, unchanged. A consumer
+	// that ignores the new events must see the sequence it always saw.
+	done, err := dec.Decode(WireEvent{Data: []byte(`{"type":"message_stop"}`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls int
+	for _, e := range done {
+		if e.Type == EventToolCall {
+			calls++
+			if e.ToolCall == nil || e.ToolCall.Name != "read" {
+				t.Errorf("the assembled call is wrong: %+v", e.ToolCall)
+			}
+		}
+	}
+	if calls != 1 {
+		t.Errorf("the assembled call arrived %d times", calls)
+	}
+}
+
+func quote(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }

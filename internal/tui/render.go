@@ -725,6 +725,15 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 // question of a scan is how much is left, and a share cannot answer it while
 // the denominator is still moving.
 func runningMeta(e Entry, gl marks) string {
+	// A call still arriving is counted in bytes of itself, and says so: it has
+	// not run, and "184" beside a tool that has done nothing would read as work
+	// already done.
+	if e.Arriving {
+		if e.Done <= 0 {
+			return gl.ell
+		}
+		return humanBytes(e.Done)
+	}
 	switch {
 	case e.Done > 0 && e.Total > 0:
 		return fmt.Sprintf("%d/%d", e.Done, e.Total)
@@ -732,6 +741,14 @@ func runningMeta(e Entry, gl marks) string {
 		return fmt.Sprintf("%d", e.Done)
 	}
 	return gl.ell
+}
+
+// humanBytes is a size somebody can read at a glance while it grows.
+func humanBytes(n int) string {
+	if n < 1024 {
+		return fmt.Sprintf("%dB", n)
+	}
+	return fmt.Sprintf("%.1fk", float64(n)/1024)
 }
 
 // ellipsis shortens the middle of a path, keeping the end.

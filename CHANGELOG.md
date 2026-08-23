@@ -72,6 +72,35 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Protocol
+
+- **A tool call appears while it is still arriving.** On a write of a few hundred
+  lines the model streamed the whole file and **the screen showed nothing** — not
+  even the tool's name — until the call was fully assembled, then it appeared
+  already complete. Silence through exactly the part of the turn where the work
+  happens, which is what makes a live interface read as a dead one.
+
+  Both facts were already known and both were thrown away: the name and id at
+  `content_block_start`, the byte count on every fragment. The provider now emits
+  `tool_call_opened` and `tool_call_progress`, and the loop turns them into
+  `progress` with `kind: "arguments"`.
+
+  **Not a new protocol event** — the existing one, with a `Name` field, because a
+  subject that does not exist yet has to name itself: `tool.requested` carries
+  the name and only arrives once the call has finished assembling.
+
+  Bytes rather than lines, since what has landed is a fragment of JSON and
+  counting lines inside half an escaped string counts something that is not there
+  yet. No total, because the model does not say how long the call will be and a
+  denominator nobody sent is one somebody would trust.
+
+  Throttled at half a kilobyte, in the **loop** rather than the provider: the
+  provider reports what it sees, the protocol decides what is worth saying. The
+  first report is always sent — it is the one that puts the line on screen.
+
+  A consumer that ignores both new events sees exactly the sequence it saw
+  before, and there is a test for that.
+
 ### Client TUI
 
 - **A column that hides itself says so.** The sidebar disappears below a hundred

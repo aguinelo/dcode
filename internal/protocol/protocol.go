@@ -290,6 +290,14 @@ const (
 	// ProgressInFlight is how many tool calls are running together, against
 	// the concurrency ceiling this session allows.
 	ProgressInFlight = "in_flight"
+	// ProgressArguments is a tool call still arriving from the model, counted
+	// in bytes of its arguments.
+	//
+	// Bytes rather than lines: what has landed is a fragment of JSON, and
+	// counting lines inside half an escaped string counts something that is
+	// not there yet. It has no total — the model does not say how long the
+	// call will be, and a denominator nobody sent is one somebody would trust.
+	ProgressArguments = "arguments"
 	// ProgressFiles is a scan working through files. Total is known when the
 	// tool had the list before it started and absent when it is still walking.
 	ProgressFiles = "files"
@@ -406,9 +414,13 @@ type (
 		TurnID string `json:"turn_id"`
 		// ToolCallID names the call this is about; empty means the turn itself.
 		ToolCallID string `json:"tool_call_id,omitempty"`
-		Kind       string `json:"kind"`
-		Done       int    `json:"done"`
-		Total      int    `json:"total,omitempty"`
+		// Name is the tool, sent only while a call is still ARRIVING — before
+		// tool.requested exists to carry it. A subject that does not exist yet
+		// has to name itself, or the report has nowhere to land.
+		Name  string `json:"name,omitempty"`
+		Kind  string `json:"kind"`
+		Done  int    `json:"done"`
+		Total int    `json:"total,omitempty"`
 	}
 	// SessionRenamed is the name a person gave, which beats the one derived
 	// from the first question. Empty gives the derived title back.
