@@ -135,6 +135,13 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **A marker still arriving is not drawn.** Every emphasised word reaches the
+  screen as `**` first and its partner some deltas later, so `1. **` sat alone as
+  the last line of the stream before each heading the model wrote. Dropped only
+  when it is at the end of the text and unpaired: a marker somebody opened and
+  left mid-sentence was written on purpose, and a text ending in `**` because a
+  pair closed there is a finished pair.
+
 - **Every screen speaks the interface language.** Nine English literals sat in
   the drawing code, the whole approval modal among them — the one screen that
   asks whether a boundary may be crossed, in a language the reader may not have,

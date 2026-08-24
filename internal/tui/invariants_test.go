@@ -153,6 +153,9 @@ var tuiInvariants = map[string]string{
 	"é lida em peso normal":  "TestTheAnswerIsNotTheFaintestThingOnTheScreen",
 	"nunca um cinza cravado": "TestTheTextHierarchyUsesOnlyWeightsATerminalKeeps",
 
+	// A marker still arriving.
+	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
