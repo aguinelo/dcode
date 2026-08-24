@@ -273,3 +273,48 @@ func TestContextLabel(t *testing.T) {
 		}
 	}
 }
+
+// The model's prose is most of what is on the screen, and it was the one thing
+// on it drawn faint. Dimming a sentence does put the eye on the file name
+// inside it — and dims the answer to do it.
+func TestTheAnswerIsNotTheFaintestThingOnTheScreen(t *testing.T) {
+	p := Palette{Enabled: true}
+	if got := p.Apply(StyleProse, "uma frase"); got != "uma frase" {
+		t.Errorf("prose carries an attribute: %q", got)
+	}
+	// And the contrast inside the sentence is still bought, with the term
+	// rather than with the paragraph around it.
+	if p.Apply(StyleCode, "render.go") == "render.go" {
+		t.Error("a technical term inside a sentence is not picked out at all")
+	}
+}
+
+// Every role in the hierarchy maps to something, and to one of the three
+// weights a terminal has that survive an unknown background.
+//
+// A hard-coded grey is the fourth weight people reach for, and a grey chosen
+// for a dark theme is unreadable on a light one. The check is that no role here
+// picks a foreground colour, prose and code excepted: prose picks nothing, and
+// code is the accent this product already owns.
+func TestTheTextHierarchyUsesOnlyWeightsATerminalKeeps(t *testing.T) {
+	for _, c := range []struct {
+		style Style
+		name  string
+	}{
+		{StyleHeading, "heading"}, {StyleMeta, "meta"},
+		{StyleHint, "hint"}, {StyleChrome, "chrome"},
+	} {
+		code, ok := ansi[c.style]
+		if !ok {
+			t.Errorf("%s maps to nothing", c.name)
+			continue
+		}
+		if code != "1" && code != "2" {
+			t.Errorf("%s is %q; only bold and faint survive an unknown background",
+				c.name, code)
+		}
+	}
+	if _, ok := ansi[StyleProse]; ok {
+		t.Error("prose maps to an attribute; normal is asked for by emitting nothing")
+	}
+}

@@ -56,7 +56,7 @@ func renderDelegation(children []Entry, gl marks, p Palette, w int, t Strings) [
 
 	head := fmt.Sprintf("  %s %-*s %s",
 		p.Apply(StyleAccent, gl.bullet), toolNameWidth, "explore",
-		p.Apply(StyleDim, plural(len(children), t.ChildOne, t.ChildMany)))
+		p.Apply(StyleMeta, plural(len(children), t.ChildOne, t.ChildMany)))
 	if failed > 0 {
 		// Counted in the header because it is the reason to look, and a person
 		// scrolling past should not have to read every sub-line to learn that
@@ -107,7 +107,7 @@ func delegationChild(e Entry, gl marks, p Palette, w int, t Strings) string {
 
 	line := fmt.Sprintf("    %s %s", p.Apply(style, mark), name)
 	if owns != "" {
-		line += "  " + p.Apply(StyleDim, owns)
+		line += "  " + p.Apply(StyleMeta, owns)
 	}
 	if result != "" {
 		line += "  " + p.Apply(styleFor(e), result)
@@ -119,5 +119,5 @@ func styleFor(e Entry) Style {
 	if e.IsError {
 		return StyleError
 	}
-	return StyleDim
+	return StyleMeta
 }

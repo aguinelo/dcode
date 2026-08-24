@@ -149,6 +149,10 @@ var tuiInvariants = map[string]string{
 	// One language per screen.
 	"Nenhuma tela é escrita em literal": "TestNoEnglishSurvivesAPortugueseScreen",
 
+	// Text has a hierarchy.
+	"é lida em peso normal":  "TestTheAnswerIsNotTheFaintestThingOnTheScreen",
+	"nunca um cinza cravado": "TestTheTextHierarchyUsesOnlyWeightsATerminalKeeps",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",

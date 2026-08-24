@@ -44,9 +44,12 @@ func renderRail(m Model, g Geometry, height int) []string {
 	// The label in caps, the count as it is written. Shouting a number reads as
 	// emphasis on the number, and what is being labelled is the column.
 	t := Text(m.Lang)
-	head := fmt.Sprintf("%s %s", strings.ToUpper(t.RailFiles),
-		plural(touched, t.RailTouchedOne, t.RailTouchedMany))
-	out = append(out, clipStyled(p.Apply(StyleDim, head), w))
+	// The label is a heading and the count is a fact about it. One style over
+	// both would say the number is a label, which is what "shouting a number"
+	// meant when this line was first written down.
+	out = append(out, clipStyled(
+		p.Apply(StyleHeading, strings.ToUpper(t.RailFiles))+" "+
+			p.Apply(StyleMeta, plural(touched, t.RailTouchedOne, t.RailTouchedMany)), w))
 
 	for _, r := range rows {
 		if len(out) >= height {
@@ -83,7 +86,7 @@ func renderRail(m Model, g Geometry, height int) []string {
 // character and not only by colour, so it is still the open one on a terminal
 // without any.
 func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w int, meta string) string {
-	mark, style := " ", StyleDim
+	mark, style := " ", StyleMeta
 	if open {
 		mark, style = gl.open, StyleAccent
 	}
@@ -141,7 +144,7 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 	if gap < 1 {
 		gap = 1
 	}
-	return left + strings.Repeat(" ", gap) + p.Apply(StyleDim, meta)
+	return left + strings.Repeat(" ", gap) + p.Apply(StyleMeta, meta)
 }
 
 // sessionMeta is when the conversation happened and how much happened in it.
@@ -202,10 +205,10 @@ func railRow(r FileRow, gl railMarks, p Palette, w int) string {
 	// terminal actually has.
 	indent := strings.Repeat("  ", r.Depth)
 
-	mark, style := gl.file, StyleDim
+	mark, style := gl.file, StyleMeta
 	switch {
 	case r.Folder:
-		mark, style = gl.folder, StyleDim
+		mark, style = gl.folder, StyleHeading
 	case r.State == FileFailed:
 		mark, style = gl.failed, StyleError
 	case r.State == FileDone:
@@ -243,5 +246,5 @@ func railRow(r FileRow, gl railMarks, p Palette, w int) string {
 	if room < 1 {
 		return left
 	}
-	return left + strings.Repeat(" ", room) + p.Apply(StyleDim, meta)
+	return left + strings.Repeat(" ", room) + p.Apply(StyleMeta, meta)
 }

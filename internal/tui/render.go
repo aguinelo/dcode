@@ -484,7 +484,7 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 		// broken one, and the key that brings it back is documented only inside
 		// the panel that is not on screen.
 		if s := m.PlanSummary(); s != "" {
-			fields = append(fields, field{p.Apply(StyleDim, s+" · ^p"), 1})
+			fields = append(fields, field{p.Apply(StyleHint, s+" · ^p"), 1})
 		}
 	}
 	// The same debt, and it cost more. The sidebar disappears below a hundred
@@ -497,7 +497,7 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 	// plan nobody can see has no second route.
 	if !g.ShowRail(m.railHasContent()) && m.railHasContent() {
 		fields = append(fields, field{
-			p.Apply(StyleDim, Text(m.Lang).RailHidden+" · ^b"), 4})
+			p.Apply(StyleHint, Text(m.Lang).RailHidden+" · ^b"), 4})
 	}
 
 	render := func(fs []field) string {
@@ -683,7 +683,7 @@ func renderStream(m Model, g Geometry, w int) []string {
 			// Inset to the same two-column gutter everything else uses. Drawn
 			// edge to edge it touched the dividers on both sides and read as a
 			// row of a table rather than as the seam between two exchanges.
-			out = append(out, "  "+p.Apply(StyleDim, strings.Repeat(gl.boxH, maxInt(0, w-4))))
+			out = append(out, "  "+p.Apply(StyleChrome, strings.Repeat(gl.boxH, maxInt(0, w-4))))
 			for j, line := range wrap(e.Summary, w-4) {
 				prefix := "  " + p.Apply(StyleAccent, gl.prompt) + " "
 				if j > 0 {
@@ -728,23 +728,23 @@ func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 		}
 		out := make([]string, 0, len(lines))
 		for _, l := range lines {
-			out = append(out, clipStyled(p.Apply(StyleDim, "  "+gl.gutter+" "+l), w))
+			out = append(out, clipStyled(p.Apply(StyleChrome, "  "+gl.gutter+" "+l), w))
 		}
 		return out
 	}
 
 	head := cursor + p.Apply(StyleDim, gl.thought+" thought")
 	if d := FormatDuration(e.Duration); d != "" {
-		head += p.Apply(StyleDim, " for "+d)
+		head += p.Apply(StyleMeta, " for "+d)
 	}
 	if !e.Expanded {
-		head += p.Apply(StyleDim, " · Tab")
+		head += p.Apply(StyleHint, " · Tab")
 		return []string{clipStyled(head, w)}
 	}
 
 	out := []string{clipStyled(head, w)}
 	for _, l := range wrap(strings.TrimSpace(e.Summary), w-4) {
-		out = append(out, clipStyled(p.Apply(StyleDim, "  "+gl.gutter+" "+l), w))
+		out = append(out, clipStyled(p.Apply(StyleChrome, "  "+gl.gutter+" "+l), w))
 	}
 	return out
 }
@@ -776,9 +776,9 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 		// What it has got through, when it says. The ellipsis is the fallback
 		// rather than the rule: saying nothing reads as finished-with-no-output,
 		// and a count says the same thing with a number attached.
-		head += " " + p.Apply(StyleDim, runningMeta(e, gl))
+		head += " " + p.Apply(StyleMeta, runningMeta(e, gl))
 	case e.Summary != "":
-		style := StyleDim
+		style := StyleMeta
 		if e.IsError {
 			style = StyleError
 		}
@@ -787,7 +787,7 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 	// Only when it was slow enough to be worth a glance. Every call carrying a
 	// duration turns the column into noise nobody reads.
 	if d := FormatDuration(e.Duration); d != "" && e.Duration >= 500*time.Millisecond {
-		head += "  " + p.Apply(StyleDim, d)
+		head += "  " + p.Apply(StyleMeta, d)
 	}
 	return strings.TrimRight(head, " ")
 }
@@ -965,7 +965,7 @@ func turnSection(m Model, g Geometry, w int) []string {
 	p := g.Palette
 
 	gl := glyphs(g.Unicode)
-	out := []string{"", clipStyled(" "+p.Apply(StyleDim, strings.ToUpper(t.PanelTurn)), w)}
+	out := []string{"", clipStyled(" "+p.Apply(StyleHeading, strings.ToUpper(t.PanelTurn)), w)}
 
 	// Dim until it is close, and then not. The ceiling is item 1 of the
 	// roadmap precisely because nothing tells anybody it is coming.
@@ -1013,7 +1013,7 @@ func renderWorking(m Model, g Geometry) string {
 	} else {
 		if g.ActivityVerbs {
 			if v := ActivityVerb(tool, m.Frame, m.Lang); v != "" {
-				parts = append(parts, p.Apply(StyleDim, v))
+				parts = append(parts, p.Apply(StyleMeta, v))
 			}
 		}
 		parts = append(parts, p.Apply(StyleBold, fact))
@@ -1021,14 +1021,14 @@ func renderWorking(m Model, g Geometry) string {
 
 	if !m.TurnStartedAt.IsZero() && !m.Now.IsZero() {
 		if d := m.Now.Sub(m.TurnStartedAt); d > 0 {
-			parts = append(parts, p.Apply(StyleDim, FormatDuration(d)))
+			parts = append(parts, p.Apply(StyleMeta, FormatDuration(d)))
 		}
 	}
 	if tk := humanTokens(m.OutputTokens); tk != "" {
-		parts = append(parts, p.Apply(StyleDim, tk+" tok"))
+		parts = append(parts, p.Apply(StyleMeta, tk+" tok"))
 	}
 	// The way out belongs next to the thing you want out of.
-	parts = append(parts, p.Apply(StyleDim, Text(m.Lang).WorkingInterrupt))
+	parts = append(parts, p.Apply(StyleHint, Text(m.Lang).WorkingInterrupt))
 
 	return clipStyled(strings.Join(parts, "  "), g.Width)
 }
@@ -1140,7 +1140,7 @@ func renderInputLines(m Model, g Geometry, hint string) []string {
 		if i == rows-1 && hint != "" {
 			room := g.Width - clipWidth(head+text) - 1
 			if room >= clipWidth(hint) {
-				line += strings.Repeat(" ", room-clipWidth(hint)+1) + p.Apply(StyleDim, hint)
+				line += strings.Repeat(" ", room-clipWidth(hint)+1) + p.Apply(StyleHint, hint)
 			}
 		}
 		out = append(out, padStyled(clipStyled(line, g.Width), g.Width))
@@ -1314,7 +1314,7 @@ func emptyState(m Model, g Geometry, w int) []string {
 		p.Apply(StyleDim, m.Model),
 		p.Apply(StyleDim, m.Sandbox),
 		"",
-		p.Apply(StyleDim, "? help    ^C interrupt"),
+		p.Apply(StyleHint, "? help    ^C interrupt"),
 	}
 	if m.Sandbox == "full-access" {
 		info[4] = p.Apply(StyleDanger, " !! FULL-ACCESS !! ")
@@ -1437,7 +1437,7 @@ func renderQueue(m Model, g Geometry) []string {
 		if i == 0 {
 			// The key goes on the first row only: repeated on every row it is
 			// noise, and absent it is a feature nobody finds.
-			row += "  " + p.Apply(StyleDim, "^X remove")
+			row += "  " + p.Apply(StyleHint, "^X remove")
 		}
 		out = append(out, clipStyled(p.Apply(StyleDim, row), g.Width))
 	}
