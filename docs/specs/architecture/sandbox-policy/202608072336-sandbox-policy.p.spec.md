@@ -213,6 +213,7 @@ type Sandbox interface {
 - Padrão em branco não casa com nada, e nunca com tudo.
 - As regras efetivas são inspecionáveis por `--config`, com procedência.
 - Workspace sob `/tmp` continua visível dentro do sandbox: o `tmpfs` é montado antes dele, nunca por cima.
+- Um Chromium **alcança o primeiro quadro** dentro do sandbox: sem `mach-register` e sem `iokit-open` escopado ele morre com SIGSEGV, que não é erro que ele reporte — é sinal. Verificado contra o kernel e contra um navegador de verdade.
 - A montagem do workspace não depende de o diretório já existir: mesmo caminho, mesma decisão, antes e depois de ser criado.
 
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
