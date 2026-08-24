@@ -452,6 +452,12 @@ was missing was a measurement, and the measurement went the other way.
 the stream — shipped. These are the parts that did not, each with what stops
 them, so the specification that comes next knows where the request came from.
 
+**The chosen theme does not persist.** `t` cycles four of them and a restart
+comes back to neon. Remembering it needs a preference on disk, and
+`internal/tui` reads none by design — the edge injects. Same shape as
+remembering the column's state in §10, and the same open question inside it:
+whether "I switched theme" is a preference or a gesture.
+
 **The RESULT block.** The design ends a turn with a marked block: a badge, one
 sentence of outcome, the diff totals and the file list. Every piece exists in
 the model already (`Verification`, `DiffAdded/Removed/Files`, the entries) —
