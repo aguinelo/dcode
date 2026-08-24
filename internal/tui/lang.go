@@ -95,6 +95,11 @@ type Strings struct {
 	LoadedOne  string
 	LoadedMany string
 
+	// The context filling up, and the summary when it does.
+	ContextFilling string
+	Compacted      string
+	CompactedCount string
+
 	// The approval modal. It was written in English literals — the ONE screen
 	// that asks whether a boundary may be crossed, in a language the reader may
 	// not have. Consent given to a sentence somebody could not read is not
@@ -266,6 +271,9 @@ var catalogue = map[Lang]Strings{
 		Loading:          "reading the conversation",
 		LoadedOne:        "line",
 		LoadedMany:       "lines",
+		ContextFilling:   "the context is %d%% of the way to a summary",
+		Compacted:        "earlier history was summarised",
+		CompactedCount:   "%d earlier messages were summarised; %d kept",
 		ApprovalTitle:    "Approval needed",
 		ApprovalCrosses:  "crosses:",
 		ApprovalNetwork:  "Commands in this project may reach the network.",
@@ -419,6 +427,9 @@ Environment:
 		Loading:          "lendo a conversa",
 		LoadedOne:        "linha",
 		LoadedMany:       "linhas",
+		ContextFilling:   "o contexto está a %d%% do ponto em que a conversa é resumida",
+		Compacted:        "o histórico anterior foi resumido",
+		CompactedCount:   "%d mensagens anteriores foram resumidas; %d mantidas",
 		ApprovalTitle:    "Precisa de aprovacao",
 		ApprovalCrosses:  "cruza:",
 		ApprovalNetwork:  "Comandos deste projeto podem alcancar a rede.",
