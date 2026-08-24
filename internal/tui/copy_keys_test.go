@@ -8,7 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// enterCopy opens copy mode the way a person does: browsing the stream, then `v`.
+// enterCopy opens copy mode the way a person does: with the chord.
 func enterCopy(t *testing.T, p *program) {
 	t.Helper()
 	p.model.Entries = []Entry{
@@ -17,9 +17,9 @@ func enterCopy(t *testing.T, p *program) {
 		{Kind: KindAssistant, Summary: "third"},
 	}
 	p.model.Cursor = len(p.model.Entries) - 1
-	p.Update(key("v"))
+	p.Update(ctrl('o'))
 	if !p.model.Copy.Active {
-		t.Fatal("`v` while browsing did not open copy mode")
+		t.Fatal("^O did not open copy mode")
 	}
 }
 
@@ -187,16 +187,67 @@ func TestVIsALetterWhileTyping(t *testing.T) {
 	}
 }
 
-// Browsing the stream is where the shortcut belongs: the cursor is in the
-// stream, nothing is being typed, and copying what is on screen is the obvious
-// thing to want.
-func TestVOpensCopyWhileBrowsingTheStream(t *testing.T) {
-	p, _ := newProgram(t)
-	p.model.Entries = []Entry{{Kind: KindUser, Summary: "something"}}
-	p.model.Cursor = 0
+// Copy mode is a CHORD, and this test asserts what its two predecessors could
+// not: `v` is a letter, always, wherever the cursor happens to be.
+//
+// The first version of this bound copy mode to a bare `v` on an empty line, and
+// "voce" arrived as "oce". The fix required the stream cursor to be in the
+// stream — which narrowed the rule rather than applying it, and the same report
+// came back, by the path this test walks: `↑` on a session with no history
+// walks into the stream, and the next `v` typed there was a shortcut again.
+func TestVIsALetterWhereverTheCursorIs(t *testing.T) {
+	for _, start := range []int{-1, 0} {
+		p, _ := newProgram(t)
+		p.model.Entries = []Entry{{Kind: KindUser, Summary: "something"}}
+		p.model.Cursor = start
 
-	p.Update(key("v"))
-	if !p.model.Copy.Active {
-		t.Error("v did not open copy mode while browsing")
+		for _, r := range "voce" {
+			p.Update(key(string(r)))
+		}
+		if p.model.Copy.Active {
+			t.Errorf("cursor=%d: typing opened copy mode", start)
+		}
+		if p.model.Input != "voce" {
+			t.Errorf("cursor=%d: input = %q, want the whole word", start, p.model.Input)
+		}
+	}
+}
+
+// And the path the report came in by, walked end to end: a fresh session with
+// no history, one press of up, then a message that starts with a v.
+func TestUpThenTypingKeepsEveryLetter(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Entries = []Entry{{Kind: KindUser, Summary: "algo"}, {Kind: KindAssistant, Summary: "resposta"}}
+	p.model.Cursor = -1
+
+	p.Update(special(tea.KeyUp))
+	if p.model.Cursor < 0 {
+		t.Fatal("up did not walk into the stream; the fixture no longer reproduces the report")
+	}
+	for _, r := range "voce" {
+		p.Update(key(string(r)))
+	}
+	if p.model.Input != "voce" {
+		t.Errorf("input = %q, want the whole word", p.model.Input)
+	}
+	// And typing put the focus back where the typing goes: browsing and
+	// writing were two states at once, with nothing on screen saying which.
+	if p.model.Cursor >= 0 {
+		t.Errorf("the stream kept the cursor at %d while the line was typed on", p.model.Cursor)
+	}
+}
+
+// The chord opens it, and it does not need the stream to have focus first:
+// requiring that was half of what made the letter ambiguous.
+func TestTheChordOpensCopyMode(t *testing.T) {
+	for _, start := range []int{-1, 0} {
+		p, _ := newProgram(t)
+		p.model.Entries = []Entry{{Kind: KindUser, Summary: "something"}}
+		p.model.Cursor = start
+
+		p.Update(ctrl('o'))
+		if !p.model.Copy.Active {
+			t.Errorf("cursor=%d: the chord did not open copy mode", start)
+		}
 	}
 }

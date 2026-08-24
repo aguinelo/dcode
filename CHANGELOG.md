@@ -98,7 +98,17 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Changed
+
+- **Copy mode is `^O`, and `v` is a letter.** It was `v` twice. The first time a
+  bare `v` on an empty line ate the first character of anything starting with
+  one; the fix required the stream cursor to be in the stream, which narrowed the
+  rule rather than applying it — and the same report came back, by a path a test
+  now walks: `↑` on a session with no history walks into the stream, and the next
+  `v` typed there was a shortcut again. The input line is always a line where you
+  type, so no condition could satisfy the rule; only giving the letter back
+  could. Typing also returns the focus to the line being typed on, so browsing
+  and writing stop being two states at once.
 
 ## 0.3.0 — 24 August 2026
 

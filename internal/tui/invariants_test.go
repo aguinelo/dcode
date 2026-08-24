@@ -157,9 +157,11 @@ var tuiInvariants = map[string]string{
 	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",
 
 	// Copy mode.
-	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
-	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
-	"A cópia sai por `Esc`":         "TestEveryWayOutOfCopyModeWorks",
+	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
+	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",
+	"devolve o foco à linha": "TestUpThenTypingKeepsEveryLetter",
+	"ela é dona do teclado":  "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
+	"A cópia sai por `Esc`":  "TestEveryWayOutOfCopyModeWorks",
 
 	// Continuing. The flag lives in the command, one directory up from here.
 	"em que algo foi perguntado":        "TestContinuingSkipsASessionNobodyAskedAnythingIn",
