@@ -185,3 +185,36 @@ func TestTheStreamRendersWhatTheModelWroteAsFormatting(t *testing.T) {
 		}
 	}
 }
+
+// While a turn is streaming, every emphasised word arrives as `**` first and
+// its partner some deltas later, so the screen flashed a pair of asterisks
+// before each of them. On a real session `1. **` sat alone on a line as the
+// last thing the reader saw of every heading the model wrote.
+func TestAMarkerStillArrivingIsNotDrawn(t *testing.T) {
+	g := DefaultGeometry(60, 20)
+	g.Palette = Palette{}
+	got := func(src string) string {
+		return strings.Join(renderProse(src, 50, g), "|")
+	}
+
+	for _, c := range []struct{ src, want string }{
+		// Opened at the end, nothing after it: it has not finished arriving.
+		{"1. **", "1."},
+		{"veja `", "veja"},
+		{"a **b** c **", "a b c"},
+
+		// A PAIR that closes at the end is finished, and the first version of
+		// this took the closing marker off it.
+		{"1. **Alvo**", "1. Alvo"},
+		{"veja `x`", "veja x"},
+
+		// Opened and left, with words after it: written on purpose, so it
+		// stays. Deleting it would delete something somebody typed.
+		{"1. **Alvo", "1. **Alvo"},
+		{"a ** b", "a ** b"},
+	} {
+		if g := got(c.src); g != c.want {
+			t.Errorf("renderProse(%q) = %q, want %q", c.src, g, c.want)
+		}
+	}
+}

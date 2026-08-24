@@ -131,6 +131,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **Marcador que ainda está chegando não é desenhado.** Toda palavra enfatizada
+  chega à tela como `**` primeiro e o par dela alguns deltas depois, então
+  `1. **` ficava sozinho na última linha do fluxo antes de cada título que o
+  modelo escrevia. Descartado só quando está no fim do texto e sem par: marcador
+  que alguém abriu e deixou no meio da frase foi escrito de propósito, e texto
+  que termina em `**` porque um par fechou ali é um par pronto.
+
 - **Toda tela fala a língua da interface.** Nove literais em inglês estavam no
   código de desenho, o modal de aprovação inteiro entre eles — a única tela que
   pergunta se uma fronteira pode ser cruzada, numa língua que o leitor pode não

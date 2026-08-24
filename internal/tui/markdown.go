@@ -18,6 +18,13 @@ import (
 // writes a bullet, and treating it as italics would eat the bullet of every
 // list. A marker with no partner stays on screen as text, because deleting it
 // would delete something that was written on purpose.
+//
+// The one exception is a marker at the very END of the text, with nothing after
+// it. While a turn is streaming, every emphasised word arrives as `**` first
+// and its partner some deltas later, so the screen flashed a pair of asterisks
+// before each of them — `1. **` sitting alone on a line was the last thing a
+// reader saw of every heading the model wrote. Nothing follows an opener at the
+// end of the text, so there is nothing for it to be marking up yet.
 func renderProse(text string, w int, g Geometry) []string {
 	var out []string
 	for _, blk := range splitFences(text) {
@@ -110,6 +117,8 @@ func parseInline(text string) []textRun {
 			plain.Reset()
 		}
 	}
+
+	text = dropUnfinishedMarker(text)
 
 	for i := 0; i < len(text); {
 		switch {
@@ -230,4 +239,22 @@ func wrapStyled(runs []textRun, w int, g Geometry) []string {
 		return []string{""}
 	}
 	return out
+}
+
+// dropUnfinishedMarker removes a marker that opened at the end of the text and
+// has not been closed yet.
+//
+// Two conditions, and both are needed. It must be at the END — `**bold` with
+// words after it is a marker somebody wrote and left, and deleting that would
+// delete something written on purpose. And it must be UNPAIRED, which is what
+// the count answers: a text ending in `**` because a pair closed there is a
+// finished pair, and the first version of this took the closer off it.
+func dropUnfinishedMarker(text string) string {
+	trimmed := strings.TrimRight(text, " ")
+	for _, mark := range []string{"**", "`"} {
+		if strings.HasSuffix(trimmed, mark) && strings.Count(trimmed, mark)%2 == 1 {
+			return strings.TrimSuffix(trimmed, mark)
+		}
+	}
+	return text
 }
