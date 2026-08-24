@@ -267,3 +267,51 @@ func TestAContinuedConversationIsOnTheScreenAndSaysWhereItCameFrom(t *testing.T)
 			"is that the conversation was lost")
 	}
 }
+
+// Colour may change how the screen looks and never what it says.
+//
+// The Palette's own comment states this as design — "every caller measures
+// display cells before styling" — and nothing checked it. `turnSection` clipped
+// a string it had already styled, and `clip` measures with runewidth, which
+// counts the printable bytes of an escape sequence as six cells of text. So the
+// panel cut six characters early on a colour terminal and kept them on a
+// monochrome one, and `runewidth.Truncate` could cut inside the escape itself,
+// leaving the terminal in that colour for the rest of the screen.
+//
+// Asserted over the whole frame rather than per call site. A rule with one
+// counter-example has more, and per-site tests only ever find the site that was
+// already suspected.
+func TestColourNeverChangesWhatIsOnTheScreen(t *testing.T) {
+	m := modelWithPlan()
+	m.Rounds, m.MaxRounds = 16, 2000
+	m.InFlight, m.MaxInFlight = 1, 4
+	m.Plan = append(m.Plan, protocol.PlanItem{
+		ID: 4, Text: "a plan item long enough that the panel has to cut it",
+		Status: protocol.PlanActive,
+	})
+	m.Entries = append(m.Entries,
+		Entry{Kind: KindTool, Tool: "write", Target: "internal/tui/render.go", Summary: "created, 21 lines", Added: 21},
+		Entry{Kind: KindTool, Tool: "bash", Target: "go test ./...", Summary: "exit 1", IsError: true},
+		Entry{Kind: KindAssistant, Summary: "A paragraph long enough to wrap across the stream more than once, so the wrapping is exercised too."},
+	)
+	m.Sessions = []SessionChoice{{ID: "a", Title: "a conversation whose title is far too long for the column"}}
+
+	for _, w := range []int{80, 100, 132, 160} {
+		mono := DefaultGeometry(w, 30)
+		colour := DefaultGeometry(w, 30)
+		colour.Palette = Palette{Enabled: true}
+
+		got := stripANSI(Render(m, colour))
+		want := Render(m, mono)
+		if got == want {
+			continue
+		}
+		gl, wl := lines(got), lines(want)
+		for i := range wl {
+			if i < len(gl) && gl[i] != wl[i] {
+				t.Fatalf("at %d columns, line %d differs\n colour: %q\n   mono: %q", w, i, gl[i], wl[i])
+			}
+		}
+		t.Fatalf("at %d columns the frames differ in length: %d vs %d", w, len(gl), len(wl))
+	}
+}

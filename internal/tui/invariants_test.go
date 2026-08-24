@@ -125,6 +125,10 @@ var tuiInvariants = map[string]string{
 	"é **uma linha só**":             "TestAFileIsCountedOnceWhicheverWayTheToolSpeltIt",
 	"mantém a grafia que o encontra": "TestAPathOutsideTheWorkspaceKeepsItsFullSpelling",
 
+	// A cut is announced, and colour costs nothing.
+	"diz que foi cortada": "TestALineThatWasCutSaysSo",
+	"nunca o que ela diz": "TestColourNeverChangesWhatIsOnTheScreen",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",

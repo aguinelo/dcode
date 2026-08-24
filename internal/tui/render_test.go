@@ -790,3 +790,44 @@ func TestACommandKeepsItsBeginningAndAPathItsEnd(t *testing.T) {
 		}
 	}
 }
+
+// The sidebar states the rule — a title that had to be cut says it was cut,
+// because a title that merely stops leaves the reader unable to tell a short
+// one from a truncated one — and the panel answered the same question the other
+// way. `✓ 6 CLI sob demanda com contr` just ended.
+func TestALineThatWasCutSaysSo(t *testing.T) {
+	const item = "a plan item written long enough that no panel width can hold it whole"
+	const file = "a_file_whose_name_is_longer_than_any_sidebar_can_hold.go"
+
+	m := modelWithPlan()
+	m.Plan = []protocol.PlanItem{
+		{ID: 4, Status: protocol.PlanActive, Text: item},
+		{ID: 5, Status: protocol.PlanBlocked, Text: "another",
+			Blocked: "averylongsinglewordwithnospacesatallthatcannotbewrappedanywhere"},
+	}
+	m.Entries = append(m.Entries, Entry{
+		Kind: KindTool, Tool: "write", Target: "internal/tui/" + file, Added: 188,
+	})
+
+	for _, w := range []int{100, 132, 160} {
+		g := DefaultGeometry(w, 30)
+		gl, glr := glyphs(g.Unicode), railGlyphs(g.Unicode)
+
+		for i, l := range renderPanel(m, g) {
+			if vw := visibleWidth(l); vw > g.panelWidth() {
+				t.Errorf("at %d columns, panel line %d is %d cells wide, panel is %d",
+					w, i, vw, g.panelWidth())
+			}
+		}
+		if got := strings.Join(renderPanel(m, g), "\n"); !strings.Contains(got, gl.ell) {
+			t.Errorf("at %d columns the panel cut a %d-character item in silence:\n%s",
+				w, len(item), got)
+		}
+
+		rail := strings.Join(renderRail(m, g, 20), "\n")
+		if !strings.Contains(stripANSI(rail), glr.ell) {
+			t.Errorf("at %d columns the sidebar cut a %d-character name in silence:\n%s",
+				w, len(file), stripANSI(rail))
+		}
+	}
+}

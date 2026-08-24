@@ -95,6 +95,12 @@ that on every run to stop the opposite reading.
   `… | sort -u | head -40`. What it keeps is now decided by the value rather
   than by the tool, reusing the one definition of "is this a path" the package
   already had.
+- **A line that was cut says so.** The sidebar states the rule for a
+  conversation title and the panel answered it the other way — `✓ 6 CLI sob
+  demanda com contr` just ended — while the sidebar itself did not apply it to a
+  file name, where `client.py` and `client.pyi` differ by what is missing. Both
+  columns mark the cut now, and elide before styling, which is the order the
+  palette's contract asks for.
 - **The sidebar counts a file once.** The same file arrived under two spellings
   — `DCODE.md` from one call, `/Users/…/craw/DCODE.md` from the next — and drew
   two rows, two line counters and a header claiming fifteen files were touched
