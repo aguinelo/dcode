@@ -91,7 +91,7 @@ func renderSessionList(m Model, g Geometry) []string {
 
 	out = append(out,
 		gl.gutter+pad("", w)+gl.gutter,
-		gl.gutter+padStyled("  "+p.Apply(StyleDim, t.SessionsKeys), w)+gl.gutter,
+		gl.gutter+padStyled("  "+p.Apply(StyleHint, t.SessionsKeys), w)+gl.gutter,
 		gl.boxBL+strings.Repeat(gl.boxH, w)+gl.boxBR,
 	)
 	return out

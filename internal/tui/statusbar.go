@@ -144,14 +144,14 @@ func assemble(segs []segment, g Geometry) string {
 	var b strings.Builder
 	for i, s := range segs {
 		if i > 0 {
-			b.WriteString(p.Apply(StyleDim, gl.gutter))
+			b.WriteString(p.Apply(StyleChrome, gl.gutter))
 		}
 		body := " " + s.text + " "
 		if s.solid {
 			b.WriteString(p.Apply(StyleOnAccent, body))
 			continue
 		}
-		b.WriteString(p.Apply(StyleDim, body))
+		b.WriteString(p.Apply(StyleMeta, body))
 	}
 	// The last resort. Clipping keeps the bar one line when even the
 	// undroppable segments do not fit, which a narrow enough terminal

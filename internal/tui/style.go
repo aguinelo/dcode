@@ -19,6 +19,24 @@ const (
 	StyleNone Style = iota
 	StyleDim
 	StyleBold
+
+	// The text hierarchy, as roles rather than as one StyleDim meaning five
+	// things at forty-odd call sites.
+	//
+	// A terminal has exactly three weights that survive an unknown background:
+	// bold, normal, and SGR 2. Anything else is a hard-coded grey, and a grey
+	// picked for a dark theme is unreadable on a light one — which is why the
+	// design's five-step scale does not survive contact with a real terminal,
+	// and why this is six roles sharing three weights and one colour.
+	//
+	// What the roles buy is that the mapping is ONE decision in one table. The
+	// first thing that decision changed: prose is no longer dim.
+	StyleProse   // the model's sentences: the thing on screen to be READ
+	StyleCode    // a technical term inside a sentence
+	StyleHeading // a section label
+	StyleMeta    // a fact qualifying another: a count, a duration, a summary
+	StyleHint    // a key somebody may press
+	StyleChrome  // a rule, a gutter, a frame: present, never read
 	StyleAccent  // the product's own mark
 	StyleAdded   // a diff line that arrived
 	StyleRemoved // a diff line that left
@@ -51,8 +69,23 @@ type Palette struct {
 
 // ansi codes per role, foreground unless noted.
 var ansi = map[Style]string{
-	StyleDim:     "2",
-	StyleBold:    "1",
+	StyleDim:  "2",
+	StyleBold: "1",
+
+	// StyleProse is absent on purpose: NORMAL is a weight, and the way to ask
+	// for it is to emit nothing.
+	//
+	// It used to be "2". The reasoning was that a dimmed sentence makes the eye
+	// land on the file name inside it — but the model's answer is most of what
+	// is on screen, so dimming it dimmed the screen, and the one thing the
+	// reader came for was the one thing faded. The contrast inside a sentence
+	// is bought with the TERM instead, which is one word rather than a
+	// paragraph.
+	StyleCode:    "38;5;179",
+	StyleHeading: "1",
+	StyleMeta:    "2",
+	StyleHint:    "2",
+	StyleChrome:  "2",
 	StyleAccent:  "38;5;179", // the amber of the mark
 	StyleAdded:   "32",
 	StyleRemoved: "31",

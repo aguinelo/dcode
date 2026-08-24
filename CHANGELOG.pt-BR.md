@@ -81,6 +81,14 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Alterado
 
+- **O texto tem hierarquia em vez de um só apagado.** `StyleDim` significava
+  cinco coisas em quarenta e sete lugares; agora são seis papéis, e o mapeamento
+  é uma decisão numa tabela só. A primeira coisa que essa decisão mudou: a prosa
+  do modelo não é mais desenhada apagada. Apagar a frase põe o olho no nome do
+  arquivo dentro dela, e apaga a resposta para isso — então o contraste é
+  comprado com o termo, que é uma palavra em vez de um parágrafo. Um terminal tem
+  três pesos que sobrevivem a fundo desconhecido, e o invariante diz isso.
+
 - **O painel paga a largura que ocupa.** Ele chegava devendo um quarto da tela no
   instante em que passava a ser permitido, então cruzar de 99 para 100 colunas
   custava vinte e cinco delas de uma vez; agora abre no seu piso e cresce do que

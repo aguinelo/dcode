@@ -88,23 +88,25 @@ func renderVerbatim(text string, w int, g Geometry) []string {
 	var out []string
 	for _, l := range strings.Split(text, "\n") {
 		body := clipStyled(l, w-visibleWidth(bar)-2)
-		out = append(out, "  "+g.Palette.Apply(StyleDim, bar)+body)
+		out = append(out, "  "+g.Palette.Apply(StyleChrome, bar)+body)
 	}
 	return out
 }
 
 // parseInline turns one prose block into runs.
 //
-// Prose is dim and the technical term returns to normal brightness. That is the
-// design's own separation and it costs no new colour — the eye lands on the
-// name of the file, not on the sentence around it.
+// The sentence is READ and the technical term inside it is picked out. It used
+// to be the other way round — the sentence dim, the term at normal brightness —
+// which does put the eye on the file name, and dims the answer to do it. The
+// model's prose is most of what is on the screen, so that faded most of the
+// screen, and the one thing the reader came for was the one thing faded.
 func parseInline(text string) []textRun {
 	var runs []textRun
 	var plain strings.Builder
 
 	flush := func() {
 		if plain.Len() > 0 {
-			runs = append(runs, textRun{plain.String(), StyleDim})
+			runs = append(runs, textRun{plain.String(), StyleProse})
 			plain.Reset()
 		}
 	}
@@ -121,8 +123,7 @@ func parseInline(text string) []textRun {
 		case text[i] == '`':
 			if end := strings.IndexByte(text[i+1:], '`'); end >= 0 {
 				flush()
-				// StyleNone: normal brightness against dim prose.
-				runs = append(runs, textRun{text[i+1 : i+1+end], StyleNone})
+				runs = append(runs, textRun{text[i+1 : i+1+end], StyleCode})
 				i += 1 + end + 1
 				continue
 			}

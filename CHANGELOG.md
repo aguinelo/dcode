@@ -85,6 +85,14 @@ that on every run to stop the opposite reading.
 
 ### Changed
 
+- **Text has a hierarchy instead of one dim.** `StyleDim` meant five different
+  things at forty-seven call sites; there are six roles now, and the mapping is
+  one decision in one table. The first thing that decision changed: the model's
+  prose is no longer drawn faint. Dimming a sentence does put the eye on the file
+  name inside it, and dims the answer to do it — so the contrast is bought with
+  the term instead, which is one word rather than a paragraph. A terminal has
+  three weights that survive an unknown background, and the invariant says so.
+
 - **The panel pays for the width it takes.** It arrived owing a quarter of the
   screen the instant it was allowed to appear, so crossing from 99 to 100 columns
   cost the stream twenty-five of them in one step; it opens at its floor now and
