@@ -53,7 +53,9 @@ is what that key means in the shell it was borrowed from; the panel opens at its
 floor and grows out of the surplus. Every question opens with a rule, so a
 screen of scrollback has a boundary in it. Delegation is one card with its
 children inside, and the child that did not answer is named there with its
-reason. A tool call appears the moment it begins arriving from the model.
+reason. A tool call appears the moment it begins arriving from the model, and a
+boundary crossing is asked in the stream, in its own lane, keeping its place
+with the answer once it has one.
 
 That shape came from a measurement rather than a preference. Replaying a real
 recorded session at four widths, the column and the panel took 61 of 132 columns
@@ -78,7 +80,7 @@ the letter back could.
 **What the guards could not see.** Eight of the defects fixed on 24 August had
 guards written for exactly them, and every guard was asking about a set it
 already knew. The box-drawing guard derived its forbidden glyphs from the two
-glyph tables, and the approval modal — drawn from literals, in English, the one
+glyph tables, and the approval screen — drawn from literals, in English, the one
 screen that asks whether a boundary may be crossed — was outside both, in two
 different ways, found twice in one day. The width guard split on newlines before
 measuring, so a row broken in two measured as two short rows. The blank-row
@@ -109,6 +111,18 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+### Changed
+
+- **The approval is in the stream, and stays there.** The modal is gone: the
+  question is drawn where it was asked, in a fourth lane, and once answered it
+  keeps its place with the answer in place of the keys. The box was read as
+  being what enforced RN-6, and it never was — what owns the keyboard while a
+  crossing is pending is the client refusing to hand the keystroke to the input,
+  which is unchanged. What the box did do was hide the work being judged and
+  then delete itself, taking with it the most durable record a session
+  produces. Answers now land on the request by `ApprovalID`, because with two
+  crossings in flight "the last one" writes a decision nobody made.
 
 ### Fixed
 

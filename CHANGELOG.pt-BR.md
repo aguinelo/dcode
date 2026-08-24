@@ -52,7 +52,8 @@ que essa tecla significa no shell de onde ela veio; o painel abre no seu piso e
 cresce do que sobra. Toda pergunta abre com uma régua, então uma tela de rolagem
 tem um limite dentro dela. Delegação é um card com os filhos dentro, e o filho
 que não respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no
-instante em que começa a chegar do modelo.
+instante em que começa a chegar do modelo, e cruzar fronteira é perguntado no
+fluxo, na raia dela, ficando no lugar com a resposta assim que tem uma.
 
 Esse formato veio de uma medida, não de uma preferência. Reproduzindo uma sessão
 real gravada em quatro larguras, a coluna e o painel tomavam 61 de 132 colunas e
@@ -75,7 +76,7 @@ nenhuma condição podia satisfazer "letra não é atalho" — só devolver a le
 **O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
 agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
 sobre um conjunto que já conhecia. A guarda de desenho de caixa derivava os
-glifos proibidos das duas tabelas, e o modal de aprovação — desenhado de
+glifos proibidos das duas tabelas, e a tela de aprovação — desenhada de
 literais, em inglês, a única tela que pergunta se uma fronteira pode ser cruzada
 — estava fora das duas, de dois jeitos diferentes, achado duas vezes no mesmo
 dia. A guarda de largura dividia em quebras de linha antes de medir, então linha
@@ -105,6 +106,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+### Alterado
+
+- **A aprovação está no fluxo, e fica lá.** O modal saiu: a pergunta é desenhada
+  onde foi feita, numa quarta raia, e respondida permanece no lugar com a
+  resposta no lugar das teclas. A caixa era lida como se fosse ela a garantir a
+  RN-6, e nunca foi — quem é dono do teclado enquanto há fronteira pendente é o
+  cliente recusar entregar a tecla ao campo, e isso não mudou. O que a caixa
+  fazia era esconder o trabalho que estava sendo julgado e depois se apagar,
+  levando junto o registro mais durável que uma sessão produz. A resposta agora
+  cai na pergunta por `ApprovalID`: com duas fronteiras em voo, "a última" grava
+  uma decisão que ninguém tomou.
 
 ### Corrigido
 

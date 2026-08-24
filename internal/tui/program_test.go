@@ -1286,6 +1286,7 @@ func TestTheNetworkApprovalOffersTheAnswersThatOutliveTheSession(t *testing.T) {
 		ApprovalID: "a1", Tool: "bash", Command: "go test ./...",
 		BoundaryCrossed: "network",
 	}
+	p.model.Entries = append(p.model.Entries, Entry{Kind: KindApproval, Approval: p.model.Pending})
 
 	screen := Render(p.model, DefaultGeometry(100, 30))
 	// It says what the answer does. "Allow this command" would promise
@@ -1316,6 +1317,7 @@ func TestAnyOtherCrossingOffersNoStandingAnswer(t *testing.T) {
 		ApprovalID: "a1", Tool: "write", Command: "",
 		BoundaryCrossed: "filesystem_write",
 	}
+	p.model.Entries = append(p.model.Entries, Entry{Kind: KindApproval, Approval: p.model.Pending})
 
 	screen := Render(p.model, DefaultGeometry(100, 30))
 	for _, key := range []string{"[P]", "[G]"} {

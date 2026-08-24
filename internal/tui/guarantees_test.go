@@ -143,25 +143,30 @@ func TestThePlanBlockAndTheStatusCountThePlanTheSameWay(t *testing.T) {
 // is about, and showing it inside the box turns a decision into a reading
 // exercise — at the one moment the product has the user's full attention and
 // needs it on a single yes or no.
-func TestTheApprovalModalDoesNotShowThePlan(t *testing.T) {
+func TestTheApprovalBlockAsksOneQuestion(t *testing.T) {
 	m := modelWithPlan()
 	m.Pending = &protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash", Command: "rm -rf build",
 		BoundaryCrossed: "filesystem-write", Reason: "writing outside the workspace",
 	}
+	m.Entries = append(m.Entries, Entry{Kind: KindApproval, Approval: m.Pending})
 
-	out := Render(m, DefaultGeometry(100, 30))
-	box := modalBox(out)
-	if box == "" {
-		t.Fatalf("no modal was drawn:\n%s", out)
+	g := DefaultGeometry(100, 30)
+	g.Palette = Palette{}
+	block := renderApprovalBlock(m.Entries[len(m.Entries)-1], "  ", "  ",
+		glyphs(g.Unicode), g, m.Lang, g.StreamWidth(false))
+	got := strings.Join(block, "\n")
+
+	if !strings.Contains(got, "rm -rf build") {
+		t.Fatalf("the block does not show the command it is asking about:\n%s", got)
 	}
-	if !strings.Contains(box, "rm -rf build") {
-		t.Fatalf("the modal does not show the command it is asking about:\n%s", box)
-	}
+	// The question is one decision, not a reading exercise. The plan is in the
+	// stream above it now rather than in a box behind it, and it must not be
+	// INSIDE the block — which is the same rule, applied to the shape the
+	// question actually has.
 	for _, item := range []string{"read the parser", "add the test", "publish"} {
-		if strings.Contains(box, item) {
-			t.Errorf("the plan item %q is inside the modal; the question is one "+
-				"decision, not a reading exercise:\n%s", item, box)
+		if strings.Contains(got, item) {
+			t.Errorf("the plan item %q is inside the block:\n%s", item, got)
 		}
 	}
 }
@@ -326,5 +331,59 @@ func TestColourNeverChangesWhatIsOnTheScreen(t *testing.T) {
 			}
 		}
 		t.Fatalf("at %d columns the frames differ in length: %d vs %d", w, len(gl), len(wl))
+	}
+}
+
+// A boundary decision is a record, not a dialogue. The modal deleted itself on
+// the way out, taking with it both the question and the answer: half an hour
+// later there was no way to see what had been allowed, or why it was asked.
+// Matching by ApprovalID and not "the last one" is the same guarantee from the
+// other side — with two questions in flight, the last one answers the wrong.
+func TestTheAnsweredQuestionStaysInTheStream(t *testing.T) {
+	m := NewModel("s1", "/w", "opus", "workspace-write", En)
+	first := protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash", Command: "curl https://example.com",
+		BoundaryCrossed: "network",
+	}
+	second := protocol.ApprovalRequest{
+		ApprovalID: "a2", Tool: "write", Command: "write /etc/hosts",
+		BoundaryCrossed: "filesystem-write",
+	}
+	m = apply(t, m,
+		ev(t, 1, protocol.EventApprovalRequired, first),
+		ev(t, 2, protocol.EventApprovalRequired, second),
+		ev(t, 3, protocol.EventApprovalResolved, protocol.ApprovalResolved{
+			ApprovalID: "a1", Decision: protocol.ApprovalAllowSession,
+		}))
+
+	var answered, open int
+	for _, e := range m.Entries {
+		if e.Kind != KindApproval {
+			continue
+		}
+		if e.Decision == "" {
+			open++
+			if e.Approval.ApprovalID != "a2" {
+				t.Errorf("the resolution landed on %s, not on the request it named",
+					e.Approval.ApprovalID)
+			}
+			continue
+		}
+		answered++
+		if e.Approval.ApprovalID != "a1" {
+			t.Errorf("the answer landed on %s, not on a1", e.Approval.ApprovalID)
+		}
+	}
+	if answered != 1 || open != 1 {
+		t.Fatalf("want one answered question and one still open, got %d and %d",
+			answered, open)
+	}
+
+	out := Render(m, DefaultGeometry(100, 30))
+	if !strings.Contains(out, "curl https://example.com") {
+		t.Errorf("the answered question left the stream:\n%s", out)
+	}
+	if !strings.Contains(out, "allowed for this session") {
+		t.Errorf("the answer is not shown next to the question:\n%s", out)
 	}
 }
