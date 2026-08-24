@@ -111,7 +111,7 @@ func TestTheCursorIsACharacterAndNotOnlyAColour(t *testing.T) {
 		Nav:      RailNav{Active: true, Cursor: 1}}
 	g := railGeometry(140)
 	g.Palette = Palette{}
-	lines := strings.Join(renderRail(m, g, 12), "\n")
+	lines := strings.Join(renderSessionList(m, g), "\n")
 	if !strings.Contains(lines, "▸ bravo") {
 		t.Errorf("the cursor is not drawn as a character:\n%s", lines)
 	}
@@ -125,7 +125,7 @@ func TestAnEmptyResultSaysSoRatherThanGoingBlank(t *testing.T) {
 		Nav:      RailNav{Active: true, Filter: "zzz"}}
 	g := railGeometry(140)
 	g.Palette = Palette{}
-	if !strings.Contains(strings.Join(renderRail(m, g, 12), "\n"), "nothing matches") {
+	if !strings.Contains(strings.Join(renderSessionList(m, g), "\n"), "nothing matches") {
 		t.Error("an empty filter result went silently blank")
 	}
 }

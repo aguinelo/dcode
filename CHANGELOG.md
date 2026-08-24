@@ -85,6 +85,13 @@ that on every run to stop the opposite reading.
 
 ### Changed
 
+- **The conversation list is summoned, not resident.** `^R` in readline is a
+  search you summon — it appears, you choose, it goes — and borrowing the key
+  while making it twenty-six permanent columns contradicted the convention that
+  justified borrowing it. It is an overlay now, the way the approval modal
+  already was, with sixty-four columns to show a title in instead of twenty-six.
+  `RailNav` did not move: the cursor, the filter, the naming mode and every test
+  over them are unchanged, and only the drawing changed place.
 - **The file column starts hidden.** Measured on a real session: at 132 columns
   the column and the panel took 61 of them and left 71 for the conversation,
   while the same session at 99 columns — where both disappear — gave it 99.

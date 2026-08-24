@@ -774,7 +774,7 @@ func (m Model) panelHasContent() bool {
 // that has touched nothing yet still has a column worth drawing, and asking
 // only about the files emptied it for the first minute of every session.
 func (m Model) railHasContent() bool {
-	return len(m.Sessions) > 0 || len(FileTree(m.Entries)) > 0
+	return len(FileTree(m.Entries)) > 0
 }
 
 func plural(n int, one, many string) string {

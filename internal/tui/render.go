@@ -390,8 +390,13 @@ func render(m Model, g Geometry) string {
 	}
 	b.WriteString(RenderStatusBar(m, g))
 
+	// The approval wins when both are open: one is a question the turn is
+	// blocked on, the other is a list somebody summoned.
 	if m.Pending != nil {
 		return overlay(b.String(), renderApproval(*m.Pending, g), g)
+	}
+	if m.Nav.Active {
+		return overlay(b.String(), renderSessionList(m, g), g)
 	}
 	return b.String()
 }

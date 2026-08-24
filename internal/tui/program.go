@@ -566,7 +566,10 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if len(p.model.Sessions) == 0 {
 			return p, nil
 		}
-		p.geo.RailMode = RailShown
+		// The list is an overlay, so the file column is not disturbed by
+		// asking for it. Opening a twenty-six-column sidebar to choose a
+		// conversation was the borrowed key contradicting what it borrowed:
+		// `^R` in readline summons a search, it does not pin a panel.
 		p.model.Nav = RailNav{Active: true}
 		return p, nil
 
