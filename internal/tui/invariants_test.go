@@ -16,7 +16,7 @@ var tuiInvariants = map[string]string{
 	"mostra o que já percorreu":          "TestACallInFlightShowsWhatItHasGotThrough",
 	"nunca na última que começou":        "TestAResultLandsOnItsOwnCallAndNotTheLastOneStarted",
 	"pousa na chamada que ele nomeia":    "TestACallsProgressLandsOnThatCall",
-	"abre com ela mesmo sem plano":       "TestTheTurnsNumbersAloneOpenThePanel",
+	"abre com ela mesmo sem plano":       "TestTheTurnsNumbersOpenThePanelOnceTheCeilingIsClose",
 	"antes de o daemon ter dito":         "TestTheTurnSectionSaysNothingBeforeTheDaemonDoes",
 	"zera a contagem e conserva":         "TestANewTurnStartsItsCountersAtZero",
 	"não move os contadores do turno":    "TestProgressForAToolDoesNotMoveTheTurnsCounters",
@@ -142,6 +142,9 @@ var tuiInvariants = map[string]string{
 	// The list is legible.
 	"diz **quando** e **quanto**": "TestConversationRowsSayWhenAndHowMuch",
 	"não lê relógio nenhum":       "TestTheConversationListReadsNoClock",
+
+	// The panel earns its width.
+	"aparece no seu piso e cresce": "TestThePanelGrowsFromItsFloor",
 
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",

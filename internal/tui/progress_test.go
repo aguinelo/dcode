@@ -83,15 +83,37 @@ func TestTheTurnSectionSaysNothingBeforeTheDaemonDoes(t *testing.T) {
 
 // Most turns have no plan, and the ceiling was hiding in a panel that only
 // opened when something else was already there.
-func TestTheTurnsNumbersAloneOpenThePanel(t *testing.T) {
+func TestTheTurnsNumbersOpenThePanelOnceTheCeilingIsClose(t *testing.T) {
 	m := NewModel("s", "/w", "m", "workspace-write", En)
 	if m.panelHasContent() {
 		t.Error("the panel opened with nothing in it")
 	}
+	// This used to open it, and that was the defect: on a real session the
+	// panel spent thirty-three columns saying `iteração 0/2000`. Zero of two
+	// thousand warns of nothing.
 	m = m.Apply(progressEvent(1, protocol.Progress{
 		TurnID: "t1", Kind: protocol.ProgressRounds, Done: 1, Total: 100}))
+	if m.panelHasContent() {
+		t.Error("one round of a hundred opened the panel")
+	}
+	m = m.Apply(progressEvent(2, protocol.Progress{
+		TurnID: "t1", Kind: protocol.ProgressRounds, Done: 50, Total: 100}))
 	if !m.panelHasContent() {
-		t.Error("the turn's numbers did not open the panel")
+		t.Error("half the ceiling did not open the panel")
+	}
+}
+
+// And a limit being felt right now opens it whatever the round count says:
+// every slot in flight is not a ceiling approaching, it is one reached.
+func TestEverySlotInFlightOpensThePanel(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m.InFlight, m.MaxInFlight = 3, 4
+	if m.panelHasContent() {
+		t.Error("three of four slots opened the panel")
+	}
+	m.InFlight = 4
+	if !m.panelHasContent() {
+		t.Error("every slot in flight did not open the panel")
 	}
 }
 
@@ -123,7 +145,7 @@ func TestTheTurnSectionSpeaksTheInterfaceLanguage(t *testing.T) {
 		{PtBR, "iteração"}, {En, "round"},
 	} {
 		m := NewModel("s", "/w", "m", "workspace-write", c.lang)
-		m.Rounds, m.MaxRounds = 3, 100
+		m.Rounds, m.MaxRounds = 60, 100
 		g := DefaultGeometry(140, 24)
 		g.Palette = Palette{}
 		if out := strings.Join(turnSection(m, g, 30), "\n"); !strings.Contains(out, c.want) {
@@ -271,5 +293,69 @@ func TestAProviderThatSaysNothingStillDrawsTheCall(t *testing.T) {
 	m = m.Apply(toolRequested(1, "c1", "read", `{"path":"a.go"}`))
 	if len(m.Entries) != 1 || m.Entries[0].Target != "a.go" {
 		t.Errorf("the old path stopped working: %+v", m.Entries)
+	}
+}
+
+// The panel appears at its floor and grows, rather than arriving at a quarter
+// of the screen all at once.
+//
+// A quarter at the threshold meant it appeared owing twenty-five columns the
+// instant it was allowed to, so crossing from 99 to 100 columns cost the stream
+// twenty-five of them in one step. Paid out of the surplus — the columns beyond
+// the width at which it was allowed to appear — the step is nine.
+func TestThePanelGrowsFromItsFloor(t *testing.T) {
+	step := func(w int) int {
+		g := DefaultGeometry(w, 30)
+		if !g.ShowPanel(true) {
+			return 0
+		}
+		return g.panelWidth() + 1
+	}
+
+	below, at := step(99), step(100)
+	if below != 0 {
+		t.Errorf("the panel appeared at 99 columns, costing %d", below)
+	}
+	if at > 18 {
+		t.Errorf("the panel arrived owing %d columns; it should open at its floor", at)
+	}
+
+	// And it never shrinks as the terminal grows, nor passes its ceiling.
+	last := 0
+	for w := 100; w <= 240; w++ {
+		got := step(w)
+		if got < last {
+			t.Fatalf("at %d columns the panel shrank from %d to %d", w, last, got)
+		}
+		if got > DefaultGeometry(w, 30).PanelMaxWidth+1 {
+			t.Fatalf("at %d columns the panel is %d, past its ceiling", w, got)
+		}
+		last = got
+	}
+
+	// The stream loses width to the panel exactly once, and by no more than
+	// the panel's floor.
+	//
+	// That one step is a trade and not a defect: the reader gives up columns of
+	// text and gets the plan. What was a defect was the size of it — two
+	// thresholds at the same hundred, one of them buying a column that repeated
+	// what the stream had just said, together costing 46 columns in a single
+	// terminal column's difference. Bounding the step is the claim; removing it
+	// entirely would mean either never showing the panel or always showing it.
+	prev, steps := 0, 0
+	for w := 60; w <= 240; w++ {
+		g := DefaultGeometry(w, 30)
+		got := g.StreamWidth(g.ShowRail(true), g.ShowPanel(true))
+		if got < prev {
+			steps++
+			if lost := prev - got; lost > g.PanelMinWidth+1 {
+				t.Errorf("at %d columns the stream lost %d, more than the panel's floor",
+					w, lost)
+			}
+		}
+		prev = got
+	}
+	if steps > 1 {
+		t.Errorf("the stream loses width %d times as the terminal grows", steps)
 	}
 }

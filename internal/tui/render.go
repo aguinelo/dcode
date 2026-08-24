@@ -174,28 +174,34 @@ func (g Geometry) railWidth() int {
 // shrinks rather than taking the room the stream needs. Below its own minimum
 // an item is unreadable, so that is the floor.
 func (g Geometry) panelWidth() int {
-	w := g.PanelWidth
-	if w <= 0 {
-		w = 24
-	}
 	floor := g.PanelMinWidth
 	if floor <= 0 {
 		floor = 16
-	}
-	// A quarter of the screen, between the floor and the ceiling. It gives
-	// ground first on a narrow terminal — the panel holds short lines and the
-	// stream holds diffs — and takes a little more on a wide one, where a plan
-	// item was being cut for no reason.
-	if quarter := g.Width / 4; quarter > w {
-		w = quarter
 	}
 	ceiling := g.PanelMaxWidth
 	if ceiling <= 0 {
 		ceiling = 34
 	}
+
+	// It appears at its FLOOR and grows, rather than arriving at a quarter of
+	// the screen all at once.
+	//
+	// A quarter of the screen at the threshold meant the panel appeared owing
+	// twenty-five columns the instant it was allowed to, so crossing from 99 to
+	// 100 columns cost the stream twenty-five of them in one step. Paid out of
+	// the surplus — the columns BEYOND the width at which it was allowed to
+	// appear — the step is nine, and every column after that is shared rather
+	// than taken.
+	surplus := g.Width - g.PanelMinTotalWidth
+	if surplus < 0 {
+		surplus = 0
+	}
+	w := floor + surplus/3
 	if w > ceiling {
 		w = ceiling
 	}
+	// Never more than a quarter of the terminal, whatever the arithmetic above
+	// says: the panel holds short lines and the stream holds diffs.
 	if q := g.Width / 4; w > q {
 		w = q
 	}
@@ -944,7 +950,7 @@ func renderPanel(m Model, g Geometry) []string {
 // Nothing is drawn before the daemon has said anything. Zero of a hundred is a
 // number, and a number nobody sent is a number that will be believed.
 func turnSection(m Model, g Geometry, w int) []string {
-	if m.MaxRounds == 0 {
+	if !m.turnSectionWorthDrawing() {
 		return nil
 	}
 	t := Text(m.Lang)

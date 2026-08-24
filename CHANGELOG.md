@@ -85,6 +85,14 @@ that on every run to stop the opposite reading.
 
 ### Changed
 
+- **The panel pays for the width it takes.** It arrived owing a quarter of the
+  screen the instant it was allowed to appear, so crossing from 99 to 100 columns
+  cost the stream twenty-five of them in one step; it opens at its floor now and
+  grows out of the surplus beyond that threshold. And the TURN section, which
+  exists to warn that a ceiling is coming, was drawn from the first event of
+  every session — spending thirty-three columns to say `iteração 0/2000`. It
+  appears from half the ceiling, and whenever every in-flight slot is taken.
+
 - **Every conversation row says when and how much.** The overlay fixed the width
   and left the real problem showing: four rows read the same because four
   conversations began with the same question. The meta takes its width before the

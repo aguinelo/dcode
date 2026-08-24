@@ -765,7 +765,28 @@ func firstLine(s string) string {
 // first turn and stays. A panel that appeared with every turn and left with it
 // would be motion where the screen should be still.
 func (m Model) panelHasContent() bool {
-	return len(m.Plan) > 0 || m.MaxRounds > 0
+	return len(m.Plan) > 0 || m.turnSectionWorthDrawing()
+}
+
+// turnSectionWorthDrawing reports whether the ceilings are close enough to be
+// worth a reader's attention.
+//
+// The section exists to warn that a ceiling is coming — that is why it was
+// built, and the roadmap's first item is that nothing tells anybody. But it was
+// drawn from the first event of every session, and on a real one it spent
+// thirty-three columns saying `iteração 0/2000` and `em vôo 0·4`. Zero of two
+// thousand warns of nothing; it is a number nobody acts on, in the most
+// expensive place on the screen.
+//
+// Half the ceiling, because a warning that arrives at three quarters — where
+// the style already changes — arrives after the turn has committed to its
+// approach. And whenever every slot is in flight, which is a limit being felt
+// right now rather than one being approached.
+func (m Model) turnSectionWorthDrawing() bool {
+	if m.MaxRounds > 0 && m.Rounds*2 >= m.MaxRounds {
+		return true
+	}
+	return m.MaxInFlight > 0 && m.InFlight >= m.MaxInFlight
 }
 
 // railHasContent reports whether the sidebar has anything to say.
