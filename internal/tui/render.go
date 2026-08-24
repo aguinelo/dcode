@@ -194,7 +194,7 @@ type marks struct {
 	// rule and the prompt already mark it twice — which is true of the block
 	// itself and false of the legend, where three lanes have to be shown
 	// against three names and a blank is not a mark anyone can look for.
-	laneYou, laneProcess, laneAnswer string
+	laneYou, laneProcess, laneAnswer, laneAsk string
 	// The plan tree.
 	treeTee, treeEnd string
 	// The bars: a filled cell and the track behind it.
@@ -215,13 +215,13 @@ func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
 			dot: "·", minus: "−", prompt: "❯",
-			laneYou: "▌", laneProcess: "╎", laneAnswer: "▏", treeTee: "├", treeEnd: "└", barFull: "━", barTrack: "─", enter: "↵",
+			laneYou: "▌", laneProcess: "╎", laneAnswer: "▏", laneAsk: "┃", treeTee: "├", treeEnd: "└", barFull: "━", barTrack: "─", enter: "↵",
 			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
 		dot: "-", minus: "-", prompt: ">",
-		laneYou: "#", laneProcess: ":", laneAnswer: "|", treeTee: "+", treeEnd: "\\", barFull: "#", barTrack: "-", enter: "ret",
+		laneYou: "#", laneProcess: ":", laneAnswer: "|", laneAsk: "?", treeTee: "+", treeEnd: "\\", barFull: "#", barTrack: "-", enter: "ret",
 		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
@@ -371,11 +371,9 @@ func render(m Model, g Geometry) string {
 	}
 	b.WriteString(RenderStatusBar(m, g))
 
-	// The approval wins when both are open: one is a question the turn is
-	// blocked on, the other is a list somebody summoned.
-	if m.Pending != nil {
-		return overlay(b.String(), renderApproval(*m.Pending, g, Text(m.Lang)), g)
-	}
+	// The approval is in the STREAM now, not over it. The overlay is left to
+	// the conversation list, which is the one thing here that is genuinely
+	// summoned over the screen rather than part of it.
 	if m.Nav.Active {
 		return overlay(b.String(), renderSessionList(m, g), g)
 	}
@@ -641,6 +639,11 @@ func renderStream(m Model, g Geometry, w int) []string {
 				out = append(out, detailLines(e.Detail, cont, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
+		case KindApproval:
+			out = gapBefore(out)
+			out = append(out, renderApprovalBlock(e, cursor, cont, gl, g, m.Lang, w)...)
+			blocked = true
+
 		case KindPlan:
 			out = gapBefore(out)
 			out = append(out, renderPlanBlock(e, cursor, cont, gl, g, m.Lang, w)...)
@@ -689,6 +692,108 @@ func renderStream(m Model, g Geometry, w int) []string {
 		}
 	}
 	return out
+}
+
+// renderApprovalBlock draws a crossing put to the person, where it happened.
+//
+// In the stream rather than in a modal over the middle of the screen. A modal
+// answers "read this now" and nothing else: once answered it vanishes, so the
+// transcript holds no record that anything was ever asked, and "what did I
+// approve?" — a question somebody asks an hour later — has no answer anywhere.
+//
+// Being inline changes NOTHING about the keyboard. A pending crossing still
+// owns it, because the turn is stopped until it is answered and there is
+// nothing else a keystroke could usefully mean. That is what keeps `y`, `a` and
+// `n` legal here: they are letters inside a mode that owns the keyboard, the
+// same standing the conversation list gives `r`.
+func renderApprovalBlock(e Entry, cursor, cont string, gl marks, g Geometry, lang Lang, w int) []string {
+	if e.Approval == nil {
+		return nil
+	}
+	p := g.Palette
+	t := Text(lang)
+	req := *e.Approval
+
+	head := cursor + p.Apply(StyleAccent, t.ApprovalCrossing) + " " +
+		p.Apply(StyleHeading, req.Tool)
+	if req.BoundaryCrossed != "" {
+		head += " " + p.Apply(StyleMeta, t.ApprovalCrosses+" "+req.BoundaryCrossed)
+	}
+	out := []string{clipStyled(head, w)}
+
+	// What actually runs, never a description of it. Asking for consent to
+	// "reach the network" without showing the command is asking blind.
+	if req.Command != "" {
+		for _, l := range wrap(req.Command, w-visibleWidth(cont)-4) {
+			out = append(out, clipStyled(cont+"  "+p.Apply(StyleCode, l), w))
+		}
+	}
+	// The rule that raised the question. Consent to a rule nobody can see is
+	// consent to nothing, and it is what an "allow for the session" answer is
+	// remembered against.
+	if req.Rule != "" {
+		out = append(out, clipStyled(cont+"  "+p.Apply(StyleMeta, t.ApprovalRule+" "+req.Rule), w))
+	}
+	if standingScope(req) {
+		out = append(out, clipStyled(cont+"  "+p.Apply(StyleWarn, t.ApprovalNetwork), w))
+	}
+
+	// Answered: what was said, and no keys — offering an answer to a question
+	// already settled is offering a key that does nothing.
+	if e.Decision != "" {
+		return append(out, clipStyled(cont+"  "+
+			p.Apply(decisionStyle(e.Decision), t.ApprovalAnswered+" "+
+				decisionWord(e.Decision, t)), w))
+	}
+	return append(out, clipStyled(cont+"  "+approvalKeys(req, t, p), w))
+}
+
+// approvalKeys lists the answers available for this crossing.
+//
+// Deny first and as the default: the safe action is the one that costs least
+// effort. The capitals are harder to press by accident, which is right for the
+// options with the largest consequence — and the two that are written down are
+// the two that need the most deliberate keystroke.
+//
+// Each key carries the colour of what it costs: refusing is the error colour,
+// allowing once the ok colour, and the standing answers the warn colour. On a
+// terminal without colour the words still say it, which is why they are words.
+func approvalKeys(req protocol.ApprovalRequest, t Strings, p Palette) string {
+	if standingScope(req) {
+		return p.Apply(StyleError, "[d]") + " " + p.Apply(StyleHint, t.KeyNo) + "   " +
+			p.Apply(StyleOK, "[a]") + " " + p.Apply(StyleHint, t.KeyOnce) + "   " +
+			p.Apply(StyleWarn, "[P]") + " " + p.Apply(StyleHint, t.KeyProject) + "   " +
+			p.Apply(StyleWarn, "[G]") + " " + p.Apply(StyleHint, t.KeyAlways)
+	}
+	return p.Apply(StyleError, "[d]") + " " + p.Apply(StyleHint, t.KeyDeny) + "   " +
+		p.Apply(StyleOK, "[a]") + " " + p.Apply(StyleHint, t.KeyAllow) + "   " +
+		p.Apply(StyleWarn, "[A]") + " " + p.Apply(StyleHint, t.KeySession) + "   " +
+		p.Apply(StyleHint, t.ApprovalEnter)
+}
+
+func decisionStyle(d protocol.ApprovalDecision) Style {
+	if d == protocol.ApprovalDeny {
+		return StyleError
+	}
+	return StyleOK
+}
+
+// decisionWord names the answer in the interface language. A decision rendered
+// as its wire value — `allow_session` — is a record in a vocabulary the person
+// never chose.
+func decisionWord(d protocol.ApprovalDecision, t Strings) string {
+	switch d {
+	case protocol.ApprovalDeny:
+		return t.ApprovalDenied
+	case protocol.ApprovalAllowSession:
+		return t.ApprovalAllowedSession
+	case protocol.ApprovalAllowProject:
+		return t.ApprovalAllowedProject
+	case protocol.ApprovalAllowAlways:
+		return t.ApprovalAllowedAlways
+	default:
+		return t.ApprovalAllowedOnce
+	}
 }
 
 // renderPlanBlock draws the plan where the model made it.
@@ -775,6 +880,10 @@ const (
 	LaneProcess Lane = iota
 	LaneYou
 	LaneAnswer
+	// LaneAsk is a question put to the person, and the design gives it a lane
+	// of its own for the reason it deserves one: it is the only row on the
+	// screen that will not move until somebody does something.
+	LaneAsk
 )
 
 // laneOf reads the lane off the kind.
@@ -787,6 +896,8 @@ func laneOf(e Entry) Lane {
 	switch e.Kind {
 	case KindUser:
 		return LaneYou
+	case KindApproval:
+		return LaneAsk
 	case KindAssistant, KindCompletion:
 		return LaneAnswer
 	default:
@@ -799,6 +910,8 @@ func laneGutter(l Lane, gl marks, p Palette) string {
 	switch l {
 	case LaneYou:
 		return p.Apply(StyleLaneYou, gl.laneYou)
+	case LaneAsk:
+		return p.Apply(StyleAccent, gl.laneAsk)
 	case LaneAnswer:
 		return p.Apply(StyleOK, gl.laneAnswer)
 	default:
@@ -1250,70 +1363,6 @@ func renderCaretIn(text string, at int, p Palette) string {
 // records — and the path in that question is what makes it answerable at all.
 func standingScope(req protocol.ApprovalRequest) bool {
 	return req.BoundaryCrossed == "network"
-}
-
-// approvalKeys lists the answers available for this crossing.
-//
-// Deny first and as the default: the safe action is the one that costs least
-// effort. The capitals are harder to press by accident, which is right for the
-// options with the largest consequence — and the two that are written down are
-// the two that need the most deliberate keystroke.
-func approvalKeys(req protocol.ApprovalRequest, t Strings) string {
-	if standingScope(req) {
-		return "  " + t.ApprovalStanding
-	}
-	return "  " + t.ApprovalOnce
-}
-
-func renderApproval(req protocol.ApprovalRequest, g Geometry, t Strings) []string {
-	w := g.Width - 8
-	if w > 60 {
-		w = 60
-	}
-	if w < 24 {
-		w = 24
-	}
-
-	gl := glyphs(g.Unicode)
-	v := gl.gutter
-	// Every piece of the frame comes from the glyph set now. It was drawn from
-	// literals with no fallback, which made this the ONE screen a terminal in
-	// ASCII could not read — and it is the screen that asks whether a boundary
-	// may be crossed.
-	head := gl.boxTL + gl.boxH + " " + t.ApprovalTitle + " "
-	lines := []string{
-		head + strings.Repeat(gl.boxH, maxInt(0, w-visibleWidth(head)+1)) + gl.boxTR,
-		v + pad("", w) + v,
-		v + pad("  "+req.Tool+" "+t.ApprovalCrosses+" "+req.BoundaryCrossed, w) + v,
-	}
-	// The network question is about the PROJECT, not this command. A shell
-	// command is opaque, so answering yes opens the boundary for everything
-	// that runs here — saying "allow this command" would promise something
-	// narrower than what the answer does.
-	if standingScope(req) {
-		lines = append(lines,
-			v+pad("", w)+v,
-			v+pad("  "+t.ApprovalNetwork, w)+v)
-	}
-	if req.Command != "" {
-		// The rendered command, never a description. Asking for consent to
-		// "access the network" without showing what runs is asking blind.
-		lines = append(lines, v+pad("", w)+v)
-		for _, l := range wrap(req.Command, w-6) {
-			lines = append(lines, v+pad("    "+l, w)+v)
-		}
-	}
-	lines = append(lines,
-		v+pad("", w)+v,
-		// Deny first and as the default: the safe action is the one that costs
-		// least effort. The capital A is harder to press by accident, which is
-		// right for the option with the largest consequence.
-		v+pad(approvalKeys(req, t), w)+v,
-		v+pad("  "+t.ApprovalEnter, w)+v,
-		v+pad("", w)+v,
-		gl.boxBL+strings.Repeat(gl.boxH, w)+gl.boxBR,
-	)
-	return lines
 }
 
 // overlay centres the modal over the screen and blocks nothing else from being

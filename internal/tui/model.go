@@ -38,6 +38,9 @@ const (
 	KindNote      Kind = "note"
 	// KindReasoning is the model thinking, which is not the model answering.
 	KindReasoning Kind = "reasoning"
+	// KindApproval is a boundary crossing put to the person: what is being
+	// asked, and — once answered — what they said.
+	KindApproval Kind = "approval"
 	// KindPlan is the plan the model is working through, drawn where it first
 	// appeared and always showing the current one.
 	KindPlan Kind = "plan"
@@ -87,6 +90,12 @@ type Entry struct {
 	// them on arrival would date a replayed session to the moment it was
 	// replayed.
 	At time.Time
+	// Approval is the crossing this entry asks about, and Decision what was
+	// answered. Both live on the entry rather than only on Model.Pending: the
+	// question is part of the transcript, and "what did I approve?" is a
+	// question somebody asks an hour later, when Pending is long gone.
+	Approval *protocol.ApprovalRequest
+	Decision protocol.ApprovalDecision
 	// Plan is the current plan, on the one KindPlan entry. It is a snapshot of
 	// Model.Plan rather than a copy that can drift: both are written from the
 	// same event, in the same reduction.
@@ -454,10 +463,31 @@ func (m Model) Apply(ev protocol.Event) Model {
 		if err := json.Unmarshal(ev.Payload, &d); err == nil {
 			m.Pending = &d
 			m.State = protocol.SessionStateBlocked
+			// In the stream, where it happened. A modal in the middle of the
+			// screen answers "read this now" and nothing else: once answered it
+			// vanishes, and the transcript has no record that anything was ever
+			// asked or what was said.
+			m.Entries = append(m.Entries, Entry{
+				Kind: KindApproval, Approval: &d, Seq: ev.Seq,
+			})
 		}
 
 	case protocol.EventApprovalResolved:
 		m.Pending = nil
+		// The answer lands on the question. Matched by id rather than by being
+		// the last one: two crossings can be outstanding, and an answer on the
+		// wrong row is a record of a decision nobody made.
+		var r protocol.ApprovalResolved
+		if err := json.Unmarshal(ev.Payload, &r); err == nil {
+			m.Entries = append([]Entry(nil), m.Entries...)
+			for i := range m.Entries {
+				if m.Entries[i].Kind == KindApproval && m.Entries[i].Approval != nil &&
+					m.Entries[i].Approval.ApprovalID == r.ApprovalID {
+					m.Entries[i].Decision = r.Decision
+					break
+				}
+			}
+		}
 		// What the person has been asked and what they let through. The design
 		// puts `edits accepted 6 / 7` in the session pane, and it is the one
 		// number there that says something about the PERSON's turn rather than

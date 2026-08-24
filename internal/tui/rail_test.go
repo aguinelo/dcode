@@ -379,6 +379,7 @@ func TestAsciiModeDrawsNothingButAscii(t *testing.T) {
 				ApprovalID: "a1", Tool: "bash", Command: "rm -rf /tmp/x",
 				BoundaryCrossed: "the workspace", Reason: "it writes outside", Rule: "deny:rm",
 			}
+			m.Entries = append(m.Entries, Entry{Kind: KindApproval, Approval: m.Pending})
 		}
 		g := DefaultGeometry(118, 24)
 		g.Palette = Palette{}
