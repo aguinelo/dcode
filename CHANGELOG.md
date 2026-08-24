@@ -158,6 +158,12 @@ the screen never showed.
 
 ### Added
 
+- **The preserved tail has two floors.** `KeepTurns` counted turns, and a count
+  is the wrong unit: turns vary by an order of magnitude, so four short ones
+  protected almost nothing — the summary ate a forty-tool investigation and kept
+  four "ok"s. `KeepFraction` (0.30) is a floor in tokens of the window, measured
+  with the same estimate the trigger uses, and whichever protects more wins. The
+  rule that the current task never gets compacted still sits above both.
 - **The context says it is filling before it is cut.** The bands were computed
   and announced to the model, and nobody announced them to the reader — so the
   summary arrived as one line saying it had happened, after the fact, with no

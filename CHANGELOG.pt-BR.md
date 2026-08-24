@@ -154,6 +154,12 @@ mostrou.
 
 ### Adicionado
 
+- **A cauda preservada tem dois pisos.** `KeepTurns` contava turnos, e contagem
+  é a unidade errada: turnos variam em uma ordem de grandeza, então quatro curtos
+  protegiam quase nada — o resumo comia uma investigação de quarenta ferramentas
+  e mantinha quatro "ok". `KeepFraction` (0,30) é um piso em tokens da janela,
+  medido com a mesma estimativa que o gatilho usa, e vence o que proteger mais. A
+  regra de que a tarefa corrente nunca é compactada continua acima dos dois.
 - **O contexto avisa que está enchendo antes de ser cortado.** As faixas eram
   calculadas e anunciadas ao modelo, e ninguém as anunciava a quem lê — então o
   resumo aparecia como uma linha dizendo que tinha acontecido, depois do fato,
