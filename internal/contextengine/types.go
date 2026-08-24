@@ -105,6 +105,14 @@ type Config struct {
 	CompactAt float64
 	// KeepTurns is how many recent turns survive beyond the mandatory ones.
 	KeepTurns int
+	// KeepFraction is how much of the window the tail must keep, as a fraction.
+	//
+	// It exists because KeepTurns alone is a count, and turns vary by an order
+	// of magnitude: four short ones protect almost nothing, and four long ones
+	// leave almost nothing to compact. The two are read together and whichever
+	// protects MORE wins — the count is a floor for how many exchanges survive,
+	// the fraction a floor for how much of them does.
+	KeepFraction float64
 	// CharsPerToken is the estimation heuristic.
 	CharsPerToken float64
 	// Margin is added to every estimate to absorb heuristic error.
@@ -118,6 +126,7 @@ func DefaultConfig() Config {
 	return Config{
 		CompactAt:     0.80,
 		KeepTurns:     4,
+		KeepFraction:  0.30,
 		CharsPerToken: 3.5,
 		Margin:        0.10,
 	}

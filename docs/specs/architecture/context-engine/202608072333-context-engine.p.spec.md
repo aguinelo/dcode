@@ -164,6 +164,8 @@ Cada linha é caso de teste obrigatório.
 - Nenhuma saída de `Assemble` contém a fração nem a faixa (RN-2) — varredura.
 - Travessia de faixa emite **uma vez**; permanecer acima do limiar não reemite.
 - Compactação rearma a faixa anunciada; subir de novo emite de novo.
+- A cauda preservada tem **dois pisos** e vence o que proteger mais: `KeepTurns` em contagem de turnos e `KeepFraction` em tokens da janela. A RN-6 fica acima dos dois.
+- Sem janela reportada, a fração fica de fora e a contagem decide: sem denominador não há fração, e proteger tudo pararia a compactação de acontecer.
 - `Assemble` não realiza I/O: verificado por teste que falha se o pacote importar `os`, `net` ou `time` fora de tipos.
 
 ## 8. Changelog

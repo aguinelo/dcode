@@ -79,7 +79,7 @@ func Plan(s Session, cfg Config) (CompactionPlan, bool) {
 		from = s.Summary.UpToIdx
 	}
 
-	limit := protectedFrom(s.History, cfg.KeepTurns)
+	limit := protectedFrom(s.History, cfg, msgs)
 	to := turnBoundaryAtOrBefore(s.History, limit)
 	if to <= from {
 		return CompactionPlan{}, false
@@ -87,9 +87,32 @@ func Plan(s Session, cfg Config) (CompactionPlan, bool) {
 	return CompactionPlan{FromIdx: from, ToIdx: to}, true
 }
 
-// protectedFrom returns the first index that must not be compacted: the most
-// recent user message, walked back a further KeepTurns user messages.
-func protectedFrom(h []Message, keepTurns int) int {
+// protectedFrom returns the first index that must not be compacted.
+//
+// Two floors, and whichever protects MORE wins: KeepTurns user messages walked
+// back from the most recent, and KeepFraction of the window measured in tokens
+// from the end.
+//
+// The count alone was the rule, and a count is the wrong unit for this. Turns
+// vary by an order of magnitude — a one-line question and a forty-tool
+// investigation are both one turn — so four short ones protect almost nothing
+// and four long ones leave almost nothing to compact. The fraction says how
+// much of the conversation survives; the count says how many exchanges do.
+//
+// RN-6 still sits above both: the most recent user message and everything after
+// it are never in the compacted span, whatever these two say.
+func protectedFrom(h []Message, cfg Config, msgs []Message) int {
+	byTurns := protectedByTurns(h, cfg.KeepTurns)
+	byTokens := protectedByTokens(h, cfg, msgs)
+	if byTokens < byTurns {
+		return byTokens
+	}
+	return byTurns
+}
+
+// protectedByTurns is the original floor: the most recent user message, walked
+// back a further KeepTurns user messages.
+func protectedByTurns(h []Message, keepTurns int) int {
 	if keepTurns < 0 {
 		keepTurns = 0
 	}
@@ -102,6 +125,33 @@ func protectedFrom(h []Message, keepTurns int) int {
 			return i
 		}
 		seen++
+	}
+	return 0
+}
+
+// protectedByTokens walks back from the end until the tail holds KeepFraction
+// of the window, and returns where that tail begins.
+//
+// Measured with the same Estimate the trigger uses, on the same assembled
+// messages, so the two agree about how big something is. Two estimators for one
+// question is how a rule fires at a size the other one never saw.
+func protectedByTokens(h []Message, cfg Config, msgs []Message) int {
+	if cfg.Window <= 0 || cfg.KeepFraction <= 0 {
+		return len(h)
+	}
+	want := int(cfg.KeepFraction * float64(cfg.Window))
+	if want <= 0 {
+		return len(h)
+	}
+	// The history and the assembled messages are not the same slice — Assemble
+	// puts the system prompt and the summary in front — so the walk is over the
+	// history and the measurement is per message.
+	got := 0
+	for i := len(h) - 1; i >= 0; i-- {
+		got += Estimate(h[i:i+1], cfg)
+		if got >= want {
+			return i
+		}
 	}
 	return 0
 }
@@ -168,6 +218,12 @@ func withDefaults(cfg Config) Config {
 	// "overruns the window", which is the worse failure of the two.
 	if cfg.Margin <= 0 {
 		cfg.Margin = d.Margin
+	}
+	// Zero is unset here too. A tail of nothing is not a choice anybody makes
+	// deliberately: it means "compact everything up to the current task", which
+	// KeepTurns: 0 already expresses when somebody wants it.
+	if cfg.KeepFraction <= 0 {
+		cfg.KeepFraction = d.KeepFraction
 	}
 	return cfg
 }
