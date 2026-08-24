@@ -13,7 +13,12 @@ set -euo pipefail
 
 MAJOR_ZERO_NOTE='Antes de 1.0 uma quebra sobe MINOR, nao MAJOR: 0.x diz "ainda muda", e gastar o 1 na primeira quebra e o que faz projetos chegarem em 7.0 sem nada estavel.'
 
-last="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+# Only release tags count. A tag that is not a version — a restore point, a
+# marker — used to shadow the last release simply by being newer, and the build
+# then named itself after it: `tui-v1-dev+411c237`. Naming a build after
+# something that is not a version is the same defect as naming it after the
+# version it left, which this script exists to prevent.
+last="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
 if [ -z "$last" ]; then
   echo "versao: nao ha tag neste repositorio." >&2
   echo "A primeira e escolhida, nao derivada — nao ha de onde derivar." >&2
