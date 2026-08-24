@@ -213,16 +213,22 @@ func TestVIsALetterWhereverTheCursorIs(t *testing.T) {
 	}
 }
 
-// And the path the report came in by, walked end to end: a fresh session with
-// no history, one press of up, then a message that starts with a v.
-func TestUpThenTypingKeepsEveryLetter(t *testing.T) {
+// The path the report came in by no longer exists.
+//
+// It was: `up` on a session with no history walks into the transcript, and the
+// next `v` typed there is a shortcut again. The fix that shipped gave the
+// letter back, which removed the symptom. Removing the PATH removes the state
+// that produced it — up at the border scrolls, and stepping into the transcript
+// is `esc`, deliberately, into a mode that says it has the keyboard.
+func TestSteppingIntoTheTranscriptIsDeliberate(t *testing.T) {
 	p, _ := newProgram(t)
 	p.model.Entries = []Entry{{Kind: KindUser, Summary: "algo"}, {Kind: KindAssistant, Summary: "resposta"}}
 	p.model.Cursor = -1
 
 	p.Update(special(tea.KeyUp))
-	if p.model.Cursor < 0 {
-		t.Fatal("up did not walk into the stream; the fixture no longer reproduces the report")
+	if p.model.Cursor >= 0 || p.model.Navigating {
+		t.Fatalf("up walked into the transcript: cursor %d, navigating %v",
+			p.model.Cursor, p.model.Navigating)
 	}
 	for _, r := range "voce" {
 		p.Update(key(string(r)))
@@ -230,10 +236,12 @@ func TestUpThenTypingKeepsEveryLetter(t *testing.T) {
 	if p.model.Input != "voce" {
 		t.Errorf("input = %q, want the whole word", p.model.Input)
 	}
-	// And typing put the focus back where the typing goes: browsing and
-	// writing were two states at once, with nothing on screen saying which.
-	if p.model.Cursor >= 0 {
-		t.Errorf("the stream kept the cursor at %d while the line was typed on", p.model.Cursor)
+
+	// And esc is the way in, from an empty line.
+	p.model = p.model.SetInput("")
+	p.Update(special(tea.KeyEsc))
+	if !p.model.Navigating {
+		t.Error("esc from an empty line did not step into the transcript")
 	}
 }
 

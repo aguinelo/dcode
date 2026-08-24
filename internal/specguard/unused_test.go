@@ -32,7 +32,6 @@ var exportedWithoutUser = map[string]string{
 	// would leave the zero case anonymous, which is worse than unused.
 	"BoundaryNone": "names the zero Boundary",
 	"BudgetNone":   "names the zero BudgetBand",
-	"PanelAuto":    "names the zero PanelMode",
 	"SourceLocal":  "names the zero version.Source",
 
 	// Exported so tests can observe something they otherwise could not, and

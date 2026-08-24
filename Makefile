@@ -14,7 +14,7 @@ DCODE_INSTALL_DIR ?= $(HOME)/.local/bin
 # hora perdida descobrindo que nunca era o código publicado.
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 GIT_DIRTY  := $(shell git diff --quiet HEAD 2>/dev/null || echo .dirty)
-GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+GIT_TAG    := $(shell git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')
 # A dev build is named for the version it is HEADING TO, not the one it left.
 #
 # It used to take the last tag, so every build between two releases reported the

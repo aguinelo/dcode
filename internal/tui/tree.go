@@ -35,9 +35,10 @@ type FileRow struct {
 	Label string
 	Depth int
 	State FileState
-	// Added is the line count the tool reported, never parsed back out of its
-	// summary.
-	Added int
+	// Added and Removed are the line counts the tool reported, never parsed
+	// back out of its summary. Both, because the diff pane draws a bar of the
+	// two against each other and one of them is not a proportion.
+	Added, Removed int
 	// Folder marks a row that stands for a directory rather than a file.
 	Folder bool
 }
@@ -52,8 +53,8 @@ type FileRow struct {
 // promising something that is not on disk.
 func touchedFiles(entries []Entry) []FileRow {
 	type acc struct {
-		state FileState
-		added int
+		state          FileState
+		added, removed int
 	}
 	seen := map[string]*acc{}
 	for _, e := range entries {
@@ -80,6 +81,9 @@ func touchedFiles(entries []Entry) []FileRow {
 		if e.Added > a.added {
 			a.added = e.Added
 		}
+		if e.Removed > a.removed {
+			a.removed = e.Removed
+		}
 	}
 
 	paths := make([]string, 0, len(seen))
@@ -90,7 +94,7 @@ func touchedFiles(entries []Entry) []FileRow {
 
 	out := make([]FileRow, 0, len(paths))
 	for _, p := range paths {
-		out = append(out, FileRow{Path: p, State: seen[p].state, Added: seen[p].added})
+		out = append(out, FileRow{Path: p, State: seen[p].state, Added: seen[p].added, Removed: seen[p].removed})
 	}
 	return out
 }

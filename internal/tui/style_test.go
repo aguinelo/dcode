@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -275,16 +276,27 @@ func TestContextLabel(t *testing.T) {
 }
 
 // The model's prose is most of what is on the screen, and it was the one thing
-// on it drawn faint. Dimming a sentence does put the eye on the file name
-// inside it — and dims the answer to do it.
-func TestTheAnswerIsNotTheFaintestThingOnTheScreen(t *testing.T) {
-	p := Palette{Enabled: true}
-	if got := p.Apply(StyleProse, "uma frase"); got != "uma frase" {
-		t.Errorf("prose carries an attribute: %q", got)
+// on it drawn faint.
+//
+// It used to be asserted as "prose carries no attribute at all", which was the
+// only way to say "normal weight" while the product did not choose its ground.
+// With a theme the claim is the one that was always meant: prose is BRIGHTER
+// than the things that qualify it, measured against the ground both are drawn
+// on.
+func TestTheAnswerIsBrighterThanWhatQualifiesIt(t *testing.T) {
+	th := Neon()
+	prose := contrast(th.Role[StyleProse].fg, th.Ground)
+	for _, c := range []struct {
+		style Style
+		name  string
+	}{{StyleMeta, "meta"}, {StyleHint, "hint"}, {StyleChrome, "chrome"}} {
+		if got := contrast(th.Role[c.style].fg, th.Ground); got >= prose {
+			t.Errorf("%s is %.2f:1 and prose is %.2f:1; the answer must be the brighter",
+				c.name, got, prose)
+		}
 	}
-	// And the contrast inside the sentence is still bought, with the term
-	// rather than with the paragraph around it.
-	if p.Apply(StyleCode, "render.go") == "render.go" {
+	// And the contrast inside a sentence is still bought, with the term.
+	if th.Role[StyleCode].fg == th.Role[StyleProse].fg {
 		t.Error("a technical term inside a sentence is not picked out at all")
 	}
 }
@@ -292,29 +304,100 @@ func TestTheAnswerIsNotTheFaintestThingOnTheScreen(t *testing.T) {
 // Every role in the hierarchy maps to something, and to one of the three
 // weights a terminal has that survive an unknown background.
 //
-// A hard-coded grey is the fourth weight people reach for, and a grey chosen
-// for a dark theme is unreadable on a light one. The check is that no role here
-// picks a foreground colour, prose and code excepted: prose picks nothing, and
-// code is the accent this product already owns.
-func TestTheTextHierarchyUsesOnlyWeightsATerminalKeeps(t *testing.T) {
+// Every role in the hierarchy is legible against the ground the theme paints.
+//
+// This test asserted the opposite rule until the theme arrived: that no role
+// may pick a colour, because "a grey chosen for a dark theme is unreadable on a
+// light one". That was right for exactly as long as the product did not choose
+// the ground. It does now, so the constraint is no longer "pick no colour" — it
+// is "pick one that can be read against the ground you picked", which is a
+// stronger claim and a measurable one.
+//
+// The ratios are WCAG relative luminance. Body text at 4.5, anything meant to
+// be read at 3, and chrome at 1.5 — a rule is meant to be SEEN and not read,
+// and holding it to text contrast would make every gutter shout.
+func TestEveryRoleIsLegibleAgainstTheGround(t *testing.T) {
+	for _, th := range Themes() {
+		checkLegible(t, th)
+	}
+}
+
+func checkLegible(t *testing.T, th Theme) {
+	t.Helper()
 	for _, c := range []struct {
 		style Style
 		name  string
+		min   float64
 	}{
-		{StyleHeading, "heading"}, {StyleMeta, "meta"},
-		{StyleHint, "hint"}, {StyleChrome, "chrome"},
+		{StyleProse, "prose", 4.5},
+		{StyleHeading, "heading", 4.5},
+		{StyleBold, "bold", 4.5},
+		{StyleCode, "code", 3},
+		{StyleMeta, "meta", 3},
+		{StyleAccent, "accent", 3},
+		{StyleOK, "ok", 3},
+		{StyleError, "error", 3},
+		{StyleWarn, "warn", 3},
+		{StyleLaneYou, "lane you", 3},
+		{StyleLaneAnswer, "lane answer", 3},
+		{StyleHint, "hint", 1.8},
+		{StyleLaneProcess, "lane process", 1.8},
+		{StyleChrome, "chrome", 1.5},
 	} {
-		code, ok := ansi[c.style]
+		paint, ok := th.Role[c.style]
 		if !ok {
-			t.Errorf("%s maps to nothing", c.name)
+			t.Errorf("%s has no colour in %s", c.name, th.Name)
 			continue
 		}
-		if code != "1" && code != "2" {
-			t.Errorf("%s is %q; only bold and faint survive an unknown background",
-				c.name, code)
+		if got := contrast(paint.fg, th.Ground); got < c.min {
+			t.Errorf("%s: %s is %.2f:1 against the ground, want at least %.1f",
+				th.Name, c.name, got, c.min)
 		}
 	}
-	if _, ok := ansi[StyleProse]; ok {
-		t.Error("prose maps to an attribute; normal is asked for by emitting nothing")
+}
+
+// contrast is the WCAG ratio between two colours.
+func contrast(a, b rgb) float64 {
+	la, lb := luminance(a), luminance(b)
+	if lb > la {
+		la, lb = lb, la
+	}
+	return (la + 0.05) / (lb + 0.05)
+}
+
+func luminance(c rgb) float64 {
+	f := func(v uint8) float64 {
+		x := float64(v) / 255
+		if x <= 0.03928 {
+			return x / 12.92
+		}
+		return math.Pow((x+0.055)/1.055, 2.4)
+	}
+	return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b)
+}
+
+// Colour switched off emits no escape at all, the ground included.
+//
+// The ground is the one that could have slipped through: it is painted once per
+// row rather than around a run, so a palette that forgot to ask whether colour
+// was on would tint every row of a NO_COLOR terminal and leave the reset
+// nowhere.
+func TestColourOffPaintsNoGround(t *testing.T) {
+	off := Palette{}
+	if got := off.Ground(); got != "" {
+		t.Errorf("a disabled palette paints a ground: %q", got)
+	}
+	for _, s := range []Style{StyleProse, StyleAccent, StyleError, StyleChrome} {
+		if got := off.Apply(s, "x"); got != "x" {
+			t.Errorf("style %v emitted %q with colour off", s, got)
+		}
+	}
+
+	m := modelWithPlan()
+	m.Entries = append(m.Entries, Entry{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "ok"})
+	g := DefaultGeometry(100, 24)
+	g.Palette = off
+	if got := Render(m, g); strings.ContainsRune(got, 0x1b) {
+		t.Errorf("an escape reached a screen with colour off:\n%q", got)
 	}
 }

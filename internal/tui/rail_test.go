@@ -26,40 +26,40 @@ func TestATurnThatTouchedNothingGetsNoSidebar(t *testing.T) {
 	if g.ShowRail(false) {
 		t.Error("an empty tree still opened the sidebar")
 	}
-	if g.StreamWidth(false, false) != 140 {
-		t.Errorf("the stream lost width to a sidebar that is not drawn: %d", g.StreamWidth(false, false))
+	if g.StreamWidth(false) != 140 {
+		t.Errorf("the stream lost width to a sidebar that is not drawn: %d", g.StreamWidth(false))
 	}
 }
 
-// There is no width rule for the sidebar any more, and this is the test that
-// used to assert it. It is kept, inverted, because deleting it would leave no
-// record that the rule ever existed — and the rule is the reason the column now
-// starts hidden: it shared a threshold with the panel, and the two hundreds
-// compounded into a 46-column cliff at exactly the width most people work at.
-func TestTheSidebarHasNoWidthRuleLeft(t *testing.T) {
-	for _, w := range []int{60, 90, 99, 100, 120, 200} {
-		g := railGeometry(w)
-		if g.ShowRail(true) {
-			t.Errorf("at %d columns the sidebar appeared without being asked for", w)
-		}
-		g.RailMode = RailShown
-		if !g.ShowRail(true) {
-			t.Errorf("at %d columns an explicitly shown sidebar was hidden", w)
+// The side column comes back with a width rule, and this test has now been
+// written three ways in one day. That is worth stating rather than quietly
+// editing again: the rule went away because the column it governed held a
+// repetition of the stream, and it comes back because the column that replaced
+// it holds two panes of things that are nowhere else.
+//
+// What did not change is the measurement that started it. Two thresholds at the
+// same hundred cost the conversation 46 columns across one column of terminal
+// width; there is one threshold now, and it is the design's own.
+func TestTheSideColumnAppearsOnATerminalWideEnoughForIt(t *testing.T) {
+	for _, c := range []struct {
+		w    int
+		want bool
+	}{{80, false}, {119, false}, {120, true}, {150, true}} {
+		g := railGeometry(c.w)
+		if got := g.ShowRail(true); got != c.want {
+			t.Errorf("at %d columns the column is %v, want %v", c.w, got, c.want)
 		}
 	}
 }
 
-// And it starts hidden, whatever the width. Measured on a real session: the
-// column and the panel took 61 of 132 columns and gave the conversation 71,
-// while the same session at 99 columns — where both are gone — gave it 99.
-func TestTheSidebarStartsHidden(t *testing.T) {
-	for _, w := range []int{80, 100, 132, 200} {
-		g := DefaultGeometry(w, 30)
-		if g.ShowRail(true) {
-			t.Errorf("at %d columns the sidebar opened before anybody asked", w)
-		}
-		if got := g.StreamWidth(false, g.ShowPanel(true)); got < w-g.panelWidth()-1 {
-			t.Errorf("at %d columns the stream got %d", w, got)
+// And it is two fifths of the terminal, between its floor and its ceiling —
+// the design's 57/43 split, clamped.
+func TestTheSideColumnIsTwoFifths(t *testing.T) {
+	for _, c := range []struct{ w, want int }{
+		{120, 48}, {150, 60}, {400, 60}, {60, 28},
+	} {
+		if got := railGeometry(c.w).railWidth(); got != c.want {
+			t.Errorf("at %d columns the column is %d wide, want %d", c.w, got, c.want)
 		}
 	}
 }
@@ -80,26 +80,16 @@ func TestAnExplicitChoiceWinsAtAnyWidthBothWays(t *testing.T) {
 	}
 }
 
-// Its width is the design's clamp, in cells.
-func TestTheSidebarKeepsItsFloorAndItsCeiling(t *testing.T) {
-	if got := railGeometry(100).railWidth(); got != 20 {
-		t.Errorf("a fifth of 100 is 20, floor is 20; got %d", got)
-	}
-	if got := railGeometry(400).railWidth(); got != 30 {
-		t.Errorf("the ceiling did not hold: %d", got)
-	}
-}
-
-// The stream pays for both columns, counted once, in the function the layout
-// and the renderer both read.
+// The stream pays for the column exactly once, in the function the layout and
+// the renderer both read. Two places computing it is the defect; where it shows
+// up is only the symptom.
 func TestTheStreamPaysForEveryColumnExactlyOnce(t *testing.T) {
 	g := railGeometry(140)
-	full := g.StreamWidth(true, true)
-	if want := 140 - g.railWidth() - 1 - g.panelWidth() - 1; full != want {
-		t.Errorf("got %d, want %d", full, want)
+	if got, want := g.StreamWidth(true), 140-g.railWidth()-1; got != want {
+		t.Errorf("with the column: got %d, want %d", got, want)
 	}
-	if railOnly := g.StreamWidth(true, false); railOnly != 140-g.railWidth()-1 {
-		t.Errorf("the sidebar alone cost %d", 140-railOnly)
+	if got := g.StreamWidth(false); got != 140 {
+		t.Errorf("without it the stream is not the whole terminal: %d", got)
 	}
 }
 
@@ -389,6 +379,7 @@ func TestAsciiModeDrawsNothingButAscii(t *testing.T) {
 				ApprovalID: "a1", Tool: "bash", Command: "rm -rf /tmp/x",
 				BoundaryCrossed: "the workspace", Reason: "it writes outside", Rule: "deny:rm",
 			}
+			m.Entries = append(m.Entries, Entry{Kind: KindApproval, Approval: m.Pending})
 		}
 		g := DefaultGeometry(118, 24)
 		g.Palette = Palette{}
@@ -465,5 +456,69 @@ func TestTheConversationListReadsNoClock(t *testing.T) {
 		if got := strings.Join(renderSessionList(m, g), "\n"); got != first {
 			t.Fatalf("draw %d differs; the list reads something outside its arguments", i)
 		}
+	}
+}
+
+// The side column holds two panes, and neither repeats the stream.
+//
+// That is the whole difference between it and the file list it replaces. The
+// list said `+188`; this says what KIND of change it was, how much room is
+// left, how much of what was asked the person allowed, and what the model has
+// been doing by the clock — none of which is anywhere else on the screen.
+func TestTheSideColumnSaysWhatIsNowhereElse(t *testing.T) {
+	m := railModel(
+		Entry{Kind: KindTool, Tool: "edit", Target: "internal/tui/render.go", Added: 42, Removed: 6},
+		Entry{Kind: KindTool, Tool: "write", Target: "internal/tui/side.go", Added: 188},
+	)
+	m.DiffAdded, m.DiffRemoved = 230, 6
+	m.InputTokens, m.Window, m.ContextPct = 18200, 200000, 9
+	m.Asked, m.Allowed = 7, 6
+
+	g := railGeometry(150)
+	g.RailMode = RailShown
+	out := strings.Join(renderSide(m, g, 24), "\n")
+
+	for _, want := range []string{
+		"DIFF", "render.go", "+42", "SESSION", "18.2k", "200.0k", "6 / 7", "RECENT",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q is missing from the column:\n%s", want, out)
+		}
+	}
+	// Every row fits, and the column is exactly the height it was given.
+	rows := renderSide(m, g, 24)
+	if len(rows) != 24 {
+		t.Errorf("the column drew %d rows for 24", len(rows))
+	}
+	for i, l := range rows {
+		if w := visibleWidth(l); w > g.railWidth() {
+			t.Errorf("row %d is %d cells in a %d column: %q", i, w, g.railWidth(), l)
+		}
+	}
+}
+
+// The bars are scaled to the turn's largest change, and the pane says so.
+//
+// The first version used each change as its own denominator, so every file with
+// no removals drew a full-width bar: a row of identical bars, each saying "100%
+// of what I did to this file, I did to this file". The design's denominator is
+// the file's length, which a tool never reports.
+func TestTheBarsAreScaledToTheLargestChangeAndSaySo(t *testing.T) {
+	g := railGeometry(150)
+	gl := glyphs(g.Unicode)
+	p := Palette{}
+
+	big := bar(200, 0, 200, gl, p, 20)
+	small := bar(20, 0, 200, gl, p, 20)
+	if strings.Count(big, gl.barFull) <= strings.Count(small, gl.barFull) {
+		t.Errorf("a ten-times-larger change did not draw a longer bar: %q vs %q", big, small)
+	}
+	if !strings.Contains(small, gl.barTrack) {
+		t.Error("a small change fills the whole bar; the scale is not being applied")
+	}
+
+	m := railModel(Entry{Kind: KindTool, Tool: "edit", Target: "a.go", Added: 200})
+	if out := strings.Join(renderDiffPane(m, g, g.railWidth(), 10), "\n"); !strings.Contains(out, "200") {
+		t.Errorf("the pane does not say what the bars are scaled to:\n%s", out)
 	}
 }

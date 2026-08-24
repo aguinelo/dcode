@@ -428,6 +428,15 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
+	// The transcript owns the keyboard while NAV is open.
+	//
+	// Below copy mode and the session list because those are narrower: one is
+	// mid-selection and the other is mid-choice, and a mode that let a broader
+	// one steal a key from it would be a mode you leave by accident.
+	if p.model.Navigating {
+		return p.onNavKey(k)
+	}
+
 	// The rail owns the keyboard while it is open, and it sits HERE — above the
 	// completion menu — for the reason the copy-mode changelog records: a block
 	// placed inside that guard only ever runs while the menu is open, and the
@@ -612,18 +621,6 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return p, nil
 
-	case "ctrl+p":
-		// The panel toggle is a control key, not a letter. As a bare `p` it ate
-		// the first character of every message starting with one — "primeiro",
-		// "please", "por favor" — which is the exact failure the rest of this
-		// switch is written to avoid.
-		if p.geo.ShowPanel(len(p.model.Plan) > 0) {
-			p.geo.PanelMode = PanelHidden
-		} else {
-			p.geo.PanelMode = PanelShown
-		}
-		return p, nil
-
 	case "shift+up", "ctrl+up":
 		p.model = p.model.ScrollBy(-1, p.geo)
 		return p, nil
@@ -645,11 +642,17 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			p.model.InputCursor = at
 			return p, nil
 		}
-		if p.model.Input == "" && len(p.model.History) > 0 && p.model.Cursor < 0 {
+		if p.model.Input == "" && len(p.model.History) > 0 {
 			p.model = p.model.HistoryPrev()
 			return p, nil
 		}
-		return p.moveCursor(-1)
+		// At the border, SCROLL. It used to walk into the transcript, which is
+		// how a session with no history yet put the cursor in the stream after
+		// one keypress and with nothing on screen saying so — half the reason a
+		// letter bound to a mode could eat a keystroke. Stepping into the
+		// transcript is `esc`, deliberately.
+		p.model = p.model.ScrollBy(-1, p.geo)
+		return p, nil
 	case "down":
 		if at := LineDown(p.model.Input, p.model.InputCursor); at >= 0 {
 			p.model.InputCursor = at
@@ -659,7 +662,8 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			p.model = p.model.HistoryNext()
 			return p, nil
 		}
-		return p.moveCursor(1)
+		p.model = p.model.ScrollBy(1, p.geo)
+		return p, nil
 
 	// ---------- line editing ----------
 	case "left":
@@ -725,15 +729,21 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 
 	case "esc":
-		// Closes the expansion first, then the selection. Escape means "back
-		// out of what I opened", and the outermost thing opened is the last
-		// thing it should abandon.
-		if p.model.Cursor >= 0 && p.model.Cursor < len(p.model.Entries) &&
-			p.model.Entries[p.model.Cursor].Expanded {
-			p.model = p.model.ToggleAt(p.model.Cursor)
+		// From an empty line, escape steps INTO the transcript.
+		//
+		// It is the one key with a real convention for "stop typing, start
+		// navigating", it is not a letter, and it reads as the same thing this
+		// product already means by it: back out of what you are in. Backing out
+		// of an empty input line is stepping into what is above it.
+		//
+		// With something typed it does nothing, as before: abandoning a line
+		// somebody is halfway through writing is not what escape is for here.
+		if p.model.Input == "" && len(p.model.Entries) > 0 {
+			p.model.Navigating = true
+			p.model.Cursor = len(p.model.Entries) - 1
+			p.model = p.model.EnsureCursorVisible(p.geo)
 			return p, nil
 		}
-		p.model.Cursor = -1
 		return p, nil
 
 	case "tab":
@@ -1225,4 +1235,60 @@ func (p *program) undo() tea.Cmd {
 				strings.Join(out.Refused, "\n  ")))
 		}
 	}
+}
+
+// onNavKey is the transcript's keyboard while NAV is open.
+//
+// Every key it does not name is SWALLOWED. That is what makes a letter safe
+// here and is the same rule copy mode carries: a mode that lets unknown keys
+// through is a mode people leave by accident, and the ones that reach the input
+// line arrive as text nobody meant to type.
+func (p *program) onNavKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch k.String() {
+	case "j", "down":
+		return p.moveCursor(1)
+	case "k", "up":
+		return p.moveCursor(-1)
+
+	case "enter", "tab":
+		// Open what is under the cursor. The design calls it `↵ open`, and in
+		// this product opening is expanding: the detail a call carries. Tab too,
+		// because that is what expanded an entry before this mode existed and
+		// the muscle memory is worth more than the tidiness of one key.
+		if p.model.Cursor >= 0 && p.model.Cursor < len(p.model.Entries) {
+			p.model = p.model.ToggleAt(p.model.Cursor)
+		}
+		return p, nil
+
+	case "t":
+		// The theme, cycled. A letter, and legal precisely because this mode
+		// owns the keyboard — outside it, `t` is the first character of "tenta",
+		// "test", "the".
+		p.geo.Palette.Theme = NextTheme(p.geo.Palette.Theme)
+		return p, nil
+
+	case "/":
+		// Leave and start a command in one keystroke, which is what the design
+		// means by `/ prompt`. Anything else would make the commonest exit from
+		// this mode two keys.
+		p.model.Navigating, p.model.Cursor = false, -1
+		p.model = p.model.Insert("/").Refresh(p.opts.Commands)
+		return p, nil
+
+	case "?":
+		p.model.Navigating, p.model.Cursor = false, -1
+		return p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "help"})
+
+	case "esc", "q", "ctrl+c":
+		// Layered, the way escape is everywhere else here: the expansion first,
+		// then the mode.
+		if k.String() == "esc" && p.model.Cursor >= 0 && p.model.Cursor < len(p.model.Entries) &&
+			p.model.Entries[p.model.Cursor].Expanded {
+			p.model = p.model.ToggleAt(p.model.Cursor)
+			return p, nil
+		}
+		p.model.Navigating, p.model.Cursor = false, -1
+		return p, nil
+	}
+	return p, nil
 }

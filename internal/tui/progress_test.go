@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -76,44 +77,48 @@ func TestTheTurnSectionSaysNothingBeforeTheDaemonDoes(t *testing.T) {
 	m := NewModel("s", "/w", "m", "workspace-write", En)
 	g := DefaultGeometry(140, 24)
 	g.Palette = Palette{}
-	if out := strings.Join(renderPanel(m, g), "\n"); strings.Contains(out, "round") {
+	if out := RenderStatusBar(m, g); strings.Contains(out, "round") {
 		t.Errorf("a round count was drawn with nothing reported:\n%s", out)
 	}
 }
 
-// Most turns have no plan, and the ceiling was hiding in a panel that only
-// opened when something else was already there.
-func TestTheTurnsNumbersOpenThePanelOnceTheCeilingIsClose(t *testing.T) {
+// The ceiling reaches the bar once it is close, and not before.
+//
+// It used to be a section of the plan panel, which only opened when something
+// else was already there — so most turns, which have no plan, had nowhere for
+// it to appear. The panel is gone with the plan; the bar is where it lives now,
+// on the same terms.
+func TestTheCeilingReachesTheBarOnceItIsClose(t *testing.T) {
 	m := NewModel("s", "/w", "m", "workspace-write", En)
-	if m.panelHasContent() {
-		t.Error("the panel opened with nothing in it")
+	if m.turnSectionWorthDrawing() {
+		t.Error("the ceiling was drawn with nothing in it")
 	}
 	// This used to open it, and that was the defect: on a real session the
 	// panel spent thirty-three columns saying `iteração 0/2000`. Zero of two
 	// thousand warns of nothing.
 	m = m.Apply(progressEvent(1, protocol.Progress{
 		TurnID: "t1", Kind: protocol.ProgressRounds, Done: 1, Total: 100}))
-	if m.panelHasContent() {
-		t.Error("one round of a hundred opened the panel")
+	if m.turnSectionWorthDrawing() {
+		t.Error("one round of a hundred reached the bar")
 	}
 	m = m.Apply(progressEvent(2, protocol.Progress{
 		TurnID: "t1", Kind: protocol.ProgressRounds, Done: 50, Total: 100}))
-	if !m.panelHasContent() {
-		t.Error("half the ceiling did not open the panel")
+	if !m.turnSectionWorthDrawing() {
+		t.Error("half the ceiling did not reach the bar")
 	}
 }
 
 // And a limit being felt right now opens it whatever the round count says:
 // every slot in flight is not a ceiling approaching, it is one reached.
-func TestEverySlotInFlightOpensThePanel(t *testing.T) {
+func TestEverySlotInFlightReachesTheBar(t *testing.T) {
 	m := NewModel("s", "/w", "m", "workspace-write", En)
 	m.InFlight, m.MaxInFlight = 3, 4
-	if m.panelHasContent() {
-		t.Error("three of four slots opened the panel")
+	if m.turnSectionWorthDrawing() {
+		t.Error("three of four slots reached the bar")
 	}
 	m.InFlight = 4
-	if !m.panelHasContent() {
-		t.Error("every slot in flight did not open the panel")
+	if !m.turnSectionWorthDrawing() {
+		t.Error("every slot in flight did not reach the bar")
 	}
 }
 
@@ -124,15 +129,21 @@ func TestTheRoundCountWarnsAsItNearsTheCeiling(t *testing.T) {
 	g := DefaultGeometry(140, 24)
 	g.Palette = Palette{Enabled: true}
 
+	// Both halfway or past it, so both are drawn at all: what is compared is
+	// how they are drawn, and a count that is not drawn compares equal for the
+	// wrong reason.
 	early := NewModel("s", "/w", "m", "workspace-write", En)
-	early.Rounds, early.MaxRounds = 10, 100
+	early.Rounds, early.MaxRounds = 50, 100
 	late := early
 	late.Rounds = 80
 
-	a := strings.Join(turnSection(early, g, 30), "")
-	b := strings.Join(turnSection(late, g, 30), "")
-	if a == b {
-		t.Error("the count looks the same at 10 of 100 as at 80 of 100")
+	a, okA := ceilingSegment(early, g)
+	b, okB := ceilingSegment(late, g)
+	if !okA || !okB {
+		t.Fatalf("the ceiling is not drawn at 50 (%v) or at 80 (%v)", okA, okB)
+	}
+	if a.text == b.text {
+		t.Error("the count looks the same at 50 of 100 as at 80 of 100")
 	}
 }
 
@@ -148,7 +159,8 @@ func TestTheTurnSectionSpeaksTheInterfaceLanguage(t *testing.T) {
 		m.Rounds, m.MaxRounds = 60, 100
 		g := DefaultGeometry(140, 24)
 		g.Palette = Palette{}
-		if out := strings.Join(turnSection(m, g, 30), "\n"); !strings.Contains(out, c.want) {
+		seg, _ := ceilingSegment(m, g)
+		if out := seg.text; !strings.Contains(out, c.want) {
 			t.Errorf("%s: %q missing from:\n%s", c.lang, c.want, out)
 		}
 	}
@@ -296,67 +308,89 @@ func TestAProviderThatSaysNothingStillDrawsTheCall(t *testing.T) {
 	}
 }
 
-// The panel appears at its floor and grows, rather than arriving at a quarter
-// of the screen all at once.
+// The plan is a block in the stream, at the place it first appeared, always
+// showing the current one.
 //
-// A quarter at the threshold meant it appeared owing twenty-five columns the
-// instant it was allowed to, so crossing from 99 to 100 columns cost the stream
-// twenty-five of them in one step. Paid out of the surplus — the columns beyond
-// the width at which it was allowed to appear — the step is nine.
-func TestThePanelGrowsFromItsFloor(t *testing.T) {
-	step := func(w int) int {
-		g := DefaultGeometry(w, 30)
-		if !g.ShowPanel(true) {
-			return 0
-		}
-		return g.panelWidth() + 1
-	}
+// It used to be a column of its own. Putting it where the model made it is
+// worth more than a permanent column: a plan is read when it changes and
+// ignored the rest of the time, and a resident panel spends width on the rest
+// of the time.
+//
+// One block, updated in place. Appending would stack every revision of the same
+// plan down the screen, and the plan would read as four plans rather than as
+// one being worked through.
+func TestThePlanIsABlockInTheStream(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1", Text: "do it"}))
 
-	below, at := step(99), step(100)
-	if below != 0 {
-		t.Errorf("the panel appeared at 99 columns, costing %d", below)
-	}
-	if at > 18 {
-		t.Errorf("the panel arrived owing %d columns; it should open at its floor", at)
-	}
-
-	// And it never shrinks as the terminal grows, nor passes its ceiling.
-	last := 0
-	for w := 100; w <= 240; w++ {
-		got := step(w)
-		if got < last {
-			t.Fatalf("at %d columns the panel shrank from %d to %d", w, last, got)
-		}
-		if got > DefaultGeometry(w, 30).PanelMaxWidth+1 {
-			t.Fatalf("at %d columns the panel is %d, past its ceiling", w, got)
-		}
-		last = got
-	}
-
-	// The stream loses width to the panel exactly once, and by no more than
-	// the panel's floor.
-	//
-	// That one step is a trade and not a defect: the reader gives up columns of
-	// text and gets the plan. What was a defect was the size of it — two
-	// thresholds at the same hundred, one of them buying a column that repeated
-	// what the stream had just said, together costing 46 columns in a single
-	// terminal column's difference. Bounding the step is the claim; removing it
-	// entirely would mean either never showing the panel or always showing it.
-	prev, steps := 0, 0
-	for w := 60; w <= 240; w++ {
-		g := DefaultGeometry(w, 30)
-		got := g.StreamWidth(g.ShowRail(true), g.ShowPanel(true))
-		if got < prev {
-			steps++
-			if lost := prev - got; lost > g.PanelMinWidth+1 {
-				t.Errorf("at %d columns the stream lost %d, more than the panel's floor",
-					w, lost)
+	plan := func(active int) protocol.PlanUpdated {
+		var items []protocol.PlanItem
+		for i := 1; i <= 3; i++ {
+			st := protocol.PlanPending
+			if i < active {
+				st = protocol.PlanDone
+			} else if i == active {
+				st = protocol.PlanActive
 			}
+			items = append(items, protocol.PlanItem{ID: i, Text: fmt.Sprintf("step %d", i), Status: st})
 		}
-		prev = got
+		return protocol.PlanUpdated{Items: items}
 	}
-	if steps > 1 {
-		t.Errorf("the stream loses width %d times as the terminal grows", steps)
+
+	m = m.Apply(ev(t, 2, protocol.EventPlanUpdated, plan(1)))
+	at := -1
+	for i, e := range m.Entries {
+		if e.Kind == KindPlan {
+			at = i
+		}
+	}
+	if at < 0 {
+		t.Fatal("the plan did not reach the stream")
+	}
+
+	// Three more revisions, and a tool call between them so the position is
+	// not merely the last thing appended.
+	m = m.Apply(ev(t, 3, protocol.EventToolRequested, protocol.ToolRequested{
+		ToolCallID: "c1", Name: "read", Input: json.RawMessage(`{"path":"a.go"}`)}))
+	for i, active := range []int{2, 3} {
+		m = m.Apply(ev(t, uint64(4+i), protocol.EventPlanUpdated, plan(active)))
+	}
+
+	blocks := 0
+	for i, e := range m.Entries {
+		if e.Kind != KindPlan {
+			continue
+		}
+		blocks++
+		if i != at {
+			t.Errorf("the plan block moved from %d to %d", at, i)
+		}
+		if len(e.Plan) != 3 || e.Plan[2].Status != protocol.PlanActive {
+			t.Errorf("the block does not carry the current plan: %+v", e.Plan)
+		}
+	}
+	if blocks != 1 {
+		t.Errorf("%d plan blocks for one plan", blocks)
+	}
+
+	// And the same log replayed produces the same single block in the same
+	// place, which is what keeps the reducer's guarantee true here too.
+	g := DefaultGeometry(100, 30)
+	g.Palette = Palette{}
+	first := Render(m, g)
+	replay := NewModel("s", "/w", "m", "workspace-write", En)
+	for _, e := range []protocol.Event{
+		ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1", Text: "do it"}),
+		ev(t, 2, protocol.EventPlanUpdated, plan(1)),
+		ev(t, 3, protocol.EventToolRequested, protocol.ToolRequested{
+			ToolCallID: "c1", Name: "read", Input: json.RawMessage(`{"path":"a.go"}`)}),
+		ev(t, 4, protocol.EventPlanUpdated, plan(2)),
+		ev(t, 5, protocol.EventPlanUpdated, plan(3)),
+	} {
+		replay = replay.Apply(e)
+	}
+	if got := Render(replay, g); got != first {
+		t.Errorf("replaying the same log drew a different screen")
 	}
 }
 

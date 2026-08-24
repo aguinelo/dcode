@@ -80,10 +80,21 @@ func TestAnUnknownStyleLeavesTheTextAlone(t *testing.T) {
 	if got := p.Apply(StyleError, ""); got != "" {
 		t.Errorf("with no text: %q", got)
 	}
-	// A style it does know wraps and closes.
+	// A style it does know wraps, and closes exactly what it opened.
+	//
+	// A plain reset would undo the GROUND as well — the background is painted
+	// once per row — so a styled run would punch a hole in it. Closing what was
+	// opened leaves the row's ground alone, and costs four bytes instead of a
+	// second background escape per run.
 	got := p.Apply(StyleError, "hello")
-	if !strings.HasPrefix(got, "\x1b[") || !strings.HasSuffix(got, "\x1b[0m") {
+	if !strings.HasPrefix(got, "\x1b[") {
 		t.Errorf("a known style did not wrap: %q", got)
+	}
+	if strings.Contains(got, "\x1b[0m") {
+		t.Errorf("a styled run reset everything and took the ground with it: %q", got)
+	}
+	if !strings.HasSuffix(got, "\x1b[39m") {
+		t.Errorf("a coloured run did not put the foreground back: %q", got)
 	}
 }
 

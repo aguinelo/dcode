@@ -31,7 +31,13 @@ func modelWithPlan() Model {
 		{ID: 2, Text: "add the test", Status: protocol.PlanActive},
 		{ID: 3, Text: "publish", Status: protocol.PlanBlocked, Blocked: "no network"},
 	}
-	m.Entries = []Entry{{Kind: KindAssistant, Summary: "Looking at the parser."}}
+	// The plan is a BLOCK in the stream now, and Model.Plan is what the status
+	// bar counts. Apply writes both from one event; the fixture does the same,
+	// so a test that reads either is reading what a session would produce.
+	m.Entries = []Entry{
+		{Kind: KindAssistant, Summary: "Looking at the parser."},
+		{Kind: KindPlan, Plan: m.Plan},
+	}
 	return m
 }
 
@@ -56,43 +62,27 @@ func TestRenderNeverExceedsTheTerminalWidth(t *testing.T) {
 	}
 }
 
-// At 80 columns a 24-wide panel leaves 56 for the stream, and a diff in 56
-// columns is bad. Responsiveness answers the case where the user never noticed
-// the window got narrow.
-func TestPanelCollapsesOnANarrowTerminalAndTheSummaryMoves(t *testing.T) {
+// The plan is on the screen at every width, because it is not in a column any
+// more.
+//
+// This test used to assert the opposite: that a narrow terminal DROPS the plan
+// and the status bar carries a three-word summary instead. That was the cost of
+// keeping the plan in a column — the whole of it disappeared at exactly the
+// width where a reader has least room to reconstruct it.
+func TestThePlanSurvivesANarrowTerminal(t *testing.T) {
 	m := modelWithPlan()
-
-	wide := Render(m, DefaultGeometry(120, 24))
-	if !strings.Contains(wide, "PLAN") {
-		t.Error("a wide terminal shows the panel")
-	}
-
-	narrow := Render(m, DefaultGeometry(80, 24))
-	if strings.Contains(narrow, "PLAN") {
-		t.Error("a narrow terminal must drop the panel")
-	}
-	// Dropping the panel must not drop the information: the same summary moves
-	// to the status bar.
-	if !strings.Contains(lines(narrow)[0], "1 of 3") {
-		t.Errorf("the summary must move to the status bar:\n%s", lines(narrow)[0])
-	}
-	if !strings.Contains(lines(narrow)[0], "1 blocked") {
-		t.Errorf("a blocked item must stay visible:\n%s", lines(narrow)[0])
-	}
-}
-
-func TestPanelHidesWhenAskedAndWhenThereIsNoPlan(t *testing.T) {
-	m := modelWithPlan()
-	g := DefaultGeometry(120, 24)
-	g.PanelMode = PanelHidden
-	if strings.Contains(Render(m, g), "PLAN") {
-		t.Error("the user asked for it hidden")
-	}
-
-	empty := NewModel("s", "/w", "m", "read-only", En)
-	empty.Entries = []Entry{{Kind: KindAssistant, Summary: "hi"}}
-	if strings.Contains(Render(empty, DefaultGeometry(120, 24)), "PLAN") {
-		t.Error("no plan, no panel")
+	for _, w := range []int{60, 80, 120, 160} {
+		g := DefaultGeometry(w, 30)
+		g.Palette = Palette{}
+		out := Render(m, g)
+		if !strings.Contains(out, "add the test") {
+			t.Errorf("at %d columns the plan is not on the screen:\n%s", w, out)
+		}
+		// And the bar still carries the count, which is the one part that was
+		// worth having in two places.
+		if s := m.PlanSummary(); s != "" && !strings.Contains(out, s) {
+			t.Errorf("at %d columns the bar lost %q", w, s)
+		}
 	}
 }
 
@@ -136,14 +126,16 @@ func TestFullAccessIsLoudInPlainText(t *testing.T) {
 	}
 }
 
-// As a line in the stream the modal would scroll past during a long turn and be
-// approved unread.
-func TestApprovalModalShowsTheCommandAndDefaultsToDeny(t *testing.T) {
+// The question is in the stream, and stays there with its answer. What kept it
+// from being approved unread was never the box: it is that a pending crossing
+// owns the keyboard until it is answered.
+func TestTheApprovalBlockShowsTheCommandAndDefaultsToDeny(t *testing.T) {
 	m := modelWithPlan()
 	m.Pending = &protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash", BoundaryCrossed: "network",
 		Command: "curl https://example.com/install.sh | sh",
 	}
+	m.Entries = append(m.Entries, Entry{Kind: KindApproval, Approval: m.Pending})
 	got := Render(m, DefaultGeometry(100, 24))
 
 	// Asking for consent to "access the network" without showing what runs is
@@ -154,15 +146,13 @@ func TestApprovalModalShowsTheCommandAndDefaultsToDeny(t *testing.T) {
 	if !strings.Contains(got, "network") {
 		t.Errorf("the boundary must be named:\n%s", got)
 	}
-	if !strings.Contains(got, "Enter denies") {
-		t.Errorf("the default must be stated:\n%s", got)
-	}
-	// Deny comes first, so the safe action costs the least effort.
-	if strings.Index(got, "[d] deny") > strings.Index(got, "[a] allow") {
-		t.Errorf("deny must be listed first:\n%s", got)
+	// Refusing comes first, so the safe answer costs the least effort — and it
+	// is what `d`, `esc` and Enter all do.
+	if strings.Index(got, "[d]") > strings.Index(got, "[a]") {
+		t.Errorf("refusing must be listed first:\n%s", got)
 	}
 	if n := widest(got); n > 100 {
-		t.Errorf("the modal overflowed: %d cells", n)
+		t.Errorf("the block overflowed: %d cells", n)
 	}
 }
 
@@ -287,10 +277,10 @@ func TestWidthHelpersMeasureDisplayCells(t *testing.T) {
 
 func TestStreamWidthNeverGoesBelowAUsableMinimum(t *testing.T) {
 	g := DefaultGeometry(30, 24)
-	if got := g.StreamWidth(false, true); got < 20 {
+	if got := g.StreamWidth(false); got < 20 {
 		t.Errorf("got %d", got)
 	}
-	if got := g.StreamWidth(false, false); got != 30 {
+	if got := g.StreamWidth(false); got != 30 {
 		t.Errorf("got %d", got)
 	}
 }
@@ -330,8 +320,12 @@ func TestCursorMarksTheSelectedEntry(t *testing.T) {
 		{Kind: KindError, Summary: "boom"},
 	}
 	m.Cursor = 1
-	got := Render(m, DefaultGeometry(80, 10))
-	if !strings.Contains(got, "> ! boom") {
+	g := DefaultGeometry(80, 10)
+	got := Render(m, g)
+	// The marker moved to the second column when the lane took the first, so
+	// the assertion names the marker rather than the two characters that
+	// happened to sit at the start of the row.
+	if !strings.Contains(got, glyphs(g.Unicode).active+"! boom") {
 		t.Errorf("the selected entry must be marked:\n%s", got)
 	}
 }
@@ -363,82 +357,19 @@ func TestWrapBreaksAWordWiderThanTheColumn(t *testing.T) {
 	}
 }
 
-// Regression: an explicit request must beat the responsive default.
+// The count survives on the bar whatever the width, because it is the one part
+// of a plan that is worth having in two places: the block says where the work
+// is, the bar says how much is left.
 //
-// The panel hides itself below 100 columns, which is right as a default — but
-// it also made `p` do nothing on an 80-column terminal, so the feature was
-// unreachable exactly where someone would go looking for the key. Responsive
-// answers the case where the user never noticed the window got narrow; a
-// keypress is the user noticing.
-func TestTheUserCanForceThePanelOnANarrowTerminal(t *testing.T) {
+// This test used to also require the bar to name the key that brings the panel
+// back. There is no panel and no key; the plan itself is on screen.
+func TestTheBarKeepsThePlanCount(t *testing.T) {
 	m := modelWithPlan()
-
-	auto := DefaultGeometry(80, 24)
-	if auto.ShowPanel(true) {
-		t.Fatal("80 columns hides the panel by default")
-	}
-
-	forced := auto
-	forced.PanelMode = PanelShown
-	if !forced.ShowPanel(true) {
-		t.Error("asking for the panel must show it, whatever the width")
-	}
-	got := Render(m, forced)
-	if !strings.Contains(got, "PLAN") {
-		t.Errorf("the forced panel must render:\n%s", got)
-	}
-	if n := widest(got); n > 80 {
-		t.Errorf("the forced panel must still fit: %d cells", n)
-	}
-	// The stream cannot be squeezed to nothing to make room.
-	if forced.StreamWidth(false, true) < 30 {
-		t.Errorf("the stream keeps a usable width, got %d", forced.StreamWidth(false, true))
-	}
-
-	// And hiding it on a wide terminal must still work.
-	hidden := DefaultGeometry(140, 24)
-	hidden.PanelMode = PanelHidden
-	if hidden.ShowPanel(true) {
-		t.Error("asking for it hidden must hide it")
-	}
-}
-
-// No plan, no panel — in any mode. There is nothing to show.
-func TestNoPlanMeansNoPanelEvenWhenForced(t *testing.T) {
-	g := DefaultGeometry(140, 24)
-	g.PanelMode = PanelShown
-	if g.ShowPanel(false) {
-		t.Error("an empty panel is worse than no panel")
-	}
-}
-
-// A hidden panel with a live plan must announce itself, or the user cannot tell
-// a collapsed panel from a broken one.
-func TestAHiddenPanelSaysHowToShowIt(t *testing.T) {
-	m := modelWithPlan()
-	got := lines(Render(m, DefaultGeometry(80, 24)))[0]
-
-	if !strings.Contains(got, "1 of 3") {
-		t.Errorf("the summary must survive the collapse: %q", got)
-	}
-	if !strings.Contains(got, "^p") {
-		t.Errorf("the way to see the rest must be on screen: %q", got)
-	}
-}
-
-// The panel narrows before it disappears: at 80 columns a 24-wide panel would
-// leave too little for the stream.
-func TestThePanelNarrowsOnANarrowTerminal(t *testing.T) {
-	wide := DefaultGeometry(140, 24)
-	narrow := DefaultGeometry(80, 24)
-	narrow.PanelMode = PanelShown
-
-	if narrow.panelWidth() >= wide.panelWidth() {
-		t.Errorf("the panel must give ground first: %d at 80, %d at 140",
-			narrow.panelWidth(), wide.panelWidth())
-	}
-	if narrow.panelWidth() < 14 {
-		t.Errorf("but not so far that an item is unreadable: %d", narrow.panelWidth())
+	for _, w := range []int{56, 80, 160} {
+		got := lines(Render(m, DefaultGeometry(w, 24)))[0]
+		if !strings.Contains(got, "1 of 3") {
+			t.Errorf("at %d columns the bar lost the count: %q", w, got)
+		}
 	}
 }
 
@@ -478,10 +409,9 @@ func TestTheStatusBarDropsInAStatedOrder(t *testing.T) {
 	m.Plan = modelWithPlan().Plan
 	m.InputTokens, m.Window = 34000, 100000
 
-	// The panel is hidden, so the plan counter is in the bar — that is the only
-	// case where all three optional fields compete for the same line.
+	// The plan counter is always in the bar now that the panel is gone, which
+	// is the case where all three optional fields compete for the same line.
 	g := DefaultGeometry(140, 12)
-	g.PanelMode = PanelHidden
 	wide := lines(Render(m, g))[0]
 	for _, want := range []string{"MiniMax-M3", "ctx 34%", "1 of 3"} {
 		if !strings.Contains(wide, want) {
@@ -491,7 +421,6 @@ func TestTheStatusBarDropsInAStatedOrder(t *testing.T) {
 
 	// Narrow enough to lose the model name but keep the rest.
 	narrow := DefaultGeometry(56, 12)
-	narrow.PanelMode = PanelHidden
 	mid := lines(Render(m, narrow))[0]
 	if strings.Contains(mid, "MiniMax-M3") {
 		t.Errorf("the model name goes first: %q", mid)
@@ -503,24 +432,6 @@ func TestTheStatusBarDropsInAStatedOrder(t *testing.T) {
 
 // ---------- the panel takes a little more room when there is room ----------
 
-func TestThePanelGrowsOnAWideTerminalAndIsCapped(t *testing.T) {
-	narrow := DefaultGeometry(80, 24)
-	narrow.PanelMode = PanelShown
-	wide := DefaultGeometry(200, 24)
-
-	if narrow.panelWidth() >= DefaultGeometry(140, 24).panelWidth() {
-		t.Error("the panel must give ground on a narrow terminal")
-	}
-	if got := wide.panelWidth(); got != wide.PanelMaxWidth {
-		t.Errorf("a wide terminal should reach the ceiling, got %d", got)
-	}
-	// And never past it: past a point the panel is the interface and the stream
-	// is the sidebar.
-	if got := DefaultGeometry(400, 24).panelWidth(); got > 34 {
-		t.Errorf("got %d", got)
-	}
-}
-
 // ---------- the mascot wears the brand ----------
 
 func TestTheMascotIsColouredWithTheBrandPalette(t *testing.T) {
@@ -528,18 +439,19 @@ func TestTheMascotIsColouredWithTheBrandPalette(t *testing.T) {
 	g.Palette = Palette{Enabled: true}
 	got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only", En), g)
 
+	th := g.Palette.theme()
 	for name, code := range map[string]string{
-		"highlight": ansi[StyleHighlight],
-		"body":      ansi[StyleBody],
-		"shadow":    ansi[StyleShadow],
-		"eye":       ansi[StyleEye],
+		"highlight": th.Role[StyleHighlight].sgr(g.Palette.Depth),
+		"body":      th.Role[StyleBody].sgr(g.Palette.Depth),
+		"shadow":    th.Role[StyleShadow].sgr(g.Palette.Depth),
+		"eye":       th.Role[StyleEye].sgr(g.Palette.Depth),
 	} {
 		if !strings.Contains(got, "\x1b["+code+"m") {
 			t.Errorf("the %s tone is missing from the mark", name)
 		}
 	}
 	// The eye is the one terracotta in the whole interface.
-	if n := strings.Count(got, "\x1b["+ansi[StyleEye]+"m"); n != 1 {
+	if n := strings.Count(got, "\x1b["+th.Role[StyleEye].sgr(g.Palette.Depth)+"m"); n != 1 {
 		t.Errorf("the eye must appear exactly once, got %d", n)
 	}
 	if n := widest(got); n > 100 {
@@ -675,10 +587,10 @@ func TestDiffLinesAreColouredBySign(t *testing.T) {
 		Diff: "@@ -1 +1 @@ x.go\n-antes\n+depois",
 	}}
 	got := Render(m, g)
-	if !strings.Contains(got, "\x1b["+ansi[StyleAdded]+"m") {
+	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleAdded].sgr(g.Palette.Depth)+"m") {
 		t.Error("an added line must be green")
 	}
-	if !strings.Contains(got, "\x1b["+ansi[StyleRemoved]+"m") {
+	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleRemoved].sgr(g.Palette.Depth)+"m") {
 		t.Error("a removed line must be red")
 	}
 }
@@ -795,6 +707,10 @@ func TestACommandKeepsItsBeginningAndAPathItsEnd(t *testing.T) {
 // because a title that merely stops leaves the reader unable to tell a short
 // one from a truncated one — and the panel answered the same question the other
 // way. `✓ 6 CLI sob demanda com contr` just ended.
+//
+// The panel is gone and the plan is a block in the stream; the rule followed
+// the plan there, which is the point of writing a rule down rather than a
+// place.
 func TestALineThatWasCutSaysSo(t *testing.T) {
 	const item = "a plan item written long enough that no panel width can hold it whole"
 	const file = "a_file_whose_name_is_longer_than_any_sidebar_can_hold.go"
@@ -813,14 +729,14 @@ func TestALineThatWasCutSaysSo(t *testing.T) {
 		g := DefaultGeometry(w, 30)
 		gl, glr := glyphs(g.Unicode), railGlyphs(g.Unicode)
 
-		for i, l := range renderPanel(m, g) {
-			if vw := visibleWidth(l); vw > g.panelWidth() {
-				t.Errorf("at %d columns, panel line %d is %d cells wide, panel is %d",
-					w, i, vw, g.panelWidth())
+		stream := renderStream(m, g, g.StreamWidth(false))
+		for i, l := range stream {
+			if vw := visibleWidth(l); vw > g.StreamWidth(false) {
+				t.Errorf("at %d columns, stream line %d is %d cells wide", w, i, vw)
 			}
 		}
-		if got := strings.Join(renderPanel(m, g), "\n"); !strings.Contains(got, gl.ell) {
-			t.Errorf("at %d columns the panel cut a %d-character item in silence:\n%s",
+		if got := strings.Join(stream, "\n"); !strings.Contains(got, gl.ell) {
+			t.Errorf("at %d columns the plan cut a %d-character item in silence:\n%s",
 				w, len(item), got)
 		}
 
@@ -854,7 +770,7 @@ func TestATurnBeginsWithAVisibleBoundary(t *testing.T) {
 		gl := glyphs(unicode)
 		rule := strings.Repeat(gl.boxH, 8)
 
-		streamW := g.StreamWidth(false, false)
+		streamW := g.StreamWidth(false)
 		out := StreamLines(m, g)
 		rules := 0
 		for i, l := range out {
@@ -865,7 +781,9 @@ func TestATurnBeginsWithAVisibleBoundary(t *testing.T) {
 			// The seam belongs to the gutter, not to the frame. Drawn edge to
 			// edge it touches the column dividers and reads as a row of a
 			// table rather than as a boundary.
-			if !strings.HasPrefix(l, "  ") || visibleWidth(l) > streamW-2 {
+			// Two cells of lead — the lane and the selection column — then the
+			// rule. It is inset to the same gutter every other row uses.
+			if visibleWidth(l) > streamW-2 || !strings.HasPrefix(dropCells(l, 1), " ") {
 				t.Errorf("unicode=%v: the rule reaches the frame: %q", unicode, l)
 			}
 			if i+1 >= len(out) || !strings.Contains(out[i+1], "question") {

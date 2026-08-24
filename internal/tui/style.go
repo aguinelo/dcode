@@ -37,6 +37,15 @@ const (
 	StyleMeta    // a fact qualifying another: a count, a duration, a summary
 	StyleHint    // a key somebody may press
 	StyleChrome  // a rule, a gutter, a frame: present, never read
+
+	// The lanes. Colours of their own rather than reuse: a lane is not a
+	// state, and borrowing StyleOK for the answer lane would make every
+	// answer read as a success.
+	StyleLaneYou
+	StyleLaneProcess
+	StyleLaneAnswer
+	// StyleTrack is the unfilled part of a bar.
+	StyleTrack
 	StyleAccent  // the product's own mark
 	StyleAdded   // a diff line that arrived
 	StyleRemoved // a diff line that left
@@ -65,44 +74,46 @@ const (
 // empty strings rather than a second implementation.
 type Palette struct {
 	Enabled bool
+	// Theme is the colours. The zero value is the neon theme, so a Palette
+	// asked to draw without being told which theme draws the product's own
+	// rather than nothing.
+	Theme Theme
+	// Depth is what the terminal can render. The zero value is truecolor,
+	// which is what a terminal that answered COLORTERM has.
+	Depth Depth
 }
 
-// ansi codes per role, foreground unless noted.
-var ansi = map[Style]string{
-	StyleDim:  "2",
-	StyleBold: "1",
+// Depth is how much colour the terminal can take.
+type Depth int
 
-	// StyleProse is absent on purpose: NORMAL is a weight, and the way to ask
-	// for it is to emit nothing.
-	//
-	// It used to be "2". The reasoning was that a dimmed sentence makes the eye
-	// land on the file name inside it — but the model's answer is most of what
-	// is on screen, so dimming it dimmed the screen, and the one thing the
-	// reader came for was the one thing faded. The contrast inside a sentence
-	// is bought with the TERM instead, which is one word rather than a
-	// paragraph.
-	StyleCode:    "38;5;179",
-	StyleHeading: "1",
-	StyleMeta:    "2",
-	StyleHint:    "2",
-	StyleChrome:  "2",
-	StyleAccent:  "38;5;179", // the amber of the mark
-	StyleAdded:   "32",
-	StyleRemoved: "31",
-	StyleError:   "31",
-	StyleWarn:    "33",
-	StyleOK:      "32",
-	StyleDanger:  "1;97;41", // white on red: the one thing that must not be missed
-	StyleCursor:  "7",       // reverse video, so it survives any theme
+const (
+	// DepthTrue is 24-bit. The zero value, because it is what the palette is
+	// authored in and what a terminal that says nothing about itself but has
+	// colour enabled almost always is today.
+	DepthTrue Depth = iota
+	// Depth256 is the xterm cube plus the grey ramp.
+	Depth256
+)
 
-	// Nearest 256-colour neighbours of #EFC066, #E0A030, #B87D1E and #A8452A.
-	StyleHighlight: "38;5;222",
-	StyleBody:      "38;5;179",
-	StyleShadow:    "38;5;136",
-	StyleEye:       "38;5;131",
+// theme returns the palette's theme, defaulting to the product's own.
+func (p Palette) theme() Theme {
+	if p.Theme.Role == nil {
+		return Neon()
+	}
+	return p.Theme
+}
 
-	// Amber ground, near-black text — the contrast the design pins at 8:1.
-	StyleOnAccent: "48;5;179;38;5;234",
+// Ground is the escape that paints the screen behind everything, empty when
+// colour is off or the theme has no ground of its own.
+func (p Palette) Ground() string {
+	if !p.Enabled {
+		return ""
+	}
+	t := p.theme()
+	if t.Ground.zero() {
+		return ""
+	}
+	return "\x1b[" + colour(t.Ground, p.Depth, true) + "m"
 }
 
 // Apply wraps text in a role.
@@ -114,11 +125,13 @@ func (p Palette) Apply(s Style, text string) string {
 	if !p.Enabled || s == StyleNone || text == "" {
 		return text
 	}
-	code, ok := ansi[s]
-	if !ok {
+	paint := p.theme().Role[s]
+	code := paint.sgr(p.Depth)
+	if code == "" {
 		return text
 	}
-	return "\x1b[" + code + "m" + text + "\x1b[0m"
+	// Closed with exactly what it opened, so the row's ground survives the run.
+	return "\x1b[" + code + "m" + text + "\x1b[" + paint.close() + "m"
 }
 
 // ContextStyle grades the context meter.
@@ -159,6 +172,28 @@ func DiffStyle(line string) Style {
 // explicit DCODE_COLOR wins over both: it is the user answering for their own
 // terminal, and this is exactly the case where they know better than the
 // heuristics.
+// ColorDepth decides how much colour the terminal can take.
+//
+// Truecolor unless the terminal says otherwise. COLORTERM is the only signal
+// anybody actually sets for it, and the fallback is the 256-colour cube rather
+// than sixteen: this palette is violet-grey text on a violet ground, and
+// sixteen colours cannot draw either. A terminal below 256 gets no colour at
+// all, which is a screen this product is tested to be readable on.
+func ColorDepth(env func(string) string) Depth {
+	switch strings.ToLower(env("COLORTERM")) {
+	case "truecolor", "24bit":
+		return DepthTrue
+	}
+	term := env("TERM")
+	if strings.Contains(term, "256") || strings.Contains(term, "direct") {
+		return Depth256
+	}
+	// A terminal that says nothing is almost always a modern one. The cost of
+	// being wrong is a slightly-off colour, and the cost of assuming the
+	// opposite is a product that never shows its own palette.
+	return DepthTrue
+}
+
 func ColorEnabled(env func(string) string) bool {
 	switch strings.ToLower(env("DCODE_COLOR")) {
 	case "always", "1", "true", "yes":

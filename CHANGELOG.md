@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 95 decision changelogs |
+| spec families | 13, with 106 decision changelogs |
 | behavioural contracts | 42 declared |
 | **contracts measured against a model** | **3** |
-| coverage | 94.5%, gate at 90% |
+| coverage | 94.0%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.4.0** |
+| published version | **0.5.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -53,7 +53,9 @@ is what that key means in the shell it was borrowed from; the panel opens at its
 floor and grows out of the surplus. Every question opens with a rule, so a
 screen of scrollback has a boundary in it. Delegation is one card with its
 children inside, and the child that did not answer is named there with its
-reason. A tool call appears the moment it begins arriving from the model.
+reason. A tool call appears the moment it begins arriving from the model, and a
+boundary crossing is asked in the stream, in its own lane, keeping its place
+with the answer once it has one.
 
 That shape came from a measurement rather than a preference. Replaying a real
 recorded session at four widths, the column and the panel took 61 of 132 columns
@@ -78,7 +80,7 @@ the letter back could.
 **What the guards could not see.** Eight of the defects fixed on 24 August had
 guards written for exactly them, and every guard was asking about a set it
 already knew. The box-drawing guard derived its forbidden glyphs from the two
-glyph tables, and the approval modal — drawn from literals, in English, the one
+glyph tables, and the approval screen — drawn from literals, in English, the one
 screen that asks whether a boundary may be crossed — was outside both, in two
 different ways, found twice in one day. The width guard split on newlines before
 measuring, so a row broken in two measured as two short rows. The blank-row
@@ -110,7 +112,38 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+_Nothing yet._
+
+## 0.5.0 — 24 August 2026
+
+### Changed
+
+- **The approval is in the stream, and stays there.** The modal is gone: the
+  question is drawn where it was asked, in a fourth lane, and once answered it
+  keeps its place with the answer in place of the keys. The box was read as
+  being what enforced RN-6, and it never was — what owns the keyboard while a
+  crossing is pending is the client refusing to hand the keystroke to the input,
+  which is unchanged. What the box did do was hide the work being judged and
+  then delete itself, taking with it the most durable record a session
+  produces. Answers now land on the request by `ApprovalID`, because with two
+  crossings in flight "the last one" writes a decision nobody made.
+
 ### Fixed
+
+- **Only a release tag names a build.** A backup tag left beside the branch —
+  `tui-v1`, a restore point and not a version — shadowed the last release simply
+  by being newer, and every build then called itself `tui-v1-dev+411c237`.
+  Naming a build after something that is not a version is the same defect as
+  naming it after the version it has already left, which is what the derivation
+  exists to prevent. Both the script and the Makefile now match `v[0-9]*`.
+- **The version reads what the history actually holds.** `scripts/version.sh`
+  refused to derive anything the moment a merge or a revert appeared: a merge
+  commit's subject is not a change — the changes are its parents', already in
+  the range — and `Revert "feat: …"` matches no convention because it quotes
+  one. A merge is skipped; a revert is classified by what it undid, since
+  removing a feature is a change of the same class the addition was. The
+  refusal itself also printed one word per line, which is how a message written
+  to be read by whoever will fix it arrives illegible.
 
 - **A record stops copying what it continues.** Continuing copied the whole
   previous record into the new one, so a session that continued a session that
@@ -142,7 +175,61 @@ that on every run to stop the opposite reading.
   pair — neither alone gets past the crash — and `iokit-open` is scoped to one
   user client, which is what makes it affordable.
 
-_Nothing yet._
+### Added
+
+- **The preserved tail has two floors.** `KeepTurns` counted turns, and a count
+  is the wrong unit: turns vary by an order of magnitude, so four short ones
+  protected almost nothing — the summary ate a forty-tool investigation and kept
+  four "ok"s. `KeepFraction` (0.30) is a floor in tokens of the window, measured
+  with the same estimate the trigger uses, and whichever protects more wins. The
+  rule that the current task never gets compacted still sits above both.
+- **The context says it is filling before it is cut.** The bands were computed
+  and announced to the model, and nobody announced them to the reader — so the
+  summary arrived as one line saying it had happened, after the fact, with no
+  chance to finish a thought first. The crossing now reaches the client at the
+  same moment it reaches the model, and the cut says how many messages went and
+  how many stayed instead of only that something did.
+- **A mode where a letter is a key.** `esc` from an empty line steps into the
+  transcript, and inside it `j/k` move, `↵` opens, `t` cycles the theme and `/`
+  goes back to writing. Every key the mode does not name is swallowed, which is
+  what makes a letter safe there — the design's footer offers those letters and
+  puts a NAV badge beside them, and a badge is the name of a mode. `↑` at the
+  border now scrolls instead of walking into the transcript, which removes the
+  state the `v` defect kept coming back through.
+- **Four themes: neon, ashes, ember, mono.** The design's own values, on one
+  shared role mapping — change what colour a heading is and all four change. The
+  contrast test runs on every one of them.
+- **The side column is the diff pane over the session pane, on the right.** It
+  replaces the file list, and the difference is what got the file list hidden
+  this morning: that column repeated what the stream had just said, and these
+  two do not — a bar of the change, a context gauge, how much of what was asked
+  the person allowed, the last calls by the clock. The default is reversed
+  again, and the width test has now been written three ways in one day, which is
+  said in its comment rather than edited quietly for the third time.
+- **A lane legend, and a nav bar.** The legend appears once at the top and only
+  when the screen is making more than one lane. The nav bar names the keys that
+  are keys — the design also offers `j/k` and `t`, which are letters, and those
+  belong to a mode that owns the keyboard.
+- **The interface has a palette of its own.** Neon: a violet ground, a magenta
+  mark, teal for what worked, amber for the person. Until now the roles mapped
+  to ANSI codes chosen to sit politely inside whatever the terminal's theme was,
+  and that politeness is what made the screen read as grey. A theme carries its
+  own ground, which is the decision and is not free: the interface stops
+  inheriting the terminal's colours and starts owning them. Colour switched off
+  gets none of it — no escape reaches the screen, the ground included.
+- **The plan moves into the stream.** It was a column of its own; it is a block
+  where the model made it, always showing the current plan, updated in place. The
+  panel is dissolved with it and its ceiling readout rides the status bar, so
+  `-no-panel` and `^P` are gone — a contract removed from a stable surface.
+- **The stream has lanes.** Every row says which of three things it is — what
+  you asked, what the model did on the way, what it says — marked by a character
+  in the first column. On a long turn prose and tool calls alternated with
+  nothing structural between them, so catching up meant reading every row to
+  find out which rows were worth reading; now the eye runs down the answer lane
+  and skips the work. It costs no columns: every row already reserved two, and
+  the lane takes the first while the selection marker keeps the second. From the
+  `Coding Agent TUI v2` design; what did not come from it, and why, is in
+  `docs/ROADMAP.md` §11.
 
 ## 0.4.0 — 24 August 2026
 
@@ -164,18 +251,6 @@ the screen never showed.
 
 ### Added
 
-- **The preserved tail has two floors.** `KeepTurns` counted turns, and a count
-  is the wrong unit: turns vary by an order of magnitude, so four short ones
-  protected almost nothing — the summary ate a forty-tool investigation and kept
-  four "ok"s. `KeepFraction` (0.30) is a floor in tokens of the window, measured
-  with the same estimate the trigger uses, and whichever protects more wins. The
-  rule that the current task never gets compacted still sits above both.
-- **The context says it is filling before it is cut.** The bands were computed
-  and announced to the model, and nobody announced them to the reader — so the
-  summary arrived as one line saying it had happened, after the fact, with no
-  chance to finish a thought first. The crossing now reaches the client at the
-  same moment it reaches the model, and the cut says how many messages went and
-  how many stayed instead of only that something did.
 - **The input area is delimited on all four sides.** A frame here and not around
   a tool call, which is what a box is for: the input is a *field* — a fixed
   region that does not scroll, that you return to, and that has to be findable

@@ -1,6 +1,7 @@
 package update
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,6 +86,17 @@ func commitAt(t *testing.T, dir, subject, body string) {
 	gitAt(t, dir, "commit", "--quiet", "-m", subject)
 }
 
+// commitFileAt commits to a named file, so two branches can be merged without
+// colliding on the one file seededRepo writes.
+func commitFileAt(t *testing.T, dir, name, subject string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(subject), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitAt(t, dir, "add", name)
+	gitAt(t, dir, "commit", "--quiet", "-m", subject)
+}
+
 // The pin commit lands on main AFTER the tag, because the digests are not known
 // until the artifacts are built. Counting it would make every post-release
 // query answer "there are commits since the tag" when nothing human changed,
@@ -133,6 +145,82 @@ func TestTheVersionOnlyExemptsTheExactSubjectThePipelineWrites(t *testing.T) {
 	}
 	if got != "v0.1.1" {
 		t.Errorf("a human chore(release) commit was silently exempted: got %q, want v0.1.1", got)
+	}
+}
+
+// A merge commit's subject is not a change. The changes are its parents', and
+// they are already in the range. Counting the subject stopped the derivation
+// dead on a sentence no tool will ever write conventionally — "Merge branch X
+// into Y" — and the whole release was blocked by the merge that assembled it.
+func TestTheVersionDoesNotReadAMergeCommitsSubject(t *testing.T) {
+	dir := seededRepo(t, "v0.1.0")
+	gitAt(t, dir, "checkout", "--quiet", "-b", "side")
+	commitFileAt(t, dir, "side.txt", "feat: something on the side")
+	gitAt(t, dir, "checkout", "--quiet", "main")
+	commitFileAt(t, dir, "main.txt", "fix: something on main")
+	gitAt(t, dir, "merge", "--quiet", "--no-ff", "-m", "Merge branch 'side'", "side")
+
+	got, err := versionIn(t, dir)
+	if err != nil {
+		t.Fatalf("version.sh failed: %v", err)
+	}
+	// The feat came in through the merge, so it counts — through its own commit.
+	if got != "v0.2.0" {
+		t.Errorf("got %q, want v0.2.0", got)
+	}
+}
+
+// A revert is classified by what it undid. Removing a feature is a behaviour
+// change of the same class the addition was — VERSIONING.md says removal is at
+// least MINOR — so `Revert "feat: …"` raises MINOR, and the release after a
+// revert is derivable instead of refused.
+func TestTheVersionClassifiesARevertByWhatItUndid(t *testing.T) {
+	dir := seededRepo(t, "v0.1.0")
+	commitAt(t, dir, "feat: the thing", "")
+	gitAt(t, dir, "revert", "--no-edit", "HEAD")
+
+	got, err := versionIn(t, dir)
+	if err != nil {
+		t.Fatalf("version.sh failed: %v", err)
+	}
+	if got != "v0.2.0" {
+		t.Errorf("got %q, want v0.2.0", got)
+	}
+}
+
+// One turn only. A revert of a revert leaves `Revert "…"` still wrapped, which
+// matches nothing — and matching nothing is refusing, which is what this script
+// does with everything it cannot read.
+func TestTheVersionRefusesADoubleRevert(t *testing.T) {
+	dir := seededRepo(t, "v0.1.0")
+	commitAt(t, dir, "feat: the thing", "")
+	gitAt(t, dir, "revert", "--no-edit", "HEAD")
+	gitAt(t, dir, "revert", "--no-edit", "HEAD")
+
+	if _, err := versionIn(t, dir); err == nil {
+		t.Error("a double revert was given a version instead of a refusal")
+	}
+}
+
+// The refusal exists to be read by whoever will fix it. Unquoted, it split on
+// whitespace: a seven-word subject printed as seven lines, and the one message
+// that had to be legible was the one that was not.
+func TestTheRefusalNamesOneCommitPerLine(t *testing.T) {
+	dir := seededRepo(t, "v0.1.0")
+	commitAt(t, dir, "a subject with several words and no type", "")
+
+	c := exec.Command("bash", filepath.Join(repoRoot(t), "scripts", "version.sh"))
+	c.Dir = dir
+	var errbuf bytes.Buffer
+	c.Stderr = &errbuf
+	if err := c.Run(); err == nil {
+		t.Fatal("a subject with no type was accepted")
+	}
+	for _, line := range strings.Split(strings.TrimSpace(errbuf.String()), "\n") {
+		if strings.HasPrefix(line, "  ") && len(strings.Fields(line)) < 3 {
+			t.Errorf("the refusal broke the subject into words:\n%s", errbuf.String())
+			break
+		}
 	}
 }
 

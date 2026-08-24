@@ -35,7 +35,6 @@ func runTUI(args []string) error {
 		socket    = fs.String("socket", "", "attach to this daemon instead of starting one")
 		workspace = fs.String("workspace", "", "workspace root (default: current directory)")
 		attach    = fs.String("session", "", "attach to an existing session by id")
-		noPanel   = fs.Bool("no-panel", false, "start with the plan panel hidden")
 		// Continuing and attaching look alike and are not. Attaching joins a
 		// session that is still running; continuing starts a new one carrying
 		// the conversation of one that ended.
@@ -110,7 +109,7 @@ func runTUI(args []string) error {
 		}
 	}
 	if *pick && carry == "" {
-		if carry, err = pickSession(ctx, recordDir(resolved), ws, geometry(*noPanel), resolved); err != nil {
+		if carry, err = pickSession(ctx, recordDir(resolved), ws, geometry(), resolved); err != nil {
 			return err
 		}
 	}
@@ -131,7 +130,7 @@ func runTUI(args []string) error {
 		return err
 	}
 
-	geo := geometry(*noPanel)
+	geo := geometry()
 
 	return tui.Run(ctx, tui.Options{
 		SessionID: sess.ID,
@@ -158,15 +157,15 @@ func runTUI(args []string) error {
 // geometry reads the terminal once. Built here rather than in the client for
 // the reason the language is: the client renders and never reads the
 // environment.
-func geometry(noPanel bool) tui.Geometry {
+func geometry() tui.Geometry {
 	w, h := terminalSize()
 	geo := tui.DefaultGeometry(w, h)
-	if noPanel {
-		geo.PanelMode = tui.PanelHidden
-	}
 	geo.Unicode = supportsUnicode(os.Getenv)
 	geo.ActivityVerbs = tui.ActivityVerbsEnabled(os.Getenv)
-	geo.Palette = tui.Palette{Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)}
+	// Only what the edge can know: the client never reads the environment, and
+	// the theme it starts in is already in the defaults.
+	geo.Palette.Enabled = tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)
+	geo.Palette.Depth = tui.ColorDepth(os.Getenv)
 	return geo
 }
 

@@ -54,8 +54,10 @@ func TestTheThreeCompletionVerdictsAreToldApartWithoutColour(t *testing.T) {
 	} {
 		// Cursor away from the entry: the selection arrow would otherwise be
 		// the first character of every line and hide the mark being compared.
+		// The lane gutter is dropped for the same reason — it is the same
+		// character on all three, which is the point of a lane.
 		out := renderStream(Model{Entries: []Entry{{Kind: KindCompletion, Summary: summary}}, Cursor: -1}, g, g.Width)
-		marks[name] = strings.TrimSpace(out[0])[:1]
+		marks[name] = strings.TrimSpace(dropCells(out[0], 2))[:1]
 	}
 	if marks["failed"] == marks["unavailable"] || marks["failed"] == marks["passed"] {
 		t.Errorf("two verdicts share a mark: %v", marks)
@@ -71,16 +73,49 @@ func TestLongEntriesWrapWithAlignedContinuations(t *testing.T) {
 	long := strings.Repeat("palavra ", 20)
 
 	for _, k := range []Kind{KindUser, KindNote} {
-		out := renderStream(Model{Entries: []Entry{{Kind: k, Summary: long}}}, g, g.Width)
+		out := renderStream(Model{Entries: []Entry{{Kind: k, Summary: long}, {}}, Cursor: -1}, g, g.Width)
 		if len(out) < 2 {
 			t.Fatalf("kind %v did not wrap: %q", k, out)
 		}
+		// Every row keeps the two-cell lead — the lane and the selection
+		// column — and the text after it lines up. Asserting the LEAD rather
+		// than "starts with a space" is the same claim made against what the
+		// rows are actually built from: a continuation that lost its lane
+		// would read as a different kind of thing, not just as a new message.
+		lane := leadCells(out[0], 1)
 		for i, line := range out[1:] {
-			if line != "" && !strings.HasPrefix(line, " ") {
-				t.Errorf("kind %v continuation %d starts at column zero: %q", k, i+1, line)
+			if line == "" {
+				continue
+			}
+			if got := leadCells(line, 1); got != lane {
+				t.Errorf("kind %v continuation %d changed lane: %q after %q", k, i+1, got, lane)
+			}
+			// And past the lane the row still starts with the blank selection
+			// column, so its text lines up under the first row rather than
+			// beginning at the edge and reading as a new message.
+			if !strings.HasPrefix(dropCells(line, 1), " ") {
+				t.Errorf("kind %v continuation %d starts at the edge: %q", k, i+1, line)
 			}
 		}
 	}
+}
+
+// leadCells is the first n display cells of a rendered row.
+func leadCells(s string, n int) string {
+	r := []rune(stripANSI(s))
+	if len(r) < n {
+		return s
+	}
+	return string(r[:n])
+}
+
+// dropCells removes the first n display cells of a rendered row.
+func dropCells(s string, n int) string {
+	r := []rune(stripANSI(s))
+	if len(r) < n {
+		return s
+	}
+	return string(r[n:])
 }
 
 // An expanded entry shows its detail and a collapsed one does not. That is the
@@ -177,5 +212,124 @@ func TestCaretMovementsSurviveACaretOutsideTheText(t *testing.T) {
 		if tc.got < -1 || tc.got > len([]rune(text)) {
 			t.Errorf("%s landed at %d, outside the text", tc.name, tc.got)
 		}
+	}
+}
+
+// Every row of the stream says which of three things it is: what you asked,
+// what the model did on the way, and what it says.
+//
+// Without it a long turn is prose and tool calls alternating with nothing
+// structural between them, so catching up means reading every row to find out
+// which rows were worth reading.
+func TestEveryStreamRowIsInALane(t *testing.T) {
+	for _, unicode := range []bool{true, false} {
+		g := DefaultGeometry(80, 30)
+		g.Palette = Palette{}
+		g.Unicode = unicode
+		gl := glyphs(unicode)
+		lanes := map[string]bool{gl.laneYou: true, gl.laneProcess: true, gl.laneAnswer: true}
+
+		m := Model{Lang: En, Cursor: -1, Entries: []Entry{
+			{Kind: KindUser, Summary: "a question"},
+			{Kind: KindAssistant, Summary: "an answer long enough to wrap across the stream at least once, twice"},
+			{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "24 lines"},
+			{Kind: KindReasoning, Summary: "a thought", Closed: true, Expanded: true},
+			{Kind: KindNote, Summary: "a note"},
+			{Kind: KindError, Summary: "boom"},
+			{Kind: KindCompletion, Summary: "verified: 2 checks"},
+		}}
+
+		rows := renderStream(m, g, g.Width)
+		for i, l := range rows {
+			if l == "" {
+				continue
+			}
+			if lane := leadCells(l, 1); !lanes[lane] {
+				t.Errorf("unicode=%v: row %d is in no lane (%q): %q", unicode, i, lane, l)
+			}
+		}
+
+		// The two that were indistinguishable must differ, and the lane must
+		// be a CHARACTER: a lane told apart by colour alone is no lane on a
+		// terminal without any, which is the rule every other mark here obeys.
+		var answer, process string
+		for _, l := range rows {
+			switch {
+			case strings.Contains(l, "an answer") && answer == "":
+				answer = leadCells(l, 1)
+			case strings.Contains(l, "read") && process == "":
+				process = leadCells(l, 1)
+			}
+		}
+		if answer == "" || process == "" {
+			t.Fatalf("unicode=%v: fixture did not produce both lanes", unicode)
+		}
+		if answer == process {
+			t.Errorf("unicode=%v: the answer and the work share a lane (%q)", unicode, answer)
+		}
+	}
+}
+
+// The lane costs no width. Every row already reserved two columns — the
+// selection marker, or two spaces where there was none — so the lane takes the
+// first and the marker keeps the second.
+func TestTheLaneCostsNoColumns(t *testing.T) {
+	g := DefaultGeometry(80, 30)
+	g.Palette = Palette{}
+	m := Model{Lang: En, Cursor: -1, Entries: []Entry{
+		{Kind: KindAssistant, Summary: strings.Repeat("palavra ", 40)},
+		{Kind: KindTool, Tool: "read", Target: "a.go", Summary: "24 lines"},
+	}}
+
+	for i, l := range renderStream(m, g, g.Width) {
+		if l == "" {
+			continue
+		}
+		if w := visibleWidth(l); w > g.Width {
+			t.Errorf("row %d is %d cells in a %d column stream: %q", i, w, g.Width, l)
+		}
+		// The text still starts where it started: the lane displaced the
+		// padding, not the content.
+		if body := dropCells(l, 2); strings.HasPrefix(body, " ") && strings.TrimSpace(body) != "" {
+			t.Errorf("row %d pushed its text right: %q", i, l)
+		}
+	}
+}
+
+// A legend is worth its row when what it explains is a CHARACTER whose meaning
+// cannot be guessed — `▏` and `╎` say nothing on their own, and a reader who
+// has not been told reads them as decoration and stops seeing them.
+//
+// And only when the screen is making the distinction: a legend for three lanes
+// on a screen with one is a row spent on nothing.
+func TestTheLaneLegendAppearsOnlyWhenItExplainsSomething(t *testing.T) {
+	g := DefaultGeometry(120, 30)
+	g.Palette = Palette{}
+
+	one := Model{Lang: En, Cursor: -1, Entries: []Entry{
+		{Kind: KindAssistant, Summary: "just an answer"},
+	}}
+	if got := renderLanes(one, g, 120); len(got) != 0 {
+		t.Errorf("a single-lane screen drew a legend: %q", got)
+	}
+
+	many := one
+	many.Entries = append(many.Entries, Entry{Kind: KindTool, Tool: "read", Target: "a.go"})
+	got := strings.Join(renderLanes(many, g, 120), "\n")
+	for _, want := range []string{"YOU", "WORK", "ANSWER"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q is missing from the legend: %q", want, got)
+		}
+	}
+	// It names each lane with the character the stream actually draws.
+	gl := glyphs(g.Unicode)
+	for _, mark := range []string{gl.laneYou, gl.laneProcess, gl.laneAnswer} {
+		if !strings.Contains(got, mark) {
+			t.Errorf("the legend does not show %q: %q", mark, got)
+		}
+	}
+	// And it never takes a row it cannot fill honestly.
+	if narrow := renderLanes(many, g, 12); len(narrow) != 0 {
+		t.Errorf("a legend was drawn in 12 columns: %q", narrow)
 	}
 }

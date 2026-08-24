@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 95 changelogs de decisão |
+| famílias de spec | 13, com 106 changelogs de decisão |
 | contratos comportamentais | 42 declarados |
 | **contratos medidos contra modelo** | **3** |
-| cobertura | 94,5%, com gate em 90% |
+| cobertura | 94,0%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.4.0** |
+| versão publicada | **0.5.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -52,7 +52,8 @@ que essa tecla significa no shell de onde ela veio; o painel abre no seu piso e
 cresce do que sobra. Toda pergunta abre com uma régua, então uma tela de rolagem
 tem um limite dentro dela. Delegação é um card com os filhos dentro, e o filho
 que não respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no
-instante em que começa a chegar do modelo.
+instante em que começa a chegar do modelo, e cruzar fronteira é perguntado no
+fluxo, na raia dela, ficando no lugar com a resposta assim que tem uma.
 
 Esse formato veio de uma medida, não de uma preferência. Reproduzindo uma sessão
 real gravada em quatro larguras, a coluna e o painel tomavam 61 de 132 colunas e
@@ -75,7 +76,7 @@ nenhuma condição podia satisfazer "letra não é atalho" — só devolver a le
 **O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
 agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
 sobre um conjunto que já conhecia. A guarda de desenho de caixa derivava os
-glifos proibidos das duas tabelas, e o modal de aprovação — desenhado de
+glifos proibidos das duas tabelas, e a tela de aprovação — desenhada de
 literais, em inglês, a única tela que pergunta se uma fronteira pode ser cruzada
 — estava fora das duas, de dois jeitos diferentes, achado duas vezes no mesmo
 dia. A guarda de largura dividia em quebras de linha antes de medir, então linha
@@ -106,7 +107,38 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+_Nada ainda._
+
+## 0.5.0 — 24 de agosto de 2026
+
+### Alterado
+
+- **A aprovação está no fluxo, e fica lá.** O modal saiu: a pergunta é desenhada
+  onde foi feita, numa quarta raia, e respondida permanece no lugar com a
+  resposta no lugar das teclas. A caixa era lida como se fosse ela a garantir a
+  RN-6, e nunca foi — quem é dono do teclado enquanto há fronteira pendente é o
+  cliente recusar entregar a tecla ao campo, e isso não mudou. O que a caixa
+  fazia era esconder o trabalho que estava sendo julgado e depois se apagar,
+  levando junto o registro mais durável que uma sessão produz. A resposta agora
+  cai na pergunta por `ApprovalID`: com duas fronteiras em voo, "a última" grava
+  uma decisão que ninguém tomou.
+
 ### Corrigido
+
+- **Só uma tag de release dá nome a um build.** Uma tag de backup deixada ao
+  lado da branch — `tui-v1`, ponto de restauração e não versão — encobria a
+  última release só por ser mais nova, e todo build passou a se chamar
+  `tui-v1-dev+411c237`. Dar a um build o nome de algo que não é versão é o mesmo
+  defeito que dar a ele o nome da versão que já ficou para trás, que é o que a
+  derivação existe para evitar. Script e Makefile agora casam `v[0-9]*`.
+- **A versão lê o que a história de fato tem.** `scripts/version.sh` recusava
+  derivar qualquer coisa assim que aparecia um merge ou um revert: o assunto de
+  um merge não é uma mudança — as mudanças são as dos pais, já no intervalo — e
+  `Revert "feat: …"` não casa com convenção nenhuma porque cita uma. Merge é
+  pulado; revert é classificado pelo que desfez, já que remover comportamento é
+  mudança da mesma classe que a adição foi. A própria recusa também imprimia uma
+  palavra por linha, que é como uma mensagem escrita para quem vai consertar
+  chega ilegível.
 
 - **O registro para de copiar o que continua.** Continuar copiava o registro
   anterior inteiro para o novo, então uma sessão que continuou uma que continuou
@@ -138,7 +170,61 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   sozinha passa do crash — e o `iokit-open` está escopado a uma classe, que é o
   que o torna acessível.
 
-_Nada ainda._
+### Adicionado
+
+- **A cauda preservada tem dois pisos.** `KeepTurns` contava turnos, e contagem
+  é a unidade errada: turnos variam em uma ordem de grandeza, então quatro curtos
+  protegiam quase nada — o resumo comia uma investigação de quarenta ferramentas
+  e mantinha quatro "ok". `KeepFraction` (0,30) é um piso em tokens da janela,
+  medido com a mesma estimativa que o gatilho usa, e vence o que proteger mais. A
+  regra de que a tarefa corrente nunca é compactada continua acima dos dois.
+- **O contexto avisa que está enchendo antes de ser cortado.** As faixas eram
+  calculadas e anunciadas ao modelo, e ninguém as anunciava a quem lê — então o
+  resumo aparecia como uma linha dizendo que tinha acontecido, depois do fato,
+  sem chance de terminar um raciocínio antes. Agora a travessia chega ao cliente
+  no mesmo instante em que chega ao modelo, e o corte diz quantas mensagens
+  foram e quantas ficaram, em vez de só que algo aconteceu.
+- **Um modo onde letra é tecla.** `esc` de uma linha vazia entra no fluxo, e lá
+  dentro `j/k` movem, `↵` abre, `t` percorre os temas e `/` volta a escrever.
+  Toda tecla que o modo não nomeia é engolida, que é o que torna letra segura ali
+  — o rodapé do design oferece essas letras e põe um badge NAV ao lado, e um
+  badge é o nome de um modo. `↑` na borda agora rola em vez de caminhar para
+  dentro do fluxo, o que remove o estado por onde o defeito do `v` voltava.
+- **Quatro temas: neon, ashes, ember, mono.** Os valores do próprio design, sobre
+  um mapeamento de papéis compartilhado — mude de que cor é um título e os quatro
+  mudam. O teste de contraste roda nos quatro.
+- **A coluna lateral é o painel de diff sobre o de sessão, à direita.** Ela
+  substitui a lista de arquivos, e a diferença é o que fez a lista ser escondida
+  hoje de manhã: aquela coluna repetia o que o fluxo tinha acabado de dizer, e
+  estas duas não — barra da mudança, medidor de contexto, quanto do que foi
+  pedido a pessoa permitiu, as últimas chamadas pelo relógio. O padrão foi
+  invertido de novo, e o teste de largura já foi escrito de três formas num dia
+  só, o que está dito no comentário dele em vez de editado em silêncio.
+- **Legenda de raias e barra de navegação.** A legenda aparece uma vez no topo e
+  só quando a tela está fazendo mais de uma raia. A barra nomeia as teclas que
+  são teclas — o design também oferece `j/k` e `t`, que são letras, e essas
+  pertencem a um modo que tome o teclado.
+- **A interface tem paleta própria.** Neon: fundo violeta, marca magenta,
+  verde-água para o que deu certo, âmbar para a pessoa. Até aqui os papéis
+  mapeavam para códigos ANSI escolhidos para caber educadamente dentro do tema
+  que o terminal já tivesse, e essa educação é o que fazia a tela ler como cinza.
+  Um tema carrega o próprio fundo, que é a decisão e não é de graça: a interface
+  deixa de herdar as cores do terminal e passa a possuí-las. Cor desligada não
+  recebe nada disso — nenhum escape chega à tela, fundo incluído.
+- **O plano entra no fluxo.** Era uma coluna própria; virou um bloco no lugar em
+  que o modelo o fez, sempre mostrando o plano atual, atualizado no lugar. O
+  painel se dissolve junto e seu contador de teto passa para a barra de status,
+  então `-no-panel` e `^P` foram embora — contrato removido de superfície
+  estável.
+- **O fluxo tem raias.** Toda linha diz qual das três coisas ela é — o que você
+  pediu, o que o modelo fez no caminho, o que ele diz — marcada por caractere na
+  primeira coluna. Num turno longo, prosa e chamadas de ferramenta se alternavam
+  sem nada estrutural entre elas, então recuperar o fio significava ler toda
+  linha para descobrir quais valiam a leitura; agora o olho corre pela raia da
+  resposta e pula o trabalho. Não custa coluna nenhuma: toda linha já reservava
+  duas, e a raia toma a primeira enquanto o marcador de seleção fica na segunda.
+  Vem do design `Coding Agent TUI v2`; o que não veio dele, e por quê, está em
+  `docs/ROADMAP.md` §11.
 
 ## 0.4.0 — 24 de agosto de 2026
 
@@ -160,18 +246,6 @@ mostrou.
 
 ### Adicionado
 
-- **A cauda preservada tem dois pisos.** `KeepTurns` contava turnos, e contagem
-  é a unidade errada: turnos variam em uma ordem de grandeza, então quatro curtos
-  protegiam quase nada — o resumo comia uma investigação de quarenta ferramentas
-  e mantinha quatro "ok". `KeepFraction` (0,30) é um piso em tokens da janela,
-  medido com a mesma estimativa que o gatilho usa, e vence o que proteger mais. A
-  regra de que a tarefa corrente nunca é compactada continua acima dos dois.
-- **O contexto avisa que está enchendo antes de ser cortado.** As faixas eram
-  calculadas e anunciadas ao modelo, e ninguém as anunciava a quem lê — então o
-  resumo aparecia como uma linha dizendo que tinha acontecido, depois do fato,
-  sem chance de terminar um raciocínio antes. Agora a travessia chega ao cliente
-  no mesmo instante em que chega ao modelo, e o corte diz quantas mensagens
-  foram e quantas ficaram, em vez de só que algo aconteceu.
 - **A área de digitação é delimitada nos quatro lados.** Moldura aqui e não em
   volta de uma chamada, que é para isso que serve uma caixa: a entrada é um
   *campo* — região fixa, que não rola, à qual se volta, e que precisa ser

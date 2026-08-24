@@ -22,11 +22,17 @@ func RenderStatusBar(m Model, g Geometry) string {
 	// design states for the pending badge — "some por completo quando zero, sem
 	// badge vazio" — and it generalises: a bar of empty slots describes the bar
 	// rather than the session.
-	segs := []segment{worktreeSegment(m, g)}
+	segs := []segment{navSegment(m, g), worktreeSegment(m, g)}
 	if seg, ok := diffSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
+	if seg, ok := ceilingSegment(m, g); ok {
+		segs = append(segs, seg)
+	}
 	if seg, ok := waitingSegment(m, g); ok {
+		segs = append(segs, seg)
+	}
+	if seg, ok := posSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
 
@@ -87,6 +93,116 @@ func diffSegment(m Model, g Geometry) (segment, bool) {
 		text: fmt.Sprintf("+%d %s%d%s", m.DiffAdded, gl.minus, m.DiffRemoved, files),
 		drop: 1,
 	}, true
+}
+
+// navSegment is the design's NAV badge and the keys beside it.
+//
+// Solid, first, and never dropped. It is the one region that says what this
+// keyboard can do, and a product whose keys are only documented inside a help
+// screen is a product whose keys nobody finds.
+//
+// The keys it names are the ones that are BINDINGS. The design's footer also
+// offers `j/k move` and `t theme`, which are letters, and a letter on a line
+// where you type is the defect this product has fixed twice. They belong to a
+// mode that owns the keyboard — the design implies one by putting a NAV badge
+// there at all — and until that mode exists, naming them here would advertise
+// keys that eat what you are typing.
+func navSegment(m Model, g Geometry) segment {
+	gl := glyphs(g.Unicode)
+	t := Text(m.Lang)
+	p := g.Palette
+
+	// The badge is LIT while the mode owns the keyboard, and quiet otherwise.
+	// It is the only thing on screen that says which of two keyboards a key is
+	// about to reach, and that state used to be invisible — which is half of
+	// why a letter bound to a mode could eat a keystroke with no visible cause.
+	badge, keys := StyleMeta, []string{
+		keyHint(p, "esc", t.NavEnter),
+		keyHint(p, "^r", t.NavSessions),
+		keyHint(p, "^b", t.NavColumn),
+		keyHint(p, "?", t.NavKeys),
+	}
+	if m.Navigating {
+		badge = StyleOnAccent
+		keys = []string{
+			keyHint(p, "j/k", t.NavMove),
+			keyHint(p, gl.enter, t.NavOpen),
+			keyHint(p, "t", p.theme().Name),
+			keyHint(p, "/", t.NavPrompt),
+			keyHint(p, "esc", t.NavLeave),
+		}
+	}
+	// Dropped FIRST when the bar runs out of room. Every key it names is
+	// reachable from `?`, which makes it the most reconstructible thing on the
+	// line — and a bar that keeps its hints by dropping where you are has
+	// chosen the hint over the fact.
+	return segment{
+		text: p.Apply(badge, " "+strings.ToUpper(t.NavBadge)+" ") + " " +
+			strings.Join(keys, "  "+gl.dot+"  "),
+		drop: 4,
+	}
+}
+
+// keyHint is one hint: the keystroke, then what it does.
+func keyHint(p Palette, stroke, what string) string {
+	return p.Apply(StyleProse, stroke) + " " + p.Apply(StyleHint, what)
+}
+
+// posSegment is where the cursor is in the stream, as the design's `1 / 7`.
+//
+// Only while the stream HAS the cursor. On the input line there is no position
+// to report, and a counter that reads `0 / 7` when nobody is browsing is a
+// number that has to be explained.
+func posSegment(m Model, g Geometry) (segment, bool) {
+	if m.Cursor < 0 || len(m.Entries) == 0 {
+		return segment{}, false
+	}
+	return segment{
+		text: g.Palette.Apply(StyleProse,
+			fmt.Sprintf("%d / %d", m.Cursor+1, len(m.Entries))),
+		drop: 2,
+	}, true
+}
+
+// ceilingSegment is the turn against a ceiling it is approaching.
+//
+// It used to be a section of the plan panel. The panel is gone with the plan
+// that justified it, and this is the half of it that exists nowhere else — the
+// round count and the in-flight pair, which nothing else on the screen carries.
+//
+// It appears on the same terms the panel section did: from half the ceiling,
+// and whenever every in-flight slot is taken. Far from a ceiling it is a number
+// nobody acts on, and a bar of numbers nobody acts on is a bar people stop
+// reading.
+//
+// Never dropped: it is drawn only when it is worth acting on, and a warning
+// that gives way to a diff summary is a warning that goes missing at exactly
+// the width where the screen is already tight.
+func ceilingSegment(m Model, g Geometry) (segment, bool) {
+	if !m.turnSectionWorthDrawing() {
+		return segment{}, false
+	}
+	gl := glyphs(g.Unicode)
+	t := Text(m.Lang)
+	p := g.Palette
+
+	var parts []string
+	if m.MaxRounds > 0 {
+		style := StyleWarn
+		if m.Rounds*4 >= m.MaxRounds*3 {
+			style = StyleError
+		}
+		parts = append(parts, p.Apply(style,
+			fmt.Sprintf("%s %d/%d", t.PanelRounds, m.Rounds, m.MaxRounds)))
+	}
+	if m.MaxInFlight > 0 && m.InFlight >= m.MaxInFlight {
+		parts = append(parts, p.Apply(StyleWarn,
+			fmt.Sprintf("%s %d%s%d", t.PanelInFlight, m.InFlight, gl.dot, m.MaxInFlight)))
+	}
+	if len(parts) == 0 {
+		return segment{}, false
+	}
+	return segment{text: strings.Join(parts, " "+gl.dot+" "), drop: 0}, true
 }
 
 // waitingSegment is what is blocked on a person.

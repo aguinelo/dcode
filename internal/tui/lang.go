@@ -80,7 +80,6 @@ type Strings struct {
 	ChildOwns     string
 	ChildNoAnswer string
 	ChildUnnamed  string
-	PanelTurn     string
 	PanelRounds   string
 	PanelInFlight string
 	RailHidden    string
@@ -90,6 +89,32 @@ type Strings struct {
 	RailNaming    string
 	RailNoMatch   string
 
+	// The side column.
+	SideDiff       string
+	SideSession    string
+	SideNothingYet string
+	SideContext    string
+	SideAllowed    string
+	SideRecent     string
+	SideBarScale   string
+
+	// The lane legend.
+	LaneYou     string
+	LaneProcess string
+	LaneAnswer  string
+
+	// The nav bar.
+	NavBadge     string
+	NavSessions  string
+	NavColumn    string
+	NavKeys      string
+	NavEnter     string
+	NavMove      string
+	NavOpen      string
+	NavPrompt    string
+	NavLeave     string
+	SideToolOne  string
+	SideToolMany string
 	// While the history of a continued conversation is being read.
 	Loading    string
 	LoadedOne  string
@@ -104,12 +129,24 @@ type Strings struct {
 	// that asks whether a boundary may be crossed, in a language the reader may
 	// not have. Consent given to a sentence somebody could not read is not
 	// consent.
-	ApprovalTitle    string
-	ApprovalCrosses  string
-	ApprovalNetwork  string
-	ApprovalStanding string
-	ApprovalOnce     string
-	ApprovalEnter    string
+	ApprovalCrosses        string
+	ApprovalNetwork        string
+	ApprovalEnter          string
+	ApprovalCrossing       string
+	ApprovalRule           string
+	ApprovalAnswered       string
+	ApprovalDenied         string
+	ApprovalAllowedOnce    string
+	ApprovalAllowedSession string
+	ApprovalAllowedProject string
+	ApprovalAllowedAlways  string
+	KeyDeny                string
+	KeyAllow               string
+	KeySession             string
+	KeyNo                  string
+	KeyOnce                string
+	KeyProject             string
+	KeyAlways              string
 	// PanelPlan is the panel's own heading, which was a literal too.
 	PanelPlan string
 	// PlanOf and PlanBlockedCount build the plan's footer count.
@@ -249,45 +286,77 @@ type Strings struct {
 // keeps the static, cgo-free binary of ADR-01 whole.
 var catalogue = map[Lang]Strings{
 	En: {
-		Working:          "working",
-		WorkingInterrupt: "^C interrupts",
-		LineOne:          "line",
-		LineMany:         "lines",
-		ExpandHint:       "Tab expands",
-		ChildOne:         "child",
-		ChildMany:        "children",
-		ChildOwns:        "owns",
-		ChildNoAnswer:    "no answer",
-		ChildUnnamed:     "a child",
-		PanelTurn:        "turn",
-		PanelRounds:      "round",
-		PanelInFlight:    "in flight",
-		RailHidden:       "sidebar",
-		RailFiles:        "files",
-		RailSessions:     "sessions",
-		RailFilter:       "/",
-		RailNaming:       "naming · esc cancels",
-		RailNoMatch:      "nothing matches",
-		Loading:          "reading the conversation",
-		LoadedOne:        "line",
-		LoadedMany:       "lines",
-		ContextFilling:   "the context is %d%% of the way to a summary",
-		Compacted:        "earlier history was summarised",
-		CompactedCount:   "%d earlier messages were summarised; %d kept",
-		ApprovalTitle:    "Approval needed",
-		ApprovalCrosses:  "crosses:",
-		ApprovalNetwork:  "Commands in this project may reach the network.",
-		ApprovalStanding: "[d] no   [a] once   [P] this project   [G] always",
-		ApprovalOnce:     "[d] deny   [a] allow   [A] whole session",
-		ApprovalEnter:    "Enter denies.",
-		PanelPlan:        "PLAN",
-		PlanOf:           "%d of %d",
-		PlanBlockedCount: "(%d blocked)",
-		SessionsMoreOne:  "more below",
-		SessionsMoreMany: "more below",
-		SessionsKeys:     "up/down choose, enter opens, r renames, esc closes",
-		RailTouchedOne:   "touched",
-		RailTouchedMany:  "touched",
+		Working:                "working",
+		WorkingInterrupt:       "^C interrupts",
+		LineOne:                "line",
+		LineMany:               "lines",
+		ExpandHint:             "Tab expands",
+		ChildOne:               "child",
+		ChildMany:              "children",
+		ChildOwns:              "owns",
+		ChildNoAnswer:          "no answer",
+		ChildUnnamed:           "a child",
+		PanelRounds:            "round",
+		PanelInFlight:          "in flight",
+		RailHidden:             "sidebar",
+		RailFiles:              "files",
+		RailSessions:           "sessions",
+		RailFilter:             "/",
+		RailNaming:             "naming · esc cancels",
+		RailNoMatch:            "nothing matches",
+		SideDiff:               "diff",
+		SideSession:            "session",
+		SideNothingYet:         "nothing changed yet",
+		SideContext:            "context",
+		SideAllowed:            "allowed",
+		SideRecent:             "recent",
+		SideBarScale:           "bars scaled to",
+		LaneYou:                "you",
+		LaneProcess:            "work",
+		LaneAnswer:             "answer",
+		NavBadge:               "nav",
+		NavSessions:            "sessions",
+		NavColumn:              "column",
+		NavKeys:                "keys",
+		NavEnter:               "browse",
+		NavMove:                "move",
+		NavOpen:                "open",
+		NavPrompt:              "prompt",
+		NavLeave:               "leave",
+		SideToolOne:            "call",
+		SideToolMany:           "calls",
+		Loading:                "reading the conversation",
+		LoadedOne:              "line",
+		LoadedMany:             "lines",
+		ContextFilling:         "the context is %d%% of the way to a summary",
+		Compacted:              "earlier history was summarised",
+		CompactedCount:         "%d earlier messages were summarised; %d kept",
+		ApprovalCrosses:        "crosses:",
+		ApprovalNetwork:        "Commands in this project may reach the network.",
+		ApprovalEnter:          "enter denies",
+		ApprovalCrossing:       "approve",
+		ApprovalRule:           "rule:",
+		ApprovalAnswered:       "you answered:",
+		ApprovalDenied:         "denied",
+		ApprovalAllowedOnce:    "allowed, once",
+		ApprovalAllowedSession: "allowed for this session",
+		ApprovalAllowedProject: "allowed for this project",
+		ApprovalAllowedAlways:  "allowed always",
+		KeyDeny:                "deny",
+		KeyAllow:               "allow",
+		KeySession:             "whole session",
+		KeyNo:                  "no",
+		KeyOnce:                "once",
+		KeyProject:             "this project",
+		KeyAlways:              "always",
+		PanelPlan:              "PLAN",
+		PlanOf:                 "%d of %d",
+		PlanBlockedCount:       "(%d blocked)",
+		SessionsMoreOne:        "more below",
+		SessionsMoreMany:       "more below",
+		SessionsKeys:           "up/down choose, enter opens, r renames, esc closes",
+		RailTouchedOne:         "touched",
+		RailTouchedMany:        "touched",
 
 		VerifiedLabel:    "verified",
 		NotVerifiedLabel: "NOT VERIFIED",
@@ -405,45 +474,77 @@ Environment:
 		NoPlan:          "There is no plan yet.",
 	},
 	PtBR: {
-		Working:          "trabalhando",
-		WorkingInterrupt: "^C interrompe",
-		LineOne:          "linha",
-		LineMany:         "linhas",
-		ExpandHint:       "Tab expande",
-		ChildOne:         "filho",
-		ChildMany:        "filhos",
-		ChildOwns:        "possui",
-		ChildNoAnswer:    "sem resposta",
-		ChildUnnamed:     "um filho",
-		PanelTurn:        "turno",
-		PanelRounds:      "iteração",
-		PanelInFlight:    "em vôo",
-		RailHidden:       "coluna",
-		RailFiles:        "arquivos",
-		RailSessions:     "sessões",
-		RailFilter:       "/",
-		RailNaming:       "nomeando · esc cancela",
-		RailNoMatch:      "nada corresponde",
-		Loading:          "lendo a conversa",
-		LoadedOne:        "linha",
-		LoadedMany:       "linhas",
-		ContextFilling:   "o contexto está a %d%% do ponto em que a conversa é resumida",
-		Compacted:        "o histórico anterior foi resumido",
-		CompactedCount:   "%d mensagens anteriores foram resumidas; %d mantidas",
-		ApprovalTitle:    "Precisa de aprovacao",
-		ApprovalCrosses:  "cruza:",
-		ApprovalNetwork:  "Comandos deste projeto podem alcancar a rede.",
-		ApprovalStanding: "[d] nao   [a] uma vez   [P] este projeto   [G] sempre",
-		ApprovalOnce:     "[d] negar   [a] permitir   [A] sessao inteira",
-		ApprovalEnter:    "Enter nega.",
-		PanelPlan:        "PLANO",
-		PlanOf:           "%d de %d",
-		PlanBlockedCount: "(%d bloqueado)",
-		SessionsMoreOne:  "abaixo",
-		SessionsMoreMany: "abaixo",
-		SessionsKeys:     "cima/baixo escolhe, enter abre, r renomeia, esc fecha",
-		RailTouchedOne:   "tocado",
-		RailTouchedMany:  "tocados",
+		Working:                "trabalhando",
+		WorkingInterrupt:       "^C interrompe",
+		LineOne:                "linha",
+		LineMany:               "linhas",
+		ExpandHint:             "Tab expande",
+		ChildOne:               "filho",
+		ChildMany:              "filhos",
+		ChildOwns:              "possui",
+		ChildNoAnswer:          "sem resposta",
+		ChildUnnamed:           "um filho",
+		PanelRounds:            "iteração",
+		PanelInFlight:          "em vôo",
+		RailHidden:             "coluna",
+		RailFiles:              "arquivos",
+		RailSessions:           "sessões",
+		RailFilter:             "/",
+		RailNaming:             "nomeando · esc cancela",
+		RailNoMatch:            "nada corresponde",
+		SideDiff:               "diff",
+		SideSession:            "sessão",
+		SideNothingYet:         "nada mudou ainda",
+		SideContext:            "contexto",
+		SideAllowed:            "permitido",
+		SideRecent:             "recentes",
+		SideBarScale:           "barras na escala de",
+		LaneYou:                "você",
+		LaneProcess:            "trabalho",
+		LaneAnswer:             "resposta",
+		NavBadge:               "nav",
+		NavSessions:            "sessões",
+		NavColumn:              "coluna",
+		NavKeys:                "teclas",
+		NavEnter:               "navegar",
+		NavMove:                "mover",
+		NavOpen:                "abrir",
+		NavPrompt:              "escrever",
+		NavLeave:               "sair",
+		SideToolOne:            "chamada",
+		SideToolMany:           "chamadas",
+		Loading:                "lendo a conversa",
+		LoadedOne:              "linha",
+		LoadedMany:             "linhas",
+		ContextFilling:         "o contexto está a %d%% do ponto em que a conversa é resumida",
+		Compacted:              "o histórico anterior foi resumido",
+		CompactedCount:         "%d mensagens anteriores foram resumidas; %d mantidas",
+		ApprovalCrosses:        "cruza:",
+		ApprovalNetwork:        "Comandos deste projeto podem alcançar a rede.",
+		ApprovalEnter:          "enter nega",
+		ApprovalCrossing:       "aprovar",
+		ApprovalRule:           "regra:",
+		ApprovalAnswered:       "você respondeu:",
+		ApprovalDenied:         "negado",
+		ApprovalAllowedOnce:    "permitido, uma vez",
+		ApprovalAllowedSession: "permitido nesta sessão",
+		ApprovalAllowedProject: "permitido neste projeto",
+		ApprovalAllowedAlways:  "permitido sempre",
+		KeyDeny:                "negar",
+		KeyAllow:               "permitir",
+		KeySession:             "sessão inteira",
+		KeyNo:                  "não",
+		KeyOnce:                "uma vez",
+		KeyProject:             "este projeto",
+		KeyAlways:              "sempre",
+		PanelPlan:              "PLANO",
+		PlanOf:                 "%d de %d",
+		PlanBlockedCount:       "(%d bloqueado)",
+		SessionsMoreOne:        "abaixo",
+		SessionsMoreMany:       "abaixo",
+		SessionsKeys:           "cima/baixo escolhe, enter abre, r renomeia, esc fecha",
+		RailTouchedOne:         "tocado",
+		RailTouchedMany:        "tocados",
 
 		VerifiedLabel:    "conferido",
 		NotVerifiedLabel: "NÃO CONFERIDO",

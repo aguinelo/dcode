@@ -7,34 +7,6 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// The panel gives ground first on a narrow terminal — it holds short lines and
-// the stream holds diffs — and takes a little more on a wide one. Both ends are
-// bounded, because a panel that eats the stream and a panel too narrow to read
-// are the same bug seen from opposite sides.
-func TestThePanelStaysBetweenItsFloorAndItsCeiling(t *testing.T) {
-	for _, w := range []int{20, 40, 80, 100, 200, 400} {
-		g := Geometry{Width: w}
-		got := g.panelWidth()
-		if got < 16 {
-			t.Errorf("width %d: panel %d, below the readable floor", w, got)
-		}
-		if got > 34 {
-			t.Errorf("width %d: panel %d, above the ceiling", w, got)
-		}
-		if got >= w && w > 34 {
-			t.Errorf("width %d: panel %d takes the whole screen", w, got)
-		}
-	}
-
-	// Configured bounds win over the defaults, in both directions.
-	if got := (Geometry{Width: 400, PanelMaxWidth: 20}).panelWidth(); got != 20 {
-		t.Errorf("panel = %d, want the configured ceiling", got)
-	}
-	if got := (Geometry{Width: 10, PanelMinWidth: 30, PanelWidth: 30, PanelMaxWidth: 40}).panelWidth(); got != 30 {
-		t.Errorf("panel = %d, want the configured floor", got)
-	}
-}
-
 // The end is what identifies a file; the directories leading to it are what
 // everything in a repository has in common. So the cut takes the front, and the
 // result never comes out wider than the column it had to fit.

@@ -435,17 +435,15 @@ func TestCursorMovementAndExpansion(t *testing.T) {
 		{Kind: KindTool, Tool: "read", Detail: "x"},
 		{Kind: KindTool, Tool: "grep", Detail: "y"},
 	}
-	// Up from nothing selects the last entry: the newest is what the user is
-	// looking at.
-	p.Update(special(tea.KeyUp))
-	if p.model.Cursor != 1 {
-		t.Fatalf("got %d", p.model.Cursor)
-	}
-	p.Update(special(tea.KeyUp))
+	// `esc` from an empty line steps into the transcript, at the newest entry:
+	// the newest is what the user is looking at. It used to be `up`, which
+	// walked in silently — see TestSteppingIntoTheTranscriptIsDeliberate.
+	p.Update(special(tea.KeyEsc))
+	p.Update(key("k"))
 	if p.model.Cursor != 0 {
 		t.Fatalf("got %d", p.model.Cursor)
 	}
-	p.Update(special(tea.KeyUp))
+	p.Update(key("k"))
 	if p.model.Cursor != 0 {
 		t.Errorf("the cursor must not run off the top, got %d", p.model.Cursor)
 	}
@@ -457,46 +455,6 @@ func TestCursorMovementAndExpansion(t *testing.T) {
 	p.Update(special(tea.KeyTab))
 	if !p.model.Entries[1].Expanded {
 		t.Error("tab expands the selected entry")
-	}
-}
-
-// `p` toggles the panel only when it is not being typed into a message.
-// Regression: as a bare `p`, the panel toggle ate the first character of every
-// message beginning with one — "primeiro", "please", "por favor". A letter can
-// never be a shortcut on a line the user types into.
-func TestThePanelToggleIsAControlKeyAndNeverEatsALetter(t *testing.T) {
-	p, _ := newProgram(t)
-	p.model.Plan = modelWithPlan().Plan
-
-	// The panel is showing at 100 columns, so the first press hides it.
-	p.Update(ctrl('p'))
-	if p.geo.ShowPanel(true) {
-		t.Error("ctrl+p hides the panel")
-	}
-	p.Update(ctrl('p'))
-	if !p.geo.ShowPanel(true) {
-		t.Error("and shows it again")
-	}
-
-	// On a terminal too narrow for the default, the key still works: an
-	// explicit request beats the responsive default.
-	narrow, _ := newProgram(t, func(o *Options) { o.Geometry = DefaultGeometry(80, 24) })
-	narrow.model.Plan = modelWithPlan().Plan
-	if narrow.geo.ShowPanel(true) {
-		t.Fatal("80 columns hides it by default")
-	}
-	narrow.Update(ctrl('p'))
-	if !narrow.geo.ShowPanel(true) {
-		t.Error("ctrl+p on a narrow terminal must show the panel anyway")
-	}
-
-	// And every bare letter reaches the line, first character included.
-	typing, _ := newProgram(t)
-	for _, r := range "primeiro" {
-		typing.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	if typing.model.Input != "primeiro" {
-		t.Errorf("a letter must never be swallowed, got %q", typing.model.Input)
 	}
 }
 
@@ -844,15 +802,17 @@ func TestArrowsAreContextSensitive(t *testing.T) {
 		t.Errorf("down must return to the empty line, got %q", p.model.Input)
 	}
 
-	// With text on the line, up moves the cursor in the stream instead.
+	// With text on the line, up neither browses history nor walks into the
+	// transcript: it moves within the line, and at the border it scrolls.
+	p.model.Navigating, p.model.Cursor = false, -1
 	p.model = p.model.SetInput("escrevendo")
 	p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: "a"})
 	p.Update(special(tea.KeyUp))
 	if p.model.Input != "escrevendo" {
 		t.Errorf("history must not eat what is being written: %q", p.model.Input)
 	}
-	if p.model.Cursor < 0 {
-		t.Error("with text on the line, up moves in the stream")
+	if p.model.Cursor >= 0 {
+		t.Errorf("up walked into the transcript from a line being typed on: %d", p.model.Cursor)
 	}
 }
 
@@ -861,7 +821,10 @@ func TestEnteringTheStreamStartsAtTheNewestEntry(t *testing.T) {
 	p.model.Cursor = -1
 	p.model.History = nil
 
-	p.Update(special(tea.KeyUp))
+	p.Update(special(tea.KeyEsc))
+	if !p.model.Navigating {
+		t.Fatal("esc from an empty line did not step into the transcript")
+	}
 	if p.model.Cursor != len(p.model.Entries)-1 {
 		t.Errorf("got %d, want the last entry", p.model.Cursor)
 	}
@@ -876,6 +839,7 @@ func TestEscapeClosesTheExpansionThenTheSelection(t *testing.T) {
 	p, _ := newProgram(t)
 	p.model.Entries = []Entry{{Kind: KindTool, Tool: "read", Detail: "x", Expanded: true}}
 	p.model.Cursor = 0
+	p.model.Navigating = true
 
 	p.Update(special(tea.KeyEscape))
 	if p.model.Entries[0].Expanded {
@@ -885,8 +849,8 @@ func TestEscapeClosesTheExpansionThenTheSelection(t *testing.T) {
 		t.Fatal("and keep the selection")
 	}
 	p.Update(special(tea.KeyEscape))
-	if p.model.Cursor != -1 {
-		t.Error("a second escape drops the selection")
+	if p.model.Cursor != -1 || p.model.Navigating {
+		t.Error("a second escape leaves the mode")
 	}
 }
 
@@ -1051,12 +1015,16 @@ func TestEscapeClosesTheMenuWithoutClearingTheLine(t *testing.T) {
 	if p.model.Input != "/pl" {
 		t.Errorf("and leaves the line alone, got %q", p.model.Input)
 	}
-	// A second escape now reaches the stream, as it always would.
-	p.model.Entries = []Entry{{Kind: KindTool, Detail: "x", Expanded: true}}
-	p.model.Cursor = 0
+	// A second escape does nothing while the line still has text on it:
+	// abandoning a line somebody is halfway through writing is not what escape
+	// is for here, and stepping into the transcript from a written line would
+	// be worse.
 	p.Update(special(tea.KeyEscape))
-	if p.model.Entries[0].Expanded {
-		t.Error("with the menu closed, esc goes back to closing the expansion")
+	if p.model.Navigating {
+		t.Error("esc stepped into the transcript from a line with text on it")
+	}
+	if p.model.Input != "/pl" {
+		t.Errorf("and the line is still there, got %q", p.model.Input)
 	}
 }
 
@@ -1318,6 +1286,7 @@ func TestTheNetworkApprovalOffersTheAnswersThatOutliveTheSession(t *testing.T) {
 		ApprovalID: "a1", Tool: "bash", Command: "go test ./...",
 		BoundaryCrossed: "network",
 	}
+	p.model.Entries = append(p.model.Entries, Entry{Kind: KindApproval, Approval: p.model.Pending})
 
 	screen := Render(p.model, DefaultGeometry(100, 30))
 	// It says what the answer does. "Allow this command" would promise
@@ -1348,6 +1317,7 @@ func TestAnyOtherCrossingOffersNoStandingAnswer(t *testing.T) {
 		ApprovalID: "a1", Tool: "write", Command: "",
 		BoundaryCrossed: "filesystem_write",
 	}
+	p.model.Entries = append(p.model.Entries, Entry{Kind: KindApproval, Approval: p.model.Pending})
 
 	screen := Render(p.model, DefaultGeometry(100, 30))
 	for _, key := range []string{"[P]", "[G]"} {
@@ -1617,6 +1587,76 @@ func TestPastingIntoAModelThatCannotSeeNamesTheModel(t *testing.T) {
 	}
 	if !strings.Contains(p.model.Entries[0].Summary, "some-text-model") {
 		t.Errorf("got %q", p.model.Entries[0].Summary)
+	}
+}
+
+// NAV owns the keyboard, and every key it does not name is swallowed.
+//
+// That is what makes a letter safe inside it, and it is the rule copy mode
+// already carries: a mode that lets unknown keys through is a mode people leave
+// by accident, and the keys that reach the input line arrive as text nobody
+// meant to type.
+func TestNavModeSwallowsEveryKeyItDoesNotName(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Entries = []Entry{{Kind: KindUser, Summary: "algo"}, {Kind: KindAssistant, Summary: "b"}}
+	p.Update(special(tea.KeyEsc))
+	if !p.model.Navigating {
+		t.Fatal("esc did not open the mode")
+	}
+
+	for _, r := range "voce escreveu isto" {
+		p.Update(key(string(r)))
+	}
+	if p.model.Input != "" {
+		t.Errorf("keys reached the input line from inside the mode: %q", p.model.Input)
+	}
+	if !p.model.Navigating {
+		t.Error("an unnamed key left the mode")
+	}
+
+	// And the keys it DOES name work, letters included.
+	p.model.Cursor = 1
+	p.Update(key("k"))
+	if p.model.Cursor != 0 {
+		t.Errorf("k did not move the cursor: %d", p.model.Cursor)
+	}
+	p.Update(key("j"))
+	if p.model.Cursor != 1 {
+		t.Errorf("j did not move the cursor: %d", p.model.Cursor)
+	}
+}
+
+// The theme key is a letter, and it exists only where a letter is safe.
+//
+// Outside the mode `t` is the first character of "tenta", "test", "the" — which
+// is the defect this product has fixed twice, at the user's report both times.
+func TestTheThemeKeyOnlyExistsInsideTheMode(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Entries = []Entry{{Kind: KindUser, Summary: "algo"}}
+	first := p.geo.Palette.Theme.Name
+
+	// Outside: a letter.
+	p.Update(key("t"))
+	if p.model.Input != "t" {
+		t.Errorf("t was eaten outside the mode: input %q", p.model.Input)
+	}
+	if p.geo.Palette.Theme.Name != first {
+		t.Error("typing t changed the theme")
+	}
+
+	// Inside: the theme, and it comes back round.
+	p.model = p.model.SetInput("")
+	p.Update(special(tea.KeyEsc))
+	seen := map[string]bool{}
+	for i := 0; i < len(Themes()); i++ {
+		p.Update(key("t"))
+		seen[p.geo.Palette.Theme.Name] = true
+	}
+	if len(seen) != len(Themes()) {
+		t.Errorf("cycling reached %d of %d themes: %v", len(seen), len(Themes()), seen)
+	}
+	if p.geo.Palette.Theme.Name != first {
+		t.Errorf("a full cycle did not come back to %q, got %q", first, p.geo.Palette.Theme.Name)
 	}
 }
 

@@ -117,11 +117,14 @@ func TestResumeAsksAndContinueTakesTheLast(t *testing.T) {
 // The geometry is read at the edge, so the picker and the interface get the
 // same one. Two readings would draw two different windows for one terminal.
 func TestTheGeometryIsBuiltOnceForBothScreens(t *testing.T) {
-	if g := geometry(false); g.Width <= 0 || g.Height <= 0 {
+	g := geometry()
+	if g.Width <= 0 || g.Height <= 0 {
 		t.Fatalf("the geometry is %dx%d", g.Width, g.Height)
 	}
-	if g := geometry(true); g.PanelMode != tui.PanelHidden {
-		t.Errorf("--no-panel did not hide the panel: %v", g.PanelMode)
+	// The edge injects what the client may not read for itself: the glyph set,
+	// the palette and the language all come from here.
+	if g.Palette.Enabled && os.Getenv("NO_COLOR") != "" {
+		t.Error("the edge enabled colour against NO_COLOR")
 	}
 }
 

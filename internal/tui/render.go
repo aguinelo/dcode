@@ -10,42 +10,23 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// PanelMode is how the plan panel decides whether to show.
-// RailMode is the sidebar's visibility, and it mirrors PanelMode deliberately:
-// the same question was answered once already, and answering it a second way
-// would give the two columns different manners on the same terminal.
+// RailMode is the sidebar's visibility.
 type RailMode int
 
 const (
-	// RailHidden is where a terminal starts, and the zero value says so.
+	// RailAuto lets the width decide, and is the zero value again: the column
+	// that replaced the file list carries things that are nowhere else, which
+	// is what the file list did not.
+	RailAuto RailMode = iota
+	// RailHidden and RailShown are the user having thought about it.
 	//
-	// There is no third mode here, and the panel next door still has one. That
-	// asymmetry is the point rather than an oversight: the two columns used to
-	// answer "should I be here?" the same way, with the same threshold, and
-	// their two hundreds COMPOUNDED — crossing from 99 to 100 columns cost the
-	// conversation 46 of them at once. Mirroring the panel is what built the
-	// cliff.
-	//
-	// They also hold different things. The panel holds the plan, which exists
-	// only when the model made one and is something a reader returns to. The
-	// column held a second copy of what the stream had just said. A rule that
-	// suits the first does not suit the second, and writing one rule for both
-	// is how it came to be written for neither.
-	RailHidden RailMode = iota
-	// RailShown is the user having asked, and it holds at any width — the same
-	// manners the panel has, and the half of the mirror worth keeping.
+	// The rule that used to live beside this — the panel's own mode, mirroring
+	// this one — is gone with the panel. The mirror was the defect: the two
+	// columns answered "should I be here?" the same way with the same
+	// threshold, and their two hundreds compounded, so crossing from 99 to 100
+	// columns cost the conversation 46 of them at once.
+	RailHidden
 	RailShown
-)
-
-type PanelMode int
-
-const (
-	// PanelAuto lets the width decide. The default, because it answers the
-	// case the user has not thought about.
-	PanelAuto PanelMode = iota
-	// PanelShown and PanelHidden are the user having thought about it.
-	PanelShown
-	PanelHidden
 )
 
 // Geometry is the terminal size and the layout knobs.
@@ -53,19 +34,16 @@ type Geometry struct {
 	Width  int
 	Height int
 
-	PanelWidth         int
-	PanelMinWidth      int
-	PanelMaxWidth      int
-	PanelMinTotalWidth int
-	PanelMode          PanelMode
-
-	// The sidebar. clamp(20, w/5, 30) wide when it is asked for, and asked for
-	// is the only way it appears — there is no width rule here any more, and
-	// RailMode says why.
-	RailWidth    int
-	RailMinWidth int
-	RailMaxWidth int
-	RailMode     RailMode
+	// The side column: the diff pane over the session pane, on the right.
+	//
+	// Two fifths of the terminal, between a floor and a ceiling — the design's
+	// split is 57/43 and this is that, clamped. It is wider than the file list
+	// it replaces because it holds two panes and a bar, and it earns the width
+	// the file list did not: nothing in it repeats the stream.
+	RailMinWidth      int
+	RailMaxWidth      int
+	RailMinTotalWidth int
+	RailMode          RailMode
 
 	// DiffPreviewLines is how much of a diff shows without asking. A diff is
 	// what gets reviewed, so some of it is always visible — but a whole-file
@@ -89,8 +67,7 @@ type Geometry struct {
 func DefaultGeometry(w, h int) Geometry {
 	return Geometry{
 		Width: w, Height: h,
-		PanelWidth: 24, PanelMinWidth: 16, PanelMaxWidth: 34, PanelMinTotalWidth: 100,
-		RailWidth: 22, RailMinWidth: 20, RailMaxWidth: 30,
+		RailMinWidth: 28, RailMaxWidth: 60, RailMinTotalWidth: 120,
 		// Written out rather than left to the zero value: the default is a
 		// decision, and a decision nobody can find in the defaults is one the
 		// next reader has to infer from a constant's position in a list.
@@ -109,104 +86,61 @@ func DefaultGeometry(w, h int) Geometry {
 		// So it is summoned rather than resident, which is what `^B` means in
 		// the editor the key was borrowed from — you toggle it, and it stays as
 		// you left it.
-		RailMode:         RailHidden,
+		RailMode:         RailAuto,
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
 		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
+		// The theme is named here rather than left to the zero value. A zero
+		// theme reads as neon at draw time and as nothing when asked which one
+		// it is, so cycling from it skipped a step — and a default nobody can
+		// find in the defaults is one the next reader has to infer.
+		Palette: Palette{Theme: Neon()},
 	}
 }
 
-// ShowPanel reports whether the plan panel is drawn.
+// ShowRail reports whether the side column is drawn.
 //
-// Responsive by default: at 80 columns a 24-wide panel leaves 56 for the
-// stream, and a diff in 56 columns is bad. But responsiveness answers the case
-// where the user never noticed the window got narrow — and a keypress *is* the
-// user noticing, so an explicit choice wins over the default at any width.
+// Shown by default on a terminal wide enough, and this REVERSES the default set
+// earlier today. The reason it was hidden was measured and stands: the file
+// list it replaced was a second copy of what the stream had just said, and
+// twenty-six columns is a lot to pay for a repetition.
 //
-// No plan means no panel in every mode: an empty panel is worse than none.
-func (g Geometry) ShowPanel(hasPlan bool) bool {
-	if !hasPlan {
-		return false
-	}
-	switch g.PanelMode {
-	case PanelShown:
-		return true
-	case PanelHidden:
-		return false
-	}
-	return g.Width >= g.PanelMinTotalWidth
-}
-
-// ShowRail reports whether the sidebar is drawn.
+// These two panes are not that. A bar of added against removed, a context
+// gauge, what the person allowed of what was asked, the last calls by the
+// clock — none of it is anywhere else on the screen. The objection was never
+// "a column is expensive", it was "that column bought nothing".
 //
-// Nothing to put in it means no sidebar, for the reason an empty panel is worse
-// than none: a column of nothing costs the stream twenty characters and tells
-// the reader that something is missing.
+// Below RailMinTotalWidth it goes, because two fifths of a narrow terminal is
+// two fifths taken from a stream that has none to spare, and an explicit choice
+// still wins in both directions.
 func (g Geometry) ShowRail(hasContent bool) bool {
 	if !hasContent {
 		return false
 	}
-	return g.RailMode == RailShown
+	switch g.RailMode {
+	case RailShown:
+		return true
+	case RailHidden:
+		return false
+	}
+	return g.Width >= g.RailMinTotalWidth
 }
 
-// railWidth is how wide the sidebar actually draws: a fifth of the screen,
-// between its floor and its ceiling, as the design asks.
+// railWidth is how wide the side column actually draws: two fifths of the
+// terminal, between its floor and its ceiling.
 func (g Geometry) railWidth() int {
-	w := g.Width / 5
 	floor, ceil := g.RailMinWidth, g.RailMaxWidth
 	if floor <= 0 {
-		floor = 20
+		floor = 28
 	}
 	if ceil <= 0 {
-		ceil = 30
+		ceil = 60
 	}
+	w := g.Width * 2 / 5
 	if w < floor {
 		w = floor
 	}
 	if w > ceil {
 		w = ceil
-	}
-	return w
-}
-
-// panelWidth is how wide the panel actually draws.
-//
-// It gives ground before it disappears: asked for on a narrow terminal, it
-// shrinks rather than taking the room the stream needs. Below its own minimum
-// an item is unreadable, so that is the floor.
-func (g Geometry) panelWidth() int {
-	floor := g.PanelMinWidth
-	if floor <= 0 {
-		floor = 16
-	}
-	ceiling := g.PanelMaxWidth
-	if ceiling <= 0 {
-		ceiling = 34
-	}
-
-	// It appears at its FLOOR and grows, rather than arriving at a quarter of
-	// the screen all at once.
-	//
-	// A quarter of the screen at the threshold meant the panel appeared owing
-	// twenty-five columns the instant it was allowed to, so crossing from 99 to
-	// 100 columns cost the stream twenty-five of them in one step. Paid out of
-	// the surplus — the columns BEYOND the width at which it was allowed to
-	// appear — the step is nine, and every column after that is shared rather
-	// than taken.
-	surplus := g.Width - g.PanelMinTotalWidth
-	if surplus < 0 {
-		surplus = 0
-	}
-	w := floor + surplus/3
-	if w > ceiling {
-		w = ceiling
-	}
-	// Never more than a quarter of the terminal, whatever the arithmetic above
-	// says: the panel holds short lines and the stream holds diffs.
-	if q := g.Width / 4; w > q {
-		w = q
-	}
-	if w < floor {
-		w = floor
 	}
 	return w
 }
@@ -235,13 +169,10 @@ func copyGutter(c CopyState, line int, g Geometry) string {
 // One function, read by the layout and by the renderer both. Two places
 // computing a width is the defect; where it shows up is only the symptom, and
 // this family has paid for that once already with a painted frame.
-func (g Geometry) StreamWidth(showRail, showPanel bool) int {
+func (g Geometry) StreamWidth(showRail bool) int {
 	w := g.Width
 	if showRail {
 		w -= g.railWidth() + 1
-	}
-	if showPanel {
-		w -= g.panelWidth() + 1
 	}
 	if w < 20 {
 		return 20
@@ -256,6 +187,20 @@ type marks struct {
 	// of a removal. Both were literals until an ASCII terminal got them: they
 	// are typography, and typography is the renderer's, never the model's.
 	dot, minus, prompt string
+	// The lane gutter: one column down the left of every row saying which of
+	// the three kinds of thing it is.
+	//
+	// The `you` lane has a glyph again. It did not, on the grounds that the
+	// rule and the prompt already mark it twice — which is true of the block
+	// itself and false of the legend, where three lanes have to be shown
+	// against three names and a blank is not a mark anyone can look for.
+	laneYou, laneProcess, laneAnswer, laneAsk string
+	// The plan tree.
+	treeTee, treeEnd string
+	// The bars: a filled cell and the track behind it.
+	barFull, barTrack string
+	// enter is the return key, as a hint names it.
+	enter string
 	// The frame of the approval modal. It was drawn from literals with no
 	// fallback at all — the one screen where being unreadable costs the most.
 	boxTL, boxTR, boxBL, boxBR, boxH string
@@ -270,11 +215,13 @@ func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
 			dot: "·", minus: "−", prompt: "❯",
+			laneYou: "▌", laneProcess: "╎", laneAnswer: "▏", laneAsk: "┃", treeTee: "├", treeEnd: "└", barFull: "━", barTrack: "─", enter: "↵",
 			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
 		dot: "-", minus: "-", prompt: ">",
+		laneYou: "#", laneProcess: ":", laneAnswer: "|", laneAsk: "?", treeTee: "+", treeEnd: "\\", barFull: "#", barTrack: "-", enter: "ret",
 		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
@@ -316,30 +263,50 @@ func loadingLine(m Model, g Geometry) string {
 }
 
 func fill(body string, g Geometry) string {
+	// The ground is painted per ROW, not once for the screen.
+	//
+	// One escape at the top would be undone by the first reset a styled run
+	// emits, and every row would then be a different colour depending on
+	// whether anything on it happened to be styled. Opening each row with the
+	// ground and letting Apply restore it after every run is what makes the
+	// background a property of the screen rather than of the last thing drawn.
+	//
+	// Empty when colour is off, so the no-colour path emits nothing at all.
+	ground := g.Palette.Ground()
 	lines := strings.Split(body, "\n")
 	for i, line := range lines {
 		if pad := g.Width - visibleWidth(line); pad > 0 {
-			lines[i] = line + strings.Repeat(" ", pad)
+			line += strings.Repeat(" ", pad)
 		}
+		if ground != "" {
+			line = ground + line
+		}
+		lines[i] = line
 	}
 	return strings.Join(lines, "\n")
 }
 
 func render(m Model, g Geometry) string {
-	showPanel := g.ShowPanel(m.panelHasContent())
 	showRail := g.ShowRail(m.railHasContent())
 
 	var b strings.Builder
-	b.WriteString(renderStatus(m, g, showPanel))
+	b.WriteString(renderStatus(m, g, false))
 	b.WriteString("\n")
 
+	// The legend rides at the top of the stream, above the window, so it does
+	// not scroll away from the marks it explains.
+	legend := renderLanes(m, g, g.StreamWidth(showRail))
 	body := StreamLines(m, g)
 	visible, top, total, height := Window(m, g, body)
-
-	var panel []string
-	if showPanel {
-		panel = renderPanel(m, g)
+	height -= len(legend)
+	if height < 1 {
+		legend, height = nil, 1
 	}
+	if len(visible) > height {
+		visible = visible[len(visible)-height:]
+	}
+	visible = append(append([]string(nil), legend...), visible...)
+	height += len(legend)
 
 	// The divider follows the same rule as every other glyph: ASCII when the
 	// terminal cannot draw the box character. It was a literal here, so a
@@ -352,22 +319,11 @@ func render(m Model, g Geometry) string {
 
 	var rail []string
 	if showRail {
-		rail = renderRail(m, g, height)
+		rail = renderSide(m, g, height)
 	}
 
-	streamW := g.StreamWidth(showRail, showPanel)
+	streamW := g.StreamWidth(showRail)
 	for i := 0; i < height; i++ {
-		// The sidebar first, and it never scrolls with the stream: it is a
-		// standing answer to "what has this turn touched", not part of the
-		// conversation.
-		if showRail {
-			row := ""
-			if i < len(rail) {
-				row = rail[i]
-			}
-			b.WriteString(padStyled(row, g.railWidth()))
-			b.WriteString(divider)
-		}
 		left := ""
 		if i < len(visible) {
 			left = visible[i]
@@ -379,18 +335,21 @@ func render(m Model, g Geometry) string {
 		if m.Copy.Active {
 			left = copyGutter(m.Copy, top+i, g) + clipStyled(left, streamW-copyGutterWidth)
 		}
-		if !showPanel {
+		if !showRail {
 			b.WriteString(left)
 			b.WriteString("\n")
 			continue
 		}
-		right := ""
-		if i < len(panel) {
-			right = panel[i]
+		// The column is on the RIGHT, and it never scrolls with the stream: it
+		// is a standing answer to what changed and where the session is, not
+		// part of the conversation.
+		row := ""
+		if i < len(rail) {
+			row = rail[i]
 		}
 		b.WriteString(padStyled(left, streamW))
 		b.WriteString(divider)
-		b.WriteString(clip(right, g.panelWidth()))
+		b.WriteString(padStyled(row, g.railWidth()))
 		b.WriteString("\n")
 	}
 
@@ -412,11 +371,9 @@ func render(m Model, g Geometry) string {
 	}
 	b.WriteString(RenderStatusBar(m, g))
 
-	// The approval wins when both are open: one is a question the turn is
-	// blocked on, the other is a list somebody summoned.
-	if m.Pending != nil {
-		return overlay(b.String(), renderApproval(*m.Pending, g, Text(m.Lang)), g)
-	}
+	// The approval is in the STREAM now, not over it. The overlay is left to
+	// the conversation list, which is the one thing here that is genuinely
+	// summoned over the screen rather than part of it.
 	if m.Nav.Active {
 		return overlay(b.String(), renderSessionList(m, g), g)
 	}
@@ -429,7 +386,7 @@ func render(m Model, g Geometry) string {
 // the tail is what made scrolling impossible, since there was nothing above the
 // screen to scroll back to.
 func StreamLines(m Model, g Geometry) []string {
-	w := g.StreamWidth(g.ShowRail(m.railHasContent()), g.ShowPanel(m.panelHasContent()))
+	w := g.StreamWidth(g.ShowRail(m.railHasContent()))
 	if m.ShowEmptyState() {
 		return emptyState(m, g, w)
 	}
@@ -500,7 +457,9 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 		// broken one, and the key that brings it back is documented only inside
 		// the panel that is not on screen.
 		if s := m.PlanSummary(); s != "" {
-			fields = append(fields, field{p.Apply(StyleHint, s+" · ^p"), 1})
+			// No key beside it any more: the panel it opened is gone, and a
+			// hint for a key that does nothing is worse than no hint.
+			fields = append(fields, field{p.Apply(StyleMeta, s), 1})
 		}
 	}
 	// The same debt, and it cost more. The sidebar disappears below a hundred
@@ -617,10 +576,13 @@ func renderStream(m Model, g Geometry, w int) []string {
 			continue
 		}
 
-		selected := i == m.Cursor
-		cursor := "  "
-		if selected {
-			cursor = p.Apply(StyleAccent, "> ")
+		// Two columns, as before: the lane in the first, the selection marker
+		// in the second. `cursor` leads the first row of an entry and `cont`
+		// every row after it, so a wrapped answer stays in its lane.
+		gut := laneGutter(laneOf(e), gl, p)
+		cursor, cont := gut+" ", gut+" "
+		if i == m.Cursor {
+			cursor = gut + p.Apply(StyleAccent, gl.active)
 		}
 
 		switch e.Kind {
@@ -628,30 +590,36 @@ func renderStream(m Model, g Geometry, w int) []string {
 			// The model writes markdown, so the screen reads it. Printing it
 			// raw put the asterisks and the backticks on screen, and every
 			// answer with emphasis in it looked unfinished.
+			lead := cursor
 			for _, line := range renderProse(e.Summary, w-2, g) {
 				// A paragraph break is an EMPTY row, not two spaces. Indenting
 				// it made it whitespace, and the guard that forbids two blank
 				// rows in a row compares against "" — so every double blank in
 				// prose was invisible to the one test written to catch it.
+				//
+				// It carries no lane either: a lane on an empty row draws a
+				// gutter beside nothing, and the block it belongs to is
+				// unambiguous from the rows above and below.
 				if line == "" {
 					out = gapBefore(out)
 					continue
 				}
-				out = append(out, "  "+line)
+				out = append(out, lead+line)
+				lead = cont
 			}
 
 		case KindTool:
 			body, limit := toolBody(e, g)
 			out = append(out, clipStyled(renderToolLine(e, cursor, gl, p, w), w))
 			if body != "" {
-				out = append(out, detailLines(body, w, g, limit, Text(m.Lang))...)
+				out = append(out, detailLines(body, cont, w, g, limit, Text(m.Lang))...)
 			}
 
 		case KindError:
 			head := cursor + p.Apply(StyleError, "! "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines, Text(m.Lang))...)
+				out = append(out, detailLines(e.Detail, cont, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
 		case KindCompletion:
@@ -668,19 +636,29 @@ func renderStream(m Model, g Geometry, w int) []string {
 			head := cursor + p.Apply(style, mark+" "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines, Text(m.Lang))...)
+				out = append(out, detailLines(e.Detail, cont, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
+		case KindApproval:
+			out = gapBefore(out)
+			out = append(out, renderApprovalBlock(e, cursor, cont, gl, g, m.Lang, w)...)
+			blocked = true
+
+		case KindPlan:
+			out = gapBefore(out)
+			out = append(out, renderPlanBlock(e, cursor, cont, gl, g, m.Lang, w)...)
+			blocked = true
+
 		case KindReasoning:
-			out = append(out, renderThought(e, cursor, gl, g)...)
+			out = append(out, renderThought(e, cursor, cont, gl, g)...)
 
 		case KindNote:
 			for j, line := range wrap(e.Summary, w-4) {
-				prefix := "  ~ "
+				prefix := cursor + "~ "
 				if j > 0 {
-					prefix = "    "
+					prefix = cont + "  "
 				}
-				out = append(out, clipStyled(p.Apply(StyleDim, prefix+line), w))
+				out = append(out, clipStyled(prefix+p.Apply(StyleDim, line), w))
 			}
 
 		case KindUser:
@@ -699,11 +677,11 @@ func renderStream(m Model, g Geometry, w int) []string {
 			// Inset to the same two-column gutter everything else uses. Drawn
 			// edge to edge it touched the dividers on both sides and read as a
 			// row of a table rather than as the seam between two exchanges.
-			out = append(out, "  "+p.Apply(StyleChrome, strings.Repeat(gl.boxH, maxInt(0, w-4))))
+			out = append(out, cont+p.Apply(StyleChrome, strings.Repeat(gl.boxH, maxInt(0, w-4))))
 			for j, line := range wrap(e.Summary, w-4) {
-				prefix := "  " + p.Apply(StyleAccent, gl.prompt) + " "
+				prefix := cursor + p.Apply(StyleAccent, gl.prompt) + " "
 				if j > 0 {
-					prefix = "    "
+					prefix = cont + "  "
 				}
 				out = append(out, clipStyled(prefix+p.Apply(StyleBold, line), w))
 			}
@@ -714,6 +692,231 @@ func renderStream(m Model, g Geometry, w int) []string {
 		}
 	}
 	return out
+}
+
+// renderApprovalBlock draws a crossing put to the person, where it happened.
+//
+// In the stream rather than in a modal over the middle of the screen. A modal
+// answers "read this now" and nothing else: once answered it vanishes, so the
+// transcript holds no record that anything was ever asked, and "what did I
+// approve?" — a question somebody asks an hour later — has no answer anywhere.
+//
+// Being inline changes NOTHING about the keyboard. A pending crossing still
+// owns it, because the turn is stopped until it is answered and there is
+// nothing else a keystroke could usefully mean. That is what keeps `y`, `a` and
+// `n` legal here: they are letters inside a mode that owns the keyboard, the
+// same standing the conversation list gives `r`.
+func renderApprovalBlock(e Entry, cursor, cont string, gl marks, g Geometry, lang Lang, w int) []string {
+	if e.Approval == nil {
+		return nil
+	}
+	p := g.Palette
+	t := Text(lang)
+	req := *e.Approval
+
+	head := cursor + p.Apply(StyleAccent, t.ApprovalCrossing) + " " +
+		p.Apply(StyleHeading, req.Tool)
+	if req.BoundaryCrossed != "" {
+		head += " " + p.Apply(StyleMeta, t.ApprovalCrosses+" "+req.BoundaryCrossed)
+	}
+	out := []string{clipStyled(head, w)}
+
+	// What actually runs, never a description of it. Asking for consent to
+	// "reach the network" without showing the command is asking blind.
+	if req.Command != "" {
+		for _, l := range wrap(req.Command, w-visibleWidth(cont)-4) {
+			out = append(out, clipStyled(cont+"  "+p.Apply(StyleCode, l), w))
+		}
+	}
+	// The rule that raised the question. Consent to a rule nobody can see is
+	// consent to nothing, and it is what an "allow for the session" answer is
+	// remembered against.
+	if req.Rule != "" {
+		out = append(out, clipStyled(cont+"  "+p.Apply(StyleMeta, t.ApprovalRule+" "+req.Rule), w))
+	}
+	if standingScope(req) {
+		out = append(out, clipStyled(cont+"  "+p.Apply(StyleWarn, t.ApprovalNetwork), w))
+	}
+
+	// Answered: what was said, and no keys — offering an answer to a question
+	// already settled is offering a key that does nothing.
+	if e.Decision != "" {
+		return append(out, clipStyled(cont+"  "+
+			p.Apply(decisionStyle(e.Decision), t.ApprovalAnswered+" "+
+				decisionWord(e.Decision, t)), w))
+	}
+	return append(out, clipStyled(cont+"  "+approvalKeys(req, t, p), w))
+}
+
+// approvalKeys lists the answers available for this crossing.
+//
+// Deny first and as the default: the safe action is the one that costs least
+// effort. The capitals are harder to press by accident, which is right for the
+// options with the largest consequence — and the two that are written down are
+// the two that need the most deliberate keystroke.
+//
+// Each key carries the colour of what it costs: refusing is the error colour,
+// allowing once the ok colour, and the standing answers the warn colour. On a
+// terminal without colour the words still say it, which is why they are words.
+func approvalKeys(req protocol.ApprovalRequest, t Strings, p Palette) string {
+	if standingScope(req) {
+		return p.Apply(StyleError, "[d]") + " " + p.Apply(StyleHint, t.KeyNo) + "   " +
+			p.Apply(StyleOK, "[a]") + " " + p.Apply(StyleHint, t.KeyOnce) + "   " +
+			p.Apply(StyleWarn, "[P]") + " " + p.Apply(StyleHint, t.KeyProject) + "   " +
+			p.Apply(StyleWarn, "[G]") + " " + p.Apply(StyleHint, t.KeyAlways)
+	}
+	return p.Apply(StyleError, "[d]") + " " + p.Apply(StyleHint, t.KeyDeny) + "   " +
+		p.Apply(StyleOK, "[a]") + " " + p.Apply(StyleHint, t.KeyAllow) + "   " +
+		p.Apply(StyleWarn, "[A]") + " " + p.Apply(StyleHint, t.KeySession) + "   " +
+		p.Apply(StyleHint, t.ApprovalEnter)
+}
+
+func decisionStyle(d protocol.ApprovalDecision) Style {
+	if d == protocol.ApprovalDeny {
+		return StyleError
+	}
+	return StyleOK
+}
+
+// decisionWord names the answer in the interface language. A decision rendered
+// as its wire value — `allow_session` — is a record in a vocabulary the person
+// never chose.
+func decisionWord(d protocol.ApprovalDecision, t Strings) string {
+	switch d {
+	case protocol.ApprovalDeny:
+		return t.ApprovalDenied
+	case protocol.ApprovalAllowSession:
+		return t.ApprovalAllowedSession
+	case protocol.ApprovalAllowProject:
+		return t.ApprovalAllowedProject
+	case protocol.ApprovalAllowAlways:
+		return t.ApprovalAllowedAlways
+	default:
+		return t.ApprovalAllowedOnce
+	}
+}
+
+// renderPlanBlock draws the plan where the model made it.
+//
+// A tree, not a list: the design draws `├` down the items and `└` on the last,
+// and the shape is doing work — it says these are steps of one thing rather
+// than four unrelated lines that happen to be adjacent.
+//
+// The heading counts the plan the way the model would say it — `plan 2/4` — so
+// the block answers "how far along" without the reader counting ticks.
+func renderPlanBlock(e Entry, cursor, cont string, gl marks, g Geometry, lang Lang, w int) []string {
+	p := g.Palette
+	t := Text(lang)
+
+	done := 0
+	for _, it := range e.Plan {
+		if it.Status == protocol.PlanDone {
+			done++
+		}
+	}
+	head := fmt.Sprintf("%s %d/%d", strings.ToLower(t.PanelPlan), done, len(e.Plan))
+	out := []string{clipStyled(cursor+p.Apply(StyleHeading, head), w)}
+
+	for i, it := range e.Plan {
+		branch := gl.treeTee
+		if i == len(e.Plan)-1 {
+			branch = gl.treeEnd
+		}
+		mark, style := gl.pending, StyleMeta
+		switch it.Status {
+		case protocol.PlanActive:
+			mark, style = gl.active, StyleAccent
+		case protocol.PlanDone:
+			mark, style = gl.done, StyleOK
+		case protocol.PlanBlocked:
+			mark, style = gl.blocked, StyleError
+		}
+		room := w - visibleWidth(cont) - 4
+		line := cont + p.Apply(StyleChrome, branch) + " " + p.Apply(style, mark) + " " +
+			p.Apply(textStyleFor(it.Status), ellipsisTail(it.Text, room, gl.ell))
+		out = append(out, clipStyled(line, w))
+
+		// A block with no visible cause is worse than no block at all — the
+		// rule the panel carried, kept when the plan moved into the stream.
+		if it.Status == protocol.PlanBlocked && it.Blocked != "" {
+			for _, l := range wrap(it.Blocked, room-2) {
+				out = append(out, clipStyled(cont+"   "+p.Apply(StyleError, l), w))
+			}
+		}
+	}
+	return out
+}
+
+// textStyleFor keeps a finished step quieter than the one being worked on: the
+// eye should land on where the plan IS, not on what it has left behind.
+func textStyleFor(s string) Style {
+	switch s {
+	case protocol.PlanActive:
+		return StyleNone
+	case protocol.PlanBlocked:
+		return StyleProse
+	default:
+		return StyleMeta
+	}
+}
+
+// Lane is which of the three things a row is: what you asked, what the model
+// did on the way, and what it says.
+//
+// It is the one idea worth taking whole from the v2 design, and the reason is
+// what a long turn looks like: prose and tool calls alternate down the screen
+// with nothing structural telling them apart, so catching up means reading
+// every row to find out which rows were worth reading. With a lane in the
+// gutter the eye can run down the answer lane alone.
+//
+// It costs NOTHING. Every row of the stream already reserved two columns — the
+// selection marker, or two spaces where there was none. The lane takes the
+// first of them and the marker keeps the second.
+type Lane int
+
+const (
+	// LaneProcess is the zero value because it is what an unknown kind should
+	// read as: work on the way to an answer, not an answer.
+	LaneProcess Lane = iota
+	LaneYou
+	LaneAnswer
+	// LaneAsk is a question put to the person, and the design gives it a lane
+	// of its own for the reason it deserves one: it is the only row on the
+	// screen that will not move until somebody does something.
+	LaneAsk
+)
+
+// laneOf reads the lane off the kind.
+//
+// KindAssistant is the answer lane whether the model was narrating mid-turn or
+// concluding, because nothing in the event stream tells those apart — the
+// design's RESULT block, with its badge and its file list, needs a fact the
+// protocol does not carry yet. Recorded in the roadmap rather than guessed at.
+func laneOf(e Entry) Lane {
+	switch e.Kind {
+	case KindUser:
+		return LaneYou
+	case KindApproval:
+		return LaneAsk
+	case KindAssistant, KindCompletion:
+		return LaneAnswer
+	default:
+		return LaneProcess
+	}
+}
+
+// laneGutter is the single column that marks a lane, already styled.
+func laneGutter(l Lane, gl marks, p Palette) string {
+	switch l {
+	case LaneYou:
+		return p.Apply(StyleLaneYou, gl.laneYou)
+	case LaneAsk:
+		return p.Apply(StyleAccent, gl.laneAsk)
+	case LaneAnswer:
+		return p.Apply(StyleOK, gl.laneAnswer)
+	default:
+		return p.Apply(StyleChrome, gl.laneProcess)
+	}
 }
 
 // Column widths for a tool call. Fixed, because the point of the line is that
@@ -731,9 +934,9 @@ const (
 // it doing something sensible". Closed, it is one line — thinking runs several
 // times the length of the answer, and left expanded it buries the result it
 // was leading to.
-func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
+func renderThought(e Entry, cursor, cont string, gl marks, g Geometry) []string {
 	p := g.Palette
-	w := g.StreamWidth(false, g.ShowPanel(true))
+	w := g.StreamWidth(false)
 
 	if !e.Closed && !e.Expanded {
 		lines := wrap(strings.TrimSpace(e.Summary), w-4)
@@ -744,7 +947,7 @@ func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 		}
 		out := make([]string, 0, len(lines))
 		for _, l := range lines {
-			out = append(out, clipStyled(p.Apply(StyleChrome, "  "+gl.gutter+" "+l), w))
+			out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" "+l), w))
 		}
 		return out
 	}
@@ -760,7 +963,7 @@ func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 
 	out := []string{clipStyled(head, w)}
 	for _, l := range wrap(strings.TrimSpace(e.Summary), w-4) {
-		out = append(out, clipStyled(p.Apply(StyleChrome, "  "+gl.gutter+" "+l), w))
+		out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" "+l), w))
 	}
 	return out
 }
@@ -776,7 +979,10 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 	// The target gives ground first when the terminal is narrow: the tool name
 	// and the summary are short and load-bearing, a path is neither.
 	targetW := toolTargetWidth
-	if room := w - len(cursor) - toolNameWidth - 24; room < targetW {
+	// visibleWidth and not len: the lead carries escapes, so a byte count
+	// shrinks the target only on a colour terminal — which is the hardest kind
+	// of defect to see, and the one the colour guard exists to catch. It did.
+	if room := w - visibleWidth(cursor) - toolNameWidth - 24; room < targetW {
 		targetW = room
 	}
 	if targetW < 8 {
@@ -898,7 +1104,7 @@ func reverse(s string) string {
 // detailLines renders expanded output, colouring it as a diff when it looks
 // like one. The diff is what gets reviewed, so it is the one place where colour
 // is doing work rather than decorating.
-func detailLines(detail string, w int, g Geometry, limit int, t Strings) []string {
+func detailLines(detail, lead string, w int, g Geometry, limit int, t Strings) []string {
 	gl := glyphs(g.Unicode)
 	lines := strings.Split(strings.TrimRight(detail, "\n"), "\n")
 	hidden := 0
@@ -909,96 +1115,19 @@ func detailLines(detail string, w int, g Geometry, limit int, t Strings) []strin
 	out := make([]string, 0, len(lines)+1)
 	for _, l := range lines {
 		body := g.Palette.Apply(DiffStyle(l), l)
-		out = append(out, clipStyled("    "+gl.gutter+" "+body, w))
+		out = append(out, clipStyled(lead+"  "+gl.gutter+" "+body, w))
 	}
 	if hidden > 0 {
 		// How much is hidden and how to see it. "truncated" alone leaves the
 		// reader unable to judge whether it matters.
-		note := fmt.Sprintf("    %s %s · %s", gl.ell,
+		note := fmt.Sprintf("  %s %s · %s", gl.ell,
 			plural(hidden, t.LineOne, t.LineMany), t.ExpandHint)
-		out = append(out, clipStyled(g.Palette.Apply(StyleDim, note), w))
+		out = append(out, clipStyled(lead+g.Palette.Apply(StyleDim, note), w))
 	}
 	return out
 }
 
 // renderPanel draws the plan.
-func renderPanel(m Model, g Geometry) []string {
-	gl := glyphs(g.Unicode)
-	w := g.panelWidth()
-	out := []string{clip(" "+Text(m.Lang).PanelPlan, w), ""}
-
-	for _, it := range m.Plan {
-		mark := gl.pending
-		switch it.Status {
-		case protocol.PlanActive:
-			mark = gl.active
-		case protocol.PlanDone:
-			mark = gl.done
-		case protocol.PlanBlocked:
-			mark = gl.blocked
-		}
-		// Cut with a mark, never in silence. The sidebar next door already
-		// states the rule for a conversation title — a title that merely stops
-		// leaves the reader unable to tell a short one from a truncated one —
-		// and the panel answered the same question the other way: `✓ 6 CLI sob
-		// demanda com contr` just ended.
-		//
-		// The end gives way, because a plan item is identified by how it
-		// starts, the way a command is. Elided before styling, which is the
-		// order the Palette's contract asks for.
-		head := fmt.Sprintf(" %s %d ", mark, it.ID)
-		out = append(out, head+ellipsisTail(it.Text, w-visibleWidth(head), gl.ell))
-		if it.Status == protocol.PlanBlocked && it.Blocked != "" {
-			// A block with no visible cause is worse than no block at all.
-			for _, line := range wrap(it.Blocked, w-6) {
-				out = append(out, ellipsisTail("     "+line, w, gl.ell))
-			}
-		}
-	}
-
-	out = append(out, "")
-	if s := m.PlanSummary(); s != "" {
-		out = append(out, clip(" "+s, w))
-	}
-	out = append(out, turnSection(m, g, w)...)
-	out = append(out, "", clip(" [^p] hide panel", w))
-	return out
-}
-
-// turnSection is where the turn stands against its ceilings.
-//
-// It is here rather than in the status line because a ceiling is not a status:
-// it is a thing that is approaching, and the panel is where the reader already
-// goes for what is being worked toward.
-//
-// Nothing is drawn before the daemon has said anything. Zero of a hundred is a
-// number, and a number nobody sent is a number that will be believed.
-func turnSection(m Model, g Geometry, w int) []string {
-	if !m.turnSectionWorthDrawing() {
-		return nil
-	}
-	t := Text(m.Lang)
-	p := g.Palette
-
-	gl := glyphs(g.Unicode)
-	out := []string{"", clipStyled(" "+p.Apply(StyleHeading, strings.ToUpper(t.PanelTurn)), w)}
-
-	// Dim until it is close, and then not. The ceiling is item 1 of the
-	// roadmap precisely because nothing tells anybody it is coming.
-	style := StyleDim
-	if m.MaxRounds > 0 && m.Rounds*4 >= m.MaxRounds*3 {
-		style = StyleWarn
-	}
-	out = append(out, clipStyled(" "+p.Apply(style,
-		fmt.Sprintf("%s %d/%d", t.PanelRounds, m.Rounds, m.MaxRounds)), w))
-
-	if m.MaxInFlight > 0 {
-		out = append(out, clipStyled(" "+p.Apply(StyleDim,
-			fmt.Sprintf("%s %d%s%d", t.PanelInFlight, m.InFlight, gl.dot, m.MaxInFlight)), w))
-	}
-	return out
-}
-
 // renderWorking is the line Claude Code taught everyone to expect: something is
 // happening, this is how long it has been happening, and this is how to stop it.
 //
@@ -1143,9 +1272,9 @@ func InputHeight(m Model, g Geometry) int { return InputRows(m, g) + inputFrameR
 func renderInputLines(m Model, g Geometry, hint string) []string {
 	p := g.Palette
 	gl := glyphs(g.Unicode)
-	prompt := "> "
+	prompt := gl.prompt + " "
 	if len(m.Queue) > 0 {
-		prompt = fmt.Sprintf("(%d %s) > ", len(m.Queue), Text(m.Lang).Queued)
+		prompt = fmt.Sprintf("(%d %s) %s ", len(m.Queue), Text(m.Lang).Queued, gl.prompt)
 	}
 
 	// The frame is chrome and stays chrome, whichever region has the keyboard.
@@ -1234,70 +1363,6 @@ func renderCaretIn(text string, at int, p Palette) string {
 // records — and the path in that question is what makes it answerable at all.
 func standingScope(req protocol.ApprovalRequest) bool {
 	return req.BoundaryCrossed == "network"
-}
-
-// approvalKeys lists the answers available for this crossing.
-//
-// Deny first and as the default: the safe action is the one that costs least
-// effort. The capitals are harder to press by accident, which is right for the
-// options with the largest consequence — and the two that are written down are
-// the two that need the most deliberate keystroke.
-func approvalKeys(req protocol.ApprovalRequest, t Strings) string {
-	if standingScope(req) {
-		return "  " + t.ApprovalStanding
-	}
-	return "  " + t.ApprovalOnce
-}
-
-func renderApproval(req protocol.ApprovalRequest, g Geometry, t Strings) []string {
-	w := g.Width - 8
-	if w > 60 {
-		w = 60
-	}
-	if w < 24 {
-		w = 24
-	}
-
-	gl := glyphs(g.Unicode)
-	v := gl.gutter
-	// Every piece of the frame comes from the glyph set now. It was drawn from
-	// literals with no fallback, which made this the ONE screen a terminal in
-	// ASCII could not read — and it is the screen that asks whether a boundary
-	// may be crossed.
-	head := gl.boxTL + gl.boxH + " " + t.ApprovalTitle + " "
-	lines := []string{
-		head + strings.Repeat(gl.boxH, maxInt(0, w-visibleWidth(head)+1)) + gl.boxTR,
-		v + pad("", w) + v,
-		v + pad("  "+req.Tool+" "+t.ApprovalCrosses+" "+req.BoundaryCrossed, w) + v,
-	}
-	// The network question is about the PROJECT, not this command. A shell
-	// command is opaque, so answering yes opens the boundary for everything
-	// that runs here — saying "allow this command" would promise something
-	// narrower than what the answer does.
-	if standingScope(req) {
-		lines = append(lines,
-			v+pad("", w)+v,
-			v+pad("  "+t.ApprovalNetwork, w)+v)
-	}
-	if req.Command != "" {
-		// The rendered command, never a description. Asking for consent to
-		// "access the network" without showing what runs is asking blind.
-		lines = append(lines, v+pad("", w)+v)
-		for _, l := range wrap(req.Command, w-6) {
-			lines = append(lines, v+pad("    "+l, w)+v)
-		}
-	}
-	lines = append(lines,
-		v+pad("", w)+v,
-		// Deny first and as the default: the safe action is the one that costs
-		// least effort. The capital A is harder to press by accident, which is
-		// right for the option with the largest consequence.
-		v+pad(approvalKeys(req, t), w)+v,
-		v+pad("  "+t.ApprovalEnter, w)+v,
-		v+pad("", w)+v,
-		gl.boxBL+strings.Repeat(gl.boxH, w)+gl.boxBR,
-	)
-	return lines
 }
 
 // overlay centres the modal over the screen and blocks nothing else from being
