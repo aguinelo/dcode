@@ -89,6 +89,28 @@ type Strings struct {
 	RailNaming    string
 	RailNoMatch   string
 
+	// The side column.
+	SideDiff       string
+	SideSession    string
+	SideNothingYet string
+	SideContext    string
+	SideAllowed    string
+	SideRecent     string
+	SideBarScale   string
+
+	// The lane legend.
+	LaneYou     string
+	LaneProcess string
+	LaneAnswer  string
+
+	// The nav bar.
+	NavBadge     string
+	NavSessions  string
+	NavColumn    string
+	NavKeys      string
+	SideToolOne  string
+	SideToolMany string
+
 	// The approval modal. It was written in English literals — the ONE screen
 	// that asks whether a boundary may be crossed, in a language the reader may
 	// not have. Consent given to a sentence somebody could not read is not
@@ -256,6 +278,22 @@ var catalogue = map[Lang]Strings{
 		RailFilter:       "/",
 		RailNaming:       "naming · esc cancels",
 		RailNoMatch:      "nothing matches",
+		SideDiff:         "diff",
+		SideSession:      "session",
+		SideNothingYet:   "nothing changed yet",
+		SideContext:      "context",
+		SideAllowed:      "allowed",
+		SideRecent:       "recent",
+		SideBarScale:     "bars scaled to",
+		LaneYou:          "you",
+		LaneProcess:      "work",
+		LaneAnswer:       "answer",
+		NavBadge:         "nav",
+		NavSessions:      "sessions",
+		NavColumn:        "column",
+		NavKeys:          "keys",
+		SideToolOne:      "call",
+		SideToolMany:     "calls",
 		ApprovalTitle:    "Approval needed",
 		ApprovalCrosses:  "crosses:",
 		ApprovalNetwork:  "Commands in this project may reach the network.",
@@ -405,6 +443,22 @@ Environment:
 		RailFilter:       "/",
 		RailNaming:       "nomeando · esc cancela",
 		RailNoMatch:      "nada corresponde",
+		SideDiff:         "diff",
+		SideSession:      "sessão",
+		SideNothingYet:   "nada mudou ainda",
+		SideContext:      "contexto",
+		SideAllowed:      "permitido",
+		SideRecent:       "recentes",
+		SideBarScale:     "barras na escala de",
+		LaneYou:          "você",
+		LaneProcess:      "trabalho",
+		LaneAnswer:       "resposta",
+		NavBadge:         "nav",
+		NavSessions:      "sessões",
+		NavColumn:        "coluna",
+		NavKeys:          "teclas",
+		SideToolOne:      "chamada",
+		SideToolMany:     "chamadas",
 		ApprovalTitle:    "Precisa de aprovacao",
 		ApprovalCrosses:  "cruza:",
 		ApprovalNetwork:  "Comandos deste projeto podem alcancar a rede.",

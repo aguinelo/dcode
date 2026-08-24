@@ -108,6 +108,29 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Adicionado
 
+- **A coluna lateral é o painel de diff sobre o de sessão, à direita.** Ela
+  substitui a lista de arquivos, e a diferença é o que fez a lista ser escondida
+  hoje de manhã: aquela coluna repetia o que o fluxo tinha acabado de dizer, e
+  estas duas não — barra da mudança, medidor de contexto, quanto do que foi
+  pedido a pessoa permitiu, as últimas chamadas pelo relógio. O padrão foi
+  invertido de novo, e o teste de largura já foi escrito de três formas num dia
+  só, o que está dito no comentário dele em vez de editado em silêncio.
+- **Legenda de raias e barra de navegação.** A legenda aparece uma vez no topo e
+  só quando a tela está fazendo mais de uma raia. A barra nomeia as teclas que
+  são teclas — o design também oferece `j/k` e `t`, que são letras, e essas
+  pertencem a um modo que tome o teclado.
+- **A interface tem paleta própria.** Neon: fundo violeta, marca magenta,
+  verde-água para o que deu certo, âmbar para a pessoa. Até aqui os papéis
+  mapeavam para códigos ANSI escolhidos para caber educadamente dentro do tema
+  que o terminal já tivesse, e essa educação é o que fazia a tela ler como cinza.
+  Um tema carrega o próprio fundo, que é a decisão e não é de graça: a interface
+  deixa de herdar as cores do terminal e passa a possuí-las. Cor desligada não
+  recebe nada disso — nenhum escape chega à tela, fundo incluído.
+- **O plano entra no fluxo.** Era uma coluna própria; virou um bloco no lugar em
+  que o modelo o fez, sempre mostrando o plano atual, atualizado no lugar. O
+  painel se dissolve junto e seu contador de teto passa para a barra de status,
+  então `-no-panel` e `^P` foram embora — contrato removido de superfície
+  estável.
 - **O fluxo tem raias.** Toda linha diz qual das três coisas ela é — o que você
   pediu, o que o modelo fez no caminho, o que ele diz — marcada por caractere na
   primeira coluna. Num turno longo, prosa e chamadas de ferramenta se alternavam

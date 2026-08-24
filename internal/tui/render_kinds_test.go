@@ -227,7 +227,7 @@ func TestEveryStreamRowIsInALane(t *testing.T) {
 		g.Palette = Palette{}
 		g.Unicode = unicode
 		gl := glyphs(unicode)
-		lanes := map[string]bool{" ": true, gl.laneProcess: true, gl.laneAnswer: true}
+		lanes := map[string]bool{gl.laneYou: true, gl.laneProcess: true, gl.laneAnswer: true}
 
 		m := Model{Lang: En, Cursor: -1, Entries: []Entry{
 			{Kind: KindUser, Summary: "a question"},
@@ -293,5 +293,43 @@ func TestTheLaneCostsNoColumns(t *testing.T) {
 		if body := dropCells(l, 2); strings.HasPrefix(body, " ") && strings.TrimSpace(body) != "" {
 			t.Errorf("row %d pushed its text right: %q", i, l)
 		}
+	}
+}
+
+// A legend is worth its row when what it explains is a CHARACTER whose meaning
+// cannot be guessed — `▏` and `╎` say nothing on their own, and a reader who
+// has not been told reads them as decoration and stops seeing them.
+//
+// And only when the screen is making the distinction: a legend for three lanes
+// on a screen with one is a row spent on nothing.
+func TestTheLaneLegendAppearsOnlyWhenItExplainsSomething(t *testing.T) {
+	g := DefaultGeometry(120, 30)
+	g.Palette = Palette{}
+
+	one := Model{Lang: En, Cursor: -1, Entries: []Entry{
+		{Kind: KindAssistant, Summary: "just an answer"},
+	}}
+	if got := renderLanes(one, g, 120); len(got) != 0 {
+		t.Errorf("a single-lane screen drew a legend: %q", got)
+	}
+
+	many := one
+	many.Entries = append(many.Entries, Entry{Kind: KindTool, Tool: "read", Target: "a.go"})
+	got := strings.Join(renderLanes(many, g, 120), "\n")
+	for _, want := range []string{"YOU", "WORK", "ANSWER"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q is missing from the legend: %q", want, got)
+		}
+	}
+	// It names each lane with the character the stream actually draws.
+	gl := glyphs(g.Unicode)
+	for _, mark := range []string{gl.laneYou, gl.laneProcess, gl.laneAnswer} {
+		if !strings.Contains(got, mark) {
+			t.Errorf("the legend does not show %q: %q", mark, got)
+		}
+	}
+	// And it never takes a row it cannot fill honestly.
+	if narrow := renderLanes(many, g, 12); len(narrow) != 0 {
+		t.Errorf("a legend was drawn in 12 columns: %q", narrow)
 	}
 }

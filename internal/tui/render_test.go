@@ -781,7 +781,9 @@ func TestATurnBeginsWithAVisibleBoundary(t *testing.T) {
 			// The seam belongs to the gutter, not to the frame. Drawn edge to
 			// edge it touches the column dividers and reads as a row of a
 			// table rather than as a boundary.
-			if !strings.HasPrefix(l, "  ") || visibleWidth(l) > streamW-2 {
+			// Two cells of lead — the lane and the selection column — then the
+			// rule. It is inset to the same gutter every other row uses.
+			if visibleWidth(l) > streamW-2 || !strings.HasPrefix(dropCells(l, 1), " ") {
 				t.Errorf("unicode=%v: the rule reaches the frame: %q", unicode, l)
 			}
 			if i+1 >= len(out) || !strings.Contains(out[i+1], "question") {

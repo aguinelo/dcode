@@ -14,15 +14,18 @@ import (
 type RailMode int
 
 const (
-	// RailHidden is where a terminal starts, and the zero value says so.
+	// RailAuto lets the width decide, and is the zero value again: the column
+	// that replaced the file list carries things that are nowhere else, which
+	// is what the file list did not.
+	RailAuto RailMode = iota
+	// RailHidden and RailShown are the user having thought about it.
 	//
 	// The rule that used to live beside this — the panel's own mode, mirroring
 	// this one — is gone with the panel. The mirror was the defect: the two
 	// columns answered "should I be here?" the same way with the same
 	// threshold, and their two hundreds compounded, so crossing from 99 to 100
 	// columns cost the conversation 46 of them at once.
-	RailHidden RailMode = iota
-	// RailShown is the user having asked, and it holds at any width.
+	RailHidden
 	RailShown
 )
 
@@ -31,13 +34,16 @@ type Geometry struct {
 	Width  int
 	Height int
 
-	// The sidebar. clamp(20, w/5, 30) wide when it is asked for, and asked for
-	// is the only way it appears — there is no width rule here any more, and
-	// RailMode says why.
-	RailWidth    int
-	RailMinWidth int
-	RailMaxWidth int
-	RailMode     RailMode
+	// The side column: the diff pane over the session pane, on the right.
+	//
+	// Two fifths of the terminal, between a floor and a ceiling — the design's
+	// split is 57/43 and this is that, clamped. It is wider than the file list
+	// it replaces because it holds two panes and a bar, and it earns the width
+	// the file list did not: nothing in it repeats the stream.
+	RailMinWidth      int
+	RailMaxWidth      int
+	RailMinTotalWidth int
+	RailMode          RailMode
 
 	// DiffPreviewLines is how much of a diff shows without asking. A diff is
 	// what gets reviewed, so some of it is always visible — but a whole-file
@@ -61,7 +67,7 @@ type Geometry struct {
 func DefaultGeometry(w, h int) Geometry {
 	return Geometry{
 		Width: w, Height: h,
-		RailWidth: 22, RailMinWidth: 20, RailMaxWidth: 30,
+		RailMinWidth: 28, RailMaxWidth: 60, RailMinTotalWidth: 120,
 		// Written out rather than left to the zero value: the default is a
 		// decision, and a decision nobody can find in the defaults is one the
 		// next reader has to infer from a constant's position in a list.
@@ -80,35 +86,51 @@ func DefaultGeometry(w, h int) Geometry {
 		// So it is summoned rather than resident, which is what `^B` means in
 		// the editor the key was borrowed from — you toggle it, and it stays as
 		// you left it.
-		RailMode:         RailHidden,
+		RailMode:         RailAuto,
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
 		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
 	}
 }
 
-// ShowRail reports whether the sidebar is drawn.
+// ShowRail reports whether the side column is drawn.
 //
-// Nothing to put in it means no sidebar, for the reason an empty panel is worse
-// than none: a column of nothing costs the stream twenty characters and tells
-// the reader that something is missing.
+// Shown by default on a terminal wide enough, and this REVERSES the default set
+// earlier today. The reason it was hidden was measured and stands: the file
+// list it replaced was a second copy of what the stream had just said, and
+// twenty-six columns is a lot to pay for a repetition.
+//
+// These two panes are not that. A bar of added against removed, a context
+// gauge, what the person allowed of what was asked, the last calls by the
+// clock — none of it is anywhere else on the screen. The objection was never
+// "a column is expensive", it was "that column bought nothing".
+//
+// Below RailMinTotalWidth it goes, because two fifths of a narrow terminal is
+// two fifths taken from a stream that has none to spare, and an explicit choice
+// still wins in both directions.
 func (g Geometry) ShowRail(hasContent bool) bool {
 	if !hasContent {
 		return false
 	}
-	return g.RailMode == RailShown
+	switch g.RailMode {
+	case RailShown:
+		return true
+	case RailHidden:
+		return false
+	}
+	return g.Width >= g.RailMinTotalWidth
 }
 
-// railWidth is how wide the sidebar actually draws: a fifth of the screen,
-// between its floor and its ceiling, as the design asks.
+// railWidth is how wide the side column actually draws: two fifths of the
+// terminal, between its floor and its ceiling.
 func (g Geometry) railWidth() int {
-	w := g.Width / 5
 	floor, ceil := g.RailMinWidth, g.RailMaxWidth
 	if floor <= 0 {
-		floor = 20
+		floor = 28
 	}
 	if ceil <= 0 {
-		ceil = 30
+		ceil = 60
 	}
+	w := g.Width * 2 / 5
 	if w < floor {
 		w = floor
 	}
@@ -161,12 +183,17 @@ type marks struct {
 	// are typography, and typography is the renderer's, never the model's.
 	dot, minus, prompt string
 	// The lane gutter: one column down the left of every row saying which of
-	// the three kinds of thing it is. The `you` lane has no glyph — the rule
-	// and the prompt already mark it twice, and a third mark on the one block
-	// nobody can miss is ink spent where there is no confusion.
-	laneProcess, laneAnswer string
+	// the three kinds of thing it is.
+	//
+	// The `you` lane has a glyph again. It did not, on the grounds that the
+	// rule and the prompt already mark it twice — which is true of the block
+	// itself and false of the legend, where three lanes have to be shown
+	// against three names and a blank is not a mark anyone can look for.
+	laneYou, laneProcess, laneAnswer string
 	// The plan tree.
 	treeTee, treeEnd string
+	// The bars: a filled cell and the track behind it.
+	barFull, barTrack string
 	// The frame of the approval modal. It was drawn from literals with no
 	// fallback at all — the one screen where being unreadable costs the most.
 	boxTL, boxTR, boxBL, boxBR, boxH string
@@ -181,13 +208,13 @@ func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
 			dot: "·", minus: "−", prompt: "❯",
-			laneProcess: "╎", laneAnswer: "▏", treeTee: "├", treeEnd: "└",
+			laneYou: "▌", laneProcess: "╎", laneAnswer: "▏", treeTee: "├", treeEnd: "└", barFull: "━", barTrack: "─",
 			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
 		dot: "-", minus: "-", prompt: ">",
-		laneProcess: ":", laneAnswer: "|", treeTee: "+", treeEnd: "\\",
+		laneYou: "#", laneProcess: ":", laneAnswer: "|", treeTee: "+", treeEnd: "\\", barFull: "#", barTrack: "-",
 		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
@@ -243,8 +270,20 @@ func render(m Model, g Geometry) string {
 	b.WriteString(renderStatus(m, g, false))
 	b.WriteString("\n")
 
+	// The legend rides at the top of the stream, above the window, so it does
+	// not scroll away from the marks it explains.
+	legend := renderLanes(m, g, g.StreamWidth(showRail))
 	body := StreamLines(m, g)
 	visible, top, total, height := Window(m, g, body)
+	height -= len(legend)
+	if height < 1 {
+		legend, height = nil, 1
+	}
+	if len(visible) > height {
+		visible = visible[len(visible)-height:]
+	}
+	visible = append(append([]string(nil), legend...), visible...)
+	height += len(legend)
 
 	// The divider follows the same rule as every other glyph: ASCII when the
 	// terminal cannot draw the box character. It was a literal here, so a
@@ -257,22 +296,11 @@ func render(m Model, g Geometry) string {
 
 	var rail []string
 	if showRail {
-		rail = renderRail(m, g, height)
+		rail = renderSide(m, g, height)
 	}
 
 	streamW := g.StreamWidth(showRail)
 	for i := 0; i < height; i++ {
-		// The sidebar first, and it never scrolls with the stream: it is a
-		// standing answer to "what has this turn touched", not part of the
-		// conversation.
-		if showRail {
-			row := ""
-			if i < len(rail) {
-				row = rail[i]
-			}
-			b.WriteString(padStyled(row, g.railWidth()))
-			b.WriteString(divider)
-		}
 		left := ""
 		if i < len(visible) {
 			left = visible[i]
@@ -284,7 +312,21 @@ func render(m Model, g Geometry) string {
 		if m.Copy.Active {
 			left = copyGutter(m.Copy, top+i, g) + clipStyled(left, streamW-copyGutterWidth)
 		}
-		b.WriteString(left)
+		if !showRail {
+			b.WriteString(left)
+			b.WriteString("\n")
+			continue
+		}
+		// The column is on the RIGHT, and it never scrolls with the stream: it
+		// is a standing answer to what changed and where the session is, not
+		// part of the conversation.
+		row := ""
+		if i < len(rail) {
+			row = rail[i]
+		}
+		b.WriteString(padStyled(left, streamW))
+		b.WriteString(divider)
+		b.WriteString(padStyled(row, g.railWidth()))
 		b.WriteString("\n")
 	}
 
@@ -733,7 +775,7 @@ func laneOf(e Entry) Lane {
 func laneGutter(l Lane, gl marks, p Palette) string {
 	switch l {
 	case LaneYou:
-		return " "
+		return p.Apply(StyleLaneYou, gl.laneYou)
 	case LaneAnswer:
 		return p.Apply(StyleOK, gl.laneAnswer)
 	default:

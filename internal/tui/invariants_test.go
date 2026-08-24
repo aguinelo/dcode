@@ -129,8 +129,7 @@ var tuiInvariants = map[string]string{
 	"Toda pergunta abre com uma régua": "TestATurnBeginsWithAVisibleBoundary",
 
 	// The column is summoned, not resident.
-	"A coluna **nasce escondida**":     "TestTheSidebarStartsHidden",
-	"Não há regra de largura para ela": "TestTheSidebarHasNoWidthRuleLeft",
+	"A coluna **nasce escondida**": "TestTheSidebarStartsHidden",
 
 	// The list is legible.
 	"diz **quando** e **quanto**": "TestConversationRowsSayWhenAndHowMuch",
@@ -163,6 +162,15 @@ var tuiInvariants = map[string]string{
 
 	// Colour off means colour off.
 	"Cor desligada não emite escape": "TestColourOffPaintsNoGround",
+
+	// The side column.
+	"o painel de diff sobre o de sessão": "TestTheSideColumnIsTwoFifths",
+	"Ela aparece sozinha a partir de":    "TestTheSideColumnAppearsOnATerminalWideEnoughForIt",
+
+	// The column earns its width.
+	"não repete o fluxo":                "TestTheSideColumnSaysWhatIsNowhereElse",
+	"maior mudança do turno":            "TestTheBarsAreScaledToTheLargestChangeAndSaySo",
+	"legenda das raias aparece uma vez": "TestTheLaneLegendAppearsOnlyWhenItExplainsSomething",
 
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",

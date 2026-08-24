@@ -82,6 +82,11 @@ type Entry struct {
 	// call's input. It is the boundary the child was given, and the screen has
 	// no other way to show what a child was allowed to touch.
 	Owns []string
+	// At is when the daemon said this happened, taken from the event. The
+	// session pane lists recent calls by the clock, and a client that stamped
+	// them on arrival would date a replayed session to the moment it was
+	// replayed.
+	At time.Time
 	// Plan is the current plan, on the one KindPlan entry. It is a snapshot of
 	// Model.Plan rather than a copy that can drift: both are written from the
 	// same event, in the same reduction.
@@ -147,6 +152,10 @@ type Model struct {
 	DiffAdded   int
 	DiffRemoved int
 	DiffFiles   int
+
+	// Asked and Allowed count boundary crossings put to the person and the
+	// ones they let through.
+	Asked, Allowed int
 
 	InputTokens  int
 	OutputTokens int
@@ -239,6 +248,7 @@ func (m Model) ShowEmptyState() bool {
 // Apply folds one event into the view. Pure: the same sequence of events always
 // produces the same model, which is what makes replay equal live observation.
 func (m Model) Apply(ev protocol.Event) Model {
+	before := len(m.Entries)
 	m.LastSeq = ev.Seq
 
 	switch ev.Type {
@@ -436,6 +446,17 @@ func (m Model) Apply(ev protocol.Event) Model {
 
 	case protocol.EventApprovalResolved:
 		m.Pending = nil
+		// What the person has been asked and what they let through. The design
+		// puts `edits accepted 6 / 7` in the session pane, and it is the one
+		// number there that says something about the PERSON's turn rather than
+		// the model's: how much of what it wanted to do they agreed to.
+		var d protocol.ApprovalResolved
+		if err := json.Unmarshal(ev.Payload, &d); err == nil {
+			m.Asked++
+			if d.Decision != protocol.ApprovalDeny {
+				m.Allowed++
+			}
+		}
 		if m.State == protocol.SessionStateBlocked {
 			m.State = protocol.SessionStateRunning
 		}
@@ -521,6 +542,17 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.activeTurn = ""
 		m.TurnStartedAt = time.Time{}
 	}
+
+	// Every entry this event produced is stamped with the event's own clock.
+	// One place rather than at each append: a kind added later would otherwise
+	// arrive undated, and undated is exactly how it would be noticed — not at
+	// all, until something tried to sort by it.
+	for i := before; i < len(m.Entries); i++ {
+		if m.Entries[i].At.IsZero() {
+			m.Entries[i].At = ev.At
+		}
+	}
+
 	return m
 }
 
@@ -818,7 +850,11 @@ func (m Model) turnSectionWorthDrawing() bool {
 // that has touched nothing yet still has a column worth drawing, and asking
 // only about the files emptied it for the first minute of every session.
 func (m Model) railHasContent() bool {
-	return len(FileTree(m.Entries)) > 0
+	// The column has two panes now, and the session half has something to say
+	// from the first event: how much room is left. Asking only about files
+	// emptied it for the first minute of every session — the defect the file
+	// list had, arriving at the column that replaced it.
+	return len(FileTree(m.Entries)) > 0 || m.Window > 0 || m.Asked > 0
 }
 
 func plural(n int, one, many string) string {

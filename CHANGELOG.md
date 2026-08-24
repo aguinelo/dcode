@@ -112,6 +112,28 @@ that on every run to stop the opposite reading.
 
 ### Added
 
+- **The side column is the diff pane over the session pane, on the right.** It
+  replaces the file list, and the difference is what got the file list hidden
+  this morning: that column repeated what the stream had just said, and these
+  two do not — a bar of the change, a context gauge, how much of what was asked
+  the person allowed, the last calls by the clock. The default is reversed
+  again, and the width test has now been written three ways in one day, which is
+  said in its comment rather than edited quietly for the third time.
+- **A lane legend, and a nav bar.** The legend appears once at the top and only
+  when the screen is making more than one lane. The nav bar names the keys that
+  are keys — the design also offers `j/k` and `t`, which are letters, and those
+  belong to a mode that owns the keyboard.
+- **The interface has a palette of its own.** Neon: a violet ground, a magenta
+  mark, teal for what worked, amber for the person. Until now the roles mapped
+  to ANSI codes chosen to sit politely inside whatever the terminal's theme was,
+  and that politeness is what made the screen read as grey. A theme carries its
+  own ground, which is the decision and is not free: the interface stops
+  inheriting the terminal's colours and starts owning them. Colour switched off
+  gets none of it — no escape reaches the screen, the ground included.
+- **The plan moves into the stream.** It was a column of its own; it is a block
+  where the model made it, always showing the current plan, updated in place. The
+  panel is dissolved with it and its ceiling readout rides the status bar, so
+  `-no-panel` and `^P` are gone — a contract removed from a stable surface.
 - **The stream has lanes.** Every row says which of three things it is — what
   you asked, what the model did on the way, what it says — marked by a character
   in the first column. On a long turn prose and tool calls alternated with

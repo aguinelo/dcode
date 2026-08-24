@@ -22,7 +22,7 @@ func RenderStatusBar(m Model, g Geometry) string {
 	// design states for the pending badge — "some por completo quando zero, sem
 	// badge vazio" — and it generalises: a bar of empty slots describes the bar
 	// rather than the session.
-	segs := []segment{worktreeSegment(m, g)}
+	segs := []segment{navSegment(m, g), worktreeSegment(m, g)}
 	if seg, ok := diffSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
@@ -30,6 +30,9 @@ func RenderStatusBar(m Model, g Geometry) string {
 		segs = append(segs, seg)
 	}
 	if seg, ok := waitingSegment(m, g); ok {
+		segs = append(segs, seg)
+	}
+	if seg, ok := posSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
 
@@ -89,6 +92,55 @@ func diffSegment(m Model, g Geometry) (segment, bool) {
 	return segment{
 		text: fmt.Sprintf("+%d %s%d%s", m.DiffAdded, gl.minus, m.DiffRemoved, files),
 		drop: 1,
+	}, true
+}
+
+// navSegment is the design's NAV badge and the keys beside it.
+//
+// Solid, first, and never dropped. It is the one region that says what this
+// keyboard can do, and a product whose keys are only documented inside a help
+// screen is a product whose keys nobody finds.
+//
+// The keys it names are the ones that are BINDINGS. The design's footer also
+// offers `j/k move` and `t theme`, which are letters, and a letter on a line
+// where you type is the defect this product has fixed twice. They belong to a
+// mode that owns the keyboard — the design implies one by putting a NAV badge
+// there at all — and until that mode exists, naming them here would advertise
+// keys that eat what you are typing.
+func navSegment(m Model, g Geometry) segment {
+	gl := glyphs(g.Unicode)
+	t := Text(m.Lang)
+	p := g.Palette
+
+	keys := []string{
+		p.Apply(StyleProse, "^r") + " " + p.Apply(StyleHint, t.NavSessions),
+		p.Apply(StyleProse, "^b") + " " + p.Apply(StyleHint, t.NavColumn),
+		p.Apply(StyleProse, "?") + " " + p.Apply(StyleHint, t.NavKeys),
+	}
+	// Dropped FIRST when the bar runs out of room. Every key it names is
+	// reachable from `?`, which makes it the most reconstructible thing on the
+	// line — and a bar that keeps its hints by dropping where you are has
+	// chosen the hint over the fact.
+	return segment{
+		text: p.Apply(StyleOnAccent, " "+strings.ToUpper(t.NavBadge)+" ") + " " +
+			strings.Join(keys, "  "+gl.dot+"  "),
+		drop: 4,
+	}
+}
+
+// posSegment is where the cursor is in the stream, as the design's `1 / 7`.
+//
+// Only while the stream HAS the cursor. On the input line there is no position
+// to report, and a counter that reads `0 / 7` when nobody is browsing is a
+// number that has to be explained.
+func posSegment(m Model, g Geometry) (segment, bool) {
+	if m.Cursor < 0 || len(m.Entries) == 0 {
+		return segment{}, false
+	}
+	return segment{
+		text: g.Palette.Apply(StyleProse,
+			fmt.Sprintf("%d / %d", m.Cursor+1, len(m.Entries))),
+		drop: 2,
 	}, true
 }
 
