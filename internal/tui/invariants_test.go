@@ -172,6 +172,10 @@ var tuiInvariants = map[string]string{
 	"maior mudança do turno":            "TestTheBarsAreScaledToTheLargestChangeAndSaySo",
 	"legenda das raias aparece uma vez": "TestTheLaneLegendAppearsOnlyWhenItExplainsSomething",
 
+	// The column repeats nothing.
+	"nem o fluxo nem a barra":             "TestTheSideColumnSaysWhatIsNowhereElse",
+	"o relógio só é impresso quando muda": "TestTheSessionPaneIsWhatRan",
+
 	// Copy mode.
 	"`^O` abre a cópia":                        "TestTheChordOpensCopyMode",
 	"nunca é atalho":                           "TestVIsALetterWhereverTheCursorIs",

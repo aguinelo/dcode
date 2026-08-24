@@ -214,25 +214,48 @@ func renderSessionPane(m Model, g Geometry, w, height int) []string {
 	out := []string{paneHead(gl, p, "s", t.SideSession,
 		plural(tools, t.SideToolOne, t.SideToolMany), w)}
 
-	// The context, as a pair and a gauge. The pair because the question a
-	// ceiling answers is how much is left, and a share cannot answer it.
-	if m.Window > 0 {
-		out = append(out,
-			keyValue(t.SideContext, fmt.Sprintf("%s / %s",
-				humanTokens(m.InputTokens), humanTokens(m.Window)), p, w),
-			gauge(m.ContextPct, gl, p, w))
-	}
+	// The context gauge is GONE from here, and it is the second time today a
+	// column has been caught repeating something the screen already said.
+	//
+	// The status bar carries `ctx 6%`. This pane carried `context 112.0k /
+	// 1.0M` and a gauge under it — three rows spent restating one number that
+	// was never more than a glance away. It is exactly the objection that hid
+	// the old file list, arriving in the column that replaced it, written by
+	// the same hand.
+	//
+	// What stays is the one line here that is about the PERSON'S turn rather
+	// than the model's: how much of what was asked they let through.
 	if m.Asked > 0 {
 		out = append(out, keyValue(t.SideAllowed,
 			fmt.Sprintf("%d / %d", m.Allowed, m.Asked), p, w))
 	}
 
-	// What it has been doing, newest first, by the daemon's clock.
+	// Everything else is what ran, newest first, by the daemon's clock.
+	//
+	// It is the most useful thing this pane can hold: a session is what it did,
+	// and a command truncated at thirty columns — `bash uv run python -m
+	// unittes…` — is a row that says work happened without saying which.
 	recent := recentCalls(m.Entries, height-len(out)-2)
 	if len(recent) > 0 {
 		out = append(out, "", p.Apply(StyleMeta, strings.ToUpper(t.SideRecent)))
+		// The clock is printed only when it CHANGES.
+		//
+		// A burst of calls all lands in the same minute, so eleven rows of
+		// `17:20` is eleven repetitions of one fact, taking six columns from
+		// the command on every one of them. Where the minute is the same as
+		// the row above, the space goes to what ran.
+		last := ""
 		for _, e := range recent {
-			out = append(out, recentRow(e, m, p, w))
+			when := ""
+			if !e.At.IsZero() {
+				when = e.At.Format("15:04")
+			}
+			shown := when
+			if when == last {
+				shown = ""
+			}
+			last = when
+			out = append(out, recentRow(e, shown, gl, p, w))
 		}
 	}
 	return out
@@ -244,24 +267,6 @@ func keyValue(k, v string, p Palette, w int) string {
 		return p.Apply(StyleMeta, k)
 	}
 	return p.Apply(StyleMeta, k) + strings.Repeat(" ", gap) + p.Apply(StyleProse, v)
-}
-
-// gauge is the context as a bar, coloured by how close the ceiling is.
-func gauge(pct int, gl marks, p Palette, w int) string {
-	if pct < 0 {
-		pct = 0
-	}
-	if pct > 100 {
-		pct = 100
-	}
-	full := pct * w / 100
-	// Anything at all shows as something: a gauge that reads empty at 1% says
-	// the session has used nothing, which is a different claim.
-	if pct > 0 && full == 0 {
-		full = 1
-	}
-	return p.Apply(ContextStyle(pct), strings.Repeat(gl.barFull, full)) +
-		p.Apply(StyleTrack, strings.Repeat(gl.barTrack, maxInt(0, w-full)))
 }
 
 // recentCalls is the last few tool calls, newest first.
@@ -278,18 +283,33 @@ func recentCalls(entries []Entry, n int) []Entry {
 	return out
 }
 
-func recentRow(e Entry, m Model, p Palette, w int) string {
-	when := "  :  "
-	if !e.At.IsZero() {
-		when = e.At.Format("15:04")
+// recentRow is one call: when, what, and on what.
+//
+// The target is shortened by its BASENAME only when it is a path. It used to be
+// basename always, so a shell command was cut at its last slash: a curl to
+// `…/web/api/v4/trips/lowest-price?from=maringa-pr` appeared in this pane as
+// `lowest-price?from=maringa-pr…`, which reads as a file nobody has.
+//
+// `looksLikePath` is the package's one answer to "is this a path", and asking
+// it here is the same decision the tool line's elision makes.
+func recentRow(e Entry, when string, gl marks, p Palette, w int) string {
+	if when == "" {
+		when = strings.Repeat(" ", 5)
 	}
 	head := p.Apply(StyleHint, when) + " " + p.Apply(StyleAccent, e.Tool)
 	room := w - visibleWidth(head) - 1
-	if room < 2 {
+	if room < 2 || e.Target == "" {
 		return head
 	}
-	target := e.Target[strings.LastIndex(e.Target, "/")+1:]
-	return head + " " + p.Apply(StyleMeta, ellipsisTail(target, room, glyphs(true).ell))
+
+	target := e.Target
+	if looksLikePath(target) {
+		target = target[strings.LastIndex(target, "/")+1:]
+	}
+	// The beginning, for the reason the tool line keeps it: a command is
+	// identified by how it starts, and a name by how it ends — and the name is
+	// all that is left of a path once the directory is gone.
+	return head + " " + p.Apply(StyleMeta, ellipsisTail(target, room, gl.ell))
 }
 
 // renderLanes is the legend above the stream: three marks and three words,

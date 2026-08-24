@@ -477,8 +477,11 @@ func TestTheSideColumnSaysWhatIsNowhereElse(t *testing.T) {
 	g.RailMode = RailShown
 	out := strings.Join(renderSide(m, g, 24), "\n")
 
+	// The context is NOT in this list, and that is the assertion: the status
+	// bar already carries it, and a column that repeats the screen is the
+	// defect that hid the file list this pane replaced.
 	for _, want := range []string{
-		"DIFF", "render.go", "+42", "SESSION", "18.2k", "200.0k", "6 / 7", "RECENT",
+		"DIFF", "render.go", "+42", "SESSION", "6 / 7", "RECENT",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("%q is missing from the column:\n%s", want, out)
@@ -519,5 +522,59 @@ func TestTheBarsAreScaledToTheLargestChangeAndSaySo(t *testing.T) {
 	m := railModel(Entry{Kind: KindTool, Tool: "edit", Target: "a.go", Added: 200})
 	if out := strings.Join(renderDiffPane(m, g, g.railWidth(), 10), "\n"); !strings.Contains(out, "200") {
 		t.Errorf("the pane does not say what the bars are scaled to:\n%s", out)
+	}
+}
+
+// The session pane is what ran, and it does not repeat the bar.
+//
+// It carried `context 112.0k / 1.0M` and a gauge under it — three rows
+// restating a number the status bar already shows as `ctx 6%`. That is the
+// objection that hid the old file list, arriving in the column that replaced
+// it, written by the same hand. What stays is the one line about the PERSON'S
+// turn, and everything else is what the model has been doing.
+func TestTheSessionPaneIsWhatRan(t *testing.T) {
+	m := railModel()
+	m.InputTokens, m.Window, m.ContextPct = 18200, 200000, 9
+	m.Asked, m.Allowed = 7, 6
+	for i, c := range []struct{ tool, target string }{
+		{"bash", "uv run python -m unittest discover -s tests -v"},
+		{"read", "/w/craw/src/clickbus/test_client.py"},
+		{"bash", "curl -sS https://bff.clickbus.com/web/api/v4/trips/lowest-price?from=maringa-pr"},
+	} {
+		m.Entries = append(m.Entries, Entry{
+			Kind: KindTool, Tool: c.tool, Target: c.target,
+			At: time.Date(2026, 8, 24, 17, 20, i, 0, time.UTC),
+		})
+	}
+
+	g := railGeometry(150)
+	out := strings.Join(renderSessionPane(m, g, g.railWidth(), 14), "\n")
+
+	// The context is gone; the bar has it.
+	for _, gone := range []string{"18.2k", "200.0k", "context"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("the pane still repeats the bar's %q:\n%s", gone, out)
+		}
+	}
+	if !strings.Contains(out, "6 / 7") {
+		t.Errorf("the pane lost what the person allowed:\n%s", out)
+	}
+
+	// A command keeps its beginning. It used to be shortened by basename
+	// always, so a curl was cut at its last slash and read as a file.
+	if strings.Contains(out, "lowest-price?from") {
+		t.Errorf("a command was cut at its last slash:\n%s", out)
+	}
+	if !strings.Contains(out, "curl -sS") {
+		t.Errorf("a command lost its beginning:\n%s", out)
+	}
+	// A path still is: the directory is what everything has in common.
+	if !strings.Contains(out, "test_client.py") || strings.Contains(out, "/w/craw/src") {
+		t.Errorf("a path was not shortened to its name:\n%s", out)
+	}
+
+	// The clock prints once per minute, not once per row.
+	if n := strings.Count(out, "17:20"); n != 1 {
+		t.Errorf("the same minute is printed %d times:\n%s", n, out)
 	}
 }

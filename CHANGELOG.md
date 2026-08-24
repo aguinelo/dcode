@@ -124,6 +124,13 @@ that on every run to stop the opposite reading.
 
 ### Added
 
+- **The session pane is what ran.** It carried `context 112.0k / 1.0M` and a
+  gauge under it — three rows restating a number the status bar already shows as
+  `ctx 6%`. That is the objection that hid the file list this morning, arriving
+  in the column that replaced it, written by the same hand. The space goes to
+  the calls. A command keeps its beginning now (it was shortened by basename
+  always, so a `curl` was cut at its last slash and read as a file), and the
+  clock prints once per minute rather than once per row.
 - **A mode where a letter is a key.** `esc` from an empty line steps into the
   transcript, and inside it `j/k` move, `↵` opens, `t` cycles the theme and `/`
   goes back to writing. Every key the mode does not name is swallowed, which is

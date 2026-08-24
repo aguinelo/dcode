@@ -93,7 +93,6 @@ type Strings struct {
 	SideDiff       string
 	SideSession    string
 	SideNothingYet string
-	SideContext    string
 	SideAllowed    string
 	SideRecent     string
 	SideBarScale   string
@@ -286,7 +285,6 @@ var catalogue = map[Lang]Strings{
 		SideDiff:         "diff",
 		SideSession:      "session",
 		SideNothingYet:   "nothing changed yet",
-		SideContext:      "context",
 		SideAllowed:      "allowed",
 		SideRecent:       "recent",
 		SideBarScale:     "bars scaled to",
@@ -456,7 +454,6 @@ Environment:
 		SideDiff:         "diff",
 		SideSession:      "sessão",
 		SideNothingYet:   "nada mudou ainda",
-		SideContext:      "contexto",
 		SideAllowed:      "permitido",
 		SideRecent:       "recentes",
 		SideBarScale:     "barras na escala de",

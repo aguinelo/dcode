@@ -120,6 +120,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Adicionado
 
+- **O painel de sessão é o que rodou.** Ele carregava `contexto 112.0k / 1.0M`
+  e um medidor embaixo — três linhas reafirmando um número que a barra de status
+  já mostra como `ctx 6%`. É a objeção que escondeu a lista de arquivos de manhã,
+  chegando na coluna que a substituiu, escrita pela mesma mão. O espaço foi para
+  as chamadas. Comando guarda o começo agora (era encurtado por basename sempre,
+  então um `curl` era cortado na última barra e lia como arquivo), e o relógio é
+  impresso uma vez por minuto em vez de uma por linha.
 - **Um modo onde letra é tecla.** `esc` de uma linha vazia entra no fluxo, e lá
   dentro `j/k` movem, `↵` abre, `t` percorre os temas e `/` volta a escrever.
   Toda tecla que o modo não nomeia é engolida, que é o que torna letra segura ali
