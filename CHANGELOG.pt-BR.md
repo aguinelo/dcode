@@ -106,7 +106,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Adicionado
+
+- **O fluxo tem raias.** Toda linha diz qual das três coisas ela é — o que você
+  pediu, o que o modelo fez no caminho, o que ele diz — marcada por caractere na
+  primeira coluna. Num turno longo, prosa e chamadas de ferramenta se alternavam
+  sem nada estrutural entre elas, então recuperar o fio significava ler toda
+  linha para descobrir quais valiam a leitura; agora o olho corre pela raia da
+  resposta e pula o trabalho. Não custa coluna nenhuma: toda linha já reservava
+  duas, e a raia toma a primeira enquanto o marcador de seleção fica na segunda.
+  Vem do design `Coding Agent TUI v2`; o que não veio dele, e por quê, está em
+  `docs/ROADMAP.md` §11.
 
 ## 0.4.0 — 24 de agosto de 2026
 
