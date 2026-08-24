@@ -247,3 +247,84 @@ func TestHelpDocumentsHowToAnswerAnApproval(t *testing.T) {
 		}
 	}
 }
+
+// No word that belongs only to the English catalogue may appear on a
+// Portuguese screen.
+//
+// The coverage guard above asks whether every declared string has a
+// translation. It cannot ask whether the RENDERER uses them, so nine literals
+// sat in the drawing code untouched by it — including the whole approval modal,
+// the one screen that asks whether a boundary may be crossed. Consent given to
+// a sentence somebody could not read is not consent.
+//
+// The forbidden set is DERIVED: every word in the English catalogue that the
+// Portuguese one does not also use. It grows on its own with the catalogue, so
+// a string added tomorrow is checked tomorrow — the same reasoning as the ASCII
+// guard, and for the same reason, which is that a list written by hand is a
+// list that stops being edited.
+func TestNoEnglishSurvivesAPortugueseScreen(t *testing.T) {
+	forbidden := englishOnlyWords()
+	if len(forbidden) < 20 {
+		t.Fatalf("the derived word set is %d words; something is wrong with it", len(forbidden))
+	}
+
+	// The model's own content is Portuguese and carries none of those words, so
+	// anything found came from the layout.
+	m := NewModel("s", "/w", "modelo", "workspace-write", PtBR)
+	m.Entries = []Entry{
+		{Kind: KindUser, Summary: "escreve o arquivo"},
+		{Kind: KindTool, Tool: "write", Target: "arquivo.go", Summary: "criado"},
+	}
+	m.Plan = []protocol.PlanItem{
+		{ID: 1, Text: "primeiro passo", Status: protocol.PlanDone},
+		{ID: 2, Text: "segundo passo", Status: protocol.PlanBlocked, Blocked: "sem rede"},
+	}
+	m.Rounds, m.MaxRounds, m.InFlight, m.MaxInFlight = 60, 100, 4, 4
+	m.Sessions = []SessionChoice{{ID: "a", Title: "uma conversa", Turns: 2, When: m.Now}}
+	m.Pending = &protocol.ApprovalRequest{
+		ApprovalID: "a1", Tool: "bash", Command: "curl exemplo",
+		BoundaryCrossed: "network", Reason: "sai do projeto",
+	}
+
+	g := DefaultGeometry(120, 30)
+	g.Palette = Palette{}
+	g.RailMode = RailShown
+
+	screen := strings.ToLower(Render(m, g))
+	for _, w := range forbidden {
+		if strings.Contains(screen, w) {
+			t.Errorf("%q is English and reached a Portuguese screen:\n%s", w, Render(m, g))
+		}
+	}
+}
+
+// englishOnlyWords is every word the English catalogue uses and the Portuguese
+// one does not, long enough not to collide by accident.
+func englishOnlyWords() []string {
+	pt := map[string]bool{}
+	for _, w := range catalogueWords(Text(PtBR)) {
+		pt[w] = true
+	}
+	var out []string
+	for _, w := range catalogueWords(Text(En)) {
+		if !pt[w] && len(w) >= 5 {
+			out = append(out, " "+w)
+		}
+	}
+	return out
+}
+
+func catalogueWords(s Strings) []string {
+	rv := reflect.ValueOf(s)
+	var out []string
+	for i := 0; i < rv.NumField(); i++ {
+		if rv.Field(i).Kind() != reflect.String {
+			continue
+		}
+		for _, w := range strings.FieldsFunc(strings.ToLower(rv.Field(i).String()),
+			func(r rune) bool { return r < 'a' || r > 'z' }) {
+			out = append(out, w)
+		}
+	}
+	return out
+}

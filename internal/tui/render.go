@@ -399,7 +399,7 @@ func render(m Model, g Geometry) string {
 	// The approval wins when both are open: one is a question the turn is
 	// blocked on, the other is a list somebody summoned.
 	if m.Pending != nil {
-		return overlay(b.String(), renderApproval(*m.Pending, g), g)
+		return overlay(b.String(), renderApproval(*m.Pending, g, Text(m.Lang)), g)
 	}
 	if m.Nav.Active {
 		return overlay(b.String(), renderSessionList(m, g), g)
@@ -909,7 +909,7 @@ func detailLines(detail string, w int, g Geometry, limit int, t Strings) []strin
 func renderPanel(m Model, g Geometry) []string {
 	gl := glyphs(g.Unicode)
 	w := g.panelWidth()
-	out := []string{clip(" PLAN", w), ""}
+	out := []string{clip(" "+Text(m.Lang).PanelPlan, w), ""}
 
 	for _, it := range m.Plan {
 		mark := gl.pending
@@ -1183,14 +1183,14 @@ func standingScope(req protocol.ApprovalRequest) bool {
 // effort. The capitals are harder to press by accident, which is right for the
 // options with the largest consequence — and the two that are written down are
 // the two that need the most deliberate keystroke.
-func approvalKeys(req protocol.ApprovalRequest) string {
+func approvalKeys(req protocol.ApprovalRequest, t Strings) string {
 	if standingScope(req) {
-		return "  [d] no   [a] once   [P] this project   [G] always"
+		return "  " + t.ApprovalStanding
 	}
-	return "  [d] deny   [a] allow   [A] whole session"
+	return "  " + t.ApprovalOnce
 }
 
-func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
+func renderApproval(req protocol.ApprovalRequest, g Geometry, t Strings) []string {
 	w := g.Width - 8
 	if w > 60 {
 		w = 60
@@ -1205,11 +1205,11 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 	// literals with no fallback, which made this the ONE screen a terminal in
 	// ASCII could not read — and it is the screen that asks whether a boundary
 	// may be crossed.
-	head := gl.boxTL + gl.boxH + " Approval needed "
+	head := gl.boxTL + gl.boxH + " " + t.ApprovalTitle + " "
 	lines := []string{
 		head + strings.Repeat(gl.boxH, maxInt(0, w-visibleWidth(head)+1)) + gl.boxTR,
 		v + pad("", w) + v,
-		v + pad("  "+req.Tool+" crosses: "+req.BoundaryCrossed, w) + v,
+		v + pad("  "+req.Tool+" "+t.ApprovalCrosses+" "+req.BoundaryCrossed, w) + v,
 	}
 	// The network question is about the PROJECT, not this command. A shell
 	// command is opaque, so answering yes opens the boundary for everything
@@ -1218,7 +1218,7 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 	if standingScope(req) {
 		lines = append(lines,
 			v+pad("", w)+v,
-			v+pad("  Commands in this project may reach the network.", w)+v)
+			v+pad("  "+t.ApprovalNetwork, w)+v)
 	}
 	if req.Command != "" {
 		// The rendered command, never a description. Asking for consent to
@@ -1233,8 +1233,8 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 		// Deny first and as the default: the safe action is the one that costs
 		// least effort. The capital A is harder to press by accident, which is
 		// right for the option with the largest consequence.
-		v+pad(approvalKeys(req), w)+v,
-		v+pad("  Enter denies.", w)+v,
+		v+pad(approvalKeys(req, t), w)+v,
+		v+pad("  "+t.ApprovalEnter, w)+v,
 		v+pad("", w)+v,
 		gl.boxBL+strings.Repeat(gl.boxH, w)+gl.boxBR,
 	)

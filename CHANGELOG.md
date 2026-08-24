@@ -127,6 +127,14 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **Every screen speaks the interface language.** Nine English literals sat in
+  the drawing code, the whole approval modal among them — the one screen that
+  asks whether a boundary may be crossed, in a language the reader may not have,
+  and consent given to a sentence somebody could not read is not consent. The
+  existing guard asks whether every declared string has a translation and cannot
+  ask whether the renderer uses them; the new one derives its forbidden set from
+  the catalogue itself, so it grows as the catalogue does.
+
 - **Prose leaves one blank row between paragraphs, and it is empty.** Splitting
   `"a\n\n"` yields three parts and the last is the end of the text, not a
   paragraph; a run boundary at a `**` marker split the same text twice, so a

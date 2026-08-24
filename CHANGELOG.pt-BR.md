@@ -123,6 +123,14 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **Toda tela fala a língua da interface.** Nove literais em inglês estavam no
+  código de desenho, o modal de aprovação inteiro entre eles — a única tela que
+  pergunta se uma fronteira pode ser cruzada, numa língua que o leitor pode não
+  ter, e consentimento dado a uma frase que a pessoa não conseguiu ler não é
+  consentimento. A guarda existente pergunta se toda string declarada tem
+  tradução e não tem como perguntar se o renderizador as usa; a nova deriva o que
+  proíbe do próprio catálogo, então cresce junto com ele.
+
 - **Prosa deixa uma linha em branco entre parágrafos, e ela é vazia.** Dividir
   `"a\n\n"` dá três partes e a última é o fim do texto, não um parágrafo; uma
   fronteira de run num `**` dividia o mesmo texto duas vezes, então um bloco saía

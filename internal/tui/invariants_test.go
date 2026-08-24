@@ -146,6 +146,9 @@ var tuiInvariants = map[string]string{
 	// The panel earns its width.
 	"aparece no seu piso e cresce": "TestThePanelGrowsFromItsFloor",
 
+	// One language per screen.
+	"Nenhuma tela é escrita em literal": "TestNoEnglishSurvivesAPortugueseScreen",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
