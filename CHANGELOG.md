@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 23 August 2026
+## Current state — 24 August 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 80 decision changelogs |
+| spec families | 13, with 93 decision changelogs |
 | behavioural contracts | 42 declared |
 | **contracts measured against a model** | **3** |
-| coverage | 95.0%, gate at 90% |
+| coverage | 94.4%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.2.0** |
+| published version | **0.3.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -47,16 +47,31 @@ Homebrew is not a channel yet — the tap was published to for one release and h
 never been created. Removed rather than left running; `docs/ROADMAP.md` §9 says
 what creating it would take.
 
-**The interface.** A sidebar carries the files this turn touched and the
-conversations this workspace has recorded — `^B` folds it, `^R` gives it the
-keyboard, `r` names a conversation. Delegation is one card with its children
-inside, and the child that did not answer is named there with its reason. A tool
-call appears the moment it begins arriving from the model, counted in bytes,
-rather than after it is complete.
+**The interface.** The conversation gets the terminal. The file column starts
+hidden and `^B` summons it; the conversation list is an overlay on `^R`, which
+is what that key means in the shell it was borrowed from; the panel opens at its
+floor and grows out of the surplus. Every question opens with a rule, so a
+screen of scrollback has a boundary in it. Delegation is one card with its
+children inside, and the child that did not answer is named there with its
+reason. A tool call appears the moment it begins arriving from the model.
 
-Below a hundred columns the sidebar goes and **says it went**, which it did not
-for two days — long enough for the person it was built for to conclude it had
-never been built.
+That shape came from a measurement rather than a preference. Replaying a real
+recorded session at four widths, the column and the panel took 61 of 132 columns
+and left 71 for the conversation, while the same session at 99 columns — where
+both disappeared — gave it 99. **Widening the terminal made the text narrower**,
+and the crossing was a single column, because two thresholds sat at the same
+hundred. What the column held was a second copy of what the stream had just
+said.
+
+**What the guards could not see.** Eight of the defects fixed on 24 August had
+guards written for exactly them, and every guard was asking about a set it
+already knew. The box-drawing guard derived its forbidden glyphs from the two
+glyph tables, and the approval modal — drawn from literals, in English, the one
+screen that asks whether a boundary may be crossed — was outside both, in two
+different ways, found twice in one day. The width guard split on newlines before
+measuring, so a row broken in two measured as two short rows. The blank-row
+guard trimmed correctly and had never been shown prose. Each is now asked as a
+question about the whole screen rather than about a list.
 
 **Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
 bubblewrap on Linux, with the boundary tested against the kernel and exercised
@@ -82,6 +97,18 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.3.0 — 24 August 2026
+
+The release the interface actually needed, and the first one where the defects
+were found by **replaying a real recorded session through the reducer and
+rendering it**, rather than by a state I chose. Every entry below was found that
+way or by a guard that had to be rewritten to ask a different question.
+
+The shape of the whole release: *a rule with one exception has more*, and *a
+guard that asks about a set only ever finds what is already in the set*.
 
 ### Changed
 
