@@ -112,6 +112,12 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **A record stops copying what it continues.** Continuing copied the whole
+  previous record into the new one, so a session that continued a session that
+  continued a session held three copies of the first — the largest record on this
+  machine is 3.6 MB and 18,410 events, most of it itself, repeated. The carried
+  conversation goes to the log and not to the record; the record keeps the
+  marker, and reading one follows the chain back. Growth is linear now.
 - **Resuming paints once.** Continuing writes the whole of the old log into the
   new session, so attaching replayed every event of it — 3544 on a real session
   — and Bubble Tea paints after every message, so the screen redrew 3544 times

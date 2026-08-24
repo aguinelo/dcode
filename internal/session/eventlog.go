@@ -72,6 +72,28 @@ func NewEventLog(sessionID string, retention int, clock Clock) *EventLog {
 // classic source of gaps under concurrency: two appends would both read the
 // counter before either wrote.
 func (l *EventLog) Append(t protocol.EventType, payload any) (protocol.Event, error) {
+	return l.append(t, payload, true)
+}
+
+// AppendUnrecorded puts an event in the log and in front of every subscriber
+// without writing it to the record.
+//
+// It exists for exactly one thing: the conversation a session CONTINUES.
+//
+// Continuing used to copy the whole of the previous record into the new one, so
+// a session that continued a session that continued a session held three copies
+// of the first — a file of 3.6 MB on this machine, and growing quadratically
+// with the number of times somebody typed `-c`.
+//
+// The copy served the screen, and the screen is served by the log in memory.
+// The record does not need it: what it needs is the marker saying which
+// conversation this one continues, and Rebuild and Carry follow that chain.
+// One line on disk instead of eighteen thousand.
+func (l *EventLog) AppendUnrecorded(t protocol.EventType, payload any) (protocol.Event, error) {
+	return l.append(t, payload, false)
+}
+
+func (l *EventLog) append(t protocol.EventType, payload any, record bool) (protocol.Event, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return protocol.Event{}, err
@@ -94,8 +116,10 @@ func (l *EventLog) Append(t protocol.EventType, payload any) (protocol.Event, er
 	// A failure is not worth failing the turn over — the agent is working and
 	// the person is watching — but it must not be silent either, so the log
 	// keeps it and Close reports it.
-	if err := l.record.Append([]protocol.Event{ev}); err != nil && l.recordErr == nil {
-		l.recordErr = err
+	if record {
+		if err := l.record.Append([]protocol.Event{ev}); err != nil && l.recordErr == nil {
+			l.recordErr = err
+		}
 	}
 	l.trim()
 
