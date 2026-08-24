@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 93 changelogs de decisão |
+| famílias de spec | 13, com 95 changelogs de decisão |
 | contratos comportamentais | 42 declarados |
 | **contratos medidos contra modelo** | **3** |
-| cobertura | 94,4%, com gate em 90% |
+| cobertura | 94,5%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.3.0** |
+| versão publicada | **0.4.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -60,6 +60,17 @@ deixavam 71 para a conversa, enquanto a mesma sessão em 99 colunas — onde as
 duas somem — dava 99. **Alargar o terminal encolhia o texto**, e a virada era uma
 coluna só, porque dois limiares estavam no mesmo cem. O que a coluna guardava era
 uma segunda cópia do que o fluxo tinha acabado de dizer.
+
+**Onde está o teclado.** A área de digitação é um campo com moldura, porque a
+única pergunta sem outra resposta na tela é onde vão as letras que você digita.
+Nada nessa moldura carrega estado: uma versão anterior a apagava enquanto o
+fluxo tinha o teclado, e o teste dela perguntou se aquela distinção sobrevivia
+sem cor. Não sobrevivia.
+
+A cópia é `^O`. Foi `v` duas vezes, e a segunda é a instrutiva: a primeira
+correção exigiu o cursor no fluxo, o que **estreitou a regra em vez de
+aplicá-la**. A linha de digitar é sempre uma linha em que se digita, então
+nenhuma condição podia satisfazer "letra não é atalho" — só devolver a letra.
 
 **O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
 agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
@@ -94,6 +105,14 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.4.0 — 24 de agosto de 2026
+
+Dois relatos de quem usa, e os dois com o mesmo formato do release anterior: uma
+regra que tinha sido estreitada em vez de aplicada, e um estado que a tela nunca
+mostrou.
 
 ### Alterado
 
