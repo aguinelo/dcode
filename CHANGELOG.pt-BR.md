@@ -108,6 +108,12 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **O registro para de copiar o que continua.** Continuar copiava o registro
+  anterior inteiro para o novo, então uma sessão que continuou uma que continuou
+  uma guardava três cópias da primeira — o maior registro desta máquina tem 3,6 MB
+  e 18.410 eventos, a maior parte ele mesmo, repetido. A conversa carregada vai
+  para o log e não para o registro; o registro guarda o marcador, e ler um segue
+  a cadeia para trás. O crescimento agora é linear.
 - **Retomar desenha uma vez.** Continuar escreve o log antigo inteiro na sessão
   nova, então a conexão reproduzia todos os eventos dele — 3544 numa sessão real
   — e o Bubble Tea desenha depois de cada mensagem, então a tela repintava 3544

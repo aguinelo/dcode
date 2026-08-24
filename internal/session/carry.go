@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"encoding/json"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 )
@@ -17,6 +19,26 @@ import (
 // approval, no reasoning, none of what a person needs to see to know the work
 // survived. Carrying only what the model needs is what left the screen blank.
 func Carry(path string) ([]protocol.Event, int, error) {
+	return carry(path, map[string]bool{})
+}
+
+// carry reads one record and everything it continues, oldest first.
+//
+// The chain is followed rather than copied. A record holds the marker naming
+// the conversation it continues and NOT that conversation's events, so reading
+// one means walking back — which is what keeps a record linear in its own
+// session instead of quadratic in the number of times somebody typed `-c`.
+//
+// `seen` refuses a cycle. A record naming itself, or two naming each other, is
+// a corrupt pair rather than an impossible one — the id is a timestamp and a
+// random suffix, and nothing enforces the arrow points backwards.
+func carry(path string, seen map[string]bool) ([]protocol.Event, int, error) {
+	id := strings.TrimSuffix(filepath.Base(path), ".jsonl")
+	if seen[id] {
+		return nil, 0, nil
+	}
+	seen[id] = true
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, 0, err
@@ -48,6 +70,25 @@ func Carry(path string) ([]protocol.Event, int, error) {
 		case protocol.EventApprovalRequired:
 			// A crossing already decided. Replaying it would put a modal in
 			// front of somebody for a question answered yesterday.
+			continue
+		case protocol.EventSessionResumed:
+			// The marker names the conversation this one continues. Read it
+			// first, and drop the marker itself: the session being built will
+			// emit its own, naming the record it was actually asked to
+			// continue rather than one further up the chain.
+			var d protocol.SessionResumed
+			if json.Unmarshal(ev.Payload, &d) != nil || d.SourceID == "" {
+				continue
+			}
+			older, n, oerr := carry(filepath.Join(filepath.Dir(path), d.SourceID+".jsonl"), seen)
+			if oerr != nil {
+				// A missing ancestor is a shorter conversation, not a failed
+				// one. Refusing here would make one pruned record unreadable
+				// for every session that ever continued it.
+				continue
+			}
+			out = append(out, older...)
+			turns += n
 			continue
 		case protocol.EventTurnCompleted:
 			turns++

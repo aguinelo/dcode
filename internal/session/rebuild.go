@@ -1,9 +1,7 @@
 package session
 
 import (
-	"bufio"
 	"encoding/json"
-	"os"
 	"strings"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -26,12 +24,20 @@ import (
 // died with their session. All three are re-asked or re-derived by the turn
 // that follows.
 func Rebuild(path string) ([]ce.Message, error) {
-	f, err := os.Open(path)
+	// Through Carry, which FOLLOWS THE CHAIN.
+	//
+	// A record holds the marker naming the conversation it continues and not
+	// that conversation's events, so reading one means walking back. Reading
+	// the file directly would rebuild only the most recent leg and hand the
+	// model a conversation that starts in the middle of itself.
+	evs, _, err := Carry(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	return rebuildFrom(evs)
+}
 
+func rebuildFrom(evs []protocol.Event) ([]ce.Message, error) {
 	var out []ce.Message
 
 	// The assistant's turn is one message carrying its text and its calls, so
@@ -65,13 +71,7 @@ func Rebuild(path string) ([]ce.Message, error) {
 		calls = nil
 	}
 
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
-	for sc.Scan() {
-		var ev protocol.Event
-		if err := json.Unmarshal(sc.Bytes(), &ev); err != nil {
-			continue
-		}
+	for _, ev := range evs {
 		switch ev.Type {
 		case protocol.EventTurnStarted:
 			var d protocol.TurnStarted
@@ -109,5 +109,5 @@ func Rebuild(path string) ([]ce.Message, error) {
 		}
 	}
 	flush()
-	return out, sc.Err()
+	return out, nil
 }
