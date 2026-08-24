@@ -831,3 +831,66 @@ func TestALineThatWasCutSaysSo(t *testing.T) {
 		}
 	}
 }
+
+// Without a rule, a question is a mark in the same weight as the prose around
+// it, and a screen of scrollback has no boundary anywhere: on a real session it
+// was impossible to see where one exchange ended and the next began.
+//
+// A rule and not a colour, because a question picked out by colour alone is not
+// picked out at all on a monochrome terminal — and this is the landmark the eye
+// scrolls to.
+func TestATurnBeginsWithAVisibleBoundary(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m.Entries = []Entry{
+		{Kind: KindUser, Summary: "the first question"},
+		{Kind: KindAssistant, Summary: "the first answer"},
+		{Kind: KindUser, Summary: "the second question"},
+		{Kind: KindAssistant, Summary: "the second answer"},
+	}
+
+	for _, unicode := range []bool{true, false} {
+		g := DefaultGeometry(100, 30)
+		g.Unicode, g.Palette = unicode, Palette{}
+		gl := glyphs(unicode)
+		rule := strings.Repeat(gl.boxH, 8)
+
+		streamW := g.StreamWidth(false, false)
+		out := StreamLines(m, g)
+		rules := 0
+		for i, l := range out {
+			if !strings.Contains(l, rule) {
+				continue
+			}
+			rules++
+			// The seam belongs to the gutter, not to the frame. Drawn edge to
+			// edge it touches the column dividers and reads as a row of a
+			// table rather than as a boundary.
+			if !strings.HasPrefix(l, "  ") || visibleWidth(l) > streamW-2 {
+				t.Errorf("unicode=%v: the rule reaches the frame: %q", unicode, l)
+			}
+			if i+1 >= len(out) || !strings.Contains(out[i+1], "question") {
+				t.Errorf("unicode=%v: the rule at %d is not followed by a question", unicode, i)
+			}
+			// The first turn opens the stream, and a stream that opens on a
+			// blank row spends one of the few it has on nothing.
+			if i > 0 && out[i-1] != "" {
+				t.Errorf("unicode=%v: the rule at %d has no gap above it", unicode, i)
+			}
+		}
+		if rules != 2 {
+			t.Errorf("unicode=%v: %d boundaries for 2 questions:\n%s",
+				unicode, rules, strings.Join(out, "\n"))
+		}
+
+		// The rule must not have introduced the one thing the stream already
+		// forbids, in either direction.
+		for i := 1; i < len(out); i++ {
+			if out[i] == "" && out[i-1] == "" {
+				t.Errorf("unicode=%v: two blank rows at %d", unicode, i)
+			}
+		}
+		if len(out) > 0 && out[len(out)-1] == "" {
+			t.Errorf("unicode=%v: the stream ends on a blank row", unicode)
+		}
+	}
+}

@@ -79,6 +79,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Adicionado
+
+- **O turno começa com um limite visível.** A pergunta era um sinal no mesmo peso
+  da prosa em volta, então uma tela de rolagem não tinha limite em lugar nenhum.
+  Toda pergunta abre com uma régua agora, recuada na mesma calha que o resto do
+  fluxo usa. Régua e não cor: pergunta destacada só por cor não está destacada
+  num terminal sem cor, e este é o ponto para onde o olho rola. Custa uma linha
+  por turno e nenhuma coluna.
+
 ### Corrigido
 
 - **Linha de chamada continua uma linha.** Comando de shell quebrado em várias

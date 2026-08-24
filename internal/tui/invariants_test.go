@@ -132,6 +132,9 @@ var tuiInvariants = map[string]string{
 	"nenhuma runa acima de 127": "TestAsciiModeDrawsNothingButAscii",
 	"o modelo produz texto":     "TestAsciiModeDrawsNothingButAscii",
 
+	// Where an exchange begins.
+	"Toda pergunta abre com uma régua": "TestATurnBeginsWithAVisibleBoundary",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
