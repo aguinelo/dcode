@@ -85,6 +85,13 @@ that on every run to stop the opposite reading.
 
 ### Changed
 
+- **Every conversation row says when and how much.** The overlay fixed the width
+  and left the real problem showing: four rows read the same because four
+  conversations began with the same question. The meta takes its width before the
+  title — the opposite of the rule the file rows follow, because when the titles
+  collide the date is the only thing that tells them apart. `relativeDay` takes
+  the clock as an argument now: the picker could read one, the overlay is inside
+  a render that is pure over the model. And `%d turn(s)` became a real plural.
 - **The conversation list is summoned, not resident.** `^R` in readline is a
   search you summon — it appears, you choose, it goes — and borrowing the key
   while making it twenty-six permanent columns contradicted the convention that

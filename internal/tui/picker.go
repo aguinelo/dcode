@@ -121,7 +121,8 @@ func pickerRow(p Picker, i, w int, geo Geometry) string {
 		style = StyleAccent
 	}
 
-	meta := fmt.Sprintf("%s · %s", relativeDay(c.When, p.Lang), turnCount(c.Turns, p.Lang))
+	meta := fmt.Sprintf("%s %s %s", relativeDay(c.When, time.Now(), p.Lang),
+		glyphs(geo.Unicode).dot, turnCount(c.Turns, p.Lang))
 	// The question gets whatever the meta does not need, and never less than
 	// nothing: at 40 columns the meta alone can fill the row.
 	room := w - runeLen(mark) - runeLen(meta) - 2
@@ -139,9 +140,14 @@ func pickerRow(p Picker, i, w int, geo Geometry) string {
 func runeLen(s string) int { return clipWidth(s) }
 
 // relativeDay says when without making somebody parse a date.
-func relativeDay(at time.Time, lang Lang) string {
+//
+// The clock is an ARGUMENT. The picker is its own program and could read one
+// directly, but the same line is drawn inside the main render now, and that one
+// is pure over the model and the geometry — a clock read inside it makes two
+// draws of the same state differ, and the symptom is a flicker nobody can
+// reproduce. Model.Now exists for exactly this.
+func relativeDay(at, now time.Time, lang Lang) string {
 	t := Text(lang)
-	now := time.Now()
 	switch days := int(now.Truncate(24*time.Hour).Sub(at.Truncate(24*time.Hour)).Hours() / 24); {
 	case days <= 0:
 		return at.Format("15:04")
@@ -153,7 +159,8 @@ func relativeDay(at time.Time, lang Lang) string {
 }
 
 func turnCount(n int, lang Lang) string {
-	return fmt.Sprintf(Text(lang).PickerTurns, n)
+	t := Text(lang)
+	return plural(n, t.PickerTurnOne, t.PickerTurnMany)
 }
 
 // pickerProgram is the picker as a bubbletea program: the smallest possible

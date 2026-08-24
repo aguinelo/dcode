@@ -202,8 +202,13 @@ type Strings struct {
 	PickerEmpty     string
 	PickerUntitled  string
 	PickerYesterday string
-	// PickerTurns takes a count.
-	PickerTurns string
+	// PickerTurnOne and PickerTurnMany are the noun, and plural() puts the
+	// number in front. It used to be one string reading "%d turn(s)", which is
+	// the parenthetical plural nobody ever comes back to replace — and it now
+	// appears on every row of the conversation list rather than only in the
+	// picker, where it was easy not to look at.
+	PickerTurnOne  string
+	PickerTurnMany string
 
 	// Resumed opens a continued conversation. It takes the session it came
 	// from and how many turns, in that order.
@@ -354,7 +359,8 @@ Environment:
 		PickerEmpty:     "nothing recorded in this workspace yet",
 		PickerUntitled:  "(nothing asked yet)",
 		PickerYesterday: "yesterday",
-		PickerTurns:     "%d turn(s)",
+		PickerTurnOne:   "turn",
+		PickerTurnMany:  "turns",
 		NoPlan:          "There is no plan yet.",
 	},
 	PtBR: {
@@ -494,7 +500,8 @@ Ambiente:
 		PickerEmpty:     "nada gravado neste workspace ainda",
 		PickerUntitled:  "(nada perguntado ainda)",
 		PickerYesterday: "ontem",
-		PickerTurns:     "%d turno(s)",
+		PickerTurnOne:   "turno",
+		PickerTurnMany:  "turnos",
 		NoPlan:          "Ainda não há plano.",
 	},
 }
