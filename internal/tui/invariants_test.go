@@ -121,6 +121,9 @@ var tuiInvariants = map[string]string{
 	// One line is one line.
 	"achatado antes de ser medido": "TestAToolLineSurvivesAMultiLineCommand",
 	"guarda o **fim**":             "TestACommandKeepsItsBeginningAndAPathItsEnd",
+	// One file, one row.
+	"é **uma linha só**":             "TestAFileIsCountedOnceWhicheverWayTheToolSpeltIt",
+	"mantém a grafia que o encontra": "TestAPathOutsideTheWorkspaceKeepsItsFullSpelling",
 
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",

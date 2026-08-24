@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -427,5 +428,51 @@ func TestContextPercentNeedsTheWindow(t *testing.T) {
 	}
 	if strings.Contains(Render(noWindow, DefaultGeometry(100, 10)), "ctx") {
 		t.Error("no window, no meter")
+	}
+}
+
+// The same file reached the model under two spellings and became two rows in
+// the sidebar, two line counters, and a header claiming more files were touched
+// than were.
+//
+// Asserted through Apply rather than on the helper, because the workspace this
+// depends on arrives in an event: a test that passed the workspace by hand
+// would pass even if nothing ever read session.created.
+func TestAFileIsCountedOnceWhicheverWayTheToolSpeltIt(t *testing.T) {
+	m := NewModel("", "", "", "", En)
+	m = m.Apply(ev(t, 1, protocol.EventSessionCreated, protocol.Session{
+		ID: "s1", Workspace: "/w/craw", State: protocol.SessionStateIdle,
+	}))
+	for i, target := range []string{"DCODE.md", "/w/craw/DCODE.md", "./DCODE.md"} {
+		m = m.Apply(ev(t, uint64(2+i), protocol.EventToolRequested, protocol.ToolRequested{
+			ToolCallID: fmt.Sprintf("c%d", i), Name: "write",
+			Input: json.RawMessage(fmt.Sprintf(`{"path":%q}`, target)),
+		}))
+	}
+
+	rows := FileTree(m.Entries)
+	if len(rows) != 1 {
+		t.Fatalf("one file drew %d rows: %+v", len(rows), rows)
+	}
+	if rows[0].Path != "DCODE.md" || rows[0].Folder {
+		t.Errorf("row is %+v, want the workspace-relative file", rows[0])
+	}
+}
+
+// A path the workspace does not contain keeps the only spelling that finds it.
+// Trimming it to a ladder of "../.." would name a file nobody can open.
+func TestAPathOutsideTheWorkspaceKeepsItsFullSpelling(t *testing.T) {
+	for _, c := range []struct{ target, workspace, want string }{
+		{"/tmp/clickbus.html", "/w/craw", "/tmp/clickbus.html"},
+		{"/w/craw/src/cli.py", "/w/craw", "src/cli.py"},
+		{"/w/craw/src/cli.py", "/w/craw/", "src/cli.py"},
+		{"ls -la /w/craw", "/w/craw", "ls -la /w/craw"},
+		{"alpha", "/w/craw", "alpha"},
+		{"/w/craw", "/w/craw", "/w/craw"},
+		{"", "/w/craw", ""},
+	} {
+		if got := relativise(c.target, c.workspace); got != c.want {
+			t.Errorf("relativise(%q, %q) = %q, want %q", c.target, c.workspace, got, c.want)
+		}
 	}
 }

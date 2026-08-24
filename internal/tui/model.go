@@ -368,7 +368,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		filled := false
 		for i := range m.Entries {
 			if m.Entries[i].CallID == d.ToolCallID && m.Entries[i].Arriving {
-				m.Entries[i].Target = targetOf(d.Input)
+				m.Entries[i].Target = relativise(targetOf(d.Input), m.Workspace)
 				m.Entries[i].Owns = ownsOf(d.Input)
 				m.Entries[i].Arriving, m.Entries[i].Done = false, 0
 				filled = true
@@ -377,7 +377,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 		if !filled {
 			m.Entries = append(m.Entries, Entry{
-				Kind: KindTool, Tool: d.Name, Target: targetOf(d.Input),
+				Kind: KindTool, Tool: d.Name, Target: relativise(targetOf(d.Input), m.Workspace),
 				Owns: ownsOf(d.Input), CallID: d.ToolCallID,
 				Summary: "", Running: true, Seq: ev.Seq,
 			})
@@ -640,6 +640,39 @@ func targetOf(raw json.RawMessage) string {
 		}
 	}
 	return ""
+}
+
+// relativise shortens a path that lies inside the workspace.
+//
+// The same file reached the model under two spellings — `DCODE.md` from one
+// call and `/Users/…/craw/DCODE.md` from the next — because a tool names its
+// target however the model wrote it. Two spellings are two rows in the sidebar,
+// two counters, and a header claiming fifteen files were touched when eleven
+// were.
+//
+// Done HERE, once, where the target enters the model, rather than in the
+// sidebar that noticed it. The sidebar was one of three readers; the tool line
+// was drawing the absolute path too, and the next reader would have had to
+// learn the rule again.
+//
+// The workspace comes from `session.created`, so it is part of the event
+// stream: the same log replayed produces the same spellings, which is what
+// keeps the reopened-session guarantee true by construction.
+func relativise(target, workspace string) string {
+	if target == "" || workspace == "" || !looksLikePath(target) {
+		return target
+	}
+	if rel := strings.TrimPrefix(target, "./"); rel != target {
+		target = rel
+	}
+	w := strings.TrimSuffix(workspace, "/") + "/"
+	// A prefix match rather than filepath.Rel: Rel answers for any pair of
+	// paths, including by climbing out with "../..", and a target above the
+	// workspace is better shown as the absolute path it is than as a ladder.
+	if rel := strings.TrimPrefix(target, w); rel != target && rel != "" {
+		return rel
+	}
+	return target
 }
 
 // summariseResult renders the one-line form of a completed tool call.
