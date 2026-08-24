@@ -171,6 +171,8 @@ var tuiInvariants = map[string]string{
 	"não repete o fluxo":                "TestTheSideColumnSaysWhatIsNowhereElse",
 	"maior mudança do turno":            "TestTheBarsAreScaledToTheLargestChangeAndSaySo",
 	"legenda das raias aparece uma vez": "TestTheLaneLegendAppearsOnlyWhenItExplainsSomething",
+	// The meter measures the context.
+	"nunca passa de 100%": "TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost",
 
 	// Copy mode.
 	"`^O` abre a cópia":                        "TestTheChordOpensCopyMode",

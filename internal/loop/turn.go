@@ -138,6 +138,12 @@ type Outcome struct {
 	Reason     string
 	Iterations int
 	Usage      provider.Usage
+	// ContextTokens is what the assembled context costs now, not summed over
+	// the rounds. It lives here and not in provider.Usage because the size of a
+	// context is not something a provider reports — the two families this
+	// package speaks to disagree about whether their input count already
+	// includes the cached prefix.
+	ContextTokens int
 }
 
 // Engine runs turns against one session.
@@ -273,6 +279,13 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 		if err != nil {
 			return e.finish(out, protocol.StopError), err
 		}
+
+		// What the context costs right now, from the assembly just sent — not
+		// summed over the rounds, and the same estimate ce.Plan reads when it
+		// decides to compact. The meter and the threshold agree by
+		// construction; two numbers for one question is how a summary happens
+		// at a percentage the screen never showed.
+		out.ContextTokens = ce.Estimate(msgs, e.ctxConfig())
 
 		text, calls, usage, perr := e.stream(ctx, turnID, msgs)
 		out.Usage.InputTokens += usage.InputTokens
@@ -779,14 +792,23 @@ func (e *Engine) askApproval(ctx context.Context, turnID string, ex ToolExecutio
 }
 
 // maybeCompact checks once per iteration whether the context needs compacting.
-func (e *Engine) maybeCompact(ctx context.Context) error {
+// ctxConfig is the context configuration with the model's window filled in.
+//
+// One place rather than the three that had copied it: the compaction trigger,
+// the band announcement and now the meter all have to read the SAME window, or
+// they answer one question three ways.
+func (e *Engine) ctxConfig() ce.Config {
 	cfg := e.cfg.CtxConfig
 	if cfg.Window <= 0 && e.cfg.Provider != nil {
 		if w, err := e.cfg.Provider.Window(e.cfg.Model); err == nil {
 			cfg.Window = w
 		}
 	}
-	plan, ok := ce.Plan(e.session, cfg)
+	return cfg
+}
+
+func (e *Engine) maybeCompact(ctx context.Context) error {
+	plan, ok := ce.Plan(e.session, e.ctxConfig())
 	if !ok {
 		return nil
 	}
@@ -796,7 +818,7 @@ func (e *Engine) maybeCompact(ctx context.Context) error {
 // forceCompact is the recovery path when the provider says the context is too
 // large: compact even if the local estimate disagreed.
 func (e *Engine) forceCompact(ctx context.Context) bool {
-	cfg := e.cfg.CtxConfig
+	cfg := e.ctxConfig()
 	cfg.Window = 1 // force the trigger; the estimate cannot be below this
 	plan, ok := ce.Plan(e.session, cfg)
 	if !ok {
@@ -825,12 +847,13 @@ func (e *Engine) finish(out Outcome, reason string) Outcome {
 	ev := protocol.TurnCompleted{TurnID: out.TurnID, Reason: reason}
 	// Absent rather than zero when the provider said nothing: unknown tokens
 	// and no tokens are different facts, and a client shows them differently.
-	if out.Usage != (provider.Usage{}) {
+	if out.Usage != (provider.Usage{}) || out.ContextTokens > 0 {
 		ev.Usage = &protocol.Usage{
 			InputTokens:      out.Usage.InputTokens,
 			OutputTokens:     out.Usage.OutputTokens,
 			CacheReadTokens:  out.Usage.CacheReadTokens,
 			CacheWriteTokens: out.Usage.CacheWriteTokens,
+			ContextTokens:    out.ContextTokens,
 		}
 	}
 	if c := e.completion(); c != nil {
@@ -924,12 +947,7 @@ func (e *Engine) crossBudget() ce.Band {
 	if !e.cfg.BudgetNotice {
 		return ce.BandNone
 	}
-	cfg := e.cfg.CtxConfig
-	if cfg.Window <= 0 && e.cfg.Provider != nil {
-		if w, err := e.cfg.Provider.Window(e.cfg.Model); err == nil {
-			cfg.Window = w
-		}
-	}
+	cfg := e.ctxConfig()
 	band, announce := ce.Crossed(e.budgetBand, ce.Fraction(e.session, cfg), cfg.CompactAt)
 	e.budgetBand = band
 	if !announce {

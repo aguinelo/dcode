@@ -108,6 +108,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **O medidor de contexto mede o contexto.** Ele marcava `ctx 175%`, que não é
+  um contexto 175% cheio — é um turno que gastou 1,75 janelas de entrada.
+  `InputTokens` é cumulativo pelas rodadas do turno, e cada rodada reenvia o
+  contexto. Agora o daemon diz o que o contexto montado custa, com a mesma
+  estimativa que o gatilho de compactação lê, para o medidor e o limiar
+  concordarem por construção. Os provedores não podiam responder isso: as duas
+  famílias discordam sobre se a contagem de entrada já inclui o cache.
 - **Um Chromium alcança o primeiro quadro dentro do sandbox.** Sem
   `mach-register` e um `iokit-open` escopado, qualquer Chromium morria com
   SIGSEGV antes de desenhar nada — Playwright, Puppeteer, Lighthouse, um Electron

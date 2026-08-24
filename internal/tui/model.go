@@ -165,6 +165,9 @@ type Model struct {
 	// Asked and Allowed count boundary crossings put to the person and the
 	// ones they let through.
 	Asked, Allowed int
+	// ContextTokens is what the context costs now, as the daemon measured it.
+	// InputTokens beside it is CUMULATIVE and is the turn's cost, not its size.
+	ContextTokens int
 
 	InputTokens  int
 	OutputTokens int
@@ -534,10 +537,22 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.InputTokens = d.Usage.InputTokens
 			m.OutputTokens = d.Usage.OutputTokens
 			m.CacheTokens = d.Usage.CacheReadTokens
-			// The input of the last turn is what the context currently costs,
-			// which is the number a person can act on.
-			if m.Window > 0 {
-				m.ContextPct = 100 * d.Usage.InputTokens / m.Window
+			// The context is what the DAEMON measured, never what this client
+			// derived from the input count.
+			//
+			// It used to be `100 * InputTokens / Window`, and InputTokens is
+			// cumulative across a turn's rounds — every round re-sends the
+			// context, so a forty-round turn sums forty readings of it. The
+			// meter read `ctx 175%`, which is not a context that is 175% full;
+			// it is a turn that spent 1.75 windows of input.
+			if m.Window > 0 && d.Usage.ContextTokens > 0 {
+				m.ContextTokens = d.Usage.ContextTokens
+				m.ContextPct = 100 * d.Usage.ContextTokens / m.Window
+				// A share of a window cannot exceed the window. If it ever
+				// does, the number is wrong and saying 100 is the smaller lie.
+				if m.ContextPct > 100 {
+					m.ContextPct = 100
+				}
 			}
 		}
 		if e, ok := completionEntry(d.Completion, m.Lang); ok {

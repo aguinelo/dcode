@@ -393,3 +393,46 @@ func TestThePlanIsABlockInTheStream(t *testing.T) {
 		t.Errorf("replaying the same log drew a different screen")
 	}
 }
+
+// The context meter measures the context, and a share of a window cannot
+// exceed the window.
+//
+// It used to be `100 * InputTokens / Window`, and InputTokens is CUMULATIVE
+// across a turn's rounds: every round re-sends the context, so a forty-round
+// turn sums forty readings of it. The meter read `ctx 175%` — which is not a
+// context that is 175% full, it is a turn that spent 1.75 windows of input.
+//
+// The fixture is that shape exactly: a turn whose cumulative input is nearly
+// twice the window, while the context it actually holds is a quarter of it.
+func TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost(t *testing.T) {
+	const window = 200_000
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(ev(t, 1, protocol.EventSessionCreated, protocol.Session{
+		ID: "s", Workspace: "/w", State: protocol.SessionStateIdle, ContextWindow: window,
+	}))
+	m = m.Apply(ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
+		TurnID: "t1", Reason: protocol.StopDone,
+		Usage: &protocol.Usage{
+			InputTokens:   350_000, // forty rounds of a 50k context, summed
+			OutputTokens:  4_000,
+			ContextTokens: 50_000, // what it actually holds
+		},
+	}))
+
+	if m.ContextPct != 25 {
+		t.Errorf("the meter says %d%%, want 25 — 50k of a 200k window", m.ContextPct)
+	}
+	if m.InputTokens != 350_000 {
+		t.Errorf("the turn's cost was lost: %d", m.InputTokens)
+	}
+
+	// And it is capped, whatever arrives. A share of a window that exceeds the
+	// window is a wrong number, and saying 100 is the smaller lie.
+	m = m.Apply(ev(t, 3, protocol.EventTurnCompleted, protocol.TurnCompleted{
+		TurnID: "t2", Reason: protocol.StopDone,
+		Usage: &protocol.Usage{ContextTokens: window * 3},
+	}))
+	if m.ContextPct != 100 {
+		t.Errorf("the meter says %d%%, want it capped at 100", m.ContextPct)
+	}
+}
