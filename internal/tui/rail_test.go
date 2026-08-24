@@ -30,13 +30,36 @@ func TestATurnThatTouchedNothingGetsNoSidebar(t *testing.T) {
 	}
 }
 
-// Below a hundred columns it goes, because the stream is what the work is in.
-func TestTheSidebarDisappearsOnANarrowTerminal(t *testing.T) {
-	if railGeometry(90).ShowRail(true) {
-		t.Error("the sidebar survived a 90-column terminal")
+// There is no width rule for the sidebar any more, and this is the test that
+// used to assert it. It is kept, inverted, because deleting it would leave no
+// record that the rule ever existed — and the rule is the reason the column now
+// starts hidden: it shared a threshold with the panel, and the two hundreds
+// compounded into a 46-column cliff at exactly the width most people work at.
+func TestTheSidebarHasNoWidthRuleLeft(t *testing.T) {
+	for _, w := range []int{60, 90, 99, 100, 120, 200} {
+		g := railGeometry(w)
+		if g.ShowRail(true) {
+			t.Errorf("at %d columns the sidebar appeared without being asked for", w)
+		}
+		g.RailMode = RailShown
+		if !g.ShowRail(true) {
+			t.Errorf("at %d columns an explicitly shown sidebar was hidden", w)
+		}
 	}
-	if !railGeometry(120).ShowRail(true) {
-		t.Error("the sidebar is missing at 120 columns")
+}
+
+// And it starts hidden, whatever the width. Measured on a real session: the
+// column and the panel took 61 of 132 columns and gave the conversation 71,
+// while the same session at 99 columns — where both are gone — gave it 99.
+func TestTheSidebarStartsHidden(t *testing.T) {
+	for _, w := range []int{80, 100, 132, 200} {
+		g := DefaultGeometry(w, 30)
+		if g.ShowRail(true) {
+			t.Errorf("at %d columns the sidebar opened before anybody asked", w)
+		}
+		if got := g.StreamWidth(false, g.ShowPanel(true)); got < w-g.panelWidth()-1 {
+			t.Errorf("at %d columns the stream got %d", w, got)
+		}
 	}
 }
 
@@ -237,6 +260,7 @@ func TestNoBoxDrawingRuneSurvivesAsciiMode(t *testing.T) {
 	g := DefaultGeometry(118, 18)
 	g.Palette = Palette{}
 	g.Unicode = false
+	g.RailMode = RailShown
 
 	// The forbidden set is DERIVED from the Unicode glyph sets rather than
 	// listed here. Listing them is what let the filter caret slip in as the
@@ -301,6 +325,7 @@ func TestASidebarHiddenByWidthSaysSoAndNamesTheKey(t *testing.T) {
 func TestAVisibleSidebarSaysNothingAboutItself(t *testing.T) {
 	m := railModel(Entry{Kind: KindTool, Tool: "read", Target: "a.go"})
 	g := railGeometry(140)
+	g.RailMode = RailShown
 
 	if !g.ShowRail(m.railHasContent()) {
 		t.Fatal("the fixture should show the column")
@@ -359,6 +384,7 @@ func TestAsciiModeDrawsNothingButAscii(t *testing.T) {
 		g := DefaultGeometry(118, 24)
 		g.Palette = Palette{}
 		g.Unicode = false
+		g.RailMode = RailShown
 
 		for i, line := range lines(Render(m, g)) {
 			for _, r := range line {

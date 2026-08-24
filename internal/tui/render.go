@@ -17,11 +17,24 @@ import (
 type RailMode int
 
 const (
-	// RailAuto lets the width decide.
-	RailAuto RailMode = iota
-	// RailShown and RailHidden are the user having thought about it.
+	// RailHidden is where a terminal starts, and the zero value says so.
+	//
+	// There is no third mode here, and the panel next door still has one. That
+	// asymmetry is the point rather than an oversight: the two columns used to
+	// answer "should I be here?" the same way, with the same threshold, and
+	// their two hundreds COMPOUNDED — crossing from 99 to 100 columns cost the
+	// conversation 46 of them at once. Mirroring the panel is what built the
+	// cliff.
+	//
+	// They also hold different things. The panel holds the plan, which exists
+	// only when the model made one and is something a reader returns to. The
+	// column held a second copy of what the stream had just said. A rule that
+	// suits the first does not suit the second, and writing one rule for both
+	// is how it came to be written for neither.
+	RailHidden RailMode = iota
+	// RailShown is the user having asked, and it holds at any width — the same
+	// manners the panel has, and the half of the mirror worth keeping.
 	RailShown
-	RailHidden
 )
 
 type PanelMode int
@@ -46,13 +59,13 @@ type Geometry struct {
 	PanelMinTotalWidth int
 	PanelMode          PanelMode
 
-	// The sidebar, laid out the way the panel is. clamp(20, w/5, 30), gone
-	// below a hundred columns, and an explicit choice winning at any width.
-	RailWidth         int
-	RailMinWidth      int
-	RailMaxWidth      int
-	RailMinTotalWidth int
-	RailMode          RailMode
+	// The sidebar. clamp(20, w/5, 30) wide when it is asked for, and asked for
+	// is the only way it appears — there is no width rule here any more, and
+	// RailMode says why.
+	RailWidth    int
+	RailMinWidth int
+	RailMaxWidth int
+	RailMode     RailMode
 
 	// DiffPreviewLines is how much of a diff shows without asking. A diff is
 	// what gets reviewed, so some of it is always visible — but a whole-file
@@ -77,11 +90,26 @@ func DefaultGeometry(w, h int) Geometry {
 	return Geometry{
 		Width: w, Height: h,
 		PanelWidth: 24, PanelMinWidth: 16, PanelMaxWidth: 34, PanelMinTotalWidth: 100,
-		RailWidth: 22, RailMinWidth: 20, RailMaxWidth: 30, RailMinTotalWidth: 100,
+		RailWidth: 22, RailMinWidth: 20, RailMaxWidth: 30,
 		// Written out rather than left to the zero value: the default is a
 		// decision, and a decision nobody can find in the defaults is one the
 		// next reader has to infer from a constant's position in a list.
-		RailMode:         RailAuto,
+		//
+		// HIDDEN, not auto. Measured on a real session: at 132 columns the
+		// column and the panel together took 61 of them and left 71 for the
+		// conversation, while the same session at 99 columns — where both
+		// disappear — gave it 99. Widening the terminal made the text NARROWER,
+		// and the crossing was a single column: 99 gave the stream 99, and 100
+		// gave it 53.
+		//
+		// What the column held was also a second copy of what the stream had
+		// just said: every `⏺ write DCODE.md` was followed by a row saying
+		// `✓ DCODE.md`. Twenty-six columns is a lot to pay for a repetition.
+		//
+		// So it is summoned rather than resident, which is what `^B` means in
+		// the editor the key was borrowed from — you toggle it, and it stays as
+		// you left it.
+		RailMode:         RailHidden,
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
 		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
 	}
@@ -117,13 +145,7 @@ func (g Geometry) ShowRail(hasContent bool) bool {
 	if !hasContent {
 		return false
 	}
-	switch g.RailMode {
-	case RailShown:
-		return true
-	case RailHidden:
-		return false
-	}
-	return g.Width >= g.RailMinTotalWidth
+	return g.RailMode == RailShown
 }
 
 // railWidth is how wide the sidebar actually draws: a fifth of the screen,
