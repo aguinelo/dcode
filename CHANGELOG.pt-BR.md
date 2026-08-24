@@ -196,6 +196,12 @@ mostrou.
 
 ### Adicionado
 
+- **O contexto avisa que está enchendo antes de ser cortado.** As faixas eram
+  calculadas e anunciadas ao modelo, e ninguém as anunciava a quem lê — então o
+  resumo aparecia como uma linha dizendo que tinha acontecido, depois do fato,
+  sem chance de terminar um raciocínio antes. Agora a travessia chega ao cliente
+  no mesmo instante em que chega ao modelo, e o corte diz quantas mensagens
+  foram e quantas ficaram, em vez de só que algo aconteceu.
 - **A área de digitação é delimitada nos quatro lados.** Moldura aqui e não em
   volta de uma chamada, que é para isso que serve uma caixa: a entrada é um
   *campo* — região fixa, que não rola, à qual se volta, e que precisa ser

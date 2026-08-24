@@ -74,6 +74,7 @@ const (
 	// is that every observable fact travels the same way.
 	EventSessionRenamed   EventType = "session.renamed"
 	EventSessionCompacted EventType = "session.compacted"
+	EventContextBand      EventType = "context.band"
 	EventSessionError     EventType = "session.error"
 )
 
@@ -487,6 +488,27 @@ type (
 	SessionCompacted struct {
 		FromSeq uint64 `json:"from_seq"`
 		ToSeq   uint64 `json:"to_seq"`
+		// Messages is how many were replaced by the summary, and Kept how many
+		// survived it. "Earlier history was summarised" says that something
+		// happened; these say how much, which is the difference between a
+		// notice and an answer.
+		Messages int `json:"messages,omitempty"`
+		Kept     int `json:"kept,omitempty"`
+	}
+	// ContextBand is the context crossing a threshold on the way to being
+	// summarised.
+	//
+	// The model is told this already, and has been for a while. The PERSON was
+	// not, so the summary arrived as a line saying it had happened — after the
+	// fact, with no warning that it was coming and no way to finish a thought
+	// first.
+	//
+	// Fraction is of the BUDGET, not of the window: the budget is the space
+	// before compaction, so 0.80 means eighty per cent of the way to a summary.
+	// Against the window it would be a number about a limit that never arrives.
+	ContextBand struct {
+		Band     int     `json:"band"`
+		Fraction float64 `json:"fraction"`
 	}
 
 	// SessionResumed names the conversation the events after it came from.

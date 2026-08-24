@@ -436,3 +436,41 @@ func TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost(t *testing.T) {
 		t.Errorf("the meter says %d%%, want it capped at 100", m.ContextPct)
 	}
 }
+
+// The person is warned that the context is filling BEFORE it is cut, and told
+// how much went when it is.
+//
+// The model has been told this for a while — the bands exist and are announced
+// to it. Nobody told the reader, so the summary arrived as one line saying it
+// had happened: after the fact, with no warning it was coming and no chance to
+// finish a thought first.
+func TestTheContextSaysItIsFillingBeforeItIsCut(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(ev(t, 1, protocol.EventContextBand, protocol.ContextBand{
+		Band: 2, Fraction: 0.80,
+	}))
+	if len(m.Entries) != 1 {
+		t.Fatalf("the crossing produced %d entries", len(m.Entries))
+	}
+	if got := m.Entries[0].Summary; !strings.Contains(got, "80%") ||
+		!strings.Contains(got, "summary") {
+		t.Errorf("the warning does not say how close it is: %q", got)
+	}
+
+	// And the cut says how much, not merely that it happened.
+	m = m.Apply(ev(t, 2, protocol.EventSessionCompacted, protocol.SessionCompacted{
+		FromSeq: 0, ToSeq: 40, Messages: 40, Kept: 12,
+	}))
+	got := m.Entries[len(m.Entries)-1].Summary
+	if !strings.Contains(got, "40") || !strings.Contains(got, "12") {
+		t.Errorf("the summary note says nothing about its size: %q", got)
+	}
+
+	// A crossing with nothing to report draws nothing: a note that says the
+	// context is 0% of the way anywhere is a row spent on nothing.
+	before := len(m.Entries)
+	m = m.Apply(ev(t, 3, protocol.EventContextBand, protocol.ContextBand{}))
+	if len(m.Entries) != before {
+		t.Error("an empty crossing drew a note")
+	}
+}
