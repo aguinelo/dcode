@@ -163,6 +163,10 @@ var tuiInvariants = map[string]string{
 	// The meter measures the context.
 	"nunca passa de 100%": "TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost",
 
+	// Resuming paints once.
+	"desenha **uma linha** enquanto lê": "TestResumingPaintsALoadingLineUntilTheBacklogIsRead",
+	"A linha se move":                   "TestTheLoadingLineKeepsTicking",
+
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
 	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",
