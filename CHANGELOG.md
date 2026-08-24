@@ -126,6 +126,15 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **The version reads what the history actually holds.** `scripts/version.sh`
+  refused to derive anything the moment a merge or a revert appeared: a merge
+  commit's subject is not a change — the changes are its parents', already in
+  the range — and `Revert "feat: …"` matches no convention because it quotes
+  one. A merge is skipped; a revert is classified by what it undid, since
+  removing a feature is a change of the same class the addition was. The
+  refusal itself also printed one word per line, which is how a message written
+  to be read by whoever will fix it arrives illegible.
+
 - **A record stops copying what it continues.** Continuing copied the whole
   previous record into the new one, so a session that continued a session that
   continued a session held three copies of the first — the largest record on this
