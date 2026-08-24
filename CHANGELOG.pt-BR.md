@@ -95,7 +95,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Alterado
+
+- **A cópia é `^O`, e `v` é letra.** Foi `v` duas vezes. Na primeira, um `v` numa
+  linha vazia comia a primeira letra de qualquer mensagem começada com ela; a
+  correção exigiu o cursor no fluxo, o que estreitou a regra em vez de aplicá-la
+  — e o mesmo relato voltou, por um caminho que um teste agora percorre: `↑` numa
+  sessão sem histórico caminha para dentro do fluxo, e o `v` seguinte é atalho de
+  novo. A linha de digitar é sempre uma linha em que se digita, então nenhuma
+  condição podia satisfazer a regra; só devolver a letra. Digitar também devolve
+  o foco à linha, para navegar e escrever deixarem de ser dois estados ao mesmo
+  tempo.
 
 ## 0.3.0 — 24 de agosto de 2026
 

@@ -679,21 +679,27 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		p.model = p.model.DeleteForward().Refresh(p.opts.Commands)
 		return p, nil
 
-	case "v":
+	case "ctrl+o":
 		// The debt RN-1 took on: the alternate screen costs the terminal's own
 		// selection, and this is it given back.
 		//
-		// Only while browsing the stream, never while typing. An empty input
-		// line is where every message starts, so binding a mode to a plain
-		// letter there ate the first character of anything beginning with v —
-		// "voce" arrived as "oce". A letter people type is not a shortcut.
+		// A CHORD, and it was `v` twice. The first time, a plain `v` on an empty
+		// line ate the first character of anything starting with one — "voce"
+		// arrived as "oce". That was fixed by requiring the stream cursor to be
+		// in the stream, which NARROWED the rule instead of applying it, so the
+		// same report came back: `↑` on a session with no history walks into
+		// the stream, and the next `v` typed there is a shortcut again.
 		//
-		// The stream cursor is what tells the two apart: below zero means the
-		// input line has focus, and the product already uses it that way.
-		if p.model.Cursor >= 0 {
-			p.model = p.model.EnterCopy(len(p.renderedStream()) - 1)
-			return p, nil
-		}
+		// RN-16 says a shortcut on a line where you type is a control key. The
+		// input line is ALWAYS a line where you type — typing while browsing
+		// inserts — so the rule was never satisfied by a condition, only by
+		// giving the letter back.
+		//
+		// ^O because it is the one chord in this neighbourhood with no meaning
+		// to fight: ^Y is yank, ^S is XOFF, ^L clears, ^A/^E/^F/^B/^N are
+		// readline motions, and ^V is already the picture paste.
+		p.model = p.model.EnterCopy(len(p.renderedStream()) - 1)
+		return p, nil
 
 	case "esc":
 		// Closes the expansion first, then the selection. Escape means "back
@@ -731,6 +737,15 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if text == "?" && p.model.Input == "" {
 			return p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "help"})
 		}
+		// Typing returns the focus to the line being typed on.
+		//
+		// Browsing the stream and writing a message were two states at once,
+		// and nothing on screen said which one you were in: `↑` walks into the
+		// stream, and from there a character still went into the input line
+		// while the stream kept the cursor. The state that produced this
+		// report — half in one place, half in the other — cannot be reached
+		// now, because typing is what ends it.
+		p.model.Cursor = -1
 		p.model = p.model.Insert(text).Refresh(p.opts.Commands)
 	} else if k.String() == "space" {
 		p.model = p.model.Insert(" ").Refresh(p.opts.Commands)
