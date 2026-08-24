@@ -16,10 +16,10 @@ func BodyHeight(m Model, g Geometry) int {
 	// Status line, the input box, and the bottom bar. The bar is not optional:
 	// it is the region that is true regardless of what the stream shows.
 	//
-	// The box's height comes from InputRows rather than being assumed to be
-	// one. It used to be folded into this literal, so a box that grew painted
-	// over the stream.
-	h := g.Height - 2 - InputRows(m, g)
+	// The box's height comes from InputHeight rather than being assumed to be
+	// one, and InputHeight counts its two rules. It used to be folded into this
+	// literal, so a box that grew painted over the stream.
+	h := g.Height - 2 - InputHeight(m, g)
 	if m.workingVisible() {
 		h--
 	}

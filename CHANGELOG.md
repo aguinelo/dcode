@@ -110,6 +110,16 @@ that on every run to stop the opposite reading.
   could. Typing also returns the focus to the line being typed on, so browsing
   and writing stop being two states at once.
 
+### Added
+
+- **The input area is delimited on all four sides.** A frame here and not around
+  a tool call, which is what a box is for: the input is a *field* — a fixed
+  region that does not scroll, that you return to, and that has to be findable
+  without reading — while a tool call is content, and a frame around content is a
+  frame around what you were already reading. The frame carries no state: an
+  earlier version dimmed it while the stream had the keyboard, and its own test
+  asked whether that survived without colour. It did not.
+
 ## 0.3.0 — 24 August 2026
 
 The release the interface actually needed, and the first one where the defects

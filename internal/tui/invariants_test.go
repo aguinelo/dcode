@@ -156,6 +156,10 @@ var tuiInvariants = map[string]string{
 	// A marker still arriving.
 	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",
 
+	// The input area is a field.
+	"delimitada nos quatro lados": "TestTheInputAreaIsDelimited",
+	"a cor não muda a forma dela": "TestTheFrameIsTheSameShapeWithAndWithoutColour",
+
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
 	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",

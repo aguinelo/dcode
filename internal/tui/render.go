@@ -1056,7 +1056,7 @@ func InputRows(m Model, g Geometry) int {
 	}
 	// The stream keeps at least one row whatever the box wants. A box that
 	// fills a short terminal leaves the person typing into nothing.
-	if room := g.Height - 3; rows > room-1 {
+	if room := g.Height - 3 - inputFrameRows; rows > room-1 {
 		rows = room - 1
 	}
 	if rows < 1 {
@@ -1110,25 +1110,63 @@ func caretAt(text string, at int) (row, col int) {
 // The prompt is on the first row only: repeating it would read as separate
 // messages. The hint is on the last, right-aligned, so it never moves as you
 // type.
+// inputFrameRows is the rule above the input area and the rule below it.
+//
+// A box here and not around a tool call, and the difference is what a box is
+// for: the input is a FIELD — a fixed region that does not scroll, that you
+// return to, and that has to be findable without reading. A tool call is
+// content, and a frame around content is a frame around the thing you were
+// already reading.
+const inputFrameRows = 2
+
+// InputHeight is every row the input area occupies, its frame included. The
+// stream's height is computed from this, so a box that grew used to paint over
+// the last lines of output.
+func InputHeight(m Model, g Geometry) int { return InputRows(m, g) + inputFrameRows }
+
 func renderInputLines(m Model, g Geometry, hint string) []string {
 	p := g.Palette
+	gl := glyphs(g.Unicode)
 	prompt := "> "
 	if len(m.Queue) > 0 {
 		prompt = fmt.Sprintf("(%d %s) > ", len(m.Queue), Text(m.Lang).Queued)
 	}
 
+	// The frame is chrome and stays chrome, whichever region has the keyboard.
+	//
+	// The first version dimmed it while the stream had focus, and a test asked
+	// the obvious next question: does that distinction survive without colour?
+	// It did not — it was a colour and nothing else, which is the one thing a
+	// state indicator here may not be. And the state is already drawn where it
+	// belongs: the entry under the stream cursor carries its own mark.
+	//
+	// What the frame answers is the question that has no other answer on the
+	// screen — where do the letters I type go — and that answer does not change.
+	const frame = StyleChrome
+
+	inner := g.Width - 2
+	if inner < 1 {
+		inner = 1
+	}
+	rule := func(left, right string) string {
+		return p.Apply(frame, left+strings.Repeat(gl.boxH, inner)+right)
+	}
+
 	rows := InputRows(m, g)
 	lines, caretRow, caretCol := inputWindow(m, rows)
 
-	out := make([]string, 0, rows)
+	out := make([]string, 0, rows+inputFrameRows)
+	out = append(out, rule(gl.boxTL, gl.boxTR))
 	for i := 0; i < rows; i++ {
 		text := ""
 		if i < len(lines) {
 			text = lines[i]
 		}
-		head := strings.Repeat(" ", clipWidth(prompt))
+		// One column of gutter inside the frame. Without it the prompt sits
+		// against the left rule and the two read as one mark.
+		head := strings.Repeat(" ", clipWidth(prompt)+1)
 		if i == 0 {
-			head = prompt
+			head = " " + p.Apply(StyleAccent, prompt)
 		}
 		body := text
 		if p.Enabled && i == caretRow {
@@ -1138,13 +1176,18 @@ func renderInputLines(m Model, g Geometry, hint string) []string {
 
 		// The hint rides the last row, and only when there is room for it.
 		if i == rows-1 && hint != "" {
-			room := g.Width - clipWidth(head+text) - 1
+			// One column of gutter on the right too, so the hint does not
+			// read as part of the frame.
+			room := inner - clipWidth(prompt) - clipWidth(text) - 3
 			if room >= clipWidth(hint) {
 				line += strings.Repeat(" ", room-clipWidth(hint)+1) + p.Apply(StyleHint, hint)
 			}
 		}
-		out = append(out, padStyled(clipStyled(line, g.Width), g.Width))
+		out = append(out, p.Apply(frame, gl.gutter)+
+			padStyled(clipStyled(line, inner), inner)+
+			p.Apply(frame, gl.gutter))
 	}
+	out = append(out, rule(gl.boxBL, gl.boxBR))
 	return out
 }
 
