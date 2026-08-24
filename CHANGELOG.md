@@ -95,6 +95,12 @@ that on every run to stop the opposite reading.
   `… | sort -u | head -40`. What it keeps is now decided by the value rather
   than by the tool, reusing the one definition of "is this a path" the package
   already had.
+- **The sidebar counts a file once.** The same file arrived under two spellings
+  — `DCODE.md` from one call, `/Users/…/craw/DCODE.md` from the next — and drew
+  two rows, two line counters and a header claiming fifteen files were touched
+  when eleven were. Normalised against the workspace where the target enters the
+  model, so the tool line gets the short path too; a path outside the workspace
+  keeps the spelling that finds it rather than becoming a `../..` ladder.
 
 ## 0.2.0 — 23 August 2026
 

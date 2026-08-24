@@ -91,6 +91,12 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   dizendo `… | sort -u | head -40`. Agora quem decide é o valor, não a
   ferramenta, reusando a única definição de "isto é um caminho" que o pacote já
   tinha.
+- **A coluna lateral conta um arquivo uma vez.** O mesmo arquivo chegava com
+  duas grafias — `DCODE.md` numa chamada, `/Users/…/craw/DCODE.md` na seguinte —
+  e desenhava duas linhas, dois contadores e um cabeçalho afirmando quinze
+  arquivos quando foram onze. Normalizado contra o workspace onde o alvo entra
+  no modelo, então a linha de chamada também ganha o caminho curto; caminho fora
+  do workspace mantém a grafia que o encontra em vez de virar escada de `../..`.
 
 ## 0.2.0 — 23 de agosto de 2026
 
