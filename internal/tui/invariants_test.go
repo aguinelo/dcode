@@ -118,6 +118,10 @@ var tuiInvariants = map[string]string{
 	"nomeando o modelo":                                  "TestPastingIntoAModelThatCannotSeeNamesTheModel",
 	"preserva as quebras e não envia":                    "TestAMultiLinePasteDoesNotSendAnything",
 
+	// One line is one line.
+	"achatado antes de ser medido": "TestAToolLineSurvivesAMultiLineCommand",
+	"guarda o **fim**":             "TestACommandKeepsItsBeginningAndAPathItsEnd",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",

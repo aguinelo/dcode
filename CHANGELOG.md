@@ -83,7 +83,18 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **A tool line stays on one line.** A shell command wrapped over several lines
+  was written into the frame as several lines, and everything after it — the
+  sidebar, the divider, the panel — was out of alignment for the rest of the
+  screen. Flattened at `clipStyled`, which every line of every column passes
+  through, so the guarantee holds for the next one-line field too.
+- **A command keeps its beginning, a path keeps its end.** The elision kept the
+  tail for both, so four different searches drew four identical rows reading
+  `… | sort -u | head -40`. What it keeps is now decided by the value rather
+  than by the tool, reusing the one definition of "is this a path" the package
+  already had.
 
 ## 0.2.0 — 23 August 2026
 

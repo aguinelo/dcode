@@ -692,7 +692,7 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 	if targetW < 8 {
 		targetW = 8
 	}
-	target := ellipsis(e.Target, targetW, gl.ell)
+	target := elide(e.Target, targetW, gl.ell)
 
 	head := fmt.Sprintf("%s%s %-*s %-*s",
 		cursor, bullet, toolNameWidth, e.Tool, targetW, target)
@@ -751,10 +751,40 @@ func humanBytes(n int) string {
 	return fmt.Sprintf("%.1fk", float64(n)/1024)
 }
 
-// ellipsis shortens the middle of a path, keeping the end.
+// elide shortens a target, keeping the half that identifies it.
 //
-// The end is the part that identifies a file; the directories leading to it are
-// what everything in a repository has in common.
+// Which half that is depends on what the target IS, and the two answers are
+// opposite. A path is identified by its end — the directories leading to it are
+// what everything in a repository has in common. A command is identified by its
+// beginning: `grep -o '"/[a-z...' chunks` and `grep -rn func src` differ in the
+// first twenty characters and end alike, so keeping the tail produced four
+// consecutive rows reading `… | sort -u | head -40` for four different searches.
+//
+// It asks the value, not the tool. `looksLikePath` is already the package's
+// answer to "is this a path", and asking it here keeps one definition instead of
+// a second list of tool names that would drift from the first. A grep pattern
+// and a delegated child's name land on the command side, which is right: both
+// are identified by how they start.
+func elide(s string, w int, mark string) string {
+	if looksLikePath(s) {
+		return ellipsis(s, w, mark)
+	}
+	return ellipsisTail(s, w, mark)
+}
+
+// ellipsisTail keeps the beginning and marks what was dropped off the end.
+func ellipsisTail(s string, w int, mark string) string {
+	if w <= 0 || clipWidth(s) <= w {
+		return s
+	}
+	mw := runewidth.StringWidth(mark)
+	if w <= mw {
+		return clip(s, w)
+	}
+	return runewidth.Truncate(s, w-mw, "") + mark
+}
+
+// ellipsis shortens the middle of a path, keeping the end.
 func ellipsis(s string, w int, mark string) string {
 	if w <= 0 || clipWidth(s) <= w {
 		return s

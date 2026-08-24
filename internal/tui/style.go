@@ -215,7 +215,16 @@ func stripANSI(s string) string {
 }
 
 // clipStyled truncates to w display cells, keeping escapes intact.
+//
+// It also flattens the line, and that is the load-bearing half. Every line of
+// every column passes through here, so this is the one place that can promise
+// what the layout assumes everywhere else: a line is a line. A newline that got
+// this far — from a tool called with a shell command wrapped over four lines,
+// say — used to be written straight to the screen, where it pushed the rest of
+// the row into the next one and took the sidebar, the divider and the panel
+// with it. The frame came apart on a `curl` with a trailing backslash.
 func clipStyled(s string, w int) string {
+	s = flatten(s)
 	if visibleWidth(s) <= w {
 		return s
 	}
@@ -278,4 +287,32 @@ func ContextLabel(used, window int) string {
 		return "ctx <1%"
 	}
 	return "ctx " + strconv.Itoa(pct) + "%"
+}
+
+// flatten turns a value that may span lines into one line.
+//
+// A space rather than a marker: what breaks is a field that was never meant to
+// hold a newline, so the reader is better served by the words running together
+// than by punctuation implying something was cut. What was actually cut, if
+// anything, is said by the ellipsis the caller already applies.
+func flatten(s string) string {
+	if !strings.ContainsAny(s, "\n\r\t") {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	space := false
+	for _, r := range s {
+		switch r {
+		case '\n', '\r', '\t':
+			space = true
+			continue
+		}
+		if space && b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		space = false
+		b.WriteRune(r)
+	}
+	return b.String()
 }
