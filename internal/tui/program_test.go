@@ -1655,5 +1655,55 @@ func TestTheThemeKeyOnlyExistsInsideTheMode(t *testing.T) {
 	}
 	if p.geo.Palette.Theme.Name != first {
 		t.Errorf("a full cycle did not come back to %q, got %q", first, p.geo.Palette.Theme.Name)
+// Resuming paints one screen, not one per event.
+//
+// Continuing a conversation writes the whole of the old log into the new
+// session, so attaching replays every event of it — 3544, on a real session of
+// this machine. Each arrives as its own message and Bubble Tea paints after
+// every message, so resuming redrew the screen 3544 times with the window
+// following its own end. That is the screen that would not stop scrolling.
+func TestResumingPaintsALoadingLineUntilTheBacklogIsRead(t *testing.T) {
+	p, _ := newProgram(t)
+	p.opts.Backlog = 40
+	p.model.Lang = En
+
+	// Mid-backlog: one line, and it says what it is doing rather than showing
+	// a screen built from half a conversation.
+	p.model.LastSeq = 12
+	p.model.Entries = []Entry{{Kind: KindUser, Summary: "algo"}}
+	got := p.View().Content
+	if !strings.Contains(got, "reading the conversation") {
+		t.Errorf("the screen does not say it is reading:\n%s", got)
+	}
+	if n := len(lines(strings.TrimRight(got, "\n "))); n != 1 {
+		t.Errorf("the loading screen is %d lines, want 1", n)
+	}
+
+	// Caught up: the conversation.
+	p.model.LastSeq = 40
+	got = p.View().Content
+	if strings.Contains(got, "reading the conversation") {
+		t.Errorf("the loading line outlived the backlog:\n%s", got)
+	}
+	if !strings.Contains(got, "algo") {
+		t.Errorf("the conversation is not on screen:\n%s", got)
+	}
+}
+
+// And the line moves while it reads. The session is IDLE during a replay —
+// nothing is running — and the tick stops when idle, so without this the
+// spinner froze on a screen that says "reading", which reads as stuck.
+func TestTheLoadingLineKeepsTicking(t *testing.T) {
+	p, _ := newProgram(t)
+	p.opts.Backlog = 40
+	p.model.LastSeq, p.model.State = 5, protocol.SessionStateIdle
+
+	if p.resumeTicking() == nil {
+		t.Error("the tick does not run while history is being read")
+	}
+	p.model.LastSeq = 40
+	p.ticking = false
+	if p.resumeTicking() != nil {
+		t.Error("the tick outlived the backlog on an idle session")
 	}
 }

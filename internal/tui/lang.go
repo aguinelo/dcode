@@ -115,6 +115,10 @@ type Strings struct {
 	NavLeave     string
 	SideToolOne  string
 	SideToolMany string
+	// While the history of a continued conversation is being read.
+	Loading    string
+	LoadedOne  string
+	LoadedMany string
 
 	// The approval modal. It was written in English literals — the ONE screen
 	// that asks whether a boundary may be crossed, in a language the reader may
@@ -304,6 +308,9 @@ var catalogue = map[Lang]Strings{
 		NavLeave:         "leave",
 		SideToolOne:      "call",
 		SideToolMany:     "calls",
+		Loading:          "reading the conversation",
+		LoadedOne:        "line",
+		LoadedMany:       "lines",
 		ApprovalTitle:    "Approval needed",
 		ApprovalCrosses:  "crosses:",
 		ApprovalNetwork:  "Commands in this project may reach the network.",
@@ -474,6 +481,9 @@ Environment:
 		NavLeave:         "sair",
 		SideToolOne:      "chamada",
 		SideToolMany:     "chamadas",
+		Loading:          "lendo a conversa",
+		LoadedOne:        "linha",
+		LoadedMany:       "linhas",
 		ApprovalTitle:    "Precisa de aprovacao",
 		ApprovalCrosses:  "cruza:",
 		ApprovalNetwork:  "Comandos deste projeto podem alcancar a rede.",

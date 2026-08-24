@@ -246,6 +246,22 @@ func Render(m Model, g Geometry) string {
 //
 // Padding rather than an erase-to-end-of-line escape, because the escape is the
 // renderer's business and this has to hold whatever renderer draws it.
+// loadingLine is what the screen says while it reads history.
+//
+// One line, with the count moving, because the two things a person wants to
+// know are that it is working and roughly how much is left. A spinner alone
+// answers the first and not the second, and on a session of three and a half
+// thousand events the second is what stops them pressing a key.
+func loadingLine(m Model, g Geometry) string {
+	gl := glyphs(g.Unicode)
+	p := g.Palette
+	t := Text(m.Lang)
+	return " " + p.Apply(StyleAccent, Spinner(m.Frame, g.Unicode)) + "  " +
+		p.Apply(StyleProse, t.Loading) + "  " +
+		p.Apply(StyleMeta, plural(len(m.Entries), t.LoadedOne, t.LoadedMany)) +
+		"  " + p.Apply(StyleHint, gl.dot+" ^C")
+}
+
 func fill(body string, g Geometry) string {
 	// The ground is painted per ROW, not once for the screen.
 	//

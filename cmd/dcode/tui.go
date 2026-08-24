@@ -133,11 +133,14 @@ func runTUI(args []string) error {
 	geo := geometry()
 
 	return tui.Run(ctx, tui.Options{
-		SessionID:     sess.ID,
-		Workspace:     sess.Workspace,
-		Model:         sess.Model,
-		Sandbox:       sess.SandboxMode,
-		Window:        sess.ContextWindow,
+		SessionID: sess.ID,
+		Workspace: sess.Workspace,
+		Model:     sess.Model,
+		Sandbox:   sess.SandboxMode,
+		Window:    sess.ContextWindow,
+		// Everything already in the log is history: continuing replays the
+		// whole of the old conversation into the new session.
+		Backlog:       sess.LastSeq,
 		Transport:     c,
 		Geometry:      geo,
 		Commands:      commands,
