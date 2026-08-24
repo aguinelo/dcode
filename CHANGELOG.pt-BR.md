@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 23 de agosto de 2026
+## Estado atual — 24 de agosto de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 80 changelogs de decisão |
+| famílias de spec | 13, com 93 changelogs de decisão |
 | contratos comportamentais | 42 declarados |
 | **contratos medidos contra modelo** | **3** |
-| cobertura | 95,0%, com gate em 90% |
+| cobertura | 94,4%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.2.0** |
+| versão publicada | **0.3.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -46,15 +46,31 @@ aplica a mesma regra lendo os digests do instalador da `main`.
 Homebrew ainda não é canal — publicava-se num tap que nunca havia sido criado.
 Removido em vez de deixado rodando; o `docs/ROADMAP.md` §9 diz o que seria preciso.
 
-**A interface.** Uma coluna lateral carrega os arquivos que o turno tocou e as
-conversas que o workspace gravou — `^B` dobra, `^R` dá o teclado a ela, `r`
-nomeia uma conversa. Delegação é um card com os filhos dentro, e o filho que não
-respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no instante
-em que começa a chegar do modelo, contada em bytes, em vez de depois de pronta.
+**A interface.** A conversa fica com o terminal. A coluna de arquivos nasce
+escondida e `^B` a invoca; a lista de conversas é sobreposição em `^R`, que é o
+que essa tecla significa no shell de onde ela veio; o painel abre no seu piso e
+cresce do que sobra. Toda pergunta abre com uma régua, então uma tela de rolagem
+tem um limite dentro dela. Delegação é um card com os filhos dentro, e o filho
+que não respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no
+instante em que começa a chegar do modelo.
 
-Abaixo de cem colunas a coluna some e **diz que sumiu**, o que ela não fazia por
-dois dias — tempo suficiente para a pessoa para quem ela foi construída concluir
-que ela nunca tinha sido.
+Esse formato veio de uma medida, não de uma preferência. Reproduzindo uma sessão
+real gravada em quatro larguras, a coluna e o painel tomavam 61 de 132 colunas e
+deixavam 71 para a conversa, enquanto a mesma sessão em 99 colunas — onde as
+duas somem — dava 99. **Alargar o terminal encolhia o texto**, e a virada era uma
+coluna só, porque dois limiares estavam no mesmo cem. O que a coluna guardava era
+uma segunda cópia do que o fluxo tinha acabado de dizer.
+
+**O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
+agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
+sobre um conjunto que já conhecia. A guarda de desenho de caixa derivava os
+glifos proibidos das duas tabelas, e o modal de aprovação — desenhado de
+literais, em inglês, a única tela que pergunta se uma fronteira pode ser cruzada
+— estava fora das duas, de dois jeitos diferentes, achado duas vezes no mesmo
+dia. A guarda de largura dividia em quebras de linha antes de medir, então linha
+partida em duas media como duas linhas curtas. A guarda de linha em branco
+trimava certo e nunca tinha visto prosa. Cada uma agora é feita como pergunta
+sobre a tela inteira, e não sobre uma lista.
 
 **Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
 bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
@@ -78,6 +94,19 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.3.0 — 24 de agosto de 2026
+
+O release de que a interface de fato precisava, e o primeiro em que os defeitos
+foram achados **reproduzindo uma sessão real gravada pelo redutor e
+renderizando**, em vez de por um estado que eu escolhi. Toda entrada abaixo foi
+achada assim, ou por uma guarda que precisou ser reescrita para fazer outra
+pergunta.
+
+O formato do release inteiro: *uma regra com uma exceção tem mais*, e *guarda que
+pergunta sobre um conjunto só acha o que já está no conjunto*.
 
 ### Alterado
 
