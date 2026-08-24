@@ -58,10 +58,34 @@ func TestCallsWithoutBodiesStayPacked(t *testing.T) {
 // last one closed with, and double spacing reads as something missing.
 func TestTwoBlocksAreSeparatedByExactlyOneBlankLine(t *testing.T) {
 	diff := "--- a/x\n+++ b/x\n-a\n+b\n"
-	lines := streamOf(t, toolEntry("edit", "x.go", diff), toolEntry("edit", "y.go", diff))
+
+	// PROSE is in the fixture, and that is the fix to this test rather than to
+	// the rule it asserts.
+	//
+	// The rule was right and the comparison already trimmed. What it never saw
+	// was a paragraph break, and prose produced them two and three at a time:
+	// splitting "a\n\n" on "\n" yields three parts, and a run boundary at a
+	// `**` marker splits the same text twice. They were also indented, so they
+	// were two spaces rather than empty — invisible to a fixture made only of
+	// tool calls.
+	lines := streamOf(t,
+		toolEntry("edit", "x.go", diff),
+		Entry{Kind: KindAssistant, Summary: "antes:\n\n**um título**\ndepois\n\n\n\ne enfim"},
+		toolEntry("edit", "y.go", diff),
+		Entry{Kind: KindAssistant, Summary: "uma frase\n\n"},
+	)
 	for i := 1; i < len(lines); i++ {
 		if strings.TrimSpace(lines[i]) == "" && strings.TrimSpace(lines[i-1]) == "" {
 			t.Errorf("two blank lines in a row at %d:\n%s", i, strings.Join(lines, "\n"))
+		}
+	}
+
+	// A paragraph break is an EMPTY row. Indented it is whitespace, and every
+	// rule about blank rows in this package compares against "" or trims — the
+	// two spaces slipped past both readings for as long as prose was untested.
+	for i, l := range lines {
+		if strings.TrimSpace(l) == "" && l != "" {
+			t.Errorf("the blank row at %d is %q, not empty", i, l)
 		}
 	}
 }

@@ -155,6 +155,22 @@ func wrapStyled(runs []textRun, w int, g Geometry) []string {
 		line.Reset()
 		width = 0
 	}
+	// blank appends a paragraph break, and refuses a second one.
+	//
+	// `strings.Split("a\n\n", "\n")` has THREE parts, and the last is the end
+	// of the text rather than a paragraph — so a trailing blank line produced
+	// two of them. A run boundary made it worse: `antes:\n\n**x**` is parsed as
+	// a plain run and a bold run, each split on its own, and the block came out
+	// with three blank rows between two sentences.
+	//
+	// Collapsed here rather than at the caller, because the caller sees lines
+	// and this is the only place that knows which of them were paragraph breaks.
+	blank := func() {
+		if len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+			return
+		}
+		out = append(out, "")
+	}
 	put := func(word string, style Style, space bool) {
 		if space {
 			line.WriteString(" ")
@@ -173,7 +189,7 @@ func wrapStyled(runs []textRun, w int, g Geometry) []string {
 					newline()
 				}
 				if strings.TrimSpace(para) == "" {
-					out = append(out, "")
+					blank()
 					continue
 				}
 			}

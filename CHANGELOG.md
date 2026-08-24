@@ -127,6 +127,15 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **Prose leaves one blank row between paragraphs, and it is empty.** Splitting
+  `"a\n\n"` yields three parts and the last is the end of the text, not a
+  paragraph; a run boundary at a `**` marker split the same text twice, so a
+  block came out with three blank rows between two sentences. They were also
+  indented, making them two spaces rather than empty — and every rule about blank
+  rows here compares against `""` or trims, so both readings passed over them.
+  The invariant existed and its guard already trimmed; what it had never seen was
+  prose, because the fixture was made only of tool calls.
+
 - **A tool line stays on one line.** A shell command wrapped over several lines
   was written into the frame as several lines, and everything after it — the
   sidebar, the divider, the panel — was out of alignment for the rest of the
