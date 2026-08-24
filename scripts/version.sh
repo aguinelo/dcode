@@ -49,7 +49,19 @@ range="$last..HEAD"
 # A isencao e do assunto EXATO que o pipeline escreve, nunca do prefixo. Isentar
 # `chore(release):` inteiro daria a qualquer pessoa uma forma de nao ser contada.
 PIN_SUBJECT='^chore\(release\): pin the installer to v[0-9]+\.[0-9]+\.[0-9]+$'
-subjects="$(git log --format='%s' "$range" | grep -vE "$PIN_SUBJECT" || true)"
+
+# `--no-merges` porque o assunto de um merge nao e uma mudanca: as mudancas sao
+# as dos pais, que ja estao no intervalo. Contar o assunto do merge fazia a
+# derivacao parar na frase que a ferramenta escreveu sozinha — "Merge branch X
+# into Y" nao segue convencao nenhuma e nunca vai seguir.
+subjects="$(git log --no-merges --format='%s' "$range" | grep -vE "$PIN_SUBJECT" || true)"
+
+# Um revert carrega, entre aspas, o assunto do que ele desfaz. Ele e classificado
+# pelo que desfez: desfazer um `feat:` REMOVE comportamento, e a convencao deste
+# repositorio ja diz que remocao e no minimo MINOR — a mesma classe que a adicao
+# teria. Uma volta so: `Revert "Revert "..."` sobra sem casar, e sobrar sem casar
+# e recusar, que e o que este script faz com tudo que nao sabe ler.
+subjects="$(printf '%s\n' "$subjects" | sed -E 's/^Revert "(.*)"$/\1/')"
 if [ -z "$subjects" ]; then
   echo "$last" # nada mudou; a versao e a que ja existe
   exit 0
@@ -59,7 +71,10 @@ fi
 bad="$(printf '%s\n' "$subjects" | grep -vE '^(feat|fix|chore|docs|refactor|test|perf|build|ci)(\([^)]+\))?!?: .+' || true)"
 if [ -n "$bad" ]; then
   echo "versao: estes commits nao seguem a convencao, entao nao ha o que derivar:" >&2
-  printf '  %s\n' $bad >&2
+  # Sem aspas isto quebrava em palavras: um assunto de sete palavras virava sete
+  # linhas, e a recusa — que existe para ser lida por quem vai consertar — saia
+  # ilegivel exatamente quando era necessaria.
+  printf '%s\n' "$bad" | sed 's/^/  /' >&2
   exit 1
 fi
 

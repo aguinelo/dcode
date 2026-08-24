@@ -121,6 +121,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **A versão lê o que a história de fato tem.** `scripts/version.sh` recusava
+  derivar qualquer coisa assim que aparecia um merge ou um revert: o assunto de
+  um merge não é uma mudança — as mudanças são as dos pais, já no intervalo — e
+  `Revert "feat: …"` não casa com convenção nenhuma porque cita uma. Merge é
+  pulado; revert é classificado pelo que desfez, já que remover comportamento é
+  mudança da mesma classe que a adição foi. A própria recusa também imprimia uma
+  palavra por linha, que é como uma mensagem escrita para quem vai consertar
+  chega ilegível.
+
 - **O registro para de copiar o que continua.** Continuar copiava o registro
   anterior inteiro para o novo, então uma sessão que continuou uma que continuou
   uma guardava três cópias da primeira — o maior registro desta máquina tem 3,6 MB
