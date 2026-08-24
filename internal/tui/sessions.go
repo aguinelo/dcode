@@ -81,7 +81,8 @@ func renderSessionList(m Model, g Geometry) []string {
 			out = append(out, gl.gutter+padStyled(namingRow(m.Nav.Draft, glr, p, w), w)+gl.gutter)
 			continue
 		}
-		row := sessionRow(c, c.ID == m.SessionID, under, glr, p, w-2)
+		row := sessionRow(c, c.ID == m.SessionID, under, glr, p, w-2,
+			sessionMeta(c, m.Now, m.Lang, glr))
 		out = append(out, gl.gutter+padStyled(" "+row, w)+gl.gutter)
 	}
 	if rest := len(visible) - first - len(shown); rest > 0 {

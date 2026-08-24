@@ -139,6 +139,10 @@ var tuiInvariants = map[string]string{
 	"A coluna **nasce escondida**":     "TestTheSidebarStartsHidden",
 	"Não há regra de largura para ela": "TestTheSidebarHasNoWidthRuleLeft",
 
+	// The list is legible.
+	"diz **quando** e **quanto**": "TestConversationRowsSayWhenAndHowMuch",
+	"não lê relógio nenhum":       "TestTheConversationListReadsNoClock",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",

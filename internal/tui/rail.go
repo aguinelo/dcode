@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mattn/go-runewidth"
 )
@@ -81,7 +82,7 @@ func renderRail(m Model, g Geometry, height int) []string {
 // sessionRow is one recorded conversation. The open one is marked by a
 // character and not only by colour, so it is still the open one on a terminal
 // without any.
-func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w int) string {
+func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w int, meta string) string {
 	mark, style := " ", StyleDim
 	if open {
 		mark, style = gl.open, StyleAccent
@@ -117,13 +118,46 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 		}
 		title += " " + gl.dot
 	}
-	// Cut with a mark, never silently. A title that merely stops leaves the
-	// reader unable to tell a short conversation from a truncated one, and the
-	// start is what identifies it — so the end is what gives way.
-	if room := w - 2; room > 1 && visibleWidth(title) > room {
+	// The meta takes its width FIRST, and the title gives way to it. That is
+	// the opposite of the rule the file rows follow, and deliberately so: there
+	// the name identifies the row and the count is extra, while here four rows
+	// read "Write DCODE.md at the root of this workspace." because four
+	// conversations genuinely began with the same question. When the titles
+	// collide, WHEN is the only thing that tells them apart, and a column that
+	// drops it drops the answer.
+	room := w - 2
+	if meta != "" {
+		room -= visibleWidth(meta) + 2
+	}
+	if room > 1 && visibleWidth(title) > room {
 		title = trimTo(title, room-visibleWidth(gl.ell)) + gl.ell
 	}
-	return p.Apply(style, mark) + " " + title
+
+	left := p.Apply(style, mark) + " " + title
+	if meta == "" {
+		return left
+	}
+	gap := w - visibleWidth(left) - visibleWidth(meta)
+	if gap < 1 {
+		gap = 1
+	}
+	return left + strings.Repeat(" ", gap) + p.Apply(StyleDim, meta)
+}
+
+// sessionMeta is when the conversation happened and how much happened in it.
+//
+// Both, because either alone leaves a pair of rows ambiguous: two conversations
+// on the same afternoon differ by their length, and two of the same length by
+// their day.
+func sessionMeta(c SessionChoice, now time.Time, lang Lang, gl railMarks) string {
+	if c.When.IsZero() {
+		return ""
+	}
+	when := relativeDay(c.When, now, lang)
+	if c.Turns <= 0 {
+		return when
+	}
+	return when + " " + gl.dot + " " + turnCount(c.Turns, lang)
 }
 
 // namingRow is the row while a name is being typed.

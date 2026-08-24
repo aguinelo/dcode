@@ -192,13 +192,13 @@ func TestThePickerFollowsTheWindow(t *testing.T) {
 // yesterday, a date before that.
 func TestWhenIsSaidTheWayPeopleSayIt(t *testing.T) {
 	now := time.Now()
-	if got := relativeDay(now, En); !strings.Contains(got, ":") {
+	if got := relativeDay(now, now, En); !strings.Contains(got, ":") {
 		t.Errorf("today reads %q, want a time", got)
 	}
-	if got := relativeDay(now.AddDate(0, 0, -1), En); got != Text(En).PickerYesterday {
+	if got := relativeDay(now.AddDate(0, 0, -1), now, En); got != Text(En).PickerYesterday {
 		t.Errorf("yesterday reads %q", got)
 	}
-	if got := relativeDay(now.AddDate(0, 0, -9), En); !strings.Contains(got, "/") {
+	if got := relativeDay(now.AddDate(0, 0, -9), now, En); !strings.Contains(got, "/") {
 		t.Errorf("last week reads %q, want a date", got)
 	}
 }

@@ -81,6 +81,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Alterado
 
+- **Toda linha de conversa diz quando e quanto.** A sobreposição resolveu a
+  largura e deixou o problema real à mostra: quatro linhas diziam a mesma coisa
+  porque quatro conversas começaram com a mesma pergunta. A meta toma sua largura
+  antes do título — o oposto da regra das linhas de arquivo, porque quando os
+  títulos colidem a data é a única coisa que os distingue. `relativeDay` recebe o
+  relógio como argumento agora: o picker podia ler um, a sobreposição está dentro
+  de um render puro sobre o modelo. E `%d turno(s)` virou plural de verdade.
 - **A lista de conversas é invocada, não residente.** `^R` no readline é uma
   busca que se invoca — aparece, você escolhe, some — e tomar a tecla emprestada
   para então fazer dela vinte e seis colunas permanentes contradizia a convenção

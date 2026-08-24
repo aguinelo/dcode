@@ -3,9 +3,10 @@ package tui
 import (
 	"reflect"
 	"strings"
+	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/protocol"
-	"testing"
 )
 
 func railModel(entries ...Entry) Model {
@@ -402,6 +403,67 @@ func TestAsciiModeDrawsNothingButAscii(t *testing.T) {
 					break
 				}
 			}
+		}
+	}
+}
+
+// Four rows read "Write DCODE.md at the root of this workspace." because four
+// conversations genuinely began with the same question. When the titles
+// collide, WHEN is the only thing that tells them apart — so the meta takes its
+// width first and the title gives way to it, which is the opposite of the rule
+// the file rows follow, and deliberately so.
+func TestConversationRowsSayWhenAndHowMuch(t *testing.T) {
+	now := time.Date(2026, 8, 24, 15, 30, 0, 0, time.UTC)
+	m := Model{Lang: En, Cursor: -1, Now: now, Nav: RailNav{Active: true}}
+	const same = "Write DCODE.md at the root of this workspace."
+	for i, ago := range []time.Duration{2 * time.Hour, 26 * time.Hour, 50 * time.Hour} {
+		m.Sessions = append(m.Sessions, SessionChoice{
+			ID: string(rune('a' + i)), Title: same, Turns: 3 + i, When: now.Add(-ago),
+		})
+	}
+	g := DefaultGeometry(100, 30)
+	g.Palette = Palette{}
+
+	rows := renderSessionList(m, g)
+	seen := map[string]bool{}
+	for _, l := range rows {
+		if !strings.Contains(l, "Write DCODE") {
+			continue
+		}
+		if seen[l] {
+			t.Errorf("two conversations draw the same row: %q", l)
+		}
+		seen[l] = true
+	}
+	if len(seen) != 3 {
+		t.Fatalf("expected 3 distinct rows, got %d:\n%s", len(seen), strings.Join(rows, "\n"))
+	}
+
+	joined := strings.Join(rows, "\n")
+	for _, want := range []string{"yesterday", "3 turns"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("%q is missing from:\n%s", want, joined)
+		}
+	}
+	// The count is a real plural, not the "%d turn(s)" nobody ever replaces.
+	if strings.Contains(joined, "(s)") {
+		t.Errorf("the turn count still carries a parenthetical plural:\n%s", joined)
+	}
+}
+
+// The clock is an argument, so two draws of the same model are the same screen.
+// The picker could read one directly; the overlay is inside the main render,
+// which is pure over the model and the geometry.
+func TestTheConversationListReadsNoClock(t *testing.T) {
+	m := Model{Lang: En, Cursor: -1, Now: time.Date(2026, 8, 24, 15, 30, 0, 0, time.UTC),
+		Nav:      RailNav{Active: true},
+		Sessions: []SessionChoice{{ID: "a", Title: "x", Turns: 2, When: time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC)}}}
+	g := DefaultGeometry(100, 30)
+
+	first := strings.Join(renderSessionList(m, g), "\n")
+	for i := 0; i < 20; i++ {
+		if got := strings.Join(renderSessionList(m, g), "\n"); got != first {
+			t.Fatalf("draw %d differs; the list reads something outside its arguments", i)
 		}
 	}
 }
