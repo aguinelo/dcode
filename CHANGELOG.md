@@ -110,6 +110,18 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Fixed
+
+- **A Chromium reaches its first frame inside the sandbox.** Without
+  `mach-register` and a scoped `iokit-open`, any Chromium died with SIGSEGV
+  before drawing anything — Playwright, Puppeteer, Lighthouse, an Electron app
+  under test. It hid because it was a SIGNAL and not a denial: a refusal says
+  `Operation not permitted` somewhere a person can read it, and a crash says a
+  stack trace with nothing anywhere naming the boundary. What the screen showed
+  was a browser breaking, and it was read as the model being timid. It is a
+  pair — neither alone gets past the crash — and `iokit-open` is scoped to one
+  user client, which is what makes it affordable.
+
 _Nothing yet._
 
 ## 0.4.0 — 24 August 2026
