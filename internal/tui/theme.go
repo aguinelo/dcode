@@ -52,73 +52,112 @@ func hex(s string) rgb {
 	return rgb{r, g, b}
 }
 
+// colours is one theme's palette, in the design's own names.
+//
+// The ROLE MAPPING below is written once and shared by all four. That is what
+// makes a theme a theme rather than four screens: change which colour a heading
+// is, and every theme changes with it. A per-theme mapping would drift the
+// first time somebody added a role.
+type colours struct {
+	bg, p, ok, info, you, alt, bad string
+	fg1, fg2, dim, dim2, dim3      string
+	track                          string
+}
+
+// Themes are the four the design carries, in the order `t` cycles them. Neon
+// first: it is the one this interface is drawn in.
+func Themes() []Theme {
+	return []Theme{
+		build("neon", colours{
+			bg: "#120d24", p: "#ff2d95", ok: "#4de0c0", info: "#3fd0ff", you: "#f6c445",
+			alt: "#c77cf0", bad: "#ff5c7a", fg1: "#efeafd", fg2: "#cfc8e8",
+			dim: "#8b82b5", dim2: "#5b4f85", dim3: "#4a3f70", track: "#241a42",
+		}),
+		build("ashes", colours{
+			bg: "#12161a", p: "#5aa9e6", ok: "#7fd1ae", info: "#8ac6f2", you: "#e8c07d",
+			alt: "#b48ead", bad: "#e2707f", fg1: "#e6ecf1", fg2: "#c9d3da",
+			dim: "#7d8b95", dim2: "#5a666f", dim3: "#46515a", track: "#1e262c",
+		}),
+		build("ember", colours{
+			bg: "#1c1410", p: "#ff7a3d", ok: "#c6c04a", info: "#d99a5b", you: "#ffc35c",
+			alt: "#e07a8c", bad: "#e5484d", fg1: "#f2e6d8", fg2: "#dccbb8",
+			dim: "#95806e", dim2: "#6d5b4c", dim3: "#54453a", track: "#2b1f18",
+		}),
+		build("mono", colours{
+			bg: "#101012", p: "#e8e8ec", ok: "#a8d8b9", info: "#9fb6d9", you: "#e6d59a",
+			alt: "#c0b6d9", bad: "#dd8a94", fg1: "#ececf0", fg2: "#cfcfd6",
+			dim: "#82828b", dim2: "#5e5e66", dim3: "#4a4a51", track: "#212126",
+		}),
+	}
+}
+
 // Neon is the interface's own palette: violet ground, magenta mark, teal for
 // what worked, amber for the person, coral for what did not.
 //
 // The values are the design's, not near neighbours of them. A palette copied
 // approximately is a palette that reads as a copy.
-func Neon() Theme {
-	var (
-		bg    = hex("#120d24")
-		p     = hex("#ff2d95")
-		ok    = hex("#4de0c0")
-		info  = hex("#3fd0ff")
-		you   = hex("#f6c445")
-		alt   = hex("#c77cf0")
-		bad   = hex("#ff5c7a")
-		fg1   = hex("#efeafd")
-		fg2   = hex("#cfc8e8")
-		dim   = hex("#8b82b5")
-		dim2  = hex("#5b4f85")
-		bd    = hex("#4a3f70")
-		track = hex("#241a42")
-	)
+func Neon() Theme { return Themes()[0] }
+
+// NextTheme is the one after this, wrapping. Wrapping is right here and wrong
+// in the conversation list, and the difference is the cost of overshooting: one
+// more press, against opening somebody else's afternoon.
+func NextTheme(t Theme) Theme {
+	all := Themes()
+	for i, c := range all {
+		if c.Name == t.Name {
+			return all[(i+1)%len(all)]
+		}
+	}
+	return all[0]
+}
+
+// build turns one palette into the shared role mapping.
+func build(name string, c colours) Theme {
+	bg := hex(c.bg)
 	return Theme{
-		Name:   "neon",
+		Name:   name,
 		Ground: bg,
 		Role: map[Style]paint{
 			// The text hierarchy. Prose is the brightest ordinary thing on the
 			// screen, because it is what the reader came for.
-			StyleProse:   {fg: fg2},
-			StyleCode:    {fg: ok},
-			StyleHeading: {fg: fg1, bold: true},
-			StyleMeta:    {fg: dim},
-			StyleHint:    {fg: dim2},
-			// The design's own border colour is #2a1f4a, which measures 1.26:1
-			// against this ground. That is right for a one-pixel CSS line on a
-			// surface lit by three radial gradients; a terminal rule is a row
-			// of solid glyphs on a flat ground, and at 1.26:1 it is not there.
-			// This is the design's `dim3` instead, at 2.02:1 — visible, and
-			// still quiet enough not to compete with what it separates.
-			StyleChrome: {fg: bd},
+			StyleProse:   {fg: hex(c.fg2)},
+			StyleCode:    {fg: hex(c.ok)},
+			StyleHeading: {fg: hex(c.fg1), bold: true},
+			StyleMeta:    {fg: hex(c.dim)},
+			StyleHint:    {fg: hex(c.dim2)},
+			// Chrome is dim3 and NOT the design's border colour, which measures
+			// 1.26:1 against the neon ground. That is right for a one-pixel CSS
+			// line on a surface lit by three radial gradients; a terminal rule
+			// is a row of solid glyphs on a flat ground, and at 1.26:1 it is
+			// not there.
+			StyleChrome: {fg: hex(c.dim3)},
 
-			StyleBold: {fg: fg1, bold: true},
-			StyleDim:  {fg: dim},
+			StyleBold: {fg: hex(c.fg1), bold: true},
+			StyleDim:  {fg: hex(c.dim)},
 
 			// The product's own mark, and the states.
-			StyleAccent:  {fg: p},
-			StyleOK:      {fg: ok},
-			StyleError:   {fg: bad},
-			StyleWarn:    {fg: you},
-			StyleAdded:   {fg: ok},
-			StyleRemoved: {fg: bad},
-			StyleDanger:  {fg: fg1, bg: bad, bold: true},
-			StyleCursor:  {fg: bg, bg: you},
+			StyleAccent:  {fg: hex(c.p)},
+			StyleOK:      {fg: hex(c.ok)},
+			StyleError:   {fg: hex(c.bad)},
+			StyleWarn:    {fg: hex(c.you)},
+			StyleAdded:   {fg: hex(c.ok)},
+			StyleRemoved: {fg: hex(c.bad)},
+			StyleDanger:  {fg: hex(c.fg1), bg: hex(c.bad), bold: true},
+			StyleCursor:  {fg: bg, bg: hex(c.you)},
 
-			// The lanes: the person in amber, the work in violet-grey, the
-			// answer in teal.
-			StyleLaneYou:     {fg: you},
-			StyleLaneProcess: {fg: dim2},
-			StyleLaneAnswer:  {fg: ok},
+			// The lanes: the person, the work, the answer.
+			StyleLaneYou:     {fg: hex(c.you)},
+			StyleLaneProcess: {fg: hex(c.dim2)},
+			StyleLaneAnswer:  {fg: hex(c.ok)},
 
 			// Reserved treatments the design gives to structure and to the
 			// mascot, unchanged in meaning.
-			StyleOnAccent:  {fg: bg, bg: ok, bold: true},
-			StyleHighlight: {fg: you},
-			StyleBody:      {fg: p},
-			StyleShadow:    {fg: alt},
-			StyleEye:       {fg: info},
-			StyleTrack:     {fg: track},
+			StyleOnAccent:  {fg: bg, bg: hex(c.ok), bold: true},
+			StyleHighlight: {fg: hex(c.you)},
+			StyleBody:      {fg: hex(c.p)},
+			StyleShadow:    {fg: hex(c.alt)},
+			StyleEye:       {fg: hex(c.info)},
+			StyleTrack:     {fg: hex(c.track)},
 		},
 	}
 }
@@ -128,7 +167,7 @@ func Neon() Theme {
 //
 // Two depths and not three: a terminal that cannot do 256 colours is a terminal
 // this palette cannot be drawn on at all, and pretending otherwise would put a
-// violet ground behind text it cannot tint. Such a terminal gets the
+// coloured ground behind text it cannot tint. Such a terminal gets the
 // no-colour path, which is a screen this product is tested to be readable on.
 func (p paint) sgr(depth Depth) string {
 	var parts []string

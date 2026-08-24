@@ -317,7 +317,13 @@ func TestTheAnswerIsBrighterThanWhatQualifiesIt(t *testing.T) {
 // be read at 3, and chrome at 1.5 — a rule is meant to be SEEN and not read,
 // and holding it to text contrast would make every gutter shout.
 func TestEveryRoleIsLegibleAgainstTheGround(t *testing.T) {
-	th := Neon()
+	for _, th := range Themes() {
+		checkLegible(t, th)
+	}
+}
+
+func checkLegible(t *testing.T, th Theme) {
+	t.Helper()
 	for _, c := range []struct {
 		style Style
 		name  string
@@ -344,8 +350,8 @@ func TestEveryRoleIsLegibleAgainstTheGround(t *testing.T) {
 			continue
 		}
 		if got := contrast(paint.fg, th.Ground); got < c.min {
-			t.Errorf("%s is %.2f:1 against the ground, want at least %.1f",
-				c.name, got, c.min)
+			t.Errorf("%s: %s is %.2f:1 against the ground, want at least %.1f",
+				th.Name, c.name, got, c.min)
 		}
 	}
 }

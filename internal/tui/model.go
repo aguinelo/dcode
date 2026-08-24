@@ -127,6 +127,15 @@ type Model struct {
 	InFlight, MaxInFlight int
 	// Nav is the session list's cursor while the rail has the keyboard.
 	Nav RailNav
+	// Navigating says the transcript has the keyboard.
+	//
+	// A MODE, and that is the whole point of it. The design's footer offers
+	// `j/k move` and `t theme`, which are letters, and a letter on a line where
+	// you type is the defect this product has fixed twice. Inside a mode that
+	// owns the keyboard a letter is safe — the approval modal and the session
+	// list already work that way — and the design implies exactly this by
+	// putting a NAV badge in the footer at all.
+	Navigating bool
 	// Sessions is what this workspace has recorded, for the sidebar. Passed in
 	// by the caller like the language and the command set: the client reads no
 	// disk, and a list it went and fetched itself would be a second answer to a

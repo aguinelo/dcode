@@ -112,20 +112,40 @@ func navSegment(m Model, g Geometry) segment {
 	t := Text(m.Lang)
 	p := g.Palette
 
-	keys := []string{
-		p.Apply(StyleProse, "^r") + " " + p.Apply(StyleHint, t.NavSessions),
-		p.Apply(StyleProse, "^b") + " " + p.Apply(StyleHint, t.NavColumn),
-		p.Apply(StyleProse, "?") + " " + p.Apply(StyleHint, t.NavKeys),
+	// The badge is LIT while the mode owns the keyboard, and quiet otherwise.
+	// It is the only thing on screen that says which of two keyboards a key is
+	// about to reach, and that state used to be invisible — which is half of
+	// why a letter bound to a mode could eat a keystroke with no visible cause.
+	badge, keys := StyleMeta, []string{
+		keyHint(p, "esc", t.NavEnter),
+		keyHint(p, "^r", t.NavSessions),
+		keyHint(p, "^b", t.NavColumn),
+		keyHint(p, "?", t.NavKeys),
+	}
+	if m.Navigating {
+		badge = StyleOnAccent
+		keys = []string{
+			keyHint(p, "j/k", t.NavMove),
+			keyHint(p, gl.enter, t.NavOpen),
+			keyHint(p, "t", p.theme().Name),
+			keyHint(p, "/", t.NavPrompt),
+			keyHint(p, "esc", t.NavLeave),
+		}
 	}
 	// Dropped FIRST when the bar runs out of room. Every key it names is
 	// reachable from `?`, which makes it the most reconstructible thing on the
 	// line — and a bar that keeps its hints by dropping where you are has
 	// chosen the hint over the fact.
 	return segment{
-		text: p.Apply(StyleOnAccent, " "+strings.ToUpper(t.NavBadge)+" ") + " " +
+		text: p.Apply(badge, " "+strings.ToUpper(t.NavBadge)+" ") + " " +
 			strings.Join(keys, "  "+gl.dot+"  "),
 		drop: 4,
 	}
+}
+
+// keyHint is one hint: the keystroke, then what it does.
+func keyHint(p Palette, stroke, what string) string {
+	return p.Apply(StyleProse, stroke) + " " + p.Apply(StyleHint, what)
 }
 
 // posSegment is where the cursor is in the stream, as the design's `1 / 7`.

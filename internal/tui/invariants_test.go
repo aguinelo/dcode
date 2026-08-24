@@ -173,11 +173,13 @@ var tuiInvariants = map[string]string{
 	"legenda das raias aparece uma vez": "TestTheLaneLegendAppearsOnlyWhenItExplainsSomething",
 
 	// Copy mode.
-	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
-	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",
-	"devolve o foco à linha": "TestUpThenTypingKeepsEveryLetter",
-	"ela é dona do teclado":  "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
-	"A cópia sai por `Esc`":  "TestEveryWayOutOfCopyModeWorks",
+	"`^O` abre a cópia":                        "TestTheChordOpensCopyMode",
+	"nunca é atalho":                           "TestVIsALetterWhereverTheCursorIs",
+	"Entrar no fluxo é **deliberado**":         "TestSteppingIntoTheTranscriptIsDeliberate",
+	"toda tecla que ele não nomeia é engolida": "TestNavModeSwallowsEveryKeyItDoesNotName",
+	"`t` percorre os temas":                    "TestTheThemeKeyOnlyExistsInsideTheMode",
+	"ela é dona do teclado":                    "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
+	"A cópia sai por `Esc`":                    "TestEveryWayOutOfCopyModeWorks",
 
 	// Continuing. The flag lives in the command, one directory up from here.
 	"em que algo foi perguntado":        "TestContinuingSkipsASessionNobodyAskedAnythingIn",

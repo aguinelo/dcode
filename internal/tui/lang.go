@@ -108,6 +108,11 @@ type Strings struct {
 	NavSessions  string
 	NavColumn    string
 	NavKeys      string
+	NavEnter     string
+	NavMove      string
+	NavOpen      string
+	NavPrompt    string
+	NavLeave     string
 	SideToolOne  string
 	SideToolMany string
 
@@ -292,6 +297,11 @@ var catalogue = map[Lang]Strings{
 		NavSessions:      "sessions",
 		NavColumn:        "column",
 		NavKeys:          "keys",
+		NavEnter:         "browse",
+		NavMove:          "move",
+		NavOpen:          "open",
+		NavPrompt:        "prompt",
+		NavLeave:         "leave",
 		SideToolOne:      "call",
 		SideToolMany:     "calls",
 		ApprovalTitle:    "Approval needed",
@@ -457,6 +467,11 @@ Environment:
 		NavSessions:      "sessões",
 		NavColumn:        "coluna",
 		NavKeys:          "teclas",
+		NavEnter:         "navegar",
+		NavMove:          "mover",
+		NavOpen:          "abrir",
+		NavPrompt:        "escrever",
+		NavLeave:         "sair",
 		SideToolOne:      "chamada",
 		SideToolMany:     "chamadas",
 		ApprovalTitle:    "Precisa de aprovacao",

@@ -112,6 +112,16 @@ that on every run to stop the opposite reading.
 
 ### Added
 
+- **A mode where a letter is a key.** `esc` from an empty line steps into the
+  transcript, and inside it `j/k` move, `↵` opens, `t` cycles the theme and `/`
+  goes back to writing. Every key the mode does not name is swallowed, which is
+  what makes a letter safe there — the design's footer offers those letters and
+  puts a NAV badge beside them, and a badge is the name of a mode. `↑` at the
+  border now scrolls instead of walking into the transcript, which removes the
+  state the `v` defect kept coming back through.
+- **Four themes: neon, ashes, ember, mono.** The design's own values, on one
+  shared role mapping — change what colour a heading is and all four change. The
+  contrast test runs on every one of them.
 - **The side column is the diff pane over the session pane, on the right.** It
   replaces the file list, and the difference is what got the file list hidden
   this morning: that column repeated what the stream had just said, and these

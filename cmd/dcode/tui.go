@@ -159,11 +159,10 @@ func geometry() tui.Geometry {
 	geo := tui.DefaultGeometry(w, h)
 	geo.Unicode = supportsUnicode(os.Getenv)
 	geo.ActivityVerbs = tui.ActivityVerbsEnabled(os.Getenv)
-	geo.Palette = tui.Palette{
-		Enabled: tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout),
-		Depth:   tui.ColorDepth(os.Getenv),
-		Theme:   tui.Neon(),
-	}
+	// Only what the edge can know: the client never reads the environment, and
+	// the theme it starts in is already in the defaults.
+	geo.Palette.Enabled = tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)
+	geo.Palette.Depth = tui.ColorDepth(os.Getenv)
 	return geo
 }
 

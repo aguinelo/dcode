@@ -108,6 +108,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Adicionado
 
+- **Um modo onde letra é tecla.** `esc` de uma linha vazia entra no fluxo, e lá
+  dentro `j/k` movem, `↵` abre, `t` percorre os temas e `/` volta a escrever.
+  Toda tecla que o modo não nomeia é engolida, que é o que torna letra segura ali
+  — o rodapé do design oferece essas letras e põe um badge NAV ao lado, e um
+  badge é o nome de um modo. `↑` na borda agora rola em vez de caminhar para
+  dentro do fluxo, o que remove o estado por onde o defeito do `v` voltava.
+- **Quatro temas: neon, ashes, ember, mono.** Os valores do próprio design, sobre
+  um mapeamento de papéis compartilhado — mude de que cor é um título e os quatro
+  mudam. O teste de contraste roda nos quatro.
 - **A coluna lateral é o painel de diff sobre o de sessão, à direita.** Ela
   substitui a lista de arquivos, e a diferença é o que fez a lista ser escondida
   hoje de manhã: aquela coluna repetia o que o fluxo tinha acabado de dizer, e

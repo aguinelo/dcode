@@ -89,6 +89,11 @@ func DefaultGeometry(w, h int) Geometry {
 		RailMode:         RailAuto,
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
 		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
+		// The theme is named here rather than left to the zero value. A zero
+		// theme reads as neon at draw time and as nothing when asked which one
+		// it is, so cycling from it skipped a step — and a default nobody can
+		// find in the defaults is one the next reader has to infer.
+		Palette: Palette{Theme: Neon()},
 	}
 }
 
@@ -194,6 +199,8 @@ type marks struct {
 	treeTee, treeEnd string
 	// The bars: a filled cell and the track behind it.
 	barFull, barTrack string
+	// enter is the return key, as a hint names it.
+	enter string
 	// The frame of the approval modal. It was drawn from literals with no
 	// fallback at all — the one screen where being unreadable costs the most.
 	boxTL, boxTR, boxBL, boxBR, boxH string
@@ -208,13 +215,13 @@ func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
 			dot: "·", minus: "−", prompt: "❯",
-			laneYou: "▌", laneProcess: "╎", laneAnswer: "▏", treeTee: "├", treeEnd: "└", barFull: "━", barTrack: "─",
+			laneYou: "▌", laneProcess: "╎", laneAnswer: "▏", treeTee: "├", treeEnd: "└", barFull: "━", barTrack: "─", enter: "↵",
 			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
 		dot: "-", minus: "-", prompt: ">",
-		laneYou: "#", laneProcess: ":", laneAnswer: "|", treeTee: "+", treeEnd: "\\", barFull: "#", barTrack: "-",
+		laneYou: "#", laneProcess: ":", laneAnswer: "|", treeTee: "+", treeEnd: "\\", barFull: "#", barTrack: "-", enter: "ret",
 		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
