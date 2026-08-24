@@ -81,6 +81,14 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Alterado
 
+- **O painel paga a largura que ocupa.** Ele chegava devendo um quarto da tela no
+  instante em que passava a ser permitido, então cruzar de 99 para 100 colunas
+  custava vinte e cinco delas de uma vez; agora abre no seu piso e cresce do que
+  sobra além desse limiar. E a seção TURNO, que existe para avisar que um teto
+  vem chegando, era desenhada desde o primeiro evento de toda sessão — gastando
+  trinta e três colunas para dizer `iteração 0/2000`. Aparece a partir de metade
+  do teto, e sempre que todos os lugares em vôo estão ocupados.
+
 - **Toda linha de conversa diz quando e quanto.** A sobreposição resolveu a
   largura e deixou o problema real à mostra: quatro linhas diziam a mesma coisa
   porque quatro conversas começaram com a mesma pergunta. A meta toma sua largura
