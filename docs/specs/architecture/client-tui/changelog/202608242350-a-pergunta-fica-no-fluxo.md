@@ -1,6 +1,6 @@
 # A pergunta fica no fluxo
 
-**Data:** 2026-08-25
+**Data:** 2026-08-24
 **Specs afetadas:** `202608081250-client-tui` (`.p`, seção 6)
 **Fonte:** pedido de quem usa — "faz o approval inline", e o desenho v2 da
 importação do Claude Design, onde a aprovação é um bloco da transcrição

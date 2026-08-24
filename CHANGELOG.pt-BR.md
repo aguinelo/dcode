@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 95 changelogs de decisão |
+| famílias de spec | 13, com 106 changelogs de decisão |
 | contratos comportamentais | 42 declarados |
 | **contratos medidos contra modelo** | **3** |
-| cobertura | 94,5%, com gate em 90% |
+| cobertura | 94,0%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.4.0** |
+| versão publicada | **0.5.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -107,6 +107,10 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+_Nada ainda._
+
+## 0.5.0 — 24 de agosto de 2026
+
 ### Alterado
 
 - **A aprovação está no fluxo, e fica lá.** O modal saiu: a pergunta é desenhada
@@ -121,6 +125,12 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **Só uma tag de release dá nome a um build.** Uma tag de backup deixada ao
+  lado da branch — `tui-v1`, ponto de restauração e não versão — encobria a
+  última release só por ser mais nova, e todo build passou a se chamar
+  `tui-v1-dev+411c237`. Dar a um build o nome de algo que não é versão é o mesmo
+  defeito que dar a ele o nome da versão que já ficou para trás, que é o que a
+  derivação existe para evitar. Script e Makefile agora casam `v[0-9]*`.
 - **A versão lê o que a história de fato tem.** `scripts/version.sh` recusava
   derivar qualquer coisa assim que aparecia um merge ou um revert: o assunto de
   um merge não é uma mudança — as mudanças são as dos pais, já no intervalo — e
@@ -162,6 +172,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Adicionado
 
+- **A cauda preservada tem dois pisos.** `KeepTurns` contava turnos, e contagem
+  é a unidade errada: turnos variam em uma ordem de grandeza, então quatro curtos
+  protegiam quase nada — o resumo comia uma investigação de quarenta ferramentas
+  e mantinha quatro "ok". `KeepFraction` (0,30) é um piso em tokens da janela,
+  medido com a mesma estimativa que o gatilho usa, e vence o que proteger mais. A
+  regra de que a tarefa corrente nunca é compactada continua acima dos dois.
+- **O contexto avisa que está enchendo antes de ser cortado.** As faixas eram
+  calculadas e anunciadas ao modelo, e ninguém as anunciava a quem lê — então o
+  resumo aparecia como uma linha dizendo que tinha acontecido, depois do fato,
+  sem chance de terminar um raciocínio antes. Agora a travessia chega ao cliente
+  no mesmo instante em que chega ao modelo, e o corte diz quantas mensagens
+  foram e quantas ficaram, em vez de só que algo aconteceu.
 - **Um modo onde letra é tecla.** `esc` de uma linha vazia entra no fluxo, e lá
   dentro `j/k` movem, `↵` abre, `t` percorre os temas e `/` volta a escrever.
   Toda tecla que o modo não nomeia é engolida, que é o que torna letra segura ali
@@ -224,18 +246,6 @@ mostrou.
 
 ### Adicionado
 
-- **A cauda preservada tem dois pisos.** `KeepTurns` contava turnos, e contagem
-  é a unidade errada: turnos variam em uma ordem de grandeza, então quatro curtos
-  protegiam quase nada — o resumo comia uma investigação de quarenta ferramentas
-  e mantinha quatro "ok". `KeepFraction` (0,30) é um piso em tokens da janela,
-  medido com a mesma estimativa que o gatilho usa, e vence o que proteger mais. A
-  regra de que a tarefa corrente nunca é compactada continua acima dos dois.
-- **O contexto avisa que está enchendo antes de ser cortado.** As faixas eram
-  calculadas e anunciadas ao modelo, e ninguém as anunciava a quem lê — então o
-  resumo aparecia como uma linha dizendo que tinha acontecido, depois do fato,
-  sem chance de terminar um raciocínio antes. Agora a travessia chega ao cliente
-  no mesmo instante em que chega ao modelo, e o corte diz quantas mensagens
-  foram e quantas ficaram, em vez de só que algo aconteceu.
 - **A área de digitação é delimitada nos quatro lados.** Moldura aqui e não em
   volta de uma chamada, que é para isso que serve uma caixa: a entrada é um
   *campo* — região fixa, que não rola, à qual se volta, e que precisa ser

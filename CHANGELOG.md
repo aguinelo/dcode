@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 95 decision changelogs |
+| spec families | 13, with 106 decision changelogs |
 | behavioural contracts | 42 declared |
 | **contracts measured against a model** | **3** |
-| coverage | 94.5%, gate at 90% |
+| coverage | 94.0%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.4.0** |
+| published version | **0.5.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -112,6 +112,10 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+_Nothing yet._
+
+## 0.5.0 — 24 August 2026
+
 ### Changed
 
 - **The approval is in the stream, and stays there.** The modal is gone: the
@@ -126,6 +130,12 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **Only a release tag names a build.** A backup tag left beside the branch —
+  `tui-v1`, a restore point and not a version — shadowed the last release simply
+  by being newer, and every build then called itself `tui-v1-dev+411c237`.
+  Naming a build after something that is not a version is the same defect as
+  naming it after the version it has already left, which is what the derivation
+  exists to prevent. Both the script and the Makefile now match `v[0-9]*`.
 - **The version reads what the history actually holds.** `scripts/version.sh`
   refused to derive anything the moment a merge or a revert appeared: a merge
   commit's subject is not a change — the changes are its parents', already in
@@ -167,6 +177,18 @@ that on every run to stop the opposite reading.
 
 ### Added
 
+- **The preserved tail has two floors.** `KeepTurns` counted turns, and a count
+  is the wrong unit: turns vary by an order of magnitude, so four short ones
+  protected almost nothing — the summary ate a forty-tool investigation and kept
+  four "ok"s. `KeepFraction` (0.30) is a floor in tokens of the window, measured
+  with the same estimate the trigger uses, and whichever protects more wins. The
+  rule that the current task never gets compacted still sits above both.
+- **The context says it is filling before it is cut.** The bands were computed
+  and announced to the model, and nobody announced them to the reader — so the
+  summary arrived as one line saying it had happened, after the fact, with no
+  chance to finish a thought first. The crossing now reaches the client at the
+  same moment it reaches the model, and the cut says how many messages went and
+  how many stayed instead of only that something did.
 - **A mode where a letter is a key.** `esc` from an empty line steps into the
   transcript, and inside it `j/k` move, `↵` opens, `t` cycles the theme and `/`
   goes back to writing. Every key the mode does not name is swallowed, which is
@@ -229,18 +251,6 @@ the screen never showed.
 
 ### Added
 
-- **The preserved tail has two floors.** `KeepTurns` counted turns, and a count
-  is the wrong unit: turns vary by an order of magnitude, so four short ones
-  protected almost nothing — the summary ate a forty-tool investigation and kept
-  four "ok"s. `KeepFraction` (0.30) is a floor in tokens of the window, measured
-  with the same estimate the trigger uses, and whichever protects more wins. The
-  rule that the current task never gets compacted still sits above both.
-- **The context says it is filling before it is cut.** The bands were computed
-  and announced to the model, and nobody announced them to the reader — so the
-  summary arrived as one line saying it had happened, after the fact, with no
-  chance to finish a thought first. The crossing now reaches the client at the
-  same moment it reaches the model, and the cut says how many messages went and
-  how many stayed instead of only that something did.
 - **The input area is delimited on all four sides.** A frame here and not around
   a tool call, which is what a box is for: the input is a *field* — a fixed
   region that does not scroll, that you return to, and that has to be findable
