@@ -589,18 +589,6 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return p, nil
 
-	case "ctrl+p":
-		// The panel toggle is a control key, not a letter. As a bare `p` it ate
-		// the first character of every message starting with one — "primeiro",
-		// "please", "por favor" — which is the exact failure the rest of this
-		// switch is written to avoid.
-		if p.geo.ShowPanel(len(p.model.Plan) > 0) {
-			p.geo.PanelMode = PanelHidden
-		} else {
-			p.geo.PanelMode = PanelShown
-		}
-		return p, nil
-
 	case "shift+up", "ctrl+up":
 		p.model = p.model.ScrollBy(-1, p.geo)
 		return p, nil

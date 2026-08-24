@@ -460,46 +460,6 @@ func TestCursorMovementAndExpansion(t *testing.T) {
 	}
 }
 
-// `p` toggles the panel only when it is not being typed into a message.
-// Regression: as a bare `p`, the panel toggle ate the first character of every
-// message beginning with one — "primeiro", "please", "por favor". A letter can
-// never be a shortcut on a line the user types into.
-func TestThePanelToggleIsAControlKeyAndNeverEatsALetter(t *testing.T) {
-	p, _ := newProgram(t)
-	p.model.Plan = modelWithPlan().Plan
-
-	// The panel is showing at 100 columns, so the first press hides it.
-	p.Update(ctrl('p'))
-	if p.geo.ShowPanel(true) {
-		t.Error("ctrl+p hides the panel")
-	}
-	p.Update(ctrl('p'))
-	if !p.geo.ShowPanel(true) {
-		t.Error("and shows it again")
-	}
-
-	// On a terminal too narrow for the default, the key still works: an
-	// explicit request beats the responsive default.
-	narrow, _ := newProgram(t, func(o *Options) { o.Geometry = DefaultGeometry(80, 24) })
-	narrow.model.Plan = modelWithPlan().Plan
-	if narrow.geo.ShowPanel(true) {
-		t.Fatal("80 columns hides it by default")
-	}
-	narrow.Update(ctrl('p'))
-	if !narrow.geo.ShowPanel(true) {
-		t.Error("ctrl+p on a narrow terminal must show the panel anyway")
-	}
-
-	// And every bare letter reaches the line, first character included.
-	typing, _ := newProgram(t)
-	for _, r := range "primeiro" {
-		typing.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	if typing.model.Input != "primeiro" {
-		t.Errorf("a letter must never be swallowed, got %q", typing.model.Input)
-	}
-}
-
 func TestWindowResizeIsHonoured(t *testing.T) {
 	p, _ := newProgram(t)
 	p.Update(tea.WindowSizeMsg{Width: 42, Height: 13})

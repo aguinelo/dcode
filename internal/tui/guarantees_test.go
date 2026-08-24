@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -113,24 +114,28 @@ func TestADiffNeverRendersTheWholeFile(t *testing.T) {
 	}
 }
 
-// The panel counter and the status counter are the same sentence. Two
-// formulations of one fact is how a user comes to believe the panel and the
-// status bar are describing different things — and then asks which is right.
-func TestThePanelAndTheStatusCountThePlanTheSameWay(t *testing.T) {
+// The plan block and the status counter count the same plan the same way. Two
+// formulations of one fact is how a user comes to believe two regions are
+// describing different things — and then asks which is right.
+//
+// The panel this used to compare against is gone with the plan that justified
+// it; the comparison survives it, between the block in the stream and the bar.
+func TestThePlanBlockAndTheStatusCountThePlanTheSameWay(t *testing.T) {
 	m := modelWithPlan()
 	summary := m.PlanSummary()
 	if summary == "" {
 		t.Fatal("the plan summary is empty; there is nothing to compare")
 	}
 
-	wide := DefaultGeometry(140, 30)
-	wide.PanelMode = PanelShown
-	if out := Render(m, wide); !strings.Contains(out, summary) {
-		t.Errorf("the panel does not carry %q:\n%s", summary, out)
-	}
-	narrow := DefaultGeometry(80, 30)
-	if out := Render(m, narrow); !strings.Contains(out, summary) {
-		t.Errorf("the status bar does not carry %q:\n%s", summary, out)
+	done, total, _ := m.PlanCounts()
+	for _, w := range []int{80, 140} {
+		out := Render(m, DefaultGeometry(w, 30))
+		if !strings.Contains(out, summary) {
+			t.Errorf("at %d columns the status bar does not carry %q:\n%s", w, summary, out)
+		}
+		if want := fmt.Sprintf("%d/%d", done, total); !strings.Contains(out, want) {
+			t.Errorf("at %d columns the plan block does not count %q:\n%s", w, want, out)
+		}
 	}
 }
 

@@ -80,7 +80,6 @@ type Strings struct {
 	ChildOwns     string
 	ChildNoAnswer string
 	ChildUnnamed  string
-	PanelTurn     string
 	PanelRounds   string
 	PanelInFlight string
 	RailHidden    string
@@ -249,7 +248,6 @@ var catalogue = map[Lang]Strings{
 		ChildOwns:        "owns",
 		ChildNoAnswer:    "no answer",
 		ChildUnnamed:     "a child",
-		PanelTurn:        "turn",
 		PanelRounds:      "round",
 		PanelInFlight:    "in flight",
 		RailHidden:       "sidebar",
@@ -399,7 +397,6 @@ Environment:
 		ChildOwns:        "possui",
 		ChildNoAnswer:    "sem resposta",
 		ChildUnnamed:     "um filho",
-		PanelTurn:        "turno",
 		PanelRounds:      "iteração",
 		PanelInFlight:    "em vôo",
 		RailHidden:       "coluna",

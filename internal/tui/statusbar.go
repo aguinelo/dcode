@@ -26,6 +26,9 @@ func RenderStatusBar(m Model, g Geometry) string {
 	if seg, ok := diffSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
+	if seg, ok := ceilingSegment(m, g); ok {
+		segs = append(segs, seg)
+	}
 	if seg, ok := waitingSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
@@ -87,6 +90,47 @@ func diffSegment(m Model, g Geometry) (segment, bool) {
 		text: fmt.Sprintf("+%d %s%d%s", m.DiffAdded, gl.minus, m.DiffRemoved, files),
 		drop: 1,
 	}, true
+}
+
+// ceilingSegment is the turn against a ceiling it is approaching.
+//
+// It used to be a section of the plan panel. The panel is gone with the plan
+// that justified it, and this is the half of it that exists nowhere else — the
+// round count and the in-flight pair, which nothing else on the screen carries.
+//
+// It appears on the same terms the panel section did: from half the ceiling,
+// and whenever every in-flight slot is taken. Far from a ceiling it is a number
+// nobody acts on, and a bar of numbers nobody acts on is a bar people stop
+// reading.
+//
+// Never dropped: it is drawn only when it is worth acting on, and a warning
+// that gives way to a diff summary is a warning that goes missing at exactly
+// the width where the screen is already tight.
+func ceilingSegment(m Model, g Geometry) (segment, bool) {
+	if !m.turnSectionWorthDrawing() {
+		return segment{}, false
+	}
+	gl := glyphs(g.Unicode)
+	t := Text(m.Lang)
+	p := g.Palette
+
+	var parts []string
+	if m.MaxRounds > 0 {
+		style := StyleWarn
+		if m.Rounds*4 >= m.MaxRounds*3 {
+			style = StyleError
+		}
+		parts = append(parts, p.Apply(style,
+			fmt.Sprintf("%s %d/%d", t.PanelRounds, m.Rounds, m.MaxRounds)))
+	}
+	if m.MaxInFlight > 0 && m.InFlight >= m.MaxInFlight {
+		parts = append(parts, p.Apply(StyleWarn,
+			fmt.Sprintf("%s %d%s%d", t.PanelInFlight, m.InFlight, gl.dot, m.MaxInFlight)))
+	}
+	if len(parts) == 0 {
+		return segment{}, false
+	}
+	return segment{text: strings.Join(parts, " "+gl.dot+" "), drop: 0}, true
 }
 
 // waitingSegment is what is blocked on a person.

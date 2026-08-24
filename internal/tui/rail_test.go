@@ -26,8 +26,8 @@ func TestATurnThatTouchedNothingGetsNoSidebar(t *testing.T) {
 	if g.ShowRail(false) {
 		t.Error("an empty tree still opened the sidebar")
 	}
-	if g.StreamWidth(false, false) != 140 {
-		t.Errorf("the stream lost width to a sidebar that is not drawn: %d", g.StreamWidth(false, false))
+	if g.StreamWidth(false) != 140 {
+		t.Errorf("the stream lost width to a sidebar that is not drawn: %d", g.StreamWidth(false))
 	}
 }
 
@@ -58,7 +58,9 @@ func TestTheSidebarStartsHidden(t *testing.T) {
 		if g.ShowRail(true) {
 			t.Errorf("at %d columns the sidebar opened before anybody asked", w)
 		}
-		if got := g.StreamWidth(false, g.ShowPanel(true)); got < w-g.panelWidth()-1 {
+		// And with no column asked for, the stream is the whole terminal:
+		// there is no second region taking width behind the reader's back.
+		if got := g.StreamWidth(false); got != w {
 			t.Errorf("at %d columns the stream got %d", w, got)
 		}
 	}
@@ -90,16 +92,16 @@ func TestTheSidebarKeepsItsFloorAndItsCeiling(t *testing.T) {
 	}
 }
 
-// The stream pays for both columns, counted once, in the function the layout
-// and the renderer both read.
+// The stream pays for the column exactly once, in the function the layout and
+// the renderer both read. Two places computing it is the defect; where it shows
+// up is only the symptom.
 func TestTheStreamPaysForEveryColumnExactlyOnce(t *testing.T) {
 	g := railGeometry(140)
-	full := g.StreamWidth(true, true)
-	if want := 140 - g.railWidth() - 1 - g.panelWidth() - 1; full != want {
-		t.Errorf("got %d, want %d", full, want)
+	if got, want := g.StreamWidth(true), 140-g.railWidth()-1; got != want {
+		t.Errorf("with the column: got %d, want %d", got, want)
 	}
-	if railOnly := g.StreamWidth(true, false); railOnly != 140-g.railWidth()-1 {
-		t.Errorf("the sidebar alone cost %d", 140-railOnly)
+	if got := g.StreamWidth(false); got != 140 {
+		t.Errorf("without it the stream is not the whole terminal: %d", got)
 	}
 }
 

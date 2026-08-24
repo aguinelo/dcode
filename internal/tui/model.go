@@ -38,6 +38,9 @@ const (
 	KindNote      Kind = "note"
 	// KindReasoning is the model thinking, which is not the model answering.
 	KindReasoning Kind = "reasoning"
+	// KindPlan is the plan the model is working through, drawn where it first
+	// appeared and always showing the current one.
+	KindPlan Kind = "plan"
 	// KindCompletion is what was and was not checked when the turn ended.
 	//
 	// Its own kind rather than a note, because it is the one line on screen the
@@ -79,6 +82,10 @@ type Entry struct {
 	// call's input. It is the boundary the child was given, and the screen has
 	// no other way to show what a child was allowed to touch.
 	Owns []string
+	// Plan is the current plan, on the one KindPlan entry. It is a snapshot of
+	// Model.Plan rather than a copy that can drift: both are written from the
+	// same event, in the same reduction.
+	Plan []protocol.PlanItem
 	// Added and Removed are the line counts the tool reported, kept as numbers.
 	//
 	// Summary already renders them, but as a sentence. The sidebar needs the
@@ -445,6 +452,34 @@ func (m Model) Apply(ev protocol.Event) Model {
 				})
 			}
 			m.Plan = d.Items
+
+			// The plan is a block IN THE STREAM, at the place it first
+			// appeared, and it always shows the current one.
+			//
+			// It used to be a column of its own. The v2 design puts it where
+			// the model made it, as work on the way to an answer — which is
+			// what it is — and that is worth more than a permanent column: the
+			// plan is read when it changes and ignored the rest of the time,
+			// and a resident panel spends width on the rest of the time.
+			//
+			// One entry, updated in place rather than appended per revision.
+			// Appending would stack every revision of the same plan down the
+			// screen; keeping the position is what makes it read as one thing
+			// being worked through. The reducer stays pure: the same log
+			// produces the same single block in the same place.
+			m.Entries = append([]Entry(nil), m.Entries...)
+			at := -1
+			for i := range m.Entries {
+				if m.Entries[i].Kind == KindPlan {
+					at = i
+					break
+				}
+			}
+			if at < 0 {
+				m.Entries = append(m.Entries, Entry{Kind: KindPlan, Seq: ev.Seq})
+				at = len(m.Entries) - 1
+			}
+			m.Entries[at].Plan = d.Items
 		}
 
 	case protocol.EventSessionCompacted:
@@ -754,19 +789,6 @@ func firstLine(s string) string {
 		s = s[:i]
 	}
 	return s
-}
-
-// panelHasContent reports whether the panel has anything to say.
-//
-// A plan, or the turn's own numbers. Adding the second is what makes the round
-// ceiling visible at all: most turns have no plan, and the ceiling was hiding
-// in the one panel that only opened when something else was already there.
-//
-// The numbers survive the turn that produced them, so the panel opens on the
-// first turn and stays. A panel that appeared with every turn and left with it
-// would be motion where the screen should be still.
-func (m Model) panelHasContent() bool {
-	return len(m.Plan) > 0 || m.turnSectionWorthDrawing()
 }
 
 // turnSectionWorthDrawing reports whether the ceilings are close enough to be
