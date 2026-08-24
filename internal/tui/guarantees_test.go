@@ -96,7 +96,15 @@ func TestADiffNeverRendersTheWholeFile(t *testing.T) {
 			"-old\n+new\n" + body.String(),
 	}}
 
-	out := Render(m, DefaultGeometry(100, 40))
+	// Asserted over the STREAM and not over the rendered window.
+	//
+	// It used to render a 40-row terminal and look for the change in it, which
+	// made a claim about the diff depend on how many rows the layout happened
+	// to leave: the stream is anchored to its end, the change is near the start
+	// of a forty-line block, and the fixture was one row from failing. Adding
+	// two rules around the input area spent that row, and the test reported the
+	// diff as broken when the diff was fine.
+	out := strings.Join(StreamLines(m, DefaultGeometry(100, 40)), "\n")
 	if n := strings.Count(out, "UNCHANGED-LINE"); n > 40 {
 		t.Errorf("%d unchanged lines reached the screen; the diff is rendering the file", n)
 	}

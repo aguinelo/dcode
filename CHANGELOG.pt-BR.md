@@ -107,6 +107,16 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   o foco à linha, para navegar e escrever deixarem de ser dois estados ao mesmo
   tempo.
 
+### Adicionado
+
+- **A área de digitação é delimitada nos quatro lados.** Moldura aqui e não em
+  volta de uma chamada, que é para isso que serve uma caixa: a entrada é um
+  *campo* — região fixa, que não rola, à qual se volta, e que precisa ser
+  encontrada sem ler — enquanto uma chamada é conteúdo, e moldura em volta de
+  conteúdo é moldura em volta do que já se estava lendo. A moldura não carrega
+  estado: uma versão anterior a apagava enquanto o fluxo tinha o teclado, e o
+  teste dela perguntou se aquilo sobrevivia sem cor. Não sobrevivia.
+
 ## 0.3.0 — 24 de agosto de 2026
 
 O release de que a interface de fato precisava, e o primeiro em que os defeitos

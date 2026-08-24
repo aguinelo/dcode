@@ -59,7 +59,7 @@ func TestTheFrameReservesExactlyWhatTheBoxDraws(t *testing.T) {
 	for _, in := range []string{"", "one", "one\ntwo", strings.Repeat("y\n", 50)} {
 		m := Model{Input: in}
 		g := geo(80, 24)
-		if got, want := len(renderInputLines(m, g, "")), InputRows(m, g); got != want {
+		if got, want := len(renderInputLines(m, g, "")), InputHeight(m, g); got != want {
 			t.Errorf("input %q drew %d rows and the layout reserved %d", in, got, want)
 		}
 	}
@@ -81,12 +81,69 @@ func TestEveryRowOfTheBoxCoversItsWidth(t *testing.T) {
 // Repeating it would read as three separate messages.
 func TestOnlyTheFirstRowCarriesThePrompt(t *testing.T) {
 	lines := renderInputLines(Model{Input: "one\ntwo\nthree"}, geo(40, 24), "")
-	if !strings.HasPrefix(lines[0], "> ") {
-		t.Errorf("the first row has no prompt: %q", lines[0])
+	// Row zero is the rule above the area now, so the prompt is on the first
+	// row INSIDE the frame.
+	body := lines[1 : len(lines)-1]
+	if !strings.Contains(body[0], "> ") {
+		t.Errorf("the first row has no prompt: %q", body[0])
 	}
-	for _, l := range lines[1:] {
-		if strings.HasPrefix(strings.TrimSpace(l), ">") {
+	for _, l := range body[1:] {
+		if strings.HasPrefix(strings.TrimSpace(strings.Trim(l, "|")), ">") {
 			t.Errorf("a continuation row carries a prompt: %q", l)
+		}
+	}
+}
+
+// The area is delimited on all four sides, and by a glyph rather than a colour:
+// a boundary drawn in colour alone is no boundary on a terminal without any,
+// and this one answers the question that has no other answer on the screen —
+// where do the letters I type go.
+func TestTheInputAreaIsDelimited(t *testing.T) {
+	for _, unicode := range []bool{true, false} {
+		g := geo(40, 24)
+		g.Unicode = unicode
+		gl := glyphs(unicode)
+		lines := renderInputLines(Model{Input: "one\ntwo"}, g, "")
+
+		if !strings.HasPrefix(lines[0], gl.boxTL) || !strings.HasSuffix(lines[0], gl.boxTR) {
+			t.Errorf("unicode=%v: no rule above the area: %q", unicode, lines[0])
+		}
+		last := lines[len(lines)-1]
+		if !strings.HasPrefix(last, gl.boxBL) || !strings.HasSuffix(last, gl.boxBR) {
+			t.Errorf("unicode=%v: no rule below the area: %q", unicode, last)
+		}
+		for i, l := range lines[1 : len(lines)-1] {
+			if !strings.HasPrefix(l, gl.gutter) || !strings.HasSuffix(l, gl.gutter) {
+				t.Errorf("unicode=%v: row %d has no sides: %q", unicode, i, l)
+			}
+		}
+	}
+}
+
+// The frame draws the same shape with and without colour.
+//
+// An earlier version of it dimmed while the stream had the keyboard. The test
+// asked the obvious next question — does that distinction survive without
+// colour — and the answer was no: it was a colour and nothing else, which is
+// the one thing a state indicator here may not be. So the frame stopped
+// carrying state, and the state stayed where it is already drawn, on the entry
+// under the stream cursor.
+func TestTheFrameIsTheSameShapeWithAndWithoutColour(t *testing.T) {
+	mono, colour := geo(40, 24), geo(40, 24)
+	colour.Palette = Palette{Enabled: true}
+
+	for _, cursor := range []int{-1, 0} {
+		m := Model{Input: "x", Cursor: cursor}
+		a := renderInputLines(m, mono, "")
+		b := renderInputLines(m, colour, "")
+		if len(a) != len(b) {
+			t.Fatalf("cursor=%d: %d rows in mono, %d in colour", cursor, len(a), len(b))
+		}
+		for i := range a {
+			if a[i] != stripANSI(b[i]) {
+				t.Errorf("cursor=%d row %d: colour changed the shape\n mono: %q\n col:  %q",
+					cursor, i, a[i], stripANSI(b[i]))
+			}
 		}
 	}
 }
