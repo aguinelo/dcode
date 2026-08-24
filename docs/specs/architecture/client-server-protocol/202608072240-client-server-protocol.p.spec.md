@@ -217,6 +217,8 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Continuar cria sessão **nova** carregando a conversa; a antiga acabou com o cliente que a rodou.
 - Continuar sessão inexistente falha; nunca começa em branco em silêncio.
 - A conversa continuada entra no log da sessão nova atrás de `session.resumed`, com a sequência e o id dela.
+- Ela entra no log **e não no registro**: o registro guarda o marcador, e ler um registro segue a cadeia para trás. Cópia faria cada continuação copiar todas as anteriores.
+- Uma cadeia que aponta para si mesma é lida uma vez e não trava.
 - Continuar uma continuação carrega a conversa inteira, não só o último trecho.
 - Chamada de ferramenta sem resultado não entra no histórico reconstruído.
 - Listagem de sessões vem do registro em disco, ordenada da mais recente, filtrada pelo workspace por default.

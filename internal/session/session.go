@@ -85,11 +85,14 @@ func New(id, workspace, model, mode string, engine *loop.Engine, log *EventLog, 
 
 // EmitCarried puts the continued conversation in the log, behind a marker.
 //
-// Called once, right after the session announces itself. Everything follows
-// from it being in the log rather than beside it: the client draws the screen
-// from events, the record is written from events, and the next session to
-// continue this one rebuilds from the record. One placement answers all three,
-// and any other placement answers at most one.
+// Called once, right after the session announces itself. The client draws the
+// screen from events, so the events go in the log — but only the MARKER goes in
+// the record, and the next session to continue this one follows the marker back
+// rather than reading a copy.
+//
+// The copy was the original answer to all three, and it was the right shape
+// with the wrong cost: each continuation copied every copy before it, so the
+// record grew quadratically in the number of times somebody typed `-c`.
 func (s *Session) EmitCarried() {
 	if len(s.Carried) == 0 && s.CarriedFrom == "" {
 		return
@@ -102,7 +105,13 @@ func (s *Session) EmitCarried() {
 		// Re-appended rather than copied: the sequence and the session id must
 		// be this session's, or a client cannot tell a replayed event from one
 		// it already has.
-		s.Emit(ev.Type, json.RawMessage(ev.Payload))
+		//
+		// UNRECORDED. The screen is served from the log in memory, and the
+		// record does not need these: it holds the marker above, and Rebuild
+		// and Carry follow it. Writing them was what made a session that
+		// continued a session that continued a session hold three copies of the
+		// first — 3.6 MB on this machine, growing with every `-c`.
+		_, _ = s.Log.AppendUnrecorded(ev.Type, json.RawMessage(ev.Payload))
 	}
 	s.Carried = nil
 }
