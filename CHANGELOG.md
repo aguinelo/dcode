@@ -83,6 +83,15 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Added
+
+- **A turn begins with a visible boundary.** A question used to be a mark in the
+  same weight as the prose around it, so a screen of scrollback had no boundary
+  anywhere. Every question now opens with a rule, inset to the same gutter the
+  rest of the stream uses. A rule and not a colour: a question picked out by
+  colour alone is not picked out at all on a monochrome terminal, and this is the
+  landmark the eye scrolls to. It costs one row per turn and no columns.
+
 ### Fixed
 
 - **A tool line stays on one line.** A shell command wrapped over several lines

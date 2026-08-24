@@ -227,7 +227,7 @@ type marks struct {
 	// dot is the separator between two facts on one line, and minus the sign
 	// of a removal. Both were literals until an ASCII terminal got them: they
 	// are typography, and typography is the renderer's, never the model's.
-	dot, minus string
+	dot, minus, prompt string
 	// The frame of the approval modal. It was drawn from literals with no
 	// fallback at all — the one screen where being unreadable costs the most.
 	boxTL, boxTR, boxBL, boxBR, boxH string
@@ -241,12 +241,12 @@ type marks struct {
 func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
-			dot: "·", minus: "−",
+			dot: "·", minus: "−", prompt: "❯",
 			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
-		dot: "-", minus: "-",
+		dot: "-", minus: "-", prompt: ">",
 		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
@@ -627,13 +627,33 @@ func renderStream(m Model, g Geometry, w int) []string {
 			}
 
 		case KindUser:
-			for j, line := range wrap(e.Summary, w-2) {
-				prefix := "> "
+			// Where the exchange begins, said with a rule.
+			//
+			// Without it a question is a `>` in the same weight as the prose
+			// around it, and a screen of scrollback has no boundary anywhere:
+			// on a real session it was impossible to see where one turn ended
+			// and the next began. This is the single change that costs the
+			// fewest columns — none — for the most reading.
+			//
+			// A rule and not a colour: a question picked out by colour alone is
+			// not picked out at all on a monochrome terminal, and this is the
+			// landmark the eye scrolls to.
+			out = gapBefore(out)
+			// Inset to the same two-column gutter everything else uses. Drawn
+			// edge to edge it touched the dividers on both sides and read as a
+			// row of a table rather than as the seam between two exchanges.
+			out = append(out, "  "+p.Apply(StyleDim, strings.Repeat(gl.boxH, maxInt(0, w-4))))
+			for j, line := range wrap(e.Summary, w-4) {
+				prefix := "  " + p.Apply(StyleAccent, gl.prompt) + " "
 				if j > 0 {
-					prefix = "  "
+					prefix = "    "
 				}
-				out = append(out, clipStyled(p.Apply(StyleBold, prefix+line), w))
+				out = append(out, clipStyled(prefix+p.Apply(StyleBold, line), w))
 			}
+			// The answer gets its gap from the next pass, the way every other
+			// block here does: the gap is drawn BEFORE, never after, so the
+			// stream can never end on a blank row.
+			blocked = true
 		}
 	}
 	return out
