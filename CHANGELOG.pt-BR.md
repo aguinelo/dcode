@@ -106,6 +106,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Corrigido
+
+- **Um Chromium alcança o primeiro quadro dentro do sandbox.** Sem
+  `mach-register` e um `iokit-open` escopado, qualquer Chromium morria com
+  SIGSEGV antes de desenhar nada — Playwright, Puppeteer, Lighthouse, um Electron
+  sob teste. Escondia-se porque era **sinal**, não negação: uma recusa diz
+  `Operation not permitted` em algum lugar que alguém lê, e um crash diz um stack
+  trace sem nada nomear a fronteira. O que a tela mostrava era um navegador
+  quebrando, e foi lido como timidez do modelo. É um par — nenhuma das duas
+  sozinha passa do crash — e o `iokit-open` está escopado a uma classe, que é o
+  que o torna acessível.
+
 ### Adicionado
 
 - **Um modo onde letra é tecla.** `esc` de uma linha vazia entra no fluxo, e lá

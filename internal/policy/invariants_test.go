@@ -59,6 +59,7 @@ var sandboxInvariants = map[string]string{
 	"Padrão em branco":                      "TestABlankPatternMatchesNothing",
 	"inspecionáveis por `--config`":         "TestTheEffectiveRulesAreInspectableWithTheirProvenance",
 	"Workspace sob `/tmp`":                  "TestAWorkspaceUnderTmpSurvivesTheWritableTmpfs",
+	"alcança o primeiro quadro":             "TestAChromiumReachesItsFirstFrameInsideTheSandbox",
 	"não depende de o diretório já existir": "TestTheWorkspaceMountDoesNotDependOnThePathExisting",
 
 	"não entrega socket unix":                              "TestSeatbeltGrantsTheNetworkWithoutTheMachinesOwnSockets",

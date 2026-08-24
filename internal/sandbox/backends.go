@@ -150,6 +150,38 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 	b.WriteString("(allow sysctl-read)\n(allow mach-lookup)\n")
 	b.WriteString("(allow signal (target self))\n")
 
+	// What a Chromium needs to reach its own first frame.
+	//
+	// Without these two a headless Chrome dies with SIGSEGV before it draws
+	// anything — not an error it reports, a crash — which is what made this
+	// hard to see: the screen showed a tool exiting with a stack trace, and
+	// nothing anywhere said the boundary had refused. Everything Chromium-based
+	// was affected: Playwright, Puppeteer, Lighthouse, an Electron app under
+	// test.
+	//
+	// It is a PAIR. Neither alone gets past the crash; both together do, three
+	// runs out of three. Found by bisecting a Seatbelt profile against the real
+	// binary rather than by reading Chromium's source, and the first hypothesis
+	// — mach-register alone, from the bootstrap_check_in denial in its log —
+	// was wrong.
+	//
+	// `iokit-open` is SCOPED to one user client, and that is the whole reason
+	// this is affordable. Blanket iokit-open is the GPU and HID surface;
+	// RootDomainUserClient is power management, which Chromium opens to take an
+	// assertion against sleep. It was narrowed by testing, from the blanket
+	// grant down to the one class that still works.
+	//
+	// `mach-register` is the real widening: a sandboxed process can register a
+	// named Mach service in its bootstrap namespace. Within the session's own
+	// namespace, and this boundary is about files and the network — but it is
+	// surface, and it is stated here rather than buried.
+	//
+	// In the preamble, so every mode has them, beside process-exec and
+	// mach-lookup which are the same class of thing: what a program needs to
+	// START, as opposed to what it may then read or write.
+	b.WriteString("(allow mach-register)\n")
+	b.WriteString(`(allow iokit-open (iokit-user-client-class "RootDomainUserClient"))` + "\n")
+
 	// After the blanket allow, never before: Seatbelt takes the LAST matching
 	// rule, so a deny written above would be overruled by the line that grants
 	// everything. Not in full-access, which promises no boundary and must not
