@@ -1655,6 +1655,9 @@ func TestTheThemeKeyOnlyExistsInsideTheMode(t *testing.T) {
 	}
 	if p.geo.Palette.Theme.Name != first {
 		t.Errorf("a full cycle did not come back to %q, got %q", first, p.geo.Palette.Theme.Name)
+	}
+}
+
 // Resuming paints one screen, not one per event.
 //
 // Continuing a conversation writes the whole of the old log into the new
