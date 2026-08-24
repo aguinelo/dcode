@@ -123,6 +123,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **Prosa deixa uma linha em branco entre parágrafos, e ela é vazia.** Dividir
+  `"a\n\n"` dá três partes e a última é o fim do texto, não um parágrafo; uma
+  fronteira de run num `**` dividia o mesmo texto duas vezes, então um bloco saía
+  com três linhas em branco entre duas frases. Elas ainda vinham indentadas,
+  virando dois espaços em vez de vazio — e toda regra sobre linha em branco aqui
+  compara com `""` ou trima, então as duas leituras passavam por cima. O
+  invariante existia e a guarda já trimava; o que ela nunca tinha visto era
+  prosa, porque o fixture era feito só de chamadas de ferramenta.
+
 - **Linha de chamada continua uma linha.** Comando de shell quebrado em várias
   linhas era escrito no quadro como várias linhas, e tudo depois dele — coluna
   lateral, divisor, painel — ficava desalinhado até o fim da tela. O achatamento

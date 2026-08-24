@@ -613,6 +613,14 @@ func renderStream(m Model, g Geometry, w int) []string {
 			// raw put the asterisks and the backticks on screen, and every
 			// answer with emphasis in it looked unfinished.
 			for _, line := range renderProse(e.Summary, w-2, g) {
+				// A paragraph break is an EMPTY row, not two spaces. Indenting
+				// it made it whitespace, and the guard that forbids two blank
+				// rows in a row compares against "" — so every double blank in
+				// prose was invisible to the one test written to catch it.
+				if line == "" {
+					out = gapBefore(out)
+					continue
+				}
 				out = append(out, "  "+line)
 			}
 
