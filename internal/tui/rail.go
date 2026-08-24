@@ -16,13 +16,13 @@ import (
 // apart. Movement is never the only clue: a pulsing row and a still one must
 // still differ when nothing can pulse, so a running row carries a mark of its
 // own rather than only a colour or an animation.
-type railMarks struct{ folder, file, running, done, failed, open, cursor, caret string }
+type railMarks struct{ folder, file, running, done, failed, open, cursor, caret, ell string }
 
 func railGlyphs(unicode bool) railMarks {
 	if !unicode {
-		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">", cursor: "*", caret: "_"}
+		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">", cursor: "*", caret: "_", ell: "..."}
 	}
-	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●", cursor: "▸", caret: "▌"}
+	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●", cursor: "▸", caret: "▌", ell: "…"}
 }
 
 // renderRail draws the sidebar, one row per line, already clipped to width.
@@ -144,7 +144,7 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 		// Trimmed to leave room for the mark, so the mark never pushes the
 		// name off its own row.
 		if room := w - 4; room > 1 && visibleWidth(title) > room {
-			title = trimTo(title, room-1) + "…"
+			title = trimTo(title, room-visibleWidth(gl.ell)) + gl.ell
 		}
 		title += " ·"
 	}
@@ -152,7 +152,7 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 	// reader unable to tell a short conversation from a truncated one, and the
 	// start is what identifies it — so the end is what gives way.
 	if room := w - 2; room > 1 && visibleWidth(title) > room {
-		title = trimTo(title, room-1) + "…"
+		title = trimTo(title, room-visibleWidth(gl.ell)) + gl.ell
 	}
 	return p.Apply(style, mark) + " " + title
 }
@@ -216,7 +216,20 @@ func railRow(r FileRow, gl railMarks, p Palette, w int) string {
 		meta = fmt.Sprintf("+%d", r.Added)
 	}
 
-	left := indent + p.Apply(style, mark) + " " + r.Label
+	// The label gives way with a mark, the way the conversation titles below
+	// it already do. A name that merely stops reads as a short name, and in a
+	// column of paths that is the difference between `client.py` and
+	// `client.pyi` — one of which exists.
+	//
+	// The END gives way even though this is a path, because the sidebar has
+	// already put the directory on its own row: what is left here is the name,
+	// and a name is identified by how it starts.
+	label := r.Label
+	if room := w - visibleWidth(indent) - 2 - visibleWidth(meta); room > 1 {
+		label = ellipsisTail(label, room, gl.ell)
+	}
+
+	left := indent + p.Apply(style, mark) + " " + label
 	if meta == "" {
 		return left
 	}

@@ -91,6 +91,12 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   dizendo `… | sort -u | head -40`. Agora quem decide é o valor, não a
   ferramenta, reusando a única definição de "isto é um caminho" que o pacote já
   tinha.
+- **Linha cortada diz que foi cortada.** A coluna enuncia a regra para título de
+  conversa e o painel respondia do outro jeito — `✓ 6 CLI sob demanda com contr`
+  acabava ali — enquanto a própria coluna não a aplicava a nome de arquivo, onde
+  `client.py` e `client.pyi` se distinguem pelo que falta. As duas colunas
+  marcam o corte agora, e elidem antes de estilizar, que é a ordem que o
+  contrato da paleta pede.
 - **A coluna lateral conta um arquivo uma vez.** O mesmo arquivo chegava com
   duas grafias — `DCODE.md` numa chamada, `/Users/…/craw/DCODE.md` na seguinte —
   e desenhava duas linhas, dois contadores e um cabeçalho afirmando quinze

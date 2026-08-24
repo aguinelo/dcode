@@ -847,11 +847,21 @@ func renderPanel(m Model, g Geometry) []string {
 		case protocol.PlanBlocked:
 			mark = gl.blocked
 		}
-		out = append(out, clip(fmt.Sprintf(" %s %d %s", mark, it.ID, it.Text), w))
+		// Cut with a mark, never in silence. The sidebar next door already
+		// states the rule for a conversation title — a title that merely stops
+		// leaves the reader unable to tell a short one from a truncated one —
+		// and the panel answered the same question the other way: `✓ 6 CLI sob
+		// demanda com contr` just ended.
+		//
+		// The end gives way, because a plan item is identified by how it
+		// starts, the way a command is. Elided before styling, which is the
+		// order the Palette's contract asks for.
+		head := fmt.Sprintf(" %s %d ", mark, it.ID)
+		out = append(out, head+ellipsisTail(it.Text, w-visibleWidth(head), gl.ell))
 		if it.Status == protocol.PlanBlocked && it.Blocked != "" {
 			// A block with no visible cause is worse than no block at all.
 			for _, line := range wrap(it.Blocked, w-6) {
-				out = append(out, clip("     "+line, w))
+				out = append(out, ellipsisTail("     "+line, w, gl.ell))
 			}
 		}
 	}
@@ -880,7 +890,7 @@ func turnSection(m Model, g Geometry, w int) []string {
 	t := Text(m.Lang)
 	p := g.Palette
 
-	out := []string{"", clip(" "+p.Apply(StyleDim, strings.ToUpper(t.PanelTurn)), w)}
+	out := []string{"", clipStyled(" "+p.Apply(StyleDim, strings.ToUpper(t.PanelTurn)), w)}
 
 	// Dim until it is close, and then not. The ceiling is item 1 of the
 	// roadmap precisely because nothing tells anybody it is coming.
@@ -888,11 +898,11 @@ func turnSection(m Model, g Geometry, w int) []string {
 	if m.MaxRounds > 0 && m.Rounds*4 >= m.MaxRounds*3 {
 		style = StyleWarn
 	}
-	out = append(out, clip(" "+p.Apply(style,
+	out = append(out, clipStyled(" "+p.Apply(style,
 		fmt.Sprintf("%s %d/%d", t.PanelRounds, m.Rounds, m.MaxRounds)), w))
 
 	if m.MaxInFlight > 0 {
-		out = append(out, clip(" "+p.Apply(StyleDim,
+		out = append(out, clipStyled(" "+p.Apply(StyleDim,
 			fmt.Sprintf("%s %d·%d", t.PanelInFlight, m.InFlight, m.MaxInFlight)), w))
 	}
 	return out
