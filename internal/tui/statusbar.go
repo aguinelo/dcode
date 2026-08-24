@@ -78,12 +78,13 @@ func diffSegment(m Model, g Geometry) (segment, bool) {
 	if m.DiffAdded == 0 && m.DiffRemoved == 0 {
 		return segment{}, false
 	}
+	gl := glyphs(g.Unicode)
 	files := ""
 	if m.DiffFiles > 0 {
-		files = fmt.Sprintf(" · %d %s", m.DiffFiles, Text(m.Lang).BarFiles)
+		files = fmt.Sprintf(" %s %d %s", gl.dot, m.DiffFiles, Text(m.Lang).BarFiles)
 	}
 	return segment{
-		text: fmt.Sprintf("+%d −%d%s", m.DiffAdded, m.DiffRemoved, files),
+		text: fmt.Sprintf("+%d %s%d%s", m.DiffAdded, gl.minus, m.DiffRemoved, files),
 		drop: 1,
 	}, true
 }
@@ -139,10 +140,11 @@ func dropOne(segs *[]segment) bool {
 
 func assemble(segs []segment, g Geometry) string {
 	p := g.Palette
+	gl := glyphs(g.Unicode)
 	var b strings.Builder
 	for i, s := range segs {
 		if i > 0 {
-			b.WriteString(p.Apply(StyleDim, "│"))
+			b.WriteString(p.Apply(StyleDim, gl.gutter))
 		}
 		body := " " + s.text + " "
 		if s.solid {

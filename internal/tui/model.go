@@ -620,7 +620,12 @@ func (m Model) PlanSummary() string {
 	}
 	s := fmt.Sprintf("%d of %d", done, total)
 	if blocked > 0 {
-		s += fmt.Sprintf(" · %d blocked", blocked)
+		// Parentheses rather than a middle dot: this string is built in the
+		// model, which knows nothing about what the terminal can draw, and a
+		// typographic separator here is a rune the ASCII path cannot reach.
+		// The rule the leak taught: the model produces text, the renderer owns
+		// the glyphs.
+		s += fmt.Sprintf(" (%d blocked)", blocked)
 	}
 	return s
 }
@@ -714,12 +719,12 @@ func summariseResult(tool string, d protocol.ToolCompleted) string {
 			return s
 		}
 	case "edit":
-		return fmt.Sprintf("+%d −%d", d.Added, d.Removed)
+		return fmt.Sprintf("+%d -%d", d.Added, d.Removed)
 	case "write":
 		if d.Removed == 0 && d.Added > 0 {
 			return fmt.Sprintf("created, %d lines", d.Added)
 		}
-		return fmt.Sprintf("+%d −%d", d.Added, d.Removed)
+		return fmt.Sprintf("+%d -%d", d.Added, d.Removed)
 	case "glob":
 		return plural(d.Files, "file", "files")
 	case "grep":

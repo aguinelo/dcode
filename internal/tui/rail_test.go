@@ -3,6 +3,8 @@ package tui
 import (
 	"reflect"
 	"strings"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 	"testing"
 )
 
@@ -314,5 +316,58 @@ func TestAnEmptySidebarIsNotAdvertised(t *testing.T) {
 	m := Model{Lang: En, Cursor: -1}
 	if status := renderStatus(m, railGeometry(80), false); strings.Contains(status, "^b") {
 		t.Errorf("an empty column was advertised: %q", status)
+	}
+}
+
+// The box-drawing guard above asks whether a known set of glyphs got through.
+// That set is derived from the two glyph tables, so it only ever covers what
+// those tables know about — and the approval modal, which is drawn entirely
+// from literals and never appeared in a model this test built, was outside it
+// from the day it was written.
+//
+// This asks the decisive question instead: in ASCII mode, is every rune ASCII?
+// The model is built entirely from ASCII so that any rune above 127 in the
+// output came from the layout drawing it, and it is checked with the modal
+// open, which is the one screen where being unreadable is most expensive.
+func TestAsciiModeDrawsNothingButAscii(t *testing.T) {
+	m := railModel(
+		Entry{Kind: KindTool, Tool: "read", Target: "docs/ROADMAP.md", Running: true},
+		Entry{Kind: KindTool, Tool: "edit", Target: "internal/tui/rail.go", Added: 38, Removed: 2,
+			Diff: "--- a/x\n+++ b/x\n@@ -1,2 +1,3 @@\n+added\n", Expanded: true},
+		Entry{Kind: KindReasoning, Summary: "a thought", Expanded: true},
+		Entry{Kind: KindAssistant, Summary: "a paragraph with `code` and a - list item"},
+		Entry{Kind: KindTool, Tool: "read",
+			Target: "internal/very/deeply/nested/path/that/must/be/shortened.go"},
+	)
+	m.Sessions = []SessionChoice{{ID: "s1", Title: "a conversation with a title too long for any column"}}
+	m.SessionID = "s1"
+	m.DiffAdded, m.DiffRemoved, m.DiffFiles = 38, 2, 3
+	m.Rounds, m.MaxRounds, m.InFlight, m.MaxInFlight = 16, 20, 1, 4
+	m.Plan = []protocol.PlanItem{
+		{ID: 1, Text: "a plan item longer than the panel can hold", Status: protocol.PlanBlocked,
+			Blocked: "the reason it is blocked, at length"},
+	}
+
+	for _, name := range []string{"stream", "modal"} {
+		m := m
+		if name == "modal" {
+			m.Pending = &protocol.ApprovalRequest{
+				ApprovalID: "a1", Tool: "bash", Command: "rm -rf /tmp/x",
+				BoundaryCrossed: "the workspace", Reason: "it writes outside", Rule: "deny:rm",
+			}
+		}
+		g := DefaultGeometry(118, 24)
+		g.Palette = Palette{}
+		g.Unicode = false
+
+		for i, line := range lines(Render(m, g)) {
+			for _, r := range line {
+				if r > 127 {
+					t.Errorf("%s: %q on line %d reached a terminal that declared ASCII:\n%s",
+						name, r, i, line)
+					break
+				}
+			}
+		}
 	}
 }

@@ -97,6 +97,12 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   `client.py` e `client.pyi` se distinguem pelo que falta. As duas colunas
   marcam o corte agora, e elidem antes de estilizar, que é a ordem que o
   contrato da paleta pede.
+- **ASCII alcança o modal de aprovação.** O modal era desenhado inteiro a partir
+  de literais sem alternativa, então a única tela que pergunta se uma fronteira
+  pode ser cruzada era a única que um terminal em ASCII não conseguia ler. Foram
+  mais sete vazamentos junto. A guarda perguntava se um *conjunto conhecido* de
+  glifos escapou, o que só cobre o que as tabelas já conhecem; agora ela
+  pergunta se toda runa é ASCII, sobre um modelo montado inteiramente em ASCII.
 - **A coluna lateral conta um arquivo uma vez.** O mesmo arquivo chegava com
   duas grafias — `DCODE.md` numa chamada, `/Users/…/craw/DCODE.md` na seguinte —
   e desenhava duas linhas, dois contadores e um cabeçalho afirmando quinze
