@@ -75,20 +75,36 @@ type Strings struct {
 	Working string
 	// RailFiles heads the sidebar, and RailTouchedOne/Many count what the turn
 	// has touched — the header still says something when the column is narrow.
-	ChildOne         string
-	ChildMany        string
-	ChildOwns        string
-	ChildNoAnswer    string
-	ChildUnnamed     string
-	PanelTurn        string
-	PanelRounds      string
-	PanelInFlight    string
-	RailHidden       string
-	RailFiles        string
-	RailSessions     string
-	RailFilter       string
-	RailNaming       string
-	RailNoMatch      string
+	ChildOne      string
+	ChildMany     string
+	ChildOwns     string
+	ChildNoAnswer string
+	ChildUnnamed  string
+	PanelTurn     string
+	PanelRounds   string
+	PanelInFlight string
+	RailHidden    string
+	RailFiles     string
+	RailSessions  string
+	RailFilter    string
+	RailNaming    string
+	RailNoMatch   string
+
+	// The approval modal. It was written in English literals — the ONE screen
+	// that asks whether a boundary may be crossed, in a language the reader may
+	// not have. Consent given to a sentence somebody could not read is not
+	// consent.
+	ApprovalTitle    string
+	ApprovalCrosses  string
+	ApprovalNetwork  string
+	ApprovalStanding string
+	ApprovalOnce     string
+	ApprovalEnter    string
+	// PanelPlan is the panel's own heading, which was a literal too.
+	PanelPlan string
+	// PlanOf and PlanBlockedCount build the plan's footer count.
+	PlanOf           string
+	PlanBlockedCount string
 	SessionsMoreOne  string
 	SessionsMoreMany string
 	SessionsKeys     string
@@ -242,6 +258,15 @@ var catalogue = map[Lang]Strings{
 		RailFilter:       "/",
 		RailNaming:       "naming · esc cancels",
 		RailNoMatch:      "nothing matches",
+		ApprovalTitle:    "Approval needed",
+		ApprovalCrosses:  "crosses:",
+		ApprovalNetwork:  "Commands in this project may reach the network.",
+		ApprovalStanding: "[d] no   [a] once   [P] this project   [G] always",
+		ApprovalOnce:     "[d] deny   [a] allow   [A] whole session",
+		ApprovalEnter:    "Enter denies.",
+		PanelPlan:        "PLAN",
+		PlanOf:           "%d of %d",
+		PlanBlockedCount: "(%d blocked)",
 		SessionsMoreOne:  "more below",
 		SessionsMoreMany: "more below",
 		SessionsKeys:     "up/down choose, enter opens, r renames, esc closes",
@@ -383,6 +408,15 @@ Environment:
 		RailFilter:       "/",
 		RailNaming:       "nomeando · esc cancela",
 		RailNoMatch:      "nada corresponde",
+		ApprovalTitle:    "Precisa de aprovacao",
+		ApprovalCrosses:  "cruza:",
+		ApprovalNetwork:  "Comandos deste projeto podem alcancar a rede.",
+		ApprovalStanding: "[d] nao   [a] uma vez   [P] este projeto   [G] sempre",
+		ApprovalOnce:     "[d] negar   [a] permitir   [A] sessao inteira",
+		ApprovalEnter:    "Enter nega.",
+		PanelPlan:        "PLANO",
+		PlanOf:           "%d de %d",
+		PlanBlockedCount: "(%d bloqueado)",
 		SessionsMoreOne:  "abaixo",
 		SessionsMoreMany: "abaixo",
 		SessionsKeys:     "cima/baixo escolhe, enter abre, r renomeia, esc fecha",

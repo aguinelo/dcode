@@ -618,14 +618,15 @@ func (m Model) PlanSummary() string {
 	if total == 0 {
 		return ""
 	}
-	s := fmt.Sprintf("%d of %d", done, total)
+	t := Text(m.Lang)
+	s := fmt.Sprintf(t.PlanOf, done, total)
 	if blocked > 0 {
 		// Parentheses rather than a middle dot: this string is built in the
 		// model, which knows nothing about what the terminal can draw, and a
 		// typographic separator here is a rune the ASCII path cannot reach.
 		// The rule the leak taught: the model produces text, the renderer owns
 		// the glyphs.
-		s += fmt.Sprintf(" (%d blocked)", blocked)
+		s += " " + fmt.Sprintf(t.PlanBlockedCount, blocked)
 	}
 	return s
 }
