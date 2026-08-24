@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 93 decision changelogs |
+| spec families | 13, with 95 decision changelogs |
 | behavioural contracts | 42 declared |
 | **contracts measured against a model** | **3** |
-| coverage | 94.4%, gate at 90% |
+| coverage | 94.5%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.3.0** |
+| published version | **0.4.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -62,6 +62,18 @@ both disappeared — gave it 99. **Widening the terminal made the text narrower*
 and the crossing was a single column, because two thresholds sat at the same
 hundred. What the column held was a second copy of what the stream had just
 said.
+
+**Where the keyboard is.** The input area is a framed field, because the one
+question with no other answer on the screen is where the letters you type go.
+Nothing on that frame carries state: an earlier version dimmed it while the
+stream had the keyboard, and its own test asked whether that distinction
+survived without colour. It did not.
+
+Copy mode is `^O`. It was `v` twice, and the second time is the instructive one:
+the first fix required the stream cursor to be in the stream, which **narrowed
+the rule instead of applying it**. The input line is always a line where you
+type, so no condition could satisfy "a letter is not a shortcut" — only giving
+the letter back could.
 
 **What the guards could not see.** Eight of the defects fixed on 24 August had
 guards written for exactly them, and every guard was asking about a set it
@@ -97,6 +109,14 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.4.0 — 24 August 2026
+
+Two reports from the person using it, and both were the same shape as the
+release before: a rule that had been narrowed instead of applied, and a state
+the screen never showed.
 
 ### Changed
 
