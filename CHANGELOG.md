@@ -112,6 +112,13 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **The context meter measures the context.** It read `ctx 175%`, which is not
+  a context that is 175% full — it is a turn that spent 1.75 windows of input.
+  `InputTokens` is cumulative across a turn's rounds, and every round re-sends
+  the context. The daemon now states what the assembled context costs, using the
+  same estimate the compaction trigger reads so the meter and the threshold
+  agree by construction. Providers could not answer this: the two families
+  disagree about whether their input count already includes the cached prefix.
 - **A Chromium reaches its first frame inside the sandbox.** Without
   `mach-register` and a scoped `iokit-open`, any Chromium died with SIGSEGV
   before drawing anything — Playwright, Puppeteer, Lighthouse, an Electron app

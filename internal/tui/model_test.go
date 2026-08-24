@@ -390,11 +390,15 @@ func TestDurationComesFromTheEvent(t *testing.T) {
 }
 
 // The context meter needs a denominator: "12400 tokens" answers nothing.
+//
+// The numerator is ContextTokens, which the daemon measures. It used to be
+// InputTokens, which is cumulative across a turn's rounds — see
+// TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost.
 func TestContextPercentNeedsTheWindow(t *testing.T) {
 	withWindow := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ContextWindow: 100000}),
 		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
-			Usage: &protocol.Usage{InputTokens: 34000, OutputTokens: 800},
+			Usage: &protocol.Usage{InputTokens: 34000, OutputTokens: 800, ContextTokens: 34000},
 		}),
 	)
 	if withWindow.ContextPct != 34 {
@@ -409,7 +413,7 @@ func TestContextPercentNeedsTheWindow(t *testing.T) {
 	big := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ContextWindow: 1_000_000}),
 		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
-			Usage: &protocol.Usage{InputTokens: 5200},
+			Usage: &protocol.Usage{InputTokens: 5200, ContextTokens: 5200},
 		}),
 	)
 	if got := Render(big, DefaultGeometry(100, 10)); !strings.Contains(got, "ctx <1%") {
@@ -420,7 +424,7 @@ func TestContextPercentNeedsTheWindow(t *testing.T) {
 	// would be worse than saying nothing.
 	noWindow := apply(t, NewModel("", "", "", "", En),
 		ev(t, 1, protocol.EventTurnCompleted, protocol.TurnCompleted{
-			Usage: &protocol.Usage{InputTokens: 34000},
+			Usage: &protocol.Usage{InputTokens: 34000, ContextTokens: 34000},
 		}),
 	)
 	if noWindow.ContextPct != 0 {
