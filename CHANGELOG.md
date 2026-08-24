@@ -110,17 +110,7 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-### Added
-
-- **The stream has lanes.** Every row says which of three things it is — what
-  you asked, what the model did on the way, what it says — marked by a character
-  in the first column. On a long turn prose and tool calls alternated with
-  nothing structural between them, so catching up meant reading every row to
-  find out which rows were worth reading; now the eye runs down the answer lane
-  and skips the work. It costs no columns: every row already reserved two, and
-  the lane takes the first while the selection marker keeps the second. From the
-  `Coding Agent TUI v2` design; what did not come from it, and why, is in
-  `docs/ROADMAP.md` §11.
+_Nothing yet._
 
 ## 0.4.0 — 24 August 2026
 

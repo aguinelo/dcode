@@ -444,52 +444,6 @@ was missing was a measurement, and the measurement went the other way.
 
 ---
 
-## 11. What the v2 TUI design asks for and the product does not have
-
-**Source: the `Coding Agent TUI v2` design in the Claude Design project
-"Projeto de terminal user interface"
-(`fbbd32a7-28b3-4646-9497-aa948789ccb2`).** Its central idea — three lanes down
-the stream — shipped. These are the parts that did not, each with what stops
-them, so the specification that comes next knows where the request came from.
-
-**The RESULT block.** The design ends a turn with a marked block: a badge, one
-sentence of outcome, the diff totals and the file list. Every piece exists in
-the model already (`Verification`, `DiffAdded/Removed/Files`, the entries) —
-what does not exist is the fact that says WHICH assistant block concludes a
-turn. `KindAssistant` covers both mid-turn narration and the final answer, and
-nothing in the event stream tells them apart. Same shape as the `tool.progress`
-gap in §10: a client cannot derive it, so it is a protocol question first.
-
-**The diff pane and its proportional bars.** Per file, a bar of added, removed
-and untouched — a real improvement on the sidebar's `+188`, and NOT a
-repetition of the stream, which is what got the file column hidden by default
-on 24 August. It belongs in the column rather than in a third pane; the
-measurement that hid the column stands, and this would be a reason to open it.
-
-**The WATCH list.** Background processes with their state — `tsc --watch ok`,
-`vitest 1 fail`, `eslint idle`. `internal/tools` has a `process` tool, so the
-daemon knows; nothing reports the set of live ones to the client. A protocol
-question again.
-
-**The session pane.** Context gauge, edits accepted, tests passed and failed, a
-timestamped log of recent tool calls. The context percentage and the diff
-totals are already on the bar; the rest is new. A third resident pane is the
-thing the 24 August measurement argues hardest against — if it ships it is a
-summoned overlay, like the conversation list.
-
-**Themes, cycled from the keyboard.** The design carries four (neon, ashes,
-ember, mono) and switches with `t`. The palette gained semantic roles on 24
-August, which is the foundation this needs; what it still needs is a config
-surface, and a KEY THAT IS NOT A LETTER — `t` on a line where you type is the
-defect fixed twice already, most recently that same day.
-
-**`j`/`k` navigation and a `3 / 7` readout.** Same objection and the same
-answer: letters need a mode that owns the keyboard, and this product has one
-already (the conversation overlay). The position readout is worth having on its
-own — the stream cursor moves with nothing saying where it is.
-
----
-
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.

@@ -330,12 +330,8 @@ func TestCursorMarksTheSelectedEntry(t *testing.T) {
 		{Kind: KindError, Summary: "boom"},
 	}
 	m.Cursor = 1
-	g := DefaultGeometry(80, 10)
-	got := Render(m, g)
-	// The marker moved to the second column when the lane took the first, so
-	// the assertion names the marker rather than the two characters that
-	// happened to sit at the start of the row.
-	if !strings.Contains(got, glyphs(g.Unicode).active+"! boom") {
+	got := Render(m, DefaultGeometry(80, 10))
+	if !strings.Contains(got, "> ! boom") {
 		t.Errorf("the selected entry must be marked:\n%s", got)
 	}
 }

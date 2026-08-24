@@ -160,10 +160,6 @@ var tuiInvariants = map[string]string{
 	"delimitada nos quatro lados": "TestTheInputAreaIsDelimited",
 	"a cor não muda a forma dela": "TestTheFrameIsTheSameShapeWithAndWithoutColour",
 
-	// Lanes.
-	"está numa **raia**":       "TestEveryStreamRowIsInALane",
-	"não custa coluna nenhuma": "TestTheLaneCostsNoColumns",
-
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
 	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",

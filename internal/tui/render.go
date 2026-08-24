@@ -256,11 +256,6 @@ type marks struct {
 	// of a removal. Both were literals until an ASCII terminal got them: they
 	// are typography, and typography is the renderer's, never the model's.
 	dot, minus, prompt string
-	// The lane gutter: one column down the left of every row saying which of
-	// the three kinds of thing it is. The `you` lane has no glyph — the rule
-	// and the prompt already mark it twice, and a third mark on the one block
-	// nobody can miss is ink spent where there is no confusion.
-	laneProcess, laneAnswer string
 	// The frame of the approval modal. It was drawn from literals with no
 	// fallback at all — the one screen where being unreadable costs the most.
 	boxTL, boxTR, boxBL, boxBR, boxH string
@@ -275,13 +270,11 @@ func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
 			dot: "·", minus: "−", prompt: "❯",
-			laneProcess: "╎", laneAnswer: "▏",
 			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
 		dot: "-", minus: "-", prompt: ">",
-		laneProcess: ":", laneAnswer: "|",
 		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
@@ -608,13 +601,10 @@ func renderStream(m Model, g Geometry, w int) []string {
 			continue
 		}
 
-		// Two columns, as before: the lane in the first, the selection marker
-		// in the second. `cursor` leads the first row of an entry and `cont`
-		// every row after it, so a wrapped answer stays in its lane.
-		gut := laneGutter(laneOf(e), gl, p)
-		cursor, cont := gut+" ", gut+" "
-		if i == m.Cursor {
-			cursor = gut + p.Apply(StyleAccent, gl.active)
+		selected := i == m.Cursor
+		cursor := "  "
+		if selected {
+			cursor = p.Apply(StyleAccent, "> ")
 		}
 
 		switch e.Kind {
@@ -622,36 +612,30 @@ func renderStream(m Model, g Geometry, w int) []string {
 			// The model writes markdown, so the screen reads it. Printing it
 			// raw put the asterisks and the backticks on screen, and every
 			// answer with emphasis in it looked unfinished.
-			lead := cursor
 			for _, line := range renderProse(e.Summary, w-2, g) {
 				// A paragraph break is an EMPTY row, not two spaces. Indenting
 				// it made it whitespace, and the guard that forbids two blank
 				// rows in a row compares against "" — so every double blank in
 				// prose was invisible to the one test written to catch it.
-				//
-				// It carries no lane either: a lane on an empty row draws a
-				// gutter beside nothing, and the block it belongs to is
-				// unambiguous from the rows above and below.
 				if line == "" {
 					out = gapBefore(out)
 					continue
 				}
-				out = append(out, lead+line)
-				lead = cont
+				out = append(out, "  "+line)
 			}
 
 		case KindTool:
 			body, limit := toolBody(e, g)
 			out = append(out, clipStyled(renderToolLine(e, cursor, gl, p, w), w))
 			if body != "" {
-				out = append(out, detailLines(body, cont, w, g, limit, Text(m.Lang))...)
+				out = append(out, detailLines(body, w, g, limit, Text(m.Lang))...)
 			}
 
 		case KindError:
 			head := cursor + p.Apply(StyleError, "! "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, cont, w, g, g.DiffMaxLines, Text(m.Lang))...)
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
 		case KindCompletion:
@@ -668,19 +652,19 @@ func renderStream(m Model, g Geometry, w int) []string {
 			head := cursor + p.Apply(style, mark+" "+e.Summary)
 			out = append(out, clipStyled(head, w))
 			if e.Expanded && e.Detail != "" {
-				out = append(out, detailLines(e.Detail, cont, w, g, g.DiffMaxLines, Text(m.Lang))...)
+				out = append(out, detailLines(e.Detail, w, g, g.DiffMaxLines, Text(m.Lang))...)
 			}
 
 		case KindReasoning:
-			out = append(out, renderThought(e, cursor, cont, gl, g)...)
+			out = append(out, renderThought(e, cursor, gl, g)...)
 
 		case KindNote:
 			for j, line := range wrap(e.Summary, w-4) {
-				prefix := cursor + "~ "
+				prefix := "  ~ "
 				if j > 0 {
-					prefix = cont + "  "
+					prefix = "    "
 				}
-				out = append(out, clipStyled(prefix+p.Apply(StyleDim, line), w))
+				out = append(out, clipStyled(p.Apply(StyleDim, prefix+line), w))
 			}
 
 		case KindUser:
@@ -699,11 +683,11 @@ func renderStream(m Model, g Geometry, w int) []string {
 			// Inset to the same two-column gutter everything else uses. Drawn
 			// edge to edge it touched the dividers on both sides and read as a
 			// row of a table rather than as the seam between two exchanges.
-			out = append(out, cont+p.Apply(StyleChrome, strings.Repeat(gl.boxH, maxInt(0, w-4))))
+			out = append(out, "  "+p.Apply(StyleChrome, strings.Repeat(gl.boxH, maxInt(0, w-4))))
 			for j, line := range wrap(e.Summary, w-4) {
-				prefix := cursor + p.Apply(StyleAccent, gl.prompt) + " "
+				prefix := "  " + p.Apply(StyleAccent, gl.prompt) + " "
 				if j > 0 {
-					prefix = cont + "  "
+					prefix = "    "
 				}
 				out = append(out, clipStyled(prefix+p.Apply(StyleBold, line), w))
 			}
@@ -714,57 +698,6 @@ func renderStream(m Model, g Geometry, w int) []string {
 		}
 	}
 	return out
-}
-
-// Lane is which of the three things a row is: what you asked, what the model
-// did on the way, and what it says.
-//
-// It is the one idea worth taking whole from the v2 design, and the reason is
-// what a long turn looks like: prose and tool calls alternate down the screen
-// with nothing structural telling them apart, so catching up means reading
-// every row to find out which rows were worth reading. With a lane in the
-// gutter the eye can run down the answer lane alone.
-//
-// It costs NOTHING. Every row of the stream already reserved two columns — the
-// selection marker, or two spaces where there was none. The lane takes the
-// first of them and the marker keeps the second.
-type Lane int
-
-const (
-	// LaneProcess is the zero value because it is what an unknown kind should
-	// read as: work on the way to an answer, not an answer.
-	LaneProcess Lane = iota
-	LaneYou
-	LaneAnswer
-)
-
-// laneOf reads the lane off the kind.
-//
-// KindAssistant is the answer lane whether the model was narrating mid-turn or
-// concluding, because nothing in the event stream tells those apart — the
-// design's RESULT block, with its badge and its file list, needs a fact the
-// protocol does not carry yet. Recorded in the roadmap rather than guessed at.
-func laneOf(e Entry) Lane {
-	switch e.Kind {
-	case KindUser:
-		return LaneYou
-	case KindAssistant, KindCompletion:
-		return LaneAnswer
-	default:
-		return LaneProcess
-	}
-}
-
-// laneGutter is the single column that marks a lane, already styled.
-func laneGutter(l Lane, gl marks, p Palette) string {
-	switch l {
-	case LaneYou:
-		return " "
-	case LaneAnswer:
-		return p.Apply(StyleOK, gl.laneAnswer)
-	default:
-		return p.Apply(StyleChrome, gl.laneProcess)
-	}
 }
 
 // Column widths for a tool call. Fixed, because the point of the line is that
@@ -782,7 +715,7 @@ const (
 // it doing something sensible". Closed, it is one line — thinking runs several
 // times the length of the answer, and left expanded it buries the result it
 // was leading to.
-func renderThought(e Entry, cursor, cont string, gl marks, g Geometry) []string {
+func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 	p := g.Palette
 	w := g.StreamWidth(false, g.ShowPanel(true))
 
@@ -795,7 +728,7 @@ func renderThought(e Entry, cursor, cont string, gl marks, g Geometry) []string 
 		}
 		out := make([]string, 0, len(lines))
 		for _, l := range lines {
-			out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" "+l), w))
+			out = append(out, clipStyled(p.Apply(StyleChrome, "  "+gl.gutter+" "+l), w))
 		}
 		return out
 	}
@@ -811,7 +744,7 @@ func renderThought(e Entry, cursor, cont string, gl marks, g Geometry) []string 
 
 	out := []string{clipStyled(head, w)}
 	for _, l := range wrap(strings.TrimSpace(e.Summary), w-4) {
-		out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" "+l), w))
+		out = append(out, clipStyled(p.Apply(StyleChrome, "  "+gl.gutter+" "+l), w))
 	}
 	return out
 }
@@ -949,7 +882,7 @@ func reverse(s string) string {
 // detailLines renders expanded output, colouring it as a diff when it looks
 // like one. The diff is what gets reviewed, so it is the one place where colour
 // is doing work rather than decorating.
-func detailLines(detail, lead string, w int, g Geometry, limit int, t Strings) []string {
+func detailLines(detail string, w int, g Geometry, limit int, t Strings) []string {
 	gl := glyphs(g.Unicode)
 	lines := strings.Split(strings.TrimRight(detail, "\n"), "\n")
 	hidden := 0
@@ -960,14 +893,14 @@ func detailLines(detail, lead string, w int, g Geometry, limit int, t Strings) [
 	out := make([]string, 0, len(lines)+1)
 	for _, l := range lines {
 		body := g.Palette.Apply(DiffStyle(l), l)
-		out = append(out, clipStyled(lead+"  "+gl.gutter+" "+body, w))
+		out = append(out, clipStyled("    "+gl.gutter+" "+body, w))
 	}
 	if hidden > 0 {
 		// How much is hidden and how to see it. "truncated" alone leaves the
 		// reader unable to judge whether it matters.
-		note := fmt.Sprintf("  %s %s · %s", gl.ell,
+		note := fmt.Sprintf("    %s %s · %s", gl.ell,
 			plural(hidden, t.LineOne, t.LineMany), t.ExpandHint)
-		out = append(out, clipStyled(lead+g.Palette.Apply(StyleDim, note), w))
+		out = append(out, clipStyled(g.Palette.Apply(StyleDim, note), w))
 	}
 	return out
 }
