@@ -461,11 +461,27 @@ type (
 	}
 
 	// Usage is the token accounting for a turn.
+	//
+	// InputTokens is CUMULATIVE across the turn's rounds: every round re-sends
+	// the context, so a forty-round turn sums forty readings of it. That is the
+	// right number for what a turn COST and the wrong one for how full the
+	// context is — a client that divided it by the window showed `ctx 175%`.
 	Usage struct {
 		InputTokens      int `json:"input_tokens"`
 		OutputTokens     int `json:"output_tokens"`
 		CacheReadTokens  int `json:"cache_read_tokens,omitempty"`
 		CacheWriteTokens int `json:"cache_write_tokens,omitempty"`
+		// ContextTokens is what the assembled context costs NOW — not summed,
+		// and stated by the daemon rather than derived by a client.
+		//
+		// It is the same estimate the compaction trigger reads, deliberately:
+		// a meter and a threshold that disagree are worse than either alone,
+		// because the person sees the summary happen at a number the screen
+		// never showed. Provider counts could not give this — the two families
+		// disagree about whether input_tokens already includes the cached
+		// prefix, so the same context reads differently depending on who
+		// answered.
+		ContextTokens int `json:"context_tokens,omitempty"`
 	}
 	// SessionCompacted records a context compaction.
 	SessionCompacted struct {

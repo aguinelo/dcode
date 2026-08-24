@@ -160,6 +160,9 @@ var tuiInvariants = map[string]string{
 	"delimitada nos quatro lados": "TestTheInputAreaIsDelimited",
 	"a cor não muda a forma dela": "TestTheFrameIsTheSameShapeWithAndWithoutColour",
 
+	// The meter measures the context.
+	"nunca passa de 100%": "TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost",
+
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
 	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",
