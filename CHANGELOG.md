@@ -83,6 +83,17 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Changed
+
+- **The file column starts hidden.** Measured on a real session: at 132 columns
+  the column and the panel took 61 of them and left 71 for the conversation,
+  while the same session at 99 columns — where both disappear — gave it 99.
+  Widening the terminal made the text *narrower*, and the crossing was a single
+  column: 99 gave the stream 99, and 100 gave it 53. What the column held was
+  also a second copy of what the stream had just said. `^B` summons it and it
+  stays as it was left, which is what the key means in the editor it came from.
+  A contract change on a `stable` surface, so MINOR at least.
+
 ### Added
 
 - **A turn begins with a visible boundary.** A question used to be a mark in the

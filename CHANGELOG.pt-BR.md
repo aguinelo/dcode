@@ -79,6 +79,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Alterado
+
+- **A coluna de arquivos nasce escondida.** Medido sobre uma sessão real: em 132
+  colunas, a coluna e o painel tomavam 61 delas e deixavam 71 para a conversa,
+  enquanto a mesma sessão em 99 colunas — onde as duas somem — dava 99.
+  Alargar o terminal *encolhia* o texto, e a virada era uma coluna só: 99 dava 99
+  ao fluxo, e 100 dava 53. O que a coluna guardava era ainda uma segunda cópia do
+  que o fluxo tinha acabado de dizer. `^B` a invoca e ela fica como foi deixada,
+  que é o que a tecla significa no editor de onde veio. Mudança de contrato numa
+  superfície `stable`, então MINOR no mínimo.
+
 ### Adicionado
 
 - **O turno começa com um limite visível.** A pergunta era um sinal no mesmo peso

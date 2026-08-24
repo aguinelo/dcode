@@ -135,6 +135,10 @@ var tuiInvariants = map[string]string{
 	// Where an exchange begins.
 	"Toda pergunta abre com uma régua": "TestATurnBeginsWithAVisibleBoundary",
 
+	// The column is summoned, not resident.
+	"A coluna **nasce escondida**":     "TestTheSidebarStartsHidden",
+	"Não há regra de largura para ela": "TestTheSidebarHasNoWidthRuleLeft",
+
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
 	"ela é dona do teclado":         "TestCopyModeOwnsTheKeyboardWhileItIsOpen",

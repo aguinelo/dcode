@@ -422,15 +422,25 @@ nothing. That silence is the trigger for specifying an endpoint for recorded
 sessions — and the reason to write it down now is that a rail that lists nothing
 reads as a broken rail, not as an architectural boundary being reached.
 
-**The card is a thin rule, and a full border was the road not taken.** Spacing
+**The column's state is not remembered between runs.** It starts hidden, and a
+`^B` lasts as long as the process. Remembering it would mean the client writing
+a preference, which it has never done — `internal/tui` reads no disk and no
+environment by design, and the edge injects what it needs. So the store belongs
+at the edge, keyed by workspace, and it is a small config surface with a real
+question inside it: whether "I opened the column for this repository" is a
+preference or a habit. Recorded here rather than guessed at.
+
+**The full border was the road not taken, and is now rejected.** Spacing
 plus a `─` under the header was chosen over `┌ ┐ └ ┘ │ ─` around every tool call:
 it costs no columns, survives `NO_COLOR` and ASCII without a special case, and
 stays out of what copy mode selects — which the spec treats as surface.
 
-The full border remains a legitimate visual preference, with a known price: two
-columns and two lines per card, an ASCII variant, and the border joining the
-selection when someone copies. If it ever ships it is a setting, not a change of
-mind.
+It stays rejected, and now with evidence rather than argument. Rendering a real
+recorded session at four widths, the frame that read best was the one at 80
+columns — no sidebar, no panel, and not one box-drawing character in it. The
+price of the border was always known: two columns and two lines per card, an
+ASCII variant, and the border joining the selection when someone copies. What
+was missing was a measurement, and the measurement went the other way.
 
 ---
 
