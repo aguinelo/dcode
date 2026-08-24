@@ -50,7 +50,18 @@ type Options struct {
 	Sandbox   string
 	// Window is the model's context window, so a token count can become the
 	// percentage a person can act on.
-	Window    int
+	Window int
+	// Backlog is the sequence the session's log already reaches when the client
+	// attaches — everything at or below it is history being replayed, not
+	// something happening now.
+	//
+	// Continuing a conversation writes the whole of the old log into the new
+	// session, so attaching to one replays every event of it: 3544, on a real
+	// session of this machine. Each arrives as its own message and Bubble Tea
+	// paints after every message, so resuming redrew the screen 3544 times with
+	// the window following its own end — which is the screen that would not
+	// stop scrolling.
+	Backlog   uint64
 	Transport Transport
 	Geometry  Geometry
 	QueueMax  int
@@ -104,6 +115,12 @@ type program struct {
 	// tick can stop when the session goes idle and be started again exactly
 	// once when a turn begins.
 	ticking bool
+}
+
+// catchingUp reports whether the client is still reading history it was handed
+// on attach, rather than watching something happen.
+func (p *program) catchingUp() bool {
+	return p.opts.Backlog > 0 && p.model.LastSeq < p.opts.Backlog
 }
 
 // Run starts the TUI. It takes the alternate screen, which is what a fixed
@@ -194,7 +211,13 @@ func (p *program) tick() tea.Cmd {
 // it, and the guard is what keeps two clocks from running: every event would
 // otherwise add a tick, and the frame counter would sprint.
 func (p *program) resumeTicking() tea.Cmd {
-	if p.ticking || p.model.State != protocol.SessionStateRunning {
+	if p.ticking {
+		return nil
+	}
+	// While history is being read the session is IDLE — nothing is running —
+	// and the loading line still has to move. A still spinner on a screen that
+	// says "reading" is a screen that says "stuck".
+	if p.model.State != protocol.SessionStateRunning && !p.catchingUp() {
 		return nil
 	}
 	return p.tick()
@@ -254,7 +277,7 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//
 		// Nothing is lost by stopping: Now is refreshed on every event, so the
 		// clock a turn starts from is fresh whether or not a tick just ran.
-		if p.model.State != protocol.SessionStateRunning {
+		if p.model.State != protocol.SessionStateRunning && !p.catchingUp() {
 			p.ticking = false
 			return p, nil
 		}
@@ -1143,6 +1166,16 @@ func SessionList(list []protocol.Session, current string) string {
 }
 
 func (p *program) View() tea.View {
+	// While the backlog is arriving, paint a line rather than the screen.
+	//
+	// Not a blank: a person who asked to continue a conversation and got an
+	// empty terminal has no way to tell "loading" from "it lost everything",
+	// and that is the reading they would reach for after a day of this.
+	if p.catchingUp() {
+		v := tea.NewView(fill(loadingLine(p.model, p.geo), p.geo))
+		v.AltScreen = true
+		return v
+	}
 	body := Render(p.model, p.geo)
 	if p.fatal != "" {
 		body += "\n" + p.fatal + "\n"

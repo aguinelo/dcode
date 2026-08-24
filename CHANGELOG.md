@@ -112,6 +112,13 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **Resuming paints once.** Continuing writes the whole of the old log into the
+  new session, so attaching replayed every event of it — 3544 on a real session
+  — and Bubble Tea paints after every message, so the screen redrew 3544 times
+  with the window following its own end. It shows one line while it reads, with
+  a count, and the conversation once when it catches up. The line moves: a
+  session reading history is IDLE, and a still spinner under the word "reading"
+  is how a stuck screen looks.
 - **The context meter measures the context.** It read `ctx 175%`, which is not
   a context that is 175% full — it is a turn that spent 1.75 windows of input.
   `InputTokens` is cumulative across a turn's rounds, and every round re-sends

@@ -90,6 +90,11 @@ type Strings struct {
 	RailNaming    string
 	RailNoMatch   string
 
+	// While the history of a continued conversation is being read.
+	Loading    string
+	LoadedOne  string
+	LoadedMany string
+
 	// The approval modal. It was written in English literals — the ONE screen
 	// that asks whether a boundary may be crossed, in a language the reader may
 	// not have. Consent given to a sentence somebody could not read is not
@@ -258,6 +263,9 @@ var catalogue = map[Lang]Strings{
 		RailFilter:       "/",
 		RailNaming:       "naming · esc cancels",
 		RailNoMatch:      "nothing matches",
+		Loading:          "reading the conversation",
+		LoadedOne:        "line",
+		LoadedMany:       "lines",
 		ApprovalTitle:    "Approval needed",
 		ApprovalCrosses:  "crosses:",
 		ApprovalNetwork:  "Commands in this project may reach the network.",
@@ -408,6 +416,9 @@ Environment:
 		RailFilter:       "/",
 		RailNaming:       "nomeando · esc cancela",
 		RailNoMatch:      "nada corresponde",
+		Loading:          "lendo a conversa",
+		LoadedOne:        "linha",
+		LoadedMany:       "linhas",
 		ApprovalTitle:    "Precisa de aprovacao",
 		ApprovalCrosses:  "cruza:",
 		ApprovalNetwork:  "Comandos deste projeto podem alcancar a rede.",

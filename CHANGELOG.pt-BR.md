@@ -108,6 +108,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **Retomar desenha uma vez.** Continuar escreve o log antigo inteiro na sessão
+  nova, então a conexão reproduzia todos os eventos dele — 3544 numa sessão real
+  — e o Bubble Tea desenha depois de cada mensagem, então a tela repintava 3544
+  vezes com a janela seguindo o próprio fim. Agora mostra uma linha enquanto lê,
+  com um contador, e a conversa uma vez quando alcança. A linha se move: sessão
+  lendo histórico está parada, e fiapo congelado sob a palavra "lendo" é como
+  uma tela travada se parece.
 - **O medidor de contexto mede o contexto.** Ele marcava `ctx 175%`, que não é
   um contexto 175% cheio — é um turno que gastou 1,75 janelas de entrada.
   `InputTokens` é cumulativo pelas rodadas do turno, e cada rodada reenvia o
