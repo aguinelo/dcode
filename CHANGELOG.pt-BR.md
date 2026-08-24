@@ -81,6 +81,13 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Alterado
 
+- **A lista de conversas é invocada, não residente.** `^R` no readline é uma
+  busca que se invoca — aparece, você escolhe, some — e tomar a tecla emprestada
+  para então fazer dela vinte e seis colunas permanentes contradizia a convenção
+  que justificou o empréstimo. Agora é sobreposição, como o modal de aprovação já
+  era, com sessenta e quatro colunas para mostrar um título em vez de vinte e
+  seis. `RailNav` não se moveu: o cursor, o filtro, o modo de nomear e todos os
+  testes deles seguem iguais, e só o desenho mudou de lugar.
 - **A coluna de arquivos nasce escondida.** Medido sobre uma sessão real: em 132
   colunas, a coluna e o painel tomavam 61 delas e deixavam 71 para a conversa,
   enquanto a mesma sessão em 99 colunas — onde as duas somem — dava 99.

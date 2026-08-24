@@ -180,7 +180,7 @@ func TestTheOpenConversationIsMarkedByACharacter(t *testing.T) {
 	m := sessionsModel("b", "first", "second")
 	g := railGeometry(140)
 	g.Palette = Palette{}
-	lines := strings.Join(renderRail(m, g, 12), "\n")
+	lines := strings.Join(renderSessionList(m, g), "\n")
 
 	for _, want := range []string{"● second", "  first"} {
 		if !strings.Contains(lines, want) {
@@ -189,17 +189,19 @@ func TestTheOpenConversationIsMarkedByACharacter(t *testing.T) {
 	}
 }
 
-// A workspace with conversations and a turn that has touched nothing still has
-// a column worth drawing. Asking only about files emptied it for the first
-// minute of every session.
-func TestConversationsAloneAreEnoughToOpenTheSidebar(t *testing.T) {
+// Conversations no longer open the column, because they are not in it. This
+// test asserted the opposite and is kept, inverted, so the reason the column
+// used to open for them leaves a record: it held a second section listing them,
+// and that section is now an overlay.
+func TestConversationsDoNotOpenTheFileColumn(t *testing.T) {
 	m := Model{Lang: En, Cursor: -1, Sessions: []SessionChoice{{ID: "a", Title: "x"}}}
-	if !m.railHasContent() {
-		t.Error("a workspace with recorded conversations got no sidebar")
+	if m.railHasContent() {
+		t.Error("a recorded conversation still opens the file column")
 	}
-	empty := Model{Lang: En, Cursor: -1}
-	if empty.railHasContent() {
-		t.Error("a session with nothing at all opened a column")
+	touched := Model{Lang: En, Cursor: -1,
+		Entries: []Entry{{Kind: KindTool, Tool: "write", Target: "a.go"}}}
+	if !touched.railHasContent() {
+		t.Error("a turn that wrote a file got no column")
 	}
 }
 
@@ -210,7 +212,7 @@ func TestATruncatedTitleSaysItWasTruncated(t *testing.T) {
 	g := railGeometry(120)
 	g.Palette = Palette{}
 	var row string
-	for _, l := range renderRail(m, g, 12) {
+	for _, l := range renderSessionList(m, g) {
 		if strings.Contains(l, "catalogar") {
 			row = l
 			break
@@ -219,11 +221,17 @@ func TestATruncatedTitleSaysItWasTruncated(t *testing.T) {
 	if row == "" {
 		t.Fatal("the conversation is not listed")
 	}
-	if !strings.HasSuffix(strings.TrimRight(row, " "), "…") {
+	if !strings.Contains(row, "…") {
 		t.Errorf("a cut title does not say it was cut: %q", row)
 	}
-	if w := visibleWidth(row); w > g.railWidth() {
-		t.Errorf("the row is %d wide in a %d column", w, g.railWidth())
+	// Every row of the overlay is the same width, so a box that a long title
+	// pushed out of shape shows up here rather than on somebody's screen.
+	box := renderSessionList(m, g)
+	for i, l := range box {
+		if visibleWidth(l) != visibleWidth(box[0]) {
+			t.Errorf("row %d is %d wide, the box is %d: %q",
+				i, visibleWidth(l), visibleWidth(box[0]), l)
+		}
 	}
 }
 

@@ -54,54 +54,23 @@ func renderRail(m Model, g Geometry, height int) []string {
 		out = append(out, clipStyled(railRow(r, gl, p, w), w))
 	}
 
-	// The conversations of this workspace, under the files. Second because the
-	// files are about the turn happening now and the list is about the ones
-	// that already did — what is moving goes above what is not.
+	// The conversations of this workspace are NOT here any more.
 	//
-	// It gives ground first when the column runs out of rows, for the same
-	// reason: a truncated list of past conversations costs less than a
-	// truncated list of what is being written right now.
-	if len(m.Sessions) > 0 && len(out)+2 < height {
-		out = append(out, "")
-
-		// The header says the key while the rail is not focused, and shows what
-		// has been typed while it is. Two facts, one row, and never both — the
-		// key is only useful before you press it.
-		head := strings.ToUpper(t.RailSessions)
-		style := StyleDim
-		switch {
-		case m.Nav.Naming:
-			// The caret belongs where the typing goes. Two of them, one in the
-			// header and one in the row, would leave the reader guessing which
-			// field the next letter lands in.
-			style = StyleAccent
-			head += "  " + t.RailNaming
-		case m.Nav.Active:
-			style = StyleAccent
-			head += "  " + t.RailFilter + m.Nav.Filter + gl.caret
-		default:
-			head += "  ^r"
-		}
-		out = append(out, clipStyled(p.Apply(style, head), w))
-
-		visible := m.Nav.Visible(m.Sessions)
-		if len(visible) == 0 {
-			// Said, rather than left blank. A list that empties itself under a
-			// filter reads as a list that lost its contents.
-			out = append(out, clipStyled(p.Apply(StyleDim, "  "+t.RailNoMatch), w))
-		}
-		for i, c := range visible {
-			if len(out) >= height {
-				break
-			}
-			under := m.Nav.Active && i == m.Nav.Cursor
-			if under && m.Nav.Naming {
-				out = append(out, clipStyled(namingRow(m.Nav.Draft, gl, p, w), w))
-				continue
-			}
-			out = append(out, clipStyled(sessionRow(c, c.ID == m.SessionID, under, gl, p, w), w))
-		}
-	}
+	// They were a second section of this column, twenty-six characters wide and
+	// permanently resident, holding a list somebody opens once in an afternoon.
+	// On a real session the four rows read `Write DCODE.md at the r…` four
+	// times: the titles derive from the first question, the four conversations
+	// began with the same one, and the cut fell in the same place. Nothing
+	// there told them apart.
+	//
+	// `^R` in readline is a SUMMONED search — it appears, you choose, it goes.
+	// Borrowing the key and then making it a permanent column contradicted the
+	// convention the borrowing was justified by. The list is an overlay now,
+	// which is what the key already meant.
+	//
+	// RailNav is untouched by the move: the cursor, the filter, the naming mode
+	// and every rule they carry are the same, and so are their tests. What
+	// changed is where the list is drawn.
 
 	for len(out) < height {
 		out = append(out, "")

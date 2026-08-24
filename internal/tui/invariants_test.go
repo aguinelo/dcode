@@ -41,7 +41,7 @@ var tuiInvariants = map[string]string{
 	"não pelo formato da string":         "TestAChildsNameIsNotAFile",
 	"terminal que declarou não desenhá":  "TestNoBoxDrawingRuneSurvivesAsciiMode",
 	"marcada por caractere, não só":      "TestTheOpenConversationIsMarkedByACharacter",
-	"Conversas sozinhas já abrem":        "TestConversationsAloneAreEnoughToOpenTheSidebar",
+	"não abre a coluna de arquivos":      "TestConversationsDoNotOpenTheFileColumn",
 	"diz que foi cortado":                "TestATruncatedTitleSaysItWasTruncated",
 	"mesmo filtro do `dcode -r`":         "TestThePickListLeavesOutSessionsNobodyAskedAnythingIn",
 	"em células e não em bytes":          "TestATitleIsCutInCellsAndNotInBytes",

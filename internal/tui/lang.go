@@ -75,22 +75,25 @@ type Strings struct {
 	Working string
 	// RailFiles heads the sidebar, and RailTouchedOne/Many count what the turn
 	// has touched — the header still says something when the column is narrow.
-	ChildOne        string
-	ChildMany       string
-	ChildOwns       string
-	ChildNoAnswer   string
-	ChildUnnamed    string
-	PanelTurn       string
-	PanelRounds     string
-	PanelInFlight   string
-	RailHidden      string
-	RailFiles       string
-	RailSessions    string
-	RailFilter      string
-	RailNaming      string
-	RailNoMatch     string
-	RailTouchedOne  string
-	RailTouchedMany string
+	ChildOne         string
+	ChildMany        string
+	ChildOwns        string
+	ChildNoAnswer    string
+	ChildUnnamed     string
+	PanelTurn        string
+	PanelRounds      string
+	PanelInFlight    string
+	RailHidden       string
+	RailFiles        string
+	RailSessions     string
+	RailFilter       string
+	RailNaming       string
+	RailNoMatch      string
+	SessionsMoreOne  string
+	SessionsMoreMany string
+	SessionsKeys     string
+	RailTouchedOne   string
+	RailTouchedMany  string
 
 	// LineOne and LineMany count hidden lines in a collapsed body, and
 	// ExpandHint says how to see them. All three because the hint said
@@ -234,6 +237,9 @@ var catalogue = map[Lang]Strings{
 		RailFilter:       "/",
 		RailNaming:       "naming · esc cancels",
 		RailNoMatch:      "nothing matches",
+		SessionsMoreOne:  "more below",
+		SessionsMoreMany: "more below",
+		SessionsKeys:     "up/down choose, enter opens, r renames, esc closes",
 		RailTouchedOne:   "touched",
 		RailTouchedMany:  "touched",
 
@@ -371,6 +377,9 @@ Environment:
 		RailFilter:       "/",
 		RailNaming:       "nomeando · esc cancela",
 		RailNoMatch:      "nada corresponde",
+		SessionsMoreOne:  "abaixo",
+		SessionsMoreMany: "abaixo",
+		SessionsKeys:     "cima/baixo escolhe, enter abre, r renomeia, esc fecha",
 		RailTouchedOne:   "tocado",
 		RailTouchedMany:  "tocados",
 
