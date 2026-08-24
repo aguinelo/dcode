@@ -79,7 +79,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **Linha de chamada continua uma linha.** Comando de shell quebrado em várias
+  linhas era escrito no quadro como várias linhas, e tudo depois dele — coluna
+  lateral, divisor, painel — ficava desalinhado até o fim da tela. O achatamento
+  ficou em `clipStyled`, por onde passa toda linha de toda coluna, para a
+  garantia valer também para o próximo campo de uma linha.
+- **Comando guarda o começo, caminho guarda o fim.** A elisão guardava o fim dos
+  dois, então quatro buscas diferentes desenhavam quatro linhas idênticas
+  dizendo `… | sort -u | head -40`. Agora quem decide é o valor, não a
+  ferramenta, reusando a única definição de "isto é um caminho" que o pacote já
+  tinha.
 
 ## 0.2.0 — 23 de agosto de 2026
 

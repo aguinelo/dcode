@@ -632,7 +632,11 @@ func targetOf(raw json.RawMessage) string {
 	}
 	for _, k := range []string{"path", "pattern", "command"} {
 		if v, ok := m[k].(string); ok {
-			return v
+			// Flattened here as well as at the screen, because the width this
+			// value is measured against is decided before it gets there. A
+			// four-line shell command measured as one long line elides in the
+			// wrong place even when the frame survives.
+			return strings.TrimSpace(flatten(v))
 		}
 	}
 	return ""

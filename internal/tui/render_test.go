@@ -733,3 +733,60 @@ func withEntries() Model {
 	}
 	return m
 }
+
+// A tool called with a shell command that wraps over several lines used to
+// write those lines straight into the frame, where the second one started at
+// column zero and pushed the sidebar, the divider and the panel out of
+// alignment for the rest of the screen.
+//
+// The assertion is the LINE COUNT, not the width, and that is the point: the
+// width guard above splits on "\n" before measuring, so a row broken in two
+// measured as two short rows and passed. The defect was invisible to the test
+// written to catch exactly it.
+func TestAToolLineSurvivesAMultiLineCommand(t *testing.T) {
+	m := modelWithPlan()
+	m.Entries = append(m.Entries, Entry{
+		Kind: KindTool, Tool: "bash",
+		// Short enough that the elision never touches it, which is the case
+		// that actually reached the screen: a long command lost its newline to
+		// the truncation by accident, a short one carried it straight through.
+		Target:  "pwd \\\n  ls -la",
+		Summary: "exit 0\nsecond line",
+	})
+	g := DefaultGeometry(132, 24)
+
+	out := Render(m, g)
+	if got := len(lines(out)); got != g.Height {
+		t.Fatalf("frame is %d lines, terminal is %d — a row broke in two", got, g.Height)
+	}
+	for i, l := range lines(out) {
+		if strings.ContainsAny(l, "\n\r\t") {
+			t.Fatalf("line %d still carries a control character: %q", i, l)
+		}
+	}
+}
+
+// The two halves of a target are not interchangeable: a path is identified by
+// its end and a command by its beginning. Keeping the tail of a command
+// produced four consecutive rows reading the same "| head -40".
+func TestACommandKeepsItsBeginningAndAPathItsEnd(t *testing.T) {
+	const cmd = "grep -o '\"/[a-z-]*\"' /tmp/chunks/*.js | sort -u | head -40"
+	if got := elide(cmd, 28, "…"); !strings.HasPrefix(got, "grep -o") || !strings.HasSuffix(got, "…") {
+		t.Errorf("a command lost its beginning: %q", got)
+	}
+
+	const path = "internal/tui/render.go"
+	if got := elide(path, 14, "…"); !strings.HasSuffix(got, "render.go") || !strings.HasPrefix(got, "…") {
+		t.Errorf("a path lost its end: %q", got)
+	}
+
+	// Neither may ever be wider than it was asked to be, which is what the
+	// column arithmetic upstream is counting on.
+	for _, s := range []string{cmd, path, "explore", ""} {
+		for _, w := range []int{0, 1, 3, 8, 14, 28, 200} {
+			if got := clipWidth(elide(s, w, "…")); w > 0 && got > w {
+				t.Errorf("elide(%q, %d) is %d cells wide", s, w, got)
+			}
+		}
+	}
+}
