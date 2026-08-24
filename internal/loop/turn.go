@@ -835,9 +835,15 @@ func (e *Engine) applyCompaction(ctx context.Context, plan ce.CompactionPlan) er
 			text = s
 		}
 	}
+	before := len(e.session.History)
 	e.session = ce.Apply(e.session, plan, text)
 	e.emit(protocol.EventSessionCompacted, protocol.SessionCompacted{
 		FromSeq: uint64(plan.FromIdx), ToSeq: uint64(plan.ToIdx),
+		// How much went and how much stayed. "Earlier history was summarised"
+		// says that something happened; these say how much, which is the
+		// difference between a notice and an answer.
+		Messages: plan.ToIdx - plan.FromIdx,
+		Kept:     before - (plan.ToIdx - plan.FromIdx),
 	})
 	return nil
 }
@@ -948,11 +954,20 @@ func (e *Engine) crossBudget() ce.Band {
 		return ce.BandNone
 	}
 	cfg := e.ctxConfig()
-	band, announce := ce.Crossed(e.budgetBand, ce.Fraction(e.session, cfg), cfg.CompactAt)
+	f := ce.Fraction(e.session, cfg)
+	band, announce := ce.Crossed(e.budgetBand, f, cfg.CompactAt)
 	e.budgetBand = band
 	if !announce {
 		return ce.BandNone
 	}
+	// The person is told at the same moment the model is.
+	//
+	// The model has been told for a while; nobody told the reader. So the
+	// summary arrived as a line saying it had happened — after the fact, with
+	// no warning it was coming and no chance to finish a thought first.
+	e.emit(protocol.EventContextBand, protocol.ContextBand{
+		Band: int(band), Fraction: f,
+	})
 	return band
 }
 

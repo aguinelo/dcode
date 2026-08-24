@@ -167,6 +167,9 @@ var tuiInvariants = map[string]string{
 	"desenha **uma linha** enquanto lê": "TestResumingPaintsALoadingLineUntilTheBacklogIsRead",
 	"A linha se move":                   "TestTheLoadingLineKeepsTicking",
 
+	// The context says it is filling.
+	"avisada de que o contexto está enchendo": "TestTheContextSaysItIsFillingBeforeItIsCut",
+
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",
 	"nunca é atalho":         "TestVIsALetterWhereverTheCursorIs",

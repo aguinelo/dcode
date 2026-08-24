@@ -158,6 +158,12 @@ the screen never showed.
 
 ### Added
 
+- **The context says it is filling before it is cut.** The bands were computed
+  and announced to the model, and nobody announced them to the reader — so the
+  summary arrived as one line saying it had happened, after the fact, with no
+  chance to finish a thought first. The crossing now reaches the client at the
+  same moment it reaches the model, and the cut says how many messages went and
+  how many stayed instead of only that something did.
 - **The input area is delimited on all four sides.** A frame here and not around
   a tool call, which is what a box is for: the input is a *field* — a fixed
   region that does not scroll, that you return to, and that has to be findable

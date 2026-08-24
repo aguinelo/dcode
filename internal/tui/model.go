@@ -451,10 +451,30 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Plan = d.Items
 		}
 
+	case protocol.EventContextBand:
+		// A warning, BEFORE the cut. The model has been told this for a while;
+		// nobody told the reader, so the summary arrived as a line saying it
+		// had happened — after the fact, with no chance to finish a thought
+		// first.
+		var d protocol.ContextBand
+		if err := json.Unmarshal(ev.Payload, &d); err == nil && d.Fraction > 0 {
+			m.Entries = append(m.Entries, Entry{
+				Kind: KindNote, Seq: ev.Seq,
+				Summary: fmt.Sprintf(Text(m.Lang).ContextFilling, int(d.Fraction*100)),
+			})
+		}
+
 	case protocol.EventSessionCompacted:
-		m.Entries = append(m.Entries, Entry{
-			Kind: KindNote, Summary: "earlier history was summarised", Seq: ev.Seq,
-		})
+		// How much went, and how much stayed. "Earlier history was summarised"
+		// says that something happened; the numbers say how much, which is the
+		// difference between a notice and an answer.
+		var d protocol.SessionCompacted
+		_ = json.Unmarshal(ev.Payload, &d)
+		note := Text(m.Lang).Compacted
+		if d.Messages > 0 {
+			note = fmt.Sprintf(Text(m.Lang).CompactedCount, d.Messages, d.Kept)
+		}
+		m.Entries = append(m.Entries, Entry{Kind: KindNote, Summary: note, Seq: ev.Seq})
 
 	case protocol.EventSessionError:
 		var d protocol.Error
