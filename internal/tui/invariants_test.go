@@ -142,8 +142,8 @@ var tuiInvariants = map[string]string{
 	"Nenhuma tela é escrita em literal": "TestNoEnglishSurvivesAPortugueseScreen",
 
 	// Text has a hierarchy.
-	"é lida em peso normal":  "TestTheAnswerIsNotTheFaintestThingOnTheScreen",
-	"nunca um cinza cravado": "TestTheTextHierarchyUsesOnlyWeightsATerminalKeeps",
+	"é **mais clara** que o que a qualifica":  "TestTheAnswerIsBrighterThanWhatQualifiesIt",
+	"legível contra o fundo que o tema pinta": "TestEveryRoleIsLegibleAgainstTheGround",
 
 	// A marker still arriving.
 	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",
@@ -160,6 +160,9 @@ var tuiInvariants = map[string]string{
 	"plano é um bloco no fluxo":   "TestThePlanIsABlockInTheStream",
 	"contam o mesmo plano":        "TestThePlanBlockAndTheStatusCountThePlanTheSameWay",
 	"teto do turno chega à barra": "TestTheCeilingReachesTheBarOnceItIsClose",
+
+	// Colour off means colour off.
+	"Cor desligada não emite escape": "TestColourOffPaintsNoGround",
 
 	// Copy mode.
 	"`^O` abre a cópia":      "TestTheChordOpensCopyMode",

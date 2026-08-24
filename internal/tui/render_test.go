@@ -439,18 +439,19 @@ func TestTheMascotIsColouredWithTheBrandPalette(t *testing.T) {
 	g.Palette = Palette{Enabled: true}
 	got := Render(NewModel("s", "/w", "MiniMax-M3", "read-only", En), g)
 
+	th := g.Palette.theme()
 	for name, code := range map[string]string{
-		"highlight": ansi[StyleHighlight],
-		"body":      ansi[StyleBody],
-		"shadow":    ansi[StyleShadow],
-		"eye":       ansi[StyleEye],
+		"highlight": th.Role[StyleHighlight].sgr(g.Palette.Depth),
+		"body":      th.Role[StyleBody].sgr(g.Palette.Depth),
+		"shadow":    th.Role[StyleShadow].sgr(g.Palette.Depth),
+		"eye":       th.Role[StyleEye].sgr(g.Palette.Depth),
 	} {
 		if !strings.Contains(got, "\x1b["+code+"m") {
 			t.Errorf("the %s tone is missing from the mark", name)
 		}
 	}
 	// The eye is the one terracotta in the whole interface.
-	if n := strings.Count(got, "\x1b["+ansi[StyleEye]+"m"); n != 1 {
+	if n := strings.Count(got, "\x1b["+th.Role[StyleEye].sgr(g.Palette.Depth)+"m"); n != 1 {
 		t.Errorf("the eye must appear exactly once, got %d", n)
 	}
 	if n := widest(got); n > 100 {
@@ -586,10 +587,10 @@ func TestDiffLinesAreColouredBySign(t *testing.T) {
 		Diff: "@@ -1 +1 @@ x.go\n-antes\n+depois",
 	}}
 	got := Render(m, g)
-	if !strings.Contains(got, "\x1b["+ansi[StyleAdded]+"m") {
+	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleAdded].sgr(g.Palette.Depth)+"m") {
 		t.Error("an added line must be green")
 	}
-	if !strings.Contains(got, "\x1b["+ansi[StyleRemoved]+"m") {
+	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleRemoved].sgr(g.Palette.Depth)+"m") {
 		t.Error("a removed line must be red")
 	}
 }

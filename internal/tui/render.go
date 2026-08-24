@@ -213,11 +213,25 @@ func Render(m Model, g Geometry) string {
 // Padding rather than an erase-to-end-of-line escape, because the escape is the
 // renderer's business and this has to hold whatever renderer draws it.
 func fill(body string, g Geometry) string {
+	// The ground is painted per ROW, not once for the screen.
+	//
+	// One escape at the top would be undone by the first reset a styled run
+	// emits, and every row would then be a different colour depending on
+	// whether anything on it happened to be styled. Opening each row with the
+	// ground and letting Apply restore it after every run is what makes the
+	// background a property of the screen rather than of the last thing drawn.
+	//
+	// Empty when colour is off, so the no-colour path emits nothing at all.
+	ground := g.Palette.Ground()
 	lines := strings.Split(body, "\n")
 	for i, line := range lines {
 		if pad := g.Width - visibleWidth(line); pad > 0 {
-			lines[i] = line + strings.Repeat(" ", pad)
+			line += strings.Repeat(" ", pad)
 		}
+		if ground != "" {
+			line = ground + line
+		}
+		lines[i] = line
 	}
 	return strings.Join(lines, "\n")
 }
@@ -787,7 +801,10 @@ func renderToolLine(e Entry, cursor string, gl marks, p Palette, w int) string {
 	// The target gives ground first when the terminal is narrow: the tool name
 	// and the summary are short and load-bearing, a path is neither.
 	targetW := toolTargetWidth
-	if room := w - len(cursor) - toolNameWidth - 24; room < targetW {
+	// visibleWidth and not len: the lead carries escapes, so a byte count
+	// shrinks the target only on a colour terminal — which is the hardest kind
+	// of defect to see, and the one the colour guard exists to catch. It did.
+	if room := w - visibleWidth(cursor) - toolNameWidth - 24; room < targetW {
 		targetW = room
 	}
 	if targetW < 8 {
@@ -1077,9 +1094,9 @@ func InputHeight(m Model, g Geometry) int { return InputRows(m, g) + inputFrameR
 func renderInputLines(m Model, g Geometry, hint string) []string {
 	p := g.Palette
 	gl := glyphs(g.Unicode)
-	prompt := "> "
+	prompt := gl.prompt + " "
 	if len(m.Queue) > 0 {
-		prompt = fmt.Sprintf("(%d %s) > ", len(m.Queue), Text(m.Lang).Queued)
+		prompt = fmt.Sprintf("(%d %s) %s ", len(m.Queue), Text(m.Lang).Queued, gl.prompt)
 	}
 
 	// The frame is chrome and stays chrome, whichever region has the keyboard.
