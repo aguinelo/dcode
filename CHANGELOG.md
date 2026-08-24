@@ -101,6 +101,12 @@ that on every run to stop the opposite reading.
   file name, where `client.py` and `client.pyi` differ by what is missing. Both
   columns mark the cut now, and elide before styling, which is the order the
   palette's contract asks for.
+- **ASCII reaches the approval modal.** The modal was drawn entirely from
+  literals with no fallback, so the one screen that asks whether a boundary may
+  be crossed was the one screen a terminal in ASCII could not read. Seven other
+  leaks went with it. The guard asked whether a *known set* of glyphs escaped,
+  which only ever covers what the glyph tables already know; it now asks whether
+  every rune is ASCII, over a model built entirely from ASCII.
 - **The sidebar counts a file once.** The same file arrived under two spellings
   — `DCODE.md` from one call, `/Users/…/craw/DCODE.md` from the next — and drew
   two rows, two line counters and a header claiming fifteen files were touched

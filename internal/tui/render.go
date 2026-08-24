@@ -222,7 +222,16 @@ func (g Geometry) StreamWidth(showRail, showPanel bool) int {
 }
 
 // marks carries the glyphs for a status, with an ASCII fallback.
-type marks struct{ pending, active, done, blocked, bullet, thought, gutter, ell string }
+type marks struct {
+	pending, active, done, blocked, bullet, thought, gutter, ell string
+	// dot is the separator between two facts on one line, and minus the sign
+	// of a removal. Both were literals until an ASCII terminal got them: they
+	// are typography, and typography is the renderer's, never the model's.
+	dot, minus string
+	// The frame of the approval modal. It was drawn from literals with no
+	// fallback at all — the one screen where being unreadable costs the most.
+	boxTL, boxTR, boxBL, boxBR, boxH string
+}
 
 // glyphs returns the mark set.
 //
@@ -232,9 +241,13 @@ type marks struct{ pending, active, done, blocked, bullet, thought, gutter, ell 
 func glyphs(unicode bool) marks {
 	if unicode {
 		return marks{pending: " ", active: "▸", done: "✓", blocked: "⊘", bullet: "⏺", thought: "✻",
+			dot: "·", minus: "−",
+			boxTL: "┌", boxTR: "┐", boxBL: "└", boxBR: "┘", boxH: "─",
 			gutter: "│", ell: "…"}
 	}
 	return marks{pending: " ", active: ">", done: "x", blocked: "!", bullet: "*", thought: "~",
+		dot: "-", minus: "-",
+		boxTL: "+", boxTR: "+", boxBL: "+", boxBR: "+", boxH: "-",
 		gutter: "|", ell: "..."}
 }
 
@@ -654,7 +667,7 @@ func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 		}
 		out := make([]string, 0, len(lines))
 		for _, l := range lines {
-			out = append(out, clipStyled(p.Apply(StyleDim, "  │ "+l), w))
+			out = append(out, clipStyled(p.Apply(StyleDim, "  "+gl.gutter+" "+l), w))
 		}
 		return out
 	}
@@ -670,7 +683,7 @@ func renderThought(e Entry, cursor string, gl marks, g Geometry) []string {
 
 	out := []string{clipStyled(head, w)}
 	for _, l := range wrap(strings.TrimSpace(e.Summary), w-4) {
-		out = append(out, clipStyled(p.Apply(StyleDim, "  │ "+l), w))
+		out = append(out, clipStyled(p.Apply(StyleDim, "  "+gl.gutter+" "+l), w))
 	}
 	return out
 }
@@ -890,6 +903,7 @@ func turnSection(m Model, g Geometry, w int) []string {
 	t := Text(m.Lang)
 	p := g.Palette
 
+	gl := glyphs(g.Unicode)
 	out := []string{"", clipStyled(" "+p.Apply(StyleDim, strings.ToUpper(t.PanelTurn)), w)}
 
 	// Dim until it is close, and then not. The ceiling is item 1 of the
@@ -903,7 +917,7 @@ func turnSection(m Model, g Geometry, w int) []string {
 
 	if m.MaxInFlight > 0 {
 		out = append(out, clipStyled(" "+p.Apply(StyleDim,
-			fmt.Sprintf("%s %d·%d", t.PanelInFlight, m.InFlight, m.MaxInFlight)), w))
+			fmt.Sprintf("%s %d%s%d", t.PanelInFlight, m.InFlight, gl.dot, m.MaxInFlight)), w))
 	}
 	return out
 }
@@ -1124,10 +1138,17 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 		w = 24
 	}
 
+	gl := glyphs(g.Unicode)
+	v := gl.gutter
+	// Every piece of the frame comes from the glyph set now. It was drawn from
+	// literals with no fallback, which made this the ONE screen a terminal in
+	// ASCII could not read — and it is the screen that asks whether a boundary
+	// may be crossed.
+	head := gl.boxTL + gl.boxH + " Approval needed "
 	lines := []string{
-		"┌─ Approval needed " + strings.Repeat("─", maxInt(0, w-19)) + "┐",
-		"│" + pad("", w) + "│",
-		"│" + pad("  "+req.Tool+" crosses: "+req.BoundaryCrossed, w) + "│",
+		head + strings.Repeat(gl.boxH, maxInt(0, w-visibleWidth(head)+1)) + gl.boxTR,
+		v + pad("", w) + v,
+		v + pad("  "+req.Tool+" crosses: "+req.BoundaryCrossed, w) + v,
 	}
 	// The network question is about the PROJECT, not this command. A shell
 	// command is opaque, so answering yes opens the boundary for everything
@@ -1135,26 +1156,26 @@ func renderApproval(req protocol.ApprovalRequest, g Geometry) []string {
 	// narrower than what the answer does.
 	if standingScope(req) {
 		lines = append(lines,
-			"│"+pad("", w)+"│",
-			"│"+pad("  Commands in this project may reach the network.", w)+"│")
+			v+pad("", w)+v,
+			v+pad("  Commands in this project may reach the network.", w)+v)
 	}
 	if req.Command != "" {
 		// The rendered command, never a description. Asking for consent to
 		// "access the network" without showing what runs is asking blind.
-		lines = append(lines, "│"+pad("", w)+"│")
+		lines = append(lines, v+pad("", w)+v)
 		for _, l := range wrap(req.Command, w-6) {
-			lines = append(lines, "│"+pad("    "+l, w)+"│")
+			lines = append(lines, v+pad("    "+l, w)+v)
 		}
 	}
 	lines = append(lines,
-		"│"+pad("", w)+"│",
+		v+pad("", w)+v,
 		// Deny first and as the default: the safe action is the one that costs
 		// least effort. The capital A is harder to press by accident, which is
 		// right for the option with the largest consequence.
-		"│"+pad(approvalKeys(req), w)+"│",
-		"│"+pad("  Enter denies.", w)+"│",
-		"│"+pad("", w)+"│",
-		"└"+strings.Repeat("─", w)+"┘",
+		v+pad(approvalKeys(req), w)+v,
+		v+pad("  Enter denies.", w)+v,
+		v+pad("", w)+v,
+		gl.boxBL+strings.Repeat(gl.boxH, w)+gl.boxBR,
 	)
 	return lines
 }

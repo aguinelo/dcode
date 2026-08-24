@@ -16,13 +16,13 @@ import (
 // apart. Movement is never the only clue: a pulsing row and a still one must
 // still differ when nothing can pulse, so a running row carries a mark of its
 // own rather than only a colour or an animation.
-type railMarks struct{ folder, file, running, done, failed, open, cursor, caret, ell string }
+type railMarks struct{ folder, file, running, done, failed, open, cursor, caret, ell, dot string }
 
 func railGlyphs(unicode bool) railMarks {
 	if !unicode {
-		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">", cursor: "*", caret: "_", ell: "..."}
+		return railMarks{folder: "+-", file: "|", running: "*", done: "x", failed: "!", open: ">", cursor: "*", caret: "_", ell: "...", dot: "-"}
 	}
-	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●", cursor: "▸", caret: "▌", ell: "…"}
+	return railMarks{folder: "▾", file: "◦", running: "◦", done: "✓", failed: "⊘", open: "●", cursor: "▸", caret: "▌", ell: "…", dot: "·"}
 }
 
 // renderRail draws the sidebar, one row per line, already clipped to width.
@@ -146,7 +146,7 @@ func sessionRow(c SessionChoice, open, under bool, gl railMarks, p Palette, w in
 		if room := w - 4; room > 1 && visibleWidth(title) > room {
 			title = trimTo(title, room-visibleWidth(gl.ell)) + gl.ell
 		}
-		title += " ·"
+		title += " " + gl.dot
 	}
 	// Cut with a mark, never silently. A title that merely stops leaves the
 	// reader unable to tell a short conversation from a truncated one, and the

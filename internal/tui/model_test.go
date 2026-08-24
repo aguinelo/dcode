@@ -330,9 +330,9 @@ func TestToolSummariesComeFromTheMetadata(t *testing.T) {
 	}{
 		"read":           {"read", protocol.ToolCompleted{OK: true, Lines: 240}, "240 lines"},
 		"read truncated": {"read", protocol.ToolCompleted{OK: true, Lines: 2000, Truncated: true}, "2000 lines (truncated)"},
-		"edit":           {"edit", protocol.ToolCompleted{OK: true, Added: 24, Removed: 2}, "+24 −2"},
+		"edit":           {"edit", protocol.ToolCompleted{OK: true, Added: 24, Removed: 2}, "+24 -2"},
 		"write new":      {"write", protocol.ToolCompleted{OK: true, Added: 120}, "created, 120 lines"},
-		"write replace":  {"write", protocol.ToolCompleted{OK: true, Added: 120, Removed: 118}, "+120 −118"},
+		"write replace":  {"write", protocol.ToolCompleted{OK: true, Added: 120, Removed: 118}, "+120 -118"},
 		"glob":           {"glob", protocol.ToolCompleted{OK: true, Files: 18}, "18 files"},
 		"glob one":       {"glob", protocol.ToolCompleted{OK: true, Files: 1}, "1 file"},
 		"grep":           {"grep", protocol.ToolCompleted{OK: true, Lines: 18, Files: 4}, "18 matches in 4 files"},

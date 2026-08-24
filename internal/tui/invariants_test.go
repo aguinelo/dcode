@@ -128,6 +128,9 @@ var tuiInvariants = map[string]string{
 	// A cut is announced, and colour costs nothing.
 	"diz que foi cortada": "TestALineThatWasCutSaysSo",
 	"nunca o que ela diz": "TestColourNeverChangesWhatIsOnTheScreen",
+	// ASCII reaches every screen.
+	"nenhuma runa acima de 127": "TestAsciiModeDrawsNothingButAscii",
+	"o modelo produz texto":     "TestAsciiModeDrawsNothingButAscii",
 
 	// Copy mode.
 	"letra que as pessoas escrevem": "TestVIsALetterWhileTyping",
