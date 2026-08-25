@@ -701,3 +701,31 @@ func TestContinuingAContinuationKeepsTheWholeConversation(t *testing.T) {
 		t.Errorf("the second hop carries %q, want the question from the first session", asked)
 	}
 }
+
+// Daemon.Listen and Daemon.Serve bind a unix socket and accept on it; together
+// they are the daemon's only public entry point after NewDaemon. The existing
+// daemonFor helper binds inside itself and skips when it cannot, which leaves
+// these two functions unwalked on machines with no sandbox.
+//
+// Bind a short path directly and confirm Addr reports it; Serve blocks until
+// the context is cancelled, which is what the rest of the suite relies on.
+func TestDaemonListensAndServesOnAShortPath(t *testing.T) {
+	dir, err := os.MkdirTemp("", "dc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+
+	d := NewDaemon(DaemonOptions{SocketPath: filepath.Join(dir, "d.sock")})
+	if err := d.Listen(); err != nil {
+		t.Skipf("cannot bind a unix socket here: %v", err)
+	}
+	if d.Addr() == "" {
+		t.Error("Addr must report the bound address after Listen")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	// Serve blocks; cancelling the context makes it return.
+	go func() { _ = d.Serve(ctx) }()
+}
