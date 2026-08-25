@@ -354,6 +354,13 @@ func ContextLabel(used, window int) string {
 	if pct < 1 {
 		return "ctx <1%"
 	}
+	// A share of a window cannot exceed the window. The cap lived only in the
+	// model, on a field this function's caller was not using — so the rule was
+	// written down in a place the screen never passed through. It belongs here,
+	// where the number becomes the text somebody reads.
+	if pct > 100 {
+		pct = 100
+	}
 	return "ctx " + strconv.Itoa(pct) + "%"
 }
 

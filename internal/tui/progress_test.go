@@ -437,6 +437,41 @@ func TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost(t *testing.T) {
 	}
 }
 
+// And the meter ON THE SCREEN is the one that was fixed.
+//
+// The test above asked the model, and the model was right; the bar was drawn
+// from the cumulative count beside it and read `ctx 591%` — in a colour
+// computed from the true percentage, so the number and its own colour
+// disagreed. A guard that asks the field the fix changed can only ever confirm
+// the fix; what it has to ask is the screen.
+func TestTheMeterOnTheScreenIsTheOneThatWasFixed(t *testing.T) {
+	const window = 200_000
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(ev(t, 1, protocol.EventSessionCreated, protocol.Session{
+		ID: "s", Workspace: "/w", State: protocol.SessionStateIdle, ContextWindow: window,
+	}))
+	m = m.Apply(ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
+		TurnID: "t1", Reason: protocol.StopDone,
+		Usage: &protocol.Usage{
+			InputTokens:   window * 6, // a long turn's cumulative cost
+			ContextTokens: window / 4, // what it actually holds
+		},
+	}))
+
+	g := DefaultGeometry(120, 30)
+	g.Palette = Palette{}
+	screen := Render(m, g)
+	if !strings.Contains(screen, "ctx 25%") {
+		t.Errorf("the bar does not show what the daemon measured:\n%s", firstLine(screen))
+	}
+	// Whatever arrives, the text cannot claim more than a window.
+	for _, tokens := range []int{window * 6, window + 1, window * 100} {
+		if got := ContextLabel(tokens, window); got != "ctx 100%" {
+			t.Errorf("ContextLabel(%d, %d) = %q, want ctx 100%%", tokens, window, got)
+		}
+	}
+}
+
 // The person is warned that the context is filling BEFORE it is cut, and told
 // how much went when it is.
 //

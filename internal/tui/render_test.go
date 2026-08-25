@@ -290,7 +290,7 @@ func TestContextPercentAppearsWhenKnown(t *testing.T) {
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	// The meter is derived from the tokens and the window, not from a
 	// percentage set by hand: two fields that can disagree eventually do.
-	m.InputTokens, m.Window, m.ContextPct = 62000, 100000, 62
+	m.ContextTokens, m.Window, m.ContextPct = 62000, 100000, 62
 	if got := lines(Render(m, DefaultGeometry(120, 10)))[0]; !strings.Contains(got, "ctx 62%") {
 		t.Errorf("got %q", got)
 	}
@@ -383,7 +383,7 @@ func TestTheSandboxModeSurvivesEveryWidth(t *testing.T) {
 		m := NewModel("s", "/w", "MiniMax-M3", mode, En)
 		m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 		m.Plan = modelWithPlan().Plan
-		m.InputTokens, m.Window = 34000, 100000
+		m.ContextTokens, m.Window = 34000, 100000
 
 		for _, w := range []int{40, 50, 60, 80, 100, 140} {
 			got := lines(Render(m, DefaultGeometry(w, 12)))[0]
@@ -407,7 +407,7 @@ func TestTheStatusBarDropsInAStatedOrder(t *testing.T) {
 	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write", En)
 	m.Entries = []Entry{{Kind: KindAssistant, Summary: "x"}}
 	m.Plan = modelWithPlan().Plan
-	m.InputTokens, m.Window = 34000, 100000
+	m.ContextTokens, m.Window = 34000, 100000
 
 	// The plan counter is always in the bar now that the panel is gone, which
 	// is the case where all three optional fields compete for the same line.

@@ -449,7 +449,10 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 	} else if m.Flash != "" {
 		fields = append(fields, field{p.Apply(StyleDim, m.Flash), 1})
 	}
-	if label := ContextLabel(m.InputTokens, m.Window); label != "" {
+	// ContextTokens, not InputTokens. The meter was fixed in the model and the
+	// screen went on drawing from the cumulative count beside it, so the number
+	// said 591% in a colour computed from the true one.
+	if label := ContextLabel(m.ContextTokens, m.Window); label != "" {
 		fields = append(fields, field{p.Apply(ContextStyle(m.ContextPct), label), 2})
 	}
 	if !showPanel {

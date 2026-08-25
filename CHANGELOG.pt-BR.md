@@ -107,7 +107,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **O medidor da tela é o que foi consertado.** O medidor de contexto foi
+  corrigido no modelo e a barra continuou desenhando da contagem cumulativa ao
+  lado dele, então lia `ctx 591%` — numa cor calculada a partir da percentagem
+  verdadeira, de modo que o número discordava da própria cor. Reproduzindo um
+  registro real de 3163 eventos: `input_tokens 5917178` contra uma janela de um
+  milhão é o 591; `context_tokens 363500` é o 36 que a barra mostra agora. O
+  teto passou para a função que transforma o número em texto, porque estava
+  escrito só num campo por onde a tela não passava — e a guarda passou a
+  perguntar à tela em vez de ao campo que ela mesma tinha acabado de ver mudar.
 
 ## 0.5.0 — 24 de agosto de 2026
 

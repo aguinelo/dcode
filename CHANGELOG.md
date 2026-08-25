@@ -112,7 +112,17 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **The meter on the screen is the one that was fixed.** The context meter was
+  corrected in the model and the bar went on drawing from the cumulative input
+  count beside it, so it read `ctx 591%` — in a colour computed from the true
+  percentage, so the number disagreed with its own colour. Replaying a real
+  record of 3163 events: `input_tokens 5917178` against a million-token window
+  is the 591; `context_tokens 363500` is the 36 the bar now shows. The cap moved
+  into the function that turns the number into text, because it had been written
+  down only on a field the screen did not pass through — and the guard was
+  extended to ask the screen instead of the field it had just watched change.
 
 ## 0.5.0 — 24 August 2026
 
