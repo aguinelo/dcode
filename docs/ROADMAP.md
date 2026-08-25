@@ -360,6 +360,30 @@ only with evidence from project scope.
 
 ---
 
+**The 500-line rule has never been enforced, and the tree is nowhere near it.**
+`AGENTS.md` says "Keep files under 500 lines". Measured on `main` at v0.6.0:
+**ten production files** and **seventeen test files** are over it, the largest
+being `internal/tui/render.go` at 1817, `internal/tui/program_test.go` at 1915,
+`internal/tui/program.go` at 1407 and `internal/loop/turn.go` at 1294.
+
+This is the shape `AGENTS.md` itself names two sections earlier, about the
+changelog rule: *prose is the weakest layer this repository recognises, and
+until there is a guard covering it, it is worth whatever the discipline of
+whoever reads it is worth.* Here the discipline has been worth about a third of
+the number.
+
+Two ways out, and they are not equivalent. Splitting twenty-seven files is a
+large change that makes nothing more correct — the seams in `render.go` are
+real (the approval block, the input box, the status fields) but the ones in
+`turn.go` are not obviously there at all. Writing the guard first would put
+twenty-seven files red on arrival, which is the exact mistake §5 records about
+the coverage gate.
+
+What is missing before either is a decision nobody has taken: whether 500 is the
+number this repository actually wants, measured against what its files are, or
+whether it was copied in from somewhere and never tested against the code. The
+number is not evidence until something has been measured against it.
+
 ## 10. What the v5 design asks for and the product does not have
 
 **Source: `refs/design/HANDOFF.md` (v5).** These are the parts of the design that
