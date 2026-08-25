@@ -184,3 +184,50 @@ func TestSaveNoticeReportsAnUnwritablePath(t *testing.T) {
 		t.Error("an unwritable cache path must be reported to the caller")
 	}
 }
+
+// An update is something NEWER, not something different.
+//
+// `Outdated` asked whether the two versions differed, and a binary ahead of the
+// last release — a local build, or a release the day-old cached check has not
+// caught up with — was told `dcode v0.4.0 is available (you have 0.5.0). Run
+// `dcode update`.` That is an offer to go backwards wearing the word update,
+// and `update` itself already refuses it: the tool contradicted itself in two
+// places on one screen.
+func TestAnUpdateIsSomethingNewer(t *testing.T) {
+	cases := []struct {
+		current, latest string
+		want            bool
+		why             string
+	}{
+		{"0.5.0", "v0.4.0", false, "the release before the one running"},
+		{"0.5.0", "v0.5.0", false, "the same one"},
+		{"0.5.0", "v0.5.1", true, "a patch ahead"},
+		{"0.5.0", "v0.6.0", true, "a minor ahead"},
+		{"0.9.0", "v0.10.0", true, "ten is after nine, not before it"},
+		{"0.10.0", "v0.9.0", false, "and not the other way round"},
+		{"1.0.0", "v0.9.9", false, "a major behind"},
+		{"0.5.0-dev+abc", "v0.5.0", false, "a build of the release is not behind it"},
+		{"0.5.0", "v0.5.1-rc1", true, "a pre-release of something later is later"},
+		{"0.5.0", "not-a-version", false, "unreadable is never an offer to replace"},
+		{"0.5.0", "", false, "nothing known is nothing to say"},
+	}
+	for _, tc := range cases {
+		n := VersionNotice{Current: tc.current, Latest: tc.latest}
+		if got := n.Outdated(); got != tc.want {
+			t.Errorf("Outdated(current=%q, latest=%q) = %v, want %v — %s",
+				tc.current, tc.latest, got, tc.want, tc.why)
+		}
+	}
+}
+
+// And the message never proposes the move it just decided against.
+func TestTheNoticeNeverOffersAWayBackwards(t *testing.T) {
+	n := VersionNotice{Current: "0.5.0", Latest: "v0.4.0"}
+	if msg := n.Message(); msg != "" {
+		t.Errorf("the notice offers a downgrade: %q", msg)
+	}
+	n = VersionNotice{Current: "0.5.0", Latest: "v0.5.1"}
+	if msg := n.Message(); !strings.Contains(msg, "v0.5.1") {
+		t.Errorf("a real update is not announced: %q", msg)
+	}
+}

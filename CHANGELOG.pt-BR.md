@@ -107,7 +107,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **Atualização é algo mais novo, não algo diferente.** O aviso perguntava se a
+  versão em execução era diferente da última conhecida, então um binário à
+  frente da última release — um build local, ou uma release que a verificação
+  em cache de um dia ainda não alcançou — recebia `dcode v0.4.0 is available
+  (you have 0.5.0). Run `dcode update`.` Uma oferta de andar para trás vestida
+  com a palavra update. O próprio `update` já recusava isso, então a ferramenta
+  se contradizia em dois lugares na mesma tela; agora os dois comparam versões
+  campo a campo, e o `update` recusa uma release mais velha que a em execução
+  mesmo quando pedido diretamente.
 
 ## 0.5.1 — 25 de agosto de 2026
 
