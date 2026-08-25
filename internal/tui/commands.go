@@ -26,8 +26,8 @@ type Builtin struct {
 // stays English.
 var Builtins = []Builtin{
 	{Name: "help"}, {Name: "init"}, {Name: "clear"}, {Name: "plan"},
-	{Name: "config"}, {Name: "model"}, {Name: "resume"}, {Name: "undo"}, {Name: "image"},
-	{Name: "update"},
+	{Name: "config"}, {Name: "model"}, {Name: "mode"}, {Name: "resume"},
+	{Name: "undo"}, {Name: "image"}, {Name: "update"},
 }
 
 // builtinText resolves a command's argument shape and help in one language.
@@ -41,6 +41,8 @@ func builtinText(name string, t Strings) (args, help string) {
 		return "", t.CmdClear
 	case "plan":
 		return t.CmdPlanArgs, t.CmdPlan
+	case "mode":
+		return t.CmdModeArgs, t.CmdMode
 	case "config":
 		return t.CmdConfigArgs, t.CmdConfig
 	case "model":

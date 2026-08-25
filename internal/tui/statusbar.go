@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // RenderStatusBar draws the bottom bar: where you are, what has changed, and
@@ -23,6 +25,9 @@ func RenderStatusBar(m Model, g Geometry) string {
 	// badge vazio" — and it generalises: a bar of empty slots describes the bar
 	// rather than the session.
 	segs := []segment{navSegment(m, g), worktreeSegment(m, g)}
+	if seg, ok := modeSegment(m, g); ok {
+		segs = append(segs, seg)
+	}
 	if seg, ok := diffSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
@@ -219,6 +224,29 @@ func waitingSegment(m Model, g Geometry) (segment, bool) {
 		mark = Text(m.Lang).BarWaiting
 	}
 	return segment{text: mark + " 1", solid: true, drop: 0}, true
+}
+
+// modeSegment shows the session behavioural mode (plan, assist, auto).
+//
+// auto gets the warning style, because the only thing worth highlighting on a
+// bar full of facts is "no boundary between the agent and the machine".
+// plan and assist stay quiet — they are the ordinary states.
+//
+// drop: 3, after diff and ceilings. The mode is the second most important
+// fact on the bar after "where am I", but a bar that keeps its mode by
+// dropping what changed cannot be trusted.
+func modeSegment(m Model, g Geometry) (segment, bool) {
+	if m.Mode == "" {
+		return segment{}, false
+	}
+	style := StyleMeta
+	if m.Mode == protocol.ModeAuto {
+		style = StyleWarn
+	}
+	return segment{
+		text: g.Palette.Apply(style, "["+m.Mode+"]"),
+		drop: 3,
+	}, true
 }
 
 // fits reports whether every segment still has room, separators included.

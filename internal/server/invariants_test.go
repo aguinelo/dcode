@@ -16,6 +16,8 @@ import (
 var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools"), filepath.Join("..", "contextengine"), filepath.Join("..", "provider")}
 
 var protocolInvariants = map[string]string{
+	"anuncia a troca pelo log":             "TestSetModeAnnouncesOverTheLog",
+	"nomeia o que foi enviado":             "TestSetModeRefusesAnUnknownName",
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
 	"roda um comando que a **pessoa**":     "TestExecIsItsOwnRouteAndCarriesNoBody",
 	"descreve a sessão **depois**":         "TestContinuingDescribesTheSessionTheConversationIsIn",

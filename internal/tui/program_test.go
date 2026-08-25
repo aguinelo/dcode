@@ -31,6 +31,8 @@ type fakeTransport struct {
 	// executed is every command run through `!`.
 	executed []string
 	execErr  error
+	// modesSet is every behavioural mode the client asked the daemon for.
+	modesSet []string
 
 	submitErr error
 	steerErr  error
@@ -138,6 +140,20 @@ func (f *fakeTransport) Resolve(_ context.Context, _, _ string, d protocol.Appro
 	defer f.mu.Unlock()
 	f.resolved = append(f.resolved, d)
 	return nil
+}
+
+func (f *fakeTransport) SetMode(_ context.Context, _, mode string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.modesSet = append(f.modesSet, mode)
+	return nil
+}
+
+// modes reports every mode the client asked the daemon for, in order.
+func (f *fakeTransport) modes() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.modesSet...)
 }
 
 func (f *fakeTransport) Subscribe(_ context.Context, _ string, from uint64) (<-chan protocol.Event, <-chan error) {

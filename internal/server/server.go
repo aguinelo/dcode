@@ -167,6 +167,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/steer", s.steer)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/undo", s.undo)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/approvals/{approvalID}", s.resolveApproval)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/mode", s.setMode)
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -377,6 +378,31 @@ func (s *Server) undo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// setMode switches the session behavioural mode.
+//
+// The handler is its own route rather than a flag on submitTurn because mode
+// is not a turn: changing it does not start or stop one. Validates up front and
+// answers 400 on an unknown name, so a typo never reaches the engine.
+func (s *Server) setMode(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	var req struct {
+		Mode string `json:"mode"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		return
+	}
+	if err := sess.SetMode(req.Mode); err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) resolveApproval(w http.ResponseWriter, r *http.Request) {

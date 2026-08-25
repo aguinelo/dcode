@@ -31,6 +31,40 @@ const (
 
 > `PolicyNever` **nega** o que cruzaria a fronteira; não permite. Sem cliente para perguntar, a alternativa a negar seria conceder em silêncio, que viola RN-3.
 
+## 2.1 Os três modos: um nome para um par
+
+Os dois eixos são ortogonais e é assim que devem continuar — mas ninguém escolhe
+um par. Quem usa a ferramenta escolhe **quanta autonomia** ela tem, e isso é uma
+escolha só. Os três modos são os nomes dessa escolha:
+
+| Modo | `SandboxMode` | `ApprovalPolicy` | O que significa |
+|---|---|---|---|
+| `plan` | `read-only` | `never` | lê e pensa; não escreve e não pergunta se pode |
+| `assist` | `workspace-write` | `on-request` | escreve no workspace; pergunta ao cruzar a fronteira |
+| `auto` | `full-access` | `on-request` | sem fronteira; só as regras de §3.1 ainda perguntam |
+
+**O par se move junto.** `plan` é read-only **e** never; aplicar metade deixaria
+em vigor, entre as duas escritas, um par que ninguém escolheu. `Engine.SetMode`
+escreve os dois sob o mesmo mutex e `Engine.Mode` lê os dois sob ele.
+
+**O nome é derivado do par, nunca guardado ao lado dele.** Uma sessão pergunta
+ao motor em que par ele está e nomeia o resultado (`modeFrom`), em vez de
+lembrar o nome que lhe deram. Um nome guardado à parte é um nome que
+diverge — foi exatamente o defeito que originou esta seção: a sessão nascia
+rotulada `assist` fosse qual fosse o par, de modo que `full-access` exibia o
+crachá do modo contido, e trocar **para** `assist` não fazia nada, porque a
+sessão acreditava já estar lá.
+
+**Um par que não é nenhum dos três não recebe nome.** `read-only` com
+`on-request` é configuração legítima e não é `plan`. O nome vazio é a resposta
+honesta, e é o que o cliente já sabe não desenhar. Aproximar para o vizinho mais
+próximo poria na barra uma palavra a que o motor não responde.
+
+**Trocar de modo não interrompe o turno vivo.** A próxima chamada de ferramenta
+observa o modo novo; a que já está em voo termina sob o que valia quando
+começou. Interromper seria transformar um ajuste de autonomia em cancelamento
+de trabalho.
+
 ## 3. Avaliação
 
 ```go
@@ -216,6 +250,11 @@ type Sandbox interface {
 - Um Chromium **alcança o primeiro quadro** dentro do sandbox: sem `mach-register` e sem `iokit-open` escopado ele morre com SIGSEGV, que não é erro que ele reporte — é sinal. Verificado contra o kernel e contra um navegador de verdade.
 - A montagem do workspace não depende de o diretório já existir: mesmo caminho, mesma decisão, antes e depois de ser criado.
 
+- Cada modo nomeia exatamente o par da tabela 2.1, e o caminho de volta é o inverso exato: nome → par → nome devolve o nome.
+- Par que não é nenhum dos três **não recebe nome**; o vazio é resposta, não ausência de resposta.
+- A sessão anuncia o modo que o motor está de fato rodando, e não o que lhe pediram ao nascer.
+- Duas trocas concorrentes deixam a sessão em um dos modos, com o par do motor de acordo com o nome anunciado.
+
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
 - Rede concedida inclui escutar: uma suíte que não abre porta não roda.
 - Caminho nomeado como não legível não é lido de dentro do sandbox, e o mesmo caminho sem ser nomeado continua legível.
@@ -244,3 +283,4 @@ type Sandbox interface {
 - [202608190030 — Trabalho comum não pergunta, destruição pergunta sempre](changelog/202608190030-trabalho-comum-nao-pergunta.md)
 - [202608190130 — Uma toolchain alcança o próprio cache](changelog/202608190130-a-toolchain-alcanca-o-proprio-cache.md)
 - [202608190230 — Uma fronteira aninhada é detectada, não adivinhada](changelog/202608190230-uma-fronteira-aninhada-e-detectada.md)
+- [202608251200 — O modo é um nome para um par](changelog/202608251200-o-modo-e-um-nome-para-um-par.md)

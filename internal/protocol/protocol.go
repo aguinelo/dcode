@@ -76,7 +76,31 @@ const (
 	EventSessionCompacted EventType = "session.compacted"
 	EventContextBand      EventType = "context.band"
 	EventSessionError     EventType = "session.error"
+	// EventSessionModeChanged announces a switch between plan, assist and auto.
+	//
+	// Carried over the event log rather than read from a side channel so a
+	// client that attaches after the change still sees what the session is
+	// running under, the same way SessionCreated already does for the original.
+	EventSessionModeChanged EventType = "session.mode_changed"
 )
+
+// Mode names. The behavioural mode is what the user picks; the wire carries the
+// name, and Session.SetMode maps it to the pair of (SandboxMode, Policy) the
+// engine actually runs under.
+const (
+	ModePlan   = "plan"
+	ModeAssist = "assist"
+	ModeAuto   = "auto"
+)
+
+// ValidMode reports whether name is one of ModePlan, ModeAssist, ModeAuto.
+func ValidMode(name string) bool {
+	switch name {
+	case ModePlan, ModeAssist, ModeAuto:
+		return true
+	}
+	return false
+}
 
 // Event is the envelope every observable fact travels in. Seq is per session,
 // monotonic from 1, never reused and never gapped.
@@ -117,8 +141,12 @@ type Session struct {
 	Workspace   string       `json:"workspace"`
 	Model       string       `json:"model"`
 	SandboxMode string       `json:"sandbox_mode"`
-	CreatedAt   time.Time    `json:"created_at"`
-	LastSeq     uint64       `json:"last_seq"`
+	// Mode is the behavioural mode the session runs under: plan, assist or
+	// auto. Defaults to assist when the request does not set it. SandboxMode is
+	// the technical consequence; Mode is the name the user picks.
+	Mode      string    `json:"mode"`
+	CreatedAt time.Time `json:"created_at"`
+	LastSeq   uint64    `json:"last_seq"`
 	// FirstSeq is the earliest event the session still holds. It is not always
 	// 1: continuing a long conversation puts every carried event in the log,
 	// and retention drops the oldest. A client that assumes 1 asks for events
@@ -535,5 +563,14 @@ type (
 		SourceID  string    `json:"source_id"`
 		Turns     int       `json:"turns"`
 		StartedAt time.Time `json:"started_at,omitempty"`
+	}
+	// SessionModeChanged announces a behavioural mode switch.
+	//
+	// Previous is empty on the very first announce, where there was nothing to
+	// come from. Carried alongside Mode so the transcript shows the transition
+	// rather than only the destination.
+	SessionModeChanged struct {
+		Previous string `json:"previous,omitempty"`
+		Mode     string `json:"mode"`
 	}
 )

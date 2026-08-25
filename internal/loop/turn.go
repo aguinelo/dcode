@@ -149,6 +149,7 @@ type Outcome struct {
 // Engine runs turns against one session.
 type Engine struct {
 	cfg     Config
+	cfgMu   sync.Mutex // guards cfg.Mode and cfg.Policy; see SetMode and mode
 	session ce.Session
 	turnSeq int
 	// seenDirs stops the same out-of-chain instruction being appended once per
@@ -191,6 +192,33 @@ type Engine struct {
 
 // now is the engine's clock. Injectable so a test can assert a duration without
 // waiting for one.
+// SetMode switches the engine sandbox mode and approval policy at runtime.
+//
+// The pair moves together because it is one decision: plan is read-only AND
+// never asks, and applying half of that would leave a mode nobody chose in
+// force between the two writes.
+//
+// Live turns are NOT interrupted. The next tool call observes the new mode; a
+// call already in flight finishes under whatever was in force when it started.
+func (e *Engine) SetMode(mode policy.SandboxMode, pol policy.ApprovalPolicy) {
+	e.cfgMu.Lock()
+	e.cfg.Mode, e.cfg.Policy = mode, pol
+	e.cfgMu.Unlock()
+}
+
+// Mode reports the sandbox mode and approval policy in force right now.
+//
+// Every reader goes through here — evaluate decides one call with it,
+// childConfig builds a delegated turn from it — because SetMode writes the
+// pair from the HTTP handler while a turn runs. Reading the fields directly is
+// a data race, which is what the first version of this did on the delegation
+// path while guarding only the other one.
+func (e *Engine) Mode() (policy.SandboxMode, policy.ApprovalPolicy) {
+	e.cfgMu.Lock()
+	defer e.cfgMu.Unlock()
+	return e.cfg.Mode, e.cfg.Policy
+}
+
 func (e *Engine) now() time.Time {
 	if e.cfg.Now != nil {
 		return e.cfg.Now()
@@ -755,7 +783,8 @@ func (e *Engine) evaluate(req policy.Request) policy.Verdict {
 		// A caller that wired nothing gets the question, not the grant.
 		grant = policy.WithheldNetwork{}
 	}
-	return policy.Evaluate(resolved, e.cfg.Mode, e.cfg.Policy, e.cfg.Rules, grant, resolver.InWorkspace)
+	mode, pol := e.Mode()
+	return policy.Evaluate(resolved, mode, pol, e.cfg.Rules, grant, resolver.InWorkspace)
 }
 
 func (e *Engine) askApproval(ctx context.Context, turnID string, ex ToolExecution, v policy.Verdict) (

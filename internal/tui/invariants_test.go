@@ -8,6 +8,11 @@ import (
 )
 
 var tuiInvariants = map[string]string{
+	"exige o gesto duas vezes":            "TestDroppingTheBoundaryTakesTwo",
+	"só `auto` é armado":                  "TestDroppingTheBoundaryTakesTwo",
+	"Limite sem nome não é batizado":      "TestModeWithNoArgumentDoesNotInventOne",
+	"recusa nomeia o que foi digitado":    "TestAnUnknownModeNeverLeavesTheClient",
+	"vem do anúncio no log":               "TestTheBarFollowsTheAnnouncement",
 	"mesma entrada, mesma saída":          "TestRenderIsPureOverTheModelAndTheGeometry",
 	"contada em bytes de si mesma":        "TestAnArrivingCallIsCountedInBytesAndSaysSo",
 	"nunca desenha uma segunda":           "TestTheCompleteCallFillsTheLineRatherThanAddingOne",

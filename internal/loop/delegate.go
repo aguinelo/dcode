@@ -194,6 +194,10 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 // turn against a model. A guarantee that can only be checked by running the
 // thing it guards is a guarantee nobody checks.
 func (e *Engine) childConfig(lim DelegateLimits, owns []string) (Config, error) {
+	// One read of the pair for the whole build: the parent mode can be switched
+	// mid-turn, and a child assembled from two different modes is a child under
+	// a mode nobody picked.
+	parentMode, parentPolicy := e.Mode()
 	mode := policy.ModeReadOnly
 	resolver := e.cfg.State.Resolver
 
@@ -201,12 +205,12 @@ func (e *Engine) childConfig(lim DelegateLimits, owns []string) (Config, error) 
 		// A child may drop capability and never add it. The request is
 		// intersected with what the parent already has, so the mode is
 		// INHERITED — still not a field the model passes.
-		if e.cfg.Mode == policy.ModeReadOnly {
+		if parentMode == policy.ModeReadOnly {
 			return Config{}, fmt.Errorf(
 				"delegation: this session is read-only, so a child cannot write %s",
 				strings.Join(owns, ", "))
 		}
-		mode = e.cfg.Mode
+		mode = parentMode
 		// And the containment is narrowed to what was declared. Ownership is a
 		// boundary answered by the machinery that already refuses a write
 		// outside the workspace, never a promise checked at review time.
@@ -221,7 +225,7 @@ func (e *Engine) childConfig(lim DelegateLimits, owns []string) (Config, error) 
 		Emitter:   nil, // the child's steps are not the parent session's events
 		Approver:  &denyAll{},
 		Mode:      mode,
-		Policy:    e.cfg.Policy,
+		Policy:    parentPolicy,
 		Model:     e.cfg.Model,
 		Parallel:  e.cfg.Parallel,
 		CtxConfig: e.cfg.CtxConfig,

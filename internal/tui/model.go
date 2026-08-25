@@ -124,7 +124,11 @@ type Model struct {
 	Workspace string
 	Model     string
 	Sandbox   string
-	State     protocol.SessionState
+	// Mode is the session behavioural mode (plan, assist, auto). Empty when
+	// the session has not yet announced its mode — older sessions reply
+	// without it and a missing label is the honest rendering.
+	Mode  string
+	State protocol.SessionState
 
 	Entries []Entry
 	Plan    []protocol.PlanItem
@@ -158,6 +162,15 @@ type Model struct {
 	// Flash is a one-line notice shown until the next keystroke, for things
 	// that happen and leave no other trace — a copy landing, for instance.
 	Flash string
+	// AutoArmed records that the user typed /mode auto, or cycled onto it with
+	// shift+tab, and saw the warning once. The second attempt goes through.
+	//
+	// It is never disarmed, and that is what the warning promises: the question
+	// is asked once per client, not once per switch. Dropping the boundary is a
+	// thing you learn, not a thing you keep being asked about — unlike ^C's
+	// Leaving, which is armed only while its warning is on screen because there
+	// the risk is a stray second press.
+	AutoArmed bool
 
 	// Leaving is armed by the first ^C on an empty line and disarmed by any
 	// other key. It is true exactly while the warning is on screen: a state a
@@ -282,10 +295,15 @@ func (m Model) Apply(ev protocol.Event) Model {
 		var s protocol.Session
 		if err := json.Unmarshal(ev.Payload, &s); err == nil {
 			m.SessionID, m.Workspace = s.ID, s.Workspace
-			m.Model, m.Sandbox, m.State = s.Model, s.SandboxMode, s.State
+			m.Model, m.Sandbox, m.Mode, m.State = s.Model, s.SandboxMode, s.Mode, s.State
 			m.Window = s.ContextWindow
 		}
 
+	case protocol.EventSessionModeChanged:
+		var d protocol.SessionModeChanged
+		if err := json.Unmarshal(ev.Payload, &d); err == nil && d.Mode != "" {
+			m.Mode = d.Mode
+		}
 	case protocol.EventSessionResumed:
 		// The events that follow happened in another session. Saying so is what
 		// stops a continued conversation from reading as work this one did —

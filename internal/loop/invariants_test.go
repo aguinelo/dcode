@@ -14,6 +14,8 @@ import (
 var loopDirs = []string{".", filepath.Join("..", "tools")}
 
 var loopInvariants = map[string]string{
+	"muda o **veredito** da próxima chamada":      "TestSetModeChangesTheVerdict",
+	"vista por **todos** os leitores do par":      "TestSetModeUnderConcurrentReads",
 	"anexados em ordem de `Index`":                "TestResultsAppendInEmissionOrderNotCompletionOrder",
 	"nunca se sobrepõem no tempo":                 "TestConflictingPathsAreSeparated",
 	"comando de sistema executa concorrentemente": "TestTwoSystemCommandsNeverOverlap",

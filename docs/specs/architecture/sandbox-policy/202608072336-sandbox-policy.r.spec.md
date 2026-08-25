@@ -67,6 +67,20 @@ Aprovar uma escrita fora do workspace não aprova as próximas. Aprovação de e
 ### RN-6 — Nenhuma execução contorna o avaliador
 Todo comando e toda ferramenta com efeito passam pelo avaliador de política antes de executar. Não existe caminho alternativo, nem em teste, nem em depuração.
 
+### RN-8 — O modo é um nome para um par, e é derivado dele
+Quem usa a ferramenta escolhe autonomia, não coordenadas: `plan`, `assist` e
+`auto` são os nomes dos três pares de (sandbox, política) que a §2.1 do `.p`
+fixa. Os eixos continuam ortogonais — o que os modos acrescentam é um vocabulário
+por cima deles, não uma terceira dimensão.
+
+O nome é sempre **calculado a partir do par em vigor**, nunca guardado ao lado.
+Nome guardado à parte é nome que diverge, e um crachá que diz `assist` sobre uma
+sessão sem fronteira é pior que crachá nenhum: ele convida a confiar.
+
+Par que não corresponde a nenhum dos três não é aproximado para o vizinho — fica
+sem nome. E trocar de modo não interrompe o turno em andamento: ajustar
+autonomia não é cancelar trabalho.
+
 ### RN-7 — Política do administrador vence a do usuário
 Configuração travada por administrador não é sobrescrevível por variável de ambiente nem por flag. É o que torna o dcode adotável em organização.
 

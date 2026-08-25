@@ -61,6 +61,7 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `POST` | `/sessions/{id}/turns` | `experimental` | Submete entrada do usuário. `409` se já houver turno ativo (RN-8). |
 | `POST` | `/sessions/{id}/interrupt` | `experimental` | Cancela o turno em andamento. Idempotente. |
 | `POST` | `/sessions/{id}/approvals/{approval_id}` | `experimental` | Resolve pedido de permissão. `409` se já resolvido (RN-4). |
+| `POST` | `/sessions/{id}/mode` | `experimental` | Troca o modo comportamental. Corpo `{"mode":"plan"\|"assist"\|"auto"}`. `204` sem corpo; `4xx` nomeando o modo recusado. |
 | `GET` | `/health` | `stable` | Liveness. Sem corpo além de `{"status":"ok"}`. |
 | `GET` | `/version` | `stable` | Versão do servidor e do protocolo. |
 
@@ -84,6 +85,13 @@ type Session struct {
     CreatedAt time.Time    `json:"created_at"`
     LastSeq   uint64       `json:"last_seq"`
     FirstSeq  uint64       `json:"first_seq,omitempty"` // evento mais antigo ainda guardado
+
+    // SandboxMode é o eixo técnico; Mode é o nome que a pessoa escolhe.
+    // Vazio quando o par em vigor não é nenhum dos três (§2.1 de
+    // sandbox-policy) — vazio é resposta, não campo ausente, e por isso NÃO
+    // leva omitempty.
+    SandboxMode string `json:"sandbox_mode"`
+    Mode        string `json:"mode"`
 }
 
 type CreateSessionRequest struct {
@@ -130,6 +138,7 @@ type Error struct {
 | `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
 | `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
 | `session.compacted` | `{"from_seq":uint64,"to_seq":uint64}` | compactação de contexto (ADR-03) |
+| `session.mode_changed` | `{"previous":string?,"mode":string}` | modo comportamental trocado; `previous` vazio quando não havia de onde vir |
 | `session.error` | `Error` | falha não atribuível a um turno |
 
 ```go
@@ -239,9 +248,12 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - `POST /sessions/{id}/exec` roda um comando que a **pessoa** digitou, pela mesma ferramenta, sob a mesma fronteira: `!` é atalho por cima do modelo, nunca por cima do sandbox.
 - A resposta de criação descreve a sessão **depois** de a conversa continuada estar nela: `last_seq` conta os eventos carregados e `first_seq` é o mais antigo que sobreviveu à retenção.
 - Aprovação expirada produz exatamente um `tool.approval_resolved` com `deny`.
+- `POST /sessions/{id}/mode` anuncia a troca pelo log como `session.mode_changed`, carregando de onde veio: quem anexa depois lê o modo do log, não de uma chamada que perdeu.
+- Modo desconhecido é recusado com `4xx` que **nomeia o que foi enviado**, antes de chegar ao motor, e deixa o modo em vigor intacto.
 
 ## 10. Changelog
 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
 - [202608181900 — Continuar mostra o que carrega](changelog/202608181900-continuar-mostra-o-que-carrega.md)
 - [202608250100 — A sessão se descreve depois de a conversa entrar](changelog/202608250100-a-sessao-se-descreve-depois.md)
+- [202608251200 — O modo viaja pelo log](changelog/202608251200-o-modo-viaja-pelo-log.md)
