@@ -145,6 +145,16 @@ type CreateSessionRequest struct {
 	Resume string `json:"resume,omitempty"`
 }
 
+// ExecRequest runs a command the person typed, outside a turn.
+//
+// Its own request rather than a flag on SubmitTurnRequest: submitting starts a
+// turn and this one does not. The command runs through the same tool, under the
+// same sandbox and the same approvals, and its output is put in the history as
+// something the user did — because they did.
+type ExecRequest struct {
+	Command string `json:"command"`
+}
+
 // SubmitTurnRequest submits user input. Rejected with turn_already_active if a
 // turn is already running: one turn per session.
 type SubmitTurnRequest struct {

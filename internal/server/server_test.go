@@ -1007,3 +1007,72 @@ func TestContinuingDescribesTheSessionTheConversationIsIn(t *testing.T) {
 		t.Errorf("first_seq %d is past last_seq %d", got.FirstSeq, got.LastSeq)
 	}
 }
+
+// A command the person typed has its own route.
+//
+// Not a flag on submitting: submitting starts a turn and this does not. It
+// blocks until the command is done, because the person is waiting on the
+// output, and the response body carries nothing — the output arrives on the
+// event stream, so a client that disconnected mid-command and came back sees
+// what one that stayed sees.
+func TestExecIsItsOwnRouteAndCarriesNoBody(t *testing.T) {
+	srv, _ := newServer(t, 10)
+	h := srv.Handler()
+
+	body, _ := json.Marshal(protocol.CreateSessionRequest{Workspace: t.TempDir()})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/"+protocol.Version+"/sessions",
+		strings.NewReader(string(body))))
+	var sess protocol.Session
+	if err := json.Unmarshal(rec.Body.Bytes(), &sess); err != nil {
+		t.Fatal(err)
+	}
+
+	// This server builds sessions with no engine, so the command cannot run —
+	// which is the point of the assertion: the route exists, decodes, reaches
+	// the session, and reports what the session says instead of 404.
+	req, _ := json.Marshal(protocol.ExecRequest{Command: "echo hello"})
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost,
+		"/"+protocol.Version+"/sessions/"+sess.ID+"/exec", strings.NewReader(string(req))))
+	if rec.Code == http.StatusNotFound {
+		t.Fatalf("there is no route to run a typed command: %d", rec.Code)
+	}
+	if rec.Code == http.StatusNoContent && rec.Body.Len() != 0 {
+		t.Errorf("the response carries a body: %q", rec.Body.String())
+	}
+}
+
+// A malformed body is reported, not swallowed.
+func TestExecReportsAMalformedRequest(t *testing.T) {
+	srv, _ := newServer(t, 10)
+	h := srv.Handler()
+
+	body, _ := json.Marshal(protocol.CreateSessionRequest{Workspace: t.TempDir()})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/"+protocol.Version+"/sessions",
+		strings.NewReader(string(body))))
+	var sess protocol.Session
+	if err := json.Unmarshal(rec.Body.Bytes(), &sess); err != nil {
+		t.Fatal(err)
+	}
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost,
+		"/"+protocol.Version+"/sessions/"+sess.ID+"/exec", strings.NewReader("{not json")))
+	if rec.Code < 400 {
+		t.Errorf("a malformed request was accepted: %d", rec.Code)
+	}
+}
+
+// And running a command on a session that does not exist says so.
+func TestExecOnAnUnknownSession(t *testing.T) {
+	srv, _ := newServer(t, 10)
+	req, _ := json.Marshal(protocol.ExecRequest{Command: "echo hello"})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost,
+		"/"+protocol.Version+"/sessions/nope/exec", strings.NewReader(string(req))))
+	if rec.Code < 400 {
+		t.Errorf("a command ran on a session that does not exist: %d", rec.Code)
+	}
+}

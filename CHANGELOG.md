@@ -112,6 +112,17 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Added
+
+- **A command you run yourself: `!`.** A line starting with `!` is not sent to
+  the model — it runs. The output reaches the screen as the tool events the
+  transcript already draws, and reaches the history as one user message, because
+  the user did run it; without that the model answers about a workspace whose
+  state it cannot see. It goes through the same `bash` tool and the same policy,
+  so a crossing is put to the person exactly as it would be had the model asked:
+  `!` is a shortcut past the model, never past the sandbox. The input area says
+  so from the first character, while the line can still be deleted.
+
 ### Changed
 
 - **The boundary decides, not the model.** A report opened with *"Não vou rodar

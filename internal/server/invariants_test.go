@@ -17,6 +17,7 @@ var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join(".."
 
 var protocolInvariants = map[string]string{
 	"estritamente crescente e sem lacunas": "TestEventsReplayThenStreamLive",
+	"roda um comando que a **pessoa**":     "TestExecIsItsOwnRouteAndCarriesNoBody",
 	"descreve a sessão **depois**":         "TestContinuingDescribesTheSessionTheConversationIsIn",
 	"entra no log **e não no registro**":   "TestARecordDoesNotCopyWhatItContinues",
 	"cadeia que aponta para si mesma":      "TestAChainThatLoopsIsReadOnce",

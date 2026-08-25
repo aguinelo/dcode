@@ -132,6 +132,7 @@ type Strings struct {
 	ApprovalCrosses        string
 	ApprovalNetwork        string
 	ApprovalEnter          string
+	ShellHint              string
 	ApprovalCrossing       string
 	ApprovalRule           string
 	ApprovalAnswered       string
@@ -334,6 +335,7 @@ var catalogue = map[Lang]Strings{
 		ApprovalCrosses:        "crosses:",
 		ApprovalNetwork:        "Commands in this project may reach the network.",
 		ApprovalEnter:          "enter denies",
+		ShellHint:              "! runs here, unsent — the model reads the output",
 		ApprovalCrossing:       "approve",
 		ApprovalRule:           "rule:",
 		ApprovalAnswered:       "you answered:",
@@ -522,6 +524,7 @@ Environment:
 		ApprovalCrosses:        "cruza:",
 		ApprovalNetwork:        "Comandos deste projeto podem alcançar a rede.",
 		ApprovalEnter:          "enter nega",
+		ShellHint:              "! roda aqui, sem enviar — o modelo lê a saída",
 		ApprovalCrossing:       "aprovar",
 		ApprovalRule:           "regra:",
 		ApprovalAnswered:       "você respondeu:",

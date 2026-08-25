@@ -365,7 +365,7 @@ func render(m Model, g Geometry) string {
 		b.WriteString(l)
 		b.WriteString("\n")
 	}
-	for _, l := range renderInputLines(m, g, ScrollHint(m, g, top, total, height)) {
+	for _, l := range renderInputLines(m, g, inputHint(m, g, top, total, height)) {
 		b.WriteString(l)
 		b.WriteString("\n")
 	}
@@ -1251,6 +1251,19 @@ func caretAt(text string, at int) (row, col int) {
 		col++
 	}
 	return row, col
+}
+
+// inputHint is the one line the input area says about itself.
+//
+// The bang wins over the scroll position while it is being typed. A line
+// starting with `!` is about to do something different from every other line —
+// it is not sent to the model, it runs — and saying so while it can still be
+// deleted is worth more than where the scrollback is.
+func inputHint(m Model, g Geometry, top, total, height int) string {
+	if strings.HasPrefix(strings.TrimSpace(m.Input), "!") {
+		return Text(m.Lang).ShellHint
+	}
+	return ScrollHint(m, g, top, total, height)
 }
 
 // renderInputLines draws the box, one string per row.

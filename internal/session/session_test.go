@@ -1029,3 +1029,45 @@ func TestWithoutTheRecordNothingChanges(t *testing.T) {
 // allToolNames is every tool the product ships, which is what a session with
 // the full registry offers. Tests that care about a narrower set say so.
 var allToolNames = []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}
+
+// A command the person typed does not run beside a turn.
+//
+// Its tool events would interleave with the turn's, and it would edit the
+// history the turn is in the middle of reading. It takes the same lock Submit
+// does and refuses for the same reasons.
+func TestATypedCommandDoesNotRunBesideATurn(t *testing.T) {
+	s := New("s1", "/w", "m", "workspace-write", nil,
+		NewEventLog("s1", 0, func() time.Time { return time.Unix(0, 0) }),
+		func() time.Time { return time.Unix(0, 0) })
+
+	// No engine here, so the refusal under test has to come first: the state
+	// check is what this asserts, and it precedes the engine check.
+	s.mu.Lock()
+	s.state = protocol.SessionStateRunning
+	s.mu.Unlock()
+
+	err := s.Exec(context.Background(), "echo hello")
+	if err == nil {
+		t.Fatal("the command ran while a turn was running")
+	}
+	var perr *protocol.Error
+	if !errors.As(err, &perr) || perr.Code != protocol.CodeTurnAlreadyActive {
+		t.Errorf("the refusal does not say a turn is running: %v", err)
+	}
+}
+
+// And a closed session says it is closed rather than that a turn is running.
+func TestATypedCommandOnAClosedSession(t *testing.T) {
+	s := New("s1", "/w", "m", "workspace-write", nil,
+		NewEventLog("s1", 0, func() time.Time { return time.Unix(0, 0) }),
+		func() time.Time { return time.Unix(0, 0) })
+	s.mu.Lock()
+	s.state = protocol.SessionStateClosed
+	s.mu.Unlock()
+
+	err := s.Exec(context.Background(), "echo hello")
+	var perr *protocol.Error
+	if !errors.As(err, &perr) || perr.Code != protocol.CodeSessionNotFound {
+		t.Errorf("a closed session did not say so: %v", err)
+	}
+}

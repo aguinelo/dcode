@@ -72,6 +72,8 @@ const (
 	CmdText CommandKind = iota
 	CmdBuiltin
 	CmdUnknown
+	// CmdShell is a line the person runs themselves, written after `!`.
+	CmdShell
 )
 
 // Resolved is one input line, classified.
@@ -89,6 +91,13 @@ type Resolved struct {
 // cannot shadow `/config` into meaning something else, because the moment it
 // could, no advice about dcode would be true of any particular installation.
 func ResolveInput(input string, user config.CommandSet) Resolved {
+	// `!` before anything else. A line starting with it is a command the person
+	// runs themselves, and everything after the bang is the command verbatim —
+	// no splitting, no expansion, because a shell line is not an invocation
+	// this program gets to reinterpret.
+	if rest, found := strings.CutPrefix(strings.TrimSpace(input), "!"); found {
+		return Resolved{Kind: CmdShell, Text: strings.TrimSpace(rest)}
+	}
 	name, args, ok := config.SplitInvocation(input)
 	if !ok {
 		return Resolved{Kind: CmdText, Text: strings.TrimSpace(input)}

@@ -236,6 +236,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Sessão em `blocked` não emite `message.delta`.
 - Cliente desanexado durante turno não altera a sequência final de eventos.
 - Duas resoluções concorrentes da mesma aprovação: exatamente uma retorna `200`, a outra `409`.
+- `POST /sessions/{id}/exec` roda um comando que a **pessoa** digitou, pela mesma ferramenta, sob a mesma fronteira: `!` é atalho por cima do modelo, nunca por cima do sandbox.
 - A resposta de criação descreve a sessão **depois** de a conversa continuada estar nela: `last_seq` conta os eventos carregados e `first_seq` é o mais antigo que sobreviveu à retenção.
 - Aprovação expirada produz exatamente um `tool.approval_resolved` com `deny`.
 

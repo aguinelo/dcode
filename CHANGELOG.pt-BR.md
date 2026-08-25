@@ -107,6 +107,18 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Adicionado
+
+- **Um comando que você mesmo roda: `!`.** Uma linha começando com `!` não é
+  enviada ao modelo — ela roda. A saída chega à tela como os eventos de
+  ferramenta que a transcrição já desenha, e ao histórico como uma mensagem do
+  usuário, porque foi ele quem rodou; sem isso o modelo responde sobre um
+  workspace cujo estado não pode ver. Passa pela mesma ferramenta `bash` e pela
+  mesma política, então um cruzamento é posto à pessoa exatamente como seria se
+  o modelo tivesse pedido: `!` é atalho por cima do modelo, nunca por cima do
+  sandbox. A área de digitação avisa desde o primeiro caractere, enquanto a
+  linha ainda pode ser apagada.
+
 ### Alterado
 
 - **Quem decide é a fronteira, não o modelo.** Um relato abria com *"Não vou

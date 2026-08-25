@@ -196,6 +196,42 @@ func (s *Session) Submit(text string, images ...ce.Image) error {
 	return nil
 }
 
+// Exec runs a command the person typed, outside any turn.
+//
+// It takes the same lock Submit does and refuses for the same reasons: a
+// command run beside a turn would interleave its tool events with the turn's
+// and edit the history the turn is in the middle of reading.
+//
+// Synchronous, unlike Submit. A typed command is short and the person is
+// waiting on its output; there is nothing to watch in the meantime.
+func (s *Session) Exec(ctx context.Context, command string) error {
+	s.mu.Lock()
+	switch {
+	case s.state == protocol.SessionStateClosed:
+		s.mu.Unlock()
+		return protocol.Errorf(protocol.CodeSessionNotFound, "session %s is closed", s.ID)
+	case s.state != protocol.SessionStateIdle:
+		s.mu.Unlock()
+		return protocol.Errorf(protocol.CodeTurnAlreadyActive,
+			"a turn is running; wait for it to finish or interrupt it")
+	case s.engine == nil:
+		s.mu.Unlock()
+		return protocol.Errorf(protocol.CodeInternal, "session %s has no engine", s.ID)
+	}
+	s.state = protocol.SessionStateRunning
+	engine := s.engine
+	s.mu.Unlock()
+
+	_, err := engine.Exec(ctx, command)
+
+	s.mu.Lock()
+	if s.state != protocol.SessionStateClosed {
+		s.state = protocol.SessionStateIdle
+	}
+	s.mu.Unlock()
+	return err
+}
+
 // Interrupt cancels the running turn. Idempotent: interrupting an idle session
 // is not an error, because the user cannot know the turn just finished.
 func (s *Session) Interrupt() {
