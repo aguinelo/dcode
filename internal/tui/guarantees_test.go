@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -411,3 +413,52 @@ func TestAFatalOutlivesTheAlternateScreen(t *testing.T) {
 		t.Errorf("the run's own error was overwritten: %v", err)
 	}
 }
+
+// No screen shows what the turn cost as if it were the context.
+//
+// Three times now, in three places: the model computed it right, and the status
+// bar, then the side column, went on drawing from the cumulative input count
+// beside it. Each was found by a person looking at their own screen, and each
+// was fixed with a test that asked about the one place it had just been found
+// in — a guard that can only ever confirm the fix it was written for.
+//
+// This one asks the whole screen. InputTokens is what a turn COST across its
+// rounds, and every round re-sends the context, so it is routinely several
+// times the window; ContextTokens is what the context IS. Nothing anywhere may
+// show the first against the second.
+func TestNoScreenShowsTheTurnsCostAsTheContext(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	// A real record from this machine: 5,917,178 cumulative against a
+	// million-token window whose context measured 363,500.
+	m.Window, m.ContextTokens, m.ContextPct = 1_000_000, 363_500, 36
+	m.InputTokens = 5_917_178
+	m.DiffAdded, m.DiffRemoved, m.DiffFiles = 4758, 246, 99
+	m.Entries = append(m.Entries,
+		Entry{Kind: KindTool, Tool: "edit", Target: "internal/tui/side.go", Added: 3},
+	)
+
+	for _, width := range []int{80, 100, 132, 200} {
+		g := DefaultGeometry(width, 40)
+		g.Palette = Palette{}
+		g.RailMode = RailShown
+		screen := Render(m, g)
+
+		// The cumulative figure, however it is spelled.
+		for _, forbidden := range []string{"5.9M", "5917178", "5,917,178"} {
+			if strings.Contains(screen, forbidden) {
+				t.Errorf("at %d columns the screen shows %q, which is the turn's "+
+					"cost and not the context:\n%s", width, forbidden, screen)
+			}
+		}
+		// And no share of a window may exceed the window, anywhere.
+		for _, m := range percentPattern.FindAllStringSubmatch(screen, -1) {
+			n, err := strconv.Atoi(m[1])
+			if err == nil && n > 100 {
+				t.Errorf("at %d columns the screen shows %s%%:\n%s", width, m[1], screen)
+			}
+		}
+	}
+}
+
+// percentPattern finds every percentage drawn on a screen.
+var percentPattern = regexp.MustCompile(`(\d+)%`)

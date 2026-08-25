@@ -114,7 +114,21 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **The column shows the context, not what the turn cost.** The third place the
+  same defect reached the screen: the model computed it right, and the side
+  column went on drawing `5.9M / 1.0M` from the cumulative input count — under a
+  gauge computed from the true share, so the pair disagreed with the gauge below
+  it and with the bar above it. Each of the three was found by a person looking
+  at their own screen, and each was fixed with a test asking about the one place
+  it had just been found in. There is now a guard that asks the whole screen, at
+  four widths, and it catches all three.
+- **A target that is not a path keeps its head.** The recent list cut every
+  target to whatever followed the last slash, which is right for a file and
+  wrong for a URL: `.../trips/lowest-price?from=maringa-pr` showed as
+  `lowest-price?from=maringa-pr`, which reads as a file nobody has.
+  `looksLikePath` decides, which is the decision the tool line already makes.
 
 ## 0.6.0 — 25 August 2026
 

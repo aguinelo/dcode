@@ -109,7 +109,21 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **A coluna mostra o contexto, não o que o turno custou.** O terceiro lugar em
+  que o mesmo defeito chegou à tela: o modelo calculava certo, e a coluna
+  lateral seguia desenhando `5.9M / 1.0M` a partir da contagem cumulativa — sob
+  um medidor calculado da fração verdadeira, então o par discordava do medidor
+  abaixo dele e da barra acima. Cada um dos três foi encontrado por alguém
+  olhando a própria tela, e cada um foi consertado com um teste que perguntava
+  sobre o único lugar onde acabara de ser encontrado. Agora há um guarda que
+  pergunta à tela inteira, em quatro larguras, e ele pega os três.
+- **Um alvo que não é caminho mantém a cabeça.** A lista de recentes cortava
+  todo alvo no que vinha depois da última barra, o que é certo para um arquivo e
+  errado para uma URL: `.../trips/lowest-price?from=maringa-pr` aparecia como
+  `lowest-price?from=maringa-pr`, que lê como um arquivo que ninguém tem. Quem
+  decide é `looksLikePath`, a mesma decisão que a linha de ferramenta já toma.
 
 ## 0.6.0 — 25 de agosto de 2026
 
