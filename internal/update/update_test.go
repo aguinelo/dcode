@@ -850,6 +850,11 @@ func TestNothingAppliesAnUpdateWithoutTheUpdateCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// One place, still, now that there are two ways of asking: `dcode update`
+	// and `/update` from inside the client both go through replaceBinary. The
+	// rule is not "one entry point" — it is that no path replaces the binary
+	// without having been asked to, and two doors would be two things to check
+	// every time either of them changes.
 	if len(callers) != 1 {
 		t.Fatalf("Apply is called from %d places: %v\n"+
 			"one of them is a path that updates without being asked", len(callers), callers)

@@ -133,6 +133,9 @@ type Strings struct {
 	ApprovalNetwork        string
 	ApprovalEnter          string
 	ShellHint              string
+	UpdateApplied          string
+	UpdateCurrent          string
+	UpdateUnavailable      string
 	ApprovalCrossing       string
 	ApprovalRule           string
 	ApprovalAnswered       string
@@ -206,6 +209,7 @@ type Strings struct {
 	KeyNewline       string
 	KeyPasteImage    string
 	CmdUndo          string
+	CmdUpdate        string
 	CmdImage         string
 	CmdImageArgs     string
 	ImageUsage       string
@@ -336,6 +340,9 @@ var catalogue = map[Lang]Strings{
 		ApprovalNetwork:        "Commands in this project may reach the network.",
 		ApprovalEnter:          "enter denies",
 		ShellHint:              "! runs here, unsent — the model reads the output",
+		UpdateApplied:          "updated %s to %s. Reopen dcode to run it: this one is still the old binary.",
+		UpdateCurrent:          "dcode %s is the latest release.",
+		UpdateUnavailable:      "this build cannot update itself.",
 		ApprovalCrossing:       "approve",
 		ApprovalRule:           "rule:",
 		ApprovalAnswered:       "you answered:",
@@ -387,6 +394,7 @@ var catalogue = map[Lang]Strings{
 		KeyNewline:       "break the line without sending",
 		KeyPasteImage:    "paste an image from the clipboard",
 		CmdUndo:          "put back the files the last turn changed",
+		CmdUpdate:        "install the latest release",
 		CmdImage:         "show the model a picture with your next message",
 		CmdImageArgs:     "<path>",
 		ImageUsage:       "Usage: /image <path to a png, jpeg, gif or webp>",
@@ -525,6 +533,9 @@ Environment:
 		ApprovalNetwork:        "Comandos deste projeto podem alcançar a rede.",
 		ApprovalEnter:          "enter nega",
 		ShellHint:              "! roda aqui, sem enviar — o modelo lê a saída",
+		UpdateApplied:          "atualizado de %s para %s. Reabra o dcode para rodar: este ainda é o binário antigo.",
+		UpdateCurrent:          "dcode %s é a release mais recente.",
+		UpdateUnavailable:      "este build não se atualiza sozinho.",
 		ApprovalCrossing:       "aprovar",
 		ApprovalRule:           "regra:",
 		ApprovalAnswered:       "você respondeu:",
@@ -576,6 +587,7 @@ Environment:
 		KeyNewline:       "quebra a linha sem enviar",
 		KeyPasteImage:    "cola uma imagem da área de transferência",
 		CmdUndo:          "restaura os arquivos que o último turno mudou",
+		CmdUpdate:        "instala a release mais recente",
 		CmdImage:         "mostra uma imagem ao modelo junto da próxima mensagem",
 		CmdImageArgs:     "<caminho>",
 		ImageUsage:       "Uso: /image <caminho de png, jpeg, gif ou webp>",

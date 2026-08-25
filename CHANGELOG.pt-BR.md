@@ -120,6 +120,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Adicionado
 
+- **`/update` por dentro.** Verifica, confere a assinatura e o digest, e
+  substitui o binário — o mesmo atualizador que o comando monta, com as mesmas
+  recusas: build local não é substituído, um pin é respeitado, e andar para trás
+  não é atualizar. O que ele não faz é reiniciar. Substituir o binário sob um
+  processo em execução deixa o processo em execução sendo o antigo, então a nota
+  manda reabrir em vez de insinuar o contrário. As duas formas de pedir passam
+  pela mesma porta, que é o que mantém a garantia de que nada substitui este
+  binário sem ter sido pedido.
+
 - **Um comando que você mesmo roda: `!`.** Uma linha começando com `!` não é
   enviada ao modelo — ela roda. A saída chega à tela como os eventos de
   ferramenta que a transcrição já desenha, e ao histórico como uma mensagem do
