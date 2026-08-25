@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 106 decision changelogs |
-| behavioural contracts | 42 declared |
+| spec families | 13, with 108 decision changelogs |
+| behavioural contracts | 43 declared |
 | **contracts measured against a model** | **3** |
-| coverage | 94.0%, gate at 90% |
+| coverage | 94.1%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.5.1** |
+| published version | **0.6.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -66,7 +66,9 @@ hundred. What the column held was a second copy of what the stream had just
 said.
 
 **Where the keyboard is.** The input area is a framed field, because the one
-question with no other answer on the screen is where the letters you type go.
+question with no other answer on the screen is where the letters you type go. A
+line starting with `!` is not sent to the model — it runs, through the same tool
+and the same boundary, and the field says so from the first character.
 Nothing on that frame carries state: an earlier version dimmed it while the
 stream had the keyboard, and its own test asked whether that distinction
 survived without colour. It did not.
@@ -112,16 +114,9 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-### Fixed
+_Nothing yet._
 
-- **A line you are typing stays visible.** Longer than the box, it was one row
-  and the row was clipped — so everything past the right edge, the caret
-  included, was invisible while it was being typed. There is no way to read what
-  you cannot see and no way to fix a typo you cannot find. The input area counts
-  its rows by wrapping now instead of by counting newlines, and the caret is
-  carried through the wrap so it lands where the next character will appear. The
-  wrap is by column and not by word: what is typed here is usually a command,
-  and a path or a flag broken at a space reads as two arguments.
+## 0.6.0 — 25 August 2026
 
 ### Added
 
@@ -158,6 +153,16 @@ that on every run to stop the opposite reading.
   boundary working.
 
 ### Fixed
+
+- **A line you are typing stays visible.** Longer than the box, it was one row
+  and the row was clipped — so everything past the right edge, the caret
+  included, was invisible while it was being typed. There is no way to read what
+  you cannot see and no way to fix a typo you cannot find. The input area counts
+  its rows by wrapping now instead of by counting newlines, and the caret is
+  carried through the wrap so it lands where the next character will appear. The
+  wrap is by column and not by word: what is typed here is usually a command,
+  and a path or a flag broken at a space reads as two arguments.
+
 
 - **An update is something newer, not something different.** The notice asked
   whether the running version differed from the latest known one, so a binary
