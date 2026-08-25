@@ -140,7 +140,12 @@ func runTUI(args []string) error {
 		Window:    sess.ContextWindow,
 		// Everything already in the log is history: continuing replays the
 		// whole of the old conversation into the new session.
-		Backlog:       sess.LastSeq,
+		Backlog: sess.LastSeq,
+		// From what the session HAS, not from 1. A continued conversation
+		// longer than the retention window has had its oldest events dropped
+		// already, and asking for them is refused — which the client used to
+		// turn into a silent exit at the splash screen.
+		From:          sess.FirstSeq,
 		Transport:     c,
 		Geometry:      geo,
 		Commands:      commands,

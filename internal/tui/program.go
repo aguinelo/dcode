@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/aguinelo/dcode/internal/session"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/session"
 	"github.com/aguinelo/dcode/pkg/client"
 )
 
@@ -61,7 +61,12 @@ type Options struct {
 	// paints after every message, so resuming redrew the screen 3544 times with
 	// the window following its own end — which is the screen that would not
 	// stop scrolling.
-	Backlog   uint64
+	Backlog uint64
+	// From is the earliest sequence the session still holds. Zero means 1:
+	// a client that assumes the beginning is always available asks for events
+	// that retention has already dropped, and gets a refusal instead of the
+	// conversation.
+	From      uint64
 	Transport Transport
 	Geometry  Geometry
 	QueueMax  int
@@ -161,6 +166,19 @@ func Run(ctx context.Context, opts Options) error {
 
 	prog := tea.NewProgram(p, tea.WithContext(runCtx))
 	_, err := prog.Run()
+	return outcome(err, p.fatal)
+}
+
+// outcome is what the run leaves behind once the screen is gone.
+//
+// The alternate screen takes the last frame with it when the program ends, and
+// the last frame is where a fatal was drawn — so the one message the person
+// needed was the one guaranteed to be wiped. Returning it puts the reason on
+// the normal screen, where the person still is.
+func outcome(err error, fatal string) error {
+	if err == nil && fatal != "" {
+		return errors.New(fatal)
+	}
 	return err
 }
 
@@ -172,7 +190,7 @@ func (p *program) attach(id string) {
 	}
 	subCtx, cancel := context.WithCancel(p.ctx)
 	p.unsubscribe = cancel
-	p.events, p.errs = p.opts.Transport.Subscribe(subCtx, id, 1)
+	p.events, p.errs = p.opts.Transport.Subscribe(subCtx, id, max(1, p.opts.From))
 }
 
 // ---------- bubbletea ----------
@@ -239,12 +257,32 @@ func (p *program) checkVersion() tea.Cmd {
 	}
 }
 
+// pending takes the reason a stream ended, if one was written before it closed.
+func pending(errs <-chan error) error {
+	select {
+	case err, open := <-errs:
+		if open {
+			return err
+		}
+	default:
+	}
+	return nil
+}
+
 func (p *program) waitForEvent() tea.Cmd {
 	events, errs := p.events, p.errs
 	return func() tea.Msg {
 		select {
 		case ev, open := <-events:
 			if !open {
+				// A closed stream is not news by itself; WHY it closed is. The
+				// transport writes the reason to errs and then closes both, so
+				// a select that happened to see the closed channel first threw
+				// the reason away and the client quit saying nothing — which is
+				// exactly how "continuing does nothing" looked from outside.
+				if err := pending(errs); err != nil {
+					return errMsg{err}
+				}
 				return streamClosedMsg{}
 			}
 			return eventMsg(ev)

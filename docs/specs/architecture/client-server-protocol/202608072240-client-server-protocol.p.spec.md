@@ -83,6 +83,7 @@ type Session struct {
     Model     string       `json:"model"`
     CreatedAt time.Time    `json:"created_at"`
     LastSeq   uint64       `json:"last_seq"`
+    FirstSeq  uint64       `json:"first_seq,omitempty"` // evento mais antigo ainda guardado
 }
 
 type CreateSessionRequest struct {
@@ -235,9 +236,11 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Sessão em `blocked` não emite `message.delta`.
 - Cliente desanexado durante turno não altera a sequência final de eventos.
 - Duas resoluções concorrentes da mesma aprovação: exatamente uma retorna `200`, a outra `409`.
+- A resposta de criação descreve a sessão **depois** de a conversa continuada estar nela: `last_seq` conta os eventos carregados e `first_seq` é o mais antigo que sobreviveu à retenção.
 - Aprovação expirada produz exatamente um `tool.approval_resolved` com `deny`.
 
 ## 10. Changelog
 
 - [202608081250 — Ferramenta `plan`](../tool-suite/changelog/202608081250-ferramenta-plan.md)
 - [202608181900 — Continuar mostra o que carrega](changelog/202608181900-continuar-mostra-o-que-carrega.md)
+- [202608250100 — A sessão se descreve depois de a conversa entrar](changelog/202608250100-a-sessao-se-descreve-depois.md)

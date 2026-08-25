@@ -112,7 +112,24 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **Continuing a long conversation opens it.** `dcode -c` painted the splash
+  screen and exited, leaving the terminal's answers to its own startup queries
+  typed into the next shell prompt. Three failures in a line, each hiding the
+  next. The response to creating a session was built *before* the continued
+  conversation was put in it, so it said the session held nothing; the client
+  believed it and asked for events from 1, which retention had already dropped
+  from a conversation of eighteen thousand; the refusal was then written to the
+  error channel and lost in a race with that channel closing, so the client
+  quit saying nothing. The session now describes itself after the conversation
+  is in it and reports the earliest event it still holds, the client asks from
+  there, and a reason that arrives with a closed stream is read before the
+  closure is.
+- **A fatal outlives the screen it was drawn on.** It was written into the last
+  frame, and the alternate screen takes the last frame with it — so the one
+  message the person needed was the one guaranteed to be wiped. Failing looked
+  exactly like doing nothing.
 
 ## 0.5.0 — 24 August 2026
 

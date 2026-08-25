@@ -26,6 +26,8 @@ type fakeTransport struct {
 	created    []protocol.CreateSessionRequest
 	renamed    [][2]string
 	sessions   []protocol.Session
+	// subscribedFrom is every sequence the client asked to start from.
+	subscribedFrom []uint64
 
 	submitErr error
 	steerErr  error
@@ -128,7 +130,10 @@ func (f *fakeTransport) Resolve(_ context.Context, _, _ string, d protocol.Appro
 	return nil
 }
 
-func (f *fakeTransport) Subscribe(context.Context, string, uint64) (<-chan protocol.Event, <-chan error) {
+func (f *fakeTransport) Subscribe(_ context.Context, _ string, from uint64) (<-chan protocol.Event, <-chan error) {
+	f.mu.Lock()
+	f.subscribedFrom = append(f.subscribedFrom, from)
+	f.mu.Unlock()
 	return f.events, f.errs
 }
 
@@ -1710,5 +1715,55 @@ func TestTheLoadingLineKeepsTicking(t *testing.T) {
 	p.ticking = false
 	if p.resumeTicking() != nil {
 		t.Error("the tick outlived the backlog on an idle session")
+	}
+}
+
+// The client asks for what the session HAS, not for the beginning.
+//
+// Continuing a long conversation puts every carried event in the new session's
+// log, and retention drops the oldest — so the first event a continued session
+// holds is routinely not 1. Asking for 1 anyway is refused, and the refusal was
+// then lost (below), so `dcode -c` painted the splash screen and quit.
+func TestTheClientSubscribesFromWhatTheSessionHolds(t *testing.T) {
+	_, tr := newProgram(t, func(o *Options) { o.From = 8411 })
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if len(tr.subscribedFrom) != 1 || tr.subscribedFrom[0] != 8411 {
+		t.Errorf("subscribed from %v, want [8411]", tr.subscribedFrom)
+	}
+}
+
+// A session that starts at 1 is still asked for from 1, not from 0: zero means
+// "unset", and a daemon that never says would otherwise be asked for an event
+// that cannot exist.
+func TestAnUnsaidStartIsTheBeginning(t *testing.T) {
+	_, tr := newProgram(t)
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if len(tr.subscribedFrom) != 1 || tr.subscribedFrom[0] != 1 {
+		t.Errorf("subscribed from %v, want [1]", tr.subscribedFrom)
+	}
+}
+
+// A closed stream is not news by itself; why it closed is.
+//
+// The transport writes the reason and then closes both channels, so a select
+// that happened to see the closed channel first threw the reason away. What the
+// person got was a client that quit saying nothing — which is what "continuing
+// does nothing" looked like from outside.
+func TestTheReasonAStreamEndedIsNotLostToTheClose(t *testing.T) {
+	p, tr := newProgram(t)
+	want := protocol.Errorf(protocol.CodeEventsExpired, "events before 1 are no longer held")
+	tr.errs <- want
+	close(tr.events)
+	close(tr.errs)
+
+	msg := p.waitForEvent()()
+	got, ok := msg.(errMsg)
+	if !ok {
+		t.Fatalf("the stream closed and said nothing: got %T", msg)
+	}
+	if !strings.Contains(got.err.Error(), "no longer held") {
+		t.Errorf("the reason is not the one the transport wrote: %v", got.err)
 	}
 }

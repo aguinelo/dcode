@@ -202,14 +202,21 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	desc := sess.Describe()
-	sess.Emit(protocol.EventSessionCreated, desc)
+	// The event carries the session as it is at creation; the RESPONSE has to
+	// carry it as it is once the conversation being continued is in it.
+	//
+	// Describing once and using it for both said `last_seq: 0` about a session
+	// that had just been handed eighteen thousand events, and `first_seq: 1`
+	// about one whose earliest surviving event was 8411. A client believes what
+	// it is told: it asked for events from 1, was refused because they had been
+	// trimmed, and the conversation somebody typed `-c` to reopen never opened.
+	sess.Emit(protocol.EventSessionCreated, sess.Describe())
 	// Immediately after, so the record opens with this session and the very
 	// next thing in it is the conversation being continued. A client attaching
 	// at any point reads them in that order, including one that attaches later
 	// and replays from the file.
 	sess.EmitCarried()
-	writeJSON(w, http.StatusCreated, desc)
+	writeJSON(w, http.StatusCreated, sess.Describe())
 }
 
 // renameSession names a conversation, live or not.

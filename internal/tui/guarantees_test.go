@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -385,5 +386,28 @@ func TestTheAnsweredQuestionStaysInTheStream(t *testing.T) {
 	}
 	if !strings.Contains(out, "allowed for this session") {
 		t.Errorf("the answer is not shown next to the question:\n%s", out)
+	}
+}
+
+// A fatal must outlive the screen it was drawn on.
+//
+// The alternate screen takes the last frame with it when the program ends, and
+// the last frame is where the fatal was written — so the one message the person
+// needed was the one guaranteed to be wiped. `dcode -c` failing looked like
+// `dcode -c` doing nothing.
+func TestAFatalOutlivesTheAlternateScreen(t *testing.T) {
+	p, _ := newProgram(t)
+	p.fatal = "events before 1 are no longer held"
+
+	// What Run returns, not a second copy of the rule.
+	if err := outcome(nil, p.fatal); err == nil {
+		t.Fatal("the run reported success while the client had a fatal on screen")
+	} else if !strings.Contains(err.Error(), "no longer held") {
+		t.Errorf("the fatal was replaced by something else: %v", err)
+	}
+	// A real error is not replaced by the screen's copy of it.
+	real := errors.New("the daemon went away")
+	if err := outcome(real, p.fatal); !errors.Is(err, real) {
+		t.Errorf("the run's own error was overwritten: %v", err)
 	}
 }

@@ -119,6 +119,11 @@ type Session struct {
 	SandboxMode string       `json:"sandbox_mode"`
 	CreatedAt   time.Time    `json:"created_at"`
 	LastSeq     uint64       `json:"last_seq"`
+	// FirstSeq is the earliest event the session still holds. It is not always
+	// 1: continuing a long conversation puts every carried event in the log,
+	// and retention drops the oldest. A client that assumes 1 asks for events
+	// that are gone and is refused, so the session it asked for never opens.
+	FirstSeq uint64 `json:"first_seq,omitempty"`
 	// ContextWindow is the model's window in tokens. The client needs it to
 	// turn a token count into the percentage a person can act on; without it,
 	// "12400 tokens" answers nothing.

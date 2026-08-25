@@ -954,3 +954,56 @@ func TestSteeringWithNothingToSayIsRefused(t *testing.T) {
 		t.Fatal("an empty correction was accepted")
 	}
 }
+
+// Creating a session that continues another describes it AFTER the conversation
+// is in it.
+//
+// The response was built before the carried events were appended, so it said
+// `last_seq: 0` about a session that had just been handed eighteen thousand
+// events, and `first_seq: 1` about one whose earliest surviving event was
+// 8411 — retention having dropped the rest. The client believes what it is
+// told: it asked for events from 1, was refused because they were gone, and
+// the conversation somebody typed `-c` to reopen never opened.
+func TestContinuingDescribesTheSessionTheConversationIsIn(t *testing.T) {
+	mgr := session.NewManager(10)
+	const retention = 50
+	const carried = 200
+	srv := New(Config{
+		Manager: mgr,
+		Build: func(req protocol.CreateSessionRequest) (*session.Session, error) {
+			log := session.NewEventLog("s1", retention, fixedClock())
+			s := session.New("s1", req.Workspace, "m", "workspace-write", nil, log, fixedClock())
+			for i := 0; i < carried; i++ {
+				s.Carried = append(s.Carried, protocol.Event{
+					Type: protocol.EventMessageDelta, Payload: json.RawMessage(`{}`),
+				})
+			}
+			s.CarriedFrom = "older"
+			return s, nil
+		},
+	})
+
+	body, _ := json.Marshal(protocol.CreateSessionRequest{Workspace: t.TempDir()})
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/"+protocol.Version+"/sessions",
+		strings.NewReader(string(body))))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("creating the session failed: %d %s", rec.Code, rec.Body.String())
+	}
+
+	var got protocol.Session
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	// session.created + session.resumed + the carried events.
+	if want := uint64(carried + 2); got.LastSeq != want {
+		t.Errorf("last_seq is %d; the session holds %d events", got.LastSeq, want)
+	}
+	if got.FirstSeq <= 1 {
+		t.Errorf("first_seq is %d, so a client will ask for events retention "+
+			"has already dropped and be refused", got.FirstSeq)
+	}
+	if got.FirstSeq > got.LastSeq {
+		t.Errorf("first_seq %d is past last_seq %d", got.FirstSeq, got.LastSeq)
+	}
+}
