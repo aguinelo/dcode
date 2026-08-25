@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 24 August 2026
+## Current state — 25 August 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -31,7 +31,7 @@ isolated package.
 | **contracts measured against a model** | **3** |
 | coverage | 94.0%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.5.0** |
+| published version | **0.5.1** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -111,6 +111,10 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.5.1 — 25 August 2026
 
 ### Fixed
 
