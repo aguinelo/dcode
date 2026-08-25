@@ -112,6 +112,20 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Changed
+
+- **The boundary decides, not the model.** A report opened with *"Não vou rodar
+  `npm install`… você roda localmente"* and *"Não vou rodar `vitest`… você roda
+  localmente"* — a refusal nobody gave, answered on the user's behalf, handing
+  the work back to be done by hand. The approval machinery exists for exactly
+  that moment and was never reached. The doctrine said a crossing gets asked and
+  that a refusal is final; it never said that **deciding in advance is not the
+  model's to decide**. It says so now, in two sentences, at about sixty tokens a
+  turn — the cost is real and it buys back the whole point of having boundaries
+  a person answers. A new contract, `boundary-decides` at 90%, measures it: the
+  judge asks for the attempt, not for success, because being denied is the
+  boundary working.
+
 ### Fixed
 
 - **An update is something newer, not something different.** The notice asked
