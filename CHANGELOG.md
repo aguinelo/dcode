@@ -112,6 +112,22 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+_Nothing yet._
+
+## 0.5.0 — 24 August 2026
+
+### Changed
+
+- **The approval is in the stream, and stays there.** The modal is gone: the
+  question is drawn where it was asked, in a fourth lane, and once answered it
+  keeps its place with the answer in place of the keys. The box was read as
+  being what enforced RN-6, and it never was — what owns the keyboard while a
+  crossing is pending is the client refusing to hand the keystroke to the input,
+  which is unchanged. What the box did do was hide the work being judged and
+  then delete itself, taking with it the most durable record a session
+  produces. Answers now land on the request by `ApprovalID`, because with two
+  crossings in flight "the last one" writes a decision nobody made.
+
 ### Fixed
 
 - **Continuing a long conversation opens it.** `dcode -c` painted the splash
@@ -130,23 +146,6 @@ that on every run to stop the opposite reading.
   frame, and the alternate screen takes the last frame with it — so the one
   message the person needed was the one guaranteed to be wiped. Failing looked
   exactly like doing nothing.
-
-## 0.5.0 — 24 August 2026
-
-### Changed
-
-- **The approval is in the stream, and stays there.** The modal is gone: the
-  question is drawn where it was asked, in a fourth lane, and once answered it
-  keeps its place with the answer in place of the keys. The box was read as
-  being what enforced RN-6, and it never was — what owns the keyboard while a
-  crossing is pending is the client refusing to hand the keystroke to the input,
-  which is unchanged. What the box did do was hide the work being judged and
-  then delete itself, taking with it the most durable record a session
-  produces. Answers now land on the request by `ApprovalID`, because with two
-  crossings in flight "the last one" writes a decision nobody made.
-
-### Fixed
-
 - **Only a release tag names a build.** A backup tag left beside the branch —
   `tui-v1`, a restore point and not a version — shadowed the last release simply
   by being newer, and every build then called itself `tui-v1-dev+411c237`.
