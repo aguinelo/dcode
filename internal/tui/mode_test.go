@@ -134,3 +134,50 @@ func TestAnUnknownModeNeverLeavesTheClient(t *testing.T) {
 		t.Errorf("the refusal must name what was typed, got %q", last)
 	}
 }
+
+// TestTheTopBarFollowsTheSwitchToo is the third instance of one defect.
+//
+// The badge learned the new mode and the top bar did not, so a session in
+// `auto` announced `workspace-write` — and §2.1 names the sandbox field the one
+// place where being wrong is dangerous. It announced a limit that had just been
+// lifted.
+func TestTheTopBarFollowsTheSwitchToo(t *testing.T) {
+	m := Model{Mode: protocol.ModeAssist, Sandbox: "workspace-write", Window: 1000}
+	payload, err := json.Marshal(protocol.SessionModeChanged{
+		Previous: protocol.ModeAssist, Mode: protocol.ModeAuto, SandboxMode: "full-access",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = m.Apply(protocol.Event{Type: protocol.EventSessionModeChanged, Payload: payload})
+
+	if m.Sandbox != "full-access" {
+		t.Errorf("Sandbox = %q, want full-access", m.Sandbox)
+	}
+	screen := Render(m, DefaultGeometry(120, 30))
+	if strings.Contains(screen, "workspace-write") {
+		t.Errorf("the bar still names the boundary that was lifted:\n%s", screen)
+	}
+	// Case-insensitive: full-access is rendered loud — `!! FULL-ACCESS !!` —
+	// by the invariant that the mode with no boundary is never quiet. What is
+	// asserted here is that the bar names it at all, not how it shouts.
+	if !strings.Contains(strings.ToLower(screen), "full-access") {
+		t.Errorf("the bar does not name the boundary in force:\n%s", screen)
+	}
+}
+
+// TestAnAnnouncementWithoutASandboxLeavesTheBarAlone: an older daemon says
+// nothing about the sandbox, and a bar that blanks itself on silence is worse
+// than one that keeps the last thing it was told.
+func TestAnAnnouncementWithoutASandboxLeavesTheBarAlone(t *testing.T) {
+	m := Model{Mode: protocol.ModeAssist, Sandbox: "workspace-write"}
+	payload, err := json.Marshal(protocol.SessionModeChanged{Mode: protocol.ModeAuto})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = m.Apply(protocol.Event{Type: protocol.EventSessionModeChanged, Payload: payload})
+
+	if m.Sandbox != "workspace-write" {
+		t.Errorf("Sandbox = %q, want the previous value kept", m.Sandbox)
+	}
+}

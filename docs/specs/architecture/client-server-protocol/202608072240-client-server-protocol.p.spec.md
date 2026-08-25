@@ -138,7 +138,7 @@ type Error struct {
 | `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
 | `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
 | `session.compacted` | `{"from_seq":uint64,"to_seq":uint64}` | compactação de contexto (ADR-03) |
-| `session.mode_changed` | `{"previous":string?,"mode":string}` | modo comportamental trocado; `previous` vazio quando não havia de onde vir |
+| `session.mode_changed` | `{"previous":string?,"mode":string,"sandbox_mode":string}` | modo comportamental trocado; `previous` vazio quando não havia de onde vir. `sandbox_mode` é a metade técnica que a troca instalou — carregada, e não derivada pelo cliente, porque a tabela do §2.1 de `sandbox-policy` tem uma casa só |
 | `session.error` | `Error` | falha não atribuível a um turno |
 
 ```go

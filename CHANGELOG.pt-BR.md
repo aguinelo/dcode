@@ -111,6 +111,14 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **O status do topo também segue a troca.** O crachá aprendia o modo novo e a
+  barra de status não, então uma sessão em `auto` seguia anunciando
+  `workspace-write` — o campo que a §2.1 chama de perigoso errar, e por isso
+  isento da ordem de descarte. Ele anunciava um limite que tinha acabado de ser
+  retirado, que é o pior sentido para esse campo errar. O `session.mode_changed`
+  passa a carregar `sandbox_mode`, carregado e não recalculado pelo cliente,
+  porque a tabela que liga nome a par tem uma casa só.
+
 - **`auto` remove a fronteira de verdade.** Trocar de modo movia a resposta da
   política e mais nada: o sandbox recebia o modo como **valor**, copiado quando
   a sessão foi montada, então `/mode auto` fazia o veredito dizer `allow` e o

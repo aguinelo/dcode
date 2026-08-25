@@ -12,6 +12,8 @@ var tuiInvariants = map[string]string{
 	"Limite sem nome não é batizado":              "TestModeWithNoArgumentDoesNotInventOne",
 	"recusa nomeia o que foi digitado":            "TestAnUnknownModeNeverLeavesTheClient",
 	"vem do anúncio no log":                       "TestTheBarFollowsTheAnnouncement",
+	"sandbox no status do topo":                   "TestTheTopBarFollowsTheSwitchToo",
+	"deixa o valor anterior de pé":                "TestAnAnnouncementWithoutASandboxLeavesTheBarAlone",
 	"mostra o que imprimiu **sem nenhuma tecla**": "TestATypedCommandShowsWhatItPrinted",
 	"a regra nova é estreita":                     "TestAModelsCommandStaysCollapsed",
 	"`exit N` aparece **uma vez**":                "TestTheExitCodeIsNotPrintedTwice",
