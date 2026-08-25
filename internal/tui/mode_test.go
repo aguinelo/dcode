@@ -32,55 +32,46 @@ func TestTheBarFollowsTheAnnouncement(t *testing.T) {
 	}
 }
 
-// TestDroppingTheBoundaryTakesTwo covers both ways into auto.
+// TestEveryModeGoesThroughOnTheFirstTry covers both ways in, auto included.
 //
-// The first gesture warns and asks for nothing else; only the second reaches
-// the daemon. Everything short of auto goes through on the first, because
-// arming a mode that keeps the boundary would train the confirmation away.
-func TestDroppingTheBoundaryTakesTwo(t *testing.T) {
+// `/mode auto` used to warn and require the gesture again. Typing eleven
+// deliberate characters IS the decision — asking the person to repeat what they
+// just said is not a safeguard, it is a step to learn past. What says there is
+// no boundary is the badge on the bar, and it says so for as long as it is
+// true, rather than once, to someone who had already decided.
+func TestEveryModeGoesThroughOnTheFirstTry(t *testing.T) {
 	t.Run("slash command", func(t *testing.T) {
-		p, tr := newProgram(t)
-		p.model.Mode = protocol.ModeAssist
+		for _, mode := range []string{protocol.ModePlan, protocol.ModeAssist, protocol.ModeAuto} {
+			t.Run(mode, func(t *testing.T) {
+				p, tr := newProgram(t)
+				p.model.Mode = ""
 
-		run(t, p, typeLine(t, p, "/mode auto"))
-		if got := tr.modes(); len(got) != 0 {
-			t.Fatalf("the first /mode auto reached the daemon: %v", got)
-		}
-		if !strings.Contains(p.model.Flash, "auto") {
-			t.Errorf("no warning on screen, Flash = %q", p.model.Flash)
-		}
-		run(t, p, typeLine(t, p, "/mode auto"))
-		if got := tr.modes(); len(got) != 1 || got[0] != protocol.ModeAuto {
-			t.Errorf("after the second: modes = %v, want [auto]", got)
+				run(t, p, typeLine(t, p, "/mode "+mode))
+				if got := tr.modes(); len(got) != 1 || got[0] != mode {
+					t.Errorf("modes = %v, want [%s] on the first try", got, mode)
+				}
+			})
 		}
 	})
 
-	t.Run("shift+tab", func(t *testing.T) {
+	t.Run("shift+tab reaches auto in one press", func(t *testing.T) {
 		p, tr := newProgram(t)
 		p.model.Mode = protocol.ModeAssist
 
 		_, cmd := p.Update(shiftTab())
 		run(t, p, cmd)
-		if got := tr.modes(); len(got) != 0 {
-			t.Fatalf("the first shift+tab onto auto reached the daemon: %v", got)
-		}
-		if !strings.Contains(p.model.Flash, "auto") {
-			t.Errorf("no warning on screen, Flash = %q", p.model.Flash)
-		}
-		_, cmd = p.Update(shiftTab())
-		run(t, p, cmd)
 		if got := tr.modes(); len(got) != 1 || got[0] != protocol.ModeAuto {
-			t.Errorf("after the second: modes = %v, want [auto]", got)
+			t.Errorf("modes = %v, want [auto] on the first press", got)
 		}
 	})
 
-	t.Run("a bounded mode is not armed", func(t *testing.T) {
-		p, tr := newProgram(t)
-		p.model.Mode = protocol.ModeAuto
+	t.Run("nothing is left on screen asking for a repeat", func(t *testing.T) {
+		p, _ := newProgram(t)
+		p.model.Mode = protocol.ModeAssist
 
-		run(t, p, typeLine(t, p, "/mode plan"))
-		if got := tr.modes(); len(got) != 1 || got[0] != protocol.ModePlan {
-			t.Errorf("modes = %v, want [plan] on the first try", got)
+		run(t, p, typeLine(t, p, "/mode auto"))
+		if strings.Contains(p.model.Flash, "again") || strings.Contains(p.model.Flash, "de novo") {
+			t.Errorf("a confirmation prompt survived: %q", p.model.Flash)
 		}
 	})
 }

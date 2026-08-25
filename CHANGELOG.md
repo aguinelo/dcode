@@ -114,7 +114,31 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **The harness asks the user, and the model does not.** The doctrine said
+  "when that happens **the user is asked**" — passive, no subject — so the model
+  filled the subject with itself and built a permission protocol of its own, in
+  prose, that never reaches the approval machinery: *"you have to say 'go'
+  explicitly"*. It quoted that sentence to justify exactly what the same
+  doctrine forbids three lines below. The subject is now named, the call is
+  stated to BE the question, and a permission granted in prose is stated to
+  grant nothing, because nothing was ever asked.
+- **A cell measured is not its neighbour measured.** `boundary-decides` sat at
+  100% of 20 runs while this was failing in front of a user, because it crosses
+  the **network** and the reported failure **wrote outside the workspace**. A
+  second scenario covers that cell. The limit of both is now written down: the
+  eval is single-turn, and the refusal that survives being argued with is a
+  failure this framework cannot yet see.
+
+### Changed
+
+- **Every mode goes through on the first try, `auto` included.** The two-step
+  confirmation shipped yesterday in 0.7.0 and lasted until first use. Typing
+  `/mode auto` is eleven deliberate characters — there is no reflex to
+  disambiguate, unlike `^C`, and asking someone to repeat what they just said is
+  not a safeguard but a step to learn past. What says there is no boundary is
+  the badge on the bar, which says it for as long as it is true.
 
 ## 0.7.0 — 25 August 2026
 
