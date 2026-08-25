@@ -116,6 +116,14 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **The top bar follows the switch too.** The badge learned the new mode and the
+  status bar did not, so a session in `auto` went on announcing
+  `workspace-write` — the one field §2.1 calls dangerous to get wrong, which is
+  why it is exempt from the bar's drop order. It announced a limit that had just
+  been lifted, which is the worst direction for that field to be wrong in.
+  `session.mode_changed` now carries `sandbox_mode`, carried rather than
+  recomputed by the client, because the name-to-pair table has one home.
+
 - **`auto` really removes the boundary.** Switching mode moved the policy's
   answer and nothing else: the sandbox was handed the mode as a **value**,
   copied when the session was built, so `/mode auto` made the verdict say

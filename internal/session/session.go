@@ -171,7 +171,7 @@ func (s *Session) SetMode(name string) error {
 
 	s.engine.SetMode(sandbox, pol)
 	s.Emit(protocol.EventSessionModeChanged, protocol.SessionModeChanged{
-		Previous: previous, Mode: name,
+		Previous: previous, Mode: name, SandboxMode: string(sandbox),
 	})
 	return nil
 }

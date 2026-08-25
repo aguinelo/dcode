@@ -296,6 +296,13 @@ func (m Model) Apply(ev protocol.Event) Model {
 		var d protocol.SessionModeChanged
 		if err := json.Unmarshal(ev.Payload, &d); err == nil && d.Mode != "" {
 			m.Mode = d.Mode
+			// The sandbox moves with the mode, and the top bar carries it. Left
+			// behind, the bar went on naming the boundary the session was
+			// created with — the one field §2.1 says it is dangerous to get
+			// wrong, announcing a limit that had just been lifted.
+			if d.SandboxMode != "" {
+				m.Sandbox = d.SandboxMode
+			}
 		}
 	case protocol.EventSessionResumed:
 		// The events that follow happened in another session. Saying so is what

@@ -584,5 +584,16 @@ type (
 	SessionModeChanged struct {
 		Previous string `json:"previous,omitempty"`
 		Mode     string `json:"mode"`
+		// SandboxMode is the technical half the switch just installed.
+		//
+		// Carried rather than derived by the client, for the same reason the
+		// mode name is derived from the pair on the daemon: the mapping has one
+		// home. A client computing it from the name would be a second copy of
+		// the table, and the copy is what drifts.
+		//
+		// Without it the top bar went on announcing the boundary the session
+		// was created with — and §2.1 of client-tui calls the sandbox field the
+		// one place where being wrong is dangerous.
+		SandboxMode string `json:"sandbox_mode"`
 	}
 )
