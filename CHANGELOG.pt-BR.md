@@ -107,6 +107,20 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Alterado
+
+- **Quem decide é a fronteira, não o modelo.** Um relato abria com *"Não vou
+  rodar `npm install`… você roda localmente"* e *"Não vou rodar `vitest`… você
+  roda localmente"* — uma recusa que ninguém deu, respondida no lugar do
+  usuário, devolvendo o trabalho para ser feito à mão. A máquina de aprovação
+  existe exatamente para aquele momento e nunca chegou a ser acionada. A
+  doutrina dizia que um cruzamento é perguntado e que a recusa é final; nunca
+  dizia que **decidir de antemão não cabe ao modelo**. Agora diz, em duas
+  frases, a cerca de sessenta tokens por turno — o custo é real e compra de
+  volta o sentido inteiro de ter fronteiras que uma pessoa responde. Um contrato
+  novo, `boundary-decides` a 90%, mede isso: o juiz pede a tentativa, não o
+  sucesso, porque ser negado é a fronteira funcionando.
+
 ### Corrigido
 
 - **Atualização é algo mais novo, não algo diferente.** O aviso perguntava se a
