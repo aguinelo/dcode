@@ -125,6 +125,15 @@ that on every run to stop the opposite reading.
 
 ### Added
 
+- **`/update` from inside.** It checks, verifies the signature and the digest,
+  and replaces the binary — the same updater the command builds, with the same
+  refusals: a local build is not replaced, a pin is honoured, and going
+  backwards is not an update. What it does not do is restart. Replacing the
+  binary under a running process leaves the running process being the old one,
+  so the note says to reopen rather than implying otherwise. Both ways of asking
+  go through one door, which is what keeps the guarantee that nothing replaces
+  this binary without having been asked to.
+
 - **A command you run yourself: `!`.** A line starting with `!` is not sent to
   the model — it runs. The output reaches the screen as the tool events the
   transcript already draws, and reaches the history as one user message, because

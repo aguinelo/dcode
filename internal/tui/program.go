@@ -36,6 +36,18 @@ type Transport interface {
 
 var _ Transport = (*client.Client)(nil)
 
+// UpdateResult is what an update attempt did.
+//
+// The client composes the sentence from it rather than being handed one: a
+// screen written at the edge is a screen that stays in one language, and this
+// interface is bilingual.
+type UpdateResult struct {
+	From, To string
+	// Applied is false when the running version was already the latest. Not an
+	// error — nothing was wrong — and not silence either.
+	Applied bool
+}
+
 // MaxImageBytes is the largest picture that goes to the model.
 //
 // Ten megabytes, which is what the providers take. Refusing here rather than on
@@ -96,6 +108,12 @@ type Options struct {
 	// Notice is the passive version check. It runs off the critical path and
 	// its failure is silent by contract.
 	Notice func(context.Context) string
+
+	// Update applies a release, when the edge has one to apply. Resolved out
+	// there rather than here for the reason the language and the palette are:
+	// this package renders and never reads the environment, and an update
+	// reads a good deal of it.
+	Update func(context.Context) (UpdateResult, error)
 
 	// Now is the clock for elapsed time. Injected so a test can assert an
 	// exact duration instead of sleeping for one.
@@ -380,6 +398,17 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		p.fatal = msg.err.Error()
 		return p, tea.Quit
+
+	case updatedMsg:
+		t := Text(p.model.Lang)
+		text := fmt.Sprintf(t.UpdateCurrent, msg.res.From)
+		if msg.res.Applied {
+			text = fmt.Sprintf(t.UpdateApplied, msg.res.From, msg.res.To)
+		}
+		p.model.Entries = append(p.model.Entries, Entry{
+			Kind: KindNote, Summary: text, Expanded: true,
+		})
+		return p, nil
 
 	case streamClosedMsg:
 		return p, tea.Quit
@@ -928,6 +957,12 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		}
 		return p.sendOrQueue(ReplanPrompt(r.Args))
 
+	case "update":
+		if p.opts.Update == nil {
+			return note(Text(p.model.Lang).UpdateUnavailable)
+		}
+		return p, p.update()
+
 	case "init":
 		return p.sendOrQueue(InitPrompt)
 
@@ -1026,6 +1061,25 @@ func (p *program) shell(command string) tea.Cmd {
 		return nil
 	}
 }
+
+// update installs a release over this binary and says what happened.
+//
+// It does not restart. Replacing the binary under a running process leaves the
+// running process being the old one, and pretending otherwise would be the
+// worst kind of lie a version reports — so the note says to reopen, which is
+// the honest half of what can be done from in here.
+func (p *program) update() tea.Cmd {
+	return func() tea.Msg {
+		res, err := p.opts.Update(p.ctx)
+		if err != nil {
+			return errMsg{err}
+		}
+		return updatedMsg{res}
+	}
+}
+
+// updatedMsg is what an update did.
+type updatedMsg struct{ res UpdateResult }
 
 // steerLateMsg is a correction that arrived after its turn ended.
 type steerLateMsg struct{ text string }

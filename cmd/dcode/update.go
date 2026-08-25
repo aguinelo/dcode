@@ -13,6 +13,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/tui"
 	"github.com/aguinelo/dcode/internal/update"
 	"github.com/aguinelo/dcode/internal/version"
 )
@@ -93,11 +94,61 @@ func runUpdate(args []string) error {
 	}
 
 	fmt.Printf("Updating dcode %s → %s\n", current, rel.Version)
-	if err := u.Apply(ctx, rel); err != nil {
+	if err := replaceBinary(ctx, u, rel); err != nil {
 		return err
 	}
 	fmt.Printf("Updated to %s.\n", rel.Version)
 	return nil
+}
+
+// replaceBinary is the ONE place this binary is replaced.
+//
+// Both ways of asking — `dcode update` and `/update` from inside the client —
+// come through here, and a test asserts that `Apply` is called from exactly one
+// place. The rule it protects is not "one entry point": it is that no path
+// replaces the binary without having been asked to. Two doors would be two
+// things to check every time either changes.
+func replaceBinary(ctx context.Context, u *update.GitHub, rel update.Release) error {
+	return u.Apply(ctx, rel)
+}
+
+// updater is what `/update` calls from inside the client.
+//
+// The same updater the command builds, with the same refusals: a local build is
+// not replaced, a pin is honoured, and going backwards is not an update. What
+// it does NOT do is restart — replacing the binary under a running process
+// leaves the running process being the old one, and the client says so rather
+// than implying otherwise.
+func updater(ctx context.Context) (tui.UpdateResult, error) {
+	ch := updateSetting("update.channel", "")
+	if ch == "" {
+		ch = legacyChannel()
+	}
+	u := update.NewGitHub(update.Config{
+		APIURL:       os.Getenv("DCODE_UPDATE_URL"),
+		InstallerURL: os.Getenv("DCODE_UPDATE_INSTALLER_URL"),
+		Channel:      ch,
+		Pin:          os.Getenv("DCODE_PIN_VERSION"),
+	})
+
+	current := version.Short()
+	// Before the network, for the reason runUpdate gives: if the answer is a
+	// refusal either way, asking GitHub first spends a round trip to report the
+	// wrong reason.
+	if !version.IsRelease() {
+		return tui.UpdateResult{}, update.ErrLocalBuild
+	}
+	rel, err := u.Latest(ctx)
+	if err != nil {
+		return tui.UpdateResult{}, err
+	}
+	if (update.VersionNotice{Current: current, Latest: rel.Version}).Message() == "" {
+		return tui.UpdateResult{From: current}, nil
+	}
+	if err := replaceBinary(ctx, u, rel); err != nil {
+		return tui.UpdateResult{}, err
+	}
+	return tui.UpdateResult{From: current, To: rel.Version, Applied: true}, nil
 }
 
 // noticePath is where the passive check caches its answer. Under the state

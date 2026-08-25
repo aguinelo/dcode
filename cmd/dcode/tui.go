@@ -156,6 +156,7 @@ func runTUI(args []string) error {
 		// reads the environment, the same way it never builds its own palette.
 		Lang:   langOf(resolved),
 		Notice: versionNotice,
+		Update: updater,
 	})
 }
 

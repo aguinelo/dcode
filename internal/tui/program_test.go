@@ -1844,3 +1844,72 @@ func TestTheInputSaysWhatTheBangWillDo(t *testing.T) {
 		t.Errorf("an ordinary line is warned about as if it were a command:\n%s", got)
 	}
 }
+
+// `/update` installs and says to reopen.
+//
+// It does not restart. Replacing the binary under a running process leaves the
+// running process being the old one, and a note claiming otherwise would be the
+// worst kind of lie a version reports.
+func TestUpdateSaysToReopenRatherThanPretendingToRestart(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) {
+		o.Update = func(context.Context) (UpdateResult, error) {
+			return UpdateResult{From: "0.5.1", To: "0.6.0", Applied: true}, nil
+		}
+	})
+	p.model = p.model.SetInput("/update")
+	_, cmd := p.onEnter()
+	p.Update(run(t, p, cmd))
+
+	last := p.model.Entries[len(p.model.Entries)-1]
+	for _, want := range []string{"0.5.1", "0.6.0", "Reopen"} {
+		if !strings.Contains(last.Summary, want) {
+			t.Errorf("the note does not mention %q: %q", want, last.Summary)
+		}
+	}
+}
+
+// Already the latest is not an error and not silence either.
+func TestUpdateOnTheLatestSaysSo(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) {
+		o.Update = func(context.Context) (UpdateResult, error) {
+			return UpdateResult{From: "0.6.0"}, nil
+		}
+	})
+	p.model = p.model.SetInput("/update")
+	_, cmd := p.onEnter()
+	p.Update(run(t, p, cmd))
+
+	last := p.model.Entries[len(p.model.Entries)-1]
+	if !strings.Contains(last.Summary, "latest") {
+		t.Errorf("being current was not reported: %q", last.Summary)
+	}
+}
+
+// A build with no way to update says that, rather than failing obscurely.
+func TestUpdateOnABuildThatCannotSaysSo(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model = p.model.SetInput("/update")
+	_, cmd := p.onEnter()
+	p.Update(run(t, p, cmd))
+
+	last := p.model.Entries[len(p.model.Entries)-1]
+	if !strings.Contains(last.Summary, "cannot update itself") {
+		t.Errorf("a build that cannot update did not say so: %q", last.Summary)
+	}
+}
+
+// And a refusal from the updater reaches the person as the refusal it is.
+func TestUpdateReportsWhyItRefused(t *testing.T) {
+	p, _ := newProgram(t, func(o *Options) {
+		o.Update = func(context.Context) (UpdateResult, error) {
+			return UpdateResult{}, errors.New("this is a local build, not a published release")
+		}
+	})
+	p.model = p.model.SetInput("/update")
+	_, cmd := p.onEnter()
+	p.Update(run(t, p, cmd))
+
+	if !strings.Contains(p.fatal, "local build") {
+		t.Errorf("the refusal did not reach the person: fatal=%q", p.fatal)
+	}
+}
