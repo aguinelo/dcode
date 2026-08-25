@@ -31,7 +31,7 @@ fora do pacote isolado.
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 94,1%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.6.0** |
+| versão publicada | **0.6.1** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -109,6 +109,10 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+_Nada ainda._
+
+## 0.6.1 — 25 de agosto de 2026
+
 ### Corrigido
 
 - **A coluna mostra o contexto, não o que o turno custou.** O terceiro lugar em
@@ -124,6 +128,22 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   errado para uma URL: `.../trips/lowest-price?from=maringa-pr` aparecia como
   `lowest-price?from=maringa-pr`, que lê como um arquivo que ninguém tem. Quem
   decide é `looksLikePath`, a mesma decisão que a linha de ferramenta já toma.
+
+### Alterado
+
+- **O daemon e o emissor estão cobertos.** Dez testes recuperados de trabalho
+  que nunca entrou: os fragmentos do emissor, as marcas do plano e os ramos
+  opcionais do daemon. `internal/app` de 92,3% para 93,0%.
+- **A memória aprendida está no repositório.** `.dcode/memory.md` estava fora do
+  controle de versão, e a spec diz por extenso o que ela deve ser — versionada
+  pelo usuário. Uma memória que vive só na máquina que aprendeu é uma memória
+  que a próxima pessoa não recebe.
+- **A regra das 500 linhas nunca foi aplicada, e a árvore não está nem perto.**
+  Dez arquivos de produção e dezessete de teste passam dela, o maior com 1915.
+  Registrado em `docs/ROADMAP.md` em vez de consertado: quebrar vinte e sete
+  arquivos não torna nada mais correto, e escrever o guarda primeiro põe vinte e
+  sete arquivos vermelhos de saída — o erro que a §5 já registra sobre o portão
+  de cobertura.
 
 ## 0.6.0 — 25 de agosto de 2026
 
