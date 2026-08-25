@@ -114,6 +114,16 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Changed
+
+- **Leaving takes two, and clearing a line takes none.** `^C` means "clear this
+  line" in every shell, and it was wired straight to quit — so a reflex the
+  terminal taught cost a conversation. Now: a running turn is interrupted, a
+  typed line is cleared, and an empty line warns first and leaves second. Armed
+  exactly while the warning is on screen, because any other key disarms it: a
+  timer would keep the key live for a second after the sentence had gone, which
+  is a state a person cannot see and therefore cannot reason about.
+
 ### Fixed
 
 - **A typed command announces itself before it runs.** `!` ran the command and

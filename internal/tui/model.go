@@ -158,6 +158,11 @@ type Model struct {
 	// Flash is a one-line notice shown until the next keystroke, for things
 	// that happen and leave no other trace — a copy landing, for instance.
 	Flash string
+
+	// Leaving is armed by the first ^C on an empty line and disarmed by any
+	// other key. It is true exactly while the warning is on screen: a state a
+	// person cannot see is a state they cannot reason about.
+	Leaving bool
 	// Verification is the seal of the last completed turn. Empty when the turn
 	// had no definition of done.
 	//

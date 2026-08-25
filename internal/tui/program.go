@@ -449,6 +449,15 @@ func normalisePaste(s string) string {
 }
 
 func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// Any key that is not ^C disarms leaving, and clears the line that says so.
+	//
+	// Armed exactly while the warning is on screen, and no longer: a timer
+	// would arm the key for a second after the sentence had gone, which is the
+	// state a person cannot see and therefore cannot reason about.
+	if k.String() != "ctrl+c" && p.model.Leaving {
+		p.model.Leaving, p.model.Flash = false, ""
+	}
+
 	// The modal blocks input: it is the one moment the user has to read, and
 	// letting keystrokes fall through would let them dismiss it by accident.
 	if p.model.Pending != nil {
@@ -607,6 +616,23 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// overwhelming majority of cases, and quitting mid-turn loses work.
 		if p.model.State != protocol.SessionStateIdle {
 			return p, p.interrupt()
+		}
+		// With something typed, it clears the line. That is what the key means
+		// in every shell, and it is what people reach for it to do — reported
+		// as "I press ^C to clear a command and dcode closes", which is a
+		// session lost to a reflex the terminal taught.
+		if p.model.Input != "" {
+			p.model = p.model.SetInput("")
+			p.model.Completions = nil
+			return p, nil
+		}
+		// On an empty line it takes two, and the first one says so. One
+		// keystroke away from losing a conversation is one keystroke too few,
+		// and a warning nobody can act on is not a warning.
+		if !p.model.Leaving {
+			p.model.Leaving = true
+			p.model.Flash = Text(p.model.Lang).LeavingTakesTwo
+			return p, nil
 		}
 		return p, tea.Quit
 

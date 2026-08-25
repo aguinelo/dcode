@@ -87,7 +87,7 @@ var tuiInvariants = map[string]string{
 	"Imagem anexada segura a mensagem":    "TestAnAttachedImageHoldsTheMessageBack",
 	"Correção recusada porque o turno":    "TestACorrectionThatArrivedTooLateBecomesAMessage",
 	"produz **um** turno":                 "TestQueueJoinsIntoOneTurnInTypingOrder",
-	"durante turno interrompe":            "TestCtrlCInterruptsMidTurnAndQuitsWhenIdle",
+	"durante turno interrompe":            "TestCtrlCInterruptsMidTurnAndTakesTwoWhenIdle",
 	"não sobrescreve embutido":            "TestBuiltinsBeatUserCommandsAndTheShadowingIsReported",
 	"Estado vazio some no primeiro":       "TestEmptyStateDisappearsOnTheFirstTurnAndNeverReturns",
 	"Sessão retomada com histórico":       "TestAResumedSessionNeverShowsTheEmptyState",
