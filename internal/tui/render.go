@@ -1198,7 +1198,7 @@ const MaxInputRows = 10
 // painted frame owns every cell it covers". Two places computing a height is
 // the bug; the symptom is only where it shows up.
 func InputRows(m Model, g Geometry) int {
-	rows := strings.Count(m.Input, "\n") + 1
+	rows := len(wrapInput(m.Input, inputWidth(m, g)))
 	if rows > MaxInputRows {
 		rows = MaxInputRows
 	}
@@ -1218,9 +1218,12 @@ func InputRows(m Model, g Geometry) int {
 //
 // Past the cap the box scrolls rather than truncating: the row being typed on
 // has to be visible, and it is usually the last one.
-func inputWindow(m Model, rows int) (lines []string, caretRow, caretCol int) {
-	lines = strings.Split(m.Input, "\n")
-	caretRow, caretCol = caretAt(m.Input, m.InputCursor)
+func inputWindow(m Model, g Geometry, rows int) (lines []string, caretRow, caretCol int) {
+	segs, caretRow, caretCol := wrapWithCaret(m.Input, inputWidth(m, g), m.InputCursor)
+	lines = make([]string, len(segs))
+	for i, sg := range segs {
+		lines[i] = sg.text
+	}
 
 	top := 0
 	if caretRow >= rows {
@@ -1231,6 +1234,85 @@ func inputWindow(m Model, rows int) (lines []string, caretRow, caretCol int) {
 		end = len(lines)
 	}
 	return lines[top:end], caretRow - top, caretCol
+}
+
+// inputWidth is how many columns a typed line has before it must wrap.
+//
+// The frame takes two, the gutter inside it takes one on each side, and the
+// prompt takes its own width on every row — the continuation rows are indented
+// to match it, so a wrapped line stays under the line it continues.
+func inputWidth(m Model, g Geometry) int {
+	prompt := 2
+	if len(m.Queue) > 0 {
+		prompt = clipWidth(fmt.Sprintf("(%d %s) %s ", len(m.Queue), Text(m.Lang).Queued, "x"))
+	}
+	w := g.Width - 2 - 2 - prompt
+	if w < 8 {
+		// Below this the wrap is worse than the clip: one or two characters a
+		// row is not reading, it is a column of letters.
+		w = 8
+	}
+	return w
+}
+
+// inputRow is one screen row of typed text and where it started in the input.
+type inputRow struct {
+	text  string
+	start int // rune offset of the first character
+}
+
+// wrapInput breaks the input into the rows it will occupy.
+//
+// A line longer than the box used to be ONE row, clipped — so everything past
+// the right edge, the caret included, was invisible while being typed. The
+// wrap is by column and not by word: a path or a flag broken at a space would
+// read as two arguments, and what is being typed here is usually a command.
+func wrapInput(text string, width int) []inputRow {
+	if width < 1 {
+		width = 1
+	}
+	var out []inputRow
+	at := 0
+	for _, line := range strings.Split(text, "\n") {
+		runes := []rune(line)
+		if len(runes) == 0 {
+			out = append(out, inputRow{start: at})
+		}
+		for i := 0; i < len(runes); i += width {
+			end := min(i+width, len(runes))
+			out = append(out, inputRow{text: string(runes[i:end]), start: at + i})
+		}
+		at += len(runes) + 1 // the newline
+	}
+	if len(out) == 0 {
+		out = append(out, inputRow{})
+	}
+	return out
+}
+
+// wrapWithCaret wraps and says which row and column the caret landed on.
+func wrapWithCaret(text string, width, cursor int) ([]inputRow, int, int) {
+	segs := wrapInput(text, width)
+	if cursor < 0 {
+		cursor = 0
+	}
+	if n := len([]rune(text)); cursor > n {
+		cursor = n
+	}
+	row := 0
+	for i, sg := range segs {
+		if sg.start > cursor {
+			break
+		}
+		row = i
+	}
+	col := cursor - segs[row].start
+	// One past the end of a full row belongs at the start of the next, which is
+	// where the next character will actually appear.
+	if col > len([]rune(segs[row].text)) && row+1 < len(segs) {
+		row, col = row+1, 0
+	}
+	return segs, row, col
 }
 
 // caretAt turns a rune offset into a row and a column.
@@ -1314,7 +1396,7 @@ func renderInputLines(m Model, g Geometry, hint string) []string {
 	}
 
 	rows := InputRows(m, g)
-	lines, caretRow, caretCol := inputWindow(m, rows)
+	lines, caretRow, caretCol := inputWindow(m, g, rows)
 
 	out := make([]string, 0, rows+inputFrameRows)
 	out = append(out, rule(gl.boxTL, gl.boxTR))

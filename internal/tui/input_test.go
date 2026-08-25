@@ -230,7 +230,7 @@ func TestTheBoxScrollsToKeepTheCaretVisible(t *testing.T) {
 	m := Model{Input: b.String()}
 	m.InputCursor = len([]rune(m.Input)) // the empty row at the end
 
-	lines, caretRow, _ := inputWindow(m, InputRows(m, g))
+	lines, caretRow, _ := inputWindow(m, g, InputRows(m, g))
 	if len(lines) != MaxInputRows {
 		t.Fatalf("the window shows %d rows, want the cap of %d", len(lines), MaxInputRows)
 	}
@@ -239,7 +239,7 @@ func TestTheBoxScrollsToKeepTheCaretVisible(t *testing.T) {
 	}
 	// And at the top nothing scrolls, or the first line is unreachable.
 	m.InputCursor = 0
-	_, caretRow, _ = inputWindow(m, InputRows(m, g))
+	_, caretRow, _ = inputWindow(m, g, InputRows(m, g))
 	if caretRow != 0 {
 		t.Errorf("with the caret at the start it sits on row %d", caretRow)
 	}
@@ -298,6 +298,73 @@ func TestATildePathFindsTheFile(t *testing.T) {
 	for _, p := range []string{"/tmp/a~b.png", "relative/shot.png", "~weird"} {
 		if got := expandHome(p); got != p {
 			t.Errorf("%q was rewritten to %q", p, got)
+		}
+	}
+}
+
+// A line longer than the box wraps instead of disappearing.
+//
+// It used to be one row, clipped at the right edge — so everything past the
+// edge, the caret included, was invisible while it was being typed. There is no
+// way to read what you cannot see and no way to fix a typo you cannot find.
+func TestALineYouAreTypingStaysVisible(t *testing.T) {
+	g := geo(60, 24)
+	g.Palette = Palette{}
+	long := strings.Repeat("abcdefghij", 12) // 120 columns into a 60-column box
+	m := NewModel("s", "/w", "m", "workspace-write", En).SetInput(long)
+	m.InputCursor = len([]rune(long))
+
+	if rows := InputRows(m, g); rows < 2 {
+		t.Fatalf("a 120-column line occupies %d row(s) in a 60-column box", rows)
+	}
+	lines, caretRow, caretCol := inputWindow(m, g, InputRows(m, g))
+
+	var seen string
+	for _, l := range lines {
+		seen += l
+	}
+	if !strings.HasSuffix(long, seen[max(0, len(seen)-20):]) {
+		t.Errorf("the end of the line is not on screen; last rows: %q", seen)
+	}
+	if caretRow < 0 || caretRow >= len(lines) {
+		t.Errorf("the caret is on row %d of %d visible", caretRow, len(lines))
+	}
+	if caretCol < 0 || caretCol > clipWidth(lines[caretRow]) {
+		t.Errorf("the caret is at column %d of a row %d wide",
+			caretCol, clipWidth(lines[caretRow]))
+	}
+
+	// And no row overflows the terminal.
+	for _, l := range strings.Split(Render(m, g), "\n") {
+		if w := clipWidth(l); w > g.Width {
+			t.Fatalf("a row is %d columns wide in a %d-column terminal: %q", w, g.Width, l)
+		}
+	}
+}
+
+// The wrap is by column, not by word: what is typed here is usually a command,
+// and a path or a flag broken at a space reads as two arguments.
+func TestTheWrapDoesNotInventWordBreaks(t *testing.T) {
+	segs := wrapInput("go test ./internal/tui/ -run TestX -count=1", 20)
+	var back string
+	for _, sg := range segs {
+		back += sg.text
+	}
+	if back != "go test ./internal/tui/ -run TestX -count=1" {
+		t.Errorf("the wrap changed the text: %q", back)
+	}
+}
+
+// Every row knows where it started, or the caret lands on the wrong one.
+func TestTheCaretFollowsTheWrap(t *testing.T) {
+	const text = "0123456789abcdefghij"
+	for cursor := 0; cursor <= len(text); cursor++ {
+		segs, row, col := wrapWithCaret(text, 10, cursor)
+		if row < 0 || row >= len(segs) {
+			t.Fatalf("cursor %d landed on row %d of %d", cursor, row, len(segs))
+		}
+		if got := segs[row].start + col; got != cursor {
+			t.Errorf("cursor %d reads back as %d (row %d, col %d)", cursor, got, row, col)
 		}
 	}
 }

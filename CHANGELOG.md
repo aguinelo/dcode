@@ -112,6 +112,17 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Fixed
+
+- **A line you are typing stays visible.** Longer than the box, it was one row
+  and the row was clipped — so everything past the right edge, the caret
+  included, was invisible while it was being typed. There is no way to read what
+  you cannot see and no way to fix a typo you cannot find. The input area counts
+  its rows by wrapping now instead of by counting newlines, and the caret is
+  carried through the wrap so it lands where the next character will appear. The
+  wrap is by column and not by word: what is typed here is usually a command,
+  and a path or a flag broken at a space reads as two arguments.
+
 ### Added
 
 - **A command you run yourself: `!`.** A line starting with `!` is not sent to
