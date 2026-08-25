@@ -31,7 +31,7 @@ isolated package.
 | **contracts measured against a model** | **3** |
 | coverage | 94.1%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.6.0** |
+| published version | **0.6.1** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -114,6 +114,10 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+_Nothing yet._
+
+## 0.6.1 — 25 August 2026
+
 ### Fixed
 
 - **The column shows the context, not what the turn cost.** The third place the
@@ -129,6 +133,22 @@ that on every run to stop the opposite reading.
   wrong for a URL: `.../trips/lowest-price?from=maringa-pr` showed as
   `lowest-price?from=maringa-pr`, which reads as a file nobody has.
   `looksLikePath` decides, which is the decision the tool line already makes.
+
+### Changed
+
+- **The daemon and the emitter are covered.** Ten tests recovered from work that
+  never landed: the emitter's fragment handling, the plan marks, and the
+  daemon's optional branches. `internal/app` 92.3% to 93.0%.
+- **The learned memory is in the repository.** `.dcode/memory.md` was untracked,
+  and the spec says plainly what it should be — versioned by the user. A memory
+  that lives only on the machine that learned it is a memory the next person
+  does not get.
+- **The 500-line rule has never been enforced, and the tree is nowhere near
+  it.** Ten production files and seventeen test files are over it, the largest
+  at 1915. Recorded in `docs/ROADMAP.md` rather than fixed: splitting
+  twenty-seven files makes nothing more correct, and writing the guard first
+  puts twenty-seven files red on arrival — the mistake §5 already records about
+  the coverage gate.
 
 ## 0.6.0 — 25 August 2026
 
