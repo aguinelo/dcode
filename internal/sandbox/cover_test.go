@@ -78,7 +78,7 @@ func TestNoneSandboxRunsUnconfined(t *testing.T) {
 		t.Fatalf("the no-op backend is always available: %v", err)
 	}
 	ws := t.TempDir()
-	out, code, err := Runner{Sandbox: s, Mode: policy.ModeFullAccess}.
+	out, code, err := Runner{Sandbox: s, Mode: Fixed(policy.ModeFullAccess)}.
 		Run(context.Background(), ws, "echo unconfined")
 	if err != nil || code != 0 {
 		t.Fatalf("code=%d err=%v out=%q", code, err, out)
@@ -98,7 +98,7 @@ func TestFullAccessCanWriteOutsideTheWorkspace(t *testing.T) {
 	}
 	outside := filepath.Join(root, "written.txt")
 
-	r := Runner{Sandbox: noneSandbox{}, Mode: policy.ModeFullAccess}
+	r := Runner{Sandbox: noneSandbox{}, Mode: Fixed(policy.ModeFullAccess)}
 	if _, code, err := r.Run(context.Background(), ws, "echo x > "+shellQuote(outside)); err != nil || code != 0 {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
@@ -109,7 +109,7 @@ func TestFullAccessCanWriteOutsideTheWorkspace(t *testing.T) {
 
 func TestRunSurfacesAWrapFailure(t *testing.T) {
 	// A mode the backend cannot express must stop before anything executes.
-	_, code, err := Runner{Sandbox: &seatbelt{bin: "x"}, Mode: policy.SandboxMode("bad")}.
+	_, code, err := Runner{Sandbox: &seatbelt{bin: "x"}, Mode: Fixed(policy.SandboxMode("bad"))}.
 		Run(context.Background(), t.TempDir(), "echo hi")
 	if err == nil {
 		t.Fatal("a wrap failure must surface")
@@ -122,7 +122,7 @@ func TestRunSurfacesAWrapFailure(t *testing.T) {
 func TestRunSurfacesAMissingBinary(t *testing.T) {
 	_, code, err := Runner{
 		Sandbox: &bubblewrap{bin: "definitely-not-a-real-binary-dcode"},
-		Mode:    policy.ModeWorkspaceWrite,
+		Mode:    Fixed(policy.ModeWorkspaceWrite),
 	}.Run(context.Background(), t.TempDir(), "echo hi")
 	if err == nil {
 		t.Fatal("a missing binary must surface as an error, not as a silent success")

@@ -68,7 +68,7 @@ func TestARealRuntimeSocketIsCoveredInside(t *testing.T) {
 		t.Skipf("no sandbox available: %v", err)
 	}
 
-	r := Runner{Sandbox: s, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
 	out, code, err := r.Run(context.Background(), ws, "test -S "+shellQuote(sock))
 	if err != nil {
 		t.Fatalf("running under the sandbox failed outright: %v", err)

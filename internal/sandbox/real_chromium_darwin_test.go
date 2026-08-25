@@ -34,7 +34,7 @@ func TestAChromiumReachesItsFirstFrameInsideTheSandbox(t *testing.T) {
 	}
 
 	ws := t.TempDir()
-	r := Runner{Sandbox: s, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
 
 	// about:blank and a virtual time budget: the page is not the point, getting
 	// to a page at all is. No network is granted, deliberately — what this asks

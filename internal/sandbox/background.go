@@ -65,7 +65,7 @@ func (r Runner) Start(ctx context.Context, workdir, command string) (*Proc, erro
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	cmd, err := r.Sandbox.Wrap(context.Background(), workdir, command, r.Mode)
+	cmd, err := r.Sandbox.Wrap(context.Background(), workdir, command, r.mode())
 	if err != nil {
 		return nil, err
 	}

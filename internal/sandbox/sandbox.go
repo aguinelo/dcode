@@ -162,7 +162,35 @@ func orDefault(v, def string) string {
 // never reaches for os/exec itself.
 type Runner struct {
 	Sandbox Sandbox
-	Mode    policy.SandboxMode
+	// Mode reports the boundary to run under, and is asked ONCE PER COMMAND
+	// rather than captured when the runner is built.
+	//
+	// It used to be a value, and that made `/mode auto` a lie: the policy
+	// started answering allow while the OS kept enforcing the boundary the
+	// session was created with, so a mode that promises no boundary left one
+	// standing. The badge said auto, the verdict said allow, and the write
+	// still came back EPERM.
+	//
+	// Nil means read-only. A runner nobody gave a mode to is a runner whose
+	// boundary nobody decided, and RN-3 says that fails closed.
+	Mode func() policy.SandboxMode
+}
+
+// Fixed is a mode source that never changes, for callers outside a session.
+//
+// A session's mode moves; a one-shot command run by the daemon itself does not.
+// Saying which one you are is better than defaulting, because the default that
+// would be convenient here is the one that silently stops following.
+func Fixed(m policy.SandboxMode) func() policy.SandboxMode {
+	return func() policy.SandboxMode { return m }
+}
+
+// mode is the boundary for this run, closed when nobody said.
+func (r Runner) mode() policy.SandboxMode {
+	if r.Mode == nil {
+		return policy.ModeReadOnly
+	}
+	return r.Mode()
 }
 
 // Run executes command inside the boundary.
@@ -170,7 +198,7 @@ func (r Runner) Run(ctx context.Context, workdir, command string) (string, int, 
 	if r.Sandbox == nil {
 		return "", -1, ErrUnavailable
 	}
-	cmd, err := r.Sandbox.Wrap(ctx, workdir, command, r.Mode)
+	cmd, err := r.Sandbox.Wrap(ctx, workdir, command, r.mode())
 	if err != nil {
 		return "", -1, err
 	}

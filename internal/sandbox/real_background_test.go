@@ -33,7 +33,7 @@ func TestTheRealBoundaryStartsAndStopsABackgroundProcess(t *testing.T) {
 	t.Logf("backend = %s", sb.Name())
 
 	dir := t.TempDir()
-	p, err := (Runner{Sandbox: sb, Mode: policy.ModeWorkspaceWrite}).
+	p, err := (Runner{Sandbox: sb, Mode: Fixed(policy.ModeWorkspaceWrite)}).
 		Start(context.Background(), dir, "echo up; sleep 30")
 	if err != nil {
 		t.Fatalf("start: %v", err)

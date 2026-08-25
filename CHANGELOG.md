@@ -116,6 +116,17 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **`auto` really removes the boundary.** Switching mode moved the policy's
+  answer and nothing else: the sandbox was handed the mode as a **value**,
+  copied when the session was built, so `/mode auto` made the verdict say
+  `allow` and the badge say `auto` while the OS went on enforcing what the
+  session started with. A write outside the workspace still came back `EPERM` —
+  a mode whose whole promise is "no boundary" left one standing. The runner now
+  asks for the mode **once per command**; a source that is nil means read-only,
+  because a boundary nobody decided fails closed. Measured in a real pty: the
+  same `mkdir` outside the workspace is refused under `assist` and works under
+  `auto`.
+
 - **The harness asks the user, and the model does not.** The doctrine said
   "when that happens **the user is asked**" — passive, no subject — so the model
   filled the subject with itself and built a permission protocol of its own, in

@@ -65,6 +65,17 @@ observa o modo novo; a que já está em voo termina sob o que valia quando
 começou. Interromper seria transformar um ajuste de autonomia em cancelamento
 de trabalho.
 
+**Os dois eixos trocam juntos, ou o modo é mentira.** Trocar de modo move a
+decisão da política **e** a fronteira que o sistema operacional aplica. A
+primeira versão movia só a política: o sandbox recebia o modo como **valor**,
+copiado quando a sessão nasceu, e `/mode auto` passava a responder `allow`
+enquanto o SO continuava aplicando o limite com que a sessão foi criada. O
+crachá dizia `auto`, o veredito dizia `allow`, e a escrita voltava `EPERM` — um
+modo cujo contrato inteiro é *"sem fronteira"* deixava uma de pé.
+
+O executor pergunta o modo **uma vez por comando**, nunca o captura. Fonte sem
+modo é fronteira que ninguém decidiu, e pela RN-3 isso é `read-only`.
+
 ## 3. Avaliação
 
 ```go
@@ -254,6 +265,8 @@ type Sandbox interface {
 - Par que não é nenhum dos três **não recebe nome**; o vazio é resposta, não ausência de resposta.
 - A sessão anuncia o modo que o motor está de fato rodando, e não o que lhe pediram ao nascer.
 - Duas trocas concorrentes deixam a sessão em um dos modos, com o par do motor de acordo com o nome anunciado.
+- O executor pergunta o modo **a cada comando**: comando rodado depois da troca corre sob a fronteira nova, e não sob a que valia quando a sessão nasceu.
+- Executor sem fonte de modo roda em `read-only` — fronteira que ninguém decidiu falha fechada (RN-3).
 
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
 - Rede concedida inclui escutar: uma suíte que não abre porta não roda.
@@ -284,3 +297,4 @@ type Sandbox interface {
 - [202608190130 — Uma toolchain alcança o próprio cache](changelog/202608190130-a-toolchain-alcanca-o-proprio-cache.md)
 - [202608190230 — Uma fronteira aninhada é detectada, não adivinhada](changelog/202608190230-uma-fronteira-aninhada-e-detectada.md)
 - [202608251200 — O modo é um nome para um par](changelog/202608251200-o-modo-e-um-nome-para-um-par.md)
+- [202608252359 — O sandbox segue o modo](changelog/202608252359-o-sandbox-segue-o-modo.md)
