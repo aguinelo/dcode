@@ -135,6 +135,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   do `^C`, e pedir que a pessoa repita o que acabou de dizer não é salvaguarda,
   é um degrau que se aprende a pular. O que diz que não há fronteira é o crachá
   na barra, que diz isso enquanto for verdade.
+- **O que você digitou, você lê.** `!ls -la` desenhava uma linha, `exit 0`, e
+  mais nada. A saída nunca se perdeu — chegava ao cliente, ficava na entrada, e
+  reaparecia com `esc`, `↑`, `tab`. Isso é pior que perder: a tela respondia um
+  pedido de **ver** com um código de status, e parecia certa fazendo isso. A
+  regra de recolher foi escrita para as chamadas do modelo, onde a saída é meio
+  e a prosa seguinte carrega o ponto; um comando digitado não tem prosa depois.
+  A origem passa a viajar no evento, em vez de ser inferida do formato do id.
+- **`exit N` aparece uma vez.** O `bash` prefixa a saída com o código porque o
+  modelo lê a saída como texto, e a linha já mostra esse código na coluna dela.
+  Invisível enquanto a saída ficava recolhida; dobrado assim que o comando
+  digitado passou a abrir sozinho.
 
 ## 0.7.0 — 25 de agosto de 2026
 

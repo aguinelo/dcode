@@ -139,6 +139,18 @@ that on every run to stop the opposite reading.
   disambiguate, unlike `^C`, and asking someone to repeat what they just said is
   not a safeguard but a step to learn past. What says there is no boundary is
   the badge on the bar, which says it for as long as it is true.
+- **What you typed, you get to read.** `!ls -la` drew one row, `exit 0`, and
+  nothing else. The output was never lost — it reached the client, it sat in the
+  entry, and `esc`, `↑`, `tab` revealed it. That is worse than losing it: the
+  screen answered a request to SEE something with a status code, and looked
+  correct while doing so. The collapse rule was written for the model's calls,
+  where output is a means and the prose that follows carries the point; a typed
+  command has no prose after it. Origin now travels on the event rather than
+  being inferred from the shape of a call id.
+- **`exit N` is printed once.** `bash` prefixes its output with the code because
+  the model reads the output as text, and the row already renders that code in
+  its own column. Invisible while output stayed collapsed; doubled the moment a
+  typed command started opening on its own.
 
 ## 0.7.0 — 25 August 2026
 
