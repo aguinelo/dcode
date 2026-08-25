@@ -109,6 +109,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Alterado
+
+- **Sair custa duas, limpar a linha não custa nenhuma.** `^C` significa "limpa
+  esta linha" em todo shell, e estava ligado direto no sair — então um reflexo
+  que o terminal ensinou custava uma conversa. Agora: turno rodando é
+  interrompido, linha com texto é limpa, e linha vazia avisa primeiro e sai
+  depois. Armado exatamente enquanto o aviso está na tela, porque qualquer outra
+  tecla desarma: um temporizador deixaria a tecla viva por um segundo depois da
+  frase ter sumido, que é um estado que a pessoa não vê e portanto não consegue
+  raciocinar sobre.
+
 ### Corrigido
 
 - **Um comando digitado se anuncia antes de rodar.** O `!` rodava o comando e a

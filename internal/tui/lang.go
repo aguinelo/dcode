@@ -133,6 +133,7 @@ type Strings struct {
 	ApprovalNetwork        string
 	ApprovalEnter          string
 	ShellHint              string
+	LeavingTakesTwo        string
 	UpdateApplied          string
 	UpdateCurrent          string
 	UpdateUnavailable      string
@@ -340,6 +341,7 @@ var catalogue = map[Lang]Strings{
 		ApprovalNetwork:        "Commands in this project may reach the network.",
 		ApprovalEnter:          "enter denies",
 		ShellHint:              "! runs here, unsent — the model reads the output",
+		LeavingTakesTwo:        "^C again to leave",
 		UpdateApplied:          "updated %s to %s. Reopen dcode to run it: this one is still the old binary.",
 		UpdateCurrent:          "dcode %s is the latest release.",
 		UpdateUnavailable:      "this build cannot update itself.",
@@ -533,6 +535,7 @@ Environment:
 		ApprovalNetwork:        "Comandos deste projeto podem alcançar a rede.",
 		ApprovalEnter:          "enter nega",
 		ShellHint:              "! roda aqui, sem enviar — o modelo lê a saída",
+		LeavingTakesTwo:        "^C de novo para sair",
 		UpdateApplied:          "atualizado de %s para %s. Reabra o dcode para rodar: este ainda é o binário antigo.",
 		UpdateCurrent:          "dcode %s é a release mais recente.",
 		UpdateUnavailable:      "este build não se atualiza sozinho.",

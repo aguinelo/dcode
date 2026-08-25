@@ -369,7 +369,7 @@ func drainBatch(t *testing.T, p *program, cmd tea.Cmd) {
 
 // Interrupting is what is wanted in the overwhelming majority of cases, and
 // quitting mid-turn loses work.
-func TestCtrlCInterruptsMidTurnAndQuitsWhenIdle(t *testing.T) {
+func TestCtrlCInterruptsMidTurnAndTakesTwoWhenIdle(t *testing.T) {
 	p, tr := newProgram(t)
 	p.model.State = protocol.SessionStateRunning
 	_, cmd := p.Update(ctrl('c'))
@@ -378,10 +378,16 @@ func TestCtrlCInterruptsMidTurnAndQuitsWhenIdle(t *testing.T) {
 		t.Fatalf("got %d interrupts", tr.interrupts)
 	}
 
+	// Idle, it takes two — see TestLeavingTakesTwo for why and for the line
+	// the first one puts on screen.
 	p.model.State = protocol.SessionStateIdle
 	_, cmd = p.Update(ctrl('c'))
+	if _, ok := run(t, p, cmd).(tea.QuitMsg); ok {
+		t.Error("one ctrl+c when idle quit")
+	}
+	_, cmd = p.Update(ctrl('c'))
 	if _, ok := run(t, p, cmd).(tea.QuitMsg); !ok {
-		t.Error("ctrl+c when idle quits")
+		t.Error("two ctrl+c when idle quits")
 	}
 	_, cmd = p.Update(ctrl('d'))
 	if _, ok := run(t, p, cmd).(tea.QuitMsg); !ok {
@@ -1911,5 +1917,95 @@ func TestUpdateReportsWhyItRefused(t *testing.T) {
 
 	if !strings.Contains(p.fatal, "local build") {
 		t.Errorf("the refusal did not reach the person: fatal=%q", p.fatal)
+	}
+}
+
+// Leaving takes two, and clearing a line takes none.
+//
+// Reported: "às vezes dou ^C pra limpar um comando e o dcode fecha". The key
+// means "clear this line" in every shell, and it was wired straight to quit —
+// so a reflex the terminal taught cost a conversation.
+func TestLeavingTakesTwo(t *testing.T) {
+	quits := func(cmd tea.Cmd) bool {
+		if cmd == nil {
+			return false
+		}
+		_, ok := cmd().(tea.QuitMsg)
+		return ok
+	}
+
+	// With something typed, ^C clears it and leaves nothing else behind.
+	p, _ := newProgram(t)
+	p.model = p.model.SetInput("git status --short")
+	_, cmd := p.Update(ctrl('c'))
+	if quits(cmd) {
+		t.Fatal("^C on a typed line quit instead of clearing it")
+	}
+	if p.model.Input != "" {
+		t.Errorf("the line was not cleared: %q", p.model.Input)
+	}
+	if p.model.Leaving {
+		t.Error("clearing a line armed leaving; the person asked for neither")
+	}
+
+	// On an empty line the first one warns and the second one goes.
+	_, cmd = p.Update(ctrl('c'))
+	if quits(cmd) {
+		t.Fatal("the first ^C on an empty line quit")
+	}
+	if !p.model.Leaving || p.model.Flash == "" {
+		t.Fatalf("the first ^C armed nothing visible: leaving=%v flash=%q",
+			p.model.Leaving, p.model.Flash)
+	}
+	_, cmd = p.Update(ctrl('c'))
+	if !quits(cmd) {
+		t.Error("the second ^C did not leave")
+	}
+}
+
+// Any other key disarms it, and the warning goes with it.
+//
+// Armed exactly while the sentence is on screen: a timer would keep the key
+// live for a second after the warning had gone, which is a state a person
+// cannot see and therefore cannot reason about.
+func TestAnyOtherKeyDisarmsLeaving(t *testing.T) {
+	p, _ := newProgram(t)
+	p.Update(ctrl('c'))
+	if !p.model.Leaving {
+		t.Fatal("the first ^C armed nothing")
+	}
+
+	p.Update(key("a"))
+	if p.model.Leaving {
+		t.Error("typing left it armed")
+	}
+	if p.model.Flash != "" {
+		t.Errorf("the warning outlived the arming: %q", p.model.Flash)
+	}
+
+	// And the next ^C is a first one again.
+	_, cmd := p.Update(ctrl('c'))
+	if cmd != nil {
+		if _, isQuit := cmd().(tea.QuitMsg); isQuit {
+			t.Error("^C after typing quit on the first press")
+		}
+	}
+}
+
+// A running turn is still interrupted, not armed. Interrupting is what is
+// wanted in the overwhelming majority of cases, and it always was.
+func TestARunningTurnIsStillInterrupted(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.State = protocol.SessionStateRunning
+	_, cmd := p.Update(ctrl('c'))
+	run(t, p, cmd)
+
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if tr.interrupts != 1 {
+		t.Errorf("the turn was interrupted %d times, want once", tr.interrupts)
+	}
+	if p.model.Leaving {
+		t.Error("interrupting armed leaving")
 	}
 }
