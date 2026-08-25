@@ -107,6 +107,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Corrigido
+
+- **A linha que você está digitando continua visível.** Maior que a caixa, ela
+  era uma linha só e a linha era cortada — então tudo além da borda direita, o
+  cursor incluído, ficava invisível enquanto era digitado. Não há como ler o que
+  não se vê nem como corrigir um erro que não se acha. A área de digitação conta
+  as linhas quebrando, em vez de contando quebras de linha, e o cursor é levado
+  junto pela quebra para cair onde o próximo caractere vai aparecer. A quebra é
+  por coluna e não por palavra: o que se digita ali costuma ser um comando, e um
+  caminho ou uma flag quebrada num espaço lê como dois argumentos.
+
 ### Adicionado
 
 - **Um comando que você mesmo roda: `!`.** Uma linha começando com `!` não é
