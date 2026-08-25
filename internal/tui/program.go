@@ -31,6 +31,7 @@ type Transport interface {
 	Undo(ctx context.Context, id string) (protocol.UndoResult, error)
 	RenameSession(ctx context.Context, id, name string) error
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
+	SetMode(ctx context.Context, id, mode string) error
 	Subscribe(ctx context.Context, id string, from uint64) (<-chan protocol.Event, <-chan error)
 }
 
@@ -840,6 +841,16 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return p, nil
 
+	case "shift+tab":
+		// Cycle plan -> assist -> auto -> plan. Lighter than the picker for
+		// one keystroke. Auto is gated by the same arming the slash command
+		// uses, so a stray shift+tab cannot drop the boundary on its own.
+		next := nextMode(p.model.Mode)
+		if next == protocol.ModeAuto && !p.model.AutoArmed {
+			return p.armAuto()
+		}
+		return p, p.setMode(next)
+
 	case "tab":
 		p.model = p.model.ToggleAt(p.model.Cursor)
 		p.model = p.model.EnsureCursorVisible(p.geo)
@@ -1033,6 +1044,26 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 			return p, p.resume(id)
 		}
 		return p, p.listSessions()
+
+	case "mode":
+		t := Text(p.model.Lang)
+		name := strings.TrimSpace(r.Args)
+		if name == "" {
+			// An empty Mode is not assist. It is a boundary that is none of the
+			// three, and naming it anyway is the defect this whole change
+			// exists to remove.
+			if p.model.Mode == "" {
+				return note(t.CmdModeUnnamed)
+			}
+			return note(fmt.Sprintf(t.CmdModeCurrent, p.model.Mode))
+		}
+		if !protocol.ValidMode(name) {
+			return note(fmt.Sprintf(t.CmdModeUnknown, name))
+		}
+		if name == protocol.ModeAuto && !p.model.AutoArmed {
+			return p.armAuto()
+		}
+		return p, p.setMode(name)
 	}
 	return note("/" + r.Name + " is not implemented")
 }
@@ -1259,6 +1290,48 @@ func (p *program) newSession(model string) tea.Cmd {
 		}
 		return switchedMsg{session: s}
 	}
+}
+
+// setMode asks the daemon to switch mode and arms nothing client-side; the
+// announcement arrives as EventSessionModeChanged on the stream.
+func (p *program) setMode(name string) tea.Cmd {
+	return func() tea.Msg {
+		if err := p.opts.Transport.SetMode(p.ctx, p.opts.SessionID, name); err != nil {
+			return errMsg{err}
+		}
+		return nil
+	}
+}
+
+// nextMode returns the mode that follows current in the order
+// plan -> assist -> auto -> plan. The cycle mirrors the picker.
+//
+// An unnamed boundary — a pair that is none of the three — enters the cycle at
+// plan. That is a decision and not a fallthrough: the one place a cycle may
+// start from "I do not know where I am" is the end that takes capability away.
+func nextMode(current string) string {
+	switch current {
+	case protocol.ModePlan:
+		return protocol.ModeAssist
+	case protocol.ModeAssist:
+		return protocol.ModeAuto
+	case protocol.ModeAuto:
+		return protocol.ModePlan
+	default:
+		return protocol.ModePlan
+	}
+}
+
+// armAuto shows the warning and requires the gesture to be repeated.
+//
+// One notice, in Flash, exactly as the second ^C does it — the warning belongs
+// on screen for as long as the decision is pending, not in the transcript as a
+// thing that happened. Both ways into auto come through here so they cannot
+// drift into warning differently.
+func (p *program) armAuto() (tea.Model, tea.Cmd) {
+	p.model.AutoArmed = true
+	p.model.Flash = Text(p.model.Lang).AutoConfirmOnce
+	return p, nil
 }
 
 // rename names a conversation and puts the answer on screen.

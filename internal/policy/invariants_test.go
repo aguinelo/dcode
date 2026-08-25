@@ -24,8 +24,12 @@ var sandboxDirs = []string{
 }
 
 var sandboxInvariants = map[string]string{
-	"depois de **provar**":   "TestSeatbeltProbesRatherThanTrustingThePath",
-	"pular dizendo o motivo": "TestABoundaryTestSkipsLoudlyRatherThanPassingQuietly",
+	"Cada modo nomeia exatamente o par":       "TestModeFromIsTheExactInverse",
+	"não recebe nome":                         "TestAPairThatIsNoModeHasNoName",
+	"anuncia o modo que o motor está de fato": "TestASessionSaysTheModeItIsActuallyIn",
+	"Duas trocas concorrentes":                "TestConcurrentSwitchesLeaveOneMode",
+	"depois de **provar**":                    "TestSeatbeltProbesRatherThanTrustingThePath",
+	"pular dizendo o motivo":                  "TestABoundaryTestSkipsLoudlyRatherThanPassingQuietly",
 
 	"que uma toolchain precisa":              "TestAToolchainCanWriteToItsOwnCache",
 	"Nenhuma regra concede o diretório home": "TestTheHomeDirectoryIsNeverGranted",

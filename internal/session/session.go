@@ -9,6 +9,7 @@ import (
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
@@ -16,11 +17,12 @@ import (
 // killing, restarting or swapping a client does not touch a session, and a turn
 // in flight continues with zero clients attached.
 type Session struct {
-	ID        string
-	Workspace string
-	Model     string
-	Mode      string
-	CreatedAt time.Time
+	ID            string
+	Workspace     string
+	Model         string
+	Mode          string
+	behaviourMode string
+	CreatedAt     time.Time
 	// ContextWindow is the model's window, so a client can turn a token count
 	// into the percentage a person can act on.
 	ContextWindow int
@@ -77,7 +79,8 @@ func New(id, workspace, model, mode string, engine *loop.Engine, log *EventLog, 
 	}
 	return &Session{
 		ID: id, Workspace: workspace, Model: model, Mode: mode,
-		CreatedAt: clock(), Log: log, engine: engine,
+		behaviourMode: bornIn(engine),
+		CreatedAt:     clock(), Log: log, engine: engine,
 		state: protocol.SessionStateIdle, pending: map[string]*approval{},
 		allowAll: map[string]bool{},
 	}
@@ -120,12 +123,99 @@ func (s *Session) EmitCarried() {
 func (s *Session) Describe() protocol.Session {
 	s.mu.Lock()
 	state := s.state
+	sandbox, behaviour := s.Mode, s.behaviourMode
 	s.mu.Unlock()
 	return protocol.Session{
 		ID: s.ID, State: state, Workspace: s.Workspace, Model: s.Model,
-		SandboxMode: s.Mode, CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
+		SandboxMode: sandbox, Mode: behaviour,
+		CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
 		FirstSeq:      s.Log.FirstSeq(),
 		ContextWindow: s.ContextWindow,
+	}
+}
+
+// SetMode switches the session behavioural mode (plan, assist, auto).
+//
+// The mapping is: plan -> read-only + never, assist -> workspace-write +
+// on-request, auto -> full-access + on-request. The engine takes the new
+// SandboxMode and ApprovalPolicy atomically (loop.Engine.SetMode), and the
+// session announces the change over the event log so a client attaching after
+// reads the current mode.
+//
+// No-op (no event, no error) when name is already the current mode. Live turns
+// are NOT interrupted.
+func (s *Session) SetMode(name string) error {
+	if !protocol.ValidMode(name) {
+		return protocol.Errorf(protocol.CodeInvalidInput,
+			"unknown mode %q (want plan, assist or auto)", name)
+	}
+	if s.engine == nil {
+		return protocol.Errorf(protocol.CodeInternal, "session has no engine")
+	}
+	sandbox, pol := modeToSandbox(name)
+
+	// Check and set under one hold. Read-then-write with the lock dropped in
+	// between lets two concurrent switches both pass the no-op test and land in
+	// either order, leaving the announced mode and the engine disagreeing.
+	s.mu.Lock()
+	previous := s.behaviourMode
+	if previous == name {
+		s.mu.Unlock()
+		return nil
+	}
+	s.behaviourMode = name
+	// Mode is the sandbox this session advertises in Describe. Leaving it
+	// behind would answer the old boundary to every client that asks.
+	s.Mode = string(sandbox)
+	s.mu.Unlock()
+
+	s.engine.SetMode(sandbox, pol)
+	s.Emit(protocol.EventSessionModeChanged, protocol.SessionModeChanged{
+		Previous: previous, Mode: name,
+	})
+	return nil
+}
+
+// bornIn names the mode the engine is already running, so a session opens
+// under the badge that matches its boundary.
+//
+// It used to answer assist unconditionally, which made a full-access session
+// show the bounded badge — and made the switch BACK to assist a silent no-op,
+// because the session believed it was already there. An engine-less session
+// (tests, and only tests) has no boundary to name.
+func bornIn(engine *loop.Engine) string {
+	if engine == nil {
+		return ""
+	}
+	return modeFrom(engine.Mode())
+}
+
+// modeFrom names the pair, and is the exact inverse of modeToSandbox.
+//
+// A pair that is none of the three gets no name rather than the nearest one:
+// read-only that still asks is a legitimate configuration, and calling it plan
+// would put a word on the bar the engine does not answer to.
+func modeFrom(sandbox policy.SandboxMode, pol policy.ApprovalPolicy) string {
+	for _, name := range []string{protocol.ModePlan, protocol.ModeAssist, protocol.ModeAuto} {
+		if m, p := modeToSandbox(name); m == sandbox && p == pol {
+			return name
+		}
+	}
+	return ""
+}
+
+// modeToSandbox maps a behavioural mode to the (SandboxMode, ApprovalPolicy)
+// pair the engine actually runs under. Kept here rather than in policy because
+// it is the session that decides what each mode MEANS — the policy package
+// stays technical.
+func modeToSandbox(name string) (policy.SandboxMode, policy.ApprovalPolicy) {
+	switch name {
+	case protocol.ModePlan:
+		return policy.ModeReadOnly, policy.PolicyNever
+	case protocol.ModeAuto:
+		return policy.ModeFullAccess, policy.PolicyOnRequest
+	default:
+		return policy.ModeWorkspaceWrite, policy.PolicyOnRequest
 	}
 }
 

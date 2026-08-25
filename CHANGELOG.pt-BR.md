@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 108 changelogs de decisão |
+| famílias de spec | 13, com 113 changelogs de decisão |
 | contratos comportamentais | 43 declarados |
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 94,1%, com gate em 90% |
@@ -109,6 +109,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
+### Adicionado
+
+- **Três modos, e um caminho entre eles sem reiniciar.** `plan`, `assist` e
+  `auto` são nomes para o par que o motor já rodava — read-only + never,
+  workspace-write + on-request, full-access + on-request. `/mode` mostra ou
+  troca, `shift+tab` cicla, e a barra leva o crachá. Cair para `auto` pede o
+  gesto duas vezes, pelos dois caminhos, com um aviso só, que vive no rodapé
+  enquanto a decisão está pendente — como o segundo `^C` já funciona.
+
 ### Alterado
 
 - **Sair custa duas, limpar a linha não custa nenhuma.** `^C` significa "limpa
@@ -122,6 +131,17 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **A sessão diz o modo em que de fato está.** Ela nascia rotulada `assist`
+  fosse qual fosse o modo do motor, então `full-access` usava o crachá do modo
+  contido — e trocar de volta **para** `assist` não fazia nada, porque a sessão
+  acreditava já estar lá. O comando que instala a fronteira era justamente o que
+  falhava em silêncio. O nome passa a ser derivado do par em vigor, e um par que
+  não é nenhum dos três fica sem nome em vez de receber o do vizinho.
+- **Trocar de modo com turno vivo deixou de ser corrida.** `SetMode` escreve da
+  goroutine do handler HTTP enquanto o turno roda — que é o motivo de não
+  interrompê-lo. A avaliação foi posta sob o mutex; a montagem de um filho
+  delegado, não, e ela lê os mesmos dois campos da goroutine que está viva
+  quando a troca chega. Todo leitor passa agora por um acessor sob trava.
 - **Um comando digitado se anuncia antes de rodar.** O `!` rodava o comando e a
   tela não dizia nada. O daemon emitia a conclusão e não o anúncio, e o cliente
   monta a linha a partir do anúncio e a completa por id — então a conclusão não

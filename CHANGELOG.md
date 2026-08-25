@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 108 decision changelogs |
+| spec families | 13, with 113 decision changelogs |
 | behavioural contracts | 43 declared |
 | **contracts measured against a model** | **3** |
 | coverage | 94.1%, gate at 90% |
@@ -114,6 +114,16 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+### Added
+
+- **Three modes, and a way between them without restarting.** `plan`, `assist`
+  and `auto` are names for the pair the engine already ran under — read-only +
+  never, workspace-write + on-request, full-access + on-request. `/mode` shows
+  or switches, `shift+tab` cycles, and the bar carries the badge. Dropping the
+  boundary into `auto` takes the gesture twice, by both routes, with one warning
+  that lives in the footer while the decision is pending — the way the second
+  `^C` already works.
+
 ### Changed
 
 - **Leaving takes two, and clearing a line takes none.** `^C` means "clear this
@@ -126,6 +136,17 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **A session says the mode it is actually in.** It was born labelled `assist`
+  whatever the engine ran, so `full-access` wore the bounded badge — and
+  switching back **to** `assist` did nothing at all, because the session
+  believed it was already there. The command that installs the boundary was the
+  one that silently failed. The name is now derived from the pair in force, and
+  a pair that is none of the three gets no name rather than the nearest one.
+- **Switching mode mid-turn is no longer a data race.** `SetMode` writes from
+  the HTTP handler while the turn runs — which is the point of not interrupting
+  it. Evaluation was put under the mutex; building a delegated child was not,
+  and it reads the same two fields from the goroutine that is alive when the
+  switch arrives. Every reader goes through one guarded accessor now.
 - **A typed command announces itself before it runs.** `!` ran the command and
   the screen said nothing. The daemon emitted the completion and not the
   announcement, and the client builds the row from the announcement and

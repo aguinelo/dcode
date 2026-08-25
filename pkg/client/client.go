@@ -110,6 +110,18 @@ func (c *Client) Interrupt(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/interrupt", nil, nil)
 }
 
+// SetMode switches the session behavioural mode: plan, assist or auto.
+//
+// The change is not in the response. It arrives on the event stream as
+// session.mode_changed, so a client that was not attached when it happened
+// still learns the mode from the log rather than from a call it missed.
+func (c *Client) SetMode(ctx context.Context, id, mode string) error {
+	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/mode",
+		struct {
+			Mode string `json:"mode"`
+		}{Mode: mode}, nil)
+}
+
 // Exec runs a command the person typed, outside a turn.
 //
 // It blocks until the command finishes. The output arrives on the event stream,
