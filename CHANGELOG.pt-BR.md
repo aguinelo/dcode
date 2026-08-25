@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 106 changelogs de decisão |
-| contratos comportamentais | 42 declarados |
+| famílias de spec | 13, com 108 changelogs de decisão |
+| contratos comportamentais | 43 declarados |
 | **contratos medidos contra modelo** | **3** |
-| cobertura | 94,0%, com gate em 90% |
+| cobertura | 94,1%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.5.1** |
+| versão publicada | **0.6.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -64,6 +64,8 @@ uma segunda cópia do que o fluxo tinha acabado de dizer.
 
 **Onde está o teclado.** A área de digitação é um campo com moldura, porque a
 única pergunta sem outra resposta na tela é onde vão as letras que você digita.
+Uma linha começando com `!` não é enviada ao modelo — ela roda, pela mesma
+ferramenta e pela mesma fronteira, e o campo avisa desde o primeiro caractere.
 Nada nessa moldura carrega estado: uma versão anterior a apagava enquanto o
 fluxo tinha o teclado, e o teste dela perguntou se aquela distinção sobrevivia
 sem cor. Não sobrevivia.
@@ -107,16 +109,9 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-### Corrigido
+_Nada ainda._
 
-- **A linha que você está digitando continua visível.** Maior que a caixa, ela
-  era uma linha só e a linha era cortada — então tudo além da borda direita, o
-  cursor incluído, ficava invisível enquanto era digitado. Não há como ler o que
-  não se vê nem como corrigir um erro que não se acha. A área de digitação conta
-  as linhas quebrando, em vez de contando quebras de linha, e o cursor é levado
-  junto pela quebra para cair onde o próximo caractere vai aparecer. A quebra é
-  por coluna e não por palavra: o que se digita ali costuma ser um comando, e um
-  caminho ou uma flag quebrada num espaço lê como dois argumentos.
+## 0.6.0 — 25 de agosto de 2026
 
 ### Adicionado
 
@@ -154,6 +149,16 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
   sucesso, porque ser negado é a fronteira funcionando.
 
 ### Corrigido
+
+- **A linha que você está digitando continua visível.** Maior que a caixa, ela
+  era uma linha só e a linha era cortada — então tudo além da borda direita, o
+  cursor incluído, ficava invisível enquanto era digitado. Não há como ler o que
+  não se vê nem como corrigir um erro que não se acha. A área de digitação conta
+  as linhas quebrando, em vez de contando quebras de linha, e o cursor é levado
+  junto pela quebra para cair onde o próximo caractere vai aparecer. A quebra é
+  por coluna e não por palavra: o que se digita ali costuma ser um comando, e um
+  caminho ou uma flag quebrada num espaço lê como dois argumentos.
+
 
 - **Atualização é algo mais novo, não algo diferente.** O aviso perguntava se a
   versão em execução era diferente da última conhecida, então um binário à
