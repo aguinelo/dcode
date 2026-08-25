@@ -216,10 +216,17 @@ func renderSessionPane(m Model, g Geometry, w, height int) []string {
 
 	// The context, as a pair and a gauge. The pair because the question a
 	// ceiling answers is how much is left, and a share cannot answer it.
+	//
+	// ContextTokens, not InputTokens. This is the THIRD place the same defect
+	// reached the screen: the model was fixed, the status bar went on drawing
+	// from the cumulative count beside it, and so did this — `5.9M / 1.0M`
+	// under a gauge computed from the true share, so the pair disagreed with
+	// the bar it sits on. InputTokens is what the turn COST across its rounds,
+	// and every round re-sends the context.
 	if m.Window > 0 {
 		out = append(out,
 			keyValue(t.SideContext, fmt.Sprintf("%s / %s",
-				humanTokens(m.InputTokens), humanTokens(m.Window)), p, w),
+				humanTokens(m.ContextTokens), humanTokens(m.Window)), p, w),
 			gauge(m.ContextPct, gl, p, w))
 	}
 	if m.Asked > 0 {
@@ -288,8 +295,17 @@ func recentRow(e Entry, m Model, p Palette, w int) string {
 	if room < 2 {
 		return head
 	}
-	target := e.Target[strings.LastIndex(e.Target, "/")+1:]
-	return head + " " + p.Apply(StyleMeta, ellipsisTail(target, room, glyphs(true).ell))
+	// Shortened from the front only when the target IS a path. A URL cut to
+	// its last segment reads as a file nobody has:
+	// `.../web/api/v4/trips/lowest-price?from=maringa-pr` became
+	// `lowest-price?from=maringa-pr`, which names nothing on this machine.
+	// looksLikePath decides, which is the decision the tool line already makes.
+	target := e.Target
+	if looksLikePath(target) {
+		target = target[strings.LastIndex(target, "/")+1:]
+		return head + " " + p.Apply(StyleMeta, ellipsisTail(target, room, glyphs(true).ell))
+	}
+	return head + " " + p.Apply(StyleMeta, elide(target, room, glyphs(true).ell))
 }
 
 // renderLanes is the legend above the stream: three marks and three words,

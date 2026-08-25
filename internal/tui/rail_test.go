@@ -471,7 +471,7 @@ func TestTheSideColumnSaysWhatIsNowhereElse(t *testing.T) {
 		Entry{Kind: KindTool, Tool: "write", Target: "internal/tui/side.go", Added: 188},
 	)
 	m.DiffAdded, m.DiffRemoved = 230, 6
-	m.InputTokens, m.Window, m.ContextPct = 18200, 200000, 9
+	m.ContextTokens, m.Window, m.ContextPct = 18200, 200000, 9
 	m.Asked, m.Allowed = 7, 6
 
 	g := railGeometry(150)
@@ -520,5 +520,55 @@ func TestTheBarsAreScaledToTheLargestChangeAndSaySo(t *testing.T) {
 	m := railModel(Entry{Kind: KindTool, Tool: "edit", Target: "a.go", Added: 200})
 	if out := strings.Join(renderDiffPane(m, g, g.railWidth(), 10), "\n"); !strings.Contains(out, "200") {
 		t.Errorf("the pane does not say what the bars are scaled to:\n%s", out)
+	}
+}
+
+// The column shows the context, not what the turn cost.
+//
+// The third place the same defect reached the screen. The model was fixed, the
+// status bar went on drawing from the cumulative count beside it, and so did
+// this: `5.9M / 1.0M` under a gauge computed from the true share, so the pair
+// disagreed with the gauge below it and with the bar above it. InputTokens is
+// what a turn COST across its rounds, and every round re-sends the context.
+func TestTheColumnShowsTheContextNotTheCost(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m.Window, m.ContextTokens, m.ContextPct = 1_000_000, 363_500, 36
+	m.InputTokens = 5_917_178 // a real turn's cumulative input, from a record
+
+	g := railGeometry(150)
+	g.RailMode = RailShown
+	g.Palette = Palette{}
+	out := strings.Join(renderSide(m, g, 24), "\n")
+
+	if !strings.Contains(out, "363.5k") {
+		t.Errorf("the column does not show what the daemon measured:\n%s", out)
+	}
+	if strings.Contains(out, "5.9M") {
+		t.Errorf("the column shows the turn's cost as if it were the context:\n%s", out)
+	}
+}
+
+// A target that is not a path keeps its head.
+//
+// recentRow cut every target to whatever followed the last slash, which is
+// right for a file and wrong for a URL: a curl to
+// `.../web/api/v4/trips/lowest-price?from=maringa-pr` showed as
+// `lowest-price?from=maringa-pr`, which reads as a file nobody has.
+func TestTheRecentRowDoesNotTurnAURLIntoAFilename(t *testing.T) {
+	p := Palette{}
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+
+	url := "https://api.example.com/web/api/v4/trips/lowest-price?from=maringa-pr"
+	got := recentRow(Entry{Kind: KindTool, Tool: "fetch", Target: url}, m, p, 60)
+	if strings.Contains(got, "lowest-price?from") && !strings.Contains(got, "api.example.com") {
+		t.Errorf("the URL was shortened to its last segment: %q", got)
+	}
+
+	// And a path still loses its directories, which is what makes the column
+	// narrow enough to be worth having.
+	got = recentRow(Entry{Kind: KindTool, Tool: "edit",
+		Target: "internal/tui/side.go"}, m, p, 60)
+	if !strings.Contains(got, "side.go") || strings.Contains(got, "internal/tui") {
+		t.Errorf("a path was not shortened: %q", got)
 	}
 }
