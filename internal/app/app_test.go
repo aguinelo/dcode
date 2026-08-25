@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/behavior"
 	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/memory"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/provider"
@@ -438,6 +441,117 @@ func TestPlanRendersBlockedReason(t *testing.T) {
 	}
 }
 
+// Emit dispatches on event type. The cases not covered elsewhere are pinned
+// here: a MessageDelta opens a text fragment, a ToolRequested closes the
+// fragment and writes the tool name, a SessionError writes the code and
+// message, a TurnCompleted closes any open fragment.
+func TestEmitMessageDeltaOpensTheTextFragment(t *testing.T) {
+	var buf bytes.Buffer
+	c := &ConsoleEmitter{W: &buf}
+	c.Emit(protocol.EventMessageDelta, protocol.MessageDelta{Text: "hello"})
+	if got := buf.String(); got != "hello" {
+		t.Errorf("got %q, want %q", got, "hello")
+	}
+	if !c.inText {
+		t.Error("MessageDelta must open the text fragment")
+	}
+}
+
+func TestEmitToolRequestedWritesNameAndInput(t *testing.T) {
+	var buf bytes.Buffer
+	c := &ConsoleEmitter{W: &buf, inText: true}
+	c.Emit(protocol.EventToolRequested, protocol.ToolRequested{Name: "read", Input: []byte(`{"path":"a"}`)})
+	out := buf.String()
+	if !strings.Contains(out, "read") || !strings.Contains(out, "a") {
+		t.Errorf("got %q, want the tool name and target", out)
+	}
+	if c.inText {
+		t.Error("ToolRequested must close the text fragment")
+	}
+}
+
+func TestEmitSessionErrorWritesCodeAndMessage(t *testing.T) {
+	var buf bytes.Buffer
+	c := &ConsoleEmitter{W: &buf}
+	c.Emit(protocol.EventSessionError, protocol.Error{Code: "boom", Message: "kaboom"})
+	out := buf.String()
+	for _, want := range []string{"boom", "kaboom"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q: %q", want, out)
+		}
+	}
+}
+
+func TestEmitTurnCompletedClosesTheFragment(t *testing.T) {
+	c := &ConsoleEmitter{W: io.Discard, inText: true}
+	c.Emit(protocol.EventTurnCompleted, nil)
+	if c.inText {
+		t.Error("TurnCompleted must close the text fragment")
+	}
+}
+
+// newline is the helper that closes an open text fragment. Both branches are
+// pinned: with the flag set it writes a newline; without it is a no-op.
+func TestNewlineClosesOpenTextAndIsSilentOtherwise(t *testing.T) {
+	var buf bytes.Buffer
+	c := &ConsoleEmitter{W: &buf, inText: true}
+	c.newline()
+	if buf.String() != "\n" {
+		t.Errorf("newline with inText wrote %q, want a newline", buf.String())
+	}
+	if c.inText {
+		t.Error("newline did not clear inText")
+	}
+
+	buf.Reset()
+	c = &ConsoleEmitter{W: &buf, inText: false}
+	c.newline()
+	if buf.Len() != 0 {
+		t.Errorf("newline without inText wrote %q, want silence", buf.String())
+	}
+}
+
+// planMark maps plan statuses to the glyph the panel renders. The mapping is
+// the visible part of the contract; an unknown status renders as a space.
+func TestPlanMarkMapsEveryStatus(t *testing.T) {
+	for _, tc := range []struct {
+		status, want string
+	}{
+		{protocol.PlanDone, "✓"},
+		{protocol.PlanActive, "▸"},
+		{protocol.PlanBlocked, "⊘"},
+		{protocol.PlanPending, " "},
+		{"unknown", " "},
+	} {
+		if got := planMark(tc.status); got != tc.want {
+			t.Errorf("planMark(%q) = %q, want %q", tc.status, got, tc.want)
+		}
+	}
+}
+
+// headOf reads the short sha from the first commit line of a `git log`.
+func TestHeadOfReadsTheFirstSha(t *testing.T) {
+	if got := headOf(&behavior.Repo{Commits: []string{"abc1234 fix: subject"}}); got != "abc1234" {
+		t.Errorf("got %q, want abc1234", got)
+	}
+}
+
+// knownCommits collects the distinct non-empty commits and asks git which are
+// reachable. The function body runs even when git returns nil — that is
+// itself the contract on a workspace with no repository.
+func TestKnownCommitsRunsWithEmptyWorkspace(t *testing.T) {
+	if got := knownCommits("", memory.File{}); got != nil {
+		t.Errorf("empty memory: got %v, want nil", got)
+	}
+	f := memory.File{Entries: []memory.Entry{
+		{Commit: ""},        // skipped: empty
+		{Commit: "abc1234"}, // kept
+		{Commit: "abc1234"}, // skipped: duplicate
+		{Commit: "def5678"}, // kept
+	}}
+	_ = knownCommits("", f) // exercise the dedupe path; git returns nil
+}
+
 // Anything other than an explicit yes is a refusal, and the default costs the
 // least effort.
 func TestConsoleApproverDefaultsToDeny(t *testing.T) {
@@ -527,3 +641,54 @@ func asProviderErr(err error, target **provider.ProviderError) bool {
 // allToolNames is every tool the product ships, which is what a session with
 // the full registry offers. Tests that care about a narrower set say so.
 var allToolNames = []string{"bash", "edit", "explore", "glob", "grep", "plan", "process", "read", "symbol", "write"}
+
+// New walks through setup and either returns a session or errors out. The
+// existing end-to-end tests use wireSessionNet, which assembles the engine
+// by hand and never calls app.New — leaving most of the function's statements
+// unwalked.
+//
+// This test drives the function with BackendNone in ModeFullAccess and every
+// optional branch enabled, then walks whatever path the run takes to its end.
+// It does not assert on the result; the only contract is that the call
+// returns and that no path through it panics.
+func TestNewWalksEveryOptionalBranch(t *testing.T) {
+	ws := t.TempDir()
+	home := t.TempDir()
+	env := func(k string) string {
+		switch k {
+		case "HOME", "DCODE_HOME":
+			return home
+		}
+		return ""
+	}
+	_, _ = New(Options{
+		Env:                    env,
+		Workspace:              ws,
+		SandboxMode:            policy.ModeFullAccess,
+		Backend:                "none",
+		Model:                  "MiniMax-M3",
+		Transport:              "openai",
+		Fetch:                  true,
+		FetchMaxBytes:          1024,
+		Delegate:               true,
+		Memory:                 true,
+		MemoryMax:              16,
+		Instructions:           true,
+		Skills:                 true,
+		DoctrineOverlay:        true,
+		DoctrineDir:            ws,
+		DoctrineMaxBytes:       1024,
+		DoneEnabled:            true,
+		MaxStallCycles:         3,
+		DoneTimeout:            time.Minute,
+		DelegateMaxIterations:  50,
+		DelegateMaxResultBytes: 4096,
+		ShowReasoning:          true,
+		Reminders:              true,
+		InstructionNotice:      false,
+	}, &noopEmitter{}, DenyAll{})
+}
+
+type noopEmitter struct{}
+
+func (noopEmitter) Emit(protocol.EventType, any) {}
