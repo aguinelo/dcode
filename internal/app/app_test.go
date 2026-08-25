@@ -290,7 +290,7 @@ func wireSessionNet(t *testing.T, ws string, turns [][]string, approver loop.App
 	registry := tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{}, tools.Glob{}, tools.Grep{},
 		tools.Bash{
-			Runner:  sandbox.Runner{Sandbox: sb, Mode: policy.ModeWorkspaceWrite},
+			Runner:  sandbox.Runner{Sandbox: sb, Mode: sandbox.Fixed(policy.ModeWorkspaceWrite)},
 			Workdir: ws,
 		},
 		tools.Plan{},

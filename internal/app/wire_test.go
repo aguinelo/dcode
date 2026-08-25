@@ -346,7 +346,7 @@ func TestTheBackgroundAdapterCarriesTheProcessAndTheFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := background{sandbox.Runner{Sandbox: sb, Mode: policy.ModeFullAccess}}
+	b := background{sandbox.Runner{Sandbox: sb, Mode: sandbox.Fixed(policy.ModeFullAccess)}}
 
 	h, err := b.Start(context.Background(), t.TempDir(), "sleep 30")
 	if err != nil {

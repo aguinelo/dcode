@@ -15,7 +15,7 @@ import (
 )
 
 func backgroundRunner() Runner {
-	return Runner{Sandbox: noneSandbox{}, Mode: policy.ModeFullAccess}
+	return Runner{Sandbox: noneSandbox{}, Mode: Fixed(policy.ModeFullAccess)}
 }
 
 // waitFor polls until cond holds or the budget runs out. Real processes are

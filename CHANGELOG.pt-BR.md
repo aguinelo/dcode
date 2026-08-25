@@ -111,6 +111,16 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **`auto` remove a fronteira de verdade.** Trocar de modo movia a resposta da
+  política e mais nada: o sandbox recebia o modo como **valor**, copiado quando
+  a sessão foi montada, então `/mode auto` fazia o veredito dizer `allow` e o
+  crachá dizer `auto` enquanto o SO seguia aplicando o limite com que a sessão
+  nasceu. Escrever fora do workspace continuava voltando `EPERM` — um modo cujo
+  contrato inteiro é "sem fronteira" deixava uma de pé. O executor agora
+  pergunta o modo **a cada comando**; fonte nula significa `read-only`, porque
+  fronteira que ninguém decidiu falha fechada. Medido num pty real: o mesmo
+  `mkdir` fora do workspace é recusado sob `assist` e funciona sob `auto`.
+
 - **Quem pergunta é o harness, e o modelo não.** A doutrina dizia "when that
   happens **the user is asked**" — voz passiva, sem sujeito — então o modelo
   preencheu o sujeito consigo mesmo e construiu um protocolo de permissão

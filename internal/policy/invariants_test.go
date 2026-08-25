@@ -28,6 +28,8 @@ var sandboxInvariants = map[string]string{
 	"não recebe nome":                         "TestAPairThatIsNoModeHasNoName",
 	"anuncia o modo que o motor está de fato": "TestASessionSaysTheModeItIsActuallyIn",
 	"Duas trocas concorrentes":                "TestConcurrentSwitchesLeaveOneMode",
+	"pergunta o modo **a cada comando**":      "TestTheRunnerAsksTheModeOncePerCommand",
+	"Executor sem fonte de modo":              "TestARunnerWithNoModeFailsClosed",
 	"depois de **provar**":                    "TestSeatbeltProbesRatherThanTrustingThePath",
 	"pular dizendo o motivo":                  "TestABoundaryTestSkipsLoudlyRatherThanPassingQuietly",
 

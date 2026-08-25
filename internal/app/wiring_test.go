@@ -339,7 +339,7 @@ var helperKeys = map[string]bool{
 // opts.<Field>. That is what makes a missing assignment a failure, not a
 // passing test with the value at zero.
 func TestNewWiresEveryLoopConfigField(t *testing.T) {
-	body := readAppNewBody(t)
+	body := readLoopConfigLiteral(t)
 	for _, w := range wiringTable {
 		if w.loopCfg == "" {
 			continue
@@ -513,6 +513,39 @@ func readFromEnvBody(t *testing.T) string {
 func readAppNewBody(t *testing.T) string {
 	t.Helper()
 	return extractFunctionBody(readAppSource(t), "New")
+}
+
+// readLoopConfigLiteral narrows the body to the `loop.Config{…}` literal.
+//
+// The field names in that literal are not unique in app.New — `Mode:` also
+// names the sandbox runner's mode source, and `Model:` names the provider's.
+// Searching the whole body finds whichever comes first in the file, so the
+// guard was passing on the strength of source ORDER rather than on the
+// assignment it names. It went red the day another `Mode:` was written above.
+func readLoopConfigLiteral(t *testing.T) string {
+	t.Helper()
+	body := readAppNewBody(t)
+	const marker = "loop.Config{"
+	i := strings.Index(body, marker)
+	if i < 0 {
+		t.Fatal("app.New does not build a loop.Config")
+	}
+	rest := body[i+len(marker):]
+	// To the matching brace, counting nesting: the literal carries nested
+	// composite values and stopping at the first `}` would cut it short.
+	depth := 1
+	for j, r := range rest {
+		switch r {
+		case '{':
+			depth++
+		case '}':
+			if depth--; depth == 0 {
+				return rest[:j]
+			}
+		}
+	}
+	t.Fatal("the loop.Config literal in app.New is not closed")
+	return ""
 }
 
 // loopConfigFromOptions builds a session through the public wiring and

@@ -41,7 +41,7 @@ func TestARealNamedStoreCannotBeReadFromInside(t *testing.T) {
 		t.Skipf("no sandbox available: %v", err)
 	}
 	ws := t.TempDir()
-	r := Runner{Sandbox: open, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: open, Mode: Fixed(policy.ModeWorkspaceWrite)}
 	if _, code, err := r.Run(context.Background(), ws, "cat "+shellQuote(secret)); err != nil || code != 0 {
 		t.Fatalf("the control failed: a store nobody named must still be readable (code=%d err=%v)", code, err)
 	}
@@ -50,7 +50,7 @@ func TestARealNamedStoreCannotBeReadFromInside(t *testing.T) {
 	if err != nil {
 		t.Skipf("no sandbox available: %v", err)
 	}
-	r = Runner{Sandbox: shut, Mode: policy.ModeWorkspaceWrite}
+	r = Runner{Sandbox: shut, Mode: Fixed(policy.ModeWorkspaceWrite)}
 	out, code, err := r.Run(context.Background(), ws, "cat "+shellQuote(secret))
 	if err != nil {
 		t.Fatalf("running under the sandbox failed outright: %v", err)

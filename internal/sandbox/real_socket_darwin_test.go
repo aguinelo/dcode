@@ -49,7 +49,7 @@ func TestAUnixSocketIsReachableWhereWritingIs(t *testing.T) {
 	outside := listen(t, filepath.Join(outsideDir, "p.sock"))
 	inside := listen(t, filepath.Join(ws, "p.sock"))
 
-	r := Runner{Sandbox: s, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
 
 	out, code, err := r.Run(context.Background(), ws, "nc -U "+shellQuote(outside)+" < /dev/null")
 	if err != nil {
@@ -84,7 +84,7 @@ func TestAPortCanBeBoundInsideTheSandbox(t *testing.T) {
 		t.Skipf("python3 is needed to bind a port: %v", err)
 	}
 
-	r := Runner{Sandbox: s, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
 	out, code, err := r.Run(context.Background(), t.TempDir(),
 		`python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); s.listen(1)'`)
 	if err != nil {

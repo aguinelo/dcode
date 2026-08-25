@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/aguinelo/dcode/internal/behavior"
@@ -455,14 +456,18 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 	// explore is registered as a pointer because its delegator is the engine,
 	// which does not exist yet: the registry is what the engine is built with.
-	// The knot is tied after, and it is the only one of its kind here.
+	// The knot is tied after.
 	explore := &tools.Explore{}
+	// live is the second knot, and it exists for the same reason: the shell
+	// runs under the boundary the session is in RIGHT NOW, and the session's
+	// mode lives on the engine that does not exist yet either.
+	live := &liveMode{fallback: opts.SandboxMode}
 	toolset := []tools.Tool{
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{}, tools.Symbol{},
 		tools.Bash{
-			Runner:     sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode},
-			Background: background{sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode}},
+			Runner:     sandbox.Runner{Sandbox: sb, Mode: live.get},
+			Background: background{sandbox.Runner{Sandbox: sb, Mode: live.get}},
 			Workdir:    opts.Workspace,
 			Timeout:    120 * time.Second,
 		},
@@ -640,6 +645,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// The knot: the tool needed the engine, and the engine needed the registry
 	// the tool is in. Tied here, once, where both exist.
 	explore.Delegator = engine
+	live.follow(engine)
 
 	notice := ""
 	// A model nobody measured is usable and must say so. Reading a difference
@@ -1174,4 +1180,37 @@ func headOf(r *behavior.Repo) string {
 	}
 	sha, _, _ := strings.Cut(r.Commits[0], " ")
 	return sha
+}
+
+// liveMode answers "which boundary is the shell under right now".
+//
+// The sandbox used to be handed the mode as a value, captured when the session
+// was built. `/mode auto` then changed the policy's answer and nothing else:
+// the verdict said allow, the badge said auto, and the write still came back
+// EPERM because the OS was still enforcing what the session started with. A
+// mode whose whole promise is "no boundary" left one standing.
+//
+// Held through an atomic rather than a plain field. The knot is tied on the
+// construction goroutine and read on every turn's, which is exactly the shape
+// of the SetMode race this repository fixed the same day — a plain field would
+// work in practice and be wrong under -race, and "works in practice" is what
+// that race said too.
+type liveMode struct {
+	engine   atomic.Pointer[loop.Engine]
+	fallback policy.SandboxMode
+}
+
+// follow ties this to the engine that owns the session's mode.
+func (l *liveMode) follow(e *loop.Engine) { l.engine.Store(e) }
+
+// get is the source the sandbox runner asks once per command.
+func (l *liveMode) get() policy.SandboxMode {
+	if e := l.engine.Load(); e != nil {
+		m, _ := e.Mode()
+		return m
+	}
+	// Before the knot: the mode the session was asked for. Not read-only —
+	// this is the mode that was chosen, and refusing it here would break every
+	// command that ran before the engine existed rather than fail safe.
+	return l.fallback
 }

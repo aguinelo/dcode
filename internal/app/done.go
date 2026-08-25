@@ -134,7 +134,11 @@ func parseDuration(v string, def time.Duration) time.Duration {
 // (RN-6.1 of configuration forbids running one read from a shared instruction
 // file), but "reviewed" is not "unconfined".
 func criterionRunner(sb sandbox.Sandbox, opts Options) loop.CriterionRunner {
-	runner := sandbox.Runner{Sandbox: sb, Mode: opts.SandboxMode}
+	// Fixed, and deliberately so. A criterion is the daemon checking its own
+	// definition of done, not the session doing work — it runs under the
+	// boundary the session was configured with, whatever the person has since
+	// switched the session to.
+	runner := sandbox.Runner{Sandbox: sb, Mode: sandbox.Fixed(opts.SandboxMode)}
 	return func(ctx context.Context, command string) (int, string, error) {
 		out, code, err := runner.Run(ctx, opts.Workspace, command)
 		return code, out, err

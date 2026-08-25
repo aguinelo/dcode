@@ -208,7 +208,7 @@ func TestReadOnlyBlocksWritesAtTheOSLevel(t *testing.T) {
 	ws := t.TempDir()
 	target := filepath.Join(ws, "should-not-appear.txt")
 
-	r := Runner{Sandbox: s, Mode: policy.ModeReadOnly}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeReadOnly)}
 	out, code, err := r.Run(context.Background(), ws, "echo written > "+shellQuote(target))
 	if err != nil {
 		t.Fatalf("running under the sandbox failed outright: %v", err)
@@ -231,7 +231,7 @@ func TestWorkspaceWriteAllowsTheWorkspaceAndBlocksOutside(t *testing.T) {
 	}
 	outside := filepath.Join(root, "outside.txt")
 
-	r := Runner{Sandbox: s, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
 
 	inside := filepath.Join(ws, "ok.txt")
 	if _, code, err := r.Run(context.Background(), ws, "echo hi > "+shellQuote(inside)); err != nil || code != 0 {
@@ -252,7 +252,7 @@ func TestWorkspaceWriteAllowsTheWorkspaceAndBlocksOutside(t *testing.T) {
 
 func TestNonZeroExitIsAnAnswerNotAFailure(t *testing.T) {
 	s := realSandbox(t)
-	r := Runner{Sandbox: s, Mode: policy.ModeWorkspaceWrite}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
 	out, code, err := r.Run(context.Background(), t.TempDir(), "exit 7")
 	if err != nil {
 		t.Fatalf("a failing command must not be a run error: %v (%q)", err, out)
@@ -370,7 +370,7 @@ func TestAnAbsentNetworkDecisionIsRefusedRatherThanAssumed(t *testing.T) {
 // the timeout exists to make — the session comes back — was the guarantee it
 // could not keep.
 func TestARunReturnsAtItsCeilingEvenWithAChildHoldingTheOutput(t *testing.T) {
-	r := Runner{Sandbox: noneSandbox{}, Mode: policy.ModeFullAccess}
+	r := Runner{Sandbox: noneSandbox{}, Mode: Fixed(policy.ModeFullAccess)}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
@@ -391,7 +391,7 @@ func TestARunReturnsAtItsCeilingEvenWithAChildHoldingTheOutput(t *testing.T) {
 // And a command that finishes returns its output whole, or the fix has traded
 // a hang for truncation.
 func TestARunThatFinishesReturnsEverything(t *testing.T) {
-	r := Runner{Sandbox: noneSandbox{}, Mode: policy.ModeFullAccess}
+	r := Runner{Sandbox: noneSandbox{}, Mode: Fixed(policy.ModeFullAccess)}
 	out, code, err := r.Run(context.Background(), t.TempDir(), "echo one; echo two >&2; echo three")
 	if err != nil {
 		t.Fatal(err)
