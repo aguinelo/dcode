@@ -107,7 +107,23 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **Continuar uma conversa longa abre a conversa.** `dcode -c` desenhava a tela
+  de abertura e saía, deixando as respostas do terminal às perguntas que ele
+  mesmo tinha feito digitadas no prompt seguinte. Três falhas em fila, cada uma
+  escondendo a próxima. A resposta da criação da sessão era montada *antes* de a
+  conversa continuada entrar nela, então dizia que a sessão não tinha nada; o
+  cliente acreditou e pediu eventos a partir de 1, que a retenção já havia
+  descartado de uma conversa de dezoito mil; a recusa então era escrita no canal
+  de erro e se perdia na corrida com o fechamento desse canal, e o cliente saía
+  sem dizer nada. A sessão agora se descreve depois que a conversa está nela e
+  informa o evento mais antigo que ainda guarda, o cliente pede a partir dali, e
+  um motivo que chega junto com o fechamento é lido antes do fechamento.
+- **Um erro fatal sobrevive à tela em que foi escrito.** Ele era desenhado no
+  último quadro, e a tela alternativa leva o último quadro embora — então a
+  única mensagem de que a pessoa precisava era a que estava garantidamente
+  perdida. Falhar era idêntico a não fazer nada.
 
 ## 0.5.0 — 24 de agosto de 2026
 

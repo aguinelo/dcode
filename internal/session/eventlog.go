@@ -174,6 +174,19 @@ func (l *EventLog) SetRecord(r *Record) {
 }
 
 // LastSeq returns the highest sequence assigned.
+// FirstSeq is the lowest sequence still held.
+//
+// A client has to be told, not left to assume 1. Continuing a long
+// conversation appends every carried event to this log, and retention then
+// drops the oldest — so the earliest event a session HAS is routinely not the
+// first one it had. A client that subscribes from 1 anyway is refused, and the
+// conversation it asked to continue does not open at all.
+func (l *EventLog) FirstSeq() uint64 {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.firstSeq
+}
+
 func (l *EventLog) LastSeq() uint64 {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

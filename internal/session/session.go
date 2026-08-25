@@ -124,6 +124,7 @@ func (s *Session) Describe() protocol.Session {
 	return protocol.Session{
 		ID: s.ID, State: state, Workspace: s.Workspace, Model: s.Model,
 		SandboxMode: s.Mode, CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
+		FirstSeq:      s.Log.FirstSeq(),
 		ContextWindow: s.ContextWindow,
 	}
 }
