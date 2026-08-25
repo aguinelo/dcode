@@ -462,3 +462,48 @@ func TestNoScreenShowsTheTurnsCostAsTheContext(t *testing.T) {
 
 // percentPattern finds every percentage drawn on a screen.
 var percentPattern = regexp.MustCompile(`(\d+)%`)
+
+// A typed command reaches the screen.
+//
+// It ran and the screen said nothing. The daemon emitted the completion and not
+// the announcement, and the client builds the row from the announcement and
+// completes it by id — so the completion had nothing to land on and was dropped
+// in silence. The command worked; from the only side that matters, nothing
+// happened.
+//
+// This asks the screen rather than the event: what a person needs is to see the
+// command and its output, and no arrangement of events that fails to produce
+// that is correct.
+func TestATypedCommandReachesTheScreen(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = apply(t, m,
+		ev(t, 1, protocol.EventToolRequested, protocol.ToolRequested{
+			TurnID: "x1", ToolCallID: "x1-1", Name: "bash",
+			Input: json.RawMessage(`{"command":"echo ola-do-bang"}`),
+		}),
+		ev(t, 2, protocol.EventToolCompleted, protocol.ToolCompleted{
+			ToolCallID: "x1-1", OK: true, Output: "ola-do-bang\n", Lines: 1,
+		}))
+
+	var tools int
+	for _, e := range m.Entries {
+		if e.Kind == KindTool {
+			tools++
+			if e.Detail == "" && e.Summary == "" {
+				t.Error("the row is there and the output never landed on it")
+			}
+			if e.Running {
+				t.Error("the row is still marked running after its completion")
+			}
+		}
+	}
+	if tools != 1 {
+		t.Fatalf("the stream holds %d tool rows, want one:\n%+v", tools, m.Entries)
+	}
+
+	g := DefaultGeometry(120, 30)
+	g.Palette = Palette{}
+	if out := Render(m, g); !strings.Contains(out, "bash") {
+		t.Errorf("the command is not on the screen:\n%s", out)
+	}
+}

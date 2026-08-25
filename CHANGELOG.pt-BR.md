@@ -109,7 +109,15 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **Um comando digitado se anuncia antes de rodar.** O `!` rodava o comando e a
+  tela não dizia nada. O daemon emitia a conclusão e não o anúncio, e o cliente
+  monta a linha a partir do anúncio e a completa por id — então a conclusão não
+  tinha onde cair e era descartada em silêncio. O comando funcionava; do único
+  lado que importa, não acontecia nada. O guarda que veio junto pergunta à tela,
+  não aos eventos: nenhum arranjo de eventos que deixe de pôr o comando e a
+  saída na frente de uma pessoa está certo.
 
 ## 0.6.1 — 25 de agosto de 2026
 

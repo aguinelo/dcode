@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/tools"
 )
 
@@ -39,5 +40,47 @@ func TestAnEmptyCommandIsRefused(t *testing.T) {
 	e, _ := newEngine(t, nil, tools.NewRegistry(tools.Bash{}))
 	if _, err := e.Exec(context.Background(), "   "); err == nil {
 		t.Error("an empty command was accepted")
+	}
+}
+
+// A typed command announces itself before it runs.
+//
+// Without this it ran and nothing appeared. The client builds the row from
+// `tool.requested` and completes it by id, so a completion for a call it never
+// saw has nothing to attach to and is dropped in silence — the command worked,
+// the screen said nothing, and "nothing happened" is what it looked like from
+// the only side that matters.
+func TestATypedCommandAnnouncesItselfBeforeItRuns(t *testing.T) {
+	e, rec := newEngine(t, nil, tools.NewRegistry(tools.Bash{}))
+	if _, err := e.Exec(context.Background(), "echo hello"); err != nil {
+		t.Fatal(err)
+	}
+
+	rec.mu.Lock()
+	seen := append([]protocol.EventType(nil), rec.events...)
+	rec.mu.Unlock()
+
+	var requested, completed int
+	var requestedFirst bool
+	for _, ev := range seen {
+		switch ev {
+		case protocol.EventToolRequested:
+			requested++
+			if completed == 0 {
+				requestedFirst = true
+			}
+		case protocol.EventToolCompleted:
+			completed++
+		}
+	}
+	if requested != 1 {
+		t.Errorf("the call was announced %d times, want once", requested)
+	}
+	// Whether it completes depends on the boundary — this engine has no
+	// approver, so the crossing is refused, which is the machinery working.
+	// What must hold either way is the order: a completion that arrives before
+	// the announcement has no row to land on.
+	if completed > 0 && !requestedFirst {
+		t.Error("the completion arrived before the announcement")
 	}
 }

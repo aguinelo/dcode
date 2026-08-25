@@ -55,9 +55,20 @@ func (e *Engine) Exec(ctx context.Context, command string) (string, error) {
 	e.turnSeq++
 	turnID := fmt.Sprintf("x%d", e.turnSeq)
 
-	msgs, _ := e.execute(ctx, turnID, []ce.ToolCall{{
-		ID: turnID + "-1", Name: ExecName, Input: input,
-	}})
+	call := ce.ToolCall{ID: turnID + "-1", Name: ExecName, Input: input}
+
+	// Announced BEFORE it runs, exactly as a call the model asked for is.
+	//
+	// Without this the command ran and nothing appeared: the client builds the
+	// row from `tool.requested` and completes it by id, so a completion for a
+	// call it never saw has nothing to attach to and is dropped in silence. The
+	// command worked, the screen said nothing, and "nothing happened" is what
+	// it looked like from the only side that matters.
+	e.emit(protocol.EventToolRequested, protocol.ToolRequested{
+		TurnID: turnID, ToolCallID: call.ID, Name: call.Name, Input: call.Input,
+	})
+
+	msgs, _ := e.execute(ctx, turnID, []ce.ToolCall{call})
 
 	out := ""
 	for _, m := range msgs {
