@@ -31,7 +31,7 @@ isolated package.
 | **contracts measured against a model** | **3** |
 | coverage | 94.1%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.6.1** |
+| published version | **0.7.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -113,6 +113,10 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.7.0 — 25 August 2026
 
 ### Added
 

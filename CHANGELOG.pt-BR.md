@@ -31,7 +31,7 @@ fora do pacote isolado.
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 94,1%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.6.1** |
+| versão publicada | **0.7.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -108,6 +108,10 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.7.0 — 25 de agosto de 2026
 
 ### Adicionado
 
