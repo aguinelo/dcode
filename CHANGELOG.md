@@ -114,7 +114,16 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **A typed command announces itself before it runs.** `!` ran the command and
+  the screen said nothing. The daemon emitted the completion and not the
+  announcement, and the client builds the row from the announcement and
+  completes it by id — so the completion had nothing to land on and was dropped
+  in silence. The command worked; from the only side that matters, nothing
+  happened. The guard added with it asks the screen, not the events: no
+  arrangement of events that fails to put the command and its output in front of
+  a person is correct.
 
 ## 0.6.1 — 25 August 2026
 
