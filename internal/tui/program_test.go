@@ -28,6 +28,9 @@ type fakeTransport struct {
 	sessions   []protocol.Session
 	// subscribedFrom is every sequence the client asked to start from.
 	subscribedFrom []uint64
+	// executed is every command run through `!`.
+	executed []string
+	execErr  error
 
 	submitErr error
 	steerErr  error
@@ -63,6 +66,13 @@ func (f *fakeTransport) CreateSession(_ context.Context, req protocol.CreateSess
 		ID: "new", Workspace: req.Workspace, Model: req.Model,
 		SandboxMode: req.SandboxMode, State: protocol.SessionStateIdle,
 	}, nil
+}
+
+func (f *fakeTransport) Exec(_ context.Context, _, command string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.executed = append(f.executed, command)
+	return f.execErr
 }
 
 func (f *fakeTransport) ListSessions(context.Context) ([]protocol.Session, error) {
@@ -1765,5 +1775,72 @@ func TestTheReasonAStreamEndedIsNotLostToTheClose(t *testing.T) {
 	}
 	if !strings.Contains(got.err.Error(), "no longer held") {
 		t.Errorf("the reason is not the one the transport wrote: %v", got.err)
+	}
+}
+
+// `!` runs the line rather than sending it.
+//
+// It is a shortcut past the model, never past the sandbox: the command goes
+// through the same tool, and a crossing is put to the person exactly as it
+// would be had the model asked for it.
+func TestABangRunsTheLineInsteadOfSendingIt(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model = p.model.SetInput("! git status --short")
+	_, cmd := p.onEnter()
+	run(t, p, cmd)
+
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if len(tr.executed) != 1 || tr.executed[0] != "git status --short" {
+		t.Errorf("the command was not run: %v", tr.executed)
+	}
+	if len(tr.submitted) != 0 {
+		t.Errorf("the line was also sent to the model: %v", tr.submitted)
+	}
+}
+
+// Everything after the bang is the command, verbatim. A shell line is not an
+// invocation this program gets to reinterpret: `!echo /help` echoes, and
+// `!ls *.go` keeps its glob for the shell to expand.
+func TestTheLineAfterTheBangIsNotReinterpreted(t *testing.T) {
+	for _, in := range []string{"!echo /help", "! ls *.go", "!  grep -n \"a b\" f"} {
+		got := ResolveInput(in, config.CommandSet{Commands: map[string]config.Command{}})
+		if got.Kind != CmdShell {
+			t.Errorf("%q resolved as %v, not as a command to run", in, got.Kind)
+			continue
+		}
+		want := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(in), "!"))
+		if got.Text != want {
+			t.Errorf("%q became %q, want %q", in, got.Text, want)
+		}
+	}
+}
+
+// A bare `!` runs nothing. There is no command there to run, and sending it to
+// the model would be the one thing the bang says it is not doing.
+func TestABareBangRunsNothing(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model = p.model.SetInput("!")
+	_, cmd := p.onEnter()
+	run(t, p, cmd)
+
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	if len(tr.executed) != 0 || len(tr.submitted) != 0 {
+		t.Errorf("a bare bang did something: ran %v, sent %v", tr.executed, tr.submitted)
+	}
+}
+
+// And the input area says so while the line can still be deleted.
+func TestTheInputSaysWhatTheBangWillDo(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	g := DefaultGeometry(120, 24)
+	g.Palette = Palette{}
+
+	if got := Render(m.SetInput("! make check"), g); !strings.Contains(got, "runs here") {
+		t.Errorf("the input does not say what the bang does:\n%s", got)
+	}
+	if got := Render(m.SetInput("make check"), g); strings.Contains(got, "runs here") {
+		t.Errorf("an ordinary line is warned about as if it were a command:\n%s", got)
 	}
 }

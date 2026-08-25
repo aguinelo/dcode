@@ -162,6 +162,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/name", s.renameSession)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}/events", s.events)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/turns", s.submitTurn)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/exec", s.exec)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/interrupt", s.interrupt)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/steer", s.steer)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/undo", s.undo)
@@ -290,6 +291,31 @@ func (s *Server) submitTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// exec runs a command the person typed.
+//
+// It blocks until the command is done, because the person is waiting on its
+// output and there is nothing else to watch. The output reaches them through
+// the event stream like any other tool call — the response body carries
+// nothing, so a client that has disconnected and come back sees the same thing
+// as one that stayed.
+func (s *Server) exec(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	var req protocol.ExecRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		return
+	}
+	if err := sess.Exec(r.Context(), req.Command); err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // decodeImages turns the wire form back into bytes.

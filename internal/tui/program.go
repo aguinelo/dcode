@@ -27,6 +27,7 @@ type Transport interface {
 	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
 	Interrupt(ctx context.Context, id string) error
 	Steer(ctx context.Context, id, text string) error
+	Exec(ctx context.Context, id, command string) error
 	Undo(ctx context.Context, id string) (protocol.UndoResult, error)
 	RenameSession(ctx context.Context, id, name string) error
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
@@ -861,6 +862,11 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 
 	r := ResolveInput(line, p.opts.Commands)
 	switch r.Kind {
+	case CmdShell:
+		if r.Text == "" {
+			return p, nil
+		}
+		return p, p.shell(r.Text)
 	case CmdBuiltin:
 		return p.runBuiltin(r)
 	case CmdUnknown:
@@ -1003,6 +1009,21 @@ func (p *program) steer(text string) tea.Cmd {
 			return steerLateMsg{text}
 		}
 		return errMsg{err}
+	}
+}
+
+// shell runs a command the person typed after `!`.
+//
+// The output does not come back here: it arrives on the event stream as the
+// tool events the transcript already draws, which is what makes a typed command
+// and a command the model asked for look the same on screen — because they are
+// the same command, through the same tool, under the same boundary.
+func (p *program) shell(command string) tea.Cmd {
+	return func() tea.Msg {
+		if err := p.opts.Transport.Exec(p.ctx, p.opts.SessionID, command); err != nil {
+			return errMsg{err}
+		}
+		return nil
 	}
 }
 

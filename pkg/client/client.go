@@ -110,6 +110,16 @@ func (c *Client) Interrupt(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/interrupt", nil, nil)
 }
 
+// Exec runs a command the person typed, outside a turn.
+//
+// It blocks until the command finishes. The output arrives on the event stream,
+// not in the response: a client that disconnected mid-command and came back
+// sees exactly what one that stayed sees.
+func (c *Client) Exec(ctx context.Context, id, command string) error {
+	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/exec",
+		protocol.ExecRequest{Command: command}, nil)
+}
+
 // Steer hands a running turn something the person said, without ending it.
 //
 // Refused when no turn is running: a correction to a turn that already finished
