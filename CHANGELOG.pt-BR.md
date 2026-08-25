@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 24 de agosto de 2026
+## Estado atual — 25 de agosto de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -31,7 +31,7 @@ fora do pacote isolado.
 | **contratos medidos contra modelo** | **3** |
 | cobertura | 94,0%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.5.0** |
+| versão publicada | **0.5.1** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -106,6 +106,10 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.5.1 — 25 de agosto de 2026
 
 ### Corrigido
 
