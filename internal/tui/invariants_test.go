@@ -8,8 +8,7 @@ import (
 )
 
 var tuiInvariants = map[string]string{
-	"exige o gesto duas vezes":            "TestDroppingTheBoundaryTakesTwo",
-	"só `auto` é armado":                  "TestDroppingTheBoundaryTakesTwo",
+	"alcança o daemon **na primeira**":    "TestEveryModeGoesThroughOnTheFirstTry",
 	"Limite sem nome não é batizado":      "TestModeWithNoArgumentDoesNotInventOne",
 	"recusa nomeia o que foi digitado":    "TestAnUnknownModeNeverLeavesTheClient",
 	"vem do anúncio no log":               "TestTheBarFollowsTheAnnouncement",

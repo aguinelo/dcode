@@ -250,7 +250,6 @@ type Strings struct {
 	CmdModeCurrent   string // takes a mode name
 	CmdModeUnnamed   string // the boundary in force is none of the three
 	CmdModeUnknown   string // takes the name that is not a mode
-	AutoConfirmOnce  string // shown once before /mode auto or shift+tab to auto
 
 	// CLI. The usage block is one string per language rather than a field per
 	// line: it is prose with alignment, and cutting it into thirty fields
@@ -442,7 +441,6 @@ var catalogue = map[Lang]Strings{
 		CmdModeCurrent:   "current mode: %s",
 		CmdModeUnnamed:   "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
 		CmdModeUnknown:   "%s is not a mode — want plan, assist or auto",
-		AutoConfirmOnce:  "/mode auto again to confirm; from then on, /mode auto runs without asking",
 
 		Usage: `dcode %s — an agentic coding harness
 
@@ -642,7 +640,6 @@ Environment:
 		CmdModeCurrent:   "modo atual: %s",
 		CmdModeUnnamed:   "o limite desta sessão não é nenhum dos três modos; /mode plan, assist ou auto escolhe um",
 		CmdModeUnknown:   "%s não é um modo — use plan, assist ou auto",
-		AutoConfirmOnce:  "/mode auto de novo para confirmar; depois disso, /mode auto roda sem perguntar",
 
 		Usage: `dcode %s — um harness de programação agêntica
 

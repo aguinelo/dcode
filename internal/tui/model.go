@@ -162,16 +162,6 @@ type Model struct {
 	// Flash is a one-line notice shown until the next keystroke, for things
 	// that happen and leave no other trace — a copy landing, for instance.
 	Flash string
-	// AutoArmed records that the user typed /mode auto, or cycled onto it with
-	// shift+tab, and saw the warning once. The second attempt goes through.
-	//
-	// It is never disarmed, and that is what the warning promises: the question
-	// is asked once per client, not once per switch. Dropping the boundary is a
-	// thing you learn, not a thing you keep being asked about — unlike ^C's
-	// Leaving, which is armed only while its warning is on screen because there
-	// the risk is a stray second press.
-	AutoArmed bool
-
 	// Leaving is armed by the first ^C on an empty line and disarmed by any
 	// other key. It is true exactly while the warning is on screen: a state a
 	// person cannot see is a state they cannot reason about.

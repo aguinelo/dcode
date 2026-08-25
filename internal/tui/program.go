@@ -842,14 +842,12 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 
 	case "shift+tab":
-		// Cycle plan -> assist -> auto -> plan. Lighter than the picker for
-		// one keystroke. Auto is gated by the same arming the slash command
-		// uses, so a stray shift+tab cannot drop the boundary on its own.
-		next := nextMode(p.model.Mode)
-		if next == protocol.ModeAuto && !p.model.AutoArmed {
-			return p.armAuto()
-		}
-		return p, p.setMode(next)
+		// Cycle plan -> assist -> auto -> plan. Lighter than the picker for one
+		// keystroke, and it goes through on the first press. The badge on the
+		// bar is what says there is no boundary, and it says so for as long as
+		// that is true; a confirmation says it once, to someone who has already
+		// decided, and then never again.
+		return p, p.setMode(nextMode(p.model.Mode))
 
 	case "tab":
 		p.model = p.model.ToggleAt(p.model.Cursor)
@@ -1059,9 +1057,6 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		}
 		if !protocol.ValidMode(name) {
 			return note(fmt.Sprintf(t.CmdModeUnknown, name))
-		}
-		if name == protocol.ModeAuto && !p.model.AutoArmed {
-			return p.armAuto()
 		}
 		return p, p.setMode(name)
 	}
@@ -1320,18 +1315,6 @@ func nextMode(current string) string {
 	default:
 		return protocol.ModePlan
 	}
-}
-
-// armAuto shows the warning and requires the gesture to be repeated.
-//
-// One notice, in Flash, exactly as the second ^C does it — the warning belongs
-// on screen for as long as the decision is pending, not in the transcript as a
-// thing that happened. Both ways into auto come through here so they cannot
-// drift into warning differently.
-func (p *program) armAuto() (tea.Model, tea.Cmd) {
-	p.model.AutoArmed = true
-	p.model.Flash = Text(p.model.Lang).AutoConfirmOnce
-	return p, nil
 }
 
 // rename names a conversation and puts the answer on screen.

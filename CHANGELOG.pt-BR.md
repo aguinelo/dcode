@@ -109,7 +109,32 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ## Não lançado
 
-_Nada ainda._
+### Corrigido
+
+- **Quem pergunta é o harness, e o modelo não.** A doutrina dizia "when that
+  happens **the user is asked**" — voz passiva, sem sujeito — então o modelo
+  preencheu o sujeito consigo mesmo e construiu um protocolo de permissão
+  próprio, em prosa, que nunca aciona a máquina de aprovação: *"você tem que
+  dizer 'vai' explicitamente"*. Ele citava essa frase para justificar
+  exatamente o que a mesma doutrina proíbe três linhas abaixo. O sujeito passa a
+  ser nomeado, a chamada passa a ser dita como sendo **a** pergunta, e permissão
+  dada em prosa passa a ser dita como não concedendo nada, porque nada chegou a
+  ser perguntado.
+- **Uma célula medida não é a vizinha medida.** O `boundary-decides` marcava
+  100% de 20 execuções enquanto isso falhava na frente de um usuário, porque ele
+  cruza a **rede** e a falha relatada **escrevia fora do workspace**. Um segundo
+  cenário cobre essa célula. E o limite dos dois fica escrito: o eval é de turno
+  único, e a recusa que sobrevive a ser contestada é uma falha que este
+  arcabouço ainda não enxerga.
+
+### Alterado
+
+- **Todo modo passa de primeira, `auto` inclusive.** A confirmação em duas
+  etapas saiu ontem na 0.7.0 e durou até o primeiro uso. Digitar `/mode auto`
+  são onze caracteres deliberados — não há reflexo a desambiguar, ao contrário
+  do `^C`, e pedir que a pessoa repita o que acabou de dizer não é salvaguarda,
+  é um degrau que se aprende a pular. O que diz que não há fronteira é o crachá
+  na barra, que diz isso enquanto for verdade.
 
 ## 0.7.0 — 25 de agosto de 2026
 
