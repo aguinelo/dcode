@@ -486,6 +486,16 @@ func (g *GitHub) Apply(ctx context.Context, r Release) error {
 	if !g.cfg.AllowLocalOverwrite && !version.IsRelease() {
 		return ErrLocalBuild
 	}
+	// An update is something newer. The check that finds the release is cached
+	// for a day, so a binary that has moved on since — the one this very
+	// command installs — would otherwise be offered its own predecessor and
+	// take it.
+	if cur := version.Version; version.IsRelease() && Newer(cur, r.Version) {
+		return fmt.Errorf(
+			"update: %s is older than the %s you are running, and going backwards "+
+				"is not an update. Install it deliberately with the install script "+
+				"if that is what you want", r.Version, cur)
+	}
 	if g.cfg.Pin != "" && strings.TrimPrefix(g.cfg.Pin, "v") != strings.TrimPrefix(r.Version, "v") {
 		return fmt.Errorf(
 			"update: this installation is pinned to %s by DCODE_PIN_VERSION, so it will not move to %s",

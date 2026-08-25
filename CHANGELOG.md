@@ -112,7 +112,17 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+### Fixed
+
+- **An update is something newer, not something different.** The notice asked
+  whether the running version differed from the latest known one, so a binary
+  ahead of the last release — a local build, or a release the day-old cached
+  check has not caught up with — was told `dcode v0.4.0 is available (you have
+  0.5.0). Run `dcode update`.` An offer to go backwards, wearing the word
+  update. `update` itself already refused it, so the tool contradicted itself in
+  two places on one screen; now both compare versions, field by field, and
+  `update` refuses a release older than the one running even when asked
+  directly.
 
 ## 0.5.1 — 25 August 2026
 
