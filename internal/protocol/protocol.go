@@ -397,6 +397,18 @@ type (
 		ToolCallID string          `json:"tool_call_id"`
 		Name       string          `json:"name"`
 		Input      json.RawMessage `json:"input"`
+		// Typed marks a call the PERSON asked for, through `!`, rather than one
+		// the model asked for.
+		//
+		// The two want opposite things on screen. A model's call is a means: it
+		// runs `ls` to orient itself and then says what mattered, so the output
+		// collapses and the prose carries the point. A typed command IS the
+		// point — someone wrote `ls -la` because they want to see `ls -la`, and
+		// collapsing it hides the only thing they asked for.
+		//
+		// Carried on the event rather than inferred from the call id, because
+		// an id's shape is not a fact about who wanted the call.
+		Typed bool `json:"typed,omitempty"`
 	}
 	// ApprovalResolved records the decision that unblocked a turn.
 	ApprovalResolved struct {

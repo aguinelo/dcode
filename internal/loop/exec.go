@@ -66,6 +66,10 @@ func (e *Engine) Exec(ctx context.Context, command string) (string, error) {
 	// it looked like from the only side that matters.
 	e.emit(protocol.EventToolRequested, protocol.ToolRequested{
 		TurnID: turnID, ToolCallID: call.ID, Name: call.Name, Input: call.Input,
+		// Typed, so the client opens the output instead of collapsing it. The
+		// person who wrote the command is the one who wants to read what it
+		// printed; nobody else is going to summarise it for them.
+		Typed: true,
 	})
 
 	msgs, _ := e.execute(ctx, turnID, []ce.ToolCall{call})

@@ -67,6 +67,9 @@ type Entry struct {
 	// Running marks a tool call that has not reported back yet, which is what
 	// the spinner attaches to.
 	Running bool
+	// Typed marks a call the person asked for through `!`, which is what makes
+	// its output open on its own. See protocol.ToolRequested.Typed.
+	Typed bool
 	// CallID is the tool call this entry is, so a result and a progress report
 	// land on the call they belong to.
 	//
@@ -422,6 +425,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 				m.Entries[i].Target = relativise(targetOf(d.Input), m.Workspace)
 				m.Entries[i].Owns = ownsOf(d.Input)
 				m.Entries[i].Arriving, m.Entries[i].Done = false, 0
+				m.Entries[i].Typed = d.Typed
 				filled = true
 				break
 			}
@@ -430,7 +434,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Entries = append(m.Entries, Entry{
 				Kind: KindTool, Tool: d.Name, Target: relativise(targetOf(d.Input), m.Workspace),
 				Owns: ownsOf(d.Input), CallID: d.ToolCallID,
-				Summary: "", Running: true, Seq: ev.Seq,
+				Summary: "", Running: true, Seq: ev.Seq, Typed: d.Typed,
 			})
 		}
 
@@ -458,16 +462,22 @@ func (m Model) Apply(ev protocol.Event) Model {
 			if d.ToolCallID != "" && m.Entries[i].CallID != d.ToolCallID {
 				continue
 			}
-			m.Entries[i].Detail = d.Output
+			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d)
+			m.Entries[i].Detail = withoutEchoOf(d.Output, m.Entries[i].Summary)
 			m.Entries[i].Diff = d.Diff
 			m.Entries[i].IsError = !d.OK
-			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d)
 			m.Entries[i].Added, m.Entries[i].Removed = d.Added, d.Removed
 			m.Entries[i].Duration = time.Duration(d.DurationMS) * time.Millisecond
 			m.Entries[i].Running = false
 			// Errors open, successes stay collapsed: failure needs attention,
 			// success needs only confirmation.
-			m.Entries[i].Expanded = !d.OK
+			//
+			// A typed command opens either way. That rule was written for calls
+			// the MODEL makes, where the output is a means and the prose that
+			// follows carries the point — but `!ls -la` has no prose following
+			// it, and the output is the whole reason it was typed. Collapsed,
+			// the screen answered a request to see something with `exit 0`.
+			m.Entries[i].Expanded = !d.OK || m.Entries[i].Typed
 			break
 		}
 
@@ -854,6 +864,28 @@ func ownsOf(raw json.RawMessage) []string {
 		return nil
 	}
 	return m.Owns
+}
+
+// withoutEchoOf drops a first line that only repeats the summary beside it.
+//
+// `bash` prefixes its output with `exit 0` because the model reads the output
+// as text and needs the code in it. The row already renders that code in its
+// own column, so an expanded entry printed `exit 0` twice — once as the
+// summary, once as the first line of what it summarises. Harmless while the
+// output stayed collapsed; visible the moment a typed command started opening
+// on its own.
+//
+// Only an exact match is dropped. A line that merely starts with the summary
+// is a line that says something more.
+func withoutEchoOf(output, summary string) string {
+	if summary == "" {
+		return output
+	}
+	head, rest, found := strings.Cut(output, "\n")
+	if !found || strings.TrimSpace(head) != strings.TrimSpace(summary) {
+		return output
+	}
+	return rest
 }
 
 func summariseResult(tool string, d protocol.ToolCompleted) string {
