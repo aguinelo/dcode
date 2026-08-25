@@ -173,7 +173,7 @@ var tuiInvariants = map[string]string{
 	"maior mudança do turno":            "TestTheBarsAreScaledToTheLargestChangeAndSaySo",
 	"legenda das raias aparece uma vez": "TestTheLaneLegendAppearsOnlyWhenItExplainsSomething",
 	// The meter measures the context.
-	"nunca passa de 100%": "TestTheContextMeterMeasuresTheContextAndNotTheTurnsCost",
+	"nunca passa de 100%": "TestTheMeterOnTheScreenIsTheOneThatWasFixed",
 
 	// Resuming paints once.
 	"desenha **uma linha** enquanto lê": "TestResumingPaintsALoadingLineUntilTheBacklogIsRead",
