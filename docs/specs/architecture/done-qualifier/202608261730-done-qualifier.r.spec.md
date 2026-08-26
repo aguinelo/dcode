@@ -268,3 +268,4 @@ e devolve ao modelo exatamente a decisão que a RN-10 tirou dele.
 ## 7. Changelog
 
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
+- [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
