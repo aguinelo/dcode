@@ -130,3 +130,51 @@ func TestTheFloorKeepsBuildPure(t *testing.T) {
 		}
 	}
 }
+
+// The shipped floor carries the sentence that keeps the whole family from
+// becoming the risk it was written to avoid.
+//
+// A floor without it is a new surface on which to argue with the person who
+// overrode it. The sentence is the one line of the section that is not a
+// practice: it is the rule about the practices.
+func TestTheShippedFloorSaysWhoWins(t *testing.T) {
+	d := DefaultDoctrine([]string{"read", "edit", "bash"})
+	if strings.TrimSpace(d.Practices) == "" {
+		t.Fatal("the shipped doctrine has no floor")
+	}
+	low := strings.ToLower(d.Practices)
+	for _, want := range []string{"wins", "without discussion", "say once"} {
+		if !strings.Contains(low, want) {
+			t.Errorf("the floor does not carry %q:\n%s", want, d.Practices)
+		}
+	}
+}
+
+// Say it once, do not attach it to the work, do not wait for an answer.
+//
+// The counterweight to the precedence rule, and the half most easily lost:
+// "say it once" becomes "warn every time" without a line of code changing.
+func TestTheShippedFloorForbidsRepeatingItself(t *testing.T) {
+	low := strings.ToLower(DefaultDoctrine([]string{"read"}).Practices)
+	for _, want := range []string{"once", "do not repeat", "caveat", "do not wait"} {
+		if !strings.Contains(low, want) {
+			t.Errorf("the floor does not forbid %q:\n%s", want, low)
+		}
+	}
+}
+
+// Each line of the floor traces to a defect that was actually shipped. These
+// are the three, and a floor that loses one of them has quietly stopped
+// covering the thing it was written for.
+func TestTheShippedFloorCoversTheThreeDefects(t *testing.T) {
+	low := strings.ToLower(DefaultDoctrine([]string{"read"}).Practices)
+	for name, want := range map[string]string{
+		"claim about a path is checked":     "read it",
+		"a document the turn made stale":    "reread",
+		"a non-zero exit is not discounted": "non-zero exit",
+	} {
+		if !strings.Contains(low, want) {
+			t.Errorf("%s: the floor does not carry %q:\n%s", name, want, low)
+		}
+	}
+}

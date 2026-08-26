@@ -265,6 +265,19 @@ that on every run to stop the opposite reading.
   The section ships **empty**: with no text, `Build`'s output is byte-identical
   to before, and there is a test for that. The text is the next step, and it
   goes alone so it can be rewritten without taking the structure with it.
+- **The floor now has text: three practices and the rule about them.** Check
+  before claiming a file lacks something; reread a document this turn made
+  stale; a non-zero exit is a failure, and if an instruction says to read a
+  particular one as success, obey it **and name the instruction** — the licence
+  covers the case it describes and no other. None came from a list of good
+  practices; all three are defects someone shipped. Two paragraphs are not
+  practices but rules about them: say any of this **once**, never as a caveat
+  attached to the work and never waiting for an answer; and an instruction from
+  the user or the project that contradicts the section **wins without
+  discussion**. Both have invariants, because "say it once" becomes "warn every
+  time" without a line of code changing. The doctrine size cap now counts the
+  floor — a cap that skips the newest section stops measuring what is most
+  likely to grow — going from 3000 to 3900 with the same headroom as before.
 
 ## 0.8.0 — 26 August 2026
 

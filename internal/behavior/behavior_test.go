@@ -191,8 +191,11 @@ func TestDoctrineCoversTheRulesThatCannotBeEnforcedInCode(t *testing.T) {
 // of every session. A cap keeps that pressure visible.
 func TestDoctrineStaysSmall(t *testing.T) {
 	d := DefaultDoctrine([]string{"read", "write", "edit", "glob", "grep", "bash", "plan"})
-	total := len(d.Identity) + len(d.Safety) + len(d.ToolPolicy) + len(d.Style)
-	if total > 3000 {
+	// Practices is counted. It is paid on every turn like the rest, and a cap
+	// that skips the newest section is a cap that stops measuring the thing
+	// most likely to grow.
+	total := len(d.Identity) + len(d.Safety) + len(d.ToolPolicy) + len(d.Style) + len(d.Practices)
+	if total > 3900 {
 		t.Errorf("the doctrine is %d bytes; every byte is paid on every turn. "+
 			"Move a rule to a tool description or an error message instead.", total)
 	}
