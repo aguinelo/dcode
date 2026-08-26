@@ -1089,6 +1089,7 @@ func DoctrineAudit(s *Session) string {
 		{"Identity", s.Origins.Identity},
 		{"Using tools", s.Origins.ToolPolicy},
 		{"Safety", s.Origins.Safety},
+		{"Practices", s.Origins.Practices},
 		{"Style", s.Origins.Style},
 	} {
 		fmt.Fprintf(&b, "  %-12s %s\n", row.name, row.origin)

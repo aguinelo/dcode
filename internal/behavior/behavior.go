@@ -31,7 +31,19 @@ type Doctrine struct {
 	Identity   string
 	ToolPolicy string
 	Safety     string
-	Style      string
+	// Practices is the floor: what dcode does when nobody asked.
+	//
+	// It is doctrine and it is NOT Safety, and the asymmetry between them is
+	// the whole rule. Safety has no field in DoctrineOverlay, and that absence
+	// IS the guarantee — a lock by type rather than by convention. Practices
+	// has one, because a floor that cannot be overridden is not a floor: it is
+	// a rule pretending to be a default.
+	//
+	// Empty does not fail Build, unlike Identity and Safety. An empty floor is
+	// a floor switched off, which is a legitimate choice; an agent with no
+	// identity and no safety section is not.
+	Practices string
+	Style     string
 }
 
 // InstructionSource ranks where an instruction came from.
@@ -113,6 +125,13 @@ func Build(p Prompt, f Formulation) (string, error) {
 
 	writeBlock(&b, f, "", p.Doctrine.Identity)
 	writeBlock(&b, f, "Safety", p.Doctrine.Safety)
+	// After Safety and before everything the user or the project says. The
+	// position IS the precedence: what comes earlier is context for reading
+	// what comes later, and the project instructions are the last block of all.
+	// So a floor rendered here is outranked by anything anyone actually said,
+	// which is exactly what a default should be — and no resolver had to be
+	// built to make it so.
+	writeBlock(&b, f, "How this works by default", p.Doctrine.Practices)
 	writeBlock(&b, f, "Using tools", p.Doctrine.ToolPolicy)
 	writeBlock(&b, f, "Style", p.Doctrine.Style)
 

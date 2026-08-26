@@ -21,8 +21,16 @@ const DoctrineDirName = "doctrine"
 // ToolsMore is spelled differently from ToolPolicy for the same reason. No
 // accidental assignment can swap one for the other.
 type DoctrineOverlay struct {
-	Identity  string // replaces
-	Style     string // replaces
+	Identity string // replaces
+	Style    string // replaces
+	// Practices REPLACES the built-in floor. There is deliberately no variant
+	// that appends: appending to a floor produces two floors, and the second is
+	// never read alongside the first.
+	//
+	// Switching off ONE practice is not this. It is a line in the project file,
+	// which is rendered after the doctrine and therefore wins. This is for
+	// someone who wants a different floor, not for someone adjusting this one.
+	Practices string // replaces
 	ToolsMore string // APPENDS to ToolPolicy; never replaces
 }
 
@@ -44,6 +52,7 @@ type SectionOrigins struct {
 	Identity   Origin
 	ToolPolicy Origin
 	Safety     Origin
+	Practices  Origin
 	Style      Origin
 }
 
@@ -62,9 +71,10 @@ func (n Notice) String() string { return n.Path + ": " + n.Reason }
 // There is no entry that replaces ToolPolicy, and no filename that reaches
 // Safety.
 var overlayFiles = map[string]string{
-	"identity.md": "Identity",
-	"style.md":    "Style",
-	"tools.md":    "ToolPolicy",
+	"identity.md":  "Identity",
+	"practices.md": "Practices",
+	"style.md":     "Style",
+	"tools.md":     "ToolPolicy",
 }
 
 // Apply returns the doctrine with the overlay applied. Pure.
@@ -77,6 +87,9 @@ func (d Doctrine) Apply(o DoctrineOverlay) Doctrine {
 	}
 	if o.Style != "" {
 		d.Style = o.Style
+	}
+	if o.Practices != "" {
+		d.Practices = o.Practices
 	}
 	if o.ToolsMore != "" {
 		// Appended, never substituted. The shipped text stays a prefix, so the
@@ -94,14 +107,18 @@ func (o DoctrineOverlay) Origins() SectionOrigins {
 		ToolPolicy: OriginBuiltin,
 		// Always builtin, and not because of a branch below: nothing in this
 		// type can reach Safety.
-		Safety: OriginBuiltin,
-		Style:  OriginBuiltin,
+		Safety:    OriginBuiltin,
+		Practices: OriginBuiltin,
+		Style:     OriginBuiltin,
 	}
 	if o.Identity != "" {
 		s.Identity = OriginReplaced
 	}
 	if o.Style != "" {
 		s.Style = OriginReplaced
+	}
+	if o.Practices != "" {
+		s.Practices = OriginReplaced
 	}
 	if o.ToolsMore != "" {
 		s.ToolPolicy = OriginAppended
@@ -168,6 +185,8 @@ func LoadDoctrineOverlay(dir string, maxBytes int) (DoctrineOverlay, []Notice, e
 		switch section {
 		case "Identity":
 			o.Identity = text
+		case "Practices":
+			o.Practices = text
 		case "Style":
 			o.Style = text
 		case "ToolPolicy":
