@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 113 changelogs de decisão |
-| contratos comportamentais | 43 declarados |
-| **contratos medidos contra modelo** | **3** |
+| famílias de spec | 13, com 119 changelogs de decisão |
+| contratos comportamentais | 44 declarados |
+| **contratos medidos contra modelo** | **4** |
 | cobertura | 94,1%, com gate em 90% |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.7.0** |
+| versão publicada | **0.8.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -108,6 +108,23 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 ---
 
 ## Não lançado
+
+_Nada ainda._
+
+## 0.8.0 — 26 de agosto de 2026
+
+> **MINOR, embora todo commit dela diga `fix:`.** O `scripts/version.sh` deriva
+> 0.7.1 dos Conventional Commits; o contrato diz outra coisa, e o contrato
+> vence. Dois campos entraram no protocolo (`tool.requested.typed`,
+> `session.mode_changed.sandbox_mode`), um comportamento foi **removido** (a
+> confirmação em duas etapas do `/mode auto`, lançada na 0.7.0 e retirada no
+> primeiro uso), e a doutrina mudou de sentido — e a superfície deste produto é
+> em parte feita de frases.
+>
+> Medido contra o MiniMax-M3 neste ciclo: `boundary-decides-write` **MET, 100%
+> de 20 execuções**. O `boundary-decides` voltou 90,0% com uma execução perdida
+> por EOF de transporte, que o harness reporta como **unsound** e não como
+> veredito — 19 execuções não são 20.
 
 ### Corrigido
 
