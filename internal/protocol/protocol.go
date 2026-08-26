@@ -38,7 +38,18 @@ const (
 	EventToolRequested    EventType = "tool.requested"
 	EventApprovalRequired EventType = "tool.approval_required"
 	EventApprovalResolved EventType = "tool.approval_resolved"
-	EventToolCompleted    EventType = "tool.completed"
+
+	// EventDoneProposed carries a measured definition of done to the operator.
+	//
+	// Measured, not merely proposed: every criterion in it has already been run
+	// against the repository as it stands, and each one says what that run did.
+	// A proposal without those results is a list of good intentions.
+	EventDoneProposed EventType = "done.proposed"
+	// EventDoneSigned announces the definition of done the operator signed,
+	// which is the one the turn is measured by and not necessarily the one that
+	// was proposed.
+	EventDoneSigned    EventType = "done.signed"
+	EventToolCompleted EventType = "tool.completed"
 	// EventTurnSteered is the person correcting a turn already under way.
 	//
 	// Its own event rather than a message delta: a correction the transcript
@@ -283,6 +294,52 @@ type ApprovalRequest struct {
 	// remembered against.
 	Reason string `json:"reason,omitempty"`
 	Rule   string `json:"rule,omitempty"`
+}
+
+// DoneProposal is a measured definition of done, waiting for a signature.
+//
+// The turn blocks until it is signed or ExpiresAt passes, which REFUSES. A
+// deadline that approved would be the quietest way to start a turn against a
+// ruler nobody read.
+type DoneProposal struct {
+	ProposalID string          `json:"proposal_id"`
+	TurnID     string          `json:"turn_id"`
+	Round      int             `json:"round"`
+	Criteria   []DoneCriterion `json:"criteria"`
+	Protected  []string        `json:"protected,omitempty"`
+	// NoAcceptance says nothing in the set is red. Such a set reports done
+	// without anything having to change — usually a defect, and legitimately a
+	// refactor. Named, never refused.
+	NoAcceptance bool      `json:"no_acceptance,omitempty"`
+	ExpiresAt    time.Time `json:"expires_at"`
+}
+
+// DoneCriterion is one criterion as the operator sees it: what was proposed,
+// what was claimed about it, and what running it actually did.
+type DoneCriterion struct {
+	Name     string `json:"name"`
+	Command  string `json:"command"`
+	ExitCode int    `json:"exit_code"`
+	Expects  string `json:"expects,omitempty"`
+	Why      string `json:"why,omitempty"`
+	Class    string `json:"class"`
+	Exit     int    `json:"exit"`
+	Output   string `json:"output,omitempty"`
+	// Mismatch is the proposer's claim disagreeing with the measurement. Not an
+	// error and not a rejection: it is where the operator's eye should land.
+	Mismatch bool `json:"mismatch,omitempty"`
+}
+
+// SignDoneRequest is the operator's answer.
+//
+// It carries the definition of done AS THEY LEFT IT, not a verdict on the one
+// proposed. A binary gate would turn "I disagree with item 3" into "redo
+// everything", and that cost lands on the operator until they stop disagreeing.
+type SignDoneRequest struct {
+	ProposalID string          `json:"proposal_id"`
+	Signed     bool            `json:"signed"`
+	Criteria   []DoneCriterion `json:"criteria"`
+	Protected  []string        `json:"protected,omitempty"`
 }
 
 // PlanItem is one entry of the session plan, maintained by the plan tool.

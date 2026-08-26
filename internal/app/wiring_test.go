@@ -105,16 +105,20 @@ var wiringTable = []configOption{
 // makes that promise checkable. Without the second half this map would be the
 // hole the whole file exists to close.
 var nonSession = map[string]string{
-	"update.check":     "read by the update path, which is not a session",
-	"update.channel":   "read by the update path, which is not a session",
-	"ui.lang":          "read by the terminal client, which is not a session",
-	"record.enabled":   "read by the daemon, which outlives any one session",
-	"record.dir":       "read by the daemon, which outlives any one session",
-	"record.keep_days": "read by the daemon, which outlives any one session",
-	"record.max_bytes": "read by the daemon, which outlives any one session",
-	"eval.enabled":     "read by the eval harness, which measures the product rather than running it",
-	"eval.model":       "read by the eval harness, which measures the product rather than running it",
-	"eval.runs":        "read by the eval harness, which measures the product rather than running it",
+	"update.check":        "read by the update path, which is not a session",
+	"update.channel":      "read by the update path, which is not a session",
+	"ui.lang":             "read by the terminal client, which is not a session",
+	"record.enabled":      "read by the daemon, which outlives any one session",
+	"record.dir":          "read by the daemon, which outlives any one session",
+	"record.keep_days":    "read by the daemon, which outlives any one session",
+	"record.max_bytes":    "read by the daemon, which outlives any one session",
+	"eval.enabled":        "read by the eval harness, which measures the product rather than running it",
+	"eval.model":          "read by the eval harness, which measures the product rather than running it",
+	"eval.runs":           "read by the eval harness, which measures the product rather than running it",
+	"loop.spec_path":      "read by loopcommand when /loop is invoked with an explicit spec path",
+	"loop.source":         "read by loopcommand to choose between done.toml and LoopSpec",
+	"loop.protect":        "read by loopcommand to layer --protect on top of file-declared protected",
+	"loop.session_prefix": "read by loopcommand when constructing the dedicated session ID",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.
@@ -183,6 +187,7 @@ func TestNonSessionKeysAreReadSomewhere(t *testing.T) {
 var nonSessionDirs = [][]string{
 	{"..", "..", "cmd", "dcode"},
 	{"..", "evals"},
+	{"..", "loop", "loopcommand"},
 }
 
 // readNonSessionSources concatenates the non-test Go sources of every consumer

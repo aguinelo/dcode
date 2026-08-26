@@ -114,6 +114,98 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+- **The qualifier can be signed, and signing is editing.** `Sign` runs the
+  operator round trip: `SignedAnswer` carries the `DoneSet` **as they left it**,
+  not a verdict on the one proposed, because a binary gate turns "I disagree
+  with item 3" into "redo everything" and that cost lands on the operator until
+  they stop disagreeing. Any criterion they **edited** is measured again before
+  anything freezes — otherwise their own edit escapes the rule the package
+  exists for. An edit that does not change the class settles at once; one that
+  does, and any criterion they **added**, goes back once, because a class nobody
+  has seen must not be signed. Refusal, an expired deadline, an exhausted round
+  limit and **a failed channel** all end in `ErrRefused`, and none of them starts
+  a loop: the client going away is not somebody having said yes.
+- **A set that empties itself on the way out is refused.** Broken criteria are
+  dropped from the frozen `DoneSet` because they cannot run — but dropping them
+  can leave nothing, and nothing means "nothing to verify", which the loop
+  reports as **done**. The proposal was not empty; it *became* empty, and that
+  was the one door the rule did not cover. Found by a test written for something
+  else that passed when it should have failed.
+
+- **The qualifier can measure, and classify what it measured.**
+  `internal/loop/qualifier` ships the deterministic half of `done-qualifier`:
+  run every proposed criterion once against the repository as it stands, before
+  any work, and classify. A criterion that **fails** is acceptance — it can
+  testify the work happened; one that **passes** is a regression guard, whose
+  job is to stay green. Both are legitimate for opposite reasons. Two details
+  decide whether it works: passing is `Exit == ExitCode` and never `Exit == 0`,
+  because a criterion declared `exit: 1` is met by exiting 1 and comparing to
+  zero would call an already-green criterion acceptance; and 126/127 plus a
+  failure to start are **broken**, not red, because a command that does not
+  exist fails and by failing disguises itself as acceptance while measuring the
+  absence of a tool. A set with nothing red is **named**, never refused — a
+  genuine refactor has nothing new to prove, and the harness must not decide
+  which is which. Nothing here derives a criterion, asks anyone anything, or is
+  reachable from the product yet.
+
+- **New `loop-command` family: the parser, not the command.** A third source
+  for the RN-10 done definition — a `tasks.md`-shaped directory alongside
+  `.dcode/done.toml` and the legacy verify command. `internal/loop/loopcommand/`
+  parses one into a `loop.DoneSet` and builds the `loop.Config` a dedicated
+  session would be born with. **`/loop` is not typeable yet**: recognising it in
+  the client is Step 3 of the family's `.i` and has not been built, so nothing
+  in the product calls this package. The turn cycle is untouched, which is the
+  point — it consumes the same types and StopReasons as `done.toml` does today.
+  Spec at `docs/specs/architecture/loop-command/202608252000-loop-command.*.spec.md`.
+- **Only `- [ ] N.` and `` verify: `cmd` `` are syntax.** The parser required a
+  literal em dash between the task number and its description, so a `tasks.md`
+  written with a plain hyphen yielded zero criteria and no error — and zero
+  criteria is "no definition of done", which the loop reports as done. Nothing
+  about punctuation is a contract now.
+- **A `tasks.md` that cannot be read is an error, not an empty `DoneSet`.** The
+  parser skipped every line it did not recognise, so a file of prose came back
+  with no criteria and no error: an unreadable spec became a green report. A
+  file with no task line at all now fails, and a `verify:` with no command, an
+  unreadable exit code, or a repeated task number each fail naming the line.
+  A file whose tasks simply carry no command is still zero criteria, not an
+  error — that is the one legitimate empty.
+- **A missing spec falls through to the legacy verify command again.** The
+  dispatcher asked `os.IsNotExist` about an error wrapped with `%w`, which does
+  not follow the chain, so every absent spec path came back as a hard error
+  under a comment saying it fell through. A spec that is *present and
+  unreadable* is still an error — running the old command under a spec the user
+  believes was loaded is the failure that distinction prevents.
+- **New `done-qualifier` family, research only.** What to do when there is no
+  definition of done to read at all — when the request arrived as prose. A phase
+  before the loop derives candidate criteria, **runs each one against the
+  repository as it stands** and puts the result in front of the operator to
+  sign. The rule that gives the family its name: an acceptance criterion must
+  FAIL before the work. One that already passed cannot testify that the work met
+  it — it would have passed with no work at all, so the final green is
+  coincidence, not evidence. The initial run classifies in three: red is
+  acceptance, green is a regression guard (and `pnpm test` green at t=0 is
+  exactly right), and a failure whose cause is a missing command is broken, not
+  red. Proposing is the model's, signing is the operator's, running is the
+  sandbox's, and no two are the same party. No `.p`, no code: spec at
+  `docs/specs/architecture/done-qualifier/202608261730-done-qualifier.r.spec.md`.
+- **`done-qualifier` gains its `.p` and `.config`: approved design, not built.**
+  The proposal reaches the harness through a `done_propose` tool available only
+  in a qualifying turn — a tool that can redefine done, within reach of a
+  working turn, is the short way out of the loop. The proposer declares what it
+  expects each criterion to do at t=0 (`fail` or `pass`); the declaration
+  decides nothing, but the **disagreement** between it and the measurement is
+  the line the operator's eye should land on. Exit 126 and 127 are the broken
+  class, because a command that does not exist fails and so disguises itself as
+  acceptance. Two named conditions with opposite answers: an empty proposal is
+  an error, while a proposal with nothing red is a warning the operator signs —
+  a genuine refactor has nothing new to prove, and the harness must not decide
+  which is which. And any criterion the operator **edits** while signing is
+  measured again before the freeze, or the edit escapes the very rule the family
+  exists for. Refusal, deadline and round limit all end the same way and none of
+  them starts a loop: a deadline that approves is the quietest way to break the
+  rule. Invariants are declared as *previstas* and there is no `.i` — both
+  because a verifiable invariant is a claim about a test that exists, following
+  what `task-ledger` already does.
 - **The prefix names the checks the project declares.** `internal/workspace`
   reads `package.json` scripts and `Makefile` targets and the workspace block
   lists them. The audited project declared four, two had been red since the
