@@ -17,6 +17,24 @@ import (
 // depends on it, and a rule that needs a lookup first is a rule followed by
 // accident.
 type Repo struct {
+	// Absent marks a workspace that is not a repository at all.
+	//
+	// It used to be nil, and nil rendered nothing. The comment above the field
+	// said that was "ordinary and silent" and the invariant said the prefix
+	// carries "nothing when it is not". Ordinary, yes. Silent, no.
+	//
+	// An agent worked for a day in a directory with no repository: 191 lines of
+	// code, 35 spec files, and a project file of its own writing that demanded
+	// a commit per task, a pull request per spec and a coverage floor "for
+	// merging into main". None of it could happen and nothing said so. The
+	// absence is not a detail of the environment — it decides what finishing
+	// the work even means, because there is no diff for anyone to read, no
+	// review, and no undo that is not rewriting the file by hand.
+	//
+	// Nil still means the snapshot was not taken. "We did not look" and "we
+	// looked and there is none" are different facts, and only one of them is
+	// worth a line.
+	Absent bool
 	// Branch is empty when there is none to name — a detached head, or a
 	// repository with no commit yet.
 	Branch string
@@ -50,6 +68,20 @@ type Repo struct {
 func renderRepo(r *Repo) string {
 	if r == nil {
 		return ""
+	}
+	if r.Absent {
+		// A fact, not a warning, and not a thing to ask permission about. The
+		// work goes ahead either way; what changes is that nobody finds out
+		// afterwards. Saying it once is the whole of it — repeating it every
+		// turn would be the nagging this deliberately is not.
+		return "This workspace is NOT a git repository.\n\n" +
+			"Nothing written here has history: there is no diff to review, no undo " +
+			"beyond rewriting a file by hand, and no commit, branch or pull request " +
+			"is possible. Any instruction that asks for one — yours, the project's, " +
+			"or your own plan's — cannot be carried out here.\n\n" +
+			"Say this once, plainly, before you first write, and offer `git init`. " +
+			"Then do the work as asked. Do not ask again, do not repeat it each turn, " +
+			"and do not make it a condition of starting."
 	}
 	var b strings.Builder
 	b.WriteString("A snapshot from when this session opened. It does not update, " +

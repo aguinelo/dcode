@@ -114,7 +114,25 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+- **A workspace with no repository says so, once.** `Repo` was `nil` for a
+  directory that is not a git repository, and `nil` put nothing in the prefix
+  at all — the field comment said "ordinary and silent" and the invariant said
+  the prefix carries "nothing when it is not". Ordinary, yes; silent, no.
+  Without a repository there is no diff to review, no undo short of rewriting a
+  file by hand, and no commit, branch or pull request — so every working
+  agreement a project file describes is describing machinery that is not there.
+  This was found by audit: an agent worked a full day in exactly that state,
+  writing its own project file demanding a commit per task and a pull request
+  per spec, and nothing told it. The prefix now states it as a fact, with the
+  instruction to say it once, offer `git init`, and get on with the work.
+- **"We did not look" and "we looked and there is none" stay apart.** `nil` now
+  means only the first, and stays silent. Three guards in one function keep the
+  two separated: git not installed and a cancelled or timed-out probe both come
+  back as no snapshot, and only `rev-parse` actually answering no produces the
+  new `Absent` mark. The cancelled case was not foresight — an existing test
+  caught the first version of this change claiming "not a repository" about a
+  read that never completed, which is the same defect inside the commit that
+  removed it.
 
 ## 0.8.0 — 26 August 2026
 

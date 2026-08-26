@@ -49,10 +49,36 @@ func git(t *testing.T, dir string, args ...string) {
 }
 
 // A directory that is not a repository is the ordinary case for a scratch
-// directory, and a session has to open there exactly as it always did.
-func TestSomewhereThatIsNotARepositoryIsNotAnError(t *testing.T) {
-	if got := Read(context.Background(), t.TempDir()); got != nil {
-		t.Errorf("got %+v, want nothing", got)
+// directory, and a session has to open there exactly as it always did — but it
+// comes back marked rather than empty.
+//
+// It used to be nil, which put nothing in the prefix. Ordinary is not the same
+// as not worth saying: without a repository there is no diff, no review and no
+// undo, and every working agreement a project file describes is describing
+// machinery that is not there.
+func TestSomewhereThatIsNotARepositoryIsMarkedAbsent(t *testing.T) {
+	got := Read(context.Background(), t.TempDir())
+	if got == nil {
+		t.Fatal("a directory that is not a repository came back as no snapshot at all")
+	}
+	if !got.Absent {
+		t.Errorf("got %+v, want Absent", got)
+	}
+	if got.Branch != "" || got.MainBranch != "" || len(got.Commits) != 0 {
+		t.Errorf("an absent repository carried repository facts: %+v", got)
+	}
+}
+
+// A real repository is never marked absent, which is the other half of the
+// same claim and the one a typo would break silently.
+func TestARealRepositoryIsNotMarkedAbsent(t *testing.T) {
+	dir := repo(t)
+	got := Read(context.Background(), dir)
+	if got == nil {
+		t.Fatal("no snapshot for a real repository")
+	}
+	if got.Absent {
+		t.Errorf("a real repository was reported as absent: %+v", got)
 	}
 }
 
