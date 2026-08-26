@@ -20,6 +20,7 @@ var behaviorDirs = []string{
 	filepath.Join("..", "app"),
 	filepath.Join("..", "loop"),
 	filepath.Join("..", "vcs"),
+	filepath.Join("..", "workspace"),
 }
 
 var behaviorInvariants = map[string]string{
@@ -64,6 +65,15 @@ var behaviorInvariants = map[string]string{
 	"nunca é reportada como branch":             "TestADetachedHeadIsNotGivenABranchName",
 	"limitado e o corte é declarado":            "TestAVeryDirtyTreeIsCutAndSaysSo",
 	"continua pura com o repositório":           "TestTheRepositorySectionIsPure",
+	"chegam ao prefixo com nome e comando":      "TestTheDeclaredGatesReachThePrefix",
+	"afirma que eles passam":                    "TestTheGateListSaysNothingHasRunThem",
+	"não gera seção":                            "TestNoDeclaredGatesMeansNoClaim",
+	"cortada diz que foi cortada":               "TestATruncatedGateListSaysSo",
+	"repositório e portões juntos":              "TestTheWorkspaceBlockCarriesBothFacts",
+	"pura com os portões":                       "TestTheGateSectionIsPure",
+	"**não executa** nenhum deles":              "TestPackageScriptsBecomeGates",
+	"regra com padrão não viram portão":         "TestMakefileNoiseIsNotAGate",
+	"Sonda cancelada":                           "TestACancelledProbeReadsNothing",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

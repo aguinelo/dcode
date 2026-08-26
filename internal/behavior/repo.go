@@ -118,3 +118,63 @@ func renderRepo(r *Repo) string {
 	}
 	return b.String()
 }
+
+// Workspace is what the project declares about itself, as it stood when the
+// session opened.
+//
+// Data, never a reader — the same rule as Repo, for the same reason: Build is
+// pure and nothing here runs a command or touches a disk. Whoever creates the
+// session probes and passes the result in.
+//
+// Gate mirrors workspace.Gate rather than importing it. behavior imports
+// nothing that reads a disk, and a type alias would be an import.
+type Workspace struct {
+	// Gates are the commands the project declares as its own checks.
+	Gates []Gate
+	// Truncated marks a list that did not fit. Nothing in this codebase cuts
+	// output without saying so.
+	Truncated bool
+}
+
+// Gate is one declared check, at the prefix boundary.
+type Gate struct {
+	Name    string
+	Command string
+	Source  string
+}
+
+// renderWorkspace writes what the prefix says about the project's own checks,
+// or "" when there is nothing to say.
+//
+// Nothing to say is the common case and it is silent, unlike an absent
+// repository. The difference is consequence: having no repository changes what
+// finishing the work means, while declaring no gate is ordinary and changes
+// nothing. Not every absence earns a line — what must not happen is an absence
+// nobody checked becoming a claim.
+func renderWorkspace(w *Workspace) string {
+	if w == nil || len(w.Gates) == 0 {
+		return ""
+	}
+	width := 0
+	for _, g := range w.Gates {
+		if len(g.Name) > width {
+			width = len(g.Name)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("This project declares its own checks:\n")
+	for _, g := range w.Gates {
+		fmt.Fprintf(&b, "\n  %-*s  %s", width, g.Name, g.Command)
+	}
+	if w.Truncated {
+		b.WriteString("\n  … more, not shown.")
+	}
+	// The load-bearing sentence. Without it a list of gates reads as a list of
+	// guarantees, and this whole section would have produced the defect that
+	// asked for it: a project with four declared gates, two red since the first
+	// day, and nobody knowing.
+	b.WriteString("\n\nThese are what the project measures itself by. " +
+		"Nothing here says they pass, and nothing has run them.")
+	return b.String()
+}
