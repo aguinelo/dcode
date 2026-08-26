@@ -31,7 +31,19 @@ type Doctrine struct {
 	Identity   string
 	ToolPolicy string
 	Safety     string
-	Style      string
+	// Practices is the floor: what dcode does when nobody asked.
+	//
+	// It is doctrine and it is NOT Safety, and the asymmetry between them is
+	// the whole rule. Safety has no field in DoctrineOverlay, and that absence
+	// IS the guarantee — a lock by type rather than by convention. Practices
+	// has one, because a floor that cannot be overridden is not a floor: it is
+	// a rule pretending to be a default.
+	//
+	// Empty does not fail Build, unlike Identity and Safety. An empty floor is
+	// a floor switched off, which is a legitimate choice; an agent with no
+	// identity and no safety section is not.
+	Practices string
+	Style     string
 }
 
 // InstructionSource ranks where an instruction came from.
@@ -88,9 +100,11 @@ type Prompt struct {
 	Tools        []string
 	Instructions []Instruction
 	SkillIndex   []SkillIndexEntry
-	// Repo is where the work is happening, frozen at session creation. Nil for
-	// a directory that is not a repository, which is ordinary and silent.
-	Repo *Repo
+	Repo         *Repo
+	// Workspace is what the project declares about itself, frozen at session
+	// creation. Nil when nothing was probed — and nil is silent, because a
+	// project that declares no gate is ordinary.
+	Workspace *Workspace
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
@@ -113,6 +127,13 @@ func Build(p Prompt, f Formulation) (string, error) {
 
 	writeBlock(&b, f, "", p.Doctrine.Identity)
 	writeBlock(&b, f, "Safety", p.Doctrine.Safety)
+	// After Safety and before everything the user or the project says. The
+	// position IS the precedence: what comes earlier is context for reading
+	// what comes later, and the project instructions are the last block of all.
+	// So a floor rendered here is outranked by anything anyone actually said,
+	// which is exactly what a default should be — and no resolver had to be
+	// built to make it so.
+	writeBlock(&b, f, "How this works by default", p.Doctrine.Practices)
 	writeBlock(&b, f, "Using tools", p.Doctrine.ToolPolicy)
 	writeBlock(&b, f, "Style", p.Doctrine.Style)
 
@@ -131,9 +152,21 @@ func Build(p Prompt, f Formulation) (string, error) {
 
 	// Before the project instructions and after the doctrine: it is context for
 	// reading them, not a rule that competes with them. A working agreement
-	// about branches is unreadable without knowing the branch.
+	// about branches is unreadable without knowing the branch, and one about a
+	// coverage floor is unreadable without knowing the project declares one.
+	//
+	// "This workspace" rather than "This repository": the block now carries the
+	// case where there is no repository, and a heading that says repository
+	// above a line saying there is none reads as a contradiction.
+	var facts []string
 	if rendered := renderRepo(p.Repo); rendered != "" {
-		writeBlock(&b, f, "This repository", rendered)
+		facts = append(facts, rendered)
+	}
+	if rendered := renderWorkspace(p.Workspace); rendered != "" {
+		facts = append(facts, rendered)
+	}
+	if len(facts) > 0 {
+		writeBlock(&b, f, "This workspace", strings.Join(facts, "\n\n"))
 	}
 
 	if rendered := renderInstructions(p.Instructions); rendered != "" {
@@ -234,6 +267,25 @@ func DefaultDoctrine(toolNames []string) Doctrine {
 			"and mark an item blocked with a reason rather than done when it could not be finished.\n\n" +
 			"When a tool fails, read the error before retrying. It usually says what to do. " +
 			"Repeating the same call unchanged will not produce a different result.",
+
+		// The floor: what to do when nobody said otherwise. Every line here
+		// came from a defect someone actually shipped, not from a list of good
+		// practices, and the last paragraph is what keeps the section from
+		// becoming a new surface on which to be tiresome.
+		Practices: "Defaults, for when nobody said otherwise.\n\n" +
+			"Before you write that a file lacks something — a field, a rule, a line — read it. " +
+			"Any sentence naming a path and claiming what is or is not in it gets checked " +
+			"against that path, in the turn you write it.\n\n" +
+			"If this turn changed files that a document describes, reread that document and " +
+			"correct it before you finish. A summary written before the edits describes the " +
+			"repository as it was.\n\n" +
+			"A non-zero exit is a failure. If an instruction tells you to read a particular one " +
+			"as success, do that and name the instruction while you do it — the licence covers " +
+			"the case it describes and no other.\n\n" +
+			"Say any of this once. Do not repeat it, do not attach it to the work as a caveat, " +
+			"and do not wait for an answer before carrying on.\n\n" +
+			"An instruction from the user or from the project that contradicts anything in this " +
+			"section WINS, without discussion. Say once which one it was, and get on with it.",
 
 		Style: "Answer in the language the user wrote in. " +
 			"Be concise: report what changed and what it means, not every step taken. " +

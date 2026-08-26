@@ -32,18 +32,42 @@ const maxStatusLines = 40
 // was about; not a history lesson.
 const commitCount = 5
 
-// Read takes the snapshot, or returns nil when there is nothing to snapshot.
+// Read takes the snapshot.
 //
-// Nil rather than an error for a directory that is not a repository: that is
-// the ordinary case for a scratch directory, and a session must open there
-// exactly as it always did. An error is reserved for git being present and
-// failing, which is worth neither stopping the session nor hiding.
+// A directory that is not a repository comes back marked Absent rather than
+// nil. It used to be nil, and nil put nothing in the prefix at all — the
+// ordinary case, handled by saying nothing about it.
+//
+// Ordinary it is. Worth saying it is too: without a repository there is no
+// diff, no review and no undo, and every working agreement a project file
+// describes — a commit per task, a pull request per spec, a floor for merging
+// — is describing machinery that is not there. An agent spent a day in exactly
+// that state and nothing told it.
+//
+// Nil is kept for the case it always should have meant: the snapshot was not
+// taken. An error is still reserved for git being present and failing, which
+// is worth neither stopping the session nor hiding.
 func Read(ctx context.Context, dir string) *behavior.Repo {
 	ctx, cancel := context.WithTimeout(ctx, deadline)
 	defer cancel()
 
-	if _, err := run(ctx, dir, "rev-parse", "--is-inside-work-tree"); err != nil {
+	// Without git installed there is no answer, and "there is no repository"
+	// would be a claim about something never looked at. That is the exact
+	// defect this change exists to remove, and producing it here while
+	// removing it there would be the funniest possible way to ship it.
+	if _, err := exec.LookPath("git"); err != nil {
 		return nil
+	}
+
+	if _, err := run(ctx, dir, "rev-parse", "--is-inside-work-tree"); err != nil {
+		// A cancelled or timed-out probe did not find out either. git answered
+		// nothing, and "there is no repository" would again be a claim about
+		// something never looked at — the third place in this one function
+		// where the two have to be kept apart.
+		if ctx.Err() != nil {
+			return nil
+		}
+		return &behavior.Repo{Absent: true}
 	}
 
 	r := &behavior.Repo{}

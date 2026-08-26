@@ -61,22 +61,44 @@ func TestNoOverlayCanEverChangeSafety(t *testing.T) {
 	}
 }
 
-func TestOriginsReportAllFourSectionsAndSafetyIsAlwaysBuiltin(t *testing.T) {
+// Keyed, not positional. The literals here used to be positional and adding a
+// fifth section broke all five at once — which is the pressure working, but the
+// pressure only had to be felt because the field order was load-bearing in a
+// test about which section came from where.
+func TestOriginsReportEverySectionAndSafetyIsAlwaysBuiltin(t *testing.T) {
+	builtin := SectionOrigins{
+		Identity:   OriginBuiltin,
+		ToolPolicy: OriginBuiltin,
+		Safety:     OriginBuiltin,
+		Practices:  OriginBuiltin,
+		Style:      OriginBuiltin,
+	}
+	with := func(f func(*SectionOrigins)) SectionOrigins {
+		s := builtin
+		f(&s)
+		return s
+	}
 	cases := []struct {
 		name string
 		o    DoctrineOverlay
 		want SectionOrigins
 	}{
-		{"nothing", DoctrineOverlay{}, SectionOrigins{
-			OriginBuiltin, OriginBuiltin, OriginBuiltin, OriginBuiltin}},
-		{"identity", DoctrineOverlay{Identity: "x"}, SectionOrigins{
-			OriginReplaced, OriginBuiltin, OriginBuiltin, OriginBuiltin}},
-		{"style", DoctrineOverlay{Style: "x"}, SectionOrigins{
-			OriginBuiltin, OriginBuiltin, OriginBuiltin, OriginReplaced}},
-		{"tools", DoctrineOverlay{ToolsMore: "x"}, SectionOrigins{
-			OriginBuiltin, OriginAppended, OriginBuiltin, OriginBuiltin}},
-		{"all three", DoctrineOverlay{Identity: "a", Style: "b", ToolsMore: "c"}, SectionOrigins{
-			OriginReplaced, OriginAppended, OriginBuiltin, OriginReplaced}},
+		{"nothing", DoctrineOverlay{}, builtin},
+		{"identity", DoctrineOverlay{Identity: "x"},
+			with(func(s *SectionOrigins) { s.Identity = OriginReplaced })},
+		{"style", DoctrineOverlay{Style: "x"},
+			with(func(s *SectionOrigins) { s.Style = OriginReplaced })},
+		{"tools", DoctrineOverlay{ToolsMore: "x"},
+			with(func(s *SectionOrigins) { s.ToolPolicy = OriginAppended })},
+		{"practices", DoctrineOverlay{Practices: "x"},
+			with(func(s *SectionOrigins) { s.Practices = OriginReplaced })},
+		{"all four", DoctrineOverlay{Identity: "a", Style: "b", ToolsMore: "c", Practices: "d"},
+			with(func(s *SectionOrigins) {
+				s.Identity = OriginReplaced
+				s.Style = OriginReplaced
+				s.ToolPolicy = OriginAppended
+				s.Practices = OriginReplaced
+			})},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

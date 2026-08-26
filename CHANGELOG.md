@@ -114,6 +114,170 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+- **The qualifier can be signed, and signing is editing.** `Sign` runs the
+  operator round trip: `SignedAnswer` carries the `DoneSet` **as they left it**,
+  not a verdict on the one proposed, because a binary gate turns "I disagree
+  with item 3" into "redo everything" and that cost lands on the operator until
+  they stop disagreeing. Any criterion they **edited** is measured again before
+  anything freezes — otherwise their own edit escapes the rule the package
+  exists for. An edit that does not change the class settles at once; one that
+  does, and any criterion they **added**, goes back once, because a class nobody
+  has seen must not be signed. Refusal, an expired deadline, an exhausted round
+  limit and **a failed channel** all end in `ErrRefused`, and none of them starts
+  a loop: the client going away is not somebody having said yes.
+- **A set that empties itself on the way out is refused.** Broken criteria are
+  dropped from the frozen `DoneSet` because they cannot run — but dropping them
+  can leave nothing, and nothing means "nothing to verify", which the loop
+  reports as **done**. The proposal was not empty; it *became* empty, and that
+  was the one door the rule did not cover. Found by a test written for something
+  else that passed when it should have failed.
+
+- **The qualifier can measure, and classify what it measured.**
+  `internal/loop/qualifier` ships the deterministic half of `done-qualifier`:
+  run every proposed criterion once against the repository as it stands, before
+  any work, and classify. A criterion that **fails** is acceptance — it can
+  testify the work happened; one that **passes** is a regression guard, whose
+  job is to stay green. Both are legitimate for opposite reasons. Two details
+  decide whether it works: passing is `Exit == ExitCode` and never `Exit == 0`,
+  because a criterion declared `exit: 1` is met by exiting 1 and comparing to
+  zero would call an already-green criterion acceptance; and 126/127 plus a
+  failure to start are **broken**, not red, because a command that does not
+  exist fails and by failing disguises itself as acceptance while measuring the
+  absence of a tool. A set with nothing red is **named**, never refused — a
+  genuine refactor has nothing new to prove, and the harness must not decide
+  which is which. Nothing here derives a criterion, asks anyone anything, or is
+  reachable from the product yet.
+
+- **New `loop-command` family: the parser, not the command.** A third source
+  for the RN-10 done definition — a `tasks.md`-shaped directory alongside
+  `.dcode/done.toml` and the legacy verify command. `internal/loop/loopcommand/`
+  parses one into a `loop.DoneSet` and builds the `loop.Config` a dedicated
+  session would be born with. **`/loop` is not typeable yet**: recognising it in
+  the client is Step 3 of the family's `.i` and has not been built, so nothing
+  in the product calls this package. The turn cycle is untouched, which is the
+  point — it consumes the same types and StopReasons as `done.toml` does today.
+  Spec at `docs/specs/architecture/loop-command/202608252000-loop-command.*.spec.md`.
+- **Only `- [ ] N.` and `` verify: `cmd` `` are syntax.** The parser required a
+  literal em dash between the task number and its description, so a `tasks.md`
+  written with a plain hyphen yielded zero criteria and no error — and zero
+  criteria is "no definition of done", which the loop reports as done. Nothing
+  about punctuation is a contract now.
+- **A `tasks.md` that cannot be read is an error, not an empty `DoneSet`.** The
+  parser skipped every line it did not recognise, so a file of prose came back
+  with no criteria and no error: an unreadable spec became a green report. A
+  file with no task line at all now fails, and a `verify:` with no command, an
+  unreadable exit code, or a repeated task number each fail naming the line.
+  A file whose tasks simply carry no command is still zero criteria, not an
+  error — that is the one legitimate empty.
+- **A missing spec falls through to the legacy verify command again.** The
+  dispatcher asked `os.IsNotExist` about an error wrapped with `%w`, which does
+  not follow the chain, so every absent spec path came back as a hard error
+  under a comment saying it fell through. A spec that is *present and
+  unreadable* is still an error — running the old command under a spec the user
+  believes was loaded is the failure that distinction prevents.
+- **New `done-qualifier` family, research only.** What to do when there is no
+  definition of done to read at all — when the request arrived as prose. A phase
+  before the loop derives candidate criteria, **runs each one against the
+  repository as it stands** and puts the result in front of the operator to
+  sign. The rule that gives the family its name: an acceptance criterion must
+  FAIL before the work. One that already passed cannot testify that the work met
+  it — it would have passed with no work at all, so the final green is
+  coincidence, not evidence. The initial run classifies in three: red is
+  acceptance, green is a regression guard (and `pnpm test` green at t=0 is
+  exactly right), and a failure whose cause is a missing command is broken, not
+  red. Proposing is the model's, signing is the operator's, running is the
+  sandbox's, and no two are the same party. No `.p`, no code: spec at
+  `docs/specs/architecture/done-qualifier/202608261730-done-qualifier.r.spec.md`.
+- **`done-qualifier` gains its `.p` and `.config`: approved design, not built.**
+  The proposal reaches the harness through a `done_propose` tool available only
+  in a qualifying turn — a tool that can redefine done, within reach of a
+  working turn, is the short way out of the loop. The proposer declares what it
+  expects each criterion to do at t=0 (`fail` or `pass`); the declaration
+  decides nothing, but the **disagreement** between it and the measurement is
+  the line the operator's eye should land on. Exit 126 and 127 are the broken
+  class, because a command that does not exist fails and so disguises itself as
+  acceptance. Two named conditions with opposite answers: an empty proposal is
+  an error, while a proposal with nothing red is a warning the operator signs —
+  a genuine refactor has nothing new to prove, and the harness must not decide
+  which is which. And any criterion the operator **edits** while signing is
+  measured again before the freeze, or the edit escapes the very rule the family
+  exists for. Refusal, deadline and round limit all end the same way and none of
+  them starts a loop: a deadline that approves is the quietest way to break the
+  rule. Invariants are declared as *previstas* and there is no `.i` — both
+  because a verifiable invariant is a claim about a test that exists, following
+  what `task-ledger` already does.
+- **The prefix names the checks the project declares.** `internal/workspace`
+  reads `package.json` scripts and `Makefile` targets and the workspace block
+  lists them. The audited project declared four, two had been red since the
+  first day, and the one that was green measured that one plus one is two —
+  finding out they existed meant opening `package.json`, and a fact that needs
+  a lookup is a fact used when someone remembers it. The list ends with a
+  sentence that is a non-configurable constant with an invariant of its own:
+  *nothing here says they pass, and nothing has run them*. Without it a list of
+  gates reads as a list of guarantees, which is the defect that asked for the
+  section. Naming is not measuring; measuring is `done-qualifier`.
+- **`This repository` is now `This workspace`.** The block already carried the
+  line saying there is *no* repository, and a heading claiming one above a line
+  denying it reads as a contradiction. It now carries two classes of fact about
+  the workspace and the name covers both.
+- **A project that declares no gate gets no section**, and nothing in the prefix
+  claims it declares none — the third time this session that "did not look" and
+  "looked and there is none" had to be kept apart. The difference from a missing
+  repository is consequence: having none changes what finishing means, while
+  declaring no gate is ordinary. `DCODE_WORKSPACE_GATES` switches the inventory
+  off for the repository whose Makefile has seventy targets.
+
+- **A workspace with no repository says so, once.** `Repo` was `nil` for a
+  directory that is not a git repository, and `nil` put nothing in the prefix
+  at all — the field comment said "ordinary and silent" and the invariant said
+  the prefix carries "nothing when it is not". Ordinary, yes; silent, no.
+  Without a repository there is no diff to review, no undo short of rewriting a
+  file by hand, and no commit, branch or pull request — so every working
+  agreement a project file describes is describing machinery that is not there.
+  This was found by audit: an agent worked a full day in exactly that state,
+  writing its own project file demanding a commit per task and a pull request
+  per spec, and nothing told it. The prefix now states it as a fact, with the
+  instruction to say it once, offer `git init`, and get on with the work.
+- **"We did not look" and "we looked and there is none" stay apart.** `nil` now
+  means only the first, and stays silent. Three guards in one function keep the
+  two separated: git not installed and a cancelled or timed-out probe both come
+  back as no snapshot, and only `rev-parse` actually answering no produces the
+  new `Absent` mark. The cancelled case was not foresight — an existing test
+  caught the first version of this change claiming "not a repository" about a
+  read that never completed, which is the same defect inside the commit that
+  removed it.
+- **The doctrine gains a floor, and it is overridable.** `Doctrine.Practices` is
+  what dcode does when nobody asked. The asymmetry with `Safety` is the whole
+  rule: Safety has no field in `DoctrineOverlay` *because it cannot be
+  overridden* — a lock by type, not by convention — and Practices has one
+  *because a floor that cannot be overridden is not a floor, it is a rule
+  pretending to be a default*. An empty Practices does not fail `Build`, unlike
+  Identity and Safety, because a floor switched off is a legitimate choice.
+  `practices.md` replaces the shipped text and there is no appending variant:
+  appending to a floor produces two floors, and switching off one practice is a
+  line in the project file, which is rendered later and therefore wins.
+- **The precedence needed no machinery.** `prompt > project > default` falls out
+  of position: the floor renders after Safety and before anything anyone
+  actually said, and the project's instructions stay the last block of the
+  prefix. Two invariants guard it, and the second is the load-bearing one — the
+  day project instructions stop being last, the floor starts outranking what
+  should outrank it and nothing else in the code would say so.
+  The section ships **empty**: with no text, `Build`'s output is byte-identical
+  to before, and there is a test for that. The text is the next step, and it
+  goes alone so it can be rewritten without taking the structure with it.
+- **The floor now has text: three practices and the rule about them.** Check
+  before claiming a file lacks something; reread a document this turn made
+  stale; a non-zero exit is a failure, and if an instruction says to read a
+  particular one as success, obey it **and name the instruction** — the licence
+  covers the case it describes and no other. None came from a list of good
+  practices; all three are defects someone shipped. Two paragraphs are not
+  practices but rules about them: say any of this **once**, never as a caveat
+  attached to the work and never waiting for an answer; and an instruction from
+  the user or the project that contradicts the section **wins without
+  discussion**. Both have invariants, because "say it once" becomes "warn every
+  time" without a line of code changing. The doctrine size cap now counts the
+  floor — a cap that skips the newest section stops measuring what is most
+  likely to grow — going from 3000 to 3900 with the same headroom as before.
 - **New `working-defaults` family, research only.** The floor: a handful of
   things dcode does when nobody asked, each with a declared default, and a rule
   saying who may change it. **Precedence is absolute and does not argue** — the

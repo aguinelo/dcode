@@ -20,6 +20,7 @@ var behaviorDirs = []string{
 	filepath.Join("..", "app"),
 	filepath.Join("..", "loop"),
 	filepath.Join("..", "vcs"),
+	filepath.Join("..", "workspace"),
 }
 
 var behaviorInvariants = map[string]string{
@@ -36,14 +37,25 @@ var behaviorInvariants = map[string]string{
 	"famílias distintas produzem":        "TestTwoFamiliesProduceDifferentPrompts",
 
 	// The doctrine overlay, whose whole point is what it cannot reach.
-	"devolve a doutrina embarcada": "TestApplyOfAnEmptyOverlayChangesNothing",
-	"== DefaultDoctrine().Safety":  "TestNoOverlayCanEverChangeSafety",
-	"como prefixo":                 "TestToolPolicyIsAppendedToAndNeverReplaced",
-	"raiz do **workspace**":        "TestWorkspaceDoctrineFilesLeaveThePromptByteIdentical",
-	"`safety.md` presente na raiz": "TestSafetyFileIsIgnoredAndRecorded",
-	"Truncamento por teto":         "TestOversizeFileIsTruncatedAndSaysSo",
-	"Sobreposição resolvida após":  "TestNothingDiscoveredAfterAssemblyReachesThePrefix",
-	"auditoria do prompt reporta":  "TestOriginsReportAllFourSectionsAndSafetyIsAlwaysBuiltin",
+	"devolve a doutrina embarcada":                  "TestApplyOfAnEmptyOverlayChangesNothing",
+	"== DefaultDoctrine().Safety":                   "TestNoOverlayCanEverChangeSafety",
+	"como prefixo":                                  "TestToolPolicyIsAppendedToAndNeverReplaced",
+	"raiz do **workspace**":                         "TestWorkspaceDoctrineFilesLeaveThePromptByteIdentical",
+	"`safety.md` presente na raiz":                  "TestSafetyFileIsIgnoredAndRecorded",
+	"Truncamento por teto":                          "TestOversizeFileIsTruncatedAndSaysSo",
+	"Sobreposição resolvida após":                   "TestNothingDiscoveredAfterAssemblyReachesThePrefix",
+	"auditoria do prompt reporta":                   "TestOriginsReportEverySectionAndSafetyIsAlwaysBuiltin",
+	"`Practices` vazia **não** faz `Build` falhar":  "TestAnEmptyFloorDoesNotFailTheBuild",
+	"posição é a precedência":                       "TestTheFloorSitsAfterSafetyAndBeforeWhatAnyoneSaid",
+	"último bloco do prefixo":                       "TestProjectInstructionsStillComeAfterTheFloor",
+	"não existe variante que acrescenta":            "TestPracticesMdReplacesAndDoesNotAppend",
+	"continua sem alcançar `Safety`":                "TestTheOverlayReachesPracticesAndNeverSafety",
+	"Piso substituído é reportado":                  "TestAReplacedFloorIsReportedAsReplaced",
+	"pura com a seção de práticas":                  "TestTheFloorKeepsBuildPure",
+	"vence sem discussão":                           "TestTheShippedFloorSaysWhoWins",
+	"proíbe repetir-se":                             "TestTheShippedFloorForbidsRepeatingItself",
+	"cobre os três defeitos":                        "TestTheShippedFloorCoversTheThreeDefects",
+	"teto de tamanho da doutrina **inclui** o piso": "TestDoctrineStaysSmall",
 
 	// The verification seal, kept by the loop.
 	"`Verification` é função pura":               "TestTheSealIsAFunctionOfTheRecordsAndNothingElse",
@@ -55,12 +67,24 @@ var behaviorInvariants = map[string]string{
 	"carrega contagem no texto":                  "TestTheUnplannedNoticeCarriesNoCount",
 
 	// Where the agent is working.
-	"prefixo carrega branch":          "TestThePromptSaysWhereInTheRepositoryWeAre",
-	"declarado como instantâneo":      "TestTheRepositorySnapshotSaysItIsASnapshot",
-	"Árvore limpa é dita":             "TestACleanTreeIsStatedRatherThanLeftBlank",
-	"nunca é reportada como branch":   "TestADetachedHeadIsNotGivenABranchName",
-	"limitado e o corte é declarado":  "TestAVeryDirtyTreeIsCutAndSaysSo",
-	"continua pura com o repositório": "TestTheRepositorySectionIsPure",
+	"prefixo carrega branch":                    "TestThePromptSaysWhereInTheRepositoryWeAre",
+	"não** é repositório é dito uma vez":        "TestAWorkspaceWithNoRepositorySaysSo",
+	"não reivindica branch, árvore nem commits": "TestAnAbsentRepositoryClaimsNothingElse",
+	"Instantâneo **não tomado**":                "TestASnapshotThatWasNeverTakenSaysNothing",
+	"declarado como instantâneo":                "TestTheRepositorySnapshotSaysItIsASnapshot",
+	"Árvore limpa é dita":                       "TestACleanTreeIsStatedRatherThanLeftBlank",
+	"nunca é reportada como branch":             "TestADetachedHeadIsNotGivenABranchName",
+	"limitado e o corte é declarado":            "TestAVeryDirtyTreeIsCutAndSaysSo",
+	"continua pura com o repositório":           "TestTheRepositorySectionIsPure",
+	"chegam ao prefixo com nome e comando":      "TestTheDeclaredGatesReachThePrefix",
+	"afirma que eles passam":                    "TestTheGateListSaysNothingHasRunThem",
+	"não gera seção":                            "TestNoDeclaredGatesMeansNoClaim",
+	"cortada diz que foi cortada":               "TestATruncatedGateListSaysSo",
+	"repositório e portões juntos":              "TestTheWorkspaceBlockCarriesBothFacts",
+	"pura com os portões":                       "TestTheGateSectionIsPure",
+	"**não executa** nenhum deles":              "TestPackageScriptsBecomeGates",
+	"regra com padrão não viram portão":         "TestMakefileNoiseIsNotAGate",
+	"Sonda cancelada":                           "TestACancelledProbeReadsNothing",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
