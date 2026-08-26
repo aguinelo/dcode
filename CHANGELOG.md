@@ -114,6 +114,22 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+- **The qualifier can measure, and classify what it measured.**
+  `internal/loop/qualifier` ships the deterministic half of `done-qualifier`:
+  run every proposed criterion once against the repository as it stands, before
+  any work, and classify. A criterion that **fails** is acceptance — it can
+  testify the work happened; one that **passes** is a regression guard, whose
+  job is to stay green. Both are legitimate for opposite reasons. Two details
+  decide whether it works: passing is `Exit == ExitCode` and never `Exit == 0`,
+  because a criterion declared `exit: 1` is met by exiting 1 and comparing to
+  zero would call an already-green criterion acceptance; and 126/127 plus a
+  failure to start are **broken**, not red, because a command that does not
+  exist fails and by failing disguises itself as acceptance while measuring the
+  absence of a tool. A set with nothing red is **named**, never refused — a
+  genuine refactor has nothing new to prove, and the harness must not decide
+  which is which. Nothing here derives a criterion, asks anyone anything, or is
+  reachable from the product yet.
+
 - **New `loop-command` family: the parser, not the command.** A third source
   for the RN-10 done definition — a `tasks.md`-shaped directory alongside
   `.dcode/done.toml` and the legacy verify command. `internal/loop/loopcommand/`

@@ -156,3 +156,37 @@ func TestEveryLoopCommandInvariantHasATest(t *testing.T) {
 		t.Errorf("loop-command: %s", f)
 	}
 }
+
+// The qualifier is one package down, and the specguard's glob reaches only
+// internal/*/invariants_test.go — one level. Same reason loopcommand's claim
+// lives here.
+var qualifierDirs = []string{filepath.Join(".", "qualifier")}
+
+var qualifierInvariants = map[string]string{
+	"exatamente uma vez, na ordem proposta":  "TestEveryCriterionRunsOnceInOrder",
+	"produzem `ClassBroken`":                 "TestNothingToRunIsBrokenAndNotRed",
+	"nunca `Exit == 0`":                      "TestPassingIsComparedAgainstTheDeclaredExitCode",
+	"legítimas por motivos opostos":          "TestFailingIsAcceptanceAndPassingIsRegression",
+	"não é discordância; é condição própria": "TestNothingToRunIsBrokenAndNotRed",
+	"discordância entre o que o proponente":  "TestTheDisagreementIsFlagged",
+	"devolve `ErrEmptyProposal`":             "TestAnEmptyProposalIsAnError",
+	"nomeado** e nunca recusado":             "TestASetWithNothingRedIsNamedAndNotRefused",
+	"Medir sem runner é erro":                "TestNoRunnerIsAnError",
+	"truncado em `MaxOutput`":                "TestOutputIsCappedAndSaysSo",
+	"prazo limita um critério":               "TestATimeoutBoundsOneCriterion",
+	"não altera a proposta que recebeu":      "TestMeasureLeavesTheProposalAlone",
+}
+
+func TestEveryQualifierInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "done-qualifier", qualifierDirs, qualifierInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("done-qualifier: %s", f)
+	}
+}
