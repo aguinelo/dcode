@@ -286,12 +286,24 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Sessão que só leu arquivos produz `clean`, e nenhum lembrete de verificação é emitido.
 - A continuação forçada é limitada por `MaxStallCycles` ciclos sem progresso, nunca por contagem de tentativas — asserção contra o laço patológico.
 - Nenhum lembrete de verificação aparece no prefixo — varredura da saída de `Build`.
-- O prefixo carrega branch, branch principal, estado da árvore e commits recentes quando o workspace é um repositório, e **nada** quando não é.
+- O prefixo carrega branch, branch principal, estado da árvore e commits recentes quando o workspace é um repositório.
+- Workspace que **não** é repositório é dito uma vez, como fato: sem histórico, sem diff, sem desfazer, e commit/branch/PR indisponíveis.
+- A ausência de repositório não reivindica branch, árvore nem commits — não inventa o que não existe.
+- Instantâneo **não tomado** — git ausente, sondagem cancelada — não vira afirmação: "não olhei" e "olhei e não há" são fatos diferentes, e só o segundo vale uma linha.
 - O estado do repositório é declarado como instantâneo: o prefixo nunca o apresenta como corrente.
 - Árvore limpa é dita, não deduzida de status vazio — "nada mudou" e "não olhei" não podem ler igual.
 - `HEAD` destacada nunca é reportada como branch; o literal `HEAD` do git jamais vira nome.
 - Status de árvore suja é limitado e o corte é declarado; nenhum caminho trunca em silêncio.
 - `Build` continua pura com o repositório: mesmo instantâneo, prefixo byte-idêntico.
+- Os portões que o projeto declara chegam ao prefixo com nome e comando, no bloco do workspace.
+- A lista de portões declara que **nada** ali afirma que eles passam, e que nada os rodou.
+- Projeto que não declara portão não gera seção, e o prefixo não afirma que ele não declara nenhum.
+- Lista de portões cortada diz que foi cortada.
+- O bloco do workspace carrega repositório e portões juntos, e nenhum dos dois apaga o outro.
+- `Build` continua pura com os portões: mesma sonda, prefixo byte-idêntico.
+- A sonda de portões lê `package.json` e `Makefile`, e **não executa** nenhum deles.
+- Alvo de `Makefile` que começa com ponto, atribuição de variável e regra com padrão não viram portão.
+- Sonda cancelada não devolve portão nenhum — "não olhei" e "olhei e não há" continuam separados.
 
 ## 9. Changelog
 
@@ -301,4 +313,6 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608102200 — Orçamento de contexto realimentado](../context-engine/changelog/202608102200-orcamento-de-contexto-realimentado.md)
 - [202608170200 — O prefixo diz onde o agente está](changelog/202608170200-onde-o-agente-esta.md)
 - [202608252200 — Quem pergunta é o harness](changelog/202608252200-quem-pergunta-e-o-harness.md)
+- [202608270015 — Os portões que o projeto declara](changelog/202608270015-os-portoes-que-o-projeto-declara.md)
+- [202608262100 — workspace sem histórico deixa de ser silencioso](changelog/202608262100-workspace-sem-historico-fala.md)
 - [202608262330 — A doutrina ganha um piso, e ele é sobreponível](changelog/202608262330-a-doutrina-ganha-um-piso.md)

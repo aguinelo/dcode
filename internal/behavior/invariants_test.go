@@ -20,6 +20,7 @@ var behaviorDirs = []string{
 	filepath.Join("..", "app"),
 	filepath.Join("..", "loop"),
 	filepath.Join("..", "vcs"),
+	filepath.Join("..", "workspace"),
 }
 
 var behaviorInvariants = map[string]string{
@@ -62,12 +63,24 @@ var behaviorInvariants = map[string]string{
 	"carrega contagem no texto":                  "TestTheUnplannedNoticeCarriesNoCount",
 
 	// Where the agent is working.
-	"prefixo carrega branch":          "TestThePromptSaysWhereInTheRepositoryWeAre",
-	"declarado como instantâneo":      "TestTheRepositorySnapshotSaysItIsASnapshot",
-	"Árvore limpa é dita":             "TestACleanTreeIsStatedRatherThanLeftBlank",
-	"nunca é reportada como branch":   "TestADetachedHeadIsNotGivenABranchName",
-	"limitado e o corte é declarado":  "TestAVeryDirtyTreeIsCutAndSaysSo",
-	"continua pura com o repositório": "TestTheRepositorySectionIsPure",
+	"prefixo carrega branch":                    "TestThePromptSaysWhereInTheRepositoryWeAre",
+	"não** é repositório é dito uma vez":        "TestAWorkspaceWithNoRepositorySaysSo",
+	"não reivindica branch, árvore nem commits": "TestAnAbsentRepositoryClaimsNothingElse",
+	"Instantâneo **não tomado**":                "TestASnapshotThatWasNeverTakenSaysNothing",
+	"declarado como instantâneo":                "TestTheRepositorySnapshotSaysItIsASnapshot",
+	"Árvore limpa é dita":                       "TestACleanTreeIsStatedRatherThanLeftBlank",
+	"nunca é reportada como branch":             "TestADetachedHeadIsNotGivenABranchName",
+	"limitado e o corte é declarado":            "TestAVeryDirtyTreeIsCutAndSaysSo",
+	"continua pura com o repositório":           "TestTheRepositorySectionIsPure",
+	"chegam ao prefixo com nome e comando":      "TestTheDeclaredGatesReachThePrefix",
+	"afirma que eles passam":                    "TestTheGateListSaysNothingHasRunThem",
+	"não gera seção":                            "TestNoDeclaredGatesMeansNoClaim",
+	"cortada diz que foi cortada":               "TestATruncatedGateListSaysSo",
+	"repositório e portões juntos":              "TestTheWorkspaceBlockCarriesBothFacts",
+	"pura com os portões":                       "TestTheGateSectionIsPure",
+	"**não executa** nenhum deles":              "TestPackageScriptsBecomeGates",
+	"regra com padrão não viram portão":         "TestMakefileNoiseIsNotAGate",
+	"Sonda cancelada":                           "TestACancelledProbeReadsNothing",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
