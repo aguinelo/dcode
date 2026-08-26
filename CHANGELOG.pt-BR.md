@@ -31,7 +31,7 @@ fora do pacote isolado.
 | **contratos medidos contra modelo** | **4** |
 | cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.9.0** |
+| versão publicada | **0.9.1** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -107,7 +107,7 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ---
 
-## Não lançado
+## 0.9.1 — 27 de agosto de 2026
 
 - **Dois portões com o mesmo nome passam a ser distinguidos na tela.** Achado
   rodando a 0.9.0: um projeto com script `test` no `package.json` e alvo `test`

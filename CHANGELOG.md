@@ -31,7 +31,7 @@ isolated package.
 | **contracts measured against a model** | **4** |
 | coverage | 94.0%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.9.0** |
+| published version | **0.9.1** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -125,7 +125,7 @@ that on every run to stop the opposite reading.
 
 ---
 
-## Unreleased
+## 0.9.1 — 27 August 2026
 
 - **Two gates with the same name are told apart on screen.** Found by running
   0.9.0: a project with a `test` script in `package.json` and a `test` target in
