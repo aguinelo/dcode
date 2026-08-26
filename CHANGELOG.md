@@ -114,7 +114,21 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+- **New `working-defaults` family, research only.** The floor: a handful of
+  things dcode does when nobody asked, each with a declared default, and a rule
+  saying who may change it. **Precedence is absolute and does not argue** — the
+  user's prompt outranks the project file, which outranks the built-in default,
+  and whoever is above *replaces* rather than negotiates. Overriding is
+  obeyed **and** reported once, and the spec spells out that reporting is not
+  asking: "the default is off, `DCODE.md` line 87" is a statement made once,
+  never a caveat attached to the work or a request to confirm. A fact cannot be
+  overridden, only a practice — `DCODE.md` can switch off the announcement that
+  there is no repository; it cannot make the workspace be one. The family's own
+  design rule: **whatever can become a fact in the prefix does not become
+  prose**, because prose is the weakest layer this repository recognises. Four
+  practices, deliberately few, each traced to a defect found by auditing a real
+  project. No `.p`, no code: spec at
+  `docs/specs/architecture/working-defaults/202608262200-working-defaults.r.spec.md`.
 
 ## 0.8.0 — 26 August 2026
 
