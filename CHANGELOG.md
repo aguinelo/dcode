@@ -141,6 +141,19 @@ that on every run to stop the opposite reading.
   under a comment saying it fell through. A spec that is *present and
   unreadable* is still an error — running the old command under a spec the user
   believes was loaded is the failure that distinction prevents.
+- **New `done-qualifier` family, research only.** What to do when there is no
+  definition of done to read at all — when the request arrived as prose. A phase
+  before the loop derives candidate criteria, **runs each one against the
+  repository as it stands** and puts the result in front of the operator to
+  sign. The rule that gives the family its name: an acceptance criterion must
+  FAIL before the work. One that already passed cannot testify that the work met
+  it — it would have passed with no work at all, so the final green is
+  coincidence, not evidence. The initial run classifies in three: red is
+  acceptance, green is a regression guard (and `pnpm test` green at t=0 is
+  exactly right), and a failure whose cause is a missing command is broken, not
+  red. Proposing is the model's, signing is the operator's, running is the
+  sandbox's, and no two are the same party. No `.p`, no code: spec at
+  `docs/specs/architecture/done-qualifier/202608261730-done-qualifier.r.spec.md`.
 
 ## 0.8.0 — 26 August 2026
 

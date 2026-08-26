@@ -562,6 +562,40 @@ own execution path, that is when the invariant is born.
 
 ---
 
+## 13. The phase that raises the definition of done
+
+**The shape.** Three sources feed the RN-10 done definition and all three assume
+the criteria already exist. When the request arrives as prose — "build a customer
+registry" — the only answers are an empty `DoneSet`, which the loop reports as
+done, or an error. A qualifying phase is the third answer: derive candidate
+criteria, run each one, and have the operator sign the list before the loop
+starts.
+
+**The rule the family is built on.** An acceptance criterion must **fail** before
+the work. A criterion that already passed cannot testify that the work met it —
+it would have passed with nothing done, so the green at the end is coincidence
+rather than evidence. The red→green transition is the whole of the proof. The
+inverse is equally required: a regression guard must PASS at t=0, and `pnpm test`
+green before any work is exactly what is wanted from it. A third class exists for
+the command that fails because it does not exist, which disguises itself as
+acceptance while measuring the absence of a tool rather than the absence of work.
+
+**The hard call.** Whoever proposes the criteria is whoever gets measured by
+them. Nothing mechanical covers that, and the spec says so rather than inventing
+a mitigation: what covers it is the criterion reaching a human as a COMMAND, next
+to the others, where a weak one reads as weak. Which is why the initial run is
+not optional and the approval is not yes/no — approving a `DoneSet` is document
+review, and a binary gate turns "I disagree with item 3" into "redo everything"
+until the operator stops disagreeing. Explicitly rejected: a second model judging
+the first one's criteria, which swaps one unverified decision for two.
+
+**Why here.** Research only — the `.r` exists, nothing else does. Build order is
+the inverse of the intuitive one: the approval gate first, the run-before-sign
+second, the model's derivation last. With the first two in place a bad derivation
+is visible and fixable; without them a good one is worth nothing either.
+
+---
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -592,6 +626,7 @@ has not weakened.
 | **3** — the vacuous contract | Nothing to do until 4 moves. |
 | **10** — what v5 asks for and we do not have | After the client phases land. The card ships without progress, so the protocol event is not blocking anything visible — and deciding it under pressure from a half-built card is how a versioned surface gets the wrong shape. |
 | **9** — the small ones | Whenever they are in the way. |
+| **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at the approval gate, never at the derivation. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
