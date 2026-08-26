@@ -141,6 +141,37 @@ that on every run to stop the opposite reading.
   under a comment saying it fell through. A spec that is *present and
   unreadable* is still an error — running the old command under a spec the user
   believes was loaded is the failure that distinction prevents.
+- **New `done-qualifier` family, research only.** What to do when there is no
+  definition of done to read at all — when the request arrived as prose. A phase
+  before the loop derives candidate criteria, **runs each one against the
+  repository as it stands** and puts the result in front of the operator to
+  sign. The rule that gives the family its name: an acceptance criterion must
+  FAIL before the work. One that already passed cannot testify that the work met
+  it — it would have passed with no work at all, so the final green is
+  coincidence, not evidence. The initial run classifies in three: red is
+  acceptance, green is a regression guard (and `pnpm test` green at t=0 is
+  exactly right), and a failure whose cause is a missing command is broken, not
+  red. Proposing is the model's, signing is the operator's, running is the
+  sandbox's, and no two are the same party. No `.p`, no code: spec at
+  `docs/specs/architecture/done-qualifier/202608261730-done-qualifier.r.spec.md`.
+- **`done-qualifier` gains its `.p` and `.config`: approved design, not built.**
+  The proposal reaches the harness through a `done_propose` tool available only
+  in a qualifying turn — a tool that can redefine done, within reach of a
+  working turn, is the short way out of the loop. The proposer declares what it
+  expects each criterion to do at t=0 (`fail` or `pass`); the declaration
+  decides nothing, but the **disagreement** between it and the measurement is
+  the line the operator's eye should land on. Exit 126 and 127 are the broken
+  class, because a command that does not exist fails and so disguises itself as
+  acceptance. Two named conditions with opposite answers: an empty proposal is
+  an error, while a proposal with nothing red is a warning the operator signs —
+  a genuine refactor has nothing new to prove, and the harness must not decide
+  which is which. And any criterion the operator **edits** while signing is
+  measured again before the freeze, or the edit escapes the very rule the family
+  exists for. Refusal, deadline and round limit all end the same way and none of
+  them starts a loop: a deadline that approves is the quietest way to break the
+  rule. Invariants are declared as *previstas* and there is no `.i` — both
+  because a verifiable invariant is a claim about a test that exists, following
+  what `task-ledger` already does.
 
 ## 0.8.0 — 26 August 2026
 
