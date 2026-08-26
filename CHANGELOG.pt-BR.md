@@ -111,6 +111,16 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ### Corrigido
 
+- **Uma parede que diz como se abre.** A doutrina passou a mandar tentar em vez
+  de recusar, e deixar a fronteira perguntar — mas um cruzamento de caminho
+  dentro de um comando de shell não tem quem pergunte: o comando é opaco, então
+  ninguém sabe que houve cruzamento. Observado ao vivo, o modelo fez o que foi
+  mandado, foi barrado, e disse de boa fé que *"o harness vai te perguntar"*.
+  Nunca pergunta, e a pessoa fica esperando. O resultado do comando passa a
+  levar uma nota: este EPERM é o sandbox, pergunta nenhuma vem, e os caminhos
+  são `/mode auto` ou nomear o path em `sandbox.writable`. Estreita de
+  propósito — só EPERM, nunca sob `full-access`.
+
 - **O status do topo também segue a troca.** O crachá aprendia o modo novo e a
   barra de status não, então uma sessão em `auto` seguia anunciando
   `workspace-write` — o campo que a §2.1 chama de perigoso errar, e por isso

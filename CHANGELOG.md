@@ -116,6 +116,16 @@ that on every run to stop the opposite reading.
 
 ### Fixed
 
+- **A wall that says how it opens.** The doctrine now tells the model to attempt
+  rather than refuse, and to let the boundary ask — but a path crossing inside a
+  shell command has nothing to ask: the command is opaque, so nothing knows a
+  crossing happened. Observed live, the model did as told, was refused, and told
+  the user in good faith that *"the harness will ask you"*. It never does, and
+  the person waits for a question that is not coming. The command result now
+  carries a note: this EPERM is the sandbox, no prompt is coming, and the ways
+  through are `/mode auto` or naming the path in `sandbox.writable`. Narrow on
+  purpose — only EPERM, never under `full-access`.
+
 - **The top bar follows the switch too.** The badge learned the new mode and the
   status bar did not, so a session in `auto` went on announcing
   `workspace-write` — the one field §2.1 calls dangerous to get wrong, which is

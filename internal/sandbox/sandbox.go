@@ -193,6 +193,14 @@ func (r Runner) mode() policy.SandboxMode {
 	return r.Mode()
 }
 
+// SandboxMode is the boundary in force, as a string.
+//
+// Exists for callers that must not import this package's types — the bash tool
+// asks it, through an anonymous interface, to tell an EPERM the sandbox caused
+// from one the workspace caused on its own. Under full-access there is no
+// boundary, so the same errno means something else entirely.
+func (r Runner) SandboxMode() string { return string(r.mode()) }
+
 // Run executes command inside the boundary.
 func (r Runner) Run(ctx context.Context, workdir, command string) (string, int, error) {
 	if r.Sandbox == nil {
