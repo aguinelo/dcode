@@ -23,6 +23,13 @@ import (
 // allowlist would grow silently every time someone found this test
 // inconvenient; a reason has to be written and can be argued with.
 var exportedWithoutUser = map[string]string{
+	// One line from the proposer to the human deciding, and no machine consumes
+	// it — which is exactly why nothing outside a test reads it yet. The reader
+	// is the signing surface, which is step 2 of the done-qualifier .p and is
+	// not built. Dropping the field would mean the operator reviews a list of
+	// commands with no word about what each is for.
+	"Why": "qualifier.Proposed.Why is the one line the proposer writes for the human signing the DoneSet; the signing surface that shows it is step 2 of the done-qualifier .i and is not built",
+
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.
 	"DeleteSession": "pkg/client is the public API; a consumer deletes sessions",

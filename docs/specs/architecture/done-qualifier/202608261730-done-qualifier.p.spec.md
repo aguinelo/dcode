@@ -8,24 +8,24 @@
 
 ## 1. Nível de estabilidade
 
-**Desenho aprovado, não implementado.** Este documento descreve o que será
-construído; nenhuma linha dele existe em código ainda.
+**Parcialmente entregue.** A etapa 1 da §12 — `Measure` e a classificação —
+existe em `internal/loop/qualifier/`, e as invariantes dela estão na §9, já
+verificáveis. O resto deste documento descreve o que será construído.
 
 Duas ausências são consequência disso, e as duas são o repositório funcionando:
 
-- **A seção de invariantes chama-se "previstas".** Aqui uma invariante
-  verificável é reivindicação sobre um teste que existe, e não há o que
-  reivindicar antes do código. É renomeada e cobrada pela guarda no PR da
-  implementação.
+- **Há duas seções de invariantes.** A §9 é verificável: a etapa 1 está entregue
+  e cada linha nomeia um teste que existe. A §10 é prevista, e cada linha migra
+  para a §9 no PR da etapa que a constrói.
 - **Não há `.i.spec.md`.** A guarda exige que todo caminho citado numa spec de
   implementação exista no repositório — uma `.i` descreve o que **está**
-  construído. Ela entra com o código; a ordem de entrega da §11 é o que existe
-  até lá.
+  construído, e a maior parte deste ainda não está. Ela entra com o código; a
+  ordem de entrega da §12 é o que existe até lá.
 
 A mesma forma que a `task-ledger` usa, pelo mesmo motivo.
 
-Promoção a `stable` exige, nesta ordem: as três etapas da §11 entregues, o
-número da §10 medido, e um limiar da §8 medido contra modelo real e registrado
+Promoção a `stable` exige, nesta ordem: as três etapas da §12 entregues, o
+número da §11 medido, e um limiar da §8 medido contra modelo real e registrado
 em `changelog/`.
 
 ## 2. Onde mora o código
@@ -170,7 +170,7 @@ type Measured struct {
 
 // Measure runs every proposed criterion once against the workspace as it
 // stands, before any work. It never writes and it never retries.
-func Measure(ctx context.Context, p Proposal, run loop.CriterionRunner, timeout time.Duration) ([]Measured, error)
+func Measure(ctx context.Context, p Proposal, run loop.CriterionRunner, timeout time.Duration) ([]Measured, Conditions, error)
 ```
 
 A classificação, em ordem:
@@ -198,12 +198,19 @@ classe é `ClassRegression`, ou o inverso. `ClassBroken` **não** é discordânc
 ```go
 // Conditions are what the whole measured set says about itself.
 type Conditions struct {
-    // Empty is a proposal with no criteria at all.
-    Empty bool
-    // NoAcceptance is a proposal where nothing is red at t=0.
+    // NoAcceptance is a set where nothing is red at t=0.
     NoAcceptance bool
 }
+
+// ErrEmptyProposal is a proposal with no criteria at all.
+var ErrEmptyProposal = errors.New("qualifier: the proposal declares no criteria")
 ```
+
+**`Empty` era um campo de `Conditions` e virou um erro.** Uma condição só é
+observável se a chamada devolve o conjunto, e uma proposta vazia não devolve
+conjunto nenhum — ela para ali. Deixá-la como campo daria um `Conditions` que o
+chamador nunca veria com `Empty` verdadeiro, que é um campo que só existe na
+prosa.
 
 **`Empty` é erro, nunca `DoneSet` vazia.** É a lição da `loop-command` RN-6,
 chegando pela outra porta: vazia significa "não há o que verificar", que o ciclo
@@ -366,18 +373,31 @@ diferente e barata é trocar —, e isso é determinístico o bastante para ser
 asserção sobre o `Record`, não limiar. **Fica escrito como não resolvido**, e é o
 que impede esta seção inteira de ser cerimônia.
 
-## 9. Invariantes previstas
+## 9. Invariantes verificáveis
 
-> Entram como **verificáveis**, com teste reivindicado por `specguard.Check`, no
-> PR da implementação. Ver §1.
+> A etapa 1 da §11 está entregue, e estas são reivindicadas por
+> `specguard.Check` em `internal/loop/invariants_test.go`. O que ainda não foi
+> construído está na §10.
 
-- `Measure` roda cada critério exatamente uma vez, antes de qualquer escrita.
-- `Measure` nunca escreve, e o runner injetado é o mesmo `Config.RunCriterion`.
-- Saída 126 ou 127, e falha em iniciar o comando, produzem `ClassBroken`.
+- `Measure` roda cada critério exatamente uma vez, na ordem proposta, antes de qualquer escrita.
+- Saída 126 ou 127, e falha ao iniciar o comando, produzem `ClassBroken`.
 - `ClassRegression` é `Exit == ExitCode`, nunca `Exit == 0`.
+- Critério que **falha** é aceitação e critério que **passa** é regressão — as duas classes são legítimas por motivos opostos.
 - `ClassBroken` não é discordância; é condição própria.
-- Proposta com zero critérios é erro, nunca `DoneSet` vazia.
-- `NoAcceptance` é nomeada e assinável, nunca recusada pelo harness.
+- A discordância entre o que o proponente declarou e o que a medição achou é sinalizada.
+- Proposta com zero critérios devolve `ErrEmptyProposal`, nunca `DoneSet` vazia.
+- Conjunto sem nenhum critério vermelho é **nomeado** e nunca recusado pelo harness.
+- Medir sem runner é erro: proposta que ninguém consegue rodar é proposta que ninguém consegue classificar.
+- `Output` de cada critério é truncado em `MaxOutput` e diz que foi.
+- Um prazo limita um critério, e critério que estourou o prazo é `ClassBroken`, não vermelho.
+- `Measure` não altera a proposta que recebeu.
+
+## 10. Invariantes previstas
+
+> Entram como **verificáveis**, com teste reivindicado, no PR da etapa que as
+> constrói.
+
+- `Measure` nunca escreve, e o runner injetado é o mesmo `Config.RunCriterion`.
 - `done_propose` não existe no registro de um turno que não é de qualificação.
 - Toda proposta é guardada no `Record`, não só a assinada.
 - Critério editado na assinatura é medido de novo antes de congelar.
@@ -386,9 +406,8 @@ que impede esta seção inteira de ser cerimônia.
 - A `DoneSet` congelada é, campo a campo, a que voltou na assinatura.
 - Nada muta `Config.Done` depois da assinatura.
 - `SourceQualified` nunca é escolhida por `SourceAuto`.
-- `Output` de cada critério é truncado em `qualifier.output_limit` e diz que foi.
 
-## 10. O que medir antes de construir a derivação
+## 11. O que medir antes de construir a derivação
 
 A etapa 3 é a cara, e a regra deste projeto é não construir contrapeso antes de
 medir o peso.
@@ -403,7 +422,7 @@ boa — porque ela sozinha já protege as três origens que existem (RN-9 da `.r
 A etapa 2 da §11 entrega esse número sem modelo nenhum: ela mede `done.toml` de
 verdade, de gente de verdade, no começo do turno.
 
-## 11. Ordem de entrega
+## 12. Ordem de entrega
 
 A ordem é a inversa da intuitiva, e é de propósito.
 
@@ -419,7 +438,8 @@ A ordem é a inversa da intuitiva, e é de propósito.
 Com 1 e 2 no lugar, uma derivação ruim é visível e corrigível. Sem elas, uma
 derivação boa também não vale nada.
 
-## 12. Changelog
+## 13. Changelog
 
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
+- [202608270100 — medir antes do trabalho](changelog/202608270100-medir-antes-do-trabalho.md)
