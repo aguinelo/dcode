@@ -1,23 +1,17 @@
 # loop-parses-spec
 
-**Contrato:** `202608252000-loop-command.p.spec.md` · limiar **≥ 99%** (aspiracional)
+**Contrato:** `202608252000-loop-command.p.spec.md` · limiar **100%**
 
-`/loop` lê `tasks.md` e produz a `DoneSet` que o engine consome.
+`tasks.md` bem-formado vira a `DoneSet` do golden, na ordem do arquivo.
 
-## Status: aspiracional
+## Por que 100% é legítimo
 
-Esta fixture existe para satisfazer o guard `TestEveryDeclaredContractHasItsFixture`
-em `internal/evals/contracts_test.go`: o `.p` declara um caminho e o caminho
-precisa existir com `task.md` carregável. O conteúdo do `task.md` é
-placeholder porque a medição real exige a tool `loop_load`, que **não
-existe ainda no produto** — esta spec está em `experimental`.
+Porque não depende do modelo. É o parser, e o parser é determinístico. A
+asserção está em três lugares: `TestLoadSpecHappyPath` para a forma,
+`TestLoadSpecPreservesOrder` para a ordem e `TestLoadSpecSeparatorIsNotSyntax`
+para o que **não** é contrato — a pontuação entre o número da tarefa e o
+`verify:`, que numa primeira versão exigia travessão literal e fazia um arquivo
+inteiro escrito com hífen voltar como zero critérios e nenhum erro.
 
-A medição correta virá quando a tool existir. Até lá:
-
-- O **parser** é coberto deterministicamente por
-  `internal/loop/loopcommand/loopspec_test.go` (TDD, golden file).
-- O **contrato comportamental** declarado no `.p §7` permanece, com o
-  threshold intacto.
-- A **promoção para `stable`** (definida em `loop-command.p §1`) exige que
-  esta fixture vire material real antes de `make eval` rodar o threshold
-  contra o modelo.
+O material existe para o ID não sumir da tabela — um contrato sem fixture é um
+contrato que a guarda não consegue casar.

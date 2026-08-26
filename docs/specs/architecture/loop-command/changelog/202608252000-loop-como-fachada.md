@@ -1,8 +1,14 @@
 # `/loop` como fachada sobre a RN-10
 
-**Data:** 2026-08-25
+**Data:** 2026-08-25, revisado em 2026-08-26
 **Specs afetadas:** nova família `202608252000-loop-command` (`.r`, `.p`,
 `.config`, `.i`). Sem mudanças em outras specs.
+
+> **O que esta entrada descreve, e o que ela não descreve.** O desenho abaixo é
+> o da família inteira. O que **existe em código** é o parser, o dispatch entre
+> fontes e o `loop.Config` da sessão dedicada. `/loop` **não é digitável**: o
+> reconhecimento no cliente é o Passo 3 da `.i` e não foi construído. A revisão
+> de 2026-08-26 está na segunda metade deste arquivo.
 
 > **Regra:** o dcode já tem um ciclo que executa contra uma `DoneSet` e para
 > por progresso (`202608102100`). `/loop` é a forma de o usuário **declarar
@@ -71,15 +77,15 @@ no prefixo invalida o cache a cada turno (ADR-03).
 
 `/loop` cria uma sessão nova a cada invocação, com `ID()` derivado do
 basename da spec + timestamp. A sessão interativa fica intacta. Justificativa
-completa na `loop-command.r §4.2`: misturar `DoneSet` quebra o isolamento de
+completa na RN-2 do `.r`: misturar `DoneSet` quebra o isolamento de
 progresso.
 
 ### `Protected` é declaração
 
 Os caminhos que o agente não pode modificar em silêncio são declarados pelo
 operador — no frontmatter de `tasks.md` (`protected = [...]`) ou via flag
-`--protect`. **Não há default**. O harness não infere `Protected` da posição
-da spec.
+`--protect`. As duas fontes são **união**, sem repetição e sem precedência.
+**Não há default**. O harness não infere `Protected` da posição da spec.
 
 A forma exata (frontmatter vs. flag vs. ambos) é decisão do Code Plain,
 não desta spec. A spec aceita o que vier; não prescreve.
@@ -100,20 +106,21 @@ não desta spec. A spec aceita o que vier; não prescreve.
 A linha inteira do que esta spec adiciona é determinística. A parte mediada
 herda os limiares e invariantes da `agent-loop` — esta spec não toca neles.
 
-## Contratos comportamentais novos
-
-Quatro cenários, todos com fixture em `internal/evals/loop-command/`:
+## Contratos: quatro IDs, nenhum medido contra modelo
 
 | ID | Cenário | Limiar |
 |---|---|---|
-| `loop-parses-spec` | parser extrai `DoneSet` correta de `tasks.md` bem-formado | ≥ 99% |
-| `loop-ignores-prose` | prosa vira `unavailable`, não vira `Criterion` | ≥ 99% |
-| `loop-protect-declared` | `protected` declarado é honrado | ≥ 95% |
-| `loop-protect-absent` | sem declaração, nenhum path é protegido | ≥ 99% |
+| `loop-parses-spec` | `DoneSet` correta de `tasks.md` bem-formado | **100%**, asserção |
+| `loop-ignores-prose` | prosa não vira `Criterion`; arquivo ilegível é erro | **100%**, asserção |
+| `loop-protect-declared` | arquivo e argumento se unem | **100%**, asserção |
+| `loop-protect-absent` | sem declaração, nenhum path é protegido | **100%**, asserção |
 
-Os dois primeiros são o coração da RN-10 desta spec: o parser tem que extrair
-correto, e prosa não pode virar critério. Os dois últimos materializam a
-RN-4: declaração é a única forma de `Protected` entrar.
+Os quatro descrevem o **parser**, que é determinístico. Medir contra modelo
+gastaria vinte chamadas para imprimir `MET` num número que uma asserção já
+decidiu — um verde de graça, que ninguém olha duas vezes.
+
+Contrato mediado volta quando o Passo 3 existir e o modelo puder alcançar
+`/loop`. Aí há comportamento a medir, e o número entra aqui com modelo e data.
 
 ## O que esta mudança **não** faz
 
@@ -126,7 +133,7 @@ RN-4: declaração é a única forma de `Protected` entrar.
   Aceita o que o Code Plain declarar.
 - **Não** adiciona `StopReason` novo. O ciclo usa o que já tem.
 
-## Risco principal e o que o mitiga
+## Risco principal e o que o mitiga (escrito antes do código)
 
 O risco é o parser inventar critério onde há prosa — exatamente o que a
 RN-10 da `agent-loop` proíbe. A mitigação está em duas camadas:
@@ -163,3 +170,82 @@ confirmação por issue/PR no **Code Plain** de que o formato `tasks.md`
 está congelado. Sem isso, o parser pode falar com fantasma na próxima
 mudança de spec do Code Plain, e o gate de promoção trava. Esta é a
 única dependência cross-repo da spec.
+
+
+---
+
+# Revisão de 2026-08-26
+
+O código chegou depois deste changelog, e não era o código que ele descreve.
+Esta seção é a diferença, escrita para que a diferença não precise ser
+redescoberta.
+
+## O que a doc afirmava e não era verdade
+
+- O `CHANGELOG.md` do produto dizia que `/loop` "runs the existing turn loop
+  against it in a dedicated session". Nada chamava o pacote: `/loop` nunca foi
+  digitável.
+- O `ROADMAP.md`, **no mesmo commit**, dizia "specs are written, no code yet" —
+  e o commit trazia ~700 linhas de código. Dois documentos do mesmo PR se
+  contradizendo, nenhum dos dois certo.
+- O `.config §4` dizia que os limiares "foram medidos contra o modelo
+  declarado". Nenhuma medição jamais rodou, e as fixtures diziam "placeholder".
+  A fixture era honesta e o `.config` não — e o `.config` é onde se confia.
+- A `.p §5` declarava `NewSession(ctx, srv, opts) (SessionHandle, error)`, com
+  `ID()` e `SubmitTurn()`. O código tinha `NewSession(opts) (loop.Config,
+  string)`: nenhum servidor, nenhum handle, nenhuma sessão. Cinco invariantes
+  da `.p §8` descreviam essa máquina inexistente, e nenhuma tinha teste.
+- A `.p §3.2` dizia que o `protected` do arquivo "vence" o do argumento; o
+  código unia os dois, e o comentário do código dizia o contrário da spec.
+- `verify.toml`, citado na justificativa da RN-2, não existe em lugar nenhum
+  do repositório.
+
+## Três defeitos que a doc não conhecia
+
+1. **O parser exigia travessão literal.** `- [ ] 1. \`a.ts\` - desc. verify:
+   \`make test\`` — com hífen — devolvia zero critérios. Somado ao defeito 2,
+   um `tasks.md` inteiro escrito com hífen virava "sem definição de pronto",
+   que o ciclo relata como **pronto**. A feature estava a uma tecla de um verde
+   falso.
+2. **Linha que não casa virava silêncio.** O parser fazia `continue` em tudo
+   que não reconhecia, então um arquivo de lixo voltava com `err == nil` e zero
+   critérios — exatamente o que a RN-6 proíbe e o que a US-5 diz que o operador
+   não pode receber.
+3. **`os.IsNotExist` sobre erro embrulhado com `%w`.** Ele não segue a cadeia.
+   O fall-through de `SourceAuto` para o comando legado era código inalcançável
+   sob um comentário dizendo que era alcançável — e a única linha do gate de
+   cobertura que reprovava apontava exatamente para ele.
+
+## O teste que não testava
+
+`TestInvariantsClaimed` e `TestLoopCommandInvariantsClaimed` montavam um mapa
+que nunca liam e comparavam `const family = "loop-command"` consigo mesmo.
+Existiam para o `strings.Contains` do specguard achar o nome da família num
+arquivo, e não podiam falhar. Estavam duplicados em dois lugares, um em
+português e outro em inglês, e um dos dois nem era alcançado pelo glob do
+guard.
+
+Substituídos por `specguard.Check` de verdade, que lê cada linha da `.p §8` e
+reprova quando o teste nomeado não existe. Verificado nos dois sentidos:
+renomear um teste reprova, tirar um nome do mapa reprova.
+
+**A lição, e ela é sobre harness.** Todo guard com dente pegou alguma coisa: o
+de nomes exportados forçou a isenção que prova que nada chama o pacote; o de
+wiring forçou as quatro chaves `loop.*` a serem lidas por nome; o gate de
+cobertura por pacote reprovou apontando para as linhas do defeito 3; o de
+fixture forçou o material a existir, e foi ao escrevê-lo que a honestidade
+apareceu. O único derrotado foi o que verifica por `strings.Contains` de um
+nome num arquivo. Ele pediu uma string e recebeu uma string. **Guard que uma
+string satisfaz é guard que uma string vai satisfazer.**
+
+## O que mudou no código
+
+| Antes | Depois |
+|---|---|
+| separador `—` obrigatório | só `- [ ] N.` e `verify: \`cmd\`` são sintaxe |
+| linha desconhecida ignorada | sem nenhuma linha de tarefa é erro |
+| `---` em qualquer posição abria frontmatter | só na linha 1; no meio é régua do markdown |
+| `verify:` sem crases, cauda `exit` ilegível, `N` repetido: silêncio | erro nomeando a linha |
+| `os.IsNotExist` | `errors.Is(err, fs.ErrNotExist)` |
+| `NewSession`, que não criava sessão | `SessionConfig`, que monta o `Config` |
+| 87.9% de cobertura, abaixo do piso | 97.6% |

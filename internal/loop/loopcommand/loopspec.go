@@ -2,6 +2,11 @@
 // definition. It parses a `tasks.md`-shaped directory into a LoopSpec and
 // returns it as a loop.DoneSet, without changing the turn cycle.
 //
+// Nothing in the product calls this yet: the client-side recognition of
+// `/loop` is Step 3 of the family's `.i` and has not been built. What ships
+// here is the parser and the dispatch between sources, and the package is
+// honest about that rather than reading as a delivered command.
+//
 // Spec: docs/specs/architecture/loop-command/202608252000-loop-command.*.spec.md
 package loopcommand
 
@@ -9,6 +14,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,9 +25,11 @@ import (
 // LoopSpec is a parsed specification external to the workspace.
 //
 // The parser is total: it never panics on malformed input and never invents
-// data. A malformed spec returns an error; an empty one returns a LoopSpec
-// with no criteria (which produces a DoneSet with no criteria, which the
-// agent-loop reports as "no definition of done").
+// data. What it CANNOT read, it refuses to read — a file with no task list is
+// an error, not an empty DoneSet. The difference matters more than it looks:
+// an empty DoneSet is "nothing to verify", which the agent loop reports as
+// done. Silently turning an unreadable file into "done" is the worst outcome
+// this package can produce, and RN-6 exists to forbid it.
 type LoopSpec struct {
 	// Path is the directory containing tasks.md.
 	Path string
@@ -40,18 +48,25 @@ type LoopSpec struct {
 // structure that becomes DoneSet lives here.
 const tasksFile = "tasks.md"
 
-// The shape of one criterion-bearing task line.
+// taskHead identifies a task line and splits off everything after the number.
 //
-// `- [ ] 12. `path` — desc. verify: `cmd`, exit: K`
-// `- [x] 12. `path` — desc. verify: `cmd`
+// Only the checkbox and the number are syntax. What follows — a path in
+// backticks, a dash, a description — is documentation, and the parser reads
+// past it without caring how it is punctuated.
 //
-// The number after the checkbox is the criterion Name. The path is a
-// documentation anchor, not parsed into the type (it would be wrong to put
-// it in Name — the report reads Names, and "12" reads; "path/to/very-long.ts"
-// does not).
-var taskLine = regexp.MustCompile(
-	`^[\t ]*- \[([ x])\] (\d+)\. ` + "`([^`]+)`" + ` — .*verify: ` + "`([^`]+)`" + `(?:, exit: (-?\d+))?`,
-)
+// It used to care. The pattern required a literal em dash (`—`) between the
+// path and the description, so a `tasks.md` written with a plain hyphen
+// produced zero criteria and no error: an entire file of real work read as
+// "no definition of done". A separator is not a contract, and making it one
+// put the whole feature one keystroke away from silently reporting done.
+var taskHead = regexp.MustCompile(`^[\t ]*- \[([ xX])\][\t ]+(\d+)\.[\t ]*(.*)$`)
+
+// verifyPart is the only part of a task line that IS syntax: the command that
+// decides whether the criterion is met.
+var verifyPart = regexp.MustCompile("verify:[\t ]*`([^`]*)`[\t ]*(.*)$")
+
+// exitPart is the optional expected exit code trailing the command.
+var exitPart = regexp.MustCompile(`^,[\t ]*exit:[\t ]*(-?\d+)[\t ]*$`)
 
 // protectedLine in the frontmatter: `protected = ["**/*_test.go"]`
 var protectedLine = regexp.MustCompile(`^protected\s*=\s*\[(.*)\]\s*$`)
@@ -62,11 +77,15 @@ func LoadSpec(path string) (LoopSpec, error) {
 	return LoadSpecWithProtect(path, nil)
 }
 
-// LoadSpecWithProtect reads a LoopSpec and layers the argument's globs on
-// top of any declared in the file. File-declared protected is preserved
-// even when it overlaps the argument; both end up in the final list.
+// LoadSpecWithProtect reads a LoopSpec and adds the argument's globs to any
+// declared in the file.
+//
+// The two are a union, not a precedence. Protected is a list of paths whose
+// modification gets surfaced, so "the file wins over the argument" would mean
+// an argument could REMOVE a protection the file asked for — the one direction
+// that must never be reachable by accident.
 func LoadSpecWithProtect(path string, protect []string) (LoopSpec, error) {
-	tasksPath := path + "/" + tasksFile
+	tasksPath := filepath.Join(path, tasksFile)
 	raw, err := os.ReadFile(tasksPath)
 	if err != nil {
 		return LoopSpec{}, fmt.Errorf("loopcommand: read %s: %w", tasksPath, err)
@@ -74,12 +93,10 @@ func LoadSpecWithProtect(path string, protect []string) (LoopSpec, error) {
 
 	spec, err := parseTasks(string(raw))
 	if err != nil {
-		return LoopSpec{}, err
+		return LoopSpec{}, fmt.Errorf("loopcommand: %s: %w", tasksPath, err)
 	}
 	spec.Path = path
-
-	// File-declared comes first; argument layers on top. Both go in.
-	spec.Protected = append(spec.Protected, protect...)
+	spec.Protected = union(spec.Protected, protect)
 
 	return spec, nil
 }
@@ -90,18 +107,22 @@ func parseTasks(content string) (LoopSpec, error) {
 	out := LoopSpec{}
 
 	scanner := bufio.NewScanner(strings.NewReader(content))
-	inFrontmatter := false
 	frontmatterOpen := false
 	var frontmatterLines []string
+	// sawTask separates "this file declares no verifiable criteria" from "this
+	// file is not a task list at all". The first is a legitimate empty
+	// DoneSet; the second is RN-6's error.
+	sawTask := false
+	// seen catches the same task number declared twice. Name is what the
+	// report prints and what Progressed compares, so two criteria called "3"
+	// are two rows a human cannot tell apart.
+	seen := map[string]int{}
+	lineNo := 0
 
 	for scanner.Scan() {
+		lineNo++
 		line := scanner.Text()
 
-		// Frontmatter handling. The frontmatter is the YAML-ish block
-		// between two `---` lines at the very top of the file. Anything
-		// other than `protected = [...]` inside it is ignored — the spec
-		// declares one key per purpose, and inventing more would mean
-		// re-reading the user's intent.
 		if frontmatterOpen {
 			if strings.TrimSpace(line) == "---" {
 				frontmatterOpen = false
@@ -111,29 +132,74 @@ func parseTasks(content string) (LoopSpec, error) {
 			frontmatterLines = append(frontmatterLines, line)
 			continue
 		}
-		if !inFrontmatter && strings.TrimSpace(line) == "---" {
-			inFrontmatter = true
+		// Frontmatter opens on the FIRST line or not at all. `---` is also
+		// markdown's horizontal rule, and treating one mid-file as an opening
+		// delimiter swallowed every line until the next one — or failed the
+		// whole file as "frontmatter never closed" because there was no next
+		// one. A section break is not a declaration.
+		if lineNo == 1 && strings.TrimSpace(line) == "---" {
 			frontmatterOpen = true
 			continue
 		}
 
-		m := taskLine.FindStringSubmatch(line)
+		m := taskHead.FindStringSubmatch(line)
 		if m == nil {
+			// Headings, prose, blank lines. Not a task, not an error.
 			continue
 		}
+		sawTask = true
+
 		// m[1] is the checkbox state (" " or "x") — read but not branched on.
 		// Both are treated as criteria, because the harness re-runs the check
 		// regardless of who marked the box.
 		name := m[2]
-		cmd := m[4]
-		exit := 0
-		if m[5] != "" {
-			n, err := strconv.Atoi(m[5])
-			if err != nil {
-				return LoopSpec{}, fmt.Errorf("loopcommand: bad exit code on line %q: %w", line, err)
-			}
-			exit = n
+		rest := m[3]
+
+		if !strings.Contains(rest, "verify:") {
+			// RN-5: a task with nothing to run is not a criterion. It is the
+			// human's work item, and it reaches the report as unavailable
+			// through the empty-command path the agent loop already has.
+			continue
 		}
+
+		v := verifyPart.FindStringSubmatch(rest)
+		if v == nil {
+			return LoopSpec{}, fmt.Errorf(
+				"line %d: task %s says `verify:` and no command in backticks follows it", lineNo, name)
+		}
+		cmd := strings.TrimSpace(v[1])
+		if cmd == "" {
+			return LoopSpec{}, fmt.Errorf("line %d: task %s has an empty verify command", lineNo, name)
+		}
+
+		exit := 0
+		if tail := strings.TrimSpace(v[2]); tail != "" {
+			// Trailing prose after the command is fine — the command was read
+			// correctly and the rest is for the human. A trailing `exit` that
+			// does not parse is NOT fine: the author asked for one exit code
+			// and would silently be given zero.
+			if strings.Contains(tail, "exit") {
+				e := exitPart.FindStringSubmatch(tail)
+				if e == nil {
+					return LoopSpec{}, fmt.Errorf(
+						"line %d: task %s trails %q after the verify command, which mentions an exit code and does not read as `, exit: N`",
+						lineNo, name, tail)
+				}
+				n, err := strconv.Atoi(e[1])
+				if err != nil {
+					return LoopSpec{}, fmt.Errorf("line %d: task %s has an unreadable exit code: %w", lineNo, name, err)
+				}
+				exit = n
+			}
+		}
+
+		if first, dup := seen[name]; dup {
+			return LoopSpec{}, fmt.Errorf(
+				"line %d: task %s was already declared on line %d; the number is the criterion name and the report cannot tell two of them apart",
+				lineNo, name, first)
+		}
+		seen[name] = lineNo
+
 		out.Criteria = append(out.Criteria, loop.Criterion{
 			Name:     name,
 			Command:  cmd,
@@ -141,11 +207,16 @@ func parseTasks(content string) (LoopSpec, error) {
 		})
 	}
 	if err := scanner.Err(); err != nil {
-		return LoopSpec{}, fmt.Errorf("loopcommand: scan: %w", err)
+		return LoopSpec{}, fmt.Errorf("scan: %w", err)
 	}
-	// If we saw an opening `---` but never a closing one, the file is malformed.
 	if frontmatterOpen {
-		return LoopSpec{}, fmt.Errorf("loopcommand: frontmatter opened with `---` but never closed")
+		return LoopSpec{}, fmt.Errorf("frontmatter opened with `---` on line 1 and never closed")
+	}
+	if !sawTask {
+		// RN-6. Not "zero criteria" — zero TASKS, which means the file is not
+		// the thing it was asked to be. Returning an empty DoneSet here is how
+		// an unreadable file becomes a green report.
+		return LoopSpec{}, fmt.Errorf("no task line found; expected at least one `- [ ] N. ...` entry")
 	}
 	return out, nil
 }
@@ -154,11 +225,9 @@ func parseTasks(content string) (LoopSpec, error) {
 // block. Any other key is ignored — the spec does not declare them, and
 // inventing behaviour for keys nobody promised is the silent-extension
 // defect.
-//
-// Returns a sorted slice so the report reads the same regardless of order.
 func protectedFromFrontmatter(lines []string) []string {
 	for _, l := range lines {
-		m := protectedLine.FindStringSubmatch(l)
+		m := protectedLine.FindStringSubmatch(strings.TrimSpace(l))
 		if m == nil {
 			continue
 		}
@@ -166,18 +235,41 @@ func protectedFromFrontmatter(lines []string) []string {
 		if body == "" {
 			return nil
 		}
-		parts := strings.Split(body, ",")
-		out := make([]string, 0, len(parts))
-		for _, p := range parts {
+		out := make([]string, 0, strings.Count(body, ",")+1)
+		for _, p := range strings.Split(body, ",") {
 			p = strings.TrimSpace(p)
-			p = strings.TrimPrefix(p, `"`)
-			p = strings.TrimSuffix(p, `"`)
+			p = strings.Trim(p, `"'`)
 			if p == "" {
 				continue
 			}
 			out = append(out, p)
 		}
+		if len(out) == 0 {
+			return nil
+		}
 		return out
 	}
 	return nil
+}
+
+// union appends the second list to the first, dropping what is already there.
+// Order is first-declared-first, so the report reads in the order the user
+// wrote rather than in the order the layers happened to be applied.
+func union(first, second []string) []string {
+	have := make(map[string]struct{}, len(first))
+	for _, p := range first {
+		have[p] = struct{}{}
+	}
+	out := first
+	for _, p := range second {
+		if p == "" {
+			continue
+		}
+		if _, dup := have[p]; dup {
+			continue
+		}
+		have[p] = struct{}{}
+		out = append(out, p)
+	}
+	return out
 }

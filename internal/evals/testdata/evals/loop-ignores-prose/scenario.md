@@ -1,13 +1,19 @@
 # loop-ignores-prose
 
-**Contrato:** `202608252000-loop-command.p.spec.md` · limiar **≥ 99%** (aspiracional)
+**Contrato:** `202608252000-loop-command.p.spec.md` · limiar **100%**
 
-`/loop` parser **não pode** interpretar prosa como critério. Texto narrativo
-("smoke manual", "validar com o usuário") vira `CriterionUnavailable` no
-relatório final, **não** `Criterion{Name: "smoke"}`.
+Prosa não vira critério, e a ausência de critério não vira "pronto".
 
-## Status: aspiracional
+## Por que 100% é legítimo
 
-Mesma situação de `loop-parses-spec`: a medição real exige a tool
-`loop_load`, que ainda não existe. Cobertura determinística em
-`internal/loop/loopcommand/loopspec_test.go::TestLoadSpecIgnoresProse`.
+Porque não depende do modelo. As três asserções cobrem as três saídas que o
+parser tem diante de um arquivo sem comandos: `TestLoadSpecIgnoresProse` (a
+tarefa sem `verify:` é ignorada), `TestLoadSpecZeroCriteriaIsNotAnError`
+(tarefas sem nenhum comando são zero critérios declarados, não erro) e
+`TestLoadSpecWithoutTaskLinesIsAnError` (arquivo que não é lista de tarefas é
+erro).
+
+A terceira é a que importa. Sem ela, um `tasks.md` ilegível voltava como zero
+critérios e nenhum erro — e zero critérios é "sem definição de pronto", que o
+ciclo relata como pronto. Um arquivo que ninguém conseguiu ler virava um
+relatório verde.

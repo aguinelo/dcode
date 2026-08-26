@@ -106,35 +106,53 @@ func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {
 	}
 }
 
-// TestLoopCommandInvariantsClaimed marks the loop-command family as claimed
-// for the specguard. The actual coverage lives in
-// internal/loop/loopcommand/{loopspec,dispatch,session}_test.go — this
-// is the pointer, not the proof.
-//
-// Without this entry the family declares invariants in its `.p §8` and no
-// `internal/*/invariants_test.go` names it, which is exactly the defect
-// the specguard exists to catch. The mapping below names the test that
-// asserts each invariant.
-func TestLoopCommandInvariantsClaimed(t *testing.T) {
-	claimed := map[string]string{
-		"LoadSpec retorna erro":              "TestLoadSpecMalformedReturnsError",
-		"LoopSpec com `Criteria == nil`":     "TestLoadSpecZeroCriteriaIsNotAnError",
-		"LoopSpec.Criteria preserva ordem":   "TestLoadSpecPreservesOrder",
-		"SourceLoopSpec ignora done.toml":    "TestLoadSourceLoopSpecReadsFile",
-		"SourceDoneFile ignora specPath":     "TestLoadSourceDoneFileIgnoresSpecPath",
-		"NewSession produz ID distinto":      "TestNewSessionIDsAreDistinct",
-		"`Config.Done` igual a `Load(Spec)`": "TestNewSessionDoneMatchesSpec",
-		"Config.DoneEnabled é `true`":        "TestNewSessionDoneEnabledReflectsCriteria",
-		"LoadSpecWithProtect layers":         "TestLoadSpecWithProtectLayersBoth",
+// The /loop façade is one package down, and the specguard's own glob only
+// reaches internal/*/invariants_test.go — one level. A guard file inside
+// loopcommand/ would never be read, which is why the claim for that family
+// lives here.
+var loopCommandDirs = []string{filepath.Join(".", "loopcommand")}
+
+var loopCommandInvariants = map[string]string{
+	"não panic) para `tasks.md` malformado":  "TestLoadSpecMalformedReturnsError",
+	"sem nenhuma linha de tarefa":            "TestLoadSpecWithoutTaskLinesIsAnError",
+	"declaração de zero critérios":           "TestLoadSpecZeroCriteriaIsNotAnError",
+	"não é sintaxe":                          "TestLoadSpecSeparatorIsNotSyntax",
+	"sem comando entre crases":               "TestLoadSpecBadVerifyNamesTheLine",
+	"não lê como `, exit: K`":                "TestLoadSpecUnreadableExitCodeIsAnError",
+	"mesmo número de tarefa duas vezes":      "TestLoadSpecDuplicateTaskNumberIsAnError",
+	"régua do markdown":                      "TestLoadSpecHorizontalRuleIsNotFrontmatter",
+	"preserva a ordem de aparição":           "TestLoadSpecPreservesOrder",
+	"vira critério igual a":                  "TestLoadSpecCheckedTaskIsStillACriterion",
+	"união do declarado no arquivo":          "TestLoadSpecWithProtectLayersBoth",
+	"aparece uma vez só":                     "TestLoadSpecProtectIsNotDuplicated",
+	"nenhum caminho é protegido por posição": "TestLoadSpecWithoutProtectDeclaresNothing",
+	"ignora a presença de `done.toml`":       "TestLoadSourceLoopSpecReadsFile",
+	"ignora a presença de `specPath`":        "TestLoadSourceDoneFileIgnoresSpecPath",
+	"cai no `verifyCommand` legado":          "TestLoadSourceAutoMissingSpecFallsThroughToVerify",
+	"presente e ilegível":                    "TestLoadSourceAutoMalformedSpecIsAnError",
+	"mesmos argumentos, mesma `DoneSet`":     "TestLoadIsDeterministic",
+	"igual ao `DoneSet` da `LoopSpec`":       "TestSessionConfigDoneMatchesSpec",
+	"se e só se há ao menos um critério":     "TestSessionConfigDoneEnabledReflectsCriteria",
+	"carrega prefixo, basename e instante":   "TestSessionConfigNameCarriesPrefixSpecAndInstant",
+	"a fachada não tem orçamento próprio":    "TestSessionConfigCarriesTheLimitsUntouched",
+}
+
+// This replaces a test that claimed the same family and asserted nothing: it
+// built a map it never read, then compared a constant to itself. It existed so
+// the specguard's strings.Contains would find the family name in a file, and it
+// could not fail. A guard that a literal satisfies is a guard that a literal
+// will satisfy — the fix is to run the real check, which reads every line of
+// the `.p §8` and fails when a named test does not exist.
+func TestEveryLoopCommandInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(claimed) == 0 {
-		t.Fatal("the family declares invariants and the map is empty")
+	findings, err := specguard.Check(root, "loop-command", loopCommandDirs, loopCommandInvariants)
+	if err != nil {
+		t.Fatal(err)
 	}
-	// Family name must appear in this file as a literal so the specguard's
-	// strings.Contains search finds it. Kept below as a constant for the
-	// same reason as the others in this file.
-	const family = "loop-command"
-	if family != "loop-command" {
-		t.Fatalf("family constant drifted: %q", family)
+	for _, f := range findings {
+		t.Errorf("loop-command: %s", f)
 	}
 }

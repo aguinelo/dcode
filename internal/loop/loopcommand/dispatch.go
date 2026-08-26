@@ -1,7 +1,9 @@
 package loopcommand
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strconv"
 	"strings"
@@ -70,10 +72,16 @@ func Load(workspace, specPath string, src Source, verifyCommand string) (loop.Do
 			if err == nil {
 				return spec.DoneSet(), nil
 			}
-			if !os.IsNotExist(err) {
+			// A spec that is not THERE falls through to the legacy command;
+			// a spec that is there and cannot be read is an error.
+			//
+			// This has to unwrap: LoadSpec wraps with %w, and os.IsNotExist
+			// does not follow a wrapped chain. With it, every missing spec
+			// path came back as a hard error and this fall-through was
+			// unreachable code under a comment saying it was reachable.
+			if !errors.Is(err, fs.ErrNotExist) {
 				return loop.DoneSet{}, err
 			}
-			// missing file falls through to legacy
 		}
 		return doneFromVerify(verifyCommand), nil
 	}

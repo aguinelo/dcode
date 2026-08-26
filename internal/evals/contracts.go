@@ -731,24 +731,44 @@ var Contracts = []Contract{
 
 	// ---- /loop command ----
 	//
-	// The four contracts below declare the loop-command family. The
-	// thresholds and judges are aspirational today: the loop_load tool does
-	// not yet exist in the product, and the fixtures contain placeholders
-	// that LoadFixture accepts. When the tool lands, the placeholders are
-	// replaced with real tasks and the thresholds become enforceable.
+	// All four are established by assertion, not measured against a model.
 	//
-	// Until then, the judges exist so the contracts are not silent — a
-	// scenario with a nil judge would fail the guard, and the guard is the
-	// only thing preventing the next thirty fixtures from being inert, which
-	// is exactly the failure mode the contracts_test.go preamble describes.
-	{ID: "loop-parses-spec", Threshold: 0.99, Rounds: 1,
-		Judge: Says("criteria", "DoneSet", "criterion", "bash")},
-	{ID: "loop-ignores-prose", Threshold: 0.99, Rounds: 1,
-		Judge: Says("prose", "ignored", "unavailable", "bash")},
-	{ID: "loop-protect-declared", Threshold: 0.95, Rounds: 1,
-		Judge: Says("protected", "Protected", "bash")},
-	{ID: "loop-protect-absent", Threshold: 0.99, Rounds: 1,
-		Judge: Says("empty", "no protected", "none", "bash")},
+	// What they describe is the parser, and the parser is deterministic. They
+	// shipped as measured contracts at 99% and 95%, judged by a Says over a
+	// handful of words including the name of the shell tool — and with
+	// placeholder fixtures, because the tool a model would have called does
+	// not exist. Meanwhile the family's `.config` said the thresholds were
+	// measured. Nothing had ever run.
+	//
+	// (No tool name is spelled in quotes above: the guard that reads these
+	// blocks cuts them by ID boundary, so a quoted name in a comment lands in
+	// the PREVIOUS contract's block and gets read as one of its judges.)
+	//
+	// A judge on a deterministic outcome is worse than no judge: it spends
+	// twenty model calls to print MET at a number an assertion already decided.
+	// A free green is the one result nobody looks at twice.
+	{ID: "loop-parses-spec", Threshold: 1.0, Rounds: 1,
+		Asserted: []string{
+			"TestLoadSpecHappyPath",
+			"TestLoadSpecPreservesOrder",
+			"TestLoadSpecSeparatorIsNotSyntax",
+		}},
+	{ID: "loop-ignores-prose", Threshold: 1.0, Rounds: 1,
+		Asserted: []string{
+			"TestLoadSpecIgnoresProse",
+			"TestLoadSpecZeroCriteriaIsNotAnError",
+			"TestLoadSpecWithoutTaskLinesIsAnError",
+		}},
+	{ID: "loop-protect-declared", Threshold: 1.0, Rounds: 1,
+		Asserted: []string{
+			"TestLoadSpecWithProtectLayersBoth",
+			"TestLoadSpecProtectIsNotDuplicated",
+		}},
+	{ID: "loop-protect-absent", Threshold: 1.0, Rounds: 1,
+		Asserted: []string{
+			"TestLoadSpecWithoutProtectDeclaresNothing",
+			"TestLoadSpecFrontmatterEdges",
+		}},
 }
 
 // ContractByID indexes the table.

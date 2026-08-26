@@ -1,14 +1,15 @@
 # loop-protect-absent
 
-**Contrato:** `202608252000-loop-command.p.spec.md` · limiar **≥ 99%** (aspiracional)
+**Contrato:** `202608252000-loop-command.p.spec.md` · limiar **100%**
 
-`/loop` **não** infere `Protected` da posição da spec. Quando `tasks.md` não
-declara `protected` no frontmatter e nenhuma flag `--protect` é passada,
-`Protected` da `DoneSet` é vazio. **Nenhum path** é protegido por default.
+Sem declaração, nenhum caminho é protegido.
 
-## Status: aspiracional
+## Por que 100% é legítimo
 
-Mesma situação dos outros contracts desta spec: a tool `loop_load` ainda
-não existe. Cobertura determinística em
-`internal/loop/loopcommand/loopspec_test.go::TestLoadSpecHappyPath` (caso
-sem `protected` no frontmatter) e `TestLoadSpecZeroCriteriaIsNotAnError`.
+Porque não depende do modelo. `TestLoadSpecWithoutProtectDeclaresNothing`
+afirma a ausência, e `TestLoadSpecFrontmatterEdges` afirma que uma lista vazia,
+uma lista de vazios e um frontmatter com outras chaves também produzem nada.
+
+É a RN-4 da família: o harness não decide o que é medição, e a posição da spec
+não é declaração. Inferir `protected` de `specs/**` seria o harness escolhendo,
+por conta própria, o que o agente não pode tocar.

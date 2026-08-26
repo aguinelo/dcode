@@ -54,19 +54,20 @@ var exportedWithoutUser = map[string]string{
 	// The eval harness, behind its own build tag and run by `make eval`.
 	"ContractByID": "eval harness, behind the eval build tag",
 
-	// /loop's session-creation entry point. The wiring that calls it is the
-	// client-side `/loop` command path, which is not in this PR — the parser,
-	// dispatcher and NewSession itself are introduced together so the loop has
-	// something to call when the client lands. Same shape as ContractByID:
-	// capability first, caller later.
-	"NewSession": "loopcommand.NewSession is the /loop session factory; the client wiring that calls it ships in the follow-up PR",
+	// /loop builds the loop.Config a dedicated session is born with. The caller
+	// is the client-side `/loop` command path — Step 3 of the family's `.i` —
+	// and it has not been built, so nothing in the product reaches this yet.
+	// Same shape as ContractByID: capability first, caller later.
+	//
+	// This exemption is the honest record of that. While it stands, `/loop` is
+	// not typeable, and any document saying otherwise is wrong.
+	"SessionConfig": "loopcommand.SessionConfig builds the loop.Config a /loop session is born with; the client wiring that calls it is Step 3 of the family's .i and is not built",
 
 	// Typed surface for the four loop.* settings declared in KnownKeys. The
 	// function reads each key by name so the wiring guard sees them in source
 	// and so a future caller has a typed struct rather than four strings.
-	// Today no caller exists — the client wiring that calls OptionsFromConfig
-	// ships with the rest of the /loop command path.
-	"OptionsFromConfig": "loopcommand.OptionsFromConfig turns resolved layer values into the typed loop.Options; the caller that reads it ships with the /loop client wiring",
+	// Today no caller exists — same Step 3 as above.
+	"OptionsFromConfig": "loopcommand.OptionsFromConfig turns resolved layer values into the typed loop.Options; the caller that reads it is Step 3 of the loop-command .i and is not built",
 }
 
 func TestEveryExportedNameHasAUserOrAWrittenReason(t *testing.T) {
