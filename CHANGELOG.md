@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 113 decision changelogs |
-| behavioural contracts | 43 declared |
-| **contracts measured against a model** | **3** |
+| spec families | 13, with 119 decision changelogs |
+| behavioural contracts | 44 declared |
+| **contracts measured against a model** | **4** |
 | coverage | 94.1%, gate at 90% |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.7.0** |
+| published version | **0.8.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -113,6 +113,23 @@ that on every run to stop the opposite reading.
 ---
 
 ## Unreleased
+
+_Nothing yet._
+
+## 0.8.0 — 26 August 2026
+
+> **MINOR, though every commit in it says `fix:`.** `scripts/version.sh` derives
+> 0.7.1 from Conventional Commits; the contract says otherwise, and the contract
+> wins. Two fields were added to the protocol (`tool.requested.typed`,
+> `session.mode_changed.sandbox_mode`), one behaviour was **removed** (the
+> two-step confirmation for `/mode auto`, shipped in 0.7.0 and gone by first
+> use), and the doctrine changed meaning — and "a superfície deste produto é em
+> parte feita de frases".
+>
+> Measured against MiniMax-M3 this cycle: `boundary-decides-write` **MET, 100%
+> of 20 runs**. `boundary-decides` came back 90.0% with one run lost to a
+> transport EOF, which the harness reports as **unsound** rather than as a
+> verdict — 19 runs are not 20.
 
 ### Fixed
 
