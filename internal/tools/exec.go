@@ -139,10 +139,45 @@ func (b Bash) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 	if strings.TrimSpace(body) == "" {
 		body = "(no output)"
 	}
+	if note := boundaryNote(code, out, b.Runner); note != "" {
+		body += "\n\n" + note
+	}
 	return Result{
 		Output: fmt.Sprintf("exit %d\n%s", code, body),
 		Meta:   Meta{ExitCode: code, HasExit: true, Lines: countLines(out)},
 	}, nil
+}
+
+// boundaryNote explains an EPERM the sandbox produced, and says how to open it.
+//
+// The doctrine tells the model to attempt rather than refuse, and to let the
+// boundary ask. For a path crossing inside a shell command, nothing asks: the
+// command is opaque, so `bash` declares the workspace as what it writes and the
+// policy sees no crossing to escalate. The OS refuses, and `operation not
+// permitted` comes back as a bare wall.
+//
+// The model then told the user, in good faith, that the harness would ask —
+// and the user waited for a question that was never coming. A wall that cannot
+// turn into a question must at least say what opens it; the alternative is a
+// promise nothing keeps.
+//
+// Only EPERM, and only outside full-access. EACCES is an ordinary permission
+// error that happens for a hundred reasons of the workspace's own, and saying
+// "the sandbox did this" about one of those would send the reader somewhere
+// wrong. Under full-access there is no boundary, so an EPERM is something else.
+func boundaryNote(code int, out string, r Runner) string {
+	if code == 0 || !strings.Contains(strings.ToLower(out), "operation not permitted") {
+		return ""
+	}
+	if m, ok := r.(interface{ SandboxMode() string }); ok && m.SandboxMode() == "full-access" {
+		return ""
+	}
+	return "note: `operation not permitted` here is the sandbox, not the file. " +
+		"A path crossing inside a shell command does NOT raise an approval " +
+		"prompt — the command is opaque, so nothing knows there was a crossing " +
+		"to ask about. Tell the user this plainly, and that the ways through " +
+		"are `/mode auto` (removes the boundary for the session) or naming the " +
+		"path in `sandbox.writable`. Do not tell them a prompt is coming."
 }
 
 // startBackground starts a command nobody waits on and reports what it did

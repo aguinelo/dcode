@@ -267,6 +267,7 @@ type Sandbox interface {
 - Duas trocas concorrentes deixam a sessão em um dos modos, com o par do motor de acordo com o nome anunciado.
 - O executor pergunta o modo **a cada comando**: comando rodado depois da troca corre sob a fronteira nova, e não sob a que valia quando a sessão nasceu.
 - Executor sem fonte de modo roda em `read-only` — fronteira que ninguém decidiu falha fechada (RN-3).
+- `operation not permitted` vindo do sandbox **diz como se abre**: nomeia `/mode auto` e `sandbox.writable`, e diz que pergunta nenhuma vem. Só EPERM, e nunca sob `full-access`.
 
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
 - Rede concedida inclui escutar: uma suíte que não abre porta não roda.
@@ -298,3 +299,4 @@ type Sandbox interface {
 - [202608190230 — Uma fronteira aninhada é detectada, não adivinhada](changelog/202608190230-uma-fronteira-aninhada-e-detectada.md)
 - [202608251200 — O modo é um nome para um par](changelog/202608251200-o-modo-e-um-nome-para-um-par.md)
 - [202608252359 — O sandbox segue o modo](changelog/202608252359-o-sandbox-segue-o-modo.md)
+- [202608260100 — Uma parede que diz como se abre](changelog/202608260100-uma-parede-que-diz-como-se-abre.md)

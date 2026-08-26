@@ -30,6 +30,8 @@ var sandboxInvariants = map[string]string{
 	"Duas trocas concorrentes":                "TestConcurrentSwitchesLeaveOneMode",
 	"pergunta o modo **a cada comando**":      "TestTheRunnerAsksTheModeOncePerCommand",
 	"Executor sem fonte de modo":              "TestARunnerWithNoModeFailsClosed",
+	"diz como se abre":                        "TestAWallSaysHowItOpens",
+	"Só EPERM, e nunca sob":                   "TestAnOrdinaryFailureGetsNoNote",
 	"depois de **provar**":                    "TestSeatbeltProbesRatherThanTrustingThePath",
 	"pular dizendo o motivo":                  "TestABoundaryTestSkipsLoudlyRatherThanPassingQuietly",
 
