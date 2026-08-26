@@ -114,7 +114,15 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+- **New `loop-command` family.** `/loop` becomes the user-facing façade over
+  the RN-10 done definition: it reads a `tasks.md`-shaped directory, turns it
+  into a `DoneSet`, and runs the existing turn loop against it in a dedicated
+  session. No change to the turn cycle itself — the new package is
+  `internal/loop/loopcommand/`, and it consumes the same types and StopReasons
+  as `done.toml` does today. Spec lives at
+  `docs/specs/architecture/loop-command/202608252000-loop-command.*.spec.md`,
+  changelog at
+  `docs/specs/architecture/loop-command/changelog/202608252000-loop-como-fachada.md`.
 
 ## 0.8.0 — 26 August 2026
 

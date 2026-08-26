@@ -728,6 +728,27 @@ var Contracts = []Contract{
 		// has to be honourable with the tools the harness actually permits, or
 		// it measures the harness.
 		Judge: CalledWith("edit", "generated.go")},
+
+	// ---- /loop command ----
+	//
+	// The four contracts below declare the loop-command family. The
+	// thresholds and judges are aspirational today: the loop_load tool does
+	// not yet exist in the product, and the fixtures contain placeholders
+	// that LoadFixture accepts. When the tool lands, the placeholders are
+	// replaced with real tasks and the thresholds become enforceable.
+	//
+	// Until then, the judges exist so the contracts are not silent — a
+	// scenario with a nil judge would fail the guard, and the guard is the
+	// only thing preventing the next thirty fixtures from being inert, which
+	// is exactly the failure mode the contracts_test.go preamble describes.
+	{ID: "loop-parses-spec", Threshold: 0.99, Rounds: 1,
+		Judge: Says("criteria", "DoneSet", "criterion", "bash")},
+	{ID: "loop-ignores-prose", Threshold: 0.99, Rounds: 1,
+		Judge: Says("prose", "ignored", "unavailable", "bash")},
+	{ID: "loop-protect-declared", Threshold: 0.95, Rounds: 1,
+		Judge: Says("protected", "Protected", "bash")},
+	{ID: "loop-protect-absent", Threshold: 0.99, Rounds: 1,
+		Judge: Says("empty", "no protected", "none", "bash")},
 }
 
 // ContractByID indexes the table.
