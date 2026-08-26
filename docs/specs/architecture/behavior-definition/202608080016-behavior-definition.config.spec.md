@@ -28,6 +28,7 @@
 |---|---|---|---|
 | `DCODE_BEHAVIOR_REMINDERS_ENABLED` | booleano | `true` | Liga o canal anexado. Desligar remove todo lembrete — inclusive o de arquivo alterado em disco, que é o que impede editar a partir de conteúdo que o modelo não tem mais. |
 | `DCODE_SHOW_REASONING` | booleano | `true` | Encaminha o raciocínio do modelo aos clientes. Ele **nunca** entra no histórico: é evento de exibição, não contexto. |
+| `DCODE_WORKSPACE_GATES` | booleano | `true` | Liga o inventário dos portões que o projeto declara — chaves de `scripts` no `package.json`, alvos do `Makefile` — no bloco do workspace. A sonda **não roda nenhum deles**: rodar é `202608261730-done-qualifier`. Ligada por default porque lê dois arquivos e custa uma leitura na abertura; existe para o repositório com `Makefile` de setenta alvos, onde o teto ainda deixa lista que ninguém lê. |
 
 ## 3.1 Verificação (RN-13)
 

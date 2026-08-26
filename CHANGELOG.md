@@ -114,6 +114,27 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+- **The prefix names the checks the project declares.** `internal/workspace`
+  reads `package.json` scripts and `Makefile` targets and the workspace block
+  lists them. The audited project declared four, two had been red since the
+  first day, and the one that was green measured that one plus one is two —
+  finding out they existed meant opening `package.json`, and a fact that needs
+  a lookup is a fact used when someone remembers it. The list ends with a
+  sentence that is a non-configurable constant with an invariant of its own:
+  *nothing here says they pass, and nothing has run them*. Without it a list of
+  gates reads as a list of guarantees, which is the defect that asked for the
+  section. Naming is not measuring; measuring is `done-qualifier`.
+- **`This repository` is now `This workspace`.** The block already carried the
+  line saying there is *no* repository, and a heading claiming one above a line
+  denying it reads as a contradiction. It now carries two classes of fact about
+  the workspace and the name covers both.
+- **A project that declares no gate gets no section**, and nothing in the prefix
+  claims it declares none — the third time this session that "did not look" and
+  "looked and there is none" had to be kept apart. The difference from a missing
+  repository is consequence: having none changes what finishing means, while
+  declaring no gate is ordinary. `DCODE_WORKSPACE_GATES` switches the inventory
+  off for the repository whose Makefile has seventy targets.
+
 - **A workspace with no repository says so, once.** `Repo` was `nil` for a
   directory that is not a git repository, and `nil` put nothing in the prefix
   at all — the field comment said "ordinary and silent" and the invariant said

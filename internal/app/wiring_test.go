@@ -83,6 +83,7 @@ var wiringTable = []configOption{
 	{"Delegate", "delegate.enabled", "Bool", ""},
 	{"DelegateMaxIterations", "delegate.max_iterations", "Int", "DelegateMaxIterations"},
 	{"DelegateMaxResultBytes", "delegate.max_result_bytes", "Int", "DelegateMaxResultBytes"},
+	{"WorkspaceGates", "workspace.gates", "Bool", ""},
 	{"InstructionNotice", "instruction.notice", "Bool", ""},
 	{"InstructionForeign", "instruction.foreign", "String", ""},
 	{"DoneTimeout", "done.timeout", "String", "DoneTimeout"},

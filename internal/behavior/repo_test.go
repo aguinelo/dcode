@@ -146,3 +146,124 @@ func TestADetachedHeadIsNotGivenABranchName(t *testing.T) {
 		t.Errorf("a detached head is not stated:\n%s", out)
 	}
 }
+
+// The declared gates reach the prefix as facts, so the agent does not have to
+// read package.json to find out the project has a coverage gate.
+//
+// The audited project declared four and two had been red since the first day.
+// Nobody ran them, and the one that was green measured that one plus one is
+// two. Naming them is the floor of that; measuring them is done-qualifier.
+func TestTheDeclaredGatesReachThePrefix(t *testing.T) {
+	out, err := Build(Prompt{
+		Doctrine: DefaultDoctrine([]string{"read"}),
+		Workspace: &Workspace{Gates: []Gate{
+			{Name: "test", Command: "vitest run", Source: "package.json"},
+			{Name: "test:coverage", Command: "vitest run --coverage", Source: "package.json"},
+		}},
+	}, FormulationFor(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"test:coverage", "vitest run --coverage", "This workspace"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the prefix does not carry %q:\n%s", want, out)
+		}
+	}
+}
+
+// The sentence that keeps a list of gates from reading as a list of
+// guarantees. Without it this section would have produced the very defect that
+// asked for it.
+func TestTheGateListSaysNothingHasRunThem(t *testing.T) {
+	out, err := Build(Prompt{
+		Doctrine:  DefaultDoctrine([]string{"read"}),
+		Workspace: &Workspace{Gates: []Gate{{Name: "test", Command: "go test ./...", Source: "Makefile"}}},
+	}, FormulationFor(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	low := strings.ToLower(out)
+	if !strings.Contains(low, "nothing here says they pass") {
+		t.Errorf("the gate list does not disclaim passing:\n%s", out)
+	}
+	if !strings.Contains(low, "nothing has run them") {
+		t.Errorf("the gate list does not say nothing ran them:\n%s", out)
+	}
+}
+
+// A project that declares no gate gets no section, and nothing in the prefix
+// claims it declares none.
+//
+// The distinction from an absent repository is consequence: having no
+// repository changes what finishing the work means, while declaring no gate is
+// ordinary. Not every absence earns a line — what must not happen is an
+// absence nobody checked becoming a claim.
+func TestNoDeclaredGatesMeansNoClaim(t *testing.T) {
+	for name, ws := range map[string]*Workspace{
+		"nil":   nil,
+		"empty": {},
+	} {
+		out, err := Build(Prompt{Doctrine: DefaultDoctrine([]string{"read"}), Workspace: ws}, FormulationFor(""))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(strings.ToLower(out), "declares its own checks") {
+			t.Errorf("%s workspace rendered a gate section:\n%s", name, out)
+		}
+		if strings.Contains(strings.ToLower(out), "no checks") || strings.Contains(strings.ToLower(out), "declares none") {
+			t.Errorf("%s workspace produced a claim about having no gates:\n%s", name, out)
+		}
+	}
+}
+
+// A cut list says it was cut. Nothing in this codebase truncates in silence.
+func TestATruncatedGateListSaysSo(t *testing.T) {
+	out, err := Build(Prompt{
+		Doctrine:  DefaultDoctrine([]string{"read"}),
+		Workspace: &Workspace{Gates: []Gate{{Name: "a", Command: "x"}}, Truncated: true},
+	}, FormulationFor(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "not shown") {
+		t.Errorf("a truncated gate list did not say so:\n%s", out)
+	}
+}
+
+// The repository and the gates share one block, and both survive it.
+func TestTheWorkspaceBlockCarriesBothFacts(t *testing.T) {
+	out, err := Build(Prompt{
+		Doctrine:  DefaultDoctrine([]string{"read"}),
+		Repo:      &Repo{Branch: "fix/thing", MainBranch: "main", Clean: true},
+		Workspace: &Workspace{Gates: []Gate{{Name: "check", Command: "make check"}}},
+	}, FormulationFor(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"fix/thing", "make check"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the workspace block lost %q:\n%s", want, out)
+		}
+	}
+}
+
+// Build stays pure with the gates: the same probe must produce a
+// byte-identical prefix.
+func TestTheGateSectionIsPure(t *testing.T) {
+	ws := &Workspace{Gates: []Gate{
+		{Name: "a", Command: "1"}, {Name: "b", Command: "2"}, {Name: "c", Command: "3"},
+	}}
+	build := func() string {
+		out, err := Build(Prompt{Doctrine: DefaultDoctrine([]string{"read"}), Workspace: ws}, FormulationFor(""))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	first := build()
+	for i := 0; i < 5; i++ {
+		if build() != first {
+			t.Fatal("the same workspace produced a different prefix")
+		}
+	}
+}

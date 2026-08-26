@@ -88,9 +88,11 @@ type Prompt struct {
 	Tools        []string
 	Instructions []Instruction
 	SkillIndex   []SkillIndexEntry
-	// Repo is where the work is happening, frozen at session creation. Nil for
-	// a directory that is not a repository, which is ordinary and silent.
-	Repo *Repo
+	Repo         *Repo
+	// Workspace is what the project declares about itself, frozen at session
+	// creation. Nil when nothing was probed — and nil is silent, because a
+	// project that declares no gate is ordinary.
+	Workspace *Workspace
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
@@ -131,9 +133,21 @@ func Build(p Prompt, f Formulation) (string, error) {
 
 	// Before the project instructions and after the doctrine: it is context for
 	// reading them, not a rule that competes with them. A working agreement
-	// about branches is unreadable without knowing the branch.
+	// about branches is unreadable without knowing the branch, and one about a
+	// coverage floor is unreadable without knowing the project declares one.
+	//
+	// "This workspace" rather than "This repository": the block now carries the
+	// case where there is no repository, and a heading that says repository
+	// above a line saying there is none reads as a contradiction.
+	var facts []string
 	if rendered := renderRepo(p.Repo); rendered != "" {
-		writeBlock(&b, f, "This repository", rendered)
+		facts = append(facts, rendered)
+	}
+	if rendered := renderWorkspace(p.Workspace); rendered != "" {
+		facts = append(facts, rendered)
+	}
+	if len(facts) > 0 {
+		writeBlock(&b, f, "This workspace", strings.Join(facts, "\n\n"))
 	}
 
 	if rendered := renderInstructions(p.Instructions); rendered != "" {
