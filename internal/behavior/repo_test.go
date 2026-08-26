@@ -65,12 +65,55 @@ func TestACleanTreeIsStatedRatherThanLeftBlank(t *testing.T) {
 	}
 }
 
-// Not every directory is a repository, and that is ordinary rather than a
-// problem. No section at all beats a section saying nothing.
-func TestNoRepositoryMeansNoSection(t *testing.T) {
+// A workspace with no repository says so, once.
+//
+// It used to say nothing: nil rendered no section, and the invariant claimed
+// the prefix carries "nothing when it is not" a repository. An agent then
+// worked a full day in exactly that state — writing a project file of its own
+// that demanded a commit per task and a pull request per spec — and nothing
+// ever told it that none of that was possible.
+//
+// The line is a fact, not a warning: no diff, no review, no undo. What the
+// agent does with it is work anyway, having said it.
+func TestAWorkspaceWithNoRepositorySaysSo(t *testing.T) {
+	out := promptWith(t, &Repo{Absent: true})
+
+	low := strings.ToLower(out)
+	if !strings.Contains(low, "not a git repository") {
+		t.Errorf("the absence of a repository is not stated:\n%s", out)
+	}
+	for _, want := range []string{"history", "git init"} {
+		if !strings.Contains(low, want) {
+			t.Errorf("the line does not mention %q:\n%s", want, out)
+		}
+	}
+}
+
+// The absent case must not claim a branch, a tree state or a history it does
+// not have. Inventing "main" here is how an agent commits to a repository that
+// is not there.
+func TestAnAbsentRepositoryClaimsNothingElse(t *testing.T) {
+	out := promptWith(t, &Repo{Absent: true})
+	for _, unwanted := range []string{"Current branch:", "Main branch:", "Recent commits:", "Working tree:"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("an absent repository claimed %q:\n%s", unwanted, out)
+		}
+	}
+}
+
+// Nil is the snapshot that was never taken, and it stays silent.
+//
+// "We did not look" and "we looked and there is none" are different facts, and
+// only the second one is worth a line. Collapsing them would put a claim about
+// the workspace in the prefix on the strength of never having checked — which
+// is the defect the Absent field exists to remove.
+func TestASnapshotThatWasNeverTakenSaysNothing(t *testing.T) {
 	out := promptWith(t, nil)
+	if strings.Contains(strings.ToLower(out), "repository") {
+		t.Errorf("a snapshot that was never taken made a claim:\n%s", out)
+	}
 	if strings.Contains(strings.ToLower(out), "branch") {
-		t.Errorf("a directory that is not a repository got a git section:\n%s", out)
+		t.Errorf("a snapshot that was never taken got a git section:\n%s", out)
 	}
 }
 
