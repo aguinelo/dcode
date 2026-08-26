@@ -80,6 +80,7 @@ var behaviorInvariants = map[string]string{
 	"afirma que eles passam":                    "TestTheGateListSaysNothingHasRunThem",
 	"não gera seção":                            "TestNoDeclaredGatesMeansNoClaim",
 	"cortada diz que foi cortada":               "TestATruncatedGateListSaysSo",
+	"distinguidos pela fonte":                   "TestGatesThatShareANameAreToldApart",
 	"repositório e portões juntos":              "TestTheWorkspaceBlockCarriesBothFacts",
 	"pura com os portões":                       "TestTheGateSectionIsPure",
 	"**não executa** nenhum deles":              "TestPackageScriptsBecomeGates",

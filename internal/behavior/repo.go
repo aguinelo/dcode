@@ -155,17 +155,38 @@ func renderWorkspace(w *Workspace) string {
 	if w == nil || len(w.Gates) == 0 {
 		return ""
 	}
+	// A name that two sources both declare is qualified by its source.
+	//
+	// Found by running it: a project with a `test` script and a `test` target
+	// printed two rows called `test` with different commands, and nothing on
+	// screen said which was which. That is the same defect the task parser
+	// refuses in a `tasks.md` — two rows a reader cannot tell apart — and the
+	// Source was being carried and never shown.
+	//
+	// Only the ambiguous ones. Qualifying every row would spend a column on a
+	// distinction that almost never matters.
+	count := map[string]int{}
+	for _, g := range w.Gates {
+		count[g.Name]++
+	}
+	label := func(g Gate) string {
+		if count[g.Name] > 1 && g.Source != "" {
+			return g.Name + " (" + g.Source + ")"
+		}
+		return g.Name
+	}
+
 	width := 0
 	for _, g := range w.Gates {
-		if len(g.Name) > width {
-			width = len(g.Name)
+		if n := len(label(g)); n > width {
+			width = n
 		}
 	}
 
 	var b strings.Builder
 	b.WriteString("This project declares its own checks:\n")
 	for _, g := range w.Gates {
-		fmt.Fprintf(&b, "\n  %-*s  %s", width, g.Name, g.Command)
+		fmt.Fprintf(&b, "\n  %-*s  %s", width, label(g), g.Command)
 	}
 	if w.Truncated {
 		b.WriteString("\n  … more, not shown.")
