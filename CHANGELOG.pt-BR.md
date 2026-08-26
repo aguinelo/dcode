@@ -28,7 +28,8 @@ fora do pacote isolado.
 |---|---|
 | famílias de spec | 16, com 130 changelogs de decisão |
 | contratos comportamentais | 48 declarados |
-| **contratos medidos contra modelo** | **4** |
+| contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
+| **contratos de fato já medidos** | **5** |
 | cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.9.1** |
@@ -101,11 +102,28 @@ esconder sai de graça.
 **Delegação.** Um filho delegado escreve, dentro do que declarou possuir, com a
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
-**O que este documento não diz.** Que o sistema está verificado. Trinta e nove
-dos quarenta e dois contratos nunca rodaram contra um modelo, e o relatório da
-suíte imprime isso em toda execução para impedir a leitura contrária.
+**O que este documento não diz.** Que o sistema está verificado. Dos quarenta e
+três contratos que precisam de modelo, **trinta e oito nunca rodaram contra
+um**, e o relatório da suíte imprime a divisão em toda execução para impedir a
+leitura contrária.
+
+Os dois números acima são contados, não herdados. A linha dizia "4", da release
+anterior, e continuou 4 enquanto `boundary-decides-write` era medido — uma
+tabela descrevendo um estado que já tinha se movido, dentro do documento que
+existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **O número que diz o quão pouco está verificado estava ele mesmo desatualizado.**
+  A tabela dizia "4 contratos medidos contra modelo", herdado da release
+  anterior, enquanto `boundary-decides-write` já havia sido medido — e a frase
+  ao lado ainda dizia "trinta e nove dos quarenta e dois", números de uma árvore
+  com 42 contratos e não 48. Contados agora, e separados: 48 declarados, 43 que
+  precisam de modelo, 5 resolvidos por asserção, e **5 de fato já rodados**. A
+  linha existe para manter visível a distância entre "declarado" e "verificado",
+  e tinha parado de fazer isso.
 
 ## 0.9.1 — 27 de agosto de 2026
 
