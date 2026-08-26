@@ -109,11 +109,16 @@ func TestAnAbsentRepositoryClaimsNothingElse(t *testing.T) {
 // is the defect the Absent field exists to remove.
 func TestASnapshotThatWasNeverTakenSaysNothing(t *testing.T) {
 	out := promptWith(t, nil)
-	if strings.Contains(strings.ToLower(out), "repository") {
-		t.Errorf("a snapshot that was never taken made a claim:\n%s", out)
-	}
-	if strings.Contains(strings.ToLower(out), "branch") {
-		t.Errorf("a snapshot that was never taken got a git section:\n%s", out)
+	// Named claims, not a word scan. This used to sweep the whole prefix for
+	// "repository", which was fine until the doctrine's floor said "a summary
+	// written before the edits describes the repository as it was" — a
+	// sentence about writing summaries, failing a test about git. A guard that
+	// matches a loose string is a guard that goes wrong when the world moves,
+	// and this one did.
+	for _, claim := range []string{"This workspace", "not a git repository", "Current branch:", "Main branch:"} {
+		if strings.Contains(out, claim) {
+			t.Errorf("a snapshot that was never taken carried %q:\n%s", claim, out)
+		}
 	}
 }
 
