@@ -281,6 +281,10 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - A sobreposição alcança `Practices` e continua sem alcançar `Safety`, que não tem campo no tipo.
 - Piso substituído é reportado como `replaced`; sem sobreposição, `builtin`.
 - `Build` continua pura com a seção de práticas: mesma doutrina, prefixo byte-idêntico.
+- O piso embutido carrega a frase de que instrução do usuário ou do projeto **vence sem discussão**, e que se diz uma vez.
+- O piso embutido proíbe repetir-se, virar ressalva anexada ao trabalho, ou fazer o trabalho esperar resposta.
+- O piso embutido cobre os três defeitos que o motivaram: afirmação sobre caminho conferida, documento tornado obsoleto pelo próprio turno relido, e saída não-zero não descontada.
+- O teto de tamanho da doutrina **inclui** o piso — toda seção paga por turno entra na mesma conta.
 - `Verification` é função pura do registro de escrita e do registro de execução — mesmo registro, mesmo estado (RN-13).
 - Edição sem verificação posterior produz `stale`; verificação após a última edição com saída zero produz `passed`.
 - Sessão que só leu arquivos produz `clean`, e nenhum lembrete de verificação é emitido.
@@ -302,3 +306,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608170200 — O prefixo diz onde o agente está](changelog/202608170200-onde-o-agente-esta.md)
 - [202608252200 — Quem pergunta é o harness](changelog/202608252200-quem-pergunta-e-o-harness.md)
 - [202608262330 — A doutrina ganha um piso, e ele é sobreponível](changelog/202608262330-a-doutrina-ganha-um-piso.md)
+- [202608262345 — O texto do piso](changelog/202608262345-o-texto-do-piso.md)

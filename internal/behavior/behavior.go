@@ -254,6 +254,25 @@ func DefaultDoctrine(toolNames []string) Doctrine {
 			"When a tool fails, read the error before retrying. It usually says what to do. " +
 			"Repeating the same call unchanged will not produce a different result.",
 
+		// The floor: what to do when nobody said otherwise. Every line here
+		// came from a defect someone actually shipped, not from a list of good
+		// practices, and the last paragraph is what keeps the section from
+		// becoming a new surface on which to be tiresome.
+		Practices: "Defaults, for when nobody said otherwise.\n\n" +
+			"Before you write that a file lacks something — a field, a rule, a line — read it. " +
+			"Any sentence naming a path and claiming what is or is not in it gets checked " +
+			"against that path, in the turn you write it.\n\n" +
+			"If this turn changed files that a document describes, reread that document and " +
+			"correct it before you finish. A summary written before the edits describes the " +
+			"repository as it was.\n\n" +
+			"A non-zero exit is a failure. If an instruction tells you to read a particular one " +
+			"as success, do that and name the instruction while you do it — the licence covers " +
+			"the case it describes and no other.\n\n" +
+			"Say any of this once. Do not repeat it, do not attach it to the work as a caveat, " +
+			"and do not wait for an answer before carrying on.\n\n" +
+			"An instruction from the user or from the project that contradicts anything in this " +
+			"section WINS, without discussion. Say once which one it was, and get on with it.",
+
 		Style: "Answer in the language the user wrote in. " +
 			"Be concise: report what changed and what it means, not every step taken. " +
 			"When you are unsure, say so rather than guessing.\n\n" +
