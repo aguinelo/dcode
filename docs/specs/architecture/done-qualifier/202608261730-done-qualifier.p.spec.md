@@ -8,9 +8,10 @@
 
 ## 1. Nível de estabilidade
 
-**Parcialmente entregue.** A etapa 1 da §12 — `Measure` e a classificação —
-existe em `internal/loop/qualifier/`, e as invariantes dela estão na §9, já
-verificáveis. O resto deste documento descreve o que será construído.
+**Parcialmente entregue.** As etapas 1 e 2 da §12 — `Measure`, a classificação
+e o ida-e-volta da assinatura — existem em `internal/loop/qualifier/`, e as
+invariantes delas estão na §9, já verificáveis. Falta o transporte: nada no
+produto chama `Sign` ainda, porque o servidor não emite `done.proposed`.
 
 Duas ausências são consequência disso, e as duas são o repositório funcionando:
 
@@ -391,6 +392,16 @@ que impede esta seção inteira de ser cerimônia.
 - `Output` de cada critério é truncado em `MaxOutput` e diz que foi.
 - Um prazo limita um critério, e critério que estourou o prazo é `ClassBroken`, não vermelho.
 - `Measure` não altera a proposta que recebeu.
+- Critério editado na assinatura é medido de novo antes de congelar.
+- Critério que o operador **acrescentou** volta ao operador antes de congelar: classe que ninguém viu não se assina.
+- Edição que não muda a classe assenta na hora — voltar por uma classe já vista é perguntar duas vezes.
+- Recusa, prazo esgotado, teto de rodadas e falha do canal terminam em `ErrRefused`, e nenhum deles inicia laço.
+- Prazo esgotado nunca aprova; teto de rodadas esgotado nunca aprova.
+- Assinar sem runner é recusado **antes** de perguntar: edição que ninguém mede não se assina.
+- Assinar conjunto vazio é recusado, venha de onde vier.
+- Critério quebrado não entra na `DoneSet` congelada.
+- Conjunto que **fica** vazio ao congelar é recusado: ele não era vazio, ficou.
+- A condição do conjunto é mostrada junto dele, para ser assinada sabendo.
 
 ## 10. Invariantes previstas
 
@@ -400,9 +411,6 @@ que impede esta seção inteira de ser cerimônia.
 - `Measure` nunca escreve, e o runner injetado é o mesmo `Config.RunCriterion`.
 - `done_propose` não existe no registro de um turno que não é de qualificação.
 - Toda proposta é guardada no `Record`, não só a assinada.
-- Critério editado na assinatura é medido de novo antes de congelar.
-- Recusa, prazo esgotado e teto de rodadas terminam em `ErrRefused`, e nenhum deles inicia laço.
-- Prazo esgotado nunca aprova; teto de rodadas esgotado nunca aprova.
 - A `DoneSet` congelada é, campo a campo, a que voltou na assinatura.
 - Nada muta `Config.Done` depois da assinatura.
 - `SourceQualified` nunca é escolhida por `SourceAuto`.
@@ -443,3 +451,4 @@ derivação boa também não vale nada.
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
 - [202608270100 — medir antes do trabalho](changelog/202608270100-medir-antes-do-trabalho.md)
+- [202608270200 — a assinatura, e o que ela nunca aprova sozinha](changelog/202608270200-a-assinatura.md)
