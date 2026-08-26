@@ -278,6 +278,37 @@ that on every run to stop the opposite reading.
   time" without a line of code changing. The doctrine size cap now counts the
   floor — a cap that skips the newest section stops measuring what is most
   likely to grow — going from 3000 to 3900 with the same headroom as before.
+- **New `working-defaults` family, research only.** The floor: a handful of
+  things dcode does when nobody asked, each with a declared default, and a rule
+  saying who may change it. **Precedence is absolute and does not argue** — the
+  user's prompt outranks the project file, which outranks the built-in default,
+  and whoever is above *replaces* rather than negotiates. Overriding is
+  obeyed **and** reported once, and the spec spells out that reporting is not
+  asking: "the default is off, `DCODE.md` line 87" is a statement made once,
+  never a caveat attached to the work or a request to confirm. A fact cannot be
+  overridden, only a practice — `DCODE.md` can switch off the announcement that
+  there is no repository; it cannot make the workspace be one. The family's own
+  design rule: **whatever can become a fact in the prefix does not become
+  prose**, because prose is the weakest layer this repository recognises. Four
+  practices, deliberately few, each traced to a defect found by auditing a real
+  project. No `.p`, no code: spec at
+  `docs/specs/architecture/working-defaults/202608262200-working-defaults.r.spec.md`.
+- **`working-defaults` gains its `.p` and `.config`.** The design got shorter
+  than expected: **the precedence the `.r` asks for already exists**. `Build`
+  assembles the prefix in order, project instructions are the last block — the
+  position of greatest weight — and the `authority` table already ranks the
+  sources. So `prompt > project > default` is not machinery to build; it is a
+  consequence of the floor existing in the weakest position among rules. What
+  was missing is somewhere for the default layer to live. Practices become a
+  doctrine section with an overlay field — and `Safety` still has none, which
+  is the asymmetry that is the whole rule: safety has no field *because it
+  cannot be overridden*, and practices has one *because a floor that cannot be
+  overridden is not a floor*. `practices.md` replaces, never appends, because
+  appending to a floor produces two floors. A gate inventory reads
+  `package.json` and `Makefile`, runs nothing, and its block ends with a
+  sentence that is a non-configurable constant: nothing here says they pass —
+  without it a list of gates reads as a list of guarantees, which is the defect
+  that started the family.
 
 ## 0.8.0 — 26 August 2026
 
