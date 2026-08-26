@@ -114,6 +114,24 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
+- **The qualifier can be signed, and signing is editing.** `Sign` runs the
+  operator round trip: `SignedAnswer` carries the `DoneSet` **as they left it**,
+  not a verdict on the one proposed, because a binary gate turns "I disagree
+  with item 3" into "redo everything" and that cost lands on the operator until
+  they stop disagreeing. Any criterion they **edited** is measured again before
+  anything freezes — otherwise their own edit escapes the rule the package
+  exists for. An edit that does not change the class settles at once; one that
+  does, and any criterion they **added**, goes back once, because a class nobody
+  has seen must not be signed. Refusal, an expired deadline, an exhausted round
+  limit and **a failed channel** all end in `ErrRefused`, and none of them starts
+  a loop: the client going away is not somebody having said yes.
+- **A set that empties itself on the way out is refused.** Broken criteria are
+  dropped from the frozen `DoneSet` because they cannot run — but dropping them
+  can leave nothing, and nothing means "nothing to verify", which the loop
+  reports as **done**. The proposal was not empty; it *became* empty, and that
+  was the one door the rule did not cover. Found by a test written for something
+  else that passed when it should have failed.
+
 - **The qualifier can measure, and classify what it measured.**
   `internal/loop/qualifier` ships the deterministic half of `done-qualifier`:
   run every proposed criterion once against the repository as it stands, before

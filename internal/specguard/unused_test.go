@@ -23,12 +23,20 @@ import (
 // allowlist would grow silently every time someone found this test
 // inconvenient; a reason has to be written and can be argued with.
 var exportedWithoutUser = map[string]string{
-	// One line from the proposer to the human deciding, and no machine consumes
-	// it — which is exactly why nothing outside a test reads it yet. The reader
-	// is the signing surface, which is step 2 of the done-qualifier .p and is
-	// not built. Dropping the field would mean the operator reviews a list of
-	// commands with no word about what each is for.
-	"Why": "qualifier.Proposed.Why is the one line the proposer writes for the human signing the DoneSet; the signing surface that shows it is step 2 of the done-qualifier .i and is not built",
+	// The signing round trip, and the protocol it speaks. Step 2 of the
+	// done-qualifier .p is the qualifier deciding WHAT is asked; step 3 is the
+	// server carrying it. Nothing emits done.proposed yet, so nothing reads any
+	// of these outside a test.
+	//
+	// They ship together on purpose: Sign's whole shape is decided by what the
+	// operator can answer, and inventing the answer type later would mean
+	// rewriting the seam that made it testable without a server.
+	"Sign":              "qualifier.Sign runs the operator round trip; the server that emits done.proposed and carries the answer back is step 3 of the done-qualifier .i and is not built",
+	"EventDoneProposed": "the event that carries a measured definition of done to the operator; nothing emits it until the qualifier is wired into a session",
+	"EventDoneSigned":   "the event that announces the signed definition of done; same wiring, same PR",
+	"DoneProposal":      "the payload of done.proposed; declared with Sign because Sign's shape is decided by what the operator can answer",
+	"SignDoneRequest":   "the operator's answer, carrying the DoneSet as they left it rather than a verdict on the one proposed",
+	"Round":             "DoneProposal.Round, which is how the operator sees that an edit of theirs sent the proposal back; read by the client that does not exist yet",
 
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.

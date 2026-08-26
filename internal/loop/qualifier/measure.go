@@ -97,15 +97,13 @@ func Measure(ctx context.Context, p Proposal, run loop.CriterionRunner, timeout 
 	}
 
 	out := make([]Measured, 0, len(p.Criteria))
-	acceptance := 0
 	for _, c := range p.Criteria {
-		m := measureOne(ctx, c, run, timeout)
-		if m.Class == ClassAcceptance {
-			acceptance++
-		}
-		out = append(out, m)
+		out = append(out, measureOne(ctx, c, run, timeout))
 	}
-	return out, Conditions{NoAcceptance: acceptance == 0}, nil
+	// conditionsOf, not a second count here. Two places deciding what
+	// "nothing red" means is two places to keep in step, and the one that
+	// drifts is the one nobody reads.
+	return out, conditionsOf(out), nil
 }
 
 func measureOne(ctx context.Context, c Proposed, run loop.CriterionRunner, timeout time.Duration) Measured {
