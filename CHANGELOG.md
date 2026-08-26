@@ -28,7 +28,8 @@ isolated package.
 |---|---|
 | spec families | 16, with 130 decision changelogs |
 | behavioural contracts | 48 declared |
-| **contracts measured against a model** | **4** |
+| contracts needing a model | 43 of the 48; 5 are settled by assertion |
+| **contracts ever actually measured** | **5** |
 | coverage | 94.0%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.9.1** |
@@ -119,11 +120,27 @@ nothing.
 the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
-**What this document does not say.** That the system is verified. Thirty-nine of
-the forty-two contracts have never run against a model, and the suite prints
-that on every run to stop the opposite reading.
+**What this document does not say.** That the system is verified. Of the
+forty-three contracts that need a model, **thirty-eight have never run against
+one**, and the suite prints the split on every run to stop the opposite reading.
+
+The two numbers above are counted, not carried. The row used to read "4", from
+the release before this one, and it stayed 4 while `boundary-decides-write` was
+measured — a table describing a state that had moved, in the same document that
+exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **The number that says how little is verified was itself stale.** The state
+  table read "4 contracts measured against a model", carried from the release
+  before, while `boundary-decides-write` had been measured since — and the
+  sentence beside it still said "thirty-nine of the forty-two", numbers from a
+  tree with 42 contracts in it rather than 48. Counted now, and split: 48
+  declared, 43 needing a model, 5 settled by assertion, and **5 ever actually
+  run**. The row exists to keep the gap between "declared" and "verified"
+  visible, and it had quietly stopped doing that.
 
 ## 0.9.1 — 27 August 2026
 
