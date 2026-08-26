@@ -17,6 +17,24 @@ import (
 // depends on it, and a rule that needs a lookup first is a rule followed by
 // accident.
 type Repo struct {
+	// Absent marks a workspace that is not a repository at all.
+	//
+	// It used to be nil, and nil rendered nothing. The comment above the field
+	// said that was "ordinary and silent" and the invariant said the prefix
+	// carries "nothing when it is not". Ordinary, yes. Silent, no.
+	//
+	// An agent worked for a day in a directory with no repository: 191 lines of
+	// code, 35 spec files, and a project file of its own writing that demanded
+	// a commit per task, a pull request per spec and a coverage floor "for
+	// merging into main". None of it could happen and nothing said so. The
+	// absence is not a detail of the environment — it decides what finishing
+	// the work even means, because there is no diff for anyone to read, no
+	// review, and no undo that is not rewriting the file by hand.
+	//
+	// Nil still means the snapshot was not taken. "We did not look" and "we
+	// looked and there is none" are different facts, and only one of them is
+	// worth a line.
+	Absent bool
 	// Branch is empty when there is none to name — a detached head, or a
 	// repository with no commit yet.
 	Branch string
@@ -51,6 +69,20 @@ func renderRepo(r *Repo) string {
 	if r == nil {
 		return ""
 	}
+	if r.Absent {
+		// A fact, not a warning, and not a thing to ask permission about. The
+		// work goes ahead either way; what changes is that nobody finds out
+		// afterwards. Saying it once is the whole of it — repeating it every
+		// turn would be the nagging this deliberately is not.
+		return "This workspace is NOT a git repository.\n\n" +
+			"Nothing written here has history: there is no diff to review, no undo " +
+			"beyond rewriting a file by hand, and no commit, branch or pull request " +
+			"is possible. Any instruction that asks for one — yours, the project's, " +
+			"or your own plan's — cannot be carried out here.\n\n" +
+			"Say this once, plainly, before you first write, and offer `git init`. " +
+			"Then do the work as asked. Do not ask again, do not repeat it each turn, " +
+			"and do not make it a condition of starting."
+	}
 	var b strings.Builder
 	b.WriteString("A snapshot from when this session opened. It does not update, " +
 		"and your own commits move it — run git yourself when the answer has to be current.\n")
@@ -84,5 +116,65 @@ func renderRepo(r *Repo) string {
 			b.WriteString(c)
 		}
 	}
+	return b.String()
+}
+
+// Workspace is what the project declares about itself, as it stood when the
+// session opened.
+//
+// Data, never a reader — the same rule as Repo, for the same reason: Build is
+// pure and nothing here runs a command or touches a disk. Whoever creates the
+// session probes and passes the result in.
+//
+// Gate mirrors workspace.Gate rather than importing it. behavior imports
+// nothing that reads a disk, and a type alias would be an import.
+type Workspace struct {
+	// Gates are the commands the project declares as its own checks.
+	Gates []Gate
+	// Truncated marks a list that did not fit. Nothing in this codebase cuts
+	// output without saying so.
+	Truncated bool
+}
+
+// Gate is one declared check, at the prefix boundary.
+type Gate struct {
+	Name    string
+	Command string
+	Source  string
+}
+
+// renderWorkspace writes what the prefix says about the project's own checks,
+// or "" when there is nothing to say.
+//
+// Nothing to say is the common case and it is silent, unlike an absent
+// repository. The difference is consequence: having no repository changes what
+// finishing the work means, while declaring no gate is ordinary and changes
+// nothing. Not every absence earns a line — what must not happen is an absence
+// nobody checked becoming a claim.
+func renderWorkspace(w *Workspace) string {
+	if w == nil || len(w.Gates) == 0 {
+		return ""
+	}
+	width := 0
+	for _, g := range w.Gates {
+		if len(g.Name) > width {
+			width = len(g.Name)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("This project declares its own checks:\n")
+	for _, g := range w.Gates {
+		fmt.Fprintf(&b, "\n  %-*s  %s", width, g.Name, g.Command)
+	}
+	if w.Truncated {
+		b.WriteString("\n  … more, not shown.")
+	}
+	// The load-bearing sentence. Without it a list of gates reads as a list of
+	// guarantees, and this whole section would have produced the defect that
+	// asked for it: a project with four declared gates, two red since the first
+	// day, and nobody knowing.
+	b.WriteString("\n\nThese are what the project measures itself by. " +
+		"Nothing here says they pass, and nothing has run them.")
 	return b.String()
 }

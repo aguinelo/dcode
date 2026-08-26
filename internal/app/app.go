@@ -31,6 +31,7 @@ import (
 	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/tools"
 	"github.com/aguinelo/dcode/internal/vcs"
+	"github.com/aguinelo/dcode/internal/workspace"
 )
 
 // Options are the resolved settings for one session.
@@ -88,6 +89,14 @@ type Options struct {
 	DelegateMaxIterations int
 	// DelegateMaxResultBytes caps the child's report.
 	DelegateMaxResultBytes int
+	// WorkspaceGates switches the inventory of the project's declared checks
+	// on. On by default: the probe reads two files, runs nothing, and costs one
+	// read at session open. A cheap probe that ships off is a probe nobody
+	// turns on.
+	//
+	// It exists for the repository with a seventy-target Makefile, where the
+	// cap still leaves a list nobody reads.
+	WorkspaceGates bool
 	// InstructionNotice switches the session-start warning about untranslated
 	// instruction files on. It warns; it never blocks.
 	InstructionNotice bool
@@ -289,6 +298,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Unreadable:             sandbox.Unreadable(r.String("sandbox.unreadable", ""), env, sandbox.Paths(r.String("sandbox.sockets", ""), env)),
 		DelegateMaxIterations:  r.Int("delegate.max_iterations", 100),
 		DelegateMaxResultBytes: r.Int("delegate.max_result_bytes", 32768),
+		WorkspaceGates:         r.Bool("workspace.gates", true),
 		InstructionNotice:      r.Bool("instruction.notice", true),
 		InstructionForeign: r.String("instruction.foreign",
 			strings.Join(ForeignDefault, ",")),
@@ -597,7 +607,8 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// changes is that the attempt is now visible.
 	safetyNotices := behavior.SafetyClaims(instructions)
 
-	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts), repo)
+	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts), repo,
+		declaredGates(opts.Workspace, opts.WorkspaceGates))
 	if err != nil {
 		return nil, err
 	}
@@ -745,14 +756,40 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo) (string, error) {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo, ws *behavior.Workspace) (string, error) {
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(toolNames).Apply(overlay),
 		Tools:        toolNames,
 		Instructions: instructions,
 		SkillIndex:   index,
 		Repo:         repo,
+		Workspace:    ws,
 	}, behavior.FormulationFor(family))
+}
+
+// declaredGates probes what the project says it checks itself with, capped and
+// saying so when it cuts.
+//
+// Returns nil when the key is off or nothing was declared. Nil renders nothing,
+// and nothing is right: a project with no declared gate is ordinary, and the
+// prefix must not claim it declares none — it must simply not mention them.
+func declaredGates(dir string, enabled bool) *behavior.Workspace {
+	if !enabled {
+		return nil
+	}
+	found := workspace.Probe(context.Background(), dir)
+	if len(found) == 0 {
+		return nil
+	}
+	ws := &behavior.Workspace{}
+	if len(found) > workspace.MaxGates {
+		found = found[:workspace.MaxGates]
+		ws.Truncated = true
+	}
+	for _, g := range found {
+		ws.Gates = append(ws.Gates, behavior.Gate{Name: g.Name, Command: g.Command, Source: g.Source})
+	}
+	return ws
 }
 
 // loadInstructions builds the frozen instruction chain.

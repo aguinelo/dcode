@@ -521,14 +521,25 @@ func TestNoJudgeNamesAToolItsScenarioDoesNotOffer(t *testing.T) {
 // By ID boundary rather than by brace matching: the literals nest, and a regex
 // that tried to balance them would silently match too little — which is how a
 // guard ends up passing because it read nothing.
+//
+// For the LAST block, the end is the line whose only non-whitespace character
+// is `}`, which is the array's closing brace. Reading to EOF would swallow
+// whatever lives after Contracts — comments, helper functions, anything —
+// and a contract declared at the end would be judged against source that is
+// not its own. LastIndex("\n}") is the wrong tool: function bodies also end
+// with `\n}`, and they outnumber the array closer. The array closer is the
+// line that is nothing but `}`, which is unique to it.
 func splitContractBlocks(src string) map[string]string {
 	head := regexp.MustCompile(`\{ID: "([a-z0-9-]+)"`)
 	locs := head.FindAllStringSubmatchIndex(src, -1)
+	arrayEnd := regexp.MustCompile(`(?m)^}\s*$`)
 	out := map[string]string{}
 	for i, loc := range locs {
 		end := len(src)
 		if i+1 < len(locs) {
 			end = locs[i+1][0]
+		} else if m := arrayEnd.FindStringIndex(src[loc[1]:]); m != nil {
+			end = loc[1] + m[0]
 		}
 		out[src[loc[2]:loc[3]]] = src[loc[1]:end]
 	}

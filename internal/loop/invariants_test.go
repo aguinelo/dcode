@@ -105,3 +105,98 @@ func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {
 		t.Errorf("delegated-writing: %s", f)
 	}
 }
+
+// The /loop façade is one package down, and the specguard's own glob only
+// reaches internal/*/invariants_test.go — one level. A guard file inside
+// loopcommand/ would never be read, which is why the claim for that family
+// lives here.
+var loopCommandDirs = []string{filepath.Join(".", "loopcommand")}
+
+var loopCommandInvariants = map[string]string{
+	"não panic) para `tasks.md` malformado":  "TestLoadSpecMalformedReturnsError",
+	"sem nenhuma linha de tarefa":            "TestLoadSpecWithoutTaskLinesIsAnError",
+	"declaração de zero critérios":           "TestLoadSpecZeroCriteriaIsNotAnError",
+	"não é sintaxe":                          "TestLoadSpecSeparatorIsNotSyntax",
+	"sem comando entre crases":               "TestLoadSpecBadVerifyNamesTheLine",
+	"não lê como `, exit: K`":                "TestLoadSpecUnreadableExitCodeIsAnError",
+	"mesmo número de tarefa duas vezes":      "TestLoadSpecDuplicateTaskNumberIsAnError",
+	"régua do markdown":                      "TestLoadSpecHorizontalRuleIsNotFrontmatter",
+	"preserva a ordem de aparição":           "TestLoadSpecPreservesOrder",
+	"vira critério igual a":                  "TestLoadSpecCheckedTaskIsStillACriterion",
+	"união do declarado no arquivo":          "TestLoadSpecWithProtectLayersBoth",
+	"aparece uma vez só":                     "TestLoadSpecProtectIsNotDuplicated",
+	"nenhum caminho é protegido por posição": "TestLoadSpecWithoutProtectDeclaresNothing",
+	"ignora a presença de `done.toml`":       "TestLoadSourceLoopSpecReadsFile",
+	"ignora a presença de `specPath`":        "TestLoadSourceDoneFileIgnoresSpecPath",
+	"cai no `verifyCommand` legado":          "TestLoadSourceAutoMissingSpecFallsThroughToVerify",
+	"presente e ilegível":                    "TestLoadSourceAutoMalformedSpecIsAnError",
+	"mesmos argumentos, mesma `DoneSet`":     "TestLoadIsDeterministic",
+	"igual ao `DoneSet` da `LoopSpec`":       "TestSessionConfigDoneMatchesSpec",
+	"se e só se há ao menos um critério":     "TestSessionConfigDoneEnabledReflectsCriteria",
+	"carrega prefixo, basename e instante":   "TestSessionConfigNameCarriesPrefixSpecAndInstant",
+	"a fachada não tem orçamento próprio":    "TestSessionConfigCarriesTheLimitsUntouched",
+}
+
+// This replaces a test that claimed the same family and asserted nothing: it
+// built a map it never read, then compared a constant to itself. It existed so
+// the specguard's strings.Contains would find the family name in a file, and it
+// could not fail. A guard that a literal satisfies is a guard that a literal
+// will satisfy — the fix is to run the real check, which reads every line of
+// the `.p §8` and fails when a named test does not exist.
+func TestEveryLoopCommandInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "loop-command", loopCommandDirs, loopCommandInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("loop-command: %s", f)
+	}
+}
+
+// The qualifier is one package down, and the specguard's glob reaches only
+// internal/*/invariants_test.go — one level. Same reason loopcommand's claim
+// lives here.
+var qualifierDirs = []string{filepath.Join(".", "qualifier")}
+
+var qualifierInvariants = map[string]string{
+	"exatamente uma vez, na ordem proposta":   "TestEveryCriterionRunsOnceInOrder",
+	"produzem `ClassBroken`":                  "TestNothingToRunIsBrokenAndNotRed",
+	"nunca `Exit == 0`":                       "TestPassingIsComparedAgainstTheDeclaredExitCode",
+	"legítimas por motivos opostos":           "TestFailingIsAcceptanceAndPassingIsRegression",
+	"não é discordância; é condição própria":  "TestNothingToRunIsBrokenAndNotRed",
+	"discordância entre o que o proponente":   "TestTheDisagreementIsFlagged",
+	"devolve `ErrEmptyProposal`":              "TestAnEmptyProposalIsAnError",
+	"nomeado** e nunca recusado":              "TestASetWithNothingRedIsNamedAndNotRefused",
+	"Medir sem runner é erro":                 "TestNoRunnerIsAnError",
+	"truncado em `MaxOutput`":                 "TestOutputIsCappedAndSaysSo",
+	"prazo limita um critério":                "TestATimeoutBoundsOneCriterion",
+	"não altera a proposta que recebeu":       "TestMeasureLeavesTheProposalAlone",
+	"medido de novo antes de congelar":        "TestAnEditedCriterionIsMeasuredAgain",
+	"**acrescentou** volta ao operador":       "TestAnAddedCriterionGoesBackOnce",
+	"assenta na hora":                         "TestAnEditThatKeepsTheClassSettlesAtOnce",
+	"falha do canal terminam em `ErrRefused`": "TestAFailedAskIsARefusal",
+	"Prazo esgotado nunca aprova":             "TestTheDeadlineRefusesAndNeverApproves",
+	"Assinar sem runner é recusado":           "TestSigningWithNoRunnerIsRefusedUpFront",
+	"Assinar conjunto vazio é recusado":       "TestSigningAnEmptySetIsRefused",
+	"quebrado não entra na `DoneSet`":         "TestABrokenCriterionDoesNotReachTheFrozenSet",
+	"**fica** vazio ao congelar":              "TestASetThatEmptiesItselfIsRefused",
+	"mostrada junto dele":                     "TestTheConditionIsShownWithTheSet",
+}
+
+func TestEveryQualifierInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "done-qualifier", qualifierDirs, qualifierInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("done-qualifier: %s", f)
+	}
+}

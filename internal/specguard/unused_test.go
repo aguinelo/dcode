@@ -23,6 +23,21 @@ import (
 // allowlist would grow silently every time someone found this test
 // inconvenient; a reason has to be written and can be argued with.
 var exportedWithoutUser = map[string]string{
+	// The signing round trip, and the protocol it speaks. Step 2 of the
+	// done-qualifier .p is the qualifier deciding WHAT is asked; step 3 is the
+	// server carrying it. Nothing emits done.proposed yet, so nothing reads any
+	// of these outside a test.
+	//
+	// They ship together on purpose: Sign's whole shape is decided by what the
+	// operator can answer, and inventing the answer type later would mean
+	// rewriting the seam that made it testable without a server.
+	"Sign":              "qualifier.Sign runs the operator round trip; the server that emits done.proposed and carries the answer back is step 3 of the done-qualifier .i and is not built",
+	"EventDoneProposed": "the event that carries a measured definition of done to the operator; nothing emits it until the qualifier is wired into a session",
+	"EventDoneSigned":   "the event that announces the signed definition of done; same wiring, same PR",
+	"DoneProposal":      "the payload of done.proposed; declared with Sign because Sign's shape is decided by what the operator can answer",
+	"SignDoneRequest":   "the operator's answer, carrying the DoneSet as they left it rather than a verdict on the one proposed",
+	"Round":             "DoneProposal.Round, which is how the operator sees that an edit of theirs sent the proposal back; read by the client that does not exist yet",
+
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.
 	"DeleteSession": "pkg/client is the public API; a consumer deletes sessions",
@@ -53,6 +68,21 @@ var exportedWithoutUser = map[string]string{
 
 	// The eval harness, behind its own build tag and run by `make eval`.
 	"ContractByID": "eval harness, behind the eval build tag",
+
+	// /loop builds the loop.Config a dedicated session is born with. The caller
+	// is the client-side `/loop` command path — Step 3 of the family's `.i` —
+	// and it has not been built, so nothing in the product reaches this yet.
+	// Same shape as ContractByID: capability first, caller later.
+	//
+	// This exemption is the honest record of that. While it stands, `/loop` is
+	// not typeable, and any document saying otherwise is wrong.
+	"SessionConfig": "loopcommand.SessionConfig builds the loop.Config a /loop session is born with; the client wiring that calls it is Step 3 of the family's .i and is not built",
+
+	// Typed surface for the four loop.* settings declared in KnownKeys. The
+	// function reads each key by name so the wiring guard sees them in source
+	// and so a future caller has a typed struct rather than four strings.
+	// Today no caller exists — same Step 3 as above.
+	"OptionsFromConfig": "loopcommand.OptionsFromConfig turns resolved layer values into the typed loop.Options; the caller that reads it is Step 3 of the loop-command .i and is not built",
 }
 
 func TestEveryExportedNameHasAUserOrAWrittenReason(t *testing.T) {
