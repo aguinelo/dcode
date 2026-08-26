@@ -520,6 +520,48 @@ own — the stream cursor moves with nothing saying where it is.
 
 ---
 
+## 12. A façade for spec-shaped work: `/loop`
+
+**The shape.** The turn loop already runs against a `DoneSet` and exits by
+progress (`agent-loop` RN-10). `done.toml` is one way to feed it. A `tasks.md`
+shaped like `- [ ] N. \`path\` — desc. verify: \`cmd\`` is another — and it is
+the shape the **Code Plain** platform uses for 16 specs. `/loop` reads one such
+directory and produces the same `DoneSet`, in a dedicated session, with no
+change to the turn cycle itself.
+
+**What this is and is not.** It is a façade, not a new loop. `internal/loop/`
+stays untouched. The new package is `internal/loop/loopcommand/`, and it
+consumes the same `Criterion`, `DoneSet`, `StopReason` and `Progressed` as
+`done.toml` does today. The work is: a parser (`LoadSpec`), a dispatch
+between sources (`Load`), recognition of `/loop` in the client (so the command
+text does not enter the history), and the creation of a dedicated session with
+the resulting `DoneSet`. Spec at
+`docs/specs/architecture/loop-command/202608252000-loop-command.*.spec.md`.
+
+**The hard call.** `Protected` is declared, not inferred. The harness does
+not decide what counts as the measurement — the operator does, in the
+`tasks.md` frontmatter or via `--protect`. The Code Plain platform must
+freeze the format of `tasks.md` (Step 5 of the spec's `.i`) before this can
+move from `experimental` to `stable`; without that, the parser speaks to a
+format nobody owns.
+
+**Why here and not "delivered".** The parser, the dispatch between sources and
+the `loop.Config` builder are in `internal/loop/loopcommand/`, tested and
+guarded. What is missing is the half that makes it a command: recognising
+`/loop` in the client, creating the dedicated session, running the turn and
+closing it. Until that exists nothing in the product calls the package, and
+`/loop` is not typeable — which is why this card is here and not in the
+delivered list.
+
+**One invariant that turned out not to exist.** The spec's first draft called
+"`Progressed` must keep firing when the `DoneSet` came from a `LoopSpec`" its
+most important test. There is no such test because there is no such path: the
+`DoneSet` is a value and the engine does not know where it came from. That is
+precisely what "façade, not a new machine" buys. If Step 3 ever introduces its
+own execution path, that is when the invariant is born.
+
+---
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -550,6 +592,7 @@ has not weakened.
 | **3** — the vacuous contract | Nothing to do until 4 moves. |
 | **10** — what v5 asks for and we do not have | After the client phases land. The card ships without progress, so the protocol event is not blocking anything visible — and deciding it under pressure from a half-built card is how a versioned surface gets the wrong shape. |
 | **9** — the small ones | Whenever they are in the way. |
+| **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
 and each redesign was pushing the model toward a behaviour rather than measuring

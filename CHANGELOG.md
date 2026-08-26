@@ -114,7 +114,33 @@ that on every run to stop the opposite reading.
 
 ## Unreleased
 
-_Nothing yet._
+- **New `loop-command` family: the parser, not the command.** A third source
+  for the RN-10 done definition — a `tasks.md`-shaped directory alongside
+  `.dcode/done.toml` and the legacy verify command. `internal/loop/loopcommand/`
+  parses one into a `loop.DoneSet` and builds the `loop.Config` a dedicated
+  session would be born with. **`/loop` is not typeable yet**: recognising it in
+  the client is Step 3 of the family's `.i` and has not been built, so nothing
+  in the product calls this package. The turn cycle is untouched, which is the
+  point — it consumes the same types and StopReasons as `done.toml` does today.
+  Spec at `docs/specs/architecture/loop-command/202608252000-loop-command.*.spec.md`.
+- **Only `- [ ] N.` and `` verify: `cmd` `` are syntax.** The parser required a
+  literal em dash between the task number and its description, so a `tasks.md`
+  written with a plain hyphen yielded zero criteria and no error — and zero
+  criteria is "no definition of done", which the loop reports as done. Nothing
+  about punctuation is a contract now.
+- **A `tasks.md` that cannot be read is an error, not an empty `DoneSet`.** The
+  parser skipped every line it did not recognise, so a file of prose came back
+  with no criteria and no error: an unreadable spec became a green report. A
+  file with no task line at all now fails, and a `verify:` with no command, an
+  unreadable exit code, or a repeated task number each fail naming the line.
+  A file whose tasks simply carry no command is still zero criteria, not an
+  error — that is the one legitimate empty.
+- **A missing spec falls through to the legacy verify command again.** The
+  dispatcher asked `os.IsNotExist` about an error wrapped with `%w`, which does
+  not follow the chain, so every absent spec path came back as a hard error
+  under a comment saying it fell through. A spec that is *present and
+  unreadable* is still an error — running the old command under a spec the user
+  believes was loaded is the failure that distinction prevents.
 
 ## 0.8.0 — 26 August 2026
 

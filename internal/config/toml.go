@@ -74,6 +74,10 @@ var KnownKeys = map[string]string{
 	"doctrine.enabled":              "DCODE_DOCTRINE_ENABLED",
 	"doctrine.dir":                  "DCODE_DOCTRINE_DIR",
 	"doctrine.max_bytes":            "DCODE_DOCTRINE_MAX_BYTES",
+	"loop.spec_path":                "DCODE_LOOP_SPEC_PATH",
+	"loop.source":                   "DCODE_LOOP_SOURCE",
+	"loop.protect":                  "DCODE_LOOP_PROTECT",
+	"loop.session_prefix":           "DCODE_LOOP_SESSION_PREFIX",
 	// The eval keys are read by the measurement harness, never by the product.
 	// They live in the same schema anyway: a key that governs behaviour and
 	// cannot be inspected with `--config` is the gap the audit pair closes,
