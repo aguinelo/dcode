@@ -263,3 +263,4 @@ vezes, que a menção não vira pergunta, e que o trabalho não espera por ela.
 ## 8. Changelog
 
 - [202608262200 — o piso de prática e quem pode mudá-lo](changelog/202608262200-piso-de-pratica.md)
+- [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)

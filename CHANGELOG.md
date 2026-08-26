@@ -129,6 +129,22 @@ that on every run to stop the opposite reading.
   practices, deliberately few, each traced to a defect found by auditing a real
   project. No `.p`, no code: spec at
   `docs/specs/architecture/working-defaults/202608262200-working-defaults.r.spec.md`.
+- **`working-defaults` gains its `.p` and `.config`.** The design got shorter
+  than expected: **the precedence the `.r` asks for already exists**. `Build`
+  assembles the prefix in order, project instructions are the last block — the
+  position of greatest weight — and the `authority` table already ranks the
+  sources. So `prompt > project > default` is not machinery to build; it is a
+  consequence of the floor existing in the weakest position among rules. What
+  was missing is somewhere for the default layer to live. Practices become a
+  doctrine section with an overlay field — and `Safety` still has none, which
+  is the asymmetry that is the whole rule: safety has no field *because it
+  cannot be overridden*, and practices has one *because a floor that cannot be
+  overridden is not a floor*. `practices.md` replaces, never appends, because
+  appending to a floor produces two floors. A gate inventory reads
+  `package.json` and `Makefile`, runs nothing, and its block ends with a
+  sentence that is a non-configurable constant: nothing here says they pass —
+  without it a list of gates reads as a list of guarantees, which is the defect
+  that started the family.
 
 ## 0.8.0 — 26 August 2026
 
