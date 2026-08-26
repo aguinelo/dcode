@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 25 August 2026
+## Current state — 27 August 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -26,12 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 13, with 119 decision changelogs |
-| behavioural contracts | 44 declared |
+| spec families | 16, with 130 decision changelogs |
+| behavioural contracts | 48 declared |
 | **contracts measured against a model** | **4** |
-| coverage | 94.1%, gate at 90% |
+| coverage | 94.0%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.8.0** |
+| published version | **0.9.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -46,6 +46,19 @@ applies the same rule by reading the digests from the installer on `main`.
 Homebrew is not a channel yet — the tap was published to for one release and had
 never been created. Removed rather than left running; `docs/ROADMAP.md` §9 says
 what creating it would take.
+
+**The floor.** A short list of things dcode does when nobody asked, and a rule
+saying who may change it. The user's prompt outranks the project file, which
+outranks the built-in default, and whoever is above **replaces** rather than
+negotiates — no confirmation, no weighing, no notice that this contradicts good
+practice. Overriding is obeyed *and* stated once, and stating is not asking.
+
+None of it needed a precedence resolver: the prefix is assembled in order and
+the project's instructions are the last block, so a default rendered before them
+is outranked by anything anyone actually said. What can be a **fact** is a fact
+rather than prose — that there is no repository, and which checks the project
+declares — because prose is the weakest layer this repository recognises, and a
+rule that needs a lookup first is a rule followed by accident.
 
 **The interface.** The conversation gets the terminal. The file column starts
 hidden and `^B` summons it; the conversation list is an overlay on `^R`, which
@@ -112,7 +125,7 @@ that on every run to stop the opposite reading.
 
 ---
 
-## Unreleased
+## 0.9.0 — 27 August 2026
 
 - **The qualifier can be signed, and signing is editing.** `Sign` runs the
   operator round trip: `SignedAnswer` carries the `DoneSet` **as they left it**,
