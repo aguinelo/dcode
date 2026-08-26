@@ -107,6 +107,16 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ---
 
+## Não lançado
+
+- **Dois portões com o mesmo nome passam a ser distinguidos na tela.** Achado
+  rodando a 0.9.0: um projeto com script `test` no `package.json` e alvo `test`
+  no `Makefile` imprimia duas linhas chamadas `test`, com comandos diferentes, e
+  nada dizia qual era qual. O `Source` era carregado e nunca mostrado. É o mesmo
+  defeito que o parser de tarefas recusa num `tasks.md` — duas linhas que o
+  leitor não distingue — chegando pela outra ponta da mesma release. Só os
+  ambíguos são qualificados.
+
 ## 0.9.0 — 27 de agosto de 2026
 
 - **Workspace sem repositório git diz isso, uma vez.** `Repo` era `nil` para um

@@ -272,3 +272,36 @@ func TestTheGateSectionIsPure(t *testing.T) {
 		}
 	}
 }
+
+// Two sources declaring the same name are told apart on screen.
+//
+// Found by running the release: a project with a `test` script in package.json
+// and a `test` target in the Makefile printed two rows called `test` with
+// different commands, and nothing said which was which. Source was being
+// carried and never shown.
+//
+// It is the same defect the task parser refuses in a tasks.md — two rows a
+// reader cannot tell apart — arriving at the other end of the same session.
+func TestGatesThatShareANameAreToldApart(t *testing.T) {
+	out, err := Build(Prompt{
+		Doctrine: DefaultDoctrine([]string{"read"}),
+		Workspace: &Workspace{Gates: []Gate{
+			{Name: "test", Command: "vitest run", Source: "package.json"},
+			{Name: "lint", Command: "eslint .", Source: "package.json"},
+			{Name: "test", Command: "make test", Source: "Makefile"},
+		}},
+	}, FormulationFor(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"test (package.json)", "test (Makefile)"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the prefix does not carry %q:\n%s", want, out)
+		}
+	}
+	// The one that is unambiguous stays unqualified: spending a column on a
+	// distinction that does not exist is noise on every other project.
+	if strings.Contains(out, "lint (package.json)") {
+		t.Errorf("an unambiguous gate was qualified anyway:\n%s", out)
+	}
+}

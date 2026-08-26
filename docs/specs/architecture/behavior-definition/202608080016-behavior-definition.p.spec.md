@@ -303,6 +303,7 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - A lista de portões declara que **nada** ali afirma que eles passam, e que nada os rodou.
 - Projeto que não declara portão não gera seção, e o prefixo não afirma que ele não declara nenhum.
 - Lista de portões cortada diz que foi cortada.
+- Portões que duas fontes declaram com o mesmo nome são distinguidos pela fonte; os inequívocos não são.
 - O bloco do workspace carrega repositório e portões juntos, e nenhum dos dois apaga o outro.
 - `Build` continua pura com os portões: mesma sonda, prefixo byte-idêntico.
 - A sonda de portões lê `package.json` e `Makefile`, e **não executa** nenhum deles.
