@@ -273,7 +273,14 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - `safety.md` presente na raiz do usuário não altera o prompt **e** produz `Notice`.
 - Truncamento por teto produz `Notice`; nenhum caminho trunca em silêncio.
 - Sobreposição resolvida após a criação da sessão não altera o prefixo (RN-5); não há caminho de código para isso.
-- A auditoria do prompt reporta `Origin` para as quatro seções, e `Safety` é sempre `OriginBuiltin`.
+- A auditoria do prompt reporta `Origin` para **cada** seção da doutrina, e `Safety` é sempre `OriginBuiltin`.
+- `Practices` vazia **não** faz `Build` falhar; `Identity` e `Safety` vazias continuam fazendo.
+- A seção de práticas é renderizada depois de `Safety` e antes da política de ferramenta — a posição é a precedência.
+- As instruções do projeto continuam sendo o último bloco do prefixo, e por isso vencem o piso sem máquina nenhuma.
+- `practices.md` **substitui** o texto embutido; não existe variante que acrescenta.
+- A sobreposição alcança `Practices` e continua sem alcançar `Safety`, que não tem campo no tipo.
+- Piso substituído é reportado como `replaced`; sem sobreposição, `builtin`.
+- `Build` continua pura com a seção de práticas: mesma doutrina, prefixo byte-idêntico.
 - `Verification` é função pura do registro de escrita e do registro de execução — mesmo registro, mesmo estado (RN-13).
 - Edição sem verificação posterior produz `stale`; verificação após a última edição com saída zero produz `passed`.
 - Sessão que só leu arquivos produz `clean`, e nenhum lembrete de verificação é emitido.
@@ -308,3 +315,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608252200 — Quem pergunta é o harness](changelog/202608252200-quem-pergunta-e-o-harness.md)
 - [202608270015 — Os portões que o projeto declara](changelog/202608270015-os-portoes-que-o-projeto-declara.md)
 - [202608262100 — workspace sem histórico deixa de ser silencioso](changelog/202608262100-workspace-sem-historico-fala.md)
+- [202608262330 — A doutrina ganha um piso, e ele é sobreponível](changelog/202608262330-a-doutrina-ganha-um-piso.md)

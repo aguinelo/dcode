@@ -246,6 +246,25 @@ that on every run to stop the opposite reading.
   caught the first version of this change claiming "not a repository" about a
   read that never completed, which is the same defect inside the commit that
   removed it.
+- **The doctrine gains a floor, and it is overridable.** `Doctrine.Practices` is
+  what dcode does when nobody asked. The asymmetry with `Safety` is the whole
+  rule: Safety has no field in `DoctrineOverlay` *because it cannot be
+  overridden* — a lock by type, not by convention — and Practices has one
+  *because a floor that cannot be overridden is not a floor, it is a rule
+  pretending to be a default*. An empty Practices does not fail `Build`, unlike
+  Identity and Safety, because a floor switched off is a legitimate choice.
+  `practices.md` replaces the shipped text and there is no appending variant:
+  appending to a floor produces two floors, and switching off one practice is a
+  line in the project file, which is rendered later and therefore wins.
+- **The precedence needed no machinery.** `prompt > project > default` falls out
+  of position: the floor renders after Safety and before anything anyone
+  actually said, and the project's instructions stay the last block of the
+  prefix. Two invariants guard it, and the second is the load-bearing one — the
+  day project instructions stop being last, the floor starts outranking what
+  should outrank it and nothing else in the code would say so.
+  The section ships **empty**: with no text, `Build`'s output is byte-identical
+  to before, and there is a test for that. The text is the next step, and it
+  goes alone so it can be rewritten without taking the structure with it.
 
 ## 0.8.0 — 26 August 2026
 
