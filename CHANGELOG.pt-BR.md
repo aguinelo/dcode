@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 25 de agosto de 2026
+## Estado atual — 27 de agosto de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -26,12 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 13, com 119 changelogs de decisão |
-| contratos comportamentais | 44 declarados |
+| famílias de spec | 16, com 130 changelogs de decisão |
+| contratos comportamentais | 48 declarados |
 | **contratos medidos contra modelo** | **4** |
-| cobertura | 94,1%, com gate em 90% |
+| cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.8.0** |
+| versão publicada | **0.9.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -107,9 +107,63 @@ suíte imprime isso em toda execução para impedir a leitura contrária.
 
 ---
 
-## Não lançado
+## 0.9.0 — 27 de agosto de 2026
 
-_Nada ainda._
+- **Workspace sem repositório git diz isso, uma vez.** `Repo` era `nil` para um
+  diretório que não é repositório, e `nil` não punha nada no prefixo — o
+  comentário do campo dizia "ordinary and silent" e a invariante dizia que o
+  prefixo carrega "nada quando não é". Ordinário, sim; silencioso, não. Sem
+  repositório não há diff para revisar, nem desfazer que não seja reescrever o
+  arquivo à mão, nem commit, branch ou PR — então todo acordo de trabalho que um
+  arquivo de projeto descreve está descrevendo maquinário que não existe. Achado
+  em auditoria: um agente trabalhou um dia inteiro exatamente nesse estado,
+  escrevendo o próprio arquivo de projeto exigindo um commit por tarefa, e nada
+  lhe disse. O prefixo passa a afirmá-lo como fato, com a instrução de dizer uma
+  vez, oferecer `git init`, e seguir o trabalho.
+- **"Não olhei" e "olhei e não há" continuam separados.** `nil` passa a
+  significar só o primeiro, e segue calado. Três guardas numa função só mantêm a
+  distinção, e a do prazo cancelado não foi previsão: um teste que já existia
+  reprovou a primeira versão desta mudança, que afirmava "não é repositório"
+  sobre uma leitura que nunca completou.
+- **A doutrina ganha um piso, e ele é sobreponível.** `Doctrine.Practices` é o
+  que o dcode faz quando ninguém pediu. A assimetria com `Safety` é a regra
+  inteira: `Safety` não tem campo no overlay **porque não pode ser sobreposta**
+  — trava por tipo, não por convenção — e `Practices` tem **porque um piso que
+  não pode ser sobreposto não é piso, é regra fingindo ser default**.
+  `practices.md` substitui e nunca acrescenta.
+- **A precedência não precisou de máquina nenhuma.** `prompt > projeto >
+  default` sai da posição: o piso é renderizado depois da `Safety` e antes de
+  tudo que alguém efetivamente disse, e as instruções do projeto seguem sendo o
+  último bloco do prefixo. Duas invariantes guardam isso, e a segunda é a que
+  carrega peso — no dia em que as instruções do projeto deixarem de ser as
+  últimas, o piso passa a vencer quem devia vencê-lo e nada mais no código diria.
+- **O piso tem texto: três práticas e as duas regras sobre elas.** Conferir
+  antes de afirmar que falta algo num arquivo; reler o documento que o próprio
+  turno tornou obsoleto; saída não-zero é falha, e se uma instrução mandar ler
+  uma delas como sucesso, obedecer **e citar a instrução**. Nenhuma saiu de lista
+  de boas práticas; as três são defeitos que alguém entregou. Dois parágrafos
+  não são práticas e sim regras sobre elas: dizer isso **uma vez**, nunca como
+  ressalva anexada ao trabalho e nunca esperando resposta; e instrução do usuário
+  ou do projeto que contradiga a seção **vence sem discussão**.
+- **O prefixo nomeia os portões que o projeto declara.** `internal/workspace` lê
+  os scripts do `package.json` e os alvos do `Makefile`. O projeto auditado
+  declarava quatro, dois vermelhos desde o primeiro dia, e o único verde media
+  `1 + 1 === 2`. A lista termina numa frase que é constante não configurável:
+  *nada aqui afirma que eles passam, e nada os rodou*. Sem ela, lista de portões
+  lê como lista de garantias — que é o defeito que pediu a seção.
+- **`This repository` virou `This workspace`**, porque o bloco já carregava a
+  linha dizendo que **não** há repositório.
+- **O qualificador mede antes do trabalho, e classifica.** Critério que **falha**
+  é aceitação — testemunha que o trabalho aconteceu; o que **passa** é guarda de
+  regressão. Passar é `Exit == ExitCode`, nunca `Exit == 0`; 126 e 127 e falha ao
+  iniciar são **quebrado**, não vermelho.
+- **O qualificador pode ser assinado, e assinar é editar.** Critério editado é
+  medido de novo antes de congelar. Recusa, prazo, teto de rodadas e **falha do
+  canal** terminam em `ErrRefused`. E conjunto que **fica** vazio ao congelar é
+  recusado: ele não era vazio, ficou — a única porta que a regra não cobria.
+- **A `loop-command` deixou de afirmar mais do que faz.** Só `- [ ] N.` e
+  `` verify: `cmd` `` são sintaxe; `tasks.md` que não dá para ler é erro, não
+  `DoneSet` vazia; e o fall-through de `SourceAuto` voltou a existir.
 
 ## 0.8.0 — 26 de agosto de 2026
 
