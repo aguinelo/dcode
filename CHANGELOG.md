@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 131 decision changelogs |
+| spec families | 16, with 132 decision changelogs |
 | behavioural contracts | 48 declared |
 | contracts needing a model | 43 of the 48; 5 are settled by assertion |
 | **contracts ever actually measured** | **5** |
@@ -130,6 +130,17 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **A spec folder can declare its own `done.toml`.** Measured against the 17
+  real Code Plain specs, `/loop` returned zero criteria in every one: their
+  tasks carry no `verify:` marker and their acceptance criteria are sentences —
+  *"Lighthouse ≥ 95"* — which no parser may turn into a command without
+  inventing one. The folder now has somewhere to say it in commands. Same name
+  and format as the workspace's file, one parser; it wins over `tasks.md`, an
+  empty one is an error rather than a fall-through, and an absent one is
+  ordinary.
 
 ## 0.10.0 — 27 August 2026
 

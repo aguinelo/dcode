@@ -452,7 +452,7 @@ var catalogue = map[Lang]Strings{
 		CmdLoopUsage:     "Usage: /loop <path to a folder holding tasks.md> [--protect <glob>]",
 		CmdLoopFlag:      "%s is not a flag here — only --protect is",
 		CmdLoopOpened:    "loop: %s, %d criteria",
-		CmdLoopEmpty:     "loop: %s declares no runnable criterion, so this session has no definition of done. A task becomes one by carrying a verify: marker.",
+		CmdLoopEmpty:     "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
 		Usage: `dcode %s — an agentic coding harness
 
@@ -648,7 +648,7 @@ Environment:
 		CmdLoopUsage:     "Uso: /loop <caminho da pasta com tasks.md> [--protect <glob>]",
 		CmdLoopFlag:      "%s não é flag aqui — só --protect é",
 		CmdLoopOpened:    "loop: %s, %d critérios",
-		CmdLoopEmpty:     "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Uma tarefa vira um critério carregando o marcador verify:.",
+		CmdLoopEmpty:     "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
 		CmdModel:         "troca de modelo — abre nova sessão, porque o prefixo muda",
 		CmdModelArgs:     "<nome>",
 		CmdResume:        "lista sessões, ou reconecta a uma",

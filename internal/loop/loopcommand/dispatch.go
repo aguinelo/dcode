@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -112,25 +113,9 @@ func loadDoneTOML(path, verifyCommand string) (loop.DoneSet, error) {
 		return loop.DoneSet{}, err
 	}
 
-	sections, err := config.ParseSections(string(raw), path)
+	set, err := parseDoneTOML(string(raw), path)
 	if err != nil {
 		return loop.DoneSet{}, err
-	}
-
-	var set loop.DoneSet
-	for _, name := range sections.Order {
-		values := sections.Values[name]
-		if name == "" {
-			if p := values["protected"]; p != "" {
-				set.Protected = splitList(p)
-			}
-			continue
-		}
-		c := loop.Criterion{Name: name, Command: values["command"]}
-		if v := values["exit_code"]; v != "" {
-			c.ExitCode = atoi(v)
-		}
-		set.Criteria = append(set.Criteria, c)
 	}
 	if len(set.Criteria) == 0 {
 		return doneFromVerify(verifyCommand), nil
@@ -193,4 +178,67 @@ func OptionsFromConfig(values map[string]string) Options {
 		Protect:       splitList(values["loop.protect"]),
 		SessionPrefix: values["loop.session_prefix"],
 	}
+}
+
+// doneFileName is what a spec folder calls its own definition of done. The
+// same name the workspace uses, because it is the same file in the same
+// format: two names for one thing is how a person learns one of them and
+// misses the other.
+const doneFileName = "done.toml"
+
+// doneBesideSpec reads a done.toml inside the spec folder.
+//
+// found is false when there is no such file, which is the ordinary case and
+// not an error: the folder simply declares its criteria in tasks.md, or not at
+// all. A file that IS there and cannot be read is an error, because falling
+// back to tasks.md would measure the turn against something other than what
+// the folder's own file says.
+func doneBesideSpec(path string, protect []string) (loop.DoneSet, bool, error) {
+	full := filepath.Join(path, doneFileName)
+	raw, err := os.ReadFile(full)
+	if errors.Is(err, fs.ErrNotExist) {
+		return loop.DoneSet{}, false, nil
+	}
+	if err != nil {
+		return loop.DoneSet{}, true, fmt.Errorf("loopcommand: read %s: %w", full, err)
+	}
+	set, err := parseDoneTOML(string(raw), full)
+	if err != nil {
+		return loop.DoneSet{}, true, err
+	}
+	if len(set.Criteria) == 0 {
+		// An empty definition of done is "nothing to verify", which the loop
+		// reports as done. A file that exists and declares nothing is the same
+		// unreadable-becomes-green defect the parser refuses in a tasks.md.
+		return loop.DoneSet{}, true, fmt.Errorf(
+			"loopcommand: %s declares no criterion; a definition of done with nothing in it reports done", full)
+	}
+	set.Protected = union(set.Protected, protect)
+	return set, true, nil
+}
+
+// parseDoneTOML turns the strict TOML subset into a DoneSet. One parser for
+// the workspace's file and the spec folder's: they are the same format, and a
+// second implementation is a second set of edge cases.
+func parseDoneTOML(body, path string) (loop.DoneSet, error) {
+	sections, err := config.ParseSections(body, path)
+	if err != nil {
+		return loop.DoneSet{}, err
+	}
+	var set loop.DoneSet
+	for _, name := range sections.Order {
+		values := sections.Values[name]
+		if name == "" {
+			if p := values["protected"]; p != "" {
+				set.Protected = splitList(p)
+			}
+			continue
+		}
+		c := loop.Criterion{Name: name, Command: values["command"]}
+		if v := values["exit_code"]; v != "" {
+			c.ExitCode = atoi(v)
+		}
+		set.Criteria = append(set.Criteria, c)
+	}
+	return set, nil
 }
