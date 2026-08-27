@@ -30,9 +30,9 @@ fora do pacote isolado.
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **13** |
-| cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.12.0** |
+| versão publicada | **0.13.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -119,7 +119,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não lançado
+## 0.13.0 — 27 de agosto de 2026
 
 - **Oito limiares declarados viraram limiares medidos, e cinco não se
   sustentaram.** Os três contratos do qualificador e os cinco do piso rodaram
