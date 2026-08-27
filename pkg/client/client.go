@@ -16,6 +16,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -70,6 +71,18 @@ func (c *Client) CreateSession(ctx context.Context, req protocol.CreateSessionRe
 }
 
 // ListSessions returns live sessions.
+// ListSpecs asks which spec folders a workspace has and which are pending.
+//
+// The daemon decides "pending" because deciding it means running the folder's
+// criteria, and the daemon is the one with the disk and the sandbox.
+func (c *Client) ListSpecs(ctx context.Context, workspace string) ([]protocol.SpecFolder, error) {
+	var out protocol.ListSpecsResponse
+	if err := c.do(ctx, http.MethodGet, "/specs?workspace="+url.QueryEscape(workspace), nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Specs, nil
+}
+
 func (c *Client) ListSessions(ctx context.Context) ([]protocol.Session, error) {
 	var out []protocol.Session
 	err := c.do(ctx, http.MethodGet, "/sessions", nil, &out)

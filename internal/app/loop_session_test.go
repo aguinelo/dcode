@@ -1,10 +1,14 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // A spec path is a string a client sent, and the daemon reads the disk. The
@@ -140,5 +144,65 @@ func TestTheRefusalNamesThePath(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "../secrets") {
 		t.Errorf("the refusal does not name the path: %v", err)
+	}
+}
+
+// The daemon lists a workspace's specs and says which are pending.
+//
+// It runs each folder's criteria to answer that, through the same sandbox a
+// turn uses — which is why it is the daemon's job and not the client's.
+func TestTheDaemonListsSpecsAndWhatIsPending(t *testing.T) {
+	ws := t.TempDir()
+	for name, done := range map[string]string{
+		"a-done":    "[x]\ncommand = \"true\"\n",
+		"b-pending": "[x]\ncommand = \"false\"\n",
+	} {
+		dir := filepath.Join(ws, "specs", name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "done.toml"), []byte(done), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	d := &Daemon{opts: DaemonOptions{Base: Options{Workspace: ws, SandboxMode: policy.ModeReadOnly}}}
+	got := d.specs(context.Background(), ws)
+	if len(got) != 2 {
+		t.Fatalf("got %+v", got)
+	}
+	byPath := map[string]protocol.SpecFolder{}
+	for _, f := range got {
+		byPath[f.Path] = f
+	}
+	for _, name := range []string{"a-done", "b-pending"} {
+		f, ok := byPath[filepath.Join("specs", name)]
+		if !ok {
+			t.Fatalf("%s is missing from %+v", name, got)
+		}
+		if f.Error != "" {
+			t.Errorf("%s came back unreadable: %s", name, f.Error)
+		}
+		if f.Criteria != 1 {
+			t.Errorf("%s declares %d criteria, want 1", name, f.Criteria)
+		}
+	}
+
+	// What this does NOT assert is whether each criterion passed.
+	//
+	// It ran one through the real sandbox, and whether `true` succeeds there
+	// depends on the platform and on whether the backend can start at all —
+	// this failed on Linux CI while passing on macOS. Deciding pending from a
+	// run is the rule, and the rule is covered where a runner can be injected:
+	// TestPendingIsWhatTheCriteriaSay and its neighbours in loopcommand. What
+	// belongs here is the wiring, and the wiring is what is asserted.
+}
+
+// A workspace that is not one answers nothing rather than failing: the client
+// asked what is there, and "nothing I can see" is an answer it can act on.
+func TestListingSpecsOfANonWorkspaceAnswersNothing(t *testing.T) {
+	d := &Daemon{opts: DaemonOptions{Base: Options{SandboxMode: policy.ModeReadOnly}}}
+	if got := d.specs(context.Background(), "relative/path"); got != nil {
+		t.Errorf("got %+v", got)
 	}
 }

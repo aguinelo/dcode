@@ -18,6 +18,8 @@ import (
 
 // fakeTransport records what the client asked the daemon to do.
 type fakeTransport struct {
+	specs      []protocol.SpecFolder
+	specsErr   error
 	mu         sync.Mutex
 	submitted  []string
 	steered    []string
@@ -75,6 +77,12 @@ func (f *fakeTransport) Exec(_ context.Context, _, command string) error {
 	defer f.mu.Unlock()
 	f.executed = append(f.executed, command)
 	return f.execErr
+}
+
+// ListSpecs answers what the test set up, so a /loop over a goal can be driven
+// without a daemon.
+func (f *fakeTransport) ListSpecs(context.Context, string) ([]protocol.SpecFolder, error) {
+	return f.specs, f.specsErr
 }
 
 func (f *fakeTransport) ListSessions(context.Context) ([]protocol.Session, error) {
