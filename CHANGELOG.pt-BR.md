@@ -32,7 +32,7 @@ fora do pacote isolado.
 | **contratos de fato já medidos** | **5** |
 | cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.10.0** |
+| versão publicada | **0.11.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -114,7 +114,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não lançado
+## 0.11.0 — 27 de agosto de 2026
 
 - **A pasta da spec pode declarar o próprio `done.toml`.** Medido contra as 17
   specs reais do Code Plain, `/loop` devolveu zero critérios em todas: os
