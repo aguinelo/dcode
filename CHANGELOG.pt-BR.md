@@ -26,10 +26,10 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 135 changelogs de decisão |
-| contratos comportamentais | 48 declarados |
-| contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **5** |
+| famílias de spec | 16, com 137 changelogs de decisão |
+| contratos comportamentais | 56 declarados |
+| contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
+| **contratos de fato já medidos** | **13** |
 | cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.12.0** |
@@ -102,10 +102,15 @@ esconder sai de graça.
 **Delegação.** Um filho delegado escreve, dentro do que declarou possuir, com a
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
-**O que este documento não diz.** Que o sistema está verificado. Dos quarenta e
-três contratos que precisam de modelo, **trinta e oito nunca rodaram contra
-um**, e o relatório da suíte imprime a divisão em toda execução para impedir a
-leitura contrária.
+**O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
+um contratos que precisam de modelo, **trinta e oito nunca rodaram contra um**,
+e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
+contrária.
+
+Dos treze que rodaram, **cinco não atingiram o limiar**, e os limiares não
+desceram para encontrá-los. O pior marca 30%: uma instrução do arquivo do
+projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
+regra mais forte.
 
 Os dois números acima são contados, não herdados. A linha dizia "4", da release
 anterior, e continuou 4 enquanto `boundary-decides-write` era medido — uma
@@ -115,6 +120,29 @@ existe para impedir exatamente isso.
 ---
 
 ## Não lançado
+
+- **Oito limiares declarados viraram limiares medidos, e cinco não se
+  sustentaram.** Os três contratos do qualificador e os cinco do piso rodaram
+  contra modelo real. `qualifier-proposes-commands` (96%),
+  `floor-yields-to-user` (96%) e `floor-checks-before-claiming` (100%) fecharam;
+  os outros cinco não, e nenhum limiar desceu para encontrar um resultado.
+- **A regra mais forte do piso mede 30%.** A mesma instrução, o mesmo texto, a
+  mesma tarefa: dita pelo usuário no turno, é obedecida em 96% de 50 execuções;
+  escrita no arquivo do projeto, em 6 de 20. O desenho da família se apoia no
+  prefixo ser montado em ordem, com as instruções do projeto por último —
+  posição no prefixo não é precedência, é esperança de precedência.
+- **Critério quebrado é gravado e não declarado.** Antes era declarado, e o
+  arquivo é o que a execução seguinte carrega: a sessão de trabalho passava a
+  ser medida contra um comando que não existe — vermelho para sempre — e a
+  pasta passava a declarar um critério, então nunca mais voltava para a
+  qualificação. Dois becos sem saída de uma linha só.
+- **Três contratos mostram a mesma falha, em cenários que não têm nada em
+  comum.** O turno lê tudo, raciocina certo, e termina sem chamar a ferramenta
+  — sempre depois de dizer que quer verificar algo que o turno não consegue
+  verificar. O próximo alvo é a instrução, não os cenários.
+- **`qualifier-narrows-on-mismatch` foi retirado.** Ele descrevia um segundo
+  turno do modelo reagindo à medição, e a medição agora acontece fora do turno:
+  quem lê a discordância é a pessoa. Retirar contrato é no mínimo MINOR.
 
 - **O laço descobre os próprios critérios, em modo planejamento.** Um turno
   qualificador lê a spec e o código e chama `done_propose`; o harness mede cada
@@ -200,7 +228,7 @@ existe para impedir exatamente isso.
   as duas edições e contra a frase ao lado da tabela.
 - **O número que diz o quão pouco está verificado estava desatualizado** —
   herdado da release anterior enquanto um quinto contrato já fora medido.
-  Contado e separado: 48 declarados, 43 que precisam de modelo, 5 já rodados.
+  Contado e separado: 56 declarados, 51 que precisam de modelo, 13 já rodados.
 
 ## 0.9.1 — 27 de agosto de 2026
 

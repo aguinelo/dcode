@@ -159,7 +159,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		}
 		opts.LoopSpec = specPath
 		opts.Protect = req.Protect
-		opts = qualifyMode(opts, req.Qualify)
+		opts = QualifyMode(opts, req.Qualify)
 	}
 	if req.SandboxMode != "" {
 		mode, perr := parseMode(req.SandboxMode)
@@ -361,13 +361,19 @@ func (d *Daemon) specs(ctx context.Context, workspace string, measure bool) []pr
 	return out
 }
 
-// qualifyMode forces plan mode on a qualifying session.
+// QualifyMode forces plan mode on a qualifying session.
+//
+// Exported so the eval harness takes the boundary from here rather than
+// writing one of its own. A scenario that measured the qualifying turn under
+// its own idea of the boundary would be measuring a different turn, and this
+// package has been bitten four times by a copy of product text drifting from
+// the product.
 //
 // Not negotiable by the request, and separated out so it can be asserted:
 // working out what "done" means is reading, and an agent that could write
 // while deciding what it will be measured by can move the thing it is about to
 // be measured against.
-func qualifyMode(opts Options, qualify bool) Options {
+func QualifyMode(opts Options, qualify bool) Options {
 	if !qualify {
 		return opts
 	}
@@ -393,7 +399,7 @@ func (d *Daemon) qualifyOptions(workspace string, req protocol.CreateSessionRequ
 	}
 	opts.LoopSpec = specPath
 	opts.Protect = req.Protect
-	return qualifyMode(opts, req.Qualify), nil
+	return QualifyMode(opts, req.Qualify), nil
 }
 
 // commitDone writes what a qualifying session proposed.

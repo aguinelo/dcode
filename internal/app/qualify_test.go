@@ -83,8 +83,9 @@ func TestAProposalIsMeasuredBeforeItIsWritten(t *testing.T) {
 			t.Errorf("the file does not carry %q:\n%s", want, body)
 		}
 	}
-	// And the model is told what happened, so it can fix a broken one itself.
-	for _, want := range []string{"acceptance", "regression", "do not start the work"} {
+	// And the person is told what happened: the turn that proposed has ended
+	// by the time any of it is measured.
+	for _, want := range []string{"acceptance", "regression", "until it has been read"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the summary does not carry %q:\n%s", want, out)
 		}
@@ -273,10 +274,10 @@ func TestCommittingNothingIsAnError(t *testing.T) {
 // qualifying keeps the boundary it asked for.
 func TestQualifyModeOnlyAppliesToAQualifyingSession(t *testing.T) {
 	base := Options{SandboxMode: policy.ModeFullAccess, Policy: policy.PolicyOnRequest}
-	if got := qualifyMode(base, false); got.SandboxMode != policy.ModeFullAccess || got.Qualify {
+	if got := QualifyMode(base, false); got.SandboxMode != policy.ModeFullAccess || got.Qualify {
 		t.Errorf("a non-qualifying session was changed: %+v", got)
 	}
-	if got := qualifyMode(base, true); got.SandboxMode != policy.ModeReadOnly || !got.Qualify {
+	if got := QualifyMode(base, true); got.SandboxMode != policy.ModeReadOnly || !got.Qualify {
 		t.Errorf("a qualifying session was not forced to plan mode: %+v", got)
 	}
 }

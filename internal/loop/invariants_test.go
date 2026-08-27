@@ -224,6 +224,7 @@ var qualifierInvariants = map[string]string{
 	"sob a fronteira em que o trabalho":       "TestAProposalIsMeasuredWhereItsCriteriaCanRun",
 	"Gravar nada é erro":                      "TestCommittingNothingIsAnError",
 	"o carregador lê de volta":                "TestAProposalRoundTripsIntoADefinitionOfDone",
+	"**gravado comentado**":                   "TestABrokenCriterionIsWrittenDownAndNotDeclared",
 	"cortada antes de chegar ao arquivo":      "TestACommittedProposalCutsAHugeOutput",
 	"medido de novo antes de congelar":        "TestAnEditedCriterionIsMeasuredAgain",
 	"**acrescentou** volta ao operador":       "TestAnAddedCriterionGoesBackOnce",

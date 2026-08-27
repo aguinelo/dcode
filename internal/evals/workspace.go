@@ -42,6 +42,22 @@ type Workspace struct {
 	// decides what a child turn is allowed to be. Nil means the harness cannot
 	// run one, and then it says so instead of inventing a result.
 	Delegate func(ctx context.Context, task, path string, owns []string) (string, bool)
+	// Qualify answers done_propose, when the scenario is a qualifying turn.
+	//
+	// Set from outside for the same reason as Delegate: what happens to a
+	// proposal is the loop's business, not a tool's, and the harness holds the
+	// half of the product that records one. Nil leaves the registry's own
+	// instance to answer, which refuses — and refusing is exactly right for
+	// every scenario that is not a qualifying turn.
+	Qualify func(ctx context.Context, input json.RawMessage) (string, bool)
+	// Mode is the boundary this scenario runs under.
+	//
+	// workspace-write for almost everything. A qualifying turn takes the
+	// product's own read-only, because a turn that could write while working
+	// out what it will be measured by can move the thing it is about to be
+	// measured against — and measuring that turn under a boundary it never
+	// runs under would measure a turn the product does not have.
+	Mode     policy.SandboxMode
 	state    *tools.State
 	resolver *policy.Resolver
 }
@@ -71,7 +87,10 @@ func NewWorkspace(dir string, files map[string]string, offered []string) (*Works
 	// to be told "use glob" thirty times by a session with no glob.
 	state := tools.NewState(resolver, tools.DefaultLimits(), offered)
 
-	return &Workspace{Dir: dir, state: state, resolver: resolver, Registry: ProductRegistry()}, nil
+	return &Workspace{
+		Dir: dir, state: state, resolver: resolver,
+		Registry: ProductRegistry(), Mode: policy.ModeWorkspaceWrite,
+	}, nil
 }
 
 // ProductRegistry is the product's tool suite, definitions and all.
@@ -94,6 +113,11 @@ func ProductRegistry() *tools.Registry {
 		// clock: a memory stamped with today's date would make two identical
 		// runs produce different files, and the contracts read those files.
 		tools.Remember{Commit: "eva1c0m", Today: "2026-01-01"},
+		// Definition only. A DonePropose with no Submit is what the product
+		// offers a turn that is not qualifying, and it answers by refusing —
+		// so a scenario that declares the tool without being a qualifying turn
+		// gets the product's own refusal rather than a harness invention.
+		tools.DonePropose{},
 	)
 }
 
@@ -134,6 +158,14 @@ func (w *Workspace) Execute(ctx context.Context, name string, input json.RawMess
 		// would depend on whatever happened to be online that afternoon, and a
 		// measurement nobody can reproduce is not a measurement.
 		return fetchRefusal, true
+	case "done_propose":
+		// A qualifying turn's proposal is recorded by the product's own
+		// recorder, which is also what writes the answer the model reads back.
+		// Left to the registry it would be refused, which is right everywhere
+		// else and would make the qualifier contracts unmeasurable.
+		if w.Qualify != nil {
+			return w.Qualify(ctx, input)
+		}
 	case "explore":
 		// A delegated call is answered by running a child turn, when the
 		// harness has been given something that can run one.
@@ -209,7 +241,7 @@ func (w *Workspace) evaluate(req policy.Request) policy.Verdict {
 	// The fixture grants the network and carries no rules: a scenario measures
 	// behaviour, and a question nobody is there to answer would measure the
 	// harness instead.
-	return policy.Evaluate(resolved, policy.ModeWorkspaceWrite, policy.PolicyNever,
+	return policy.Evaluate(resolved, w.Mode, policy.PolicyNever,
 		policy.Rules{}, policy.GrantedNetwork{}, w.resolver.InWorkspace)
 }
 

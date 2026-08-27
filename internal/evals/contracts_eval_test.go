@@ -10,12 +10,14 @@ package evals
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/app"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/provider"
@@ -79,6 +81,15 @@ func TestEveryContract(t *testing.T) {
 				// run, which made a contract about reaching for delegation
 				// measure the harness talking instead.
 				w.Delegate = childTurn(p, cfg.Model, f, w)
+				// A qualifying turn gets the product's own half of itself: the
+				// recorder that answers done_propose, and the boundary the
+				// product forces on such a turn. Neither is written here — a
+				// harness that described the qualifying turn in its own words
+				// would measure a turn the product does not have.
+				if f.World.Qualifying() {
+					w.Qualify = qualifying(f.World.Qualify)
+					w.Mode = app.QualifyMode(app.Options{}, true).SandboxMode
+				}
 				// The deadline belongs to the run, not to the contract. It
 				// used to cover all of them at once, which meant one hung
 				// stream ate the whole budget and every run after it failed
@@ -160,7 +171,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		rounds = 1
 	}
 	for i := 0; i < rounds; i++ {
-		msgs, err := f.Messages(p.Family().Name(), w.Dir, history)
+		msgs, err := f.Messages(ctx, p.Family().Name(), w.Dir, history)
 		if err != nil {
 			return Transcript{}, err
 		}
@@ -294,4 +305,22 @@ func delegateTask(task, path string) string {
 		return task
 	}
 	return task + "\n\nLook under: " + path
+}
+
+// qualifying is the product's own recorder, answering done_propose.
+//
+// A fresh Proposals per run: a slot shared between runs would let one run read
+// what another proposed, and the judge reads the call rather than the slot
+// anyway. What the product decides here is the ANSWER the model reads back —
+// "recorded N criteria, they are not measured yet, you are done" — which is
+// most of what stops a qualifying turn from going on to do the work.
+func qualifying(spec string) func(context.Context, json.RawMessage) (string, bool) {
+	return func(ctx context.Context, input json.RawMessage) (string, bool) {
+		tool := app.QualifyingTool(spec, &app.Proposals{})
+		res, err := tool.Execute(ctx, input, nil)
+		if err != nil {
+			return err.Error(), true
+		}
+		return res.Output, res.IsError
+	}
 }

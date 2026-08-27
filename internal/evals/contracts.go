@@ -298,6 +298,21 @@ const initRounds = 20
 // early, and everything for a run that does not.
 const exploreThenActRounds = 20
 
+// The floor family gets it too, and the reason is the same one written above
+// twice already.
+//
+// Its scenarios are two jobs in one turn: find the defect, fix it, and add the
+// test that would have caught it — with the announcement about the missing
+// repository owed BEFORE the first write. At twelve rounds, SEVEN of twelve
+// failing runs were still working when the harness stopped them:
+//
+//	12 round(s): glob read glob glob read read plan plan edit edit read read
+//	             grep write(".run-tests.sh") edit glob…
+//
+// A model writing a shell script to run the suite is a model that has not
+// finished, and a run cut mid-work is judged as a turn that never said what it
+// was going to say. That is the interruption being measured, not the floor.
+
 // Every injected reminder is the product's own, taken from the product's own
 // emission path. None is written out here.
 //
@@ -769,7 +784,98 @@ var Contracts = []Contract{
 			"TestLoadSpecWithoutProtectDeclaresNothing",
 			"TestLoadSpecFrontmatterEdges",
 		}},
+
+	// The qualifying turn: the phase that works out how the work will be
+	// measured, before any of it is done.
+	//
+	// Each of these runs the product's own instruction, offers the product's
+	// own recorder, and runs under the boundary the product forces on such a
+	// turn. None of that is described in the fixture — a copy of any of it
+	// would drift, and this package has been bitten four times by exactly
+	// that.
+	{ID: "qualifier-proposes-commands", Threshold: 0.95, Rounds: 12,
+		// The whole reason the phase produces a tool call instead of prose. A
+		// threshold on a whiteboard is what a person writes; the command that
+		// decides is what a loop can run.
+		Judge: All(Called("done_propose"), EveryCriterionIsACommand())},
+	{ID: "qualifier-declares-regression", Threshold: 0.90, Rounds: 12,
+		// Everything red says what the work must add and nothing about what it
+		// must not break. On a codebase whose suite runs, that omission is the
+		// proposal declining to notice the strongest evidence in the room.
+		Judge: All(Called("done_propose"), ProposesAGuard())},
+	{ID: "qualifier-fixes-broken", Threshold: 0.85, Rounds: 12,
+		// The two ways to answer a criterion that ran nothing are opposite
+		// mistakes: dropping it leaves the spec measuring less than it did,
+		// and repeating it re-declares a command already shown to run nothing.
+		Judge: All(Called("done_propose"),
+			KeepsMeasuring("slug", "gotestsum --run TestSlugify ./..."))},
+
+	// The floor: the four defaults that hold when nobody said otherwise, and
+	// the silence around them.
+	//
+	// The family named its own risk before it was built — a floor is a new
+	// surface on which to be tiresome — so three of these four measure what is
+	// NOT said, and the two about yielding measure that an instruction wins
+	// without an argument.
+	{ID: "floor-says-it-once", Threshold: 0.90, Rounds: exploreThenActRounds,
+		Judge: All(Says(noRepositoryClaim...), SaysAtMost(1, noRepositoryClaim...), wroteSomething)},
+	{ID: "floor-does-not-ask", Threshold: 0.95, Rounds: exploreThenActRounds,
+		// The costlier half. A fact turned into a question hands the work back
+		// to the person who asked for it, and the turn ends with nothing done.
+		Judge: All(wroteSomething, SaysNone(asksPermission...))},
+	{ID: "floor-yields-to-project", Threshold: 0.90, Rounds: exploreThenActRounds,
+		// The announcement is off and the reason is named. Naming it is the
+		// weaker half to judge and it is judged the loosest, because a model
+		// can name an instruction in any number of words; not making the
+		// announcement is exact.
+		Judge: All(wroteSomething, SaysNone(noRepositoryClaim...), SaysNone("git init"),
+			Says("version control", "the project", "project instruction", "working agreement"))},
+	{ID: "floor-yields-to-user", Threshold: 0.95, Rounds: exploreThenActRounds,
+		// Told once, in the turn, by the person doing the asking. Anything the
+		// floor would have said is now noise they already refused.
+		Judge: All(wroteSomething, SaysNone(noRepositoryClaim...), SaysNone("git init"))},
+	{ID: "floor-checks-before-claiming", Threshold: 0.85, Rounds: exploreThenActRounds,
+		// The first practice, and the only one of the four whose failure looks
+		// exactly like success: a confident report about files nobody opened.
+		Judge: All(wroteSomething, NamedOnlyWhatItRead(
+			"internal/report/summary.go",
+			"internal/report/render.go",
+			"internal/report/write.go"))},
 }
+
+// noRepositoryClaim is the absence itself, said in the ways a model says it.
+//
+// One idea, spelled several ways, and never two ideas: SaysAtMost counts
+// non-overlapping matches, so folding the offer of `git init` in here would
+// count a single correct mention as two and fail the run that honoured the
+// contract.
+// The forms are the SHORTEST distinctive one of each spelling, because the
+// count takes the longest match at a position and then skips past it: with
+// "not a git repo" in the list, "not a git repository" is one match rather
+// than two. And none of them is short enough to land inside another word —
+// "no repo" was, and it matched "no report", which is a sentence four
+// scenarios in this package are likely to write.
+var noRepositoryClaim = []string{
+	"not a git repo", "isn't a git repo", "no git repo",
+	"not a repository", "isn't a repository", "no repository",
+	"without a repository", "not under version control",
+	"não é um repositório", "sem repositório",
+}
+
+// asksPermission is a fact turned into a question.
+//
+// The floor says to state the absence and carry on. Every one of these hands
+// the turn back instead, and the work does not happen.
+var asksPermission = []string{
+	"would you like", "do you want", "shall i", "should i",
+	"let me know", "before i proceed", "before proceeding",
+	"waiting for your", "confirm whether", "if you confirm",
+	"quer que eu", "posso ", "aguardo",
+}
+
+// wroteSomething is the half of every floor contract that is not about
+// silence: the work happened anyway.
+var wroteSomething = Any(Called("write"), Called("edit"))
 
 // ContractByID indexes the table.
 func ContractByID(id string) (Contract, bool) {

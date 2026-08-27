@@ -26,10 +26,10 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 135 decision changelogs |
-| behavioural contracts | 48 declared |
-| contracts needing a model | 43 of the 48; 5 are settled by assertion |
-| **contracts ever actually measured** | **5** |
+| spec families | 16, with 137 decision changelogs |
+| behavioural contracts | 56 declared |
+| contracts needing a model | 51 of the 56; 5 are settled by assertion |
+| **contracts ever actually measured** | **13** |
 | coverage | 94.0%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.12.0** |
@@ -121,8 +121,13 @@ the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
 **What this document does not say.** That the system is verified. Of the
-forty-three contracts that need a model, **thirty-eight have never run against
+fifty-one contracts that need a model, **thirty-eight have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
+
+Of the thirteen that have, **five did not meet their threshold**, and the
+thresholds did not move to meet them. The worst reads 30%: an instruction in the
+project file overriding the built-in floor, which the family that owns it calls
+its strongest rule.
 
 The two numbers above are counted, not carried. The row used to read "4", from
 the release before this one, and it stayed 4 while `boundary-decides-write` was
@@ -132,6 +137,30 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **Eight declared thresholds became measured ones, and five did not hold.**
+  The qualifier's three contracts and the floor's five ran against a real
+  model. `qualifier-proposes-commands` (96%), `floor-yields-to-user` (96%) and
+  `floor-checks-before-claiming` (100%) met theirs; the other five did not, and
+  no threshold moved to meet a result.
+- **The floor's strongest rule measures 30%.** The same instruction, the same
+  wording, the same task: said by the user in the turn it is obeyed 96% of 50
+  runs; written in the project file it is obeyed 6 of 20. The family's design
+  rests on the prefix being assembled in order, with the project's instructions
+  last — position in the prefix is not precedence, it is hope of precedence.
+- **A broken criterion is written down and not declared.** It used to be
+  declared, and the file is what the next run loads: the work session was then
+  measured against a command that does not exist — red forever — and the folder
+  now declared a criterion, so it could never be sent back through
+  qualification either. Two dead ends from one line.
+- **Three contracts show the same failure, in scenarios that share nothing.**
+  The turn reads everything, reasons correctly, and ends without calling the
+  tool — always after saying it wants to verify something the turn cannot
+  verify. The next target is the instruction, not the scenarios.
+- **`qualifier-narrows-on-mismatch` was retired.** It described a second model
+  turn reacting to the measurement, and the measurement now happens outside the
+  turn: the person reads the disagreement. Retiring a contract is at least
+  MINOR.
 
 - **The loop can work out its own criteria, in plan mode.** A qualifying turn
   reads the spec and the code and calls `done_propose`; the harness measures

@@ -3,6 +3,8 @@ package qualifier
 import (
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/config"
 )
 
 func sample() []Measured {
@@ -66,13 +68,13 @@ func TestASetWithNothingRedWarnsInTheFile(t *testing.T) {
 	}
 }
 
-// What comes back to the model carries the measurement, so a broken or
-// contradicted criterion is corrected by whoever wrote it.
-func TestTheSummaryTellsTheModelWhatHappened(t *testing.T) {
+// The summary goes to the PERSON, and carries the measurement, because the
+// turn that proposed has already ended by the time anything is measured.
+func TestTheSummaryTellsThePersonWhatHappened(t *testing.T) {
 	got := Summary(sample(), Conditions{NoAcceptance: true}, "specs/x/done.toml")
 	for _, want := range []string{
 		"specs/x/done.toml", "unit", "acceptance", "broken",
-		"you said it would", "Nothing here is red", "do not start the work",
+		"proposed as", "Nothing here is red", "commented out",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the summary does not carry %q:\n%s", want, got)
@@ -87,11 +89,57 @@ func TestTheProposalIsWhatTheLoaderReads(t *testing.T) {
 	if strings.Count(got, "[") < 4 {
 		t.Fatalf("not every criterion made it into the file:\n%s", got)
 	}
-	// Commented lines carry the measurement and must not be mistaken for
-	// criteria: every section header starts a line.
-	for _, line := range strings.Split(got, "\n") {
-		if strings.HasPrefix(line, "#") && strings.Contains(line, "command =") {
-			t.Errorf("a comment carries a command and could be read as one: %q", line)
+	set, err := load(t, got)
+	if err != nil {
+		t.Fatalf("the file the qualifier writes does not parse: %v\n%s", err, got)
+	}
+	if len(set) != 3 {
+		t.Fatalf("the loader reads back %d criteria, want the 3 that are not broken:\n%s", len(set), got)
+	}
+}
+
+// A broken criterion is written down and not declared.
+//
+// It used to be declared, and the file is what the next run loads: the work
+// session was then measured against a command that does not exist — red
+// forever, so the loop could never finish — and the folder now declared a
+// criterion, so it could never be sent back through qualification either. Two
+// dead ends from one line.
+func TestABrokenCriterionIsWrittenDownAndNotDeclared(t *testing.T) {
+	got := string(Render(sample(), nil, Conditions{}))
+
+	set, err := load(t, got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := set["typo"]; ok {
+		t.Errorf("the broken criterion is declared, so the next run will be measured against it:\n%s", got)
+	}
+	// Written down, though: commenting it away entirely would hide the one
+	// thing the person has to fix.
+	for _, want := range []string{"# [typo]", "pnmp typecheck", "commented out"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the broken criterion left no trace of %q:\n%s", want, got)
 		}
 	}
+}
+
+// load reads the rendered file the way the product reads it back.
+//
+// Through config.ParseSections, which is what app.loadDoneSet uses. Anything
+// else here would be a second parser agreeing with itself.
+func load(t *testing.T, rendered string) (map[string]string, error) {
+	t.Helper()
+	sections, err := config.ParseSections(rendered, "done.toml")
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, name := range sections.Order {
+		if name == "" {
+			continue
+		}
+		out[name] = sections.Values[name]["command"]
+	}
+	return out, nil
 }

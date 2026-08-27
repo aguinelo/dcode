@@ -1,0 +1,9 @@
+# Proposed by dcode and measured before any work.
+# Review it: a criterion is only worth having if failing it would stop you.
+
+# the work has to make this pass
+# now: broken (exit 127) — nothing ran; this measures the absence of a tool, not of work.
+# It is commented out: as written it can never go green, and a loop measured against it
+# would run forever. Fix the command and it counts again.
+# [slug]
+# command = "gotestsum --run TestSlugify ./..."

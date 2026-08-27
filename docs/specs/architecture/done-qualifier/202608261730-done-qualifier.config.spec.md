@@ -83,20 +83,24 @@ A fase não tem orçamento próprio.
 
 ## 4. Medição de contratos comportamentais
 
-**Nenhum limiar desta família foi medido.** Os quatro alvos da §8 do `.p` são
-alvos, não resultados, e estão escritos no futuro por causa da família anterior:
-a `loop-command` declarou os dela como "medidos contra o modelo declarado"
-quando nenhuma medição jamais havia rodado.
+**Os três contratos desta família foram medidos** contra `MiniMax-M3` em
+2026-08-27, com `DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e `DCODE_EVAL_ENABLED` —
+declaradas em `202608072334-provider-adapter.config.spec.md` §4, não
+redeclaradas aqui. Os resultados estão na `.p §8`, com modelo e data em
+`internal/evals/measured.go`.
 
-Quando a etapa 3 da §11 existir, `DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e
-`DCODE_EVAL_ENABLED` passam a valer — declaradas em
-`202608072334-provider-adapter.config.spec.md` §4, não redeclaradas aqui — e
-cada número medido entra com modelo e data em `changelog/`.
+Um deles fechou; dois não. Os limiares ficaram onde estavam.
 
-O judge de `qualifier-narrows-on-mismatch` não existe e o `.p §8` explica por
-quê. Enquanto ele não existir, aquele contrato não roda: um judge provisório
-sobre vocabulário mediria vocabulário, e devolveria um número que ninguém
-poderia usar.
+`qualifier-narrows-on-mismatch` **foi retirado**, e o motivo mudou entre a
+escrita desta seção e a medição. Não é mais que o judge seria difícil: é que o
+cenário dele não existe no produto. A `.p §8` explica.
+
+**O contrato que precisou de três medições diz mais que os outros dois.** Duas
+delas mediram o arcabouço — um judge que exigia o nome do critério, e um
+cenário que oferecia um shell que a suíte recusa — e só a terceira mediu o
+modelo. Isso é o regime funcionando: uma taxa baixa é tão frequentemente uma
+afirmação sobre o cenário quanto sobre o modelo, e só a evidência guardada
+separa as duas. Nenhuma das duas primeiras entrou em `measured.go`.
 
 ## 5. Constantes não configuráveis
 
@@ -116,3 +120,4 @@ poderia usar.
 
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
+- [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)

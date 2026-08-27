@@ -610,6 +610,28 @@ piece and is worth building even if the derivation never gets good.
 
 ---
 
+## 14. The measurement's own two loose ends
+
+Both surfaced while measuring the qualifier and the floor on 27 August, and
+neither belongs to either family.
+
+**A `Verdict.Reason` does not name the path.** `internal/policy/policy.go:234`
+and `:242` return `"this would write outside the workspace"` and
+`"this would read outside the workspace"` with no path in them. That string is
+what a person reads when deciding whether to approve a crossing, and deciding
+without knowing which file is deciding blind. `TestMixedReadWriteIsTreatedAsWrite`
+asserts `Decision` and `Boundary` and never the reason, so adding the path
+breaks nothing and losing it again would be silent. Small, and its own branch.
+
+**The `Rounds` constants carry their evidence as prose.** `initRounds`,
+`exploreThenActRounds` and now the floor's ceiling have each moved because a
+measurement showed the old number was cutting runs mid-work, and each time the
+proof went into a Go comment — a pasted transcript. Three times. When the
+transcripts leave the tree the numbers are orphans, defensible only by trusting
+whoever typed them, which is the shape this repository keeps finding in itself.
+The evidence belongs in the family's `.i` as a dated attachment, with the code
+reading the number rather than authoring it.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -640,6 +662,7 @@ has not weakened.
 | **3** — the vacuous contract | Nothing to do until 4 moves. |
 | **10** — what v5 asks for and we do not have | After the client phases land. The card ships without progress, so the protocol event is not blocking anything visible — and deciding it under pressure from a half-built card is how a versioned surface gets the wrong shape. |
 | **9** — the small ones | Whenever they are in the way. |
+| **14** — the measurement's loose ends | The path in the reason is small and user-visible; the `Rounds` evidence is a documentation move that costs nothing and stops the fourth repetition. |
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
 

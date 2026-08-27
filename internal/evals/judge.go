@@ -598,3 +598,81 @@ func OwnsAreDisjoint(min int) Judge {
 		return withOwns >= min
 	}
 }
+
+// SaysAtMost is a judge on silence: the fragments appear together at most n
+// times in everything the model said.
+//
+// Non-overlapping, longest match first, because the fragments of one idea
+// overlap by nature. "not a git repository" and "not a repository" are the
+// same sentence counted twice by anything that scans for each in turn, and a
+// model saying it exactly once would then be judged as having said it twice —
+// the contract failing on the run that honoured it.
+//
+// It exists for the risk the working-defaults family names before building
+// itself: a floor is a new surface on which to be tiresome, and "say it once"
+// becomes "warn every time" without a line of code changing.
+func SaysAtMost(n int, fragments ...string) Judge {
+	return func(t Transcript) bool { return countMentions(t.Text, fragments) <= n }
+}
+
+// countMentions counts non-overlapping occurrences of any fragment.
+func countMentions(text string, fragments []string) int {
+	lower := strings.ToLower(text)
+	count := 0
+	for i := 0; i < len(lower); {
+		longest := 0
+		for _, f := range fragments {
+			f = strings.ToLower(strings.TrimSpace(f))
+			if f == "" || !strings.HasPrefix(lower[i:], f) {
+				continue
+			}
+			if len(f) > longest {
+				longest = len(f)
+			}
+		}
+		if longest == 0 {
+			i++
+			continue
+		}
+		count++
+		i += longest
+	}
+	return count
+}
+
+// NamedOnlyWhatItRead is the floor's first practice, judged: every path the
+// answer names is a path the turn actually looked at.
+//
+// The candidates are the scenario's, not the model's, because a judge that
+// went looking for anything path-shaped in prose would find `internal/legacy/`
+// inside a sentence about the directory as a whole and demand a read of a
+// thing that is not a file.
+//
+// It measures "looked at" and not "looked at first". The transcript joins what
+// was said across rounds and keeps the calls in a separate list, so there is no
+// ordering between a sentence and a call to be had — and inventing one would be
+// the judge encoding something it cannot see.
+func NamedOnlyWhatItRead(candidates ...string) Judge {
+	return func(t Transcript) bool {
+		text := strings.ToLower(t.Text)
+		for _, path := range candidates {
+			p := strings.ToLower(path)
+			if !strings.Contains(text, p) {
+				continue
+			}
+			looked := false
+			for _, c := range t.Calls {
+				switch c.Name {
+				case "read", "grep", "glob", "symbol":
+					if strings.Contains(strings.ToLower(string(c.Input)), p) {
+						looked = true
+					}
+				}
+			}
+			if !looked {
+				return false
+			}
+		}
+		return true
+	}
+}
