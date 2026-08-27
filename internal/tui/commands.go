@@ -304,6 +304,13 @@ func Complete(input string, user config.CommandSet, lang Lang) []Completion {
 
 // LoopArgs is what `/loop` was given, after parsing.
 type LoopArgs struct {
+	// Task is what to do, in the person's own words, when they said.
+	//
+	// Everything after the path that is not a flag. `/loop specs/x` is the
+	// command doing its job on its own; `/loop specs/x refaça só o header` is
+	// the same job narrowed, and refusing the second was the command telling
+	// someone their sentence was a mistyped flag.
+	Task string
 	// Spec is the folder holding tasks.md, as the user typed it. Resolving it
 	// is the daemon's job: it owns the filesystem, and a client that resolved
 	// the path would be asserting something about a disk it may not share.
@@ -336,16 +343,43 @@ func ParseLoopArgs(args string) (LoopArgs, error) {
 			}
 			out.Protect = append(out.Protect, g)
 		case strings.HasPrefix(f, "-"):
+			// Only a thing that LOOKS like a flag can be a mistyped one. A word
+			// is a word.
 			return LoopArgs{}, fmt.Errorf("%s", f)
 		default:
-			if out.Spec != "" {
-				return LoopArgs{}, fmt.Errorf("%s", f)
+			if out.Spec == "" {
+				out.Spec = f
+				continue
 			}
-			out.Spec = f
+			// Everything after the path is what to do, kept as typed. Splitting
+			// and rejoining it would eat the spacing someone chose.
+			out.Task = strings.TrimSpace(strings.Join(fields[i:], " "))
+			i = len(fields)
 		}
 	}
 	if out.Spec == "" {
 		return LoopArgs{}, fmt.Errorf("")
 	}
 	return out, nil
+}
+
+// LoopTask is the turn `/loop` submits.
+//
+// It submits one at all because loading a definition of done and then waiting
+// is the command doing half its job: `/loop specs/x` means "do this", and it
+// used to mean "open a session against this and sit there". Someone typed it,
+// watched nothing happen, and had to say what they wanted anyway.
+//
+// The criteria are NOT restated here. They are already the session's, the loop
+// checks them, and a copy in the first message is a second statement of
+// something that can move.
+func LoopTask(spec LoopArgs) string {
+	if spec.Task != "" {
+		return spec.Task
+	}
+	return "Implement the specification in " + spec.Spec + ".\n\n" +
+		"Read what is there first. This session already carries that folder's " +
+		"definition of done, and the harness checks it — do not go looking for " +
+		"the criteria to run them yourself, and do not report done on your own " +
+		"word."
 }

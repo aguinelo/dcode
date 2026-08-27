@@ -42,6 +42,7 @@ func TestParseLoopArgs(t *testing.T) {
 		in      string
 		spec    string
 		protect []string
+		task    string
 		wantErr string // the message, or "" for no error
 	}{
 		{name: "just a path", in: "specs/home-page", spec: "specs/home-page"},
@@ -56,7 +57,10 @@ func TestParseLoopArgs(t *testing.T) {
 		{name: "nothing", in: "", wantErr: ""},
 		{name: "unknown flag", in: "specs/x --max-iterations 3", wantErr: "--max-iterations"},
 		{name: "protect with nothing after it", in: "specs/x --protect", wantErr: "--protect needs a glob"},
-		{name: "two paths", in: "specs/x specs/y", wantErr: "specs/y"},
+		{name: "a task after the path", in: "specs/x refaça só o header",
+			spec: "specs/x", task: "refaça só o header"},
+		{name: "task and protect", in: "specs/x --protect a implemente tudo",
+			spec: "specs/x", protect: []string{"a"}, task: "implemente tudo"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			got, err := ParseLoopArgs(c.in)
@@ -74,6 +78,9 @@ func TestParseLoopArgs(t *testing.T) {
 			}
 			if got.Spec != c.spec {
 				t.Errorf("spec = %q, want %q", got.Spec, c.spec)
+			}
+			if got.Task != c.task {
+				t.Errorf("task = %q, want %q", got.Task, c.task)
 			}
 			if len(got.Protect) != len(c.protect) {
 				t.Fatalf("protect = %v, want %v", got.Protect, c.protect)
@@ -111,5 +118,45 @@ func TestLoopIsDiscoverable(t *testing.T) {
 	}
 	if !found {
 		t.Error("/loop does not complete from /lo")
+	}
+}
+
+// A word after the path is what to do, not a mistyped flag.
+//
+// Someone typed `/loop <path> implementar ...` and was told "implementar is
+// not a flag here". It never was one: only a thing that looks like a flag can
+// be a mistyped flag, and the command was refusing a sentence.
+func TestAWordAfterThePathIsTheTaskAndNotAFlag(t *testing.T) {
+	got, err := ParseLoopArgs("specs/home-page implementar absolutamente tudo")
+	if err != nil {
+		t.Fatalf("a sentence after the path was refused: %v", err)
+	}
+	if got.Spec != "specs/home-page" {
+		t.Errorf("spec = %q", got.Spec)
+	}
+	if got.Task != "implementar absolutamente tudo" {
+		t.Errorf("task = %q", got.Task)
+	}
+}
+
+// /loop submits a turn. Loading a definition of done and then waiting is the
+// command doing half its job.
+func TestLoopSubmitsSomethingToDo(t *testing.T) {
+	got := LoopTask(LoopArgs{Spec: "specs/x"})
+	if got == "" {
+		t.Fatal("/loop with no task submits nothing at all")
+	}
+	if !strings.Contains(got, "specs/x") {
+		t.Errorf("the default task does not name the spec: %q", got)
+	}
+	// It must not restate the criteria: they are the session's, the loop
+	// checks them, and a copy in the first message is a second statement of
+	// something that can move.
+	if strings.Contains(strings.ToLower(got), "done.toml") {
+		t.Errorf("the default task restates where the criteria live: %q", got)
+	}
+	// What the person said wins over the default, whole.
+	if got := LoopTask(LoopArgs{Spec: "specs/x", Task: "só o header"}); got != "só o header" {
+		t.Errorf("the person's own words were changed: %q", got)
 	}
 }

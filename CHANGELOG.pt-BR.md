@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 132 changelogs de decisão |
+| famílias de spec | 16, com 133 changelogs de decisão |
 | contratos comportamentais | 48 declarados |
 | contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **5** |
@@ -113,6 +113,18 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **`/loop` faz o trabalho em vez de preparar um lugar para pedirem por ele.**
+  Ele carregava a definição de pronto, trocava de sessão e **não submetia
+  nada** — quem digitava `/loop specs/x` ainda tinha que dizer o que queria.
+  Agora submete, nomeando a spec e dizendo que o harness confere os critérios,
+  sem repeti-los.
+- **Palavra depois do caminho é o que fazer, não flag mistecleada.** `/loop
+  <caminho> implementar …` era recusado com *"implementar is not a flag here"*.
+  Só o que começa com `-` pode ser flag errada; o resto é a tarefa, como
+  digitada.
 
 ## 0.11.0 — 27 de agosto de 2026
 

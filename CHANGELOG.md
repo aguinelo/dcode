@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 132 decision changelogs |
+| spec families | 16, with 133 decision changelogs |
 | behavioural contracts | 48 declared |
 | contracts needing a model | 43 of the 48; 5 are settled by assertion |
 | **contracts ever actually measured** | **5** |
@@ -130,6 +130,18 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **`/loop` does the work instead of preparing a place to ask for it.** It
+  loaded the definition of done, switched session, and submitted **nothing** —
+  so someone who typed `/loop specs/x` still had to say what they wanted. It
+  submits now, naming the spec and saying the harness checks the criteria,
+  without restating them.
+- **A word after the path is what to do, not a mistyped flag.** `/loop <path>
+  implementar …` was refused with *"implementar is not a flag here"*. Only
+  something starting with `-` can be a mistyped flag; everything after the path
+  is the task, as typed.
 
 ## 0.11.0 — 27 August 2026
 
