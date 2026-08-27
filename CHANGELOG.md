@@ -32,7 +32,7 @@ isolated package.
 | **contracts ever actually measured** | **5** |
 | coverage | 94.0%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.11.0** |
+| published version | **0.11.1** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -131,7 +131,7 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
+## 0.11.1 — 27 August 2026
 
 - **`/loop` does the work instead of preparing a place to ask for it.** It
   loaded the definition of done, switched session, and submitted **nothing** —
