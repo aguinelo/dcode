@@ -291,11 +291,45 @@ func TestNoEnglishSurvivesAPortugueseScreen(t *testing.T) {
 	g.RailMode = RailShown
 
 	screen := strings.ToLower(Render(m, g))
+	// Whole words, not substrings. It used to be strings.Contains, and the
+	// word "works" from the catalogue matched inside "workspace-write" — a
+	// VALUE on the screen, not layout text. A guard that matches a loose
+	// string reports the wrong thing the moment a word turns up inside
+	// another, and this file is not the first place that happened today.
 	for _, w := range forbidden {
-		if strings.Contains(screen, w) {
+		if containsWord(screen, w) {
 			t.Errorf("%q is English and reached a Portuguese screen:\n%s", w, Render(m, g))
 		}
 	}
+}
+
+// containsWord reports whether the screen carries w as a word of its own.
+//
+// A word here is bounded by anything that is not a letter or a digit, which is
+// what separates "works" inside "workspace" from "works" standing alone.
+func containsWord(screen, w string) bool {
+	w = strings.TrimSpace(w)
+	if w == "" {
+		return false
+	}
+	for i := 0; ; {
+		j := strings.Index(screen[i:], w)
+		if j < 0 {
+			return false
+		}
+		start := i + j
+		end := start + len(w)
+		beforeOK := start == 0 || !isWordRune(rune(screen[start-1]))
+		afterOK := end == len(screen) || !isWordRune(rune(screen[end]))
+		if beforeOK && afterOK {
+			return true
+		}
+		i = start + 1
+	}
+}
+
+func isWordRune(r rune) bool {
+	return r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
 
 // englishOnlyWords is every word the English catalogue uses and the Portuguese

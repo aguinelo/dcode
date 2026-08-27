@@ -1090,3 +1090,62 @@ func TestExecOnAnUnknownSession(t *testing.T) {
 		t.Errorf("a command ran on a session that does not exist: %d", rec.Code)
 	}
 }
+
+// The daemon answers what specs a workspace has and which are pending.
+//
+// The daemon, not the client: deciding "pending" means running each folder's
+// criteria, and two clients disagreeing about what counts as work left is
+// worse than either answer.
+func TestListSpecsAnswersWhatIsPending(t *testing.T) {
+	srv, _ := newServer(t, 4)
+	srv.cfg.Specs = func(context.Context, string) []protocol.SpecFolder {
+		return []protocol.SpecFolder{
+			{Path: "specs/a", Criteria: 2, Unmet: 1, Pending: true},
+			{Path: "specs/b", Criteria: 2},
+		}
+	}
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs?workspace=/w", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var out protocol.ListSpecsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Specs) != 2 || !out.Specs[0].Pending || out.Specs[1].Pending {
+		t.Fatalf("got %+v", out.Specs)
+	}
+}
+
+// A relative workspace is refused, same as everywhere else: a path only means
+// something where it was typed.
+func TestListSpecsRefusesARelativeWorkspace(t *testing.T) {
+	srv, _ := newServer(t, 4)
+	srv.cfg.Specs = func(context.Context, string) []protocol.SpecFolder { return nil }
+	for _, q := range []string{"?workspace=relative", ""} {
+		rec := httptest.NewRecorder()
+		srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs"+q, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%q gave status %d, want 400", q, rec.Code)
+		}
+	}
+}
+
+// A daemon that cannot look answers "I know of none" rather than failing: a
+// client asking should get a list it can act on, not an error to interpret.
+func TestListSpecsWithoutADiscovererAnswersNone(t *testing.T) {
+	srv, _ := newServer(t, 4)
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs?workspace=/w", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d", rec.Code)
+	}
+	var out protocol.ListSpecsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Specs) != 0 {
+		t.Errorf("got %+v", out.Specs)
+	}
+}

@@ -23,6 +23,7 @@ import (
 type Transport interface {
 	CreateSession(ctx context.Context, req protocol.CreateSessionRequest) (protocol.Session, error)
 	ListSessions(ctx context.Context) ([]protocol.Session, error)
+	ListSpecs(ctx context.Context, workspace string) ([]protocol.SpecFolder, error)
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
 	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
 	Interrupt(ctx context.Context, id string) error
@@ -131,6 +132,16 @@ type program struct {
 	events <-chan protocol.Event
 	errs   <-chan error
 	fatal  string
+
+	// loopQueue is the specs a `/loop <goal>` still has to work, one session
+	// each and one at a time. Empty means nothing is running as a queue.
+	//
+	// It lives in the client because the sequencing is the operator's: they
+	// can interrupt between specs and keep everything already finished, which
+	// a daemon-side run would have to be told how to do.
+	loopQueue   []protocol.SpecFolder
+	loopGoal    string
+	loopProtect []string
 
 	// unsubscribe tears down the current subscription when the session is
 	// replaced by /clear or /model.
@@ -355,6 +366,29 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: string(msg)})
 		return p, nil
 
+	case specsFoundMsg:
+		t := Text(p.opts.Lang)
+		var pending []protocol.SpecFolder
+		for _, f := range msg.specs {
+			if f.Pending {
+				pending = append(pending, f)
+			}
+		}
+		p.model.Entries = append(p.model.Entries, Entry{
+			Kind: KindNote, Summary: LoopPlan(msg.specs, t), Expanded: true,
+		})
+		if len(pending) == 0 {
+			// Nothing left is an answer, and it is the one worth saying out
+			// loud: every spec's own criteria pass right now.
+			return p, nil
+		}
+		// The queue is the operator's, not the agent's: it runs one spec at a
+		// time, in the order the folders sort, and stops wherever it is
+		// interrupted with the finished ones finished.
+		p.loopQueue = pending[1:]
+		p.loopGoal, p.loopProtect = msg.goal, msg.protect
+		return p, p.loopSession(LoopArgs{Spec: pending[0].Path, Task: msg.goal, Protect: msg.protect})
+
 	case loopOpenedMsg:
 		// The same switch, plus the one line that says what was loaded. The
 		// note is appended AFTER the model is rebuilt, or it would be written
@@ -403,6 +437,14 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
+		} else if p.model.State == protocol.SessionStateIdle && len(p.loopQueue) > 0 {
+			// This spec is done with; the next one gets its own session, its
+			// own definition of done and its own budget.
+			//
+			// After the typed queue, not before: something the person typed
+			// while watching is about the spec on screen, and moving on first
+			// would send it to the next one.
+			cmds = append(cmds, p.nextSpec())
 		}
 		cmds = append(cmds, p.waitForEvent())
 		return p, tea.Batch(cmds...)
@@ -1094,6 +1136,11 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		// and is read when it is born; loading one into a session already
 		// running would change what the turn is measured against after the
 		// person had seen what it was.
+		if spec.Goal {
+			// A sentence, not a path. Find the spec folders, keep the ones
+			// with work left, and work them one at a time.
+			return p, p.loopEverySpec(spec)
+		}
 		return p, p.loopSession(spec)
 	}
 	return note("/" + r.Name + " is not implemented")
@@ -1556,4 +1603,37 @@ type loopOpenedMsg struct {
 	// task is submitted as the first turn of the new session. The command
 	// exists to do the work, not to prepare a place for someone to ask again.
 	task string
+}
+
+// loopEverySpec turns a goal into the list of specs it is about.
+//
+// The daemon decides which are pending, because deciding it means running each
+// folder's criteria — and a checkbox in a tasks.md is marked by whoever felt
+// like marking it.
+func (p *program) loopEverySpec(spec LoopArgs) tea.Cmd {
+	return func() tea.Msg {
+		found, err := p.opts.Transport.ListSpecs(p.ctx, p.model.Workspace)
+		if err != nil {
+			return noteMsg("could not look for specs: " + err.Error())
+		}
+		return specsFoundMsg{goal: spec.Task, protect: spec.Protect, specs: found}
+	}
+}
+
+// specsFoundMsg is the plan, before any of it runs.
+// nextSpec starts the next spec in the queue, or reports that the run is over.
+func (p *program) nextSpec() tea.Cmd {
+	if len(p.loopQueue) == 0 {
+		p.loopGoal = ""
+		return nil
+	}
+	next := p.loopQueue[0]
+	p.loopQueue = p.loopQueue[1:]
+	return p.loopSession(LoopArgs{Spec: next.Path, Task: p.loopGoal, Protect: p.loopProtect})
+}
+
+type specsFoundMsg struct {
+	goal    string
+	protect []string
+	specs   []protocol.SpecFolder
 }

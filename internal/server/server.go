@@ -52,6 +52,13 @@ type Config struct {
 	// almost none of it is loaded — a rename that only worked on the open
 	// session would work on the one row nobody needs it for.
 	RecordDir string
+	// Specs lists a workspace's spec folders and which of them are pending.
+	//
+	// Injected because deciding "pending" means running criteria, which is the
+	// app's business and not the server's. Nil answers an empty list rather
+	// than an error: a client asking a daemon that cannot look should get "I
+	// know of none", not a failure it has to interpret.
+	Specs func(ctx context.Context, workspace string) []protocol.SpecFolder
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -156,6 +163,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /version", s.version)
 	s.mux.HandleFunc("POST "+p+"/sessions", s.createSession)
 	s.mux.HandleFunc("GET "+p+"/sessions", s.listSessions)
+	s.mux.HandleFunc("GET "+p+"/specs", s.listSpecs)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/name", s.renameSession)
@@ -525,4 +533,23 @@ func wrapErr(err error) *protocol.Error {
 		return protocol.Errorf(protocol.CodeWorkspaceInvalid, "%s", msg)
 	}
 	return protocol.Errorf(protocol.CodeInternal, "%s", msg)
+}
+
+// listSpecs answers what spec folders a workspace has and which are pending.
+//
+// The daemon decides, not the client. It owns the disk and it is the only one
+// that can run a criterion, and two clients disagreeing about what counts as
+// work left is worse than either answer.
+func (s *Server) listSpecs(w http.ResponseWriter, r *http.Request) {
+	ws := r.URL.Query().Get("workspace")
+	if ws == "" || !filepath.IsAbs(ws) {
+		writeErr(w, protocol.Errorf(protocol.CodeWorkspaceInvalid,
+			"workspace must be an absolute path, got %q", ws))
+		return
+	}
+	if s.cfg.Specs == nil {
+		writeJSON(w, http.StatusOK, protocol.ListSpecsResponse{})
+		return
+	}
+	writeJSON(w, http.StatusOK, protocol.ListSpecsResponse{Specs: s.cfg.Specs(r.Context(), ws)})
 }

@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/server"
 	"github.com/aguinelo/dcode/internal/session"
 )
@@ -76,6 +78,7 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		SocketPath:  opts.SocketPath,
 		Manager:     d.manager,
 		Build:       d.build,
+		Specs:       d.specs,
 		MaxSessions: opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without
 		// being loaded. The daemon already knows it; the server did not.
@@ -303,4 +306,44 @@ func specUnderWorkspace(workspace, spec string) (string, error) {
 			"the spec path %q is outside the workspace", spec)
 	}
 	return path, nil
+}
+
+// specs lists a workspace's spec folders and which are pending.
+//
+// It RUNS each folder's criteria, through the same runner a turn uses, which
+// is why it is the daemon's job and not the client's. There is no cheaper
+// honest answer to "which specs are left": the criteria are the definition of
+// done, and a checkbox in a tasks.md is marked by whoever felt like marking it.
+func (d *Daemon) specs(ctx context.Context, workspace string) []protocol.SpecFolder {
+	ws, err := validWorkspace(workspace)
+	if err != nil {
+		return nil
+	}
+	opts := d.opts.Base
+	opts.Workspace = ws
+	// The same sandbox a criterion runs under during a turn, built the same
+	// way. Discovery runs real commands from the project, and running them
+	// outside the boundary the session would use is running something else.
+	sb, err := sandbox.New(sandbox.Config{
+		Backend:      opts.Backend,
+		AllowNetwork: func() bool { return opts.AllowNetwork },
+		Scratch:      sandbox.Scratch(opts.Env),
+		Sockets:      sandbox.LocalSockets(opts.Env),
+		Unreadable:   opts.Unreadable,
+		Granted:      opts.Granted,
+		Writable:     opts.Writable,
+	}, opts.SandboxMode)
+	if err != nil {
+		return nil
+	}
+	run := criterionRunner(sb, opts)
+	found := loopcommand.Discover(ctx, ws, run, opts.DoneTimeout)
+	out := make([]protocol.SpecFolder, 0, len(found))
+	for _, f := range found {
+		out = append(out, protocol.SpecFolder{
+			Path: f.Path, Criteria: f.Criteria, Unmet: f.Unmet,
+			Unavailable: f.Unavailable, Pending: f.Pending(), Error: f.Err,
+		})
+	}
+	return out
 }

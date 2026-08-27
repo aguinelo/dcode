@@ -202,60 +202,66 @@ type Strings struct {
 	// Help. The key and command descriptions live here too: a /help with
 	// translated headings and English descriptions is worse than an untranslated
 	// one, because it reads as a bug rather than as a language.
-	HelpCommands     string
-	HelpApprovals    string
-	HelpKeys         string
-	HelpYours        string
-	KeyEnter         string
-	KeyNewline       string
-	KeyPasteImage    string
-	CmdUndo          string
-	CmdUpdate        string
-	CmdImage         string
-	CmdImageArgs     string
-	ImageUsage       string
-	ImageAttached    string
-	ImageFailed      string
-	ImageUnsupported string
-	ImagePasted      string
-	ImageTooBig      string
-	ClipboardEmpty   string
-	ClipboardMissing string
-	UndoRestored     string
-	UndoRefused      string
-	UndoNothing      string
-	UndoFailed       string
-	KeyArrows        string
-	KeyPage          string
-	KeyTab           string
-	KeyEsc           string
-	KeyPanel         string
-	KeyDequeue       string
-	KeyEditing       string
-	KeyInterrupt     string
-	KeyQuit          string
-	CmdHelp          string
-	CmdInit          string
-	CmdClear         string
-	CmdPlan          string
-	CmdPlanArgs      string
-	CmdConfig        string
-	CmdConfigArgs    string
-	CmdModel         string
-	CmdModelArgs     string
-	CmdResume        string
-	CmdResumeArgs    string
-	CmdMode          string
-	CmdModeArgs      string
-	CmdModeCurrent   string // takes a mode name
-	CmdModeUnnamed   string // the boundary in force is none of the three
-	CmdModeUnknown   string // takes the name that is not a mode
-	CmdLoop          string
-	CmdLoopArgs      string
-	CmdLoopUsage     string
-	CmdLoopFlag      string // takes the flag that is not one
-	CmdLoopOpened    string // takes the spec path and the criterion count
-	CmdLoopEmpty     string // takes the spec path
+	HelpCommands       string
+	HelpApprovals      string
+	HelpKeys           string
+	HelpYours          string
+	KeyEnter           string
+	KeyNewline         string
+	KeyPasteImage      string
+	CmdUndo            string
+	CmdUpdate          string
+	CmdImage           string
+	CmdImageArgs       string
+	ImageUsage         string
+	ImageAttached      string
+	ImageFailed        string
+	ImageUnsupported   string
+	ImagePasted        string
+	ImageTooBig        string
+	ClipboardEmpty     string
+	ClipboardMissing   string
+	UndoRestored       string
+	UndoRefused        string
+	UndoNothing        string
+	UndoFailed         string
+	KeyArrows          string
+	KeyPage            string
+	KeyTab             string
+	KeyEsc             string
+	KeyPanel           string
+	KeyDequeue         string
+	KeyEditing         string
+	KeyInterrupt       string
+	KeyQuit            string
+	CmdHelp            string
+	CmdInit            string
+	CmdClear           string
+	CmdPlan            string
+	CmdPlanArgs        string
+	CmdConfig          string
+	CmdConfigArgs      string
+	CmdModel           string
+	CmdModelArgs       string
+	CmdResume          string
+	CmdResumeArgs      string
+	CmdMode            string
+	CmdModeArgs        string
+	CmdModeCurrent     string // takes a mode name
+	CmdModeUnnamed     string // the boundary in force is none of the three
+	CmdModeUnknown     string // takes the name that is not a mode
+	CmdLoop            string
+	CmdLoopArgs        string
+	CmdLoopUsage       string
+	CmdLoopFlag        string // takes the flag that is not one
+	CmdLoopOpened      string // takes the spec path and the criterion count
+	CmdLoopEmpty       string // takes the spec path
+	LoopNoSpecs        string
+	LoopPlanHead       string // takes pending and total
+	LoopSpecPending    string // takes unmet and total criteria
+	LoopSpecDone       string // takes the criterion count
+	LoopSpecNoCriteria string
+	LoopSpecUnreadable string // takes the error
 
 	// CLI. The usage block is one string per language rather than a field per
 	// line: it is prose with alignment, and cutting it into thirty fields
@@ -399,60 +405,66 @@ var catalogue = map[Lang]Strings{
 		ApprovalEnterDenies:  "Enter denies.",
 		ApprovalHeading:      "Approvals",
 
-		HelpCommands:     "Commands",
-		HelpApprovals:    "Approvals",
-		HelpKeys:         "Keys",
-		HelpYours:        "Yours",
-		KeyEnter:         "send (queues while a turn is running)",
-		KeyNewline:       "break the line without sending",
-		KeyPasteImage:    "paste an image from the clipboard",
-		CmdUndo:          "put back the files the last turn changed",
-		CmdUpdate:        "install the latest release",
-		CmdImage:         "show the model a picture with your next message",
-		CmdImageArgs:     "<path>",
-		ImageUsage:       "Usage: /image <path to a png, jpeg, gif or webp>",
-		ImageAttached:    "attached %s — %d image(s) will go with your next message",
-		ImageFailed:      "could not attach it:",
-		ImageUnsupported: "%s does not read pictures. Switch with /model to one that does.",
-		ImagePasted:      "pasted the image — %d will go with your next message",
-		ImageTooBig:      "that image is %dMB and the limit is %dMB",
-		ClipboardEmpty:   "no image on the clipboard — copy one, or use /image <path>",
-		ClipboardMissing: "this machine has no clipboard tool; install wl-clipboard or xclip, or use /image <path>",
-		UndoRestored:     "put back:",
-		UndoRefused:      "left alone, changed since the turn:",
-		UndoNothing:      "the last turn changed no files",
-		UndoFailed:       "could not undo:",
-		KeyArrows:        "history on an empty line, otherwise move through the stream",
-		KeyPage:          "scroll · Home and End jump to either end",
-		KeyTab:           "expand or collapse the selected entry",
-		KeyEsc:           "close the expansion, then the selection",
-		KeyPanel:         "show or hide the plan panel",
-		KeyDequeue:       "remove the oldest queued message",
-		KeyEditing:       "start, end, delete word, clear, cut to end",
-		KeyInterrupt:     "interrupt the turn, or quit when idle",
-		KeyQuit:          "quit",
-		CmdHelp:          "shortcuts and commands",
-		CmdInit:          "write DCODE.md for this workspace from what is already here",
-		CmdClear:         "end this session and open a fresh one",
-		CmdPlan:          "show the plan; with an argument, ask for a new one",
-		CmdPlanArgs:      "[what to change]",
-		CmdConfig:        "the effective value of a key and where it came from",
-		CmdConfigArgs:    "<key>",
-		CmdModel:         "switch model — opens a new session, since the prefix changes",
-		CmdModelArgs:     "<name>",
-		CmdResume:        "list sessions, or reattach to one",
-		CmdResumeArgs:    "[id]",
-		CmdMode:          "show the current mode, or switch to plan/assist/auto — shift+tab cycles",
-		CmdModeArgs:      "[plan|assist|auto]",
-		CmdModeCurrent:   "current mode: %s",
-		CmdModeUnnamed:   "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
-		CmdModeUnknown:   "%s is not a mode — want plan, assist or auto",
-		CmdLoop:          "work a spec folder, measured against its definition of done — opens a new session",
-		CmdLoopArgs:      "<path> [what to do] [--protect <glob>]",
-		CmdLoopUsage:     "Usage: /loop <path to a spec folder> [what to do] [--protect <glob>]",
-		CmdLoopFlag:      "%s is not a flag here — only --protect is",
-		CmdLoopOpened:    "loop: %s, %d criteria",
-		CmdLoopEmpty:     "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
+		HelpCommands:       "Commands",
+		HelpApprovals:      "Approvals",
+		HelpKeys:           "Keys",
+		HelpYours:          "Yours",
+		KeyEnter:           "send (queues while a turn is running)",
+		KeyNewline:         "break the line without sending",
+		KeyPasteImage:      "paste an image from the clipboard",
+		CmdUndo:            "put back the files the last turn changed",
+		CmdUpdate:          "install the latest release",
+		CmdImage:           "show the model a picture with your next message",
+		CmdImageArgs:       "<path>",
+		ImageUsage:         "Usage: /image <path to a png, jpeg, gif or webp>",
+		ImageAttached:      "attached %s — %d image(s) will go with your next message",
+		ImageFailed:        "could not attach it:",
+		ImageUnsupported:   "%s does not read pictures. Switch with /model to one that does.",
+		ImagePasted:        "pasted the image — %d will go with your next message",
+		ImageTooBig:        "that image is %dMB and the limit is %dMB",
+		ClipboardEmpty:     "no image on the clipboard — copy one, or use /image <path>",
+		ClipboardMissing:   "this machine has no clipboard tool; install wl-clipboard or xclip, or use /image <path>",
+		UndoRestored:       "put back:",
+		UndoRefused:        "left alone, changed since the turn:",
+		UndoNothing:        "the last turn changed no files",
+		UndoFailed:         "could not undo:",
+		KeyArrows:          "history on an empty line, otherwise move through the stream",
+		KeyPage:            "scroll · Home and End jump to either end",
+		KeyTab:             "expand or collapse the selected entry",
+		KeyEsc:             "close the expansion, then the selection",
+		KeyPanel:           "show or hide the plan panel",
+		KeyDequeue:         "remove the oldest queued message",
+		KeyEditing:         "start, end, delete word, clear, cut to end",
+		KeyInterrupt:       "interrupt the turn, or quit when idle",
+		KeyQuit:            "quit",
+		CmdHelp:            "shortcuts and commands",
+		CmdInit:            "write DCODE.md for this workspace from what is already here",
+		CmdClear:           "end this session and open a fresh one",
+		CmdPlan:            "show the plan; with an argument, ask for a new one",
+		CmdPlanArgs:        "[what to change]",
+		CmdConfig:          "the effective value of a key and where it came from",
+		CmdConfigArgs:      "<key>",
+		CmdModel:           "switch model — opens a new session, since the prefix changes",
+		CmdModelArgs:       "<name>",
+		CmdResume:          "list sessions, or reattach to one",
+		CmdResumeArgs:      "[id]",
+		CmdMode:            "show the current mode, or switch to plan/assist/auto — shift+tab cycles",
+		CmdModeArgs:        "[plan|assist|auto]",
+		CmdModeCurrent:     "current mode: %s",
+		CmdModeUnnamed:     "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
+		CmdModeUnknown:     "%s is not a mode — want plan, assist or auto",
+		CmdLoop:            "work a spec folder, measured against its definition of done — opens a new session",
+		CmdLoopArgs:        "<path> [what to do] [--protect <glob>]",
+		CmdLoopUsage:       "Usage: /loop <path to a spec folder> [what to do] [--protect <glob>]",
+		CmdLoopFlag:        "%s is not a flag here — only --protect is",
+		LoopNoSpecs:        "no specs/ folder here, or nothing in it. /loop <path> works on one folder.",
+		LoopPlanHead:       "%d of %d specs have work left. One session each, in order — interrupt between them and what is finished stays finished.",
+		LoopSpecPending:    "%d of %d criteria not met",
+		LoopSpecDone:       "done — all %d criteria pass",
+		LoopSpecNoCriteria: "no definition of done; nothing says it is finished",
+		LoopSpecUnreadable: "could not be read: %s",
+		CmdLoopOpened:      "loop: %s, %d criteria",
+		CmdLoopEmpty:       "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
 		Usage: `dcode %s — an agentic coding harness
 
@@ -604,60 +616,66 @@ Environment:
 		ApprovalEnterDenies:  "Enter nega.",
 		ApprovalHeading:      "Aprovações",
 
-		HelpCommands:     "Comandos",
-		HelpApprovals:    "Aprovações",
-		HelpKeys:         "Teclas",
-		HelpYours:        "Seus",
-		KeyEnter:         "envia (enfileira enquanto um turno roda)",
-		KeyNewline:       "quebra a linha sem enviar",
-		KeyPasteImage:    "cola uma imagem da área de transferência",
-		CmdUndo:          "restaura os arquivos que o último turno mudou",
-		CmdUpdate:        "instala a release mais recente",
-		CmdImage:         "mostra uma imagem ao modelo junto da próxima mensagem",
-		CmdImageArgs:     "<caminho>",
-		ImageUsage:       "Uso: /image <caminho de png, jpeg, gif ou webp>",
-		ImageAttached:    "anexado %s — %d imagem(ns) vão com a próxima mensagem",
-		ImageFailed:      "não foi possível anexar:",
-		ImageUnsupported: "%s não lê imagem. Troque com /model para um que leia.",
-		ImagePasted:      "imagem colada — %d vão com a próxima mensagem",
-		ImageTooBig:      "essa imagem tem %dMB e o limite é %dMB",
-		ClipboardEmpty:   "nenhuma imagem na área de transferência — copie uma, ou use /image <caminho>",
-		ClipboardMissing: "esta máquina não tem ferramenta de clipboard; instale wl-clipboard ou xclip, ou use /image <caminho>",
-		UndoRestored:     "restaurado:",
-		UndoRefused:      "intocado, mudou depois do turno:",
-		UndoNothing:      "o último turno não mexeu em arquivo nenhum",
-		UndoFailed:       "não foi possível desfazer:",
-		KeyArrows:        "histórico em linha vazia; fora dela, navega no stream",
-		KeyPage:          "rola · Home e End vão para as pontas",
-		KeyTab:           "abre ou fecha a entrada selecionada",
-		KeyEsc:           "fecha a expansão, depois a seleção",
-		KeyPanel:         "mostra ou esconde o painel de plano",
-		KeyDequeue:       "descarta a mensagem mais antiga da fila",
-		KeyEditing:       "início, fim, apaga palavra, limpa, corta até o fim",
-		KeyInterrupt:     "interrompe o turno, ou sai quando ocioso",
-		KeyQuit:          "sai",
-		CmdHelp:          "atalhos e comandos",
-		CmdInit:          "escreve o DCODE.md deste workspace a partir do que já existe",
-		CmdClear:         "encerra esta sessão e abre uma nova",
-		CmdPlan:          "mostra o plano; com argumento, pede um novo",
-		CmdPlanArgs:      "[o que mudar]",
-		CmdConfig:        "o valor efetivo de uma chave e de onde ele veio",
-		CmdConfigArgs:    "<chave>",
-		CmdLoop:          "trabalha uma pasta de spec, medido contra a definição de pronto dela — abre sessão nova",
-		CmdLoopArgs:      "<caminho> [o que fazer] [--protect <glob>]",
-		CmdLoopUsage:     "Uso: /loop <caminho da pasta da spec> [o que fazer] [--protect <glob>]",
-		CmdLoopFlag:      "%s não é flag aqui — só --protect é",
-		CmdLoopOpened:    "loop: %s, %d critérios",
-		CmdLoopEmpty:     "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
-		CmdModel:         "troca de modelo — abre nova sessão, porque o prefixo muda",
-		CmdModelArgs:     "<nome>",
-		CmdResume:        "lista sessões, ou reconecta a uma",
-		CmdResumeArgs:    "[id]",
-		CmdMode:          "mostra o modo atual, ou troca para plan/assist/auto — shift+tab cicla",
-		CmdModeArgs:      "[plan|assist|auto]",
-		CmdModeCurrent:   "modo atual: %s",
-		CmdModeUnnamed:   "o limite desta sessão não é nenhum dos três modos; /mode plan, assist ou auto escolhe um",
-		CmdModeUnknown:   "%s não é um modo — use plan, assist ou auto",
+		HelpCommands:       "Comandos",
+		HelpApprovals:      "Aprovações",
+		HelpKeys:           "Teclas",
+		HelpYours:          "Seus",
+		KeyEnter:           "envia (enfileira enquanto um turno roda)",
+		KeyNewline:         "quebra a linha sem enviar",
+		KeyPasteImage:      "cola uma imagem da área de transferência",
+		CmdUndo:            "restaura os arquivos que o último turno mudou",
+		CmdUpdate:          "instala a release mais recente",
+		CmdImage:           "mostra uma imagem ao modelo junto da próxima mensagem",
+		CmdImageArgs:       "<caminho>",
+		ImageUsage:         "Uso: /image <caminho de png, jpeg, gif ou webp>",
+		ImageAttached:      "anexado %s — %d imagem(ns) vão com a próxima mensagem",
+		ImageFailed:        "não foi possível anexar:",
+		ImageUnsupported:   "%s não lê imagem. Troque com /model para um que leia.",
+		ImagePasted:        "imagem colada — %d vão com a próxima mensagem",
+		ImageTooBig:        "essa imagem tem %dMB e o limite é %dMB",
+		ClipboardEmpty:     "nenhuma imagem na área de transferência — copie uma, ou use /image <caminho>",
+		ClipboardMissing:   "esta máquina não tem ferramenta de clipboard; instale wl-clipboard ou xclip, ou use /image <caminho>",
+		UndoRestored:       "restaurado:",
+		UndoRefused:        "intocado, mudou depois do turno:",
+		UndoNothing:        "o último turno não mexeu em arquivo nenhum",
+		UndoFailed:         "não foi possível desfazer:",
+		KeyArrows:          "histórico em linha vazia; fora dela, navega no stream",
+		KeyPage:            "rola · Home e End vão para as pontas",
+		KeyTab:             "abre ou fecha a entrada selecionada",
+		KeyEsc:             "fecha a expansão, depois a seleção",
+		KeyPanel:           "mostra ou esconde o painel de plano",
+		KeyDequeue:         "descarta a mensagem mais antiga da fila",
+		KeyEditing:         "início, fim, apaga palavra, limpa, corta até o fim",
+		KeyInterrupt:       "interrompe o turno, ou sai quando ocioso",
+		KeyQuit:            "sai",
+		CmdHelp:            "atalhos e comandos",
+		CmdInit:            "escreve o DCODE.md deste workspace a partir do que já existe",
+		CmdClear:           "encerra esta sessão e abre uma nova",
+		CmdPlan:            "mostra o plano; com argumento, pede um novo",
+		CmdPlanArgs:        "[o que mudar]",
+		CmdConfig:          "o valor efetivo de uma chave e de onde ele veio",
+		CmdConfigArgs:      "<chave>",
+		CmdLoop:            "trabalha uma pasta de spec, medido contra a definição de pronto dela — abre sessão nova",
+		CmdLoopArgs:        "<caminho> [o que fazer] [--protect <glob>]",
+		CmdLoopUsage:       "Uso: /loop <caminho da pasta da spec> [o que fazer] [--protect <glob>]",
+		CmdLoopFlag:        "%s não é flag aqui — só --protect é",
+		LoopNoSpecs:        "não há pasta specs/ aqui, ou ela está vazia. /loop <caminho> trabalha uma pasta só.",
+		LoopPlanHead:       "%d de %d specs têm trabalho pendente. Uma sessão para cada, em ordem — interrompa entre elas e o que ficou pronto continua pronto.",
+		LoopSpecPending:    "%d de %d critérios não cumpridos",
+		LoopSpecDone:       "pronta — os %d critérios passam",
+		LoopSpecNoCriteria: "sem definição de pronto; nada afirma que está terminada",
+		LoopSpecUnreadable: "não deu para ler: %s",
+		CmdLoopOpened:      "loop: %s, %d critérios",
+		CmdLoopEmpty:       "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
+		CmdModel:           "troca de modelo — abre nova sessão, porque o prefixo muda",
+		CmdModelArgs:       "<nome>",
+		CmdResume:          "lista sessões, ou reconecta a uma",
+		CmdResumeArgs:      "[id]",
+		CmdMode:            "mostra o modo atual, ou troca para plan/assist/auto — shift+tab cicla",
+		CmdModeArgs:        "[plan|assist|auto]",
+		CmdModeCurrent:     "modo atual: %s",
+		CmdModeUnnamed:     "o limite desta sessão não é nenhum dos três modos; /mode plan, assist ou auto escolhe um",
+		CmdModeUnknown:     "%s não é um modo — use plan, assist ou auto",
 
 		Usage: `dcode %s — um harness de programação agêntica
 

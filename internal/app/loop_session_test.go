@@ -1,10 +1,14 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // A spec path is a string a client sent, and the daemon reads the disk. The
@@ -140,5 +144,50 @@ func TestTheRefusalNamesThePath(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "../secrets") {
 		t.Errorf("the refusal does not name the path: %v", err)
+	}
+}
+
+// The daemon lists a workspace's specs and says which are pending.
+//
+// It runs each folder's criteria to answer that, through the same sandbox a
+// turn uses — which is why it is the daemon's job and not the client's.
+func TestTheDaemonListsSpecsAndWhatIsPending(t *testing.T) {
+	ws := t.TempDir()
+	for name, done := range map[string]string{
+		"a-done":    "[x]\ncommand = \"true\"\n",
+		"b-pending": "[x]\ncommand = \"false\"\n",
+	} {
+		dir := filepath.Join(ws, "specs", name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "done.toml"), []byte(done), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	d := &Daemon{opts: DaemonOptions{Base: Options{Workspace: ws, SandboxMode: policy.ModeReadOnly}}}
+	got := d.specs(context.Background(), ws)
+	if len(got) != 2 {
+		t.Fatalf("got %+v", got)
+	}
+	byPath := map[string]protocol.SpecFolder{}
+	for _, f := range got {
+		byPath[f.Path] = f
+	}
+	if f := byPath[filepath.Join("specs", "a-done")]; f.Pending || f.Unmet != 0 {
+		t.Errorf("a spec whose criterion passes is pending: %+v", f)
+	}
+	if f := byPath[filepath.Join("specs", "b-pending")]; !f.Pending || f.Unmet != 1 {
+		t.Errorf("a spec with a failing criterion is not pending: %+v", f)
+	}
+}
+
+// A workspace that is not one answers nothing rather than failing: the client
+// asked what is there, and "nothing I can see" is an answer it can act on.
+func TestListingSpecsOfANonWorkspaceAnswersNothing(t *testing.T) {
+	d := &Daemon{opts: DaemonOptions{Base: Options{SandboxMode: policy.ModeReadOnly}}}
+	if got := d.specs(context.Background(), "relative/path"); got != nil {
+		t.Errorf("got %+v", got)
 	}
 }

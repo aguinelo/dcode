@@ -364,6 +364,27 @@ type SignDoneRequest struct {
 	Protected  []string        `json:"protected,omitempty"`
 }
 
+// SpecFolder is one spec folder and where it stands.
+//
+// Where it stands, not what it declares: "pending" is answered by running the
+// folder's own criteria, because a checkbox in a tasks.md is marked by whoever
+// felt like marking it.
+type SpecFolder struct {
+	Path        string `json:"path"`
+	Criteria    int    `json:"criteria"`
+	Unmet       int    `json:"unmet"`
+	Unavailable int    `json:"unavailable,omitempty"`
+	// Pending is the answer the client acts on, decided by the daemon so two
+	// clients cannot disagree about what counts as work left.
+	Pending bool   `json:"pending"`
+	Error   string `json:"error,omitempty"`
+}
+
+// ListSpecsResponse answers "what is there and what is left".
+type ListSpecsResponse struct {
+	Specs []SpecFolder `json:"specs"`
+}
+
 // PlanItem is one entry of the session plan, maintained by the plan tool.
 type PlanItem struct {
 	ID      int    `json:"id"`

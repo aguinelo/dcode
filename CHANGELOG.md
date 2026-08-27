@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 133 decision changelogs |
+| spec families | 16, with 134 decision changelogs |
 | behavioural contracts | 48 declared |
 | contracts needing a model | 43 of the 48; 5 are settled by assertion |
 | **contracts ever actually measured** | **5** |
@@ -130,6 +130,28 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **`/loop <goal>` works the whole backlog.** `/loop implemente todas as specs
+  pendentes` used to make `implemente` into a folder name and fail on
+  `implemente/tasks.md` — prose became a path, the same defect as prose
+  becoming a criterion pointing the other way. An argument with a separator, or
+  a single word, is a path; a sentence is a goal. RN-7 and US-2, written on the
+  25th and not built until now.
+- **"Pending" is measured, not counted.** Discovery runs each folder's criteria
+  through the same sandbox a turn uses, because a checkbox is ticked by whoever
+  felt like ticking it. A folder that declares nothing is pending: absence of
+  proof is not proof of done. The daemon decides, since it has the disk and the
+  sandbox.
+- **A spec with no tasks yet is pending, not unreadable.** Measured against a
+  real backlog, 11 of 28 folders came back as errors and were dropped from the
+  queue — every one of them a `spec.md` with no `tasks.md`, which is the most
+  pending thing there is. Now 28 of 28, none unreadable.
+- **A guard matched a loose string, for the third time today.** The
+  English-leak test searched a Portuguese screen for words from the English
+  catalogue by substring, and `works` matched inside `workspace-write` — a
+  value, not layout. Whole words now.
 
 ## 0.11.1 — 27 August 2026
 

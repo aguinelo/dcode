@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // Builtin is a command the client itself answers.
@@ -317,6 +319,14 @@ type LoopArgs struct {
 	Spec string
 	// Protect are globs added to whatever the spec declares.
 	Protect []string
+	// Goal marks an argument that is a sentence rather than a path.
+	//
+	// `/loop implemente todas as specs pendentes` is what someone types when
+	// they mean the whole backlog, and the first version made `implemente`
+	// into a folder name and then failed to read `implemente/tasks.md`. Prose
+	// became a path — the same defect as prose becoming a criterion, in the
+	// other direction.
+	Goal bool
 }
 
 // ParseLoopArgs splits the argument of `/loop`. Pure, and strict.
@@ -325,8 +335,9 @@ type LoopArgs struct {
 // measured against a definition of done the person did not ask for, and they
 // find out at the end of the turn. An unknown flag stops the command.
 func ParseLoopArgs(args string) (LoopArgs, error) {
-	fields := strings.Fields(args)
 	var out LoopArgs
+	var words []string
+	fields := strings.Fields(args)
 	for i := 0; i < len(fields); i++ {
 		f := fields[i]
 		switch {
@@ -347,20 +358,40 @@ func ParseLoopArgs(args string) (LoopArgs, error) {
 			// is a word.
 			return LoopArgs{}, fmt.Errorf("%s", f)
 		default:
-			if out.Spec == "" {
-				out.Spec = f
-				continue
-			}
-			// Everything after the path is what to do, kept as typed. Splitting
-			// and rejoining it would eat the spacing someone chose.
-			out.Task = strings.TrimSpace(strings.Join(fields[i:], " "))
-			i = len(fields)
+			words = append(words, f)
 		}
 	}
-	if out.Spec == "" {
+	if len(words) == 0 {
 		return LoopArgs{}, fmt.Errorf("")
 	}
+	if specArgument(words) {
+		out.Spec = words[0]
+		out.Task = strings.Join(words[1:], " ")
+		return out, nil
+	}
+	out.Goal = true
+	out.Task = strings.Join(words, " ")
 	return out, nil
+}
+
+// specArgument says the words name one spec folder rather than describing work
+// across all of them.
+//
+// Deterministic, and it never touches a disk the client may not share. A first
+// word carrying a separator is a path — `specs/home-page` is how a person
+// writes one. A single word is a path too, because one word is what a folder
+// name looks like and the error names it when it is not there. Anything else
+// is a sentence.
+//
+// The first version had no rule at all: the first word was the path, always.
+// So `/loop implemente todas as specs pendentes` went looking for
+// `implemente/tasks.md`. Prose became a path, which is the same defect as
+// prose becoming a criterion, pointing the other way.
+func specArgument(words []string) bool {
+	if len(words) == 1 {
+		return true
+	}
+	return strings.ContainsAny(words[0], "/"+string(filepath.Separator))
 }
 
 // LoopTask is the turn `/loop` submits.
@@ -382,4 +413,41 @@ func LoopTask(spec LoopArgs) string {
 		"definition of done, and the harness checks it — do not go looking for " +
 		"the criteria to run them yourself, and do not report done on your own " +
 		"word."
+}
+
+// LoopPlan is what a `/loop <goal>` says before it starts.
+//
+// Every folder, not only the pending ones. A list that showed just the work
+// left would leave someone unable to tell "this spec is finished" from "dcode
+// did not see this spec", and those need different reactions.
+func LoopPlan(specs []protocol.SpecFolder, t Strings) string {
+	if len(specs) == 0 {
+		return t.LoopNoSpecs
+	}
+	width, pending := 0, 0
+	for _, f := range specs {
+		if n := len(f.Path); n > width {
+			width = n
+		}
+		if f.Pending {
+			pending++
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, t.LoopPlanHead, pending, len(specs))
+	for _, f := range specs {
+		var state string
+		switch {
+		case f.Error != "":
+			state = fmt.Sprintf(t.LoopSpecUnreadable, f.Error)
+		case f.Criteria == 0:
+			state = t.LoopSpecNoCriteria
+		case f.Pending:
+			state = fmt.Sprintf(t.LoopSpecPending, f.Unmet+f.Unavailable, f.Criteria)
+		default:
+			state = fmt.Sprintf(t.LoopSpecDone, f.Criteria)
+		}
+		fmt.Fprintf(&b, "\n  %-*s  %s", width, f.Path, state)
+	}
+	return b.String()
 }

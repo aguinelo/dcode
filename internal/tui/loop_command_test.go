@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // `/loop` is recognised before the line becomes turn input.
@@ -158,5 +159,77 @@ func TestLoopSubmitsSomethingToDo(t *testing.T) {
 	// What the person said wins over the default, whole.
 	if got := LoopTask(LoopArgs{Spec: "specs/x", Task: "só o header"}); got != "só o header" {
 		t.Errorf("the person's own words were changed: %q", got)
+	}
+}
+
+// A sentence is a goal, and a path is a path.
+//
+// `/loop implemente todas as specs pendentes` went looking for
+// `implemente/tasks.md`: the first word became a folder name. Prose became a
+// path, which is the same defect as prose becoming a criterion, pointing the
+// other way.
+func TestASentenceIsAGoalAndAPathIsAPath(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		goal bool
+		spec string
+		task string
+	}{
+		{in: "specs/home-page", spec: "specs/home-page"},
+		{in: "specs/home-page refaça o header", spec: "specs/home-page", task: "refaça o header"},
+		{in: "home-page", spec: "home-page"},
+		{in: "implemente todas as specs pendentes", goal: true, task: "implemente todas as specs pendentes"},
+		{in: "termine o que falta", goal: true, task: "termine o que falta"},
+		{in: "implemente todas --protect tests/**", goal: true, task: "implemente todas"},
+	} {
+		t.Run(c.in, func(t *testing.T) {
+			got, err := ParseLoopArgs(c.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Goal != c.goal {
+				t.Fatalf("goal = %v, want %v (%+v)", got.Goal, c.goal, got)
+			}
+			if got.Spec != c.spec {
+				t.Errorf("spec = %q, want %q", got.Spec, c.spec)
+			}
+			if got.Task != c.task {
+				t.Errorf("task = %q, want %q", got.Task, c.task)
+			}
+		})
+	}
+}
+
+// The plan lists every folder, not only the ones with work left.
+//
+// Showing just the pending ones would leave someone unable to tell "this spec
+// is finished" from "dcode did not see this spec", and those need different
+// reactions.
+func TestThePlanShowsEverySpecAndWhereItStands(t *testing.T) {
+	got := LoopPlan([]protocol.SpecFolder{
+		{Path: "specs/a", Criteria: 3, Unmet: 2, Pending: true},
+		{Path: "specs/b", Criteria: 2},
+		{Path: "specs/c", Criteria: 0, Pending: true},
+		{Path: "specs/d", Error: "no tasks.md"},
+	}, Text(En))
+
+	for _, want := range []string{
+		"specs/a", "specs/b", "specs/c", "specs/d",
+		"2 of 3", "all 2 criteria", "no definition of done", "no tasks.md",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the plan does not carry %q:\n%s", want, got)
+		}
+	}
+	// Two of the four are pending, and the head says so before any of it runs.
+	if !strings.Contains(got, "2 of 4") {
+		t.Errorf("the plan does not say how much is left:\n%s", got)
+	}
+}
+
+// No specs at all is an answer, not an empty screen.
+func TestAnEmptyPlanSaysSo(t *testing.T) {
+	if got := LoopPlan(nil, Text(En)); !strings.Contains(got, "/loop <path>") {
+		t.Errorf("an empty plan does not say what to do instead: %q", got)
 	}
 }

@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 133 changelogs de decisão |
+| famílias de spec | 16, com 134 changelogs de decisão |
 | contratos comportamentais | 48 declarados |
 | contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **5** |
@@ -113,6 +113,27 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **`/loop <objetivo>` trabalha o backlog inteiro.** `/loop implemente todas as
+  specs pendentes` transformava `implemente` em nome de pasta e falhava em
+  `implemente/tasks.md` — prosa virou caminho, o mesmo defeito de prosa virando
+  critério apontando para o outro lado. Argumento com separador, ou uma palavra
+  só, é caminho; frase é objetivo. RN-7 e US-2, escritas no dia 25 e só agora
+  construídas.
+- **"Pendente" é medido, não contado.** A descoberta roda os critérios de cada
+  pasta pelo mesmo sandbox de um turno, porque marcação é feita por quem teve
+  vontade. Pasta que não declara nada é pendente: ausência de prova não é prova
+  de pronto. Quem decide é o daemon, que tem o disco e o sandbox.
+- **Spec ainda sem tarefas é pendente, não ilegível.** Medido contra um backlog
+  real, 11 de 28 pastas voltaram como erro e ficaram fora da fila — todas
+  `spec.md` sem `tasks.md`, que é a coisa mais pendente que existe. Agora 28 de
+  28, nenhuma ilegível.
+- **Um guard casou string solta, terceira vez hoje.** O teste de vazamento de
+  inglês procurava palavras do catálogo por substring numa tela em português, e
+  `works` casou dentro de `workspace-write` — um valor, não layout. Agora casa
+  palavra inteira.
 
 ## 0.11.1 — 27 de agosto de 2026
 
