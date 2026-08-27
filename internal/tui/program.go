@@ -372,7 +372,9 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: text, Expanded: true})
 		p.attach(msg.session.ID)
-		return p, p.waitForEvent()
+		// And do the work. Opening a session against a definition of done and
+		// then waiting is the command doing half its job.
+		return p, tea.Batch(p.waitForEvent(), p.submit(msg.task))
 
 	case switchedMsg:
 		// A new session means a new event log, so the view is rebuilt rather
@@ -1539,7 +1541,7 @@ func (p *program) loopSession(spec LoopArgs) tea.Cmd {
 		if err != nil {
 			return noteMsg("could not open a session: " + err.Error())
 		}
-		return loopOpenedMsg{session: s, spec: spec.Spec}
+		return loopOpenedMsg{session: s, spec: spec.Spec, task: LoopTask(spec)}
 	}
 }
 
@@ -1551,4 +1553,7 @@ func (p *program) loopSession(spec LoopArgs) tea.Cmd {
 type loopOpenedMsg struct {
 	session protocol.Session
 	spec    string
+	// task is submitted as the first turn of the new session. The command
+	// exists to do the work, not to prepare a place for someone to ask again.
+	task string
 }
