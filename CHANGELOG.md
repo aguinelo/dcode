@@ -133,6 +133,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The state table is counted now, not typed.** Spec families, decision
+  changelogs, contracts declared, contracts needing a model, contracts settled
+  by assertion and contracts ever actually measured are all read from the tree
+  and compared against both editions — **and against the sentence beside the
+  table**, whose number-words are parsed and checked against the digits. The
+  two failures that actually happened are both caught: a row carried forward
+  from the release before, and prose that agreed with a tree of forty-two
+  contracts when there were forty-eight. `internal/evals.Measured` is the new
+  record behind the last row: every measurement names its contract, its model,
+  its date and its denominator, because a rate over three runs and a rate over
+  fifty are different claims wearing the same percent sign. Coverage and the
+  published version stay unchecked and the test says why.
+
 - **The number that says how little is verified was itself stale.** The state
   table read "4 contracts measured against a model", carried from the release
   before, while `boundary-decides-write` had been measured since — and the

@@ -47,9 +47,18 @@ can be recognised before it repeats rather than after.
   Changelog escrito depois é changelog reconstruído de memória.
 - Uma linha por mudança: **o que mudou e por quê**. O detalhe da decisão continua
   no changelog da família, em `docs/specs/architecture/<família>/changelog/`.
-- Esta regra é prosa, que é a camada mais fraca que este repositório reconhece.
-  Enquanto não houver guarda que a cobre, ela vale o que vale a disciplina de
-  quem lê — e está escrita aqui em vez de combinada.
+- **Os números do "Estado atual" são contados, não digitados.**
+  `TestTheStateTableIsCountedAndNotCarried` confere famílias, changelogs de
+  decisão, contratos declarados, quantos precisam de modelo, quantos se
+  resolvem por asserção e quantos já foram de fato medidos — contra a árvore, e
+  contra a frase em prosa ao lado da tabela, nas duas edições. Um número
+  herdado da release anterior reprova.
+- **O que a guarda ainda não cobre é a metade em prosa da regra**: que a
+  entrada exista, que esteja na branch que fez a mudança, e que diga o porquê.
+  Isso continua valendo o que vale a disciplina de quem lê, e está escrito aqui
+  em vez de combinado. Cobertura e versão publicada também ficam de fora, de
+  propósito: a primeira sai de uma execução que o teste não faz, e a segunda é
+  afirmação sobre uma tag que um teste sem rede não enxerga.
 
 ### A versão é derivada, não decidida
 
