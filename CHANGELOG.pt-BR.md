@@ -116,6 +116,19 @@ existe para impedir exatamente isso.
 
 ## Não lançado
 
+- **A tabela de estado passa a ser contada, não digitada.** Famílias de spec,
+  changelogs de decisão, contratos declarados, quantos precisam de modelo,
+  quantos se resolvem por asserção e quantos já foram medidos saem todos da
+  árvore e são comparados com as duas edições — **e com a frase ao lado da
+  tabela**, cujos números por extenso são lidos e conferidos contra os dígitos.
+  As duas falhas que aconteceram de verdade são pegas: linha herdada da release
+  anterior, e prosa concordando com uma árvore de quarenta e dois contratos
+  quando havia quarenta e oito. O `internal/evals.Measured` é o registro novo
+  atrás da última linha: toda medição nomeia contrato, modelo, data e
+  denominador, porque taxa sobre três execuções e taxa sobre cinquenta são
+  afirmações diferentes com o mesmo símbolo de porcento. Cobertura e versão
+  publicada seguem sem guarda, e o teste diz por quê.
+
 - **O número que diz o quão pouco está verificado estava ele mesmo desatualizado.**
   A tabela dizia "4 contratos medidos contra modelo", herdado da release
   anterior, enquanto `boundary-decides-write` já havia sido medido — e a frase
