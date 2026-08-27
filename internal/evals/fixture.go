@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 	"github.com/aguinelo/dcode/internal/behavior"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/memory"
+	"github.com/aguinelo/dcode/internal/tui"
+	"github.com/aguinelo/dcode/internal/vcs"
 )
 
 // FixtureRoot is where a scenario's material lives, relative to the package
@@ -54,7 +57,44 @@ type Fixture struct {
 	// refused to invent code. That is good behaviour scored as zero, and it
 	// was poisoning every multi-round scenario at once.
 	Files map[string]string
+	// World is what a scenario needs to be true of its workspace beyond the
+	// files it carries. See World.
+	World World
 }
+
+// World is the part of a scenario's situation that no file in it can express.
+//
+// Two things reach the prefix from outside the file tree: whether the
+// directory is a repository at all, and whether this turn is the one working
+// out how the work will be measured. A fixture that could say neither could
+// host no contract of the working-defaults or done-qualifier families.
+//
+// Every field is DECLARED and then checked against the product's own reader,
+// never asserted into the prompt. A scenario whose premise turns out not to
+// hold fails loudly rather than measuring the opposite of what it says — a
+// TMPDIR that happened to sit inside a repository would otherwise invert every
+// floor contract at once, silently, and the rates would still look like
+// evidence.
+type World struct {
+	// Repo is what the scenario needs git to say about the directory.
+	//
+	// "absent" is the only value any contract needs today, and an unknown one
+	// is an error rather than a shrug: a typo must not degrade into "do not
+	// look", which is the value that renders nothing.
+	Repo string `json:"repo"`
+	// Qualify is the spec folder this turn is working out the measurement for.
+	//
+	// Non-empty makes the scenario a qualifying turn: the task comes from the
+	// product rather than from task.md, done_propose answers, and the boundary
+	// is the one the product forces. Empty is every other scenario.
+	Qualify string `json:"qualify"`
+}
+
+// RepoAbsent is the only repository state a scenario declares today.
+const RepoAbsent = "absent"
+
+// Qualifying reports whether this scenario is a qualifying turn.
+func (w World) Qualifying() bool { return strings.TrimSpace(w.Qualify) != "" }
 
 // LoadFixture reads testdata/evals/<id>/ under root.
 //
@@ -64,12 +104,14 @@ type Fixture struct {
 func LoadFixture(root, id string) (Fixture, error) {
 	dir := filepath.Join(root, id)
 
-	task, err := os.ReadFile(filepath.Join(dir, "task.md"))
+	world, err := loadWorld(dir)
 	if err != nil {
 		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
 	}
-	if strings.TrimSpace(string(task)) == "" {
-		return Fixture{}, fmt.Errorf("fixture %s: task.md is empty", id)
+
+	task, err := loadTask(dir, world)
+	if err != nil {
+		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
 	}
 
 	raw, err := os.ReadFile(filepath.Join(dir, "tools.json"))
@@ -104,12 +146,57 @@ func LoadFixture(root, id string) (Fixture, error) {
 
 	return Fixture{
 		ID:           id,
-		Task:         strings.TrimSpace(string(task)),
+		Task:         task,
+		World:        world,
 		Tools:        tools,
 		Instructions: ins,
 		Skills:       skills,
 		Files:        overlay(shared, own),
 	}, nil
+}
+
+// loadWorld reads world.json, if the scenario has one.
+func loadWorld(dir string) (World, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "world.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return World{}, nil // most scenarios need none
+	}
+	if err != nil {
+		return World{}, err
+	}
+	var w World
+	if err := json.Unmarshal(raw, &w); err != nil {
+		return World{}, fmt.Errorf("world.json: %w", err)
+	}
+	if w.Repo != "" && w.Repo != RepoAbsent {
+		return World{}, fmt.Errorf("world.json: %q is not a repository state a scenario can declare; the only one is %q", w.Repo, RepoAbsent)
+	}
+	return w, nil
+}
+
+// loadTask reads what the scenario asks, from the one place that owns it.
+//
+// A qualifying turn does not get to write its own opening line. The product
+// composes that instruction, it is most of what the qualifier contracts
+// measure, and a copy of it here would drift from the product exactly the way
+// four copies of reminder text already have — each drift reading as a
+// plausible number describing something else.
+func loadTask(dir string, w World) (string, error) {
+	path := filepath.Join(dir, "task.md")
+	if w.Qualifying() {
+		if _, err := os.Stat(path); err == nil {
+			return "", fmt.Errorf("task.md sits beside a world.json that declares a qualifying turn; the instruction comes from the product, and two of them is one that drifts")
+		}
+		return tui.LoopTask(tui.LoopArgs{Qualify: true, Spec: w.Qualify}), nil
+	}
+	task, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(string(task)) == "" {
+		return "", fmt.Errorf("task.md is empty")
+	}
+	return strings.TrimSpace(string(task)), nil
 }
 
 // Spelled out rather than accepted freely: a file named `porject.md` would
@@ -265,13 +352,47 @@ func (f Fixture) ToolNames() []string {
 // so a measurement that omits the prompt measures a bare model and reports the
 // number as though it were about dcode.
 func (f Fixture) Prompt(family string) (string, error) {
+	return f.prompt(family, nil, nil)
+}
+
+func (f Fixture) prompt(family string, repo *behavior.Repo, ws *behavior.Workspace) (string, error) {
 	names := f.ToolNames()
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(names),
 		Tools:        names,
 		Instructions: f.Instructions,
 		SkillIndex:   behavior.Index(f.Skills),
+		Repo:         repo,
+		Workspace:    ws,
 	}, behavior.FormulationFor(family))
+}
+
+// survey takes the snapshots the scenario declared, with the product's own
+// readers, and refuses if what came back is not what the scenario says.
+//
+// The refusal is the point. Both of these are read from a directory the
+// harness created moments earlier, and both have an answer that renders
+// nothing at all — a repository that exists, a project that declares no gate.
+// A scenario built on "there is no repository here" running in a directory
+// that turned out to be inside one would measure a model being silent about
+// something that was never in its prompt, and report the silence as the
+// contract being honoured.
+func (f Fixture) survey(ctx context.Context, dir string) (*behavior.Repo, *behavior.Workspace, error) {
+	var repo *behavior.Repo
+	if f.World.Repo == RepoAbsent {
+		repo = vcs.Read(ctx, dir)
+		switch {
+		case repo == nil:
+			return nil, nil, fmt.Errorf("fixture %s declares no repository and git could not be asked, so nothing in the prefix says either way", f.ID)
+		case !repo.Absent:
+			return nil, nil, fmt.Errorf("fixture %s declares no repository and %s is one; the scenario would measure the opposite of what it says", f.ID, dir)
+		}
+	}
+
+	// No gate inventory here yet. The working-defaults `.p` declares no
+	// contract that needs one — F-3 is still to do — and a field nothing reads
+	// is a control that is not there.
+	return repo, nil, nil
 }
 
 // PromptIn is the prompt for a scenario whose workspace exists on disk.
@@ -281,7 +402,11 @@ func (f Fixture) Prompt(family string) (string, error) {
 // that copies product text is a fixture that drifts from it, and this suite has
 // found that four times — the reminder whose truncated copy dropped the clause
 // the judge measured is the one that cost the most.
-func (f Fixture) PromptIn(family, dir string) (string, error) {
+func (f Fixture) PromptIn(ctx context.Context, family, dir string) (string, error) {
+	repo, ws, err := f.survey(ctx, dir)
+	if err != nil {
+		return "", err
+	}
 	if learned, err := memory.Read(dir); err == nil {
 		if block := memory.Render(learned, memory.DefaultMax, nil); block != "" {
 			f.Instructions = append(append([]behavior.Instruction(nil), f.Instructions...),
@@ -292,7 +417,7 @@ func (f Fixture) PromptIn(family, dir string) (string, error) {
 				})
 		}
 	}
-	return f.Prompt(family)
+	return f.prompt(family, repo, ws)
 }
 
 // Opening is the history a scenario starts from: the task, and the body of any
@@ -322,8 +447,8 @@ func (f Fixture) Opening() []ce.Message {
 // dir is the scenario's workspace, because the prompt now depends on it: a
 // scenario carrying a memory has that memory in its prefix, read by the
 // product's own reader.
-func (f Fixture) Messages(family, dir string, history []ce.Message) ([]ce.Message, error) {
-	prompt, err := f.PromptIn(family, dir)
+func (f Fixture) Messages(ctx context.Context, family, dir string, history []ce.Message) ([]ce.Message, error) {
+	prompt, err := f.PromptIn(ctx, family, dir)
 	if err != nil {
 		return nil, err
 	}

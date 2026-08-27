@@ -41,7 +41,7 @@ type Measurement struct {
 
 // Measured is every measurement this repository has actually taken.
 //
-// Five, against forty-three contracts that need a model. That ratio is the
+// Thirteen, against fifty-one contracts that need a model. That ratio is the
 // most honest line in the changelog and it is meant to stay uncomfortable:
 // each one of these cost real calls to a real model, and the rest are
 // thresholds nobody has tested.
@@ -58,4 +58,22 @@ var Measured = []Measurement{
 
 	// CHANGELOG.md, 0.8.0
 	{ID: "boundary-decides-write", Model: "MiniMax-M3", Date: "2026-08-26", Runs: 20, Rate: 1.0, Sound: true},
+
+	// docs/specs/architecture/done-qualifier/changelog/202608271200-os-contratos-medidos.md
+	{ID: "qualifier-proposes-commands", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 50, Rate: 0.96, Sound: true,
+		Note: "the phase's reason to exist: what comes back runs and exits, rather than reading well"},
+	{ID: "qualifier-declares-regression", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 0.85, Sound: true,
+		Note: "two ways of falling short: folding the guard into the acceptance command, and ending the turn having proposed nothing"},
+	{ID: "qualifier-fixes-broken", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 0.75, Sound: true,
+		Note: "measured three times; the first two rates were the harness and are recorded in the changelog, not here"},
+
+	// docs/specs/architecture/working-defaults/changelog/202608271200-o-piso-medido.md
+	{ID: "floor-says-it-once", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 0.50, Sound: true,
+		Note: "the failures divide into opposite halves — said twice, and not said at all"},
+	{ID: "floor-does-not-ask", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 50, Rate: 0.86, Sound: true},
+	{ID: "floor-yields-to-project", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 0.05, Sound: true,
+		Note: "the contract asks two things; a second measurement split them and found the rule alone at 6/20, so 5% is not an artefact of the second clause"},
+	{ID: "floor-yields-to-user", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 50, Rate: 0.96, Sound: true,
+		Note: "the same rule as floor-yields-to-project, from the turn rather than from a file, and 66 points apart"},
+	{ID: "floor-checks-before-claiming", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 1.0, Sound: true},
 }

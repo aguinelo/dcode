@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,7 +126,7 @@ func TestTheAssembledCallCarriesTheDoctrine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgs, err := f.Messages("", t.TempDir(), []ce.Message{{Role: ce.RoleUser, Text: f.Task}})
+	msgs, err := f.Messages(context.Background(), "", t.TempDir(), []ce.Message{{Role: ce.RoleUser, Text: f.Task}})
 	if err != nil {
 		t.Fatal(err)
 	}

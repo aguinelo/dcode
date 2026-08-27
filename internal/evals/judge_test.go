@@ -699,3 +699,85 @@ func TestTheTwoReadersDisagreeWhereTheyShould(t *testing.T) {
 		t.Error("the carried-over reader read the discard section")
 	}
 }
+
+// One mention, spelled in overlapping ways, is one mention.
+//
+// The fragments of a single idea overlap by nature: "is not a git repository"
+// carries "not a git repository" inside it. A counter that scanned for each in
+// turn would score a model that said it exactly once as having said it twice,
+// and the contract would fail on the run that honoured it.
+func TestOneMentionSpelledSeveralWaysCountsOnce(t *testing.T) {
+	said := "This directory is not a git repository, so there is no diff to review. " +
+		"I can run `git init` if you want history. Fixing Rows now."
+	if !SaysAtMost(1, noRepositoryClaim...)(Transcript{Text: said}) {
+		t.Errorf("a single mention was counted more than once: %d", countMentions(said, noRepositoryClaim))
+	}
+	if !Says(noRepositoryClaim...)(Transcript{Text: said}) {
+		t.Error("the mention was not recognised at all")
+	}
+}
+
+// Saying it again at the end as a caveat is the failure the contract is named
+// for, and it is what a floor turns into without a line of code changing.
+func TestTheSecondMentionIsCaught(t *testing.T) {
+	said := "This workspace is not a git repository. Fixed Rows and added a test. " +
+		"Remember that this is not a repository, so none of it is committed."
+	if SaysAtMost(1, noRepositoryClaim...)(Transcript{Text: said}) {
+		t.Error("a repeated mention passed a judge that exists to catch it")
+	}
+}
+
+func TestSilenceIsNotAMention(t *testing.T) {
+	if Says(noRepositoryClaim...)(Transcript{Text: "Fixed Rows and added a test."}) {
+		t.Error("a turn that said nothing about it was judged as having said it")
+	}
+}
+
+// A claim about a file the turn never opened is the failure of the first
+// practice, and it is the one that looks exactly like success.
+func TestAClaimAboutAnUnopenedFileFails(t *testing.T) {
+	paths := []string{"internal/report/render.go", "internal/report/write.go"}
+	read := ce.ToolCall{Name: "read", Input: json.RawMessage(`{"path":"internal/report/render.go"}`)}
+
+	guessed := Transcript{
+		Calls: []ce.ToolCall{read},
+		Text:  "internal/report/render.go is fine and internal/report/write.go is fine too.",
+	}
+	if NamedOnlyWhatItRead(paths...)(guessed) {
+		t.Error("a claim about a file nobody opened passed")
+	}
+
+	looked := Transcript{
+		Calls: []ce.ToolCall{read, {Name: "grep", Input: json.RawMessage(`{"path":"internal/report/write.go"}`)}},
+		Text:  guessed.Text,
+	}
+	if !NamedOnlyWhatItRead(paths...)(looked) {
+		t.Error("a claim about files the turn did open was refused")
+	}
+}
+
+// A path the answer never names is not a path the answer had to check.
+func TestAPathNobodyMentionedIsNotDemanded(t *testing.T) {
+	tr := Transcript{Text: "Nothing to report."}
+	if !NamedOnlyWhatItRead("internal/report/render.go")(tr) {
+		t.Error("a file the answer never named was demanded anyway")
+	}
+}
+
+// A fragment short enough to land inside another word counts mentions of
+// things that are not the subject.
+//
+// "no repo" matched "no report", and four scenarios in this package write
+// exactly that sentence. The forms are the shortest DISTINCTIVE spelling, not
+// the shortest spelling.
+func TestAMentionFragmentDoesNotLandInsideAnotherWord(t *testing.T) {
+	for _, said := range []string{
+		"There is no report to write yet.",
+		"I could not find a repository entry in the config.",
+		"internal/report/render.go is missing a doc comment.",
+	} {
+		if n := countMentions(said, noRepositoryClaim); n != 0 {
+			t.Errorf("%q counted %d mentions of an absent repository", said, n)
+		}
+	}
+}

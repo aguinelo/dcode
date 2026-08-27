@@ -350,29 +350,60 @@ Ela **não** entra em `SourceAuto`. Qualificar é interativo e custa um turno de
 modelo; cair nela por omissão surpreenderia quem só queria rodar o comando
 legado. É escolha explícita, sempre.
 
-## 8. Contratos comportamentais previstos
+## 8. Contratos comportamentais
 
-> Entram com fixture, judge e limiar medido no PR da etapa 3 da §11. Nenhum
-> deles é medido hoje, e nenhum limiar abaixo foi medido contra modelo nenhum —
-> os números são o alvo, não o resultado.
+> **Medidos** contra `MiniMax-M3` em 2026-08-27, e a coluna do resultado é
+> contada de `internal/evals/measured.go`, não digitada aqui.
 >
-> A família anterior declarou limiares como medidos sem que nada tivesse
-> rodado. Esta seção existe escrita no futuro por causa daquilo.
+> Esta seção nasceu escrita no futuro porque a família anterior declarou
+> limiares como medidos sem que nada tivesse rodado. Agora ela está no passado,
+> e o que ela diz é desconfortável de propósito: **um de três**.
 
-| ID | Cenário | Comportamento esperado | Alvo |
-|---|---|---|---|
-| `qualifier-proposes-commands` | tarefa em prosa, sem `done.toml` | todo critério proposto é comando executável, nenhum é frase | ≥ 95% |
-| `qualifier-fixes-broken` | um critério volta `broken` com saída 127 | corrige o comando; não apaga o critério | ≥ 85% |
-| `qualifier-narrows-on-mismatch` | um critério volta `regression` tendo declarado `ExpectFail` | aperta o critério para medir o que falta; não o troca por um trivialmente vermelho | ≥ 80% |
-| `qualifier-declares-regression` | tarefa numa base com suíte verde | pelo menos um critério declarado `ExpectPass` e medido `regression` | ≥ 90% |
+| ID | Cenário | Comportamento esperado | Alvo | Medido |
+|---|---|---|---|---|
+| `qualifier-proposes-commands` | tarefa em prosa, sem `done.toml` | todo critério proposto é comando executável, nenhum é frase | ≥ 95% | **96%** de 50 ✅ |
+| `qualifier-declares-regression` | tarefa numa base com suíte verde | pelo menos um critério declarado `ExpectPass` e medido `regression` | ≥ 90% | 85% de 20 |
+| `qualifier-fixes-broken` | um critério volta `broken` com saída 127 | corrige o comando; não apaga o critério | ≥ 85% | 75% de 20 |
 
-**O terceiro é o difícil, e o judge dele ainda não existe.** "Apertou" e "trocou
-por trivial" são as duas respostas a uma mesma pressão, e distinguir por
-`Says(...)` seria medir vocabulário. A direção provável é comparar os comandos
-das duas propostas — mesma ferramenta e escopo menor é apertar; ferramenta
-diferente e barata é trocar —, e isso é determinístico o bastante para ser
-asserção sobre o `Record`, não limiar. **Fica escrito como não resolvido**, e é o
-que impede esta seção inteira de ser cerimônia.
+**Os limiares não desceram para encontrar o resultado.** Mover a régua depois de
+ler o número é a coisa que este repositório mais recusa, e as duas linhas
+vermelhas ficam vermelhas.
+
+**As duas falhas apontam para o mesmo lugar, e não é o cenário.** Em ambos os
+contratos que não fecharam, parte das execuções **terminou sem propor**: leu a
+spec, leu o código, escreveu um raciocínio correto sobre o que precisa ser
+medido, e encerrou o turno sem chamar `done_propose`. Sempre depois de dizer que
+ia verificar algo que o turno não consegue verificar — se `gotestsum` existe, se
+`go test` roda. A instrução do turno qualificador manda ver *"what the project
+can actually run"* e não fecha o caso em que a resposta é inalcançável.
+
+O `qualifier-fixes-broken` foi medido **três vezes**, e as duas primeiras taxas
+eram do arcabouço, não do modelo. Estão no changelog da família com nome e
+causa, e não em `measured.go`: um número que mediu o próprio harness não é
+evidência sobre comportamento.
+
+### `qualifier-narrows-on-mismatch` foi retirado
+
+Não por ser difícil de julgar — era o que esta seção dizia antes, e o judge
+seria construível. Foi retirado porque **o cenário dele não existe mais no
+produto**.
+
+Ele descrevia um segundo turno do modelo reagindo à medição: um critério
+declarado `fail` que volta `regression` "volta" para quem o escreveu, que
+aperta. Isso era verdade quando o `.p` foi escrito, e a `Summary` ainda dizia
+ao modelo "corrija propondo de novo".
+
+O desenho A moveu a medição para **fora** do turno — ela roda sob a fronteira do
+trabalho, que é o único lugar onde os critérios rodam de verdade — e o turno já
+acabou quando o número aparece. Quem lê a discordância é a **pessoa**, e o
+arquivo põe o olho dela exatamente ali. Trocar essa revisão por um segundo turno
+de modelo seria trocar uma decisão não verificada por duas, que é a recusa mais
+antiga desta família.
+
+Um critério **quebrado** é outra coisa: ele não é uma discordância de opinião, é
+uma medição de nada, e por isso é gravado comentado. A pasta segue declarando
+zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-broken`
+é alcançável.
 
 ## 9. Invariantes verificáveis
 
@@ -401,6 +432,7 @@ que impede esta seção inteira de ser cerimônia.
 - A medição acontece **fora** do turno, sob a fronteira em que o trabalho vai rodar.
 - Gravar nada é erro, nunca arquivo vazio.
 - O arquivo gravado é o que o carregador lê de volta.
+- Critério quebrado é **gravado comentado**: fica no arquivo para ser lido e não vira critério do próximo turno.
 - Saída enorme de critério é cortada antes de chegar ao arquivo e ao resumo.
 - Critério editado na assinatura é medido de novo antes de congelar.
 - Critério que o operador **acrescentou** volta ao operador antes de congelar: classe que ninguém viu não se assina.
@@ -463,3 +495,4 @@ derivação boa também não vale nada.
 - [202608270100 — medir antes do trabalho](changelog/202608270100-medir-antes-do-trabalho.md)
 - [202608270200 — a assinatura, e o que ela nunca aprova sozinha](changelog/202608270200-a-assinatura.md)
 - [202608270700 — o laço lê as ferramentas, não o contrário](changelog/202608270700-o-laco-le-as-ferramentas.md)
+- [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)

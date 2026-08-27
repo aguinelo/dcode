@@ -62,20 +62,30 @@ segunda maneira é a que fica desatualizada.
 
 ## 4. Medição de contratos comportamentais
 
-**Nenhum limiar desta família foi medido.** Os cinco alvos da §6 do `.p` são
-alvos, não resultados.
+**Os cinco contratos desta família foram medidos** contra `MiniMax-M3` em
+2026-08-27, com `DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e `DCODE_EVAL_ENABLED` —
+declaradas em `202608072334-provider-adapter.config.spec.md` §4, não
+redeclaradas aqui. Os resultados estão na `.p §6`, com modelo e data em
+`internal/evals/measured.go`.
 
-Quando a etapa 4 da §8 existir, `DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e
-`DCODE_EVAL_ENABLED` passam a valer — declaradas em
-`202608072334-provider-adapter.config.spec.md` §4, não redeclaradas aqui — e
-cada número medido entra com modelo e data em `changelog/`.
+Dois fecharam; três não, e um deles a 5%. Os limiares ficaram onde estavam.
 
-O judge de `floor-checks-before-claiming` provavelmente **não** é mediado: a
-pergunta "todo caminho afirmado ausente aparece antes num `read`/`glob`/`grep`?"
-é determinística sobre o transcript. Se for, o contrato migra para `Asserted` e
-sai da medição, como os quatro da `loop-command` fizeram.
+`floor-checks-before-claiming` **continua medido, e não migrou para
+`Asserted`.** A previsão desta seção estava meio certa: o judge é de fato
+determinístico sobre o transcript. Mas determinístico não é o critério —
+`Asserted` é para um contrato cujo resultado **não depende do modelo**, e este
+depende inteiramente: a pergunta é se o modelo leu o arquivo antes de afirmar
+algo sobre ele. Um judge determinístico sobre uma escolha do modelo continua
+sendo medição. Confundir as duas coisas teria tirado da tabela o único contrato
+do piso que fechou em 100%.
+
+O judge também mede menos do que a previsão dizia: ele afirma "olhou", não
+"olhou **antes**". O transcript junta o que foi dito ao longo das rodadas e
+guarda as chamadas numa lista à parte, então não há ordem entre uma frase e uma
+chamada, e inventá-la seria o juiz codificando algo que não enxerga.
 
 ## 5. Changelog
 
 - [202608262200 — o piso de prática e quem pode mudá-lo](changelog/202608262200-piso-de-pratica.md)
 - [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)
+- [202608271200 — o piso medido](changelog/202608271200-o-piso-medido.md)
