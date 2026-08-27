@@ -8,14 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/server"
 	"github.com/aguinelo/dcode/internal/session"
+	"github.com/aguinelo/dcode/internal/tools"
 )
 
 // DaemonOptions configure the server process.
@@ -63,6 +66,12 @@ type Daemon struct {
 	opts    DaemonOptions
 	manager *session.Manager
 	server  *server.Server
+
+	// proposalBy holds what each qualifying session proposed, until the loop
+	// takes it. Beside the session rather than inside it: a proposal is the
+	// loop's to collect, and the session that made it is read-only by then.
+	proposalMu sync.Mutex
+	proposalBy map[string]*Proposals
 }
 
 // NewDaemon builds the daemon.
@@ -79,6 +88,7 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		Manager:     d.manager,
 		Build:       d.build,
 		Specs:       d.specs,
+		CommitDone:  d.commitDone,
 		MaxSessions: opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without
 		// being loaded. The daemon already knows it; the server did not.
@@ -149,6 +159,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		}
 		opts.LoopSpec = specPath
 		opts.Protect = req.Protect
+		opts = qualifyMode(opts, req.Qualify)
 	}
 	if req.SandboxMode != "" {
 		mode, perr := parseMode(req.SandboxMode)
@@ -222,6 +233,12 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	// The same record the sandbox is asking, not a second copy: two would
 	// answer differently the moment one of them is granted.
 	sess.Standing = appSession.Standing
+	if appSession.Proposals != nil {
+		// Kept beside the session rather than inside it, because a proposal is
+		// the LOOP's to collect: the qualifying turn records one and ends, and
+		// the loop asks for it afterwards.
+		d.holdProposals(id, appSession.Proposals)
+	}
 
 	return sess, nil
 }
@@ -314,17 +331,131 @@ func specUnderWorkspace(workspace, spec string) (string, error) {
 // is why it is the daemon's job and not the client's. There is no cheaper
 // honest answer to "which specs are left": the criteria are the definition of
 // done, and a checkbox in a tasks.md is marked by whoever felt like marking it.
-func (d *Daemon) specs(ctx context.Context, workspace string) []protocol.SpecFolder {
+func (d *Daemon) specs(ctx context.Context, workspace string, measure bool) []protocol.SpecFolder {
 	ws, err := validWorkspace(workspace)
 	if err != nil {
 		return nil
 	}
 	opts := d.opts.Base
 	opts.Workspace = ws
-	// The same sandbox a criterion runs under during a turn, built the same
-	// way. Discovery runs real commands from the project, and running them
-	// outside the boundary the session would use is running something else.
-	sb, err := sandbox.New(sandbox.Config{
+	// The same sandbox a criterion runs under during a turn. Discovery runs
+	// real commands from the project, and running them outside the boundary
+	// the session would use is running something else.
+	var run loop.CriterionRunner
+	if measure {
+		sb, err := qualifyingSandbox(opts)
+		if err != nil {
+			return nil
+		}
+		run = criterionRunner(sb, opts)
+	}
+	found := loopcommand.Discover(ctx, ws, run, opts.DoneTimeout)
+	out := make([]protocol.SpecFolder, 0, len(found))
+	for _, f := range found {
+		out = append(out, protocol.SpecFolder{
+			Path: f.Path, Criteria: f.Criteria, Unmet: f.Unmet,
+			Unavailable: f.Unavailable, Pending: measure && f.Pending(),
+			Measured: measure, Error: f.Err,
+		})
+	}
+	return out
+}
+
+// qualifyMode forces plan mode on a qualifying session.
+//
+// Not negotiable by the request, and separated out so it can be asserted:
+// working out what "done" means is reading, and an agent that could write
+// while deciding what it will be measured by can move the thing it is about to
+// be measured against.
+func qualifyMode(opts Options, qualify bool) Options {
+	if !qualify {
+		return opts
+	}
+	opts.Qualify = true
+	opts.SandboxMode = policy.ModeReadOnly
+	opts.Policy = policy.PolicyNever
+	return opts
+}
+
+// qualifyOptions is what build would produce for this request, without opening
+// a session. It exists so the boundary a qualifying session runs under can be
+// asserted without a model behind it.
+func (d *Daemon) qualifyOptions(workspace string, req protocol.CreateSessionRequest) (Options, error) {
+	ws, err := validWorkspace(workspace)
+	if err != nil {
+		return Options{}, err
+	}
+	opts := d.opts.Base
+	opts.Workspace = ws
+	specPath, serr := specUnderWorkspace(ws, req.LoopSpec)
+	if serr != nil {
+		return Options{}, serr
+	}
+	opts.LoopSpec = specPath
+	opts.Protect = req.Protect
+	return qualifyMode(opts, req.Qualify), nil
+}
+
+// commitDone writes what a qualifying session proposed.
+//
+// The measurement happens HERE and not inside that session, under the boundary
+// the work will actually run under. A qualifying turn is read-only, and
+// measuring there would call a criterion broken because the sandbox refused it
+// a cache directory — a proposal born with a false measurement is worse than
+// none.
+// holdProposals keeps a qualifying session's proposal until the loop takes it.
+func (d *Daemon) holdProposals(id string, p *Proposals) {
+	d.proposalMu.Lock()
+	if d.proposalBy == nil {
+		d.proposalBy = map[string]*Proposals{}
+	}
+	d.proposalBy[id] = p
+	d.proposalMu.Unlock()
+}
+
+func (d *Daemon) proposals(id string) *Proposals {
+	d.proposalMu.Lock()
+	defer d.proposalMu.Unlock()
+	return d.proposalBy[id]
+}
+
+func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.CommitDoneResponse, error) {
+	sess, err := d.manager.Get(sessionID)
+	if err != nil {
+		return protocol.CommitDoneResponse{}, err
+	}
+	holder := d.proposals(sessionID)
+	if holder == nil {
+		return protocol.CommitDoneResponse{}, protocol.Errorf(protocol.CodeInvalidInput,
+			"session %s is not a qualifying session", sessionID)
+	}
+	p := holder.Take()
+	if p == nil {
+		return protocol.CommitDoneResponse{}, protocol.Errorf(protocol.CodeInvalidInput,
+			"nothing was proposed for %s", sessionID)
+	}
+
+	opts := d.opts.Base
+	opts.Workspace = sess.Workspace
+	sb, serr := qualifyingSandbox(opts)
+	if serr != nil {
+		return protocol.CommitDoneResponse{}, serr
+	}
+	summary, cerr := CommitProposal(ctx, p, criterionRunner(sb, opts), opts.DoneTimeout)
+	if cerr != nil {
+		return protocol.CommitDoneResponse{}, cerr
+	}
+	return protocol.CommitDoneResponse{
+		Path:     filepath.Join(p.Spec, tools.DoneProposeFile),
+		Summary:  summary,
+		Criteria: len(p.Criteria),
+	}, nil
+}
+
+// qualifyingSandbox builds the boundary a proposal is measured under: the
+// project's own, not the read-only one the proposing turn ran in.
+func qualifyingSandbox(opts Options) (sandbox.Sandbox, error) {
+	return sandbox.New(sandbox.Config{
 		Backend:      opts.Backend,
 		AllowNetwork: func() bool { return opts.AllowNetwork },
 		Scratch:      sandbox.Scratch(opts.Env),
@@ -333,17 +464,4 @@ func (d *Daemon) specs(ctx context.Context, workspace string) []protocol.SpecFol
 		Granted:      opts.Granted,
 		Writable:     opts.Writable,
 	}, opts.SandboxMode)
-	if err != nil {
-		return nil
-	}
-	run := criterionRunner(sb, opts)
-	found := loopcommand.Discover(ctx, ws, run, opts.DoneTimeout)
-	out := make([]protocol.SpecFolder, 0, len(found))
-	for _, f := range found {
-		out = append(out, protocol.SpecFolder{
-			Path: f.Path, Criteria: f.Criteria, Unmet: f.Unmet,
-			Unavailable: f.Unavailable, Pending: f.Pending(), Error: f.Err,
-		})
-	}
-	return out
 }

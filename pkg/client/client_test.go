@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -388,5 +389,53 @@ func TestSubscribeIgnoresUndecodableData(t *testing.T) {
 		}
 	case <-ctx.Done():
 		t.Fatal("timed out")
+	}
+}
+
+// The two calls the loop makes on its own: what specs are there, and write
+// what was proposed.
+func TestListSpecsAndCommitDone(t *testing.T) {
+	var seen []string
+	c := serveOn(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Method+" "+r.URL.Path+"?"+r.URL.RawQuery)
+		w.Header().Set("content-type", "application/json")
+		switch {
+		case r.URL.Path == "/"+protocol.Version+"/specs":
+			json.NewEncoder(w).Encode(protocol.ListSpecsResponse{Specs: []protocol.SpecFolder{
+				{Path: "specs/a", Criteria: 2, Unmet: 1, Pending: true},
+			}})
+		default:
+			json.NewEncoder(w).Encode(protocol.CommitDoneResponse{
+				Path: "specs/a/done.toml", Criteria: 2, Summary: "two of them",
+			})
+		}
+	}))
+
+	specs, err := c.ListSpecs(context.Background(), "/w", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(specs) != 1 || !specs[0].Pending {
+		t.Fatalf("got %+v", specs)
+	}
+
+	out, err := c.CommitDone(context.Background(), "s 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Criteria != 2 || out.Path == "" {
+		t.Fatalf("got %+v", out)
+	}
+
+	// The workspace travels as a query value and the id as a path segment,
+	// both escaped: a workspace with a space in it is ordinary on a Mac.
+	if len(seen) != 2 || !strings.Contains(seen[0], "workspace=%2Fw") {
+		t.Errorf("requests were %v", seen)
+	}
+	// The id arrives intact. It was escaped on the wire and decoded here,
+	// which is the round trip that matters: an id with a space in it must
+	// reach the handler as the same id, not as two path segments.
+	if !strings.Contains(seen[1], "/sessions/s 1/done") {
+		t.Errorf("the session id did not survive the round trip: %v", seen)
 	}
 }

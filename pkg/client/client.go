@@ -71,13 +71,30 @@ func (c *Client) CreateSession(ctx context.Context, req protocol.CreateSessionRe
 }
 
 // ListSessions returns live sessions.
+// CommitDone writes the definition of done a qualifying session proposed.
+//
+// A call the loop makes after the turn ends, because the turn runs in plan
+// mode and cannot write — and because measuring inside it would run the
+// criteria under a boundary they were never meant to run under.
+func (c *Client) CommitDone(ctx context.Context, id string) (protocol.CommitDoneResponse, error) {
+	var out protocol.CommitDoneResponse
+	if err := c.do(ctx, http.MethodPost, "/sessions/"+url.PathEscape(id)+"/done", nil, &out); err != nil {
+		return protocol.CommitDoneResponse{}, err
+	}
+	return out, nil
+}
+
 // ListSpecs asks which spec folders a workspace has and which are pending.
 //
 // The daemon decides "pending" because deciding it means running the folder's
 // criteria, and the daemon is the one with the disk and the sandbox.
-func (c *Client) ListSpecs(ctx context.Context, workspace string) ([]protocol.SpecFolder, error) {
+func (c *Client) ListSpecs(ctx context.Context, workspace string, measure bool) ([]protocol.SpecFolder, error) {
+	q := "/specs?workspace=" + url.QueryEscape(workspace)
+	if !measure {
+		q += "&measure=false"
+	}
 	var out protocol.ListSpecsResponse
-	if err := c.do(ctx, http.MethodGet, "/specs?workspace="+url.QueryEscape(workspace), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, q, nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Specs, nil

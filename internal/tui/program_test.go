@@ -20,6 +20,8 @@ import (
 type fakeTransport struct {
 	specs      []protocol.SpecFolder
 	specsErr   error
+	committed  protocol.CommitDoneResponse
+	commitErr  error
 	mu         sync.Mutex
 	submitted  []string
 	steered    []string
@@ -79,9 +81,14 @@ func (f *fakeTransport) Exec(_ context.Context, _, command string) error {
 	return f.execErr
 }
 
+// CommitDone stands in for the daemon writing what was proposed.
+func (f *fakeTransport) CommitDone(context.Context, string) (protocol.CommitDoneResponse, error) {
+	return f.committed, f.commitErr
+}
+
 // ListSpecs answers what the test set up, so a /loop over a goal can be driven
 // without a daemon.
-func (f *fakeTransport) ListSpecs(context.Context, string) ([]protocol.SpecFolder, error) {
+func (f *fakeTransport) ListSpecs(context.Context, string, bool) ([]protocol.SpecFolder, error) {
 	return f.specs, f.specsErr
 }
 

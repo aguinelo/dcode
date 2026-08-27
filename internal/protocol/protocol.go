@@ -204,6 +204,17 @@ type CreateSessionRequest struct {
 	// forbidding it, so an argument must not be able to REMOVE a protection
 	// the file asked for.
 	Protect []string `json:"protect,omitempty"`
+	// Qualify opens the session that works out what "done" means for LoopSpec,
+	// rather than the one that does the work.
+	//
+	// The LOOP decides there is a qualifying session, not the model: reading,
+	// projecting and qualifying are what the loop does before it executes, and
+	// a model that chose when to qualify would be choosing when to be measured.
+	//
+	// It runs in plan mode, always — deciding what you will be measured by is
+	// reading, and an agent that could write while deciding can move the thing
+	// it is about to be measured against.
+	Qualify bool `json:"qualify,omitempty"`
 }
 
 // ExecRequest runs a command the person typed, outside a turn.
@@ -364,6 +375,17 @@ type SignDoneRequest struct {
 	Protected  []string        `json:"protected,omitempty"`
 }
 
+// CommitDoneResponse is what came of writing a proposed definition of done.
+type CommitDoneResponse struct {
+	// Path is the file the proposal was written to.
+	Path string `json:"path"`
+	// Summary is what a person reads: every criterion, and what running it did
+	// before any work happened.
+	Summary string `json:"summary"`
+	// Criteria is how many were written.
+	Criteria int `json:"criteria"`
+}
+
 // SpecFolder is one spec folder and where it stands.
 //
 // Where it stands, not what it declares: "pending" is answered by running the
@@ -376,8 +398,14 @@ type SpecFolder struct {
 	Unavailable int    `json:"unavailable,omitempty"`
 	// Pending is the answer the client acts on, decided by the daemon so two
 	// clients cannot disagree about what counts as work left.
-	Pending bool   `json:"pending"`
-	Error   string `json:"error,omitempty"`
+	Pending bool `json:"pending"`
+	// Measured says the criteria were actually run to decide Pending.
+	//
+	// False when the caller asked only what each folder DECLARES, which is a
+	// read and costs nothing. Pending is not an answer then, and the field
+	// exists so a client cannot mistake "not measured" for "not pending".
+	Measured bool   `json:"measured"`
+	Error    string `json:"error,omitempty"`
 }
 
 // ListSpecsResponse answers "what is there and what is left".

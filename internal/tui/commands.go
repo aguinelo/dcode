@@ -319,6 +319,13 @@ type LoopArgs struct {
 	Spec string
 	// Protect are globs added to whatever the spec declares.
 	Protect []string
+	// Qualify marks the session that works out what done means for Spec,
+	// rather than the one that does the work.
+	//
+	// The LOOP sets it, never the model: reading, projecting and qualifying
+	// are what the loop does before it executes, and a model that chose when
+	// to qualify would be choosing when to be measured.
+	Qualify bool
 	// Goal marks an argument that is a sentence rather than a path.
 	//
 	// `/loop implemente todas as specs pendentes` is what someone types when
@@ -405,6 +412,17 @@ func specArgument(words []string) bool {
 // checks them, and a copy in the first message is a second statement of
 // something that can move.
 func LoopTask(spec LoopArgs) string {
+	if spec.Qualify {
+		// A different job, so a different instruction. This turn produces a
+		// proposal and nothing else — it cannot write, and the tool is the
+		// only way its answer reaches anybody.
+		return "Work out how " + spec.Spec + " will be known to be finished.\n\n" +
+			"Read the specification, its tasks, and enough of the code to see what " +
+			"already exists and what the project can actually run. Then call " +
+			"`done_propose` with the criteria, as commands.\n\n" +
+			"You are in plan mode: you cannot change anything, and you are not " +
+			"meant to. Propose, and stop."
+	}
 	if spec.Task != "" {
 		return spec.Task
 	}

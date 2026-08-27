@@ -142,6 +142,11 @@ var loopCommandInvariants = map[string]string{
 	"não só as pendentes":                    "TestThePlanShowsEverySpecAndWhereItStands",
 	"cancelada devolve o que já tinha":       "TestACancelledDiscoveryStopsWhereItIs",
 	"depois da fila digitada":                "TestTheDaemonListsSpecsAndWhatIsPending",
+	"pergunta não roda critério nenhum":      "TestTheLoopAsksBeforeItOpens",
+	"qualificada antes de ser trabalhada":    "TestTheLoopQualifiesAFolderThatDeclaresNothing",
+	"Survey que falha":                       "TestASurveyThatFailsDoesNotStopTheWork",
+	"**não** entra no turno qualificador":    "TestAQualifyingTurnDoesNotCarryTheTask",
+	"sem emendar no trabalho":                "TestCommittingAProposalReportsAndStops",
 	"**submete um turno**":                   "TestLoopSubmitsSomethingToDo",
 	"não flag mistecleada":                   "TestAWordAfterThePathIsTheTaskAndNotAFlag",
 	"vence o texto padrão":                   "TestLoopSubmitsSomethingToDo",
@@ -191,7 +196,11 @@ func TestEveryLoopCommandInvariantHasATest(t *testing.T) {
 // The qualifier is one package down, and the specguard's glob reaches only
 // internal/*/invariants_test.go — one level. Same reason loopcommand's claim
 // lives here.
-var qualifierDirs = []string{filepath.Join(".", "qualifier")}
+var qualifierDirs = []string{
+	filepath.Join(".", "qualifier"),
+	filepath.Join("..", "app"),
+	filepath.Join("..", "tools"),
+}
 
 var qualifierInvariants = map[string]string{
 	"exatamente uma vez, na ordem proposta":   "TestEveryCriterionRunsOnceInOrder",
@@ -206,6 +215,16 @@ var qualifierInvariants = map[string]string{
 	"truncado em `MaxOutput`":                 "TestOutputIsCappedAndSaysSo",
 	"prazo limita um critério":                "TestATimeoutBoundsOneCriterion",
 	"não altera a proposta que recebeu":       "TestMeasureLeavesTheProposalAlone",
+	"**não toca em nada**":                    "TestProposingIsAllowedInPlanModeBecauseItTouchesNothing",
+	"pedido não muda isso":                    "TestAQualifyingSessionIsAlwaysPlanMode",
+	"não carrega definição de pronto":         "TestAQualifyingSessionIsMeasuredAgainstNothing",
+	"registra e termina":                      "TestTheDaemonHoldsAProposalUntilTheLoopTakesIt",
+	"segunda proposta substitui":              "TestASecondProposalReplacesTheFirst",
+	"não sobrevive para ser gravada":          "TestTheDaemonHoldsAProposalUntilTheLoopTakesIt",
+	"sob a fronteira em que o trabalho":       "TestAProposalIsMeasuredWhereItsCriteriaCanRun",
+	"Gravar nada é erro":                      "TestCommittingNothingIsAnError",
+	"o carregador lê de volta":                "TestAProposalRoundTripsIntoADefinitionOfDone",
+	"cortada antes de chegar ao arquivo":      "TestACommittedProposalCutsAHugeOutput",
 	"medido de novo antes de congelar":        "TestAnEditedCriterionIsMeasuredAgain",
 	"**acrescentou** volta ao operador":       "TestAnAddedCriterionGoesBackOnce",
 	"assenta na hora":                         "TestAnEditThatKeepsTheClassSettlesAtOnce",

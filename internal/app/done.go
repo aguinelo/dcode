@@ -2,16 +2,20 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/loop/loopcommand"
+	"github.com/aguinelo/dcode/internal/loop/qualifier"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/sandbox"
+	"github.com/aguinelo/dcode/internal/tools"
 )
 
 // DoneFileName is where the definition of done is declared.
@@ -154,6 +158,12 @@ func criterionRunner(sb sandbox.Sandbox, opts Options) loop.CriterionRunner {
 // and silently getting the workspace's own done.toml would be the worst of the
 // two: the turn measured against something the person did not name.
 func sessionDoneSet(opts Options) (loop.DoneSet, error) {
+	if opts.Qualify {
+		// A qualifying session is not measured against anything: it is the one
+		// working out what the measurement will be. Giving it a definition of
+		// done would be asking it to satisfy the ruler it is drawing.
+		return loop.DoneSet{}, nil
+	}
 	if strings.TrimSpace(opts.LoopSpec) == "" {
 		return loadDoneSet(doneFilePath(opts.DoneFile, opts.Workspace), opts.VerifyCommand)
 	}
@@ -167,4 +177,97 @@ func sessionDoneSet(opts Options) (loop.DoneSet, error) {
 		return loop.DoneSet{}, protocol.Errorf(protocol.CodeInvalidInput, "%s", err.Error())
 	}
 	return spec.DoneSet(), nil
+}
+
+// Proposal is a definition of done the model derived, recorded and not yet
+// written down.
+//
+// Recorded rather than written because the turn that produces it runs in plan
+// mode: working out what you will be measured by is reading, and read-only
+// denies every write with no exception. The loop takes it from here — it
+// measures the criteria under the boundary the WORK will run under, which is
+// also the only place they can actually run, and writes the file.
+type Proposal struct {
+	Spec      string
+	Criteria  []qualifier.Proposed
+	Protected []string
+}
+
+// Proposals is where a qualifying session keeps what the model proposed.
+//
+// One slot, replaced. A model that proposes twice has changed its mind, and
+// keeping both would leave the loop choosing between them.
+type Proposals struct {
+	mu      sync.Mutex
+	current *Proposal
+}
+
+// Take removes the recorded proposal and returns it. Nil when there is none.
+//
+// Take rather than Get: committing it is the end of its life, and a proposal
+// that survived being written would be written again by the next commit.
+func (p *Proposals) Take() *Proposal {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := p.current
+	p.current = nil
+	return out
+}
+
+func (p *Proposals) put(v *Proposal) {
+	p.mu.Lock()
+	p.current = v
+	p.mu.Unlock()
+}
+
+// QualifyingTool builds the done_propose tool for a qualifying turn.
+//
+// The turn runs in PLAN mode: read-only, and no approval to grant. The tool
+// touches nothing — it records, and the loop measures and writes afterwards.
+func QualifyingTool(specDir string, into *Proposals) tools.DonePropose {
+	return tools.DonePropose{
+		Spec: specDir,
+		Submit: func(_ context.Context, in tools.DoneProposeInput) (string, error) {
+			p := &Proposal{Spec: specDir, Protected: in.Protected}
+			for _, c := range in.Criteria {
+				p.Criteria = append(p.Criteria, qualifier.Proposed{
+					Name:     strings.TrimSpace(c.Name),
+					Command:  strings.TrimSpace(c.Command),
+					ExitCode: c.ExitCode,
+					Expects:  qualifier.Expectation(strings.TrimSpace(c.Expects)),
+					Why:      strings.TrimSpace(c.Why),
+				})
+			}
+			into.put(p)
+			return fmt.Sprintf("recorded %d criteria for %s.\n\n"+
+				"They are NOT measured or written yet: this turn cannot write, and the "+
+				"loop runs them and records the result once it ends. You are done — "+
+				"do not start the work, and do not propose again unless one of these "+
+				"is wrong.", len(p.Criteria), specDir), nil
+		},
+	}
+}
+
+// CommitProposal measures a recorded proposal and writes it into the spec
+// folder, returning what a person reads.
+//
+// This is the loop's half, and it runs OUTSIDE the qualifying turn on purpose.
+// Measuring under read-only would call a criterion broken because the sandbox
+// refused it a cache directory, and a proposal born with a false measurement
+// is worse than none.
+func CommitProposal(ctx context.Context, p *Proposal, run loop.CriterionRunner, timeout time.Duration) (string, error) {
+	if p == nil {
+		return "", fmt.Errorf("app: nothing was proposed")
+	}
+	measured, cond, err := qualifier.Measure(ctx, qualifier.Proposal{
+		Criteria: p.Criteria, Protected: p.Protected,
+	}, run, timeout)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(p.Spec, tools.DoneProposeFile)
+	if err := os.WriteFile(path, qualifier.Render(measured, p.Protected, cond), 0o644); err != nil {
+		return "", fmt.Errorf("could not write %s: %w", path, err)
+	}
+	return qualifier.Summary(measured, cond, path), nil
 }

@@ -71,6 +71,10 @@ type Options struct {
 	// DoneEnabled switches re-entry on unmet criteria on. Off restores the old
 	// behaviour: the turn ends when the model stops calling tools, met or not.
 	DoneEnabled bool
+	// Qualify makes this the session that works out what "done" means for
+	// LoopSpec instead of the one that does the work. Forces plan mode and
+	// offers done_propose; nothing else changes.
+	Qualify bool
 	// LoopSpec is a directory holding a tasks.md, read as this session's
 	// definition of done instead of done.toml. Empty is the ordinary case.
 	LoopSpec string
@@ -406,6 +410,9 @@ type Session struct {
 	DoctrineNotice []behavior.Notice
 	// ContextWindow is what the provider reports for this model.
 	ContextWindow int
+	// Proposals is where a qualifying session keeps what the model proposed,
+	// until the loop takes it. Nil in every other session.
+	Proposals *Proposals
 	// Standing is what the user has already permitted. Carried on the session
 	// so the daemon attaches the same record the sandbox is asking, rather than
 	// loading a second copy that could answer differently.
@@ -502,6 +509,14 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			Commit: headOf(repo),
 			Today:  time.Now().Format(time.DateOnly),
 		})
+	}
+	var proposals *Proposals
+	if opts.Qualify && opts.LoopSpec != "" {
+		// Only here. A tool that can redefine done, within reach of a working
+		// turn, is the shortest way out of a loop — the agent rewrites the
+		// ruler instead of meeting it.
+		proposals = &Proposals{}
+		toolset = append(toolset, QualifyingTool(opts.LoopSpec, proposals))
 	}
 	registry := tools.NewRegistry(toolset...)
 	// After the registry, because the session's tool names are what an error
@@ -676,6 +691,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 	return &Session{
 		Engine: engine, Registry: registry, State: state, Prompt: prompt, Options: opts,
+		Proposals:      proposals,
 		Standing:       standing,
 		Notice:         notice,
 		ContextWindow:  window,
