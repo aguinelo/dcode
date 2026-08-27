@@ -116,43 +116,23 @@ existe para impedir exatamente isso.
 
 ## Não lançado
 
-- **`/loop` é digitável.** `/loop <caminho> [--protect <glob>]` abre uma sessão
-  nova medida contra o `tasks.md` daquela pasta, e o texto do comando nunca vira
-  entrada de turno. O cliente manda o **caminho**, não os critérios: ele pode
-  não estar perto do disco do daemon, e um cliente que lesse a spec estaria
-  afirmando o que um arquivo que ele não enxerga contém. O daemon resolve sob o
-  workspace e recusa o que sobe. Spec nomeada nunca é trocada em silêncio pelo
-  `done.toml`, e spec ilegível encerra a sessão em vez de cair no legado.
+- **`/loop` é digitável.** `/loop <caminho> [--protect <glob>]` abre sessão
+  medida contra o `tasks.md` daquela pasta, e o texto do comando nunca vira
+  entrada de turno. O cliente manda o caminho e o daemon lê, porque o cliente
+  pode não estar perto daquele disco.
 - **A sessão diz quantos critérios carrega, e zero é resposta.** Sessão sem
-  definição de pronto relata pronto no fim do primeiro turno, então quem digitou
-  `/loop` esperando uma é avisado na hora.
-- **Um erro era classificado procurando a palavra "workspace" no texto dele.**
-  Mensagem carrega caminho, e este repositório mora num diretório chamado
-  `workspace` — então spec inexistente voltava como `workspace_invalid` com o
-  workspace intacto. Achado rodando o daemon de verdade. Agora há o sentinela
-  `policy.ErrWorkspace` e a classificação é por `errors.Is`.
-
-- **A tabela de estado passa a ser contada, não digitada.** Famílias de spec,
-  changelogs de decisão, contratos declarados, quantos precisam de modelo,
-  quantos se resolvem por asserção e quantos já foram medidos saem todos da
-  árvore e são comparados com as duas edições — **e com a frase ao lado da
-  tabela**, cujos números por extenso são lidos e conferidos contra os dígitos.
-  As duas falhas que aconteceram de verdade são pegas: linha herdada da release
-  anterior, e prosa concordando com uma árvore de quarenta e dois contratos
-  quando havia quarenta e oito. O `internal/evals.Measured` é o registro novo
-  atrás da última linha: toda medição nomeia contrato, modelo, data e
-  denominador, porque taxa sobre três execuções e taxa sobre cinquenta são
-  afirmações diferentes com o mesmo símbolo de porcento. Cobertura e versão
-  publicada seguem sem guarda, e o teste diz por quê.
-
-- **O número que diz o quão pouco está verificado estava ele mesmo desatualizado.**
-  A tabela dizia "4 contratos medidos contra modelo", herdado da release
-  anterior, enquanto `boundary-decides-write` já havia sido medido — e a frase
-  ao lado ainda dizia "trinta e nove dos quarenta e dois", números de uma árvore
-  com 42 contratos e não 48. Contados agora, e separados: 48 declarados, 43 que
-  precisam de modelo, 5 resolvidos por asserção, e **5 de fato já rodados**. A
-  linha existe para manter visível a distância entre "declarado" e "verificado",
-  e tinha parado de fazer isso.
+  definição de pronto relata pronto no fim do primeiro turno, então o `/loop`
+  avisa na hora em vez de no fim.
+- **Um erro era classificado procurando a palavra "workspace" no texto dele**, e
+  mensagem carrega caminho — então spec inexistente voltava `workspace_invalid`
+  num repositório que mora num diretório com esse nome. Agora é sentinela, com
+  `errors.Is`.
+- **A tabela de estado é contada, não digitada.** Famílias, changelogs de
+  decisão e todos os números de contrato saem da árvore e são conferidos contra
+  as duas edições e contra a frase ao lado da tabela.
+- **O número que diz o quão pouco está verificado estava desatualizado** —
+  herdado da release anterior enquanto um quinto contrato já fora medido.
+  Contado e separado: 48 declarados, 43 que precisam de modelo, 5 já rodados.
 
 ## 0.9.1 — 27 de agosto de 2026
 
