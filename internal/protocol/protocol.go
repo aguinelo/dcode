@@ -167,6 +167,14 @@ type Session struct {
 	// turn a token count into the percentage a person can act on; without it,
 	// "12400 tokens" answers nothing.
 	ContextWindow int `json:"context_window,omitempty"`
+	// DoneCriteria is how many criteria this session is measured against.
+	//
+	// Zero is a real answer and the one worth carrying: a session with no
+	// definition of done reports done at the end of the first turn, and asking
+	// for a spec and getting zero is exactly the moment someone needs to be
+	// told. Without this the client would have to say "loop opened" and mean
+	// nothing by it.
+	DoneCriteria int `json:"done_criteria"`
 }
 
 // CreateSessionRequest opens a session. Workspace must be absolute.
@@ -182,6 +190,20 @@ type CreateSessionRequest struct {
 	// a moment that has passed, and not the background processes, which died
 	// with the session that started them.
 	Resume string `json:"resume,omitempty"`
+	// LoopSpec is a directory holding a tasks.md, read as this session's
+	// definition of done.
+	//
+	// A path rather than the parsed criteria: the client may be nowhere near
+	// the daemon's filesystem, and a client that read the spec itself would be
+	// asserting what a file it cannot see contains. Relative to the workspace,
+	// and refused if it climbs out of it.
+	LoopSpec string `json:"loop_spec,omitempty"`
+	// Protect are globs added to whatever the spec declares as protected.
+	//
+	// Union, never precedence: Protected surfaces a change rather than
+	// forbidding it, so an argument must not be able to REMOVE a protection
+	// the file asked for.
+	Protect []string `json:"protect,omitempty"`
 }
 
 // ExecRequest runs a command the person typed, outside a turn.

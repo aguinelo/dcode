@@ -9,6 +9,8 @@ import (
 
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/loop/loopcommand"
+	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/sandbox"
 )
 
@@ -143,4 +145,26 @@ func criterionRunner(sb sandbox.Sandbox, opts Options) loop.CriterionRunner {
 		out, code, err := runner.Run(ctx, opts.Workspace, command)
 		return code, out, err
 	}
+}
+
+// sessionDoneSet reads the definition of done a session is born with.
+//
+// A spec path wins over done.toml when one was given, and it is an explicit
+// choice every time — never something SourceAuto falls into. Asking for a spec
+// and silently getting the workspace's own done.toml would be the worst of the
+// two: the turn measured against something the person did not name.
+func sessionDoneSet(opts Options) (loop.DoneSet, error) {
+	if strings.TrimSpace(opts.LoopSpec) == "" {
+		return loadDoneSet(doneFilePath(opts.DoneFile, opts.Workspace), opts.VerifyCommand)
+	}
+	spec, err := loopcommand.LoadSpecWithProtect(opts.LoopSpec, opts.Protect)
+	if err != nil {
+		// Coded at the source. Left bare it reached the server's fallback,
+		// which classified it by looking for the word "workspace" in the
+		// message — and the message carries a path. Anyone whose project lives
+		// under a directory called `workspace` got "workspace_invalid" for a
+		// spec that simply was not there.
+		return loop.DoneSet{}, protocol.Errorf(protocol.CodeInvalidInput, "%s", err.Error())
+	}
+	return spec.DoneSet(), nil
 }

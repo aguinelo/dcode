@@ -26,7 +26,7 @@ type Builtin struct {
 // stays English.
 var Builtins = []Builtin{
 	{Name: "help"}, {Name: "init"}, {Name: "clear"}, {Name: "plan"},
-	{Name: "config"}, {Name: "model"}, {Name: "mode"}, {Name: "resume"},
+	{Name: "config"}, {Name: "model"}, {Name: "mode"}, {Name: "loop"}, {Name: "resume"},
 	{Name: "undo"}, {Name: "image"}, {Name: "update"},
 }
 
@@ -43,6 +43,8 @@ func builtinText(name string, t Strings) (args, help string) {
 		return t.CmdPlanArgs, t.CmdPlan
 	case "mode":
 		return t.CmdModeArgs, t.CmdMode
+	case "loop":
+		return t.CmdLoopArgs, t.CmdLoop
 	case "config":
 		return t.CmdConfigArgs, t.CmdConfig
 	case "model":
@@ -298,4 +300,52 @@ func Complete(input string, user config.CommandSet, lang Lang) []Completion {
 		out = append(out, Completion{Name: name, Description: user.Commands[name].Description})
 	}
 	return out
+}
+
+// LoopArgs is what `/loop` was given, after parsing.
+type LoopArgs struct {
+	// Spec is the folder holding tasks.md, as the user typed it. Resolving it
+	// is the daemon's job: it owns the filesystem, and a client that resolved
+	// the path would be asserting something about a disk it may not share.
+	Spec string
+	// Protect are globs added to whatever the spec declares.
+	Protect []string
+}
+
+// ParseLoopArgs splits the argument of `/loop`. Pure, and strict.
+//
+// Strict because a mistyped flag that is silently ignored produces a session
+// measured against a definition of done the person did not ask for, and they
+// find out at the end of the turn. An unknown flag stops the command.
+func ParseLoopArgs(args string) (LoopArgs, error) {
+	fields := strings.Fields(args)
+	var out LoopArgs
+	for i := 0; i < len(fields); i++ {
+		f := fields[i]
+		switch {
+		case f == "--protect":
+			if i+1 >= len(fields) {
+				return LoopArgs{}, fmt.Errorf("--protect needs a glob after it")
+			}
+			i++
+			out.Protect = append(out.Protect, fields[i])
+		case strings.HasPrefix(f, "--protect="):
+			g := strings.TrimPrefix(f, "--protect=")
+			if g == "" {
+				return LoopArgs{}, fmt.Errorf("--protect needs a glob after it")
+			}
+			out.Protect = append(out.Protect, g)
+		case strings.HasPrefix(f, "-"):
+			return LoopArgs{}, fmt.Errorf("%s", f)
+		default:
+			if out.Spec != "" {
+				return LoopArgs{}, fmt.Errorf("%s", f)
+			}
+			out.Spec = f
+		}
+	}
+	if out.Spec == "" {
+		return LoopArgs{}, fmt.Errorf("")
+	}
+	return out, nil
 }

@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 130 decision changelogs |
+| spec families | 16, with 131 decision changelogs |
 | behavioural contracts | 48 declared |
 | contracts needing a model | 43 of the 48; 5 are settled by assertion |
 | **contracts ever actually measured** | **5** |
@@ -133,27 +133,24 @@ exists to stop exactly that.
 
 ## Unreleased
 
-- **The state table is counted now, not typed.** Spec families, decision
-  changelogs, contracts declared, contracts needing a model, contracts settled
-  by assertion and contracts ever actually measured are all read from the tree
-  and compared against both editions — **and against the sentence beside the
-  table**, whose number-words are parsed and checked against the digits. The
-  two failures that actually happened are both caught: a row carried forward
-  from the release before, and prose that agreed with a tree of forty-two
-  contracts when there were forty-eight. `internal/evals.Measured` is the new
-  record behind the last row: every measurement names its contract, its model,
-  its date and its denominator, because a rate over three runs and a rate over
-  fifty are different claims wearing the same percent sign. Coverage and the
-  published version stay unchecked and the test says why.
-
-- **The number that says how little is verified was itself stale.** The state
-  table read "4 contracts measured against a model", carried from the release
-  before, while `boundary-decides-write` had been measured since — and the
-  sentence beside it still said "thirty-nine of the forty-two", numbers from a
-  tree with 42 contracts in it rather than 48. Counted now, and split: 48
-  declared, 43 needing a model, 5 settled by assertion, and **5 ever actually
-  run**. The row exists to keep the gap between "declared" and "verified"
-  visible, and it had quietly stopped doing that.
+- **`/loop` is typeable.** `/loop <path> [--protect <glob>]` opens a session
+  measured against that folder's `tasks.md`, and the command text never becomes
+  turn input. The client sends the path and the daemon reads it, because a
+  client may be nowhere near that disk.
+- **A session says how many criteria it carries, and zero is an answer.** A
+  session with no definition of done reports done at the end of the first turn,
+  so `/loop` says so on the spot rather than at the end.
+- **An error was classified by looking for the word "workspace" in its text**,
+  and messages carry paths — so a missing spec came back `workspace_invalid`
+  from a repository that lives under a directory of that name. A sentinel now,
+  matched with `errors.Is`.
+- **The state table is counted, not typed.** Families, decision changelogs and
+  every contract number are read from the tree and checked against both
+  editions and against the sentence beside the table. Both failures that
+  actually happened are caught.
+- **The number that says how little is verified was itself stale** — carried
+  from the release before while a fifth contract had been measured. Counted and
+  split now: 48 declared, 43 needing a model, 5 ever run.
 
 ## 0.9.1 — 27 August 2026
 

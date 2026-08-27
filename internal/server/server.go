@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aguinelo/dcode/internal/policy"
@@ -511,8 +510,18 @@ func wrapErr(err error) *protocol.Error {
 	}
 	msg := err.Error()
 	// A workspace problem is the user's to fix and deserves its own status
-	// rather than a generic 500.
-	if strings.Contains(msg, "workspace") {
+	// rather than a generic 500 — but only when the producer SAID it was one.
+	//
+	// This used to search the message for the word "workspace", and a message
+	// carries paths. Anyone working under a directory called `workspace` —
+	// which is where this repository itself lives — got `workspace_invalid`
+	// for errors that had nothing to do with their workspace. Classifying by a
+	// word that appears in file paths is the same defect as a guard that
+	// matches a loose string, and it went wrong the same way.
+	//
+	// A real workspace error says so with a sentinel, and the producers that
+	// can code themselves are caught by AsError above.
+	if errors.Is(err, policy.ErrWorkspace) {
 		return protocol.Errorf(protocol.CodeWorkspaceInvalid, "%s", msg)
 	}
 	return protocol.Errorf(protocol.CodeInternal, "%s", msg)

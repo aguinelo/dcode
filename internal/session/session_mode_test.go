@@ -175,3 +175,29 @@ func TestConcurrentSwitchesLeaveOneMode(t *testing.T) {
 		t.Errorf("mode %q advertises sandbox %q, want %q", d.Mode, d.SandboxMode, wantSandbox)
 	}
 }
+
+// The session says how many criteria it carries, and zero is an answer.
+//
+// A session with no definition of done reports done at the end of the first
+// turn. Someone who typed /loop expecting one has to be told then, and the
+// client cannot say it without being told first.
+func TestTheSessionReportsHowManyCriteriaItCarries(t *testing.T) {
+	s := criteriaSession(t, 2)
+	if got := s.Describe().DoneCriteria; got != 2 {
+		t.Errorf("Describe reports %d criteria, want 2", got)
+	}
+	s = criteriaSession(t, 0)
+	if got := s.Describe().DoneCriteria; got != 0 {
+		t.Errorf("Describe reports %d criteria for an empty set, want 0", got)
+	}
+}
+
+func criteriaSession(t *testing.T, n int) *Session {
+	t.Helper()
+	var set loop.DoneSet
+	for i := 0; i < n; i++ {
+		set.Criteria = append(set.Criteria, loop.Criterion{Name: "c", Command: "true"})
+	}
+	eng := loop.New(loop.Config{Done: set}, ce.Session{})
+	return New("s1", "/w", "model", "workspace-write", eng, NewEventLog("s1", 100, time.Now), time.Now)
+}

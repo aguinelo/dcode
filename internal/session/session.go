@@ -125,12 +125,17 @@ func (s *Session) Describe() protocol.Session {
 	state := s.state
 	sandbox, behaviour := s.Mode, s.behaviourMode
 	s.mu.Unlock()
+	criteria := 0
+	if s.engine != nil {
+		criteria = s.engine.DoneCriteria()
+	}
 	return protocol.Session{
 		ID: s.ID, State: state, Workspace: s.Workspace, Model: s.Model,
 		SandboxMode: sandbox, Mode: behaviour,
 		CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
 		FirstSeq:      s.Log.FirstSeq(),
 		ContextWindow: s.ContextWindow,
+		DoneCriteria:  criteria,
 	}
 }
 

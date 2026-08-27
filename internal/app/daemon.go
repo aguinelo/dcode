@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aguinelo/dcode/internal/policy"
@@ -134,6 +135,17 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 				"session %s cannot be continued: %v", req.Resume, cerr)
 		}
 		carriedFrom, carriedTurns = req.Resume, turns
+	}
+	if req.LoopSpec != "" {
+		// Resolved under the workspace, and refused if it climbs out. A spec
+		// path is a string a client sent, and the daemon reads the disk: the
+		// two together are how `../../..` becomes a file read nobody asked for.
+		specPath, serr := specUnderWorkspace(ws, req.LoopSpec)
+		if serr != nil {
+			return nil, serr
+		}
+		opts.LoopSpec = specPath
+		opts.Protect = req.Protect
 	}
 	if req.SandboxMode != "" {
 		mode, perr := parseMode(req.SandboxMode)
@@ -271,3 +283,24 @@ func randomUint32() uint32 {
 func parseMode(s string) (policy.SandboxMode, error) { return policy.ParseMode(s) }
 
 func osUID() int { return os.Getuid() }
+
+// specUnderWorkspace resolves a spec path a client sent, and refuses one that
+// leaves the workspace.
+//
+// Both halves matter. Resolving relative to the workspace is what makes
+// `/loop specs/home-page` mean the same thing from any client; refusing the
+// climb out is what keeps that from being an arbitrary read of the daemon's
+// filesystem.
+func specUnderWorkspace(workspace, spec string) (string, error) {
+	path := spec
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(workspace, path)
+	}
+	path = filepath.Clean(path)
+	rel, err := filepath.Rel(workspace, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", protocol.Errorf(protocol.CodeInvalidInput,
+			"the spec path %q is outside the workspace", spec)
+	}
+	return path, nil
+}
