@@ -52,6 +52,12 @@ type Config struct {
 	// almost none of it is loaded — a rename that only worked on the open
 	// session would work on the one row nobody needs it for.
 	RecordDir string
+	// CommitDone measures what a qualifying session proposed and writes it
+	// into the spec folder, returning what a person reads.
+	//
+	// Injected for the same reason Specs is: measuring means running criteria,
+	// which is the app's business rather than the server's.
+	CommitDone func(ctx context.Context, sessionID string) (protocol.CommitDoneResponse, error)
 	// Specs lists a workspace's spec folders and which of them are pending.
 	//
 	// Injected because deciding "pending" means running criteria, which is the
@@ -164,6 +170,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST "+p+"/sessions", s.createSession)
 	s.mux.HandleFunc("GET "+p+"/sessions", s.listSessions)
 	s.mux.HandleFunc("GET "+p+"/specs", s.listSpecs)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/name", s.renameSession)
@@ -552,4 +559,32 @@ func (s *Server) listSpecs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, protocol.ListSpecsResponse{Specs: s.cfg.Specs(r.Context(), ws)})
+}
+
+// commitDone writes the definition of done a qualifying session proposed.
+//
+// It is a separate call, made by the loop after the turn ends, and that is the
+// design rather than plumbing. A qualifying turn runs in plan mode: read-only,
+// with no exception, because working out what you will be measured by is
+// reading. So nothing inside it can write — and measuring inside it would call
+// a criterion broken because the sandbox refused it a cache directory.
+//
+// The loop reads the tools; the tools do not drive the loop.
+func (s *Server) commitDone(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if _, err := s.cfg.Manager.Get(id); err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	if s.cfg.CommitDone == nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput,
+			"this daemon cannot write a proposed definition of done"))
+		return
+	}
+	out, err := s.cfg.CommitDone(r.Context(), id)
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }

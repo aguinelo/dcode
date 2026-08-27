@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 134 changelogs de decisão |
+| famílias de spec | 16, com 135 changelogs de decisão |
 | contratos comportamentais | 48 declarados |
 | contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **5** |
@@ -113,6 +113,25 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **O laço descobre os próprios critérios, em modo planejamento.** Um turno
+  qualificador lê a spec e o código e chama `done_propose`; o harness mede cada
+  critério proposto e escreve um `done.toml` que a pessoa revisa. Quem decide
+  que há qualificação é o **laço** — um modelo que escolhesse quando qualificar
+  estaria escolhendo quando ser medido.
+- **A ferramenta não toca em nada, e isso é o desenho.** A primeira versão
+  declarava escrita e o modo planejamento negou, como devia: `read-only` não tem
+  exceção, e uma seria a exceção que a próxima pessoa amplia. Então a proposta é
+  *gravada*, o turno termina, e o laço pede ao daemon que meça e escreva — sob a
+  fronteira em que o trabalho vai rodar, que é o único lugar onde os critérios
+  conseguem rodar.
+- **O `Expects` pegou o primeiro de verdade.** Numa spec só com prosa, o modelo
+  propôs `bash reverse.sh; test $? -ne 0` esperando que falhasse. Passou — 127 de
+  um script ausente é diferente de zero — então o critério estava verde pelo
+  motivo errado, e o arquivo diz isso na linha acima dele. Nenhuma leitura humana
+  de uma lista de comandos pegaria.
 
 ## 0.12.0 — 27 de agosto de 2026
 

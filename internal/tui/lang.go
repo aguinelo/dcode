@@ -256,6 +256,8 @@ type Strings struct {
 	CmdLoopFlag        string // takes the flag that is not one
 	CmdLoopOpened      string // takes the spec path and the criterion count
 	CmdLoopEmpty       string // takes the spec path
+	CmdLoopProposed    string // takes the criterion count, the file and the spec path
+	CmdLoopQualifying  string // takes the spec path
 	LoopNoSpecs        string
 	LoopPlanHead       string // takes pending and total
 	LoopSpecPending    string // takes unmet and total criteria
@@ -463,6 +465,8 @@ var catalogue = map[Lang]Strings{
 		LoopSpecDone:       "done — all %d criteria pass",
 		LoopSpecNoCriteria: "no definition of done; nothing says it is finished",
 		LoopSpecUnreadable: "could not be read: %s",
+		CmdLoopQualifying:  "loop: %s declares no criteria, so this turn works out what they should be. It cannot change anything — it proposes, and you review the file before any work runs against it.",
+		CmdLoopProposed:    "loop: %d criteria written to %s, measured before any work. Read it, change what is wrong, then /loop %s to work it.",
 		CmdLoopOpened:      "loop: %s, %d criteria",
 		CmdLoopEmpty:       "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
@@ -665,6 +669,8 @@ Environment:
 		LoopSpecDone:       "pronta — os %d critérios passam",
 		LoopSpecNoCriteria: "sem definição de pronto; nada afirma que está terminada",
 		LoopSpecUnreadable: "não deu para ler: %s",
+		CmdLoopQualifying:  "loop: %s não declara critério, então este turno descobre quais deveriam ser. Ele não pode mudar nada — propõe, e você revisa o arquivo antes de qualquer trabalho rodar contra ele.",
+		CmdLoopProposed:    "loop: %d critérios escritos em %s, medidos antes de qualquer trabalho. Leia, corrija o que estiver errado, e então /loop %s para trabalhá-la.",
 		CmdLoopOpened:      "loop: %s, %d critérios",
 		CmdLoopEmpty:       "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
 		CmdModel:           "troca de modelo — abre nova sessão, porque o prefixo muda",

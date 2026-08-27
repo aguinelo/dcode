@@ -392,6 +392,16 @@ que impede esta seção inteira de ser cerimônia.
 - `Output` de cada critério é truncado em `MaxOutput` e diz que foi.
 - Um prazo limita um critério, e critério que estourou o prazo é `ClassBroken`, não vermelho.
 - `Measure` não altera a proposta que recebeu.
+- `done_propose` **não toca em nada**: `Declare` não declara caminho nem rede.
+- O turno qualificador roda em modo planejamento, e o pedido não muda isso.
+- A sessão qualificadora não carrega definição de pronto nenhuma.
+- A proposta é **gravada**, não escrita: o turno registra e termina.
+- Uma segunda proposta substitui a primeira.
+- Tomar a proposta é o fim da vida dela — não sobrevive para ser gravada duas vezes.
+- A medição acontece **fora** do turno, sob a fronteira em que o trabalho vai rodar.
+- Gravar nada é erro, nunca arquivo vazio.
+- O arquivo gravado é o que o carregador lê de volta.
+- Saída enorme de critério é cortada antes de chegar ao arquivo e ao resumo.
 - Critério editado na assinatura é medido de novo antes de congelar.
 - Critério que o operador **acrescentou** volta ao operador antes de congelar: classe que ninguém viu não se assina.
 - Edição que não muda a classe assenta na hora — voltar por uma classe já vista é perguntar duas vezes.
@@ -452,3 +462,4 @@ derivação boa também não vale nada.
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
 - [202608270100 — medir antes do trabalho](changelog/202608270100-medir-antes-do-trabalho.md)
 - [202608270200 — a assinatura, e o que ela nunca aprova sozinha](changelog/202608270200-a-assinatura.md)
+- [202608270700 — o laço lê as ferramentas, não o contrário](changelog/202608270700-o-laco-le-as-ferramentas.md)

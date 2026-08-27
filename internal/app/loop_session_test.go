@@ -206,3 +206,39 @@ func TestListingSpecsOfANonWorkspaceAnswersNothing(t *testing.T) {
 		t.Errorf("got %+v", got)
 	}
 }
+
+// A qualifying session runs in plan mode, and the request cannot change that.
+//
+// Working out what "done" means is reading. An agent that could write while
+// deciding what it will be measured by can move the thing it is about to be
+// measured against — so the boundary is not the requester's to choose.
+func TestAQualifyingSessionIsAlwaysPlanMode(t *testing.T) {
+	ws := t.TempDir()
+	spec := filepath.Join(ws, "specs", "x")
+	if err := os.MkdirAll(spec, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(spec, "spec.md"), []byte("# uma spec\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &Daemon{opts: DaemonOptions{Base: Options{
+		SandboxMode: policy.ModeFullAccess, Policy: policy.PolicyOnRequest,
+	}}}
+	// Asking for full access AND a qualifying session: the qualification wins.
+	opts, err := d.qualifyOptions(ws, protocol.CreateSessionRequest{
+		Workspace: ws, LoopSpec: "specs/x", Qualify: true, SandboxMode: "full-access",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.SandboxMode != policy.ModeReadOnly {
+		t.Errorf("a qualifying session runs as %q, want read-only", opts.SandboxMode)
+	}
+	if opts.Policy != policy.PolicyNever {
+		t.Errorf("a qualifying session asks under %q, want never", opts.Policy)
+	}
+	if !opts.Qualify {
+		t.Error("the qualifying flag did not reach the session")
+	}
+}

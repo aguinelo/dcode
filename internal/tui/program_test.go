@@ -20,6 +20,8 @@ import (
 type fakeTransport struct {
 	specs      []protocol.SpecFolder
 	specsErr   error
+	committed  protocol.CommitDoneResponse
+	commitErr  error
 	mu         sync.Mutex
 	submitted  []string
 	steered    []string
@@ -77,6 +79,11 @@ func (f *fakeTransport) Exec(_ context.Context, _, command string) error {
 	defer f.mu.Unlock()
 	f.executed = append(f.executed, command)
 	return f.execErr
+}
+
+// CommitDone stands in for the daemon writing what was proposed.
+func (f *fakeTransport) CommitDone(context.Context, string) (protocol.CommitDoneResponse, error) {
+	return f.committed, f.commitErr
 }
 
 // ListSpecs answers what the test set up, so a /loop over a goal can be driven

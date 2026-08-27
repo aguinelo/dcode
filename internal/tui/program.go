@@ -24,6 +24,7 @@ type Transport interface {
 	CreateSession(ctx context.Context, req protocol.CreateSessionRequest) (protocol.Session, error)
 	ListSessions(ctx context.Context) ([]protocol.Session, error)
 	ListSpecs(ctx context.Context, workspace string) ([]protocol.SpecFolder, error)
+	CommitDone(ctx context.Context, id string) (protocol.CommitDoneResponse, error)
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
 	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
 	Interrupt(ctx context.Context, id string) error
@@ -142,6 +143,9 @@ type program struct {
 	loopQueue   []protocol.SpecFolder
 	loopGoal    string
 	loopProtect []string
+	// loopQualified is the spec a qualifying session is proposing criteria
+	// for, so the loop knows what just finished and can say what to do next.
+	loopQualified string
 
 	// unsubscribe tears down the current subscription when the session is
 	// replaced by /clear or /model.
@@ -398,7 +402,10 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
 		p.model.Sessions = p.opts.Sessions
 		text := fmt.Sprintf(t.CmdLoopOpened, msg.spec, msg.session.DoneCriteria)
-		if msg.session.DoneCriteria == 0 {
+		if msg.qualify {
+			text = fmt.Sprintf(t.CmdLoopQualifying, msg.spec)
+			p.loopQualified = msg.spec
+		} else if msg.session.DoneCriteria == 0 {
 			// Zero is the answer that needs the sentence. A session with no
 			// definition of done reports done at the end of the first turn,
 			// and someone who typed /loop expecting one has to be told now.
@@ -437,6 +444,18 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
+		} else if p.model.State == protocol.SessionStateIdle && p.loopQualified != "" {
+			// The qualifying session is done proposing. The loop moves on by
+			// itself: it reads, projects, qualifies and only then executes,
+			// and waiting here for someone to say "now do it" would put the
+			// sequence back in the model's hands.
+			//
+			// It does NOT start the work. The proposal is a file a person
+			// reviews, and running against a ruler nobody read is the thing
+			// this whole family refuses.
+			spec := p.loopQualified
+			p.loopQualified = ""
+			cmds = append(cmds, p.commitProposal(p.opts.SessionID, spec))
 		} else if p.model.State == protocol.SessionStateIdle && len(p.loopQueue) > 0 {
 			// This spec is done with; the next one gets its own session, its
 			// own definition of done and its own budget.
@@ -1584,11 +1603,12 @@ func (p *program) loopSession(spec LoopArgs) tea.Cmd {
 			SandboxMode: p.model.Sandbox,
 			LoopSpec:    spec.Spec,
 			Protect:     spec.Protect,
+			Qualify:     spec.Qualify,
 		})
 		if err != nil {
 			return noteMsg("could not open a session: " + err.Error())
 		}
-		return loopOpenedMsg{session: s, spec: spec.Spec, task: LoopTask(spec)}
+		return loopOpenedMsg{session: s, spec: spec.Spec, task: LoopTask(spec), qualify: spec.Qualify}
 	}
 }
 
@@ -1603,6 +1623,9 @@ type loopOpenedMsg struct {
 	// task is submitted as the first turn of the new session. The command
 	// exists to do the work, not to prepare a place for someone to ask again.
 	task string
+	// qualify marks the session that works out what done means rather than the
+	// one that does the work.
+	qualify bool
 }
 
 // loopEverySpec turns a goal into the list of specs it is about.
@@ -1636,4 +1659,20 @@ type specsFoundMsg struct {
 	goal    string
 	protect []string
 	specs   []protocol.SpecFolder
+}
+
+// commitProposal asks the daemon to measure and write what was proposed.
+//
+// The loop makes this call, after the turn: the qualifying turn runs in plan
+// mode and cannot write, and measuring inside it would run the criteria under
+// a boundary they were never meant to run under. The loop reads the tools.
+func (p *program) commitProposal(id, spec string) tea.Cmd {
+	return func() tea.Msg {
+		out, err := p.opts.Transport.CommitDone(p.ctx, id)
+		if err != nil {
+			return noteMsg("could not write the proposed definition of done: " + err.Error())
+		}
+		return noteMsg(fmt.Sprintf(Text(p.opts.Lang).CmdLoopProposed, out.Criteria, out.Path, spec) +
+			"\n\n" + out.Summary)
+	}
 }

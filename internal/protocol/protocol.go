@@ -204,6 +204,17 @@ type CreateSessionRequest struct {
 	// forbidding it, so an argument must not be able to REMOVE a protection
 	// the file asked for.
 	Protect []string `json:"protect,omitempty"`
+	// Qualify opens the session that works out what "done" means for LoopSpec,
+	// rather than the one that does the work.
+	//
+	// The LOOP decides there is a qualifying session, not the model: reading,
+	// projecting and qualifying are what the loop does before it executes, and
+	// a model that chose when to qualify would be choosing when to be measured.
+	//
+	// It runs in plan mode, always — deciding what you will be measured by is
+	// reading, and an agent that could write while deciding can move the thing
+	// it is about to be measured against.
+	Qualify bool `json:"qualify,omitempty"`
 }
 
 // ExecRequest runs a command the person typed, outside a turn.
@@ -362,6 +373,17 @@ type SignDoneRequest struct {
 	Signed     bool            `json:"signed"`
 	Criteria   []DoneCriterion `json:"criteria"`
 	Protected  []string        `json:"protected,omitempty"`
+}
+
+// CommitDoneResponse is what came of writing a proposed definition of done.
+type CommitDoneResponse struct {
+	// Path is the file the proposal was written to.
+	Path string `json:"path"`
+	// Summary is what a person reads: every criterion, and what running it did
+	// before any work happened.
+	Summary string `json:"summary"`
+	// Criteria is how many were written.
+	Criteria int `json:"criteria"`
 }
 
 // SpecFolder is one spec folder and where it stands.

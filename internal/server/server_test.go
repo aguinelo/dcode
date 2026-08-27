@@ -1149,3 +1149,55 @@ func TestListSpecsWithoutADiscovererAnswersNone(t *testing.T) {
 		t.Errorf("got %+v", out.Specs)
 	}
 }
+
+// The loop asks the daemon to write what a qualifying session proposed.
+//
+// A call of its own, made after the turn, because the turn runs in plan mode
+// and cannot write — and measuring inside it would run the criteria under a
+// boundary they were never meant to run under.
+func TestCommitDoneWritesWhatWasProposed(t *testing.T) {
+	srv, mgr := newServer(t, 4)
+	sess := session.New("s1", "/w", "m", "read-only", nil, session.NewEventLog("s1", 0, fixedClock()), fixedClock())
+	if err := mgr.Add(sess); err != nil {
+		t.Fatal(err)
+	}
+	srv.cfg.CommitDone = func(_ context.Context, id string) (protocol.CommitDoneResponse, error) {
+		return protocol.CommitDoneResponse{Path: "specs/x/done.toml", Criteria: 3, Summary: "three of them"}, nil
+	}
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/"+protocol.Version+"/sessions/s1/done", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var out protocol.CommitDoneResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Criteria != 3 || out.Path == "" || out.Summary == "" {
+		t.Errorf("got %+v", out)
+	}
+}
+
+// A session that never proposed, or does not exist, is refused rather than
+// answered with an empty write.
+func TestCommitDoneRefusesWhatItCannotWrite(t *testing.T) {
+	srv, mgr := newServer(t, 4)
+	sess := session.New("s1", "/w", "m", "read-only", nil, session.NewEventLog("s1", 0, fixedClock()), fixedClock())
+	if err := mgr.Add(sess); err != nil {
+		t.Fatal(err)
+	}
+
+	// No session at all.
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/"+protocol.Version+"/sessions/nope/done", nil))
+	if rec.Code == http.StatusOK {
+		t.Errorf("an unknown session was committed: %s", rec.Body.String())
+	}
+
+	// A daemon that cannot write one says so rather than pretending.
+	rec = httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/"+protocol.Version+"/sessions/s1/done", nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status %d without a writer, want 400", rec.Code)
+	}
+}

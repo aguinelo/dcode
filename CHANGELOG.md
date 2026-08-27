@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 134 decision changelogs |
+| spec families | 16, with 135 decision changelogs |
 | behavioural contracts | 48 declared |
 | contracts needing a model | 43 of the 48; 5 are settled by assertion |
 | **contracts ever actually measured** | **5** |
@@ -130,6 +130,25 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **The loop can work out its own criteria, in plan mode.** A qualifying turn
+  reads the spec and the code and calls `done_propose`; the harness measures
+  each proposed criterion and writes a `done.toml` the person reviews. The
+  **loop** decides there is a qualification — a model that chose when to
+  qualify would be choosing when to be measured.
+- **The tool touches nothing, and that is the design.** The first version
+  declared a write and plan mode denied it, exactly as it should: read-only has
+  no exception, and one would be the exception the next person widens. So the
+  proposal is *recorded*, the turn ends, and the loop asks the daemon to
+  measure and write it — under the boundary the work will run under, which is
+  also the only place the criteria can actually run.
+- **`Expects` caught its first real one.** Against a prose-only spec the model
+  proposed `bash reverse.sh; test $? -ne 0`, expecting it to fail. It passed —
+  127 from a missing script is non-zero — so the criterion was green for the
+  wrong reason, and the file says so above the criterion where a reviewer
+  looks. No human scan of a command list would have caught that.
 
 ## 0.12.0 — 27 August 2026
 
