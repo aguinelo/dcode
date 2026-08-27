@@ -110,7 +110,12 @@ func TestEveryDelegatedWritingInvariantHasATest(t *testing.T) {
 // reaches internal/*/invariants_test.go — one level. A guard file inside
 // loopcommand/ would never be read, which is why the claim for that family
 // lives here.
-var loopCommandDirs = []string{filepath.Join(".", "loopcommand")}
+var loopCommandDirs = []string{
+	filepath.Join(".", "loopcommand"),
+	filepath.Join("..", "tui"),
+	filepath.Join("..", "app"),
+	filepath.Join("..", "session"),
+}
 
 var loopCommandInvariants = map[string]string{
 	"não panic) para `tasks.md` malformado":  "TestLoadSpecMalformedReturnsError",
@@ -125,6 +130,16 @@ var loopCommandInvariants = map[string]string{
 	"vira critério igual a":                  "TestLoadSpecCheckedTaskIsStillACriterion",
 	"união do declarado no arquivo":          "TestLoadSpecWithProtectLayersBoth",
 	"aparece uma vez só":                     "TestLoadSpecProtectIsNotDuplicated",
+	"não** vira entrada de turno":            "TestLoopIsACommandAndNotTurnInput",
+	"não pode sombrear":                      "TestLoopCannotBeShadowed",
+	"Flag desconhecida":                      "TestAMistypedFlagStopsTheCommand",
+	"sem argumento mostra uso":               "TestParseLoopArgs",
+	"sai do workspace é recusado":            "TestASpecPathCannotClimbOutOfTheWorkspace",
+	"resolve contra ele":                     "TestASpecPathInsideResolvesAgainstTheWorkspace",
+	"`done.toml` não é consultado":           "TestASpecNamedIsTheDefinitionOfDone",
+	"encerra a criação da sessão":            "TestAnUnreadableSpecStopsTheSession",
+	"zero critério e **não** é erro":         "TestASpecWithNoRunnableCriterionIsNotAnError",
+	"zero é resposta, não ausência":          "TestTheSessionReportsHowManyCriteriaItCarries",
 	"nenhum caminho é protegido por posição": "TestLoadSpecWithoutProtectDeclaresNothing",
 	"ignora a presença de `done.toml`":       "TestLoadSourceLoopSpecReadsFile",
 	"ignora a presença de `specPath`":        "TestLoadSourceDoneFileIgnoresSpecPath",

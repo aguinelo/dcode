@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 130 changelogs de decisão |
+| famílias de spec | 16, com 131 changelogs de decisão |
 | contratos comportamentais | 48 declarados |
 | contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **5** |
@@ -115,6 +115,22 @@ existe para impedir exatamente isso.
 ---
 
 ## Não lançado
+
+- **`/loop` é digitável.** `/loop <caminho> [--protect <glob>]` abre uma sessão
+  nova medida contra o `tasks.md` daquela pasta, e o texto do comando nunca vira
+  entrada de turno. O cliente manda o **caminho**, não os critérios: ele pode
+  não estar perto do disco do daemon, e um cliente que lesse a spec estaria
+  afirmando o que um arquivo que ele não enxerga contém. O daemon resolve sob o
+  workspace e recusa o que sobe. Spec nomeada nunca é trocada em silêncio pelo
+  `done.toml`, e spec ilegível encerra a sessão em vez de cair no legado.
+- **A sessão diz quantos critérios carrega, e zero é resposta.** Sessão sem
+  definição de pronto relata pronto no fim do primeiro turno, então quem digitou
+  `/loop` esperando uma é avisado na hora.
+- **Um erro era classificado procurando a palavra "workspace" no texto dele.**
+  Mensagem carrega caminho, e este repositório mora num diretório chamado
+  `workspace` — então spec inexistente voltava como `workspace_invalid` com o
+  workspace intacto. Achado rodando o daemon de verdade. Agora há o sentinela
+  `policy.ErrWorkspace` e a classificação é por `errors.Is`.
 
 - **A tabela de estado passa a ser contada, não digitada.** Famílias de spec,
   changelogs de decisão, contratos declarados, quantos precisam de modelo,

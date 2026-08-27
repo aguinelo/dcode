@@ -71,6 +71,11 @@ type Options struct {
 	// DoneEnabled switches re-entry on unmet criteria on. Off restores the old
 	// behaviour: the turn ends when the model stops calling tools, met or not.
 	DoneEnabled bool
+	// LoopSpec is a directory holding a tasks.md, read as this session's
+	// definition of done instead of done.toml. Empty is the ordinary case.
+	LoopSpec string
+	// Protect are globs added to whatever the spec declares as protected.
+	Protect []string
 	// DoneFile overrides where the definition of done is declared.
 	DoneFile string
 	// MaxStallCycles is how many cycles without progress end a turn.
@@ -596,7 +601,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// The definition of done is read once, at session creation, like the
 	// instruction chain and for the same reason. A criterion written mid-session
 	// must not change what the turn is measured against.
-	doneSet, err := loadDoneSet(doneFilePath(opts.DoneFile, opts.Workspace), opts.VerifyCommand)
+	doneSet, err := sessionDoneSet(opts)
 	if err != nil {
 		return nil, err
 	}

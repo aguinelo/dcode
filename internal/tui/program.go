@@ -355,6 +355,25 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: string(msg)})
 		return p, nil
 
+	case loopOpenedMsg:
+		// The same switch, plus the one line that says what was loaded. The
+		// note is appended AFTER the model is rebuilt, or it would be written
+		// into the view the switch is about to discard.
+		t := Text(p.opts.Lang)
+		p.opts.SessionID = msg.session.ID
+		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
+		p.model.Sessions = p.opts.Sessions
+		text := fmt.Sprintf(t.CmdLoopOpened, msg.spec, msg.session.DoneCriteria)
+		if msg.session.DoneCriteria == 0 {
+			// Zero is the answer that needs the sentence. A session with no
+			// definition of done reports done at the end of the first turn,
+			// and someone who typed /loop expecting one has to be told now.
+			text = fmt.Sprintf(t.CmdLoopEmpty, msg.spec)
+		}
+		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: text, Expanded: true})
+		p.attach(msg.session.ID)
+		return p, p.waitForEvent()
+
 	case switchedMsg:
 		// A new session means a new event log, so the view is rebuilt rather
 		// than carried over: keeping entries from the old one would show a
@@ -1059,6 +1078,21 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 			return note(fmt.Sprintf(t.CmdModeUnknown, name))
 		}
 		return p, p.setMode(name)
+
+	case "loop":
+		t := Text(p.model.Lang)
+		spec, err := ParseLoopArgs(r.Args)
+		if err != nil {
+			if err.Error() == "" {
+				return note(t.CmdLoopUsage)
+			}
+			return note(fmt.Sprintf(t.CmdLoopFlag, err.Error()))
+		}
+		// A new session, always. The definition of done belongs to the session
+		// and is read when it is born; loading one into a session already
+		// running would change what the turn is measured against after the
+		// person had seen what it was.
+		return p, p.loopSession(spec)
 	}
 	return note("/" + r.Name + " is not implemented")
 }
@@ -1486,4 +1520,35 @@ func (p *program) onNavKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 	return p, nil
+}
+
+// loopSession opens a session measured against a spec folder.
+//
+// The path travels as the person typed it. The daemon resolves it under the
+// workspace and refuses one that climbs out — a client that resolved it would
+// be asserting where a file is on a disk it may not share.
+func (p *program) loopSession(spec LoopArgs) tea.Cmd {
+	return func() tea.Msg {
+		s, err := p.opts.Transport.CreateSession(p.ctx, protocol.CreateSessionRequest{
+			Workspace:   p.model.Workspace,
+			Model:       p.opts.Model,
+			SandboxMode: p.model.Sandbox,
+			LoopSpec:    spec.Spec,
+			Protect:     spec.Protect,
+		})
+		if err != nil {
+			return noteMsg("could not open a session: " + err.Error())
+		}
+		return loopOpenedMsg{session: s, spec: spec.Spec}
+	}
+}
+
+// loopOpenedMsg is the switch plus the one line that says what was loaded.
+//
+// The count is the whole message. Zero criteria means the session reports done
+// at the end of the first turn, and someone who typed /loop expecting a
+// definition of done needs to be told THEN rather than at the end.
+type loopOpenedMsg struct {
+	session protocol.Session
+	spec    string
 }

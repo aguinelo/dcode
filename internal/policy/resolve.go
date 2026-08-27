@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,6 +36,14 @@ type Resolver struct {
 //
 // Owning nothing owns nothing. An empty set is not "everything" — nothing said
 // is never a yes.
+// ErrWorkspace marks an error about the workspace itself.
+//
+// A sentinel rather than a phrase to grep for. The server used to classify
+// these by searching the message for the word "workspace", and a message
+// carries paths: anyone working under a directory of that name got
+// `workspace_invalid` for errors that had nothing to do with their workspace.
+var ErrWorkspace = errors.New("policy: workspace")
+
 func (r *Resolver) Owning(paths []string) *Resolver {
 	out := &Resolver{Workspace: r.Workspace, owned: make([]string, 0, len(paths))}
 	for _, p := range paths {
@@ -66,11 +75,11 @@ func NewResolver(workspace string) (*Resolver, error) {
 		return nil, fmt.Errorf("policy: workspace is required")
 	}
 	if !filepath.IsAbs(workspace) {
-		return nil, fmt.Errorf("policy: workspace %q must be absolute", workspace)
+		return nil, fmt.Errorf("%w %q must be absolute", ErrWorkspace, workspace)
 	}
 	real, err := canonical(workspace)
 	if err != nil {
-		return nil, fmt.Errorf("policy: workspace %q: %w", workspace, err)
+		return nil, fmt.Errorf("%w %q: %w", ErrWorkspace, workspace, err)
 	}
 	return &Resolver{Workspace: real}, nil
 }

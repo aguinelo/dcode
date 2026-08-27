@@ -14,6 +14,7 @@ import (
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/session"
@@ -470,10 +471,23 @@ func TestDisconnectingDoesNotAffectTheSession(t *testing.T) {
 	}
 }
 
+// A workspace problem is classified because the producer SAID it was one, not
+// because the message happens to contain the word.
+//
+// It used to search the text, and a message carries paths: anyone working
+// under a directory called `workspace` — which is where this repository itself
+// lives — got `workspace_invalid` for errors with nothing to do with their
+// workspace. Found by running a real daemon from such a directory and asking
+// for a spec that was not there.
 func TestWrapErrClassifiesWorkspaceProblems(t *testing.T) {
-	pe := wrapErr(fmt.Errorf("policy: workspace %q must be absolute", "x"))
+	pe := wrapErr(fmt.Errorf("%w %q must be absolute", policy.ErrWorkspace, "x"))
 	if pe.Code != protocol.CodeWorkspaceInvalid {
 		t.Errorf("got %s", pe.Code)
+	}
+	// A path with the word in it is not a workspace problem.
+	noise := wrapErr(fmt.Errorf("open /Users/someone/workspace/proj/specs/x/tasks.md: no such file"))
+	if noise.Code != protocol.CodeInternal {
+		t.Errorf("a path containing the word was classified as %s", noise.Code)
 	}
 	if got := wrapErr(fmt.Errorf("something else")); got.Code != protocol.CodeInternal {
 		t.Errorf("got %s", got.Code)

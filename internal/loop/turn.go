@@ -213,6 +213,17 @@ func (e *Engine) SetMode(mode policy.SandboxMode, pol policy.ApprovalPolicy) {
 // pair from the HTTP handler while a turn runs. Reading the fields directly is
 // a data race, which is what the first version of this did on the delegation
 // path while guarding only the other one.
+// DoneCriteria is how many criteria this engine is measured against.
+//
+// Under the same lock as Mode, and for the same reason: the definition of done
+// is frozen when the session is born, but reading it beside a writer without
+// the lock is how a value gets copied from a truth that moves.
+func (e *Engine) DoneCriteria() int {
+	e.cfgMu.Lock()
+	defer e.cfgMu.Unlock()
+	return len(e.cfg.Done.Criteria)
+}
+
 func (e *Engine) Mode() (policy.SandboxMode, policy.ApprovalPolicy) {
 	e.cfgMu.Lock()
 	defer e.cfgMu.Unlock()

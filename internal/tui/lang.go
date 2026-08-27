@@ -250,6 +250,12 @@ type Strings struct {
 	CmdModeCurrent   string // takes a mode name
 	CmdModeUnnamed   string // the boundary in force is none of the three
 	CmdModeUnknown   string // takes the name that is not a mode
+	CmdLoop          string
+	CmdLoopArgs      string
+	CmdLoopUsage     string
+	CmdLoopFlag      string // takes the flag that is not one
+	CmdLoopOpened    string // takes the spec path and the criterion count
+	CmdLoopEmpty     string // takes the spec path
 
 	// CLI. The usage block is one string per language rather than a field per
 	// line: it is prose with alignment, and cutting it into thirty fields
@@ -441,6 +447,12 @@ var catalogue = map[Lang]Strings{
 		CmdModeCurrent:   "current mode: %s",
 		CmdModeUnnamed:   "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
 		CmdModeUnknown:   "%s is not a mode — want plan, assist or auto",
+		CmdLoop:          "run a spec folder as this session's definition of done — opens a new session",
+		CmdLoopArgs:      "<path> [--protect <glob>]",
+		CmdLoopUsage:     "Usage: /loop <path to a folder holding tasks.md> [--protect <glob>]",
+		CmdLoopFlag:      "%s is not a flag here — only --protect is",
+		CmdLoopOpened:    "loop: %s, %d criteria",
+		CmdLoopEmpty:     "loop: %s declares no runnable criterion, so this session has no definition of done. A task becomes one by carrying a verify: marker.",
 
 		Usage: `dcode %s — an agentic coding harness
 
@@ -631,6 +643,12 @@ Environment:
 		CmdPlanArgs:      "[o que mudar]",
 		CmdConfig:        "o valor efetivo de uma chave e de onde ele veio",
 		CmdConfigArgs:    "<chave>",
+		CmdLoop:          "roda uma pasta de spec como a definição de pronto desta sessão — abre sessão nova",
+		CmdLoopArgs:      "<caminho> [--protect <glob>]",
+		CmdLoopUsage:     "Uso: /loop <caminho da pasta com tasks.md> [--protect <glob>]",
+		CmdLoopFlag:      "%s não é flag aqui — só --protect é",
+		CmdLoopOpened:    "loop: %s, %d critérios",
+		CmdLoopEmpty:     "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Uma tarefa vira um critério carregando o marcador verify:.",
 		CmdModel:         "troca de modelo — abre nova sessão, porque o prefixo muda",
 		CmdModelArgs:     "<nome>",
 		CmdResume:        "lista sessões, ou reconecta a uma",

@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 130 decision changelogs |
+| spec families | 16, with 131 decision changelogs |
 | behavioural contracts | 48 declared |
 | contracts needing a model | 43 of the 48; 5 are settled by assertion |
 | **contracts ever actually measured** | **5** |
@@ -132,6 +132,26 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **`/loop` is typeable.** `/loop <path> [--protect <glob>]` opens a new session
+  measured against the `tasks.md` in that folder, and the command text never
+  becomes turn input. The client sends the **path**, not the criteria: it may be
+  nowhere near the daemon's filesystem, and a client that read the spec would be
+  asserting what a file it cannot see contains. The daemon resolves it under the
+  workspace and refuses one that climbs out. A named spec is never quietly
+  replaced by the workspace's `done.toml`, and an unreadable one stops the
+  session rather than falling back.
+- **A session says how many criteria it carries, and zero is an answer.** A
+  session with no definition of done reports done at the end of the first turn,
+  so someone who typed `/loop` expecting one is told immediately, with the
+  sentence that says what makes a task into a criterion.
+- **An error was classified by looking for the word "workspace" in its text.**
+  Messages carry paths, and this repository lives under a directory called
+  `workspace` — so a missing spec came back as `workspace_invalid` when the
+  workspace was fine. Found by running the real daemon. There is a
+  `policy.ErrWorkspace` sentinel now and the classification is `errors.Is`; the
+  test that guarded it used to fabricate the string, and now asserts that a path
+  containing the word is **not** a workspace problem.
 
 - **The state table is counted now, not typed.** Spec families, decision
   changelogs, contracts declared, contracts needing a model, contracts settled
