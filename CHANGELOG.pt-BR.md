@@ -32,7 +32,7 @@ fora do pacote isolado.
 | **contratos de fato já medidos** | **5** |
 | cobertura | 94,0%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.11.1** |
+| versão publicada | **0.12.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -114,7 +114,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não lançado
+## 0.12.0 — 27 de agosto de 2026
 
 - **`/loop <objetivo>` trabalha o backlog inteiro.** `/loop implemente todas as
   specs pendentes` transformava `implemente` em nome de pasta e falhava em
