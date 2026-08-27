@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 131 changelogs de decisão |
+| famílias de spec | 16, com 132 changelogs de decisão |
 | contratos comportamentais | 48 declarados |
 | contratos que precisam de modelo | 43 dos 48; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **5** |
@@ -113,6 +113,16 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **A pasta da spec pode declarar o próprio `done.toml`.** Medido contra as 17
+  specs reais do Code Plain, `/loop` devolveu zero critérios em todas: os
+  `tasks.md` não têm marcador `verify:` e os critérios de aceitação são frases —
+  *"Lighthouse ≥ 95"* — que nenhum parser pode virar comando sem inventar um. A
+  pasta ganhou onde dizer isso em comandos. Mesmo nome e formato do arquivo do
+  workspace, um parser só; vence o `tasks.md`, vazio é erro em vez de queda, e
+  ausente é o caso comum.
 
 ## 0.10.0 — 27 de agosto de 2026
 

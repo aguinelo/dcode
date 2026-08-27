@@ -428,3 +428,81 @@ func contains(haystack []string, needle string) bool {
 	}
 	return false
 }
+
+// A spec folder can declare its own definition of done, in commands.
+//
+// Because the criteria a project can actually run are often nowhere in its
+// tasks. The specs this family was built for declare their acceptance criteria
+// as SENTENCES — "Lighthouse >= 95", "loads in under a second on 4G" — which is
+// what a person writes and what no parser may turn into a command without
+// inventing one. The folder gets a place to say it in commands instead.
+func TestASpecFolderCanDeclareItsOwnDoneFile(t *testing.T) {
+	dir := write(t, "# Tasks\n\n- [ ] 1. `a.ts` — smoke manual, sem comando.\n")
+	if err := os.WriteFile(filepath.Join(dir, "done.toml"), []byte(
+		"protected = \"**/*_test.ts\"\n\n[coverage]\ncommand = \"pnpm test:coverage\"\n\n[no-todo]\ncommand = \"grep -q TODO .\"\nexit_code = \"1\"\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := LoadSpecWithProtect(dir, []string{"docs/**"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Criteria) != 2 {
+		t.Fatalf("got %+v", got.Criteria)
+	}
+	if got.Criteria[0].Name != "coverage" || got.Criteria[1].ExitCode != 1 {
+		t.Fatalf("criteria wrong: %+v", got.Criteria)
+	}
+	// The protect argument unions with what the file declared, same as it does
+	// for a tasks.md.
+	if !contains(got.Protected, "**/*_test.ts") || !contains(got.Protected, "docs/**") {
+		t.Errorf("protected = %+v", got.Protected)
+	}
+	if got.Path != dir {
+		t.Errorf("path = %q", got.Path)
+	}
+}
+
+// It wins over tasks.md, and tasks.md is not consulted at all.
+//
+// Two sources for one folder would be two answers to "what is this measured
+// against", and the one nobody reads is the one that drifts.
+func TestTheSpecDoneFileWinsOverTasks(t *testing.T) {
+	dir := write(t, "- [ ] 1. desc. verify: "+bt+"from-tasks"+bt+"\n")
+	if err := os.WriteFile(filepath.Join(dir, "done.toml"),
+		[]byte("[from-file]\ncommand = \"true\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadSpec(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Criteria) != 1 || got.Criteria[0].Name != "from-file" {
+		t.Fatalf("tasks.md was consulted anyway: %+v", got.Criteria)
+	}
+}
+
+// A done.toml that declares nothing is an error, not an empty DoneSet: a
+// definition of done with nothing in it reports done.
+func TestAnEmptySpecDoneFileIsAnError(t *testing.T) {
+	dir := write(t, "- [ ] 1. desc. verify: "+bt+"true"+bt+"\n")
+	if err := os.WriteFile(filepath.Join(dir, "done.toml"), []byte("# nothing here\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadSpec(dir); err == nil {
+		t.Fatal("an empty done.toml fell through to tasks.md instead of failing")
+	}
+}
+
+// No done.toml is the ordinary case and not an error: the folder declares its
+// criteria in tasks.md, or not at all.
+func TestNoSpecDoneFileFallsToTasks(t *testing.T) {
+	got, err := LoadSpec(write(t, "- [ ] 1. desc. verify: "+bt+"true"+bt+"\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Criteria) != 1 || got.Criteria[0].Command != "true" {
+		t.Fatalf("got %+v", got.Criteria)
+	}
+}

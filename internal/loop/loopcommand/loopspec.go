@@ -85,6 +85,25 @@ func LoadSpec(path string) (LoopSpec, error) {
 // an argument could REMOVE a protection the file asked for — the one direction
 // that must never be reachable by accident.
 func LoadSpecWithProtect(path string, protect []string) (LoopSpec, error) {
+	// A done.toml beside the spec wins over its tasks.md.
+	//
+	// Because the criteria a project can actually run are often nowhere in its
+	// tasks. The specs this family was built for declare acceptance criteria as
+	// SENTENCES — "Lighthouse >= 95", "the home page loads in under a second on
+	// 4G" — which is what a person writes and what no parser may turn into a
+	// command without inventing one.
+	//
+	// So the folder gets a place to say it in commands. Written by hand, or by
+	// an agent in an ordinary turn, or one day by the qualifier: the file is
+	// the same file either way, it is diffable, and it survives the session
+	// that produced it.
+	if set, found, err := doneBesideSpec(path, protect); found || err != nil {
+		if err != nil {
+			return LoopSpec{}, err
+		}
+		return LoopSpec{Path: path, Criteria: set.Criteria, Protected: set.Protected}, nil
+	}
+
 	tasksPath := filepath.Join(path, tasksFile)
 	raw, err := os.ReadFile(tasksPath)
 	if err != nil {
