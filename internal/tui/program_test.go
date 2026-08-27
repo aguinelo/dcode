@@ -88,7 +88,7 @@ func (f *fakeTransport) CommitDone(context.Context, string) (protocol.CommitDone
 
 // ListSpecs answers what the test set up, so a /loop over a goal can be driven
 // without a daemon.
-func (f *fakeTransport) ListSpecs(context.Context, string) ([]protocol.SpecFolder, error) {
+func (f *fakeTransport) ListSpecs(context.Context, string, bool) ([]protocol.SpecFolder, error) {
 	return f.specs, f.specsErr
 }
 

@@ -23,7 +23,7 @@ import (
 type Transport interface {
 	CreateSession(ctx context.Context, req protocol.CreateSessionRequest) (protocol.Session, error)
 	ListSessions(ctx context.Context) ([]protocol.Session, error)
-	ListSpecs(ctx context.Context, workspace string) ([]protocol.SpecFolder, error)
+	ListSpecs(ctx context.Context, workspace string, measure bool) ([]protocol.SpecFolder, error)
 	CommitDone(ctx context.Context, id string) (protocol.CommitDoneResponse, error)
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
 	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
@@ -392,6 +392,19 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.loopQueue = pending[1:]
 		p.loopGoal, p.loopProtect = msg.goal, msg.protect
 		return p, p.loopSession(LoopArgs{Spec: pending[0].Path, Task: msg.goal, Protect: msg.protect})
+
+	case proposalWrittenMsg:
+		p.model.Entries = append(p.model.Entries, Entry{
+			Kind: KindNote, Summary: msg.note, Expanded: true,
+		})
+		// On to the next spec. A goal over a backlog qualifies every folder
+		// that declares nothing, in one pass, and stops with the files written
+		// — one sitting to review them all, and then the work runs on its own.
+		//
+		// It does NOT go straight on to the work here. A proposal nobody looked
+		// at is a ruler nobody read; the independence is that qualifying
+		// happened by itself, not that the signature was skipped.
+		return p, p.nextSpec()
 
 	case loopOpenedMsg:
 		// The same switch, plus the one line that says what was loaded. The
@@ -1160,7 +1173,7 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 			// with work left, and work them one at a time.
 			return p, p.loopEverySpec(spec)
 		}
-		return p, p.loopSession(spec)
+		return p, p.loopOne(spec)
 	}
 	return note("/" + r.Name + " is not implemented")
 }
@@ -1635,7 +1648,7 @@ type loopOpenedMsg struct {
 // like marking it.
 func (p *program) loopEverySpec(spec LoopArgs) tea.Cmd {
 	return func() tea.Msg {
-		found, err := p.opts.Transport.ListSpecs(p.ctx, p.model.Workspace)
+		found, err := p.opts.Transport.ListSpecs(p.ctx, p.model.Workspace, true)
 		if err != nil {
 			return noteMsg("could not look for specs: " + err.Error())
 		}
@@ -1672,7 +1685,57 @@ func (p *program) commitProposal(id, spec string) tea.Cmd {
 		if err != nil {
 			return noteMsg("could not write the proposed definition of done: " + err.Error())
 		}
-		return noteMsg(fmt.Sprintf(Text(p.opts.Lang).CmdLoopProposed, out.Criteria, out.Path, spec) +
-			"\n\n" + out.Summary)
+		return proposalWrittenMsg{
+			spec: spec,
+			note: fmt.Sprintf(Text(p.opts.Lang).CmdLoopProposed, out.Criteria, out.Path, spec) +
+				"\n\n" + out.Summary,
+		}
 	}
+}
+
+// loopOne works one spec folder, qualifying it first when it declares nothing.
+//
+// The loop asks what the folder declares — a read, not a run — and decides.
+// Deciding here rather than after opening a session is what keeps a discarded
+// session and its record off the disk for every spec that needs qualifying.
+func (p *program) loopOne(spec LoopArgs) tea.Cmd {
+	if spec.Qualify {
+		return p.loopSession(spec)
+	}
+	return func() tea.Msg {
+		found, err := p.opts.Transport.ListSpecs(p.ctx, p.model.Workspace, false)
+		if err != nil {
+			// Not fatal: if the daemon cannot say, open the session and let it
+			// answer. Refusing the command because the survey failed would be
+			// the survey holding the work hostage.
+			return p.loopSession(spec)()
+		}
+		for _, f := range found {
+			if f.Path != spec.Spec {
+				continue
+			}
+			if f.Criteria == 0 && f.Error == "" {
+				// Nothing declares how this is finished, so the loop works
+				// that out before it works the spec. Reading, projecting and
+				// qualifying come before executing.
+				q := spec
+				q.Qualify = true
+				q.Task = ""
+				return p.loopSession(q)()
+			}
+			break
+		}
+		return p.loopSession(spec)()
+	}
+}
+
+// proposalWrittenMsg is a definition of done, on disk, waiting to be read.
+//
+// The loop stops here rather than going straight on to the work. A proposal
+// nobody looked at is a ruler nobody read, and running against one is what
+// this whole family refuses — the independence is that qualifying happened by
+// itself, not that the signature was skipped.
+type proposalWrittenMsg struct {
+	spec string
+	note string
 }

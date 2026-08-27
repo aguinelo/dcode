@@ -411,7 +411,7 @@ func TestListSpecsAndCommitDone(t *testing.T) {
 		}
 	}))
 
-	specs, err := c.ListSpecs(context.Background(), "/w")
+	specs, err := c.ListSpecs(context.Background(), "/w", true)
 	if err != nil {
 		t.Fatal(err)
 	}

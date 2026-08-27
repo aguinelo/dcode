@@ -94,7 +94,54 @@ E é uma revisão **por spec, uma vez na vida**. Depois dela o arquivo existe e 
 laço roda sozinho — que é a independência pedida, sem trocar a assinatura por
 confiança.
 
-## O que ainda não existe
+## O laço encadeia as fases sozinho
 
-O `/loop` ainda não decide sozinho qualificar quando a pasta não declara nada.
-A fase existe, o transporte existe, e ligar as duas é o passo seguinte.
+`/loop specs/x` pergunta ao daemon **o que a pasta declara** — uma leitura, com
+`measure=false`, sem rodar critério nenhum. Perguntar antes de abrir é o que
+evita uma sessão descartada e o registro dela em disco para cada spec que
+precisa ser qualificada.
+
+Zero critérios declarados → abre a **qualificadora** em vez da de trabalho.
+Turno termina → o laço pede o commit → a proposta é medida e escrita → **e o
+laço para ali**.
+
+Não emenda no trabalho. Uma proposta que ninguém olhou é uma régua que ninguém
+leu, e rodar contra uma é o que esta família recusa. A independência é a
+qualificação ter acontecido sozinha, não a assinatura ter sido pulada.
+
+Num `/loop <objetivo>` sobre um backlog, isso vira uma passada só: cada pasta
+sem critério é qualificada, os arquivos ficam escritos, e a revisão é uma
+sentada. Depois dela o trabalho roda sozinho.
+
+**Survey que falha não impede o comando.** Se o daemon não conseguir dizer, a
+sessão abre e ele responde. Recusar o trabalho porque o levantamento falhou
+seria o levantamento segurando o trabalho como refém.
+
+**O que a pessoa digitou não entra no turno qualificador.** `/loop specs/x
+refaça só o header` diz qual é o **trabalho**; entregar isso ao turno que
+decide como o trabalho será medido deixaria a instrução moldar a régua.
+
+## Medido ponta a ponta
+
+Spec só com prosa, e nada dito além do que o `/loop` emite:
+
+```
+1. survey: specs/slugify declara 0 critérios, measured=False
+2. qualificadora aberta: modo=read-only, criteria=0
+3. turno qualificador terminou
+4. o laço fez o commit: HTTP 200, 3 critérios
+5. sessão de trabalho: criteria=3
+6. trabalho terminou
+```
+
+Os três critérios conferidos **fora** da sessão: `exit=0`, `exit=0`, `exit=0`.
+
+E o terceiro critério o modelo acrescentou por conta, com a razão escrita no
+arquivo:
+
+> *"Extensão razoável: a spec diz 'espaços viram hífen', sem definir o que
+> fazer com sequências. Sem isso, saídas como `ola--mundo` passam no critério 1
+> mas quebram a intuição de slug."*
+
+Que é exatamente o que a `.r` queria da fase: um humano competente lendo a spec
+não pergunta onde está a definição de pronto — ele diz o que faltou perguntar.

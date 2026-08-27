@@ -167,7 +167,7 @@ func TestTheDaemonListsSpecsAndWhatIsPending(t *testing.T) {
 	}
 
 	d := &Daemon{opts: DaemonOptions{Base: Options{Workspace: ws, SandboxMode: policy.ModeReadOnly}}}
-	got := d.specs(context.Background(), ws)
+	got := d.specs(context.Background(), ws, true)
 	if len(got) != 2 {
 		t.Fatalf("got %+v", got)
 	}
@@ -202,7 +202,7 @@ func TestTheDaemonListsSpecsAndWhatIsPending(t *testing.T) {
 // asked what is there, and "nothing I can see" is an answer it can act on.
 func TestListingSpecsOfANonWorkspaceAnswersNothing(t *testing.T) {
 	d := &Daemon{opts: DaemonOptions{Base: Options{SandboxMode: policy.ModeReadOnly}}}
-	if got := d.specs(context.Background(), "relative/path"); got != nil {
+	if got := d.specs(context.Background(), "relative/path", true); got != nil {
 		t.Errorf("got %+v", got)
 	}
 }

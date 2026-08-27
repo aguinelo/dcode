@@ -127,6 +127,12 @@ existe para impedir exatamente isso.
   *gravada*, o turno termina, e o laço pede ao daemon que meça e escreva — sob a
   fronteira em que o trabalho vai rodar, que é o único lugar onde os critérios
   conseguem rodar.
+- **O laço encadeia as fases sozinho.** `/loop specs/x` pergunta ao daemon o
+  que a pasta declara — uma leitura, `measure=false`, sem rodar nada — e abre a
+  sessão qualificadora quando a resposta é nada. O turno acaba, o laço faz o
+  commit da proposta, e **para**: proposta que ninguém olhou é régua que
+  ninguém leu. Num backlog isso vira uma passada só, e uma sentada de revisão
+  antes de o trabalho rodar sozinho.
 - **O `Expects` pegou o primeiro de verdade.** Numa spec só com prosa, o modelo
   propôs `bash reverse.sh; test $? -ne 0` esperando que falhasse. Passou — 127 de
   um script ausente é diferente de zero — então o critério estava verde pelo

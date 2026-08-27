@@ -64,7 +64,7 @@ type Config struct {
 	// app's business and not the server's. Nil answers an empty list rather
 	// than an error: a client asking a daemon that cannot look should get "I
 	// know of none", not a failure it has to interpret.
-	Specs func(ctx context.Context, workspace string) []protocol.SpecFolder
+	Specs func(ctx context.Context, workspace string, measure bool) []protocol.SpecFolder
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -558,7 +558,12 @@ func (s *Server) listSpecs(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, protocol.ListSpecsResponse{})
 		return
 	}
-	writeJSON(w, http.StatusOK, protocol.ListSpecsResponse{Specs: s.cfg.Specs(r.Context(), ws)})
+	// measure=false answers what each folder DECLARES, which is a read. The
+	// default runs the criteria, because "pending" cannot be answered any
+	// other way — and a caller that only needs the counts should not pay for
+	// a backlog's worth of test runs.
+	measure := r.URL.Query().Get("measure") != "false"
+	writeJSON(w, http.StatusOK, protocol.ListSpecsResponse{Specs: s.cfg.Specs(r.Context(), ws, measure)})
 }
 
 // commitDone writes the definition of done a qualifying session proposed.

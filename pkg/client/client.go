@@ -88,9 +88,13 @@ func (c *Client) CommitDone(ctx context.Context, id string) (protocol.CommitDone
 //
 // The daemon decides "pending" because deciding it means running the folder's
 // criteria, and the daemon is the one with the disk and the sandbox.
-func (c *Client) ListSpecs(ctx context.Context, workspace string) ([]protocol.SpecFolder, error) {
+func (c *Client) ListSpecs(ctx context.Context, workspace string, measure bool) ([]protocol.SpecFolder, error) {
+	q := "/specs?workspace=" + url.QueryEscape(workspace)
+	if !measure {
+		q += "&measure=false"
+	}
 	var out protocol.ListSpecsResponse
-	if err := c.do(ctx, http.MethodGet, "/specs?workspace="+url.QueryEscape(workspace), nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, q, nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Specs, nil

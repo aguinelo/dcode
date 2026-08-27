@@ -398,8 +398,14 @@ type SpecFolder struct {
 	Unavailable int    `json:"unavailable,omitempty"`
 	// Pending is the answer the client acts on, decided by the daemon so two
 	// clients cannot disagree about what counts as work left.
-	Pending bool   `json:"pending"`
-	Error   string `json:"error,omitempty"`
+	Pending bool `json:"pending"`
+	// Measured says the criteria were actually run to decide Pending.
+	//
+	// False when the caller asked only what each folder DECLARES, which is a
+	// read and costs nothing. Pending is not an answer then, and the field
+	// exists so a client cannot mistake "not measured" for "not pending".
+	Measured bool   `json:"measured"`
+	Error    string `json:"error,omitempty"`
 }
 
 // ListSpecsResponse answers "what is there and what is left".

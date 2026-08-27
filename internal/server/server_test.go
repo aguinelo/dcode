@@ -1098,7 +1098,7 @@ func TestExecOnAnUnknownSession(t *testing.T) {
 // worse than either answer.
 func TestListSpecsAnswersWhatIsPending(t *testing.T) {
 	srv, _ := newServer(t, 4)
-	srv.cfg.Specs = func(context.Context, string) []protocol.SpecFolder {
+	srv.cfg.Specs = func(context.Context, string, bool) []protocol.SpecFolder {
 		return []protocol.SpecFolder{
 			{Path: "specs/a", Criteria: 2, Unmet: 1, Pending: true},
 			{Path: "specs/b", Criteria: 2},
@@ -1122,7 +1122,7 @@ func TestListSpecsAnswersWhatIsPending(t *testing.T) {
 // something where it was typed.
 func TestListSpecsRefusesARelativeWorkspace(t *testing.T) {
 	srv, _ := newServer(t, 4)
-	srv.cfg.Specs = func(context.Context, string) []protocol.SpecFolder { return nil }
+	srv.cfg.Specs = func(context.Context, string, bool) []protocol.SpecFolder { return nil }
 	for _, q := range []string{"?workspace=relative", ""} {
 		rec := httptest.NewRecorder()
 		srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs"+q, nil))

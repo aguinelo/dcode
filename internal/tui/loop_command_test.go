@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -231,5 +232,135 @@ func TestThePlanShowsEverySpecAndWhereItStands(t *testing.T) {
 func TestAnEmptyPlanSaysSo(t *testing.T) {
 	if got := LoopPlan(nil, Text(En)); !strings.Contains(got, "/loop <path>") {
 		t.Errorf("an empty plan does not say what to do instead: %q", got)
+	}
+}
+
+// The loop qualifies a folder that declares nothing, before working it.
+//
+// Reading, projecting and qualifying come before executing, and the LOOP owns
+// that order: a model that chose when to qualify would be choosing when to be
+// measured.
+func TestTheLoopQualifiesAFolderThatDeclaresNothing(t *testing.T) {
+	// The default task for a qualifying run is a different job, and says so.
+	got := LoopTask(LoopArgs{Spec: "specs/x", Qualify: true})
+	for _, want := range []string{"specs/x", "done_propose", "plan mode", "Propose, and stop"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the qualifying task does not carry %q:\n%s", want, got)
+		}
+	}
+	// And it does not tell the model to do the work.
+	if strings.Contains(strings.ToLower(got), "implement the specification") {
+		t.Errorf("the qualifying task asks for the work:\n%s", got)
+	}
+}
+
+// What the person typed is not carried into a qualifying turn.
+//
+// `/loop specs/x refaça o header` says what the WORK is. Handing it to the
+// turn that decides how the work will be measured would let the instruction
+// shape the ruler.
+func TestAQualifyingTurnDoesNotCarryTheTask(t *testing.T) {
+	got := LoopTask(LoopArgs{Spec: "specs/x", Qualify: true, Task: "refaça só o header"})
+	if strings.Contains(got, "refaça só o header") {
+		t.Errorf("the person's instruction reached the qualifying turn:\n%s", got)
+	}
+}
+
+// The loop asks what a folder declares BEFORE opening anything, and opens a
+// qualifying session when it declares nothing.
+//
+// Asking first is what keeps a discarded session and its record off the disk
+// for every spec that needs qualifying.
+func TestTheLoopAsksBeforeItOpens(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.specs = []protocol.SpecFolder{
+		{Path: "specs/empty", Criteria: 0},
+		{Path: "specs/ready", Criteria: 3},
+	}
+
+	// A folder with nothing declared: the session opened is a qualifying one.
+	msg := p.loopOne(LoopArgs{Spec: "specs/empty"})()
+	opened, ok := msg.(loopOpenedMsg)
+	if !ok {
+		t.Fatalf("got %T, want a session", msg)
+	}
+	if !opened.qualify {
+		t.Error("a folder declaring nothing was opened as work rather than qualified")
+	}
+
+	// A folder that declares criteria is worked, not qualified.
+	msg = p.loopOne(LoopArgs{Spec: "specs/ready"})()
+	if opened, ok := msg.(loopOpenedMsg); !ok || opened.qualify {
+		t.Errorf("a folder with criteria was qualified anyway: %+v", msg)
+	}
+}
+
+// If the daemon cannot say what is there, the command still runs.
+//
+// Refusing the work because the survey failed would be the survey holding the
+// work hostage.
+func TestASurveyThatFailsDoesNotStopTheWork(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.specsErr = errors.New("no")
+	if _, ok := p.loopOne(LoopArgs{Spec: "specs/x"})().(loopOpenedMsg); !ok {
+		t.Error("a failed survey stopped the command")
+	}
+}
+
+// The proposal is committed by the LOOP, after the turn, and what comes back
+// is a note plus the measurement — not the start of the work.
+func TestCommittingAProposalReportsAndStops(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.committed = protocol.CommitDoneResponse{
+		Path: "specs/x/done.toml", Criteria: 2, Summary: "two of them, one red",
+	}
+	msg := p.commitProposal("s1", "specs/x")()
+	written, ok := msg.(proposalWrittenMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	for _, want := range []string{"specs/x/done.toml", "two of them, one red"} {
+		if !strings.Contains(written.note, want) {
+			t.Errorf("the note does not carry %q: %s", want, written.note)
+		}
+	}
+}
+
+// A commit that fails says so rather than leaving the loop believing a file
+// was written.
+func TestAFailedCommitSaysSo(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.commitErr = errors.New("disk is full")
+	msg := p.commitProposal("s1", "specs/x")()
+	note, ok := msg.(noteMsg)
+	if !ok || !strings.Contains(string(note), "disk is full") {
+		t.Errorf("got %T %v", msg, msg)
+	}
+}
+
+// A goal turns into the specs it is about, and the plan is what the daemon
+// said rather than what the client guessed.
+func TestAGoalBecomesTheSpecsItIsAbout(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.specs = []protocol.SpecFolder{{Path: "specs/a", Criteria: 1, Unmet: 1, Pending: true, Measured: true}}
+	msg := p.loopEverySpec(LoopArgs{Goal: true, Task: "termine tudo"})()
+	found, ok := msg.(specsFoundMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	if found.goal != "termine tudo" || len(found.specs) != 1 {
+		t.Errorf("got %+v", found)
+	}
+}
+
+// An empty queue ends the run rather than looping on nothing.
+func TestAnEmptyQueueEndsTheRun(t *testing.T) {
+	p, _ := newProgram(t)
+	p.loopGoal = "termine tudo"
+	if cmd := p.nextSpec(); cmd != nil {
+		t.Error("an empty queue produced more work")
+	}
+	if p.loopGoal != "" {
+		t.Error("the run did not end")
 	}
 }
