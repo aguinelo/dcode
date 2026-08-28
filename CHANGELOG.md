@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 139 decision changelogs |
+| spec families | 17, with 140 decision changelogs |
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
 | **contracts ever actually measured** | **13** |
@@ -135,6 +135,15 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **`failure-feedback`, a new family: the loop detects well and returns badly.**
+  When a criterion fails, `Check` runs it, discards what it printed into a `_`,
+  and the reminder tells the model the criterion's NAME and nothing about what
+  broke. The evidence is collected and thrown away on the same line — while the
+  neighbouring phase, the qualifier, keeps it and writes it down. `.r` only: the
+  problem, the rules, and the risk stated before anything is built.
 
 ## 0.14.0 — 28 August 2026
 
