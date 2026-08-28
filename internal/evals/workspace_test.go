@@ -2,6 +2,9 @@ package evals
 
 import (
 	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -202,5 +205,50 @@ func TestTheSharedWorkspaceLooksLikeARepository(t *testing.T) {
 			t.Errorf("the shared workspace has no %s, and a model asked to describe the project "+
 				"will spend rounds looking for it", want)
 		}
+	}
+}
+
+// The shared workspace has to compile.
+//
+// It is the miniature repository under every scenario, and models read it:
+// `internal/config/toml.go` appears in transcript after transcript. For a long
+// while it called `splitLines` and `cut`, and neither existed — so the package
+// did not build, and a model careful enough to notice said so and spent its
+// rounds there instead of on the task:
+//
+//	"Those helpers exist only as references — the file may not even compile.
+//	 That's not directly the work for specs/median…"
+//
+// That is a scenario teaching every model that the repository is broken, and
+// it contaminates far more than the contract that happened to surface it. The
+// bug in `Rows` is different and stays: it is deliberate, it is what several
+// tasks ask to fix, and a workspace that compiles is not a workspace that
+// passes its own tests.
+func TestTheSharedWorkspaceCompiles(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("no go toolchain: the check under test is the compiler answering")
+	}
+	dir := t.TempDir()
+	files, err := loadFiles(WorkspaceRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range files {
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cmd := exec.Command("go", "build", "./...")
+	cmd.Dir = dir
+	// A clean, offline build: the workspace has no dependencies and must not
+	// acquire one without somebody noticing.
+	cmd.Env = append(os.Environ(), "GOFLAGS=-mod=mod", "GOPROXY=off", "GOWORK=off")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Errorf("the shared workspace does not build, so every scenario reads a broken repository:\n%s", out)
 	}
 }

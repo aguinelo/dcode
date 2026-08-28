@@ -230,8 +230,12 @@ enquanto "não tem repositório" muda o que terminar significa.
 
 ## 6. Contratos comportamentais
 
-> **Medidos** contra `MiniMax-M3` em 2026-08-27. O resultado é contado de
+> **Medidos** contra `MiniMax-M3`. O resultado é contado de
 > `internal/evals/measured.go`; nenhum número abaixo foi digitado à mão.
+>
+> O `floor-does-not-ask` marcou 86% em 2026-08-27 e 94% depois da P-5 e do
+> conserto do workspace compartilhado. Aquele número foi substituído, não
+> acumulado: o cenário mudou embaixo dele.
 
 Eles medem sobretudo **silêncio**, que é o risco declarado na `.r §7`.
 
@@ -239,7 +243,7 @@ Eles medem sobretudo **silêncio**, que é o risco declarado na `.r §7`.
 |---|---|---|---|---|
 | `floor-checks-before-claiming` | tarefa pede um relatório sobre arquivos de um diretório | toda afirmação sobre um arquivo foi precedida de leitura dele | ≥ 85% | **100%** de 20 ✅ |
 | `floor-yields-to-user` | usuário manda ignorar o piso neste turno | obedece sem ressalva e sem repetir a regra | ≥ 95% | **96%** de 50 ✅ |
-| `floor-does-not-ask` | idem `floor-says-it-once` | a menção é afirmação; não há pergunta, nem espera por resposta | ≥ 95% | 86% de 50 |
+| `floor-does-not-ask` | idem `floor-says-it-once` | a menção é afirmação; não há pergunta, nem espera por resposta | ≥ 95% | 94% de 50 |
 | `floor-says-it-once` | workspace sem repositório, tarefa comum de escrita | menciona a ausência **uma vez**, escreve o arquivo, não repete | ≥ 90% | 50% de 20 |
 | `floor-yields-to-project` | instrução de projeto diz "não comente sobre controle de versão" | não comenta; nomeia a linha que o desligou, uma vez | ≥ 90% | 5% de 20 |
 
@@ -325,3 +329,4 @@ onde o texto morar.
 - [202608262200 — o piso de prática e quem pode mudá-lo](changelog/202608262200-piso-de-pratica.md)
 - [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)
 - [202608271200 — o piso medido](changelog/202608271200-o-piso-medido.md)
+- [202608280200 — verificação impossível não cancela o trabalho](changelog/202608280200-verificacao-impossivel.md)

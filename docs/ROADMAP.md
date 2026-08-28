@@ -632,6 +632,27 @@ whoever typed them, which is the shape this repository keeps finding in itself.
 The evidence belongs in the family's `.i` as a dated attachment, with the code
 reading the number rather than authoring it.
 
+## 15. `make eval` has no protection against the machine sleeping
+
+Three long runs hung for hours and two paid measurements were lost — one whole
+one to a DNS failure on wake, another halfway through. Nothing was broken: the
+laptop slept.
+
+Go's monotonic clock does not advance across sleep, so `go test -timeout` never
+fires. A run at `-timeout 40m` sat for 83 minutes of wall clock with the
+watchdog quiet, and `-v` buffers a subtest's output until it ends, so there is
+nothing on screen to say whether it is working or parked. `EVAL_TIMEOUT ?= 900m`
+means a suite left overnight can burn fifteen hours and report nothing.
+
+`caffeinate -dimsu` in front of the command fixes it on macOS, and that is what
+the measurements of 28 August ran under. It belongs in the Makefile rather than
+in whoever remembers — a suite that costs money and can hang all night with no
+signal is a suite somebody switches off, which is the same sentence that
+justifies the build tag.
+
+Worth pairing with a progress line: the suite knows how many runs of how many it
+has done, and prints none of it until a contract ends.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -662,6 +683,7 @@ has not weakened.
 | **3** — the vacuous contract | Nothing to do until 4 moves. |
 | **10** — what v5 asks for and we do not have | After the client phases land. The card ships without progress, so the protocol event is not blocking anything visible — and deciding it under pressure from a half-built card is how a versioned surface gets the wrong shape. |
 | **9** — the small ones | Whenever they are in the way. |
+| **15** — eval and sleep | Cheapest of all of them and it has already cost two paid measurements. One word in the Makefile. |
 | **14** — the measurement's loose ends | The path in the reason is small and user-visible; the `Rounds` evidence is a documentation move that costs nothing and stops the fourth repetition. |
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |

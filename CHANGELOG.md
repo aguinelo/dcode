@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 16, with 137 decision changelogs |
+| spec families | 16, with 139 decision changelogs |
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
 | **contracts ever actually measured** | **13** |
@@ -135,6 +135,29 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **A check you cannot run does not cancel the work.** A fifth practice in the
+  floor, and it entered by measurement, which is what the family's own RN-8
+  demands. Three contracts across two families showed the same shape — the turn
+  reads everything, reasons correctly, and ends without proposing or editing —
+  always right after announcing a verification it could not perform. The
+  doctrine already said what to SAY when you cannot verify; it never said the
+  work is still owed.
+- **Four measured rates were replaced, not accumulated.** They described
+  scenarios that had changed underneath them: a round ceiling of 12 on turns
+  that read a spec and a codebase before producing anything, and a shared eval
+  workspace that did not compile. A rate belongs to a scenario, and one that
+  outlives its scenario is the state table's defect wearing different clothes.
+- **The shared eval workspace compiles again.** `internal/config/toml.go`
+  called two helpers that did not exist. Models read that file in scenario
+  after scenario, and the careful ones said so and spent their rounds there.
+  `TestTheSharedWorkspaceCompiles` runs `go build` offline over the tree.
+- **The ablation, because three changes at once attribute nothing.** Reverting
+  one at a time over 20 runs each: without the practice 90%, with the ceiling
+  back at 12 95%, with the workspace broken 95%, against 100% with all three
+  and 75% with none. Joint and roughly additive, no dominant cause.
 
 ## 0.13.0 — 27 August 2026
 

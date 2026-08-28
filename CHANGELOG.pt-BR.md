@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 137 changelogs de decisão |
+| famílias de spec | 16, com 139 changelogs de decisão |
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **13** |
@@ -118,6 +118,28 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **Verificação impossível não cancela o trabalho.** Uma quinta prática no
+  piso, e ela entrou por medição, que é o que a RN-8 da própria família exige.
+  Três contratos de duas famílias mostraram a mesma forma — o turno lê tudo,
+  raciocina certo, e termina sem propor nem editar — sempre logo depois de
+  anunciar uma verificação que não conseguia fazer. A doutrina já dizia o que
+  DIZER quando não dá para conferir; nunca disse que o trabalho continua devido.
+- **Quatro taxas medidas foram substituídas, não acumuladas.** Elas descreviam
+  cenários que mudaram embaixo delas: um teto de 12 rodadas em turnos que leem
+  uma spec e uma base antes de produzir qualquer coisa, e um workspace de eval
+  compartilhado que não compilava. Uma taxa pertence a um cenário, e uma que
+  sobrevive ao cenário dela é o defeito da tabela de estado com outra roupa.
+- **O workspace de eval compartilhado volta a compilar.**
+  `internal/config/toml.go` chamava dois helpers que não existiam. Modelos leem
+  esse arquivo em cenário após cenário, e os cuidadosos diziam isso e gastavam
+  as rodadas ali. `TestTheSharedWorkspaceCompiles` roda `go build` offline.
+- **A ablação, porque três mudanças juntas não atribuem nada.** Revertendo uma
+  de cada vez, 20 execuções por leitura: sem a prática 90%, com o teto de volta
+  a 12 95%, com o workspace quebrado 95% — contra 100% com as três e 75% com
+  nenhuma. Conjunto e aproximadamente aditivo, sem causa dominante.
 
 ## 0.13.0 — 27 de agosto de 2026
 
