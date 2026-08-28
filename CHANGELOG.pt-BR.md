@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 16, com 139 changelogs de decisão |
+| famílias de spec | 17, com 140 changelogs de decisão |
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **13** |
@@ -118,6 +118,15 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **`failure-feedback`, família nova: o laço detecta bem e devolve mal.** Quando
+  um critério falha, o `Check` roda, descarta o que ele imprimiu num `_`, e o
+  lembrete diz ao modelo o NOME do critério e nada sobre o que quebrou. A
+  evidência é colhida e jogada fora na mesma linha — enquanto a fase vizinha, o
+  qualificador, guarda e escreve. Só `.r`: o problema, as regras, e o risco dito
+  antes de construir.
 
 ## 0.14.0 — 28 de agosto de 2026
 
