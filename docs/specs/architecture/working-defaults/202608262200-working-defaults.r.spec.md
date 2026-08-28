@@ -222,8 +222,32 @@ uma linha que o modelo já faz sozinho, e sai.
 | P-2 | Conferir afirmação sobre caminho antes de escrevê-la (RN-4) | ligado | não — mediado |
 | P-3 | Reler documento de estado que o próprio turno tornou obsoleto (RN-5) | ligado | não — mediado |
 | P-4 | Não descontar exit code sem ordem citada (RN-7) | ligado | não — mediado |
+| P-5 | Verificação impossível não cancela o trabalho (RN-9) | ligado | não — mediado |
 
-Quatro práticas. É pouco de propósito, e a RN-8 diz por quê.
+Cinco práticas. É pouco de propósito, e a RN-8 diz por quê.
+
+**A P-5 entrou por medição, que é o que a RN-8 exige.** Três contratos
+comportamentais de duas famílias diferentes, com cenários que não têm nada em
+comum, mostraram a mesma falha: o turno lê tudo, raciocina certo, anuncia que
+vai conferir alguma coisa, e **acaba sem fazer o ato** — sem propor, sem
+editar. Sempre depois de dizer que ia verificar algo que não conseguia.
+
+### RN-9 — Verificação impossível não cancela o trabalho
+
+O `Style` da doutrina já dizia *"when you could not verify something, say that
+instead of claiming success"*. Ele ensina **o que dizer** e nunca diz que o
+trabalho continua devido, e o modelo lê isso como licença para parar.
+
+A regra fecha o caso: faça o trabalho, diga numa linha o que não deu para
+conferir, e termine ali. Terminar tendo conferido nada e feito nada é o único
+desfecho que não serve a ninguém — nem a quem pediu, nem a quem revisa.
+
+**Uma ressalva honesta sobre a evidência.** O arcabouço de eval não executa
+comandos escritos por modelo, e essa recusa é deliberada e mais velha que estes
+contratos. Isso torna "não dá para verificar" **mais frequente** nos cenários do
+que em campo, então a taxa observada superestima a frequência do problema. O que
+ela não superestima é o comportamento quando ele acontece — e ele acontece em
+campo toda vez que não há suíte, não há rede, ou falta a ferramenta.
 
 ## 6. O que fica de fora, e por quê
 
@@ -264,3 +288,4 @@ vezes, que a menção não vira pergunta, e que o trabalho não espera por ela.
 
 - [202608262200 — o piso de prática e quem pode mudá-lo](changelog/202608262200-piso-de-pratica.md)
 - [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)
+- [202608280200 — verificação impossível não cancela o trabalho](changelog/202608280200-verificacao-impossivel.md)

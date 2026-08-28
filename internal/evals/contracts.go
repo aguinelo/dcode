@@ -298,8 +298,14 @@ const initRounds = 20
 // early, and everything for a run that does not.
 const exploreThenActRounds = 20
 
-// The floor family gets it too, and the reason is the same one written above
-// twice already.
+// The qualifying turn and the floor family get it too, and the reason is the
+// same one written above twice already.
+//
+// A qualifying turn reads a specification, then enough of the codebase to know
+// what can be run, and only then produces a proposal — the same explore-then-act
+// shape, and the same ceiling was cutting it. Left at twelve, half the failures
+// of qualifier-declares-regression were runs still reading when the harness
+// stopped them, which is the interruption being measured rather than the model.
 //
 // Its scenarios are two jobs in one turn: find the defect, fix it, and add the
 // test that would have caught it — with the announcement about the missing
@@ -793,17 +799,17 @@ var Contracts = []Contract{
 	// turn. None of that is described in the fixture — a copy of any of it
 	// would drift, and this package has been bitten four times by exactly
 	// that.
-	{ID: "qualifier-proposes-commands", Threshold: 0.95, Rounds: 12,
+	{ID: "qualifier-proposes-commands", Threshold: 0.95, Rounds: exploreThenActRounds,
 		// The whole reason the phase produces a tool call instead of prose. A
 		// threshold on a whiteboard is what a person writes; the command that
 		// decides is what a loop can run.
 		Judge: All(Called("done_propose"), EveryCriterionIsACommand())},
-	{ID: "qualifier-declares-regression", Threshold: 0.90, Rounds: 12,
+	{ID: "qualifier-declares-regression", Threshold: 0.90, Rounds: exploreThenActRounds,
 		// Everything red says what the work must add and nothing about what it
 		// must not break. On a codebase whose suite runs, that omission is the
 		// proposal declining to notice the strongest evidence in the room.
 		Judge: All(Called("done_propose"), ProposesAGuard())},
-	{ID: "qualifier-fixes-broken", Threshold: 0.85, Rounds: 12,
+	{ID: "qualifier-fixes-broken", Threshold: 0.85, Rounds: exploreThenActRounds,
 		// The two ways to answer a criterion that ran nothing are opposite
 		// mistakes: dropping it leaves the spec measuring less than it did,
 		// and repeating it re-declares a command already shown to run nothing.

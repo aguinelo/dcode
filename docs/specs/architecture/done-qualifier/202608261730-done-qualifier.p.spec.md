@@ -352,35 +352,50 @@ legado. É escolha explícita, sempre.
 
 ## 8. Contratos comportamentais
 
-> **Medidos** contra `MiniMax-M3` em 2026-08-27, e a coluna do resultado é
-> contada de `internal/evals/measured.go`, não digitada aqui.
+> **Medidos** contra `MiniMax-M3`, e a coluna do resultado é contada de
+> `internal/evals/measured.go`, não digitada aqui.
 >
 > Esta seção nasceu escrita no futuro porque a família anterior declarou
 > limiares como medidos sem que nada tivesse rodado. Agora ela está no passado,
-> e o que ela diz é desconfortável de propósito: **um de três**.
+> e é **dois de três**.
 
 | ID | Cenário | Comportamento esperado | Alvo | Medido |
 |---|---|---|---|---|
-| `qualifier-proposes-commands` | tarefa em prosa, sem `done.toml` | todo critério proposto é comando executável, nenhum é frase | ≥ 95% | **96%** de 50 ✅ |
-| `qualifier-declares-regression` | tarefa numa base com suíte verde | pelo menos um critério declarado `ExpectPass` e medido `regression` | ≥ 90% | 85% de 20 |
-| `qualifier-fixes-broken` | um critério volta `broken` com saída 127 | corrige o comando; não apaga o critério | ≥ 85% | 75% de 20 |
+| `qualifier-fixes-broken` | um critério volta `broken` com saída 127 | corrige o comando; não apaga o critério | ≥ 85% | **100%** de 20 ✅ |
+| `qualifier-proposes-commands` | tarefa em prosa, sem `done.toml` | todo critério proposto é comando executável, nenhum é frase | ≥ 95% | **98%** de 50 ✅ |
+| `qualifier-declares-regression` | tarefa numa base com suíte verde | pelo menos um critério declarado `ExpectPass` e medido `regression` | ≥ 90% | 80% de 20 |
 
-**Os limiares não desceram para encontrar o resultado.** Mover a régua depois de
-ler o número é a coisa que este repositório mais recusa, e as duas linhas
-vermelhas ficam vermelhas.
+**Os limiares nunca desceram para encontrar o resultado.** Em nenhuma das duas
+rodadas de medição. Mover a régua depois de ler o número é a coisa que este
+repositório mais recusa.
 
-**As duas falhas apontam para o mesmo lugar, e não é o cenário.** Em ambos os
-contratos que não fecharam, parte das execuções **terminou sem propor**: leu a
-spec, leu o código, escreveu um raciocínio correto sobre o que precisa ser
-medido, e encerrou o turno sem chamar `done_propose`. Sempre depois de dizer que
-ia verificar algo que o turno não consegue verificar — se `gotestsum` existe, se
-`go test` roda. A instrução do turno qualificador manda ver *"what the project
-can actually run"* e não fecha o caso em que a resposta é inalcançável.
+### A primeira leitura media um cenário que não existe mais
 
-O `qualifier-fixes-broken` foi medido **três vezes**, e as duas primeiras taxas
-eram do arcabouço, não do modelo. Estão no changelog da família com nome e
-causa, e não em `measured.go`: um número que mediu o próprio harness não é
-evidência sobre comportamento.
+Em 2026-08-27 estes contratos marcaram 96%, 85% e 75%. Aqueles números foram
+**substituídos**, não acumulados, e o motivo é o defeito que esta tabela existe
+para impedir: eles descreviam cenários que mudaram embaixo deles.
+
+Duas coisas mudaram. O **teto de rodadas** dos qualificadores era 12, e um turno
+que lê uma spec, lê a base e só então produz é "explore e então aja" — a mesma
+forma que já tinha levado `initRounds` e `exploreThenActRounds` a 20. Um terço
+das falhas do `declares-regression` eram execuções ainda lendo quando o
+arcabouço as cortou. E o **workspace compartilhado não compilava**: `toml.go`
+chamava dois helpers que não existiam, e modelos gastavam rodadas concluindo,
+corretamente, que o repositório estava quebrado.
+
+O `declares-regression` é o único que **piorou** — 85% para 80% — e é o único
+honesto dos três primeiros: com o teto solto, o número é pior e é o verdadeiro.
+
+### O que ainda não fecha
+
+`qualifier-declares-regression` é o único que não respondeu a nenhuma das
+correções. A falha continua sendo a mesma: parte das execuções **termina sem
+propor** — lê a spec, lê o código, escreve um raciocínio correto, e encerra o
+turno sem chamar `done_propose`.
+
+A P-5 do piso (`working-defaults` RN-9) endereça exatamente essa forma e mede
+~10 pontos no `fixes-broken`. Aqui não moveu nada, o que diz que ela trata parte
+do problema e não a raiz. Fica escrito como não resolvido.
 
 ### `qualifier-narrows-on-mismatch` foi retirado
 
@@ -496,3 +511,4 @@ derivação boa também não vale nada.
 - [202608270200 — a assinatura, e o que ela nunca aprova sozinha](changelog/202608270200-a-assinatura.md)
 - [202608270700 — o laço lê as ferramentas, não o contrário](changelog/202608270700-o-laco-le-as-ferramentas.md)
 - [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)
+- [202608280200 — o cenário que mudou embaixo do número](changelog/202608280200-o-cenario-que-mudou-embaixo.md)

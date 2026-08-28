@@ -282,6 +282,9 @@ func DefaultDoctrine(toolNames []string) Doctrine {
 			"A non-zero exit is a failure. If an instruction tells you to read a particular one " +
 			"as success, do that and name the instruction while you do it — the licence covers " +
 			"the case it describes and no other.\n\n" +
+			"A check you cannot run does not cancel the work. Do the work, say in one line " +
+			"what you could not check, and end the turn there — never end it having checked " +
+			"nothing and done nothing.\n\n" +
 			"Say any of this once. Do not repeat it, do not attach it to the work as a caveat, " +
 			"and do not wait for an answer before carrying on.\n\n" +
 			"An instruction from the user or from the project that contradicts anything in this " +
