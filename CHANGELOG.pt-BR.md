@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 17, com 140 changelogs de decisão |
+| famílias de spec | 17, com 141 changelogs de decisão |
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **13** |
@@ -121,6 +121,12 @@ existe para impedir exatamente isso.
 
 ## Não lançado
 
+- **A saída do critério que falhou fica.** O `Check` rodava o comando e
+  descartava o que ele imprimiu num `_`; agora guarda a de tudo que não passou,
+  com teto de 2000 bytes — o mesmo do qualificador, porque é a mesma informação
+  do mesmo runner. Cortada pelo FIM, já que o resumo de uma suíte e a última
+  asserção estão embaixo. Ainda não chega ao modelo: isso muda o prefixo, e a
+  medição precisa de um "antes".
 - **`failure-feedback`, família nova: o laço detecta bem e devolve mal.** Quando
   um critério falha, o `Check` roda, descarta o que ele imprimiu num `_`, e o
   lembrete diz ao modelo o NOME do critério e nada sobre o que quebrou. A

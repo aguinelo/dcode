@@ -251,3 +251,32 @@ func TestEveryQualifierInvariantHasATest(t *testing.T) {
 		t.Errorf("done-qualifier: %s", f)
 	}
 }
+
+// The failure feedback family: what the loop knows when a criterion fails, and
+// what it hands back.
+var feedbackDirs = []string{"."}
+
+var feedbackInvariants = map[string]string{
+	"guarda a saída de todo critério que não passou":   "TestAFailingCriterionKeepsWhatItPrinted",
+	"**não** guarda a saída de um critério que passou": "TestAPassingCriterionKeepsNothing",
+	"indisponível não tem saída guardada":              "TestAnUnavailableCriterionKeepsNothing",
+	"cortada em `MaxCriterionOutput`":                  "TestTheCeilingIsPerCriterionAndNotPerReport",
+	"preserva o **fim**":                               "TestTruncationKeepsTheEnd",
+	"fronteira de linha quando há uma":                 "TestTruncationCutsOnALineWhenItCan",
+	"teto é por critério":                              "TestTheCeilingIsPerCriterionAndNotPerReport",
+	"não lê saída":                                     "TestProgressDoesNotReadOutput",
+}
+
+func TestEveryFailureFeedbackInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "failure-feedback", feedbackDirs, feedbackInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("failure-feedback: %s", f)
+	}
+}

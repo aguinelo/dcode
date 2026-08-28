@@ -63,12 +63,45 @@ const (
 	VerificationUnavailable Verification = "unavailable" // changed, and no command is known
 )
 
+// MaxCriterionOutput is how much of one failing criterion reaches the model.
+//
+// The same number as qualifier.MaxOutput, and the same by decision rather than
+// by coincidence: it is the same information, from the same runner, read by
+// different readers. Two ceilings for one concept would be two behaviours.
+//
+// Per criterion, never per report. A set with four red criteria delivers four
+// blocks, because cutting the fourth on account of the first three would hide
+// whatever the map's iteration order happened to hide — and a map's order is
+// not a product decision.
+const MaxCriterionOutput = 2000
+
+// Output is what one criterion printed, bounded.
+type Output struct {
+	Text string
+	// Truncated marks output that did not fit. Nothing in this codebase cuts
+	// output without saying so.
+	Truncated bool
+}
+
 // Report is what a turn ended knowing.
 type Report struct {
 	States map[string]CriterionState
 	// TouchedProtected are protected paths written during the turn. Surfaced,
 	// never counted as progress in silence.
 	TouchedProtected []string
+	// Outputs is what each criterion that did not pass printed, by name.
+	//
+	// A separate map rather than a field on the state: CriterionState is an
+	// enum compared between cycles and printed to a person, and hanging text
+	// off it would change what that comparison means. Progressed still reads
+	// names and nothing else.
+	//
+	// Only the ones that did not pass. A green criterion's output is noise
+	// paid for on every round, and what it had to say was said by its exit
+	// code. This is what the loop used to throw away on the line that ran the
+	// command — the model was told a criterion had failed and never what
+	// broke, while the qualifier, reading the same runner, kept it.
+	Outputs map[string]Output
 }
 
 // Unmet returns the names of the criteria not met, sorted.
@@ -173,20 +206,55 @@ func Check(ctx context.Context, set DoneSet, run CriterionRunner, timeout time.D
 			cctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
 		}
-		code, _, err := run(cctx, c.Command)
+		code, out, err := run(cctx, c.Command)
 		switch {
 		case err != nil && !isExitError(err):
 			// The command could not be run at all — not found, or the timeout
 			// fired. That is not the criterion failing, it is the criterion
 			// being uncheckable, and the two must not read the same.
+			//
+			// No output is kept either: there was nothing to print, and
+			// keeping whatever the failed launch wrote would put the harness's
+			// own words where a criterion's belong.
 			rep.States[c.Name] = CriterionUnavailable
 		case code == c.ExitCode:
 			rep.States[c.Name] = CriterionMet
 		default:
 			rep.States[c.Name] = CriterionUnmet
+			if text, cut := tail(out, MaxCriterionOutput); text != "" {
+				if rep.Outputs == nil {
+					rep.Outputs = map[string]Output{}
+				}
+				rep.Outputs[c.Name] = Output{Text: text, Truncated: cut}
+			}
 		}
 	}
 	return rep
+}
+
+// tail keeps the last max bytes and reports whether it cut.
+//
+// The END, never the beginning. A test runner's summary, its failure count and
+// its last assertion are at the bottom; the header is what can be lost. Cutting
+// the tail to preserve the banner would preserve exactly the part that decides
+// nothing.
+//
+// On a line boundary when there is one inside the window, and on the byte when
+// there is not: an 8000-character line is machine output, and half of it beats
+// nothing at all.
+func tail(s string, max int) (string, bool) {
+	s = strings.TrimRight(s, "\n")
+	if s == "" {
+		return "", false
+	}
+	if len(s) <= max {
+		return s, false
+	}
+	cut := s[len(s)-max:]
+	if i := strings.IndexByte(cut, '\n'); i >= 0 && i+1 < len(cut) {
+		cut = cut[i+1:]
+	}
+	return cut, true
 }
 
 func isExitError(err error) bool {

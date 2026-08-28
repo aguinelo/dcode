@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 17, with 140 decision changelogs |
+| spec families | 17, with 141 decision changelogs |
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
 | **contracts ever actually measured** | **13** |
@@ -138,6 +138,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The failing criterion's output is kept.** `Check` used to run the command
+  and discard what it printed into a `_`; now it keeps the output of everything
+  that did not pass, capped at 2000 bytes — the qualifier's ceiling, because it
+  is the same information from the same runner. Cut from the END, since a
+  runner's summary and its last assertion are at the bottom. It does not reach
+  the model yet: that changes the prefix, and the measurement needs a "before".
 - **`failure-feedback`, a new family: the loop detects well and returns badly.**
   When a criterion fails, `Check` runs it, discards what it printed into a `_`,
   and the reminder tells the model the criterion's NAME and nothing about what
