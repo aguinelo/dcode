@@ -32,7 +32,7 @@ fora do pacote isolado.
 | **contratos de fato já medidos** | **13** |
 | cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.13.0** |
+| versão publicada | **0.14.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -119,7 +119,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não lançado
+## 0.14.0 — 28 de agosto de 2026
 
 - **Verificação impossível não cancela o trabalho.** Uma quinta prática no
   piso, e ela entrou por medição, que é o que a RN-8 da própria família exige.
