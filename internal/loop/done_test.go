@@ -272,3 +272,139 @@ func TestTheSealIsAFunctionOfTheRecordsAndNothingElse(t *testing.T) {
 		t.Fatalf("seal = %v; with an unavailable criterion present the answer is fixed regardless of iteration order", first)
 	}
 }
+
+// runnerSaying answers each command with a fixed exit code and output.
+func runnerSaying(answers map[string][2]string, codes map[string]int) CriterionRunner {
+	return func(_ context.Context, cmd string) (int, string, error) {
+		out := answers[cmd][0]
+		if answers[cmd][1] == "boom" {
+			return 0, out, errors.New("exec: not found")
+		}
+		return codes[cmd], out, nil
+	}
+}
+
+// The failure comes back with what broke.
+//
+// It used to come back with the criterion's NAME and nothing else: Check ran
+// the command and discarded what it printed into a `_`, so the model was told
+// it had failed and never why. The evidence was collected and thrown away on
+// the same line, while the qualifier — reading the same runner — kept it.
+func TestAFailingCriterionKeepsWhatItPrinted(t *testing.T) {
+	set := DoneSet{Criteria: []Criterion{{Name: "tests", Command: "go test"}}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{"go test": {"--- FAIL: TestSlugify\n  want ola-mundo", ""}},
+			map[string]int{"go test": 1}), 0)
+
+	got, ok := rep.Outputs["tests"]
+	if !ok {
+		t.Fatal("a failing criterion kept no output, so the model is told it failed and not why")
+	}
+	if !strings.Contains(got.Text, "want ola-mundo") {
+		t.Errorf("the output lost the assertion: %q", got.Text)
+	}
+	if got.Truncated {
+		t.Error("short output was marked truncated")
+	}
+}
+
+// A green criterion's output is noise paid for on every round, and what it had
+// to say was said by its exit code.
+func TestAPassingCriterionKeepsNothing(t *testing.T) {
+	set := DoneSet{Criteria: []Criterion{{Name: "lint", Command: "go vet"}}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{"go vet": {"everything is fine", ""}},
+			map[string]int{"go vet": 0}), 0)
+
+	if _, ok := rep.Outputs["lint"]; ok {
+		t.Error("a criterion that passed kept output, which is paid for on every round")
+	}
+}
+
+// Unavailable is not failure, and it has no output of its own: there was
+// nothing to print. Keeping whatever the failed launch wrote would put the
+// harness's own words where a criterion's belong.
+func TestAnUnavailableCriterionKeepsNothing(t *testing.T) {
+	set := DoneSet{Criteria: []Criterion{{Name: "e2e", Command: "gotestsum"}}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{"gotestsum": {"command not found", "boom"}},
+			map[string]int{}), 0)
+
+	if rep.States["e2e"] != CriterionUnavailable {
+		t.Fatalf("state is %q, want unavailable", rep.States["e2e"])
+	}
+	if _, ok := rep.Outputs["e2e"]; ok {
+		t.Error("an uncheckable criterion kept output as though it had run")
+	}
+}
+
+// The ceiling is per criterion. A set with several red ones delivers several
+// blocks: cutting the fourth on account of the first three would hide whatever
+// the map's iteration order happened to hide.
+func TestTheCeilingIsPerCriterionAndNotPerReport(t *testing.T) {
+	big := strings.Repeat("x\n", MaxCriterionOutput)
+	set := DoneSet{Criteria: []Criterion{
+		{Name: "a", Command: "one"}, {Name: "b", Command: "two"}, {Name: "c", Command: "three"},
+	}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{
+			"one": {big, ""}, "two": {big, ""}, "three": {big, ""},
+		}, map[string]int{"one": 1, "two": 1, "three": 1}), 0)
+
+	if len(rep.Outputs) != 3 {
+		t.Fatalf("%d criteria kept output, want all 3", len(rep.Outputs))
+	}
+	for name, o := range rep.Outputs {
+		if !o.Truncated {
+			t.Errorf("%s: huge output was not marked truncated", name)
+		}
+		if len(o.Text) > MaxCriterionOutput {
+			t.Errorf("%s: kept %d bytes, over the ceiling of %d", name, len(o.Text), MaxCriterionOutput)
+		}
+	}
+}
+
+// The END, never the beginning: a runner's summary, its failure count and its
+// last assertion are at the bottom.
+func TestTruncationKeepsTheEnd(t *testing.T) {
+	head := strings.Repeat("noise\n", 900)
+	text, cut := tail(head+"--- FAIL: TestLast\n  the line that matters\n", MaxCriterionOutput)
+	if !cut {
+		t.Fatal("output over the ceiling was not cut")
+	}
+	if !strings.Contains(text, "the line that matters") {
+		t.Error("truncation dropped the end, which is the only part that decides anything")
+	}
+	if strings.Contains(text, head) {
+		t.Error("truncation kept the whole banner")
+	}
+}
+
+// On a line boundary when there is one inside the window; on the byte when
+// there is not. An 8000-character line is machine output, and half of it beats
+// nothing at all.
+func TestTruncationCutsOnALineWhenItCan(t *testing.T) {
+	text, _ := tail(strings.Repeat("a\n", 4000)+"tail line\n", 40)
+	if strings.HasPrefix(text, "a\na") && strings.Count(text, "\n") > 0 {
+		for _, line := range strings.Split(text, "\n") {
+			if line != "" && line != "a" && line != "tail line" {
+				t.Errorf("a partial line survived a cut that had a boundary: %q", line)
+			}
+		}
+	}
+	long, cut := tail(strings.Repeat("z", 5000), 40)
+	if !cut || len(long) != 40 {
+		t.Errorf("a single huge line was not cut on the byte: %d bytes, cut=%v", len(long), cut)
+	}
+}
+
+// Progress is about names. Reading output into it would make a criterion whose
+// message merely changed look like work.
+func TestProgressDoesNotReadOutput(t *testing.T) {
+	if Progressed([]string{"a", "b"}, []string{"a"}) != true {
+		t.Error("a shrinking subset is progress")
+	}
+	if Progressed([]string{"a", "b"}, []string{"a", "c"}) != false {
+		t.Error("swapping one failure for another is not progress")
+	}
+}

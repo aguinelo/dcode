@@ -168,3 +168,4 @@ fica escrito antes de construir.
 ## 7. Changelog
 
 - [202608281900 — o erro que não voltava](changelog/202608281900-o-erro-que-nao-voltava.md)
+- [202608282000 — a saída fica](changelog/202608282000-a-saida-fica.md)
