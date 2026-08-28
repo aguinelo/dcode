@@ -32,7 +32,7 @@ isolated package.
 | **contracts ever actually measured** | **13** |
 | coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.13.0** |
+| published version | **0.14.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -136,7 +136,7 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
+## 0.14.0 — 28 August 2026
 
 - **A check you cannot run does not cancel the work.** A fifth practice in the
   floor, and it entered by measurement, which is what the family's own RN-8
