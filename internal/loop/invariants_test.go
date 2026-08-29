@@ -254,7 +254,7 @@ func TestEveryQualifierInvariantHasATest(t *testing.T) {
 
 // The failure feedback family: what the loop knows when a criterion fails, and
 // what it hands back.
-var feedbackDirs = []string{"."}
+var feedbackDirs = []string{".", filepath.Join("..", "behavior")}
 
 var feedbackInvariants = map[string]string{
 	"guarda a saída de todo critério que não passou":   "TestAFailingCriterionKeepsWhatItPrinted",
@@ -265,6 +265,11 @@ var feedbackInvariants = map[string]string{
 	"fronteira de linha quando há uma":                 "TestTruncationCutsOnALineWhenItCan",
 	"teto é por critério":                              "TestTheCeilingIsPerCriterionAndNotPerReport",
 	"não lê saída":                                     "TestProgressDoesNotReadOutput",
+	"renderiza o lembrete de hoje":                     "TestWithNoOutputTheReminderIsUnchanged",
+	"vem **depois** da frase":                          "TestTheOutputFollowsTheSentence",
+	"resultado observado e não instrução":              "TestTheBorrowedTextIsMarkedAsEvidenceOnce",
+	"não ganha bloco vazio":                            "TestACriterionWithNoOutputGetsNoBlock",
+	"fronteira dele ser visível":                       "TestTheBorrowedTextIsSetApart",
 }
 
 func TestEveryFailureFeedbackInvariantHasATest(t *testing.T) {
