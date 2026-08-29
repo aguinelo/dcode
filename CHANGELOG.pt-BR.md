@@ -26,10 +26,10 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 17, com 141 changelogs de decisão |
+| famílias de spec | 17, com 142 changelogs de decisão |
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **13** |
+| **contratos de fato já medidos** | **16** |
 | cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.14.0** |
@@ -103,11 +103,11 @@ esconder sai de graça.
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-um contratos que precisam de modelo, **trinta e oito nunca rodaram contra um**,
+um contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos treze que rodaram, **cinco não atingiram o limiar**, e os limiares não
+Dos dezesseis que rodaram, **seis não atingiram o limiar**, e os limiares não
 desceram para encontrá-los. O pior marca 30%: uma instrução do arquivo do
 projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
 regra mais forte.
@@ -121,6 +121,18 @@ existe para impedir exatamente isso.
 
 ## Não lançado
 
+- **A saída do critério que falhou chega ao modelo.** O lembrete carrega o
+  que o comando imprimiu, sob a frase que já existia, marcado uma vez como
+  resultado e não instrução. Medido antes e depois: os dois contratos de maior
+  risco ficaram em 100% de 50 e 100% de 20, e o `states-unmet-on-stall` foi de
+  92% para 94% — dois pontos, a menor diferença que 50 execuções enxergam. **A
+  família não se justificou pelo número**; fica pelo argumento estrutural, e
+  isso está escrito como tal.
+- **O teto de rodadas já decidiu quatro medições em dois dias.** Com teto 12 o
+  mesmo par leu 82% → 72%, pronto para ser publicado como *a saída piora o
+  relato honesto*. Treze das quatorze falhas eram execuções cortadas no meio do
+  trabalho. O teto não sobe mais: subir até um contrato passar é ajustar o
+  instrumento ao resultado.
 - **A saída do critério que falhou fica.** O `Check` rodava o comando e
   descartava o que ele imprimiu num `_`; agora guarda a de tudo que não passou,
   com teto de 2000 bytes — o mesmo do qualificador, porque é a mesma informação

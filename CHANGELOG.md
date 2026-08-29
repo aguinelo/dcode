@@ -26,10 +26,10 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 17, with 141 decision changelogs |
+| spec families | 17, with 142 decision changelogs |
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
-| **contracts ever actually measured** | **13** |
+| **contracts ever actually measured** | **16** |
 | coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.14.0** |
@@ -121,10 +121,10 @@ the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-one contracts that need a model, **thirty-eight have never run against
+fifty-one contracts that need a model, **thirty-five have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
-Of the thirteen that have, **five did not meet their threshold**, and the
+Of the sixteen that have, **six did not meet their threshold**, and the
 thresholds did not move to meet them. The worst reads 30%: an instruction in the
 project file overriding the built-in floor, which the family that owns it calls
 its strongest rule.
@@ -138,6 +138,18 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The failing criterion's output now reaches the model.** The reminder
+  carries what the command printed, under the sentence that was already there,
+  marked once as a result rather than an instruction. Measured before and
+  after: the two contracts most at risk held at 100% of 50 and 100% of 20, and
+  `states-unmet-on-stall` moved 92% → 94% — two points, the smallest difference
+  50 runs can see. **The family did not justify itself by the number**; it
+  stands on the structural argument, and that is written as such.
+- **The round ceiling has now decided four measurements in two days.** At 12
+  rounds the same pair read 82% → 72%, which was ready to be published as *the
+  output makes honest reporting worse*. Thirteen of those fourteen failures
+  were runs the harness cut mid-work. The ceiling does not rise further:
+  raising it until a contract passes is fitting the instrument to the result.
 - **The failing criterion's output is kept.** `Check` used to run the command
   and discard what it printed into a `_`; now it keeps the output of everything
   that did not pass, capped at 2000 bytes — the qualifier's ceiling, because it

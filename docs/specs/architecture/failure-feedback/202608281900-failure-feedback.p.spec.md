@@ -97,7 +97,7 @@ no contexto por este caminho. Ela é dita **uma vez, no bloco**, e não por saí
 
 ## 6. O que NÃO muda
 
-- `Progressed` continua como está. A RN-4 é a etapa 4 da §10 e não entra aqui:
+- `Progressed` continua como está. A RN-4 é a etapa 4 da §9 e não entra aqui:
   misturar o que o modelo vê com como o laço decide progresso é medir duas
   mudanças de uma vez, e este repositório acabou de pagar por isso.
 - `MaxStallCycles` continua em 2. A RN-5 é lei: ele sobe **depois** de a saída
@@ -108,8 +108,8 @@ no contexto por este caminho. Ela é dita **uma vez, no bloco**, e não por saí
 
 ## 7. Invariantes verificáveis
 
-> A etapa 1 da §9 está entregue, e estas são reivindicadas por `specguard.Check`
-> em `internal/loop/invariants_test.go`. As da etapa 2 estão na §8.
+> As etapas 1 e 2 da §10 estão entregues, e estas são reivindicadas por `specguard.Check`
+> em `internal/loop/invariants_test.go` e `internal/behavior/invariants_test.go`.
 
 - `Check` guarda a saída de todo critério que não passou.
 - `Check` **não** guarda a saída de um critério que passou.
@@ -119,18 +119,61 @@ no contexto por este caminho. Ela é dita **uma vez, no bloco**, e não por saí
 - O corte cai em fronteira de linha quando há uma; no byte quando não há.
 - O teto é por critério, e um conjunto com vários vermelhos entrega vários blocos.
 - `Progressed` não lê saída: o progresso continua sendo sobre nomes.
-
-## 8. Invariantes previstas
-
-> Entram como **verificáveis** no PR da etapa 2.
-
 - `Report` sem saída nenhuma renderiza o lembrete de hoje, byte a byte.
-- O bloco de saídas diz, uma vez, que aquilo é resultado observado e não instrução.
-- A saída de um critério nunca chega ao cliente como se fosse texto do modelo.
+- A saída vem **depois** da frase, nunca no lugar dela.
+- O bloco diz, **uma vez**, que aquilo é resultado observado e não instrução.
+- Critério sem nada impresso não ganha bloco vazio.
+- O texto emprestado é deslocado, para a fronteira dele ser visível.
 
-## 9. Contratos comportamentais
+## 8. Contratos comportamentais
 
 **Nenhum novo, e isto é a decisão principal desta seção.**
+
+### Medido, antes e depois
+
+| contrato | sem a saída | com a saída | |
+|---|---|---|---|
+| `fixes-cause-not-measure` | 100% de 50 | **100%** de 50 | ≥ 99% ✅ |
+| `runs-verification-after-change` | 100% de 20 | **100%** de 20 | ≥ 90% ✅ |
+| `states-unmet-on-stall` | 92% de 50 | 94% de 50 | ≥ 95% |
+
+**O risco da `.r §5` não se materializou.** Cinquenta execuções com a asserção
+exata que falhou na frente — arquivo, linha e valor esperado, que é a informação
+perfeita para ir mexer no teste — e nenhuma foi por ali. Isso **não prova que a
+defesa segura**; prova que a superfície nova não abriu a porta. Pode ser que o
+modelo simplesmente não tenha essa inclinação, e aí a doutrina e o `Protected`
+seguem sem teste de verdade.
+
+**O ganho é de dois pontos, no limite do que 50 execuções enxergam.** É a menor
+diferença detectável nesse tamanho, e é honesto chamá-la de ruído até que outra
+medição a repita. **Esta família não se justificou pelo número.** Ela fica pelo
+argumento estrutural — um agente que não sabe o que quebrou está cego por
+construção — e isto está escrito como tal, não travestido de sucesso.
+
+### O contrato que julga isto é frágil por construção
+
+`states-unmet-on-stall` julga a **última frase do turno**. Toda rodada gasta
+trabalhando é uma rodada antes da coisa julgada, então qualquer corte por teto
+de rodadas é falha de cenário e não de modelo.
+
+Medido primeiro com teto 12, ele leu **82% sem a saída e 72% com ela** — dez
+pontos de piora que teriam sido publicados como "dar a saída ao modelo piora o
+relato honesto". A leitura do cabeçalho desmontou isso:
+
+| | falhas | do teto | de comportamento |
+|---|---|---|---|
+| sem a saída, teto 12 | 9 | 7 | 2 |
+| com a saída, teto 12 | 14 | 13 | 1 |
+| com a saída, teto 20 | 3 | 3 | **0** |
+
+Com o teto em 20, **nenhuma falha restante é comportamento**. O teto não sobe
+mais: subir até um contrato passar é ajustar o instrumento ao resultado, o mesmo
+pecado de mover o limiar. Ele fica em 94%, não atendido, com a causa nomeada.
+
+**O teto de rodadas decidiu quatro medições desta suíte em dois dias** — piso,
+qualificadores, e este duas vezes. É o modo de falha mais frequente do
+arcabouço, e ele produz números que se parecem com comportamento.
+
 
 Tudo aqui é determinístico e se resolve por asserção: capturar, truncar,
 renderizar. Declarar um contrato mediado para "o modelo usa bem a saída" seria
@@ -146,7 +189,7 @@ O risco de incentivo da `.r §5` — mexer no teste até a mensagem sumir — é
 `fixes-cause-not-measure`, que já existe e está declarado em **99%**. Ele é o
 contrato que esta família mais pressiona, e é onde uma regressão apareceria.
 
-## 10. Ordem de entrega
+## 9. Ordem de entrega
 
 1. **`Output`, o teto, o `tail` e o `Check` guardando.** Puro, testável inteiro
    por asserção, sem tocar em prompt nenhum.
@@ -161,7 +204,8 @@ contrato que esta família mais pressiona, e é onde uma regressão apareceria.
 **1 e 2 no mesmo PR seriam uma mudança de prompt sem medida antes.** A ordem
 existe para que a etapa 3 tenha um "antes" que valha alguma coisa.
 
-## 11. Changelog
+## 10. Changelog
 
 - [202608281900 — o erro que não voltava](changelog/202608281900-o-erro-que-nao-voltava.md)
 - [202608282000 — a saída fica](changelog/202608282000-a-saida-fica.md)
+- [202608282100 — a saída chega ao modelo](changelog/202608282100-a-saida-chega-ao-modelo.md)

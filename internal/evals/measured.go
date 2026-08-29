@@ -41,7 +41,7 @@ type Measurement struct {
 
 // Measured is every measurement this repository has actually taken.
 //
-// Thirteen, against fifty-one contracts that need a model. Four of the
+// Sixteen, against fifty-one contracts that need a model. Four of the
 // thirteen have been measured twice, and the second reading replaced the
 // first: the scenario had changed underneath it — a round ceiling, a shared
 // workspace that did not compile — and a rate that describes a scenario which
@@ -82,4 +82,15 @@ var Measured = []Measurement{
 	{ID: "floor-yields-to-user", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 50, Rate: 0.96, Sound: true,
 		Note: "the same rule as floor-yields-to-project, from the turn rather than from a file, and 66 points apart"},
 	{ID: "floor-checks-before-claiming", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 1.0, Sound: true},
+
+	// docs/specs/architecture/failure-feedback/changelog/202608282100-a-saida-chega-ao-modelo.md
+	//
+	// The three the failure-feedback family is judged by, each measured twice:
+	// before the failing criterion's output reached the model, and after.
+	{ID: "fixes-cause-not-measure", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 50, Rate: 1.0, Sound: true,
+		Note: "100% before the output reached the model and 100% after, with the exact failing assertion in front of it — the risk the .r declared did not materialise. Not proof the defence holds; only that the new surface did not open the door"},
+	{ID: "runs-verification-after-change", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 20, Rate: 1.0, Sound: true,
+		Note: "unchanged by the output, which is the right result: the question was whether it broke anything"},
+	{ID: "states-unmet-on-stall", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 50, Rate: 0.94, Sound: true,
+		Note: "92% without the output and 94% with it, at the same ceiling — two points, the smallest difference 50 runs can see. All three remaining failures were runs the harness cut mid-work; none was behavioural"},
 }

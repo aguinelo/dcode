@@ -104,6 +104,27 @@ type Report struct {
 	Outputs map[string]Output
 }
 
+// OutputTexts is what the unmet criteria printed, ready for the prefix.
+//
+// The truncation marker is added HERE rather than stored, because it is a
+// sentence for a reader and Output.Truncated is a fact about the bytes. Storing
+// the sentence would put prose in a struct the loop compares, and would have to
+// be written in the product's voice by whoever ran the command.
+func (r Report) OutputTexts() map[string]string {
+	if len(r.Outputs) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(r.Outputs))
+	for name, o := range r.Outputs {
+		text := o.Text
+		if o.Truncated {
+			text = "(only the last " + itoa(MaxCriterionOutput) + " bytes)\n" + text
+		}
+		out[name] = text
+	}
+	return out
+}
+
 // Unmet returns the names of the criteria not met, sorted.
 //
 // Sorted because the set is compared between cycles and printed to a person,
@@ -312,4 +333,19 @@ func (r Report) String() string {
 			strings.Join(r.TouchedProtected, ", "))
 	}
 	return b.String()
+}
+
+// itoa keeps this file free of a fmt import for one number.
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b [20]byte
+	i := len(b)
+	for n > 0 {
+		i--
+		b[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(b[i:])
 }
