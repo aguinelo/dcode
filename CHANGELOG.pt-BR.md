@@ -30,9 +30,9 @@ fora do pacote isolado.
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **16** |
-| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.14.0** |
+| versão publicada | **0.15.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -119,7 +119,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não lançado
+## 0.15.0 — 29 de agosto de 2026
 
 - **A saída do critério que falhou chega ao modelo.** O lembrete carrega o
   que o comando imprimiu, sob a frase que já existia, marcado uma vez como

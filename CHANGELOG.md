@@ -30,9 +30,9 @@ isolated package.
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
 | **contracts ever actually measured** | **16** |
-| coverage | 93.4%, gate at 90% aggregate **and per package** |
+| coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.14.0** |
+| published version | **0.15.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -136,7 +136,7 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
+## 0.15.0 — 29 August 2026
 
 - **The failing criterion's output now reaches the model.** The reminder
   carries what the command printed, under the sentence that was already there,
