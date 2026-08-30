@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 17, with 142 decision changelogs |
+| spec families | 18, with 143 decision changelogs |
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
 | **contracts ever actually measured** | **16** |
@@ -135,6 +135,17 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **`recoverable-cycle`, a new family: the loop is closed on detection and open
+  on recovery.** It knows a cycle made things worse and cannot go back —
+  `Progressed` returns a boolean where three answers belong, so drawing,
+  regressing and swapping one failure for another all collapse into a stall
+  count. `.r` only. The objection that kept this out of scope turned out to be
+  false: **a point of return does not have to be a commit**, so the boundary
+  that git is the user's stays intact. Undo is the loop's decision and never the
+  model's — an agent that can revert its own work can revert the evidence.
 
 ## 0.15.0 — 29 August 2026
 
