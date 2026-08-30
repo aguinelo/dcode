@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 17, com 142 changelogs de decisão |
+| famílias de spec | 18, com 143 changelogs de decisão |
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **16** |
@@ -118,6 +118,17 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **`recoverable-cycle`, família nova: o laço é fechado na detecção e aberto na
+  recuperação.** Ele sabe que um ciclo piorou e não sabe voltar — o
+  `Progressed` devolve um booleano onde cabem três respostas, então empatar,
+  regredir e trocar uma falha por outra colapsam num contador de ciclos parados.
+  Só `.r`. A objeção que mantinha isto fora de escopo era falsa: **um ponto de
+  retorno não precisa ser um commit**, e a fronteira de que git é do usuário
+  fica inteira. Desfazer é decisão do laço e nunca do modelo — um agente que
+  pode reverter o próprio trabalho pode reverter a evidência.
 
 ## 0.15.0 — 29 de agosto de 2026
 
