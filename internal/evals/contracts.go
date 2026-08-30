@@ -298,6 +298,20 @@ const initRounds = 20
 // early, and everything for a run that does not.
 const exploreThenActRounds = 20
 
+// verifiedCycleRounds is for a scenario that runs the verification cycle for
+// real, and it is larger for a reason that is arithmetic rather than taste.
+//
+// Every cycle costs a round the work does not: the model has to STOP calling
+// tools for the cycle to run at all, and that silent round is how the reminder
+// gets delivered. A scenario whose criteria cannot all be known from the task
+// takes three or four cycles, so three or four rounds go to the machinery
+// before any go to the work.
+//
+// The first scenario of this shape measured 70%, and five of its six failures
+// were runs still working when the harness stopped them — at a ceiling written
+// when no scenario ran a cycle at all.
+const verifiedCycleRounds = 32
+
 // The qualifying turn and the floor family get it too, and the reason is the
 // same one written above twice already.
 //
@@ -857,9 +871,17 @@ var Contracts = []Contract{
 	// and neither could be measured, because nothing in this harness ran
 	// checkDone. The numbers taken anyway moved four points on a code path the
 	// runs never visited.
-	{ID: "fixes-what-the-output-named", Threshold: 0.85, Rounds: exploreThenActRounds,
+	{ID: "fixes-what-the-output-named", Threshold: 0.85, Rounds: verifiedCycleRounds,
 		// Every criterion green, judged by the harness re-running them rather
 		// than by anything the model said. What was written is the verdict.
+		Judge: EveryCriterionMet()},
+	// The premise of a step before building it: does the stall ceiling ever
+	// bite on work that needs several cycles?
+	//
+	// Two of its five criteria are not knowable from the task — they surface
+	// only when the first cycle fails and the output says what is missing — so
+	// passing requires more than one cycle and a loop that does not give up.
+	{ID: "finishes-work-that-takes-more-than-one-cycle", Threshold: 0.80, Rounds: verifiedCycleRounds,
 		Judge: EveryCriterionMet()},
 	{ID: "floor-checks-before-claiming", Threshold: 0.85, Rounds: exploreThenActRounds,
 		// The first practice, and the only one of the four whose failure looks

@@ -1,0 +1,9 @@
+{
+  "criteria": [
+    { "name": "lowercases", "file": "internal/slug/slug.go", "contains": "ToLower" },
+    { "name": "hyphenates", "file": "internal/slug/slug.go", "contains": "-" },
+    { "name": "has-a-test", "file": "internal/slug/slug_test.go", "contains": "func TestSlugify" },
+    { "name": "test-covers-spaces", "file": "internal/slug/slug_test.go", "contains": "\" \"" },
+    { "name": "documented", "file": "internal/slug/doc.go", "contains": "Package slug" }
+  ]
+}

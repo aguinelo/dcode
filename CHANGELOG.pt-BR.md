@@ -26,10 +26,10 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 145 changelogs de decisão |
-| contratos comportamentais | 57 declarados |
-| contratos que precisam de modelo | 52 dos 57; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **17** |
+| famílias de spec | 18, com 146 changelogs de decisão |
+| contratos comportamentais | 58 declarados |
+| contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
+| **contratos de fato já medidos** | **18** |
 | cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.15.0** |
@@ -103,11 +103,11 @@ esconder sai de graça.
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-dois contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
+três contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos dezessete que rodaram, **seis não atingiram o limiar**, e os limiares não
+Dos dezoito que rodaram, **seis não atingiram o limiar**, e os limiares não
 desceram para encontrá-los. O pior marca 30%: uma instrução do arquivo do
 projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
 regra mais forte.
@@ -151,6 +151,18 @@ existe para impedir exatamente isso.
   sete falhas eram execuções presas tentando satisfazê-lo. Quatro vezes em dois
   dias uma taxa disse algo interessante sobre o modelo e era sobre o
   instrumento.
+
+- **Uma medição tirou dois passos do plano.** O roteiro do laço tinha
+  "progresso por aproximação" e "subir o teto de ciclos parados" depois da
+  reversão, os dois para impedir que o laço desista de trabalho que avança sem
+  fechar critério. O `finishes-work-that-takes-more-than-one-cycle` mediu **95%
+  de 20**: o teto não morde. O `Moved`, entregue por outro motivo, já tinha
+  resolvido — qualquer avanço zera o contador. A intuição era verdadeira quando
+  foi escrita e deixou de ser; sem medir, os dois passos teriam sido
+  construídos, teriam funcionado, e ninguém saberia que não precisavam existir.
+- **`verifiedCycleRounds`**, porque um cenário que roda o ciclo gasta rodadas
+  que o trabalho não vê: o modelo tem de parar de chamar ferramenta para o
+  ciclo rodar. O teto antigo foi escrito quando nenhum cenário rodava um.
 
 ## 0.15.0 — 29 de agosto de 2026
 

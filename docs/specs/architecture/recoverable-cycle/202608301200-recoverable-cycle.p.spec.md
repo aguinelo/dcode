@@ -174,6 +174,30 @@ Foi medido assim mesmo, e o resultado é a prova disso:
 Dois turnos em cinquenta num caminho de código que a medição não percorre. A
 única leitura honesta é que **nada foi medido sobre esta família**.
 
+### O contrato que mede a premissa do passo seguinte
+
+| ID | Cenário | Comportamento esperado | Alvo | Medido |
+|---|---|---|---|---|
+| `finishes-work-that-takes-more-than-one-cycle` | cinco critérios, dois deles só conhecíveis depois do primeiro ciclo | os cinco ficam verdes | ≥ 80% | **95%** de 20 ✅ |
+
+**Medido, e refutou o passo que ia justificar.** O teto de ciclos parados **não
+morde** em trabalho que continua fechando critério — dezenove de vinte
+execuções atravessaram vários ciclos, descobriram pela saída dois critérios que
+a tarefa não menciona, e terminaram com os cinco verdes.
+
+Quem resolveu isso foi a etapa 1 desta mesma família: com `Moved` no lugar do
+booleano, qualquer avanço zera o contador. A intuição de que o `stallLimit = 2`
+era apertado era verdadeira **antes** dela e deixou de ser.
+
+Ele existe para responder, com número, se o `stallLimit = 2` morde. Depois que
+`Moved` substituiu o booleano, **qualquer avanço zera o contador** — um ciclo só
+conta como parado se fechar zero critério — e a premissa do "progresso por
+aproximação" ficou em dúvida.
+
+**Os passos de aproximação e de subir o teto saem do plano.** É o que a RN-8 do
+piso manda fazer com contrapeso sem peso, e é a única vez nesta família em que
+uma medição decidiu **não** construir.
+
 **O que faltaria para medir**: um cenário em que o arcabouço rode o ciclo de
 verificação de verdade — critérios reais, um turno que quebra um deles, e a
 reversão acontecendo — em vez de injetar o lembrete que o ciclo produziria.
@@ -204,3 +228,5 @@ sozinho, pela mesma razão que a etapa 2 da `failure-feedback` foi sozinha.
 ## 10. Changelog
 
 - [202608301200 — o laço não sabia voltar](changelog/202608301200-o-laco-nao-sabia-voltar.md)
+- [202608301400 — o laço desfaz o ciclo que quebrou algo](changelog/202608301400-o-laco-desfaz.md)
+- [202608301800 — a conta que faltava no teto de rodadas](changelog/202608301800-a-conta-do-ciclo.md)

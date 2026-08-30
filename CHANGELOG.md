@@ -26,10 +26,10 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 145 decision changelogs |
-| behavioural contracts | 57 declared |
-| contracts needing a model | 52 of the 57; 5 are settled by assertion |
-| **contracts ever actually measured** | **17** |
+| spec families | 18, with 146 decision changelogs |
+| behavioural contracts | 58 declared |
+| contracts needing a model | 53 of the 58; 5 are settled by assertion |
+| **contracts ever actually measured** | **18** |
 | coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.15.0** |
@@ -121,10 +121,10 @@ the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-two contracts that need a model, **thirty-five have never run against
+fifty-three contracts that need a model, **thirty-five have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
-Of the seventeen that have, **six did not meet their threshold**, and the
+Of the eighteen that have, **six did not meet their threshold**, and the
 thresholds did not move to meet them. The worst reads 30%: an instruction in the
 project file overriding the built-in floor, which the family that owns it calls
 its strongest rule.
@@ -169,6 +169,19 @@ exists to stop exactly that.
   five of seven failures were runs stuck trying to satisfy it. Four times in two
   days a rate has said something interesting about the model and been about the
   instrument.
+
+- **A measurement took two steps out of the plan.** The loop's roadmap had
+  "progress by proximity" and "raise the stall ceiling" after the rollback, both
+  to stop the loop giving up on work that advances without closing a criterion.
+  `finishes-work-that-takes-more-than-one-cycle` measured **95% of 20**: the
+  ceiling does not bite. `Moved`, shipped for another reason, had already fixed
+  it — any forward movement resets the counter. The intuition was true when it
+  was written and stopped being true; without measuring, both steps would have
+  been built, would have worked, and nobody would have known they were
+  unnecessary.
+- **`verifiedCycleRounds`**, because a scenario that runs the cycle spends
+  rounds the work never sees: the model has to stop calling tools for a cycle
+  to run at all. The old ceiling was written when no scenario ran one.
 
 ## 0.15.0 — 29 August 2026
 

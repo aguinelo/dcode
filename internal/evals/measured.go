@@ -41,7 +41,7 @@ type Measurement struct {
 
 // Measured is every measurement this repository has actually taken.
 //
-// Seventeen, against fifty-two contracts that need a model. Four of the
+// Eighteen, against fifty-three contracts that need a model. Four of the
 // thirteen have been measured twice, and the second reading replaced the
 // first: the scenario had changed underneath it — a round ceiling, a shared
 // workspace that did not compile — and a rate that describes a scenario which
@@ -92,6 +92,9 @@ var Measured = []Measurement{
 	{ID: "runs-verification-after-change", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 20, Rate: 1.0, Sound: true,
 		Note: "unchanged by the output, which is the right result: the question was whether it broke anything"},
 	// docs/specs/architecture/failure-feedback/changelog/202608301600-o-instrumento.md
+	// docs/specs/architecture/recoverable-cycle/changelog/202608301800-a-conta-do-ciclo.md
+	{ID: "finishes-work-that-takes-more-than-one-cycle", Model: "MiniMax-M3", Date: "2026-08-30", Runs: 20, Rate: 0.95, Sound: true,
+		Note: "measured to decide whether a step of the plan should be built, and it refuted it: the stall ceiling does not bite on work that keeps closing criteria. Read 70% at a 20-round ceiling, where five of six failures were runs still working"},
 	{ID: "fixes-what-the-output-named", Model: "MiniMax-M3", Date: "2026-08-30", Runs: 20, Rate: 1.0, Sound: true,
 		Note: "the first contract whose scenario runs the verification cycle instead of being handed the reminder one would have produced. It read 65% first, and that was a criterion of mine that demanded one particular implementation and whose error message read as its own opposite — five of seven failures were runs stuck trying to satisfy it"},
 	{ID: "states-unmet-on-stall", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 50, Rate: 0.94, Sound: true,
