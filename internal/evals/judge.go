@@ -27,6 +27,10 @@ type Transcript struct {
 	// was still working when the harness stopped it, and nothing in a rate can
 	// tell those apart.
 	HitCeiling bool
+	// CriteriaMet is whether the scenario's own criteria all passed when the
+	// run ended. False when the scenario declares none, so a judge that reads
+	// it cannot pass by having nothing to check.
+	CriteriaMet bool
 	// InjectedAt is how many calls had happened when the product spoke —
 	// a tool error, a reminder. Zero when nothing was injected, which makes
 	// "after the injection" mean "all of it" for a single-round scenario.

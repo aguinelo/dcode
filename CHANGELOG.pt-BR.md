@@ -26,10 +26,10 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 144 changelogs de decisão |
-| contratos comportamentais | 56 declarados |
-| contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **16** |
+| famílias de spec | 18, com 145 changelogs de decisão |
+| contratos comportamentais | 57 declarados |
+| contratos que precisam de modelo | 52 dos 57; 5 se resolvem por asserção |
+| **contratos de fato já medidos** | **17** |
 | cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.15.0** |
@@ -103,11 +103,11 @@ esconder sai de graça.
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-um contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
+dois contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos dezesseis que rodaram, **seis não atingiram o limiar**, e os limiares não
+Dos dezessete que rodaram, **seis não atingiram o limiar**, e os limiares não
 desceram para encontrá-los. O pior marca 30%: uma instrução do arquivo do
 projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
 regra mais forte.
@@ -138,6 +138,19 @@ existe para impedir exatamente isso.
   dele. Empate nunca é desfeito: um ciclo que leu e não fechou nada não quebrou
   nada. O modelo é avisado, e avisado a tentar outra coisa — quem não é avisado
   repete a mesma edição achando que ela nunca aconteceu.
+
+- **O arcabouço sabe rodar um ciclo de verificação, e o primeiro contrato mede
+  uma correção.** Duas famílias tinham sido entregues sem nada medido sobre
+  elas: todo cenário injetava o lembrete que o ciclo teria produzido, então
+  `checkDone`, `Moved` e a reversão nunca rodavam. Um cenário pode declarar
+  critérios — predicados sobre o workspace, nunca shell — e o juiz roda a régua
+  de novo em vez de ler o transcript. `fixes-what-the-output-named`: **100% de
+  20**.
+- **Ele leu 65% primeiro, e era um critério meu.** Exigia uma implementação
+  específica e a mensagem de erro se lia como o oposto dela, então cinco das
+  sete falhas eram execuções presas tentando satisfazê-lo. Quatro vezes em dois
+  dias uma taxa disse algo interessante sobre o modelo e era sobre o
+  instrumento.
 
 ## 0.15.0 — 29 de agosto de 2026
 

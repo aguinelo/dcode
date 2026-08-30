@@ -60,6 +60,10 @@ type Fixture struct {
 	// World is what a scenario needs to be true of its workspace beyond the
 	// files it carries. See World.
 	World World
+	// Criteria is the scenario's definition of done, when it has one. A
+	// scenario that declares criteria gets a real verification cycle instead
+	// of an injected reminder describing one.
+	Criteria Criteria
 }
 
 // World is the part of a scenario's situation that no file in it can express.
@@ -144,8 +148,14 @@ func LoadFixture(root, id string) (Fixture, error) {
 		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
 	}
 
+	criteria, err := LoadCriteria(dir)
+	if err != nil {
+		return Fixture{}, fmt.Errorf("fixture %s: %w", id, err)
+	}
+
 	return Fixture{
 		ID:           id,
+		Criteria:     criteria,
 		Task:         task,
 		World:        world,
 		Tools:        tools,

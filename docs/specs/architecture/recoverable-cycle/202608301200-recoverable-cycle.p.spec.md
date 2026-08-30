@@ -154,8 +154,35 @@ se ninguém souber que é meio.
 
 **Nenhum novo.** Tudo aqui é determinístico: classificar, restaurar, avisar.
 
-O efeito é medido por `states-unmet-on-stall` e `fixes-cause-not-measure`, que
-já existem, já têm número, e cujo "antes" desta mudança é o de 2026-08-28.
+### E nenhum existente mede isto — a etapa 4 estava errada
+
+A primeira versão desta seção disse que o efeito seria medido por
+`states-unmet-on-stall` e `fixes-cause-not-measure`. **Não é, e não pode ser.**
+
+O arcabouço de eval **não executa `checkDone`**. Ele monta o prefixo, injeta o
+lembrete pronto e observa a resposta — `Moved`, `BeginCycle` e `UndoCycle` nunca
+rodam numa medição. E o texto injetado é byte a byte o mesmo, com teste
+provando.
+
+Foi medido assim mesmo, e o resultado é a prova disso:
+
+| contrato | antes | depois | |
+|---|---|---|---|
+| `fixes-cause-not-measure` | 100% de 50 | 100% de 50 | não mudou |
+| `states-unmet-on-stall` | 94% de 50 | 90% de 50 | dois turnos, ruído |
+
+Dois turnos em cinquenta num caminho de código que a medição não percorre. A
+única leitura honesta é que **nada foi medido sobre esta família**.
+
+**O que faltaria para medir**: um cenário em que o arcabouço rode o ciclo de
+verificação de verdade — critérios reais, um turno que quebra um deles, e a
+reversão acontecendo — em vez de injetar o lembrete que o ciclo produziria.
+Isso é máquina nova no `internal/evals`, não um contrato novo, e é o mesmo
+buraco que a `failure-feedback` deixou registrado: **nenhum contrato mede a
+qualidade de uma correção**.
+
+Fica escrito que esta família está **entregue e não medida**, e que isso é
+diferente de medida e boa.
 
 **O contrato que falta continua faltando**, e é o mesmo da `failure-feedback`:
 nenhum contrato mede a **qualidade de uma correção**. É a etapa 2 da §9 e não se
@@ -167,8 +194,9 @@ resolve aqui.
    comportamento.
 2. **`BeginCycle` e `UndoCycle`.** Puro sobre disco, testável sem modelo.
 3. **O laço desfazendo, e o lembrete.** É aqui que o comportamento muda.
-4. **Medir** `states-unmet-on-stall` e `fixes-cause-not-measure` contra o
-   "antes" de 28 de agosto.
+4. ~~Medir `states-unmet-on-stall` e `fixes-cause-not-measure`.~~ **Riscada**:
+   a §8 explica por quê. O que resta é construir o cenário que roda o ciclo, e
+   isso é trabalho no arcabouço.
 
 **1 e 2 não mudam nada que um modelo veja**, e por isso podem ir juntos. 3 vai
 sozinho, pela mesma razão que a etapa 2 da `failure-feedback` foi sozinha.

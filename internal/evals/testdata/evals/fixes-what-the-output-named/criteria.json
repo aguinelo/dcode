@@ -1,0 +1,7 @@
+{
+  "criteria": [
+    { "name": "lowercases", "file": "internal/slug/slug.go", "contains": "ToLower" },
+    { "name": "hyphenates", "file": "internal/slug/slug.go", "contains": "-" },
+    { "name": "no-passthrough", "file": "internal/slug/slug.go", "absent": "return s\n}" }
+  ]
+}
