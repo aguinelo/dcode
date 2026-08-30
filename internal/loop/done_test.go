@@ -3,8 +3,12 @@ package loop
 import (
 	"context"
 	"errors"
+	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/tools"
 	"os"
 	osexec "os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -12,9 +16,9 @@ import (
 	"time"
 )
 
-// ---------- Progressed ----------
+// ---------- Moved ----------
 
-// The exit condition, and the reason it is progress rather than perfection.
+// The exit condition, and the reason it is movement rather than perfection.
 func TestProgressedRequiresTheUnmetSetToShrinkStrictly(t *testing.T) {
 	cases := []struct {
 		name          string
@@ -34,8 +38,8 @@ func TestProgressedRequiresTheUnmetSetToShrinkStrictly(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := Progressed(c.before, c.after); got != c.want {
-				t.Errorf("Progressed(%v, %v) = %v, want %v", c.before, c.after, got, c.want)
+			if got := Moved(c.before, c.after) == MovedForward; got != c.want {
+				t.Errorf("Moved(%v, %v) = %v, want forward=%v", c.before, c.after, Moved(c.before, c.after), c.want)
 			}
 		})
 	}
@@ -401,10 +405,146 @@ func TestTruncationCutsOnALineWhenItCan(t *testing.T) {
 // Progress is about names. Reading output into it would make a criterion whose
 // message merely changed look like work.
 func TestProgressDoesNotReadOutput(t *testing.T) {
-	if Progressed([]string{"a", "b"}, []string{"a"}) != true {
+	if Moved([]string{"a", "b"}, []string{"a"}) != MovedForward {
 		t.Error("a shrinking subset is progress")
 	}
-	if Progressed([]string{"a", "b"}, []string{"a", "c"}) != false {
+	if Moved([]string{"a", "b"}, []string{"a", "c"}) == MovedForward {
 		t.Error("swapping one failure for another is not progress")
 	}
+}
+
+// Three answers where there used to be two.
+//
+// Progressed returned a boolean, so drawing and regressing collapsed into "not
+// progress" and the loop counted both as a stall. It knew a cycle had made
+// things worse and the fact died there, because there was nothing to do with
+// it.
+func TestMovedTellsForwardFromNowhereFromBackward(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		before, after []string
+		want          Movement
+	}{
+		{"shrank", []string{"a", "b"}, []string{"a"}, MovedForward},
+		{"emptied", []string{"a"}, nil, MovedForward},
+		{"same set", []string{"a", "b"}, []string{"a", "b"}, MovedNowhere},
+		{"grew from nothing", nil, []string{"a"}, MovedBackward},
+		{"one that passed stopped", []string{"a"}, []string{"a", "b"}, MovedBackward},
+		{"swapped", []string{"a", "b"}, []string{"a", "c"}, MovedBackward},
+		{"nothing at all", nil, nil, MovedNowhere},
+	} {
+		if got := Moved(tc.before, tc.after); got != tc.want {
+			t.Errorf("%s: %v → %v moved %v, want %v", tc.name, tc.before, tc.after, got, tc.want)
+		}
+	}
+}
+
+// Swapping one failure for another is regression, not a draw: c passed and
+// stopped passing, and fixing b in the same cycle does not put c back.
+func TestSwappingAFailureIsRegressionAndNotADraw(t *testing.T) {
+	if got := Moved([]string{"a", "b"}, []string{"a", "c"}); got != MovedBackward {
+		t.Errorf("a swap moved %v, want backward — this is the case the whole rule turns on", got)
+	}
+}
+
+// A cycle that broke something goes back; a cycle that merely failed to fix
+// something does not.
+//
+// Through checkDone and a real State, not through Moved: the classification
+// and the wiring are different claims, and a test that only asked Moved passed
+// with the rollback switched off.
+func TestTheLoopUndoesARegressionAndNotADraw(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		before   []string
+		failing  map[string]bool
+		wantBack bool
+	}{
+		{"broke one that passed", []string{"tests"}, map[string]bool{"tests": true, "lint": true}, true},
+		{"fixed nothing", []string{"tests"}, map[string]bool{"tests": true}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			file := filepath.Join(dir, "work.go")
+			if err := os.WriteFile(file, []byte("before\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			st := stateFor(t, dir)
+
+			set := DoneSet{Criteria: []Criterion{{Name: "tests"}, {Name: "lint"}}}
+			for i := range set.Criteria {
+				set.Criteria[i].Command = set.Criteria[i].Name
+			}
+			e := New(Config{
+				DoneEnabled: true, Done: set, State: st,
+				WrittenPaths: st.Written,
+				RunCriterion: func(_ context.Context, cmd string) (int, string, error) {
+					if tc.failing[cmd] {
+						return 1, cmd + " failed", nil
+					}
+					return 0, "", nil
+				},
+			}, ce.Session{Instructions: "x"})
+
+			st.BeginTurn()
+			st.BeginCycle()
+			st.Snapshot(file)
+			if err := os.WriteFile(file, []byte("after\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			st.MarkRead(file, "after\n", 0)
+			st.MarkWritten(file)
+
+			stall, unmet, told := 0, tc.before, false
+			e.checkDone(context.Background(), &stall, &unmet, &told)
+
+			body, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wentBack := string(body) == "before\n"
+			if wentBack != tc.wantBack {
+				t.Errorf("file is %q; rolled back=%v, want %v", body, wentBack, tc.wantBack)
+			}
+		})
+	}
+}
+
+// Undoing is not progress. Zeroing the stall counter on a rollback would let
+// the loop oscillate between the same two states forever.
+func TestARolledBackCycleStillCountsAsAStall(t *testing.T) {
+	unmet, now := []string{"tests"}, []string{"tests", "lint"}
+	if Moved(unmet, now) != MovedBackward {
+		t.Fatal("the fixture is not a regression")
+	}
+	stall := 0
+	if Moved(unmet, now) == MovedForward {
+		stall = 0
+	} else {
+		stall++
+	}
+	if stall != 1 {
+		t.Errorf("a rolled-back cycle left the stall counter at %d", stall)
+	}
+}
+
+// The criteria named to the model are the ones that passed and stopped, not
+// everything that is red.
+func TestOnlyWhatRegressedIsNamed(t *testing.T) {
+	got := regressedNames([]string{"tests"}, []string{"tests", "lint", "vet"})
+	if len(got) != 2 || got[0] != "lint" || got[1] != "vet" {
+		t.Errorf("named %v, want the two that stopped passing", got)
+	}
+	if n := regressedNames([]string{"a", "b"}, []string{"a"}); len(n) != 0 {
+		t.Errorf("named %v on a cycle that fixed something", n)
+	}
+}
+
+func stateFor(t *testing.T, dir string) *tools.State {
+	t.Helper()
+	r, err := policy.NewResolver(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tools.NewState(r, tools.DefaultLimits(), nil)
 }

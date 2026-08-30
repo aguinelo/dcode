@@ -140,7 +140,34 @@ func (r Report) Unmet() []string {
 	return out
 }
 
-// Progressed reports whether the unmet set shrank strictly between cycles.
+// Movement is what one cycle did to the unmet set.
+//
+// Three answers where there used to be two. Progressed returned a boolean, so
+// drawing and regressing collapsed into "not progress" and the loop counted
+// both as a stall — it knew a cycle had made things worse and the fact died on
+// that line, because there was nothing to do with it.
+type Movement int
+
+const (
+	// MovedForward: the set shrank and everything left was already in it.
+	MovedForward Movement = iota
+	// MovedNowhere: nothing got better and nothing got worse.
+	MovedNowhere
+	// MovedBackward: something that was met is not met any more.
+	MovedBackward
+)
+
+func (m Movement) String() string {
+	switch m {
+	case MovedForward:
+		return "forward"
+	case MovedBackward:
+		return "backward"
+	}
+	return "nowhere"
+}
+
+// Moved classifies one cycle against the last.
 //
 // This is the exit condition, and it is deliberately not "everything is met".
 // A loop that cannot exit until everything passes has four failure modes, and
@@ -148,25 +175,34 @@ func (r Report) Unmet() []string {
 // cannot get them, the shortest path out becomes weakening the test. The loop
 // would exist to prevent a false report and would produce a false test.
 //
-// So the loop runs on progress. Strict shrinkage of a set — deterministic,
-// cheap, and immune to effort that produces nothing. A set that GROWS is a
-// regression and counts as non-progress, not as movement.
-func Progressed(before, after []string) bool {
-	if len(after) >= len(before) {
-		return false
-	}
-	prev := make(map[string]struct{}, len(before))
+// So the loop runs on movement — deterministic, cheap, and immune to effort
+// that produces nothing.
+//
+// Regression is a name in `after` that was not in `before`: the criterion
+// passed, and now it does not. Deliberately narrow — it is the only reading
+// that justifies throwing away a cycle's work, and a wider one would undo
+// cycles that merely failed to finish.
+//
+// Swapping one failure for another is REGRESSION, not a draw. {a,b} → {a,c}
+// means c passed and stopped passing, and the fact that b was fixed in the same
+// cycle does not put c back. Progressed already refused to call this progress;
+// what changes is that it now has a consequence.
+func Moved(before, after []string) Movement {
+	had := make(map[string]struct{}, len(before))
 	for _, n := range before {
-		prev[n] = struct{}{}
+		had[n] = struct{}{}
 	}
-	// Shrinking is necessary but not sufficient: swapping two failures for one
-	// different failure is not progress on the ones that were already there.
 	for _, n := range after {
-		if _, ok := prev[n]; !ok {
-			return false
+		if _, ok := had[n]; !ok {
+			return MovedBackward
 		}
 	}
-	return true
+	// Everything still unmet was already unmet. Fewer of them is work done;
+	// the same number is a cycle that changed nothing about the ruler.
+	if len(after) < len(before) {
+		return MovedForward
+	}
+	return MovedNowhere
 }
 
 // VerificationOf collapses a report of one criterion into the client's seal.

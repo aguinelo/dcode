@@ -164,3 +164,95 @@ func TestUndoingATurnThatChangedNothing(t *testing.T) {
 		t.Errorf("got %v %v %v", done, refused, err)
 	}
 }
+
+// A turn holds many cycles, and undoing at turn scope after one bad cycle
+// would throw away every good cycle before it.
+func TestUndoCycleLeavesTheEarlierCyclesAlone(t *testing.T) {
+	s, ws := setup(t)
+	good := writeFileT(t, ws, "good.go", "original\n")
+	bad := filepath.Join(ws, "bad.go")
+	s.BeginTurn()
+
+	// Cycle one writes good.go and is fine.
+	s.Snapshot(good)
+	put(t, s, good, "cycle one\n")
+
+	// Cycle two writes both, and regresses.
+	s.BeginCycle()
+	s.Snapshot(good)
+	put(t, s, good, "cycle two\n")
+	s.Snapshot(bad)
+	put(t, s, bad, "created by cycle two\n")
+
+	restored, refused, err := s.UndoCycle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refused) != 0 {
+		t.Errorf("nothing moved on disk and yet %v was refused", refused)
+	}
+	if body := read(t, good); body != "cycle one\n" {
+		t.Errorf("the earlier cycle's work was thrown away: %q", body)
+	}
+	if _, err := os.Stat(bad); !os.IsNotExist(err) {
+		t.Error("the file the bad cycle created is still there")
+	}
+	// Both: the bad cycle wrote both, so both go back — good.go to what cycle
+	// one left, not to what the turn started from.
+	if len(restored) != 2 {
+		t.Errorf("restored %v, want the two the bad cycle wrote", restored)
+	}
+}
+
+// The person's /undo still reaches the whole turn after a cycle was undone.
+func TestUndoCycleKeepsTheTurnUndoable(t *testing.T) {
+	s, ws := setup(t)
+	f := writeFileT(t, ws, "f.go", "before the turn\n")
+	s.BeginTurn()
+	s.Snapshot(f)
+	put(t, s, f, "cycle one\n")
+
+	s.BeginCycle()
+	other := filepath.Join(ws, "other.go")
+	s.Snapshot(other)
+	put(t, s, other, "cycle two\n")
+	if _, _, err := s.UndoCycle(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := s.Undo(); err != nil {
+		t.Fatal(err)
+	}
+	if body := read(t, f); body != "before the turn\n" {
+		t.Errorf("the turn is no longer undoable after a cycle was undone: %q", body)
+	}
+}
+
+// A cycle boundary nobody marked is not a boundary, and guessing one would
+// undo the whole turn under a name that promises less.
+func TestUndoCycleWithoutABoundaryUndoesNothing(t *testing.T) {
+	s, ws := setup(t)
+	f := writeFileT(t, ws, "f.go", "start\n")
+	s.BeginTurn()
+	s.Snapshot(f)
+	put(t, s, f, "written\n")
+
+	restored, refused, err := s.UndoCycle()
+	if err != nil || len(restored) != 0 || len(refused) != 0 {
+		t.Errorf("undid %v / refused %v with no boundary marked", restored, refused)
+	}
+	if body := read(t, f); body != "written\n" {
+		t.Errorf("a file was restored with no cycle boundary: %q", body)
+	}
+}
+
+// put writes through the state the way a tool would, so Undo sees it as the
+// turn's own work.
+func put(t *testing.T, s *State, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.MarkRead(path, body, 0)
+	s.MarkWritten(path)
+}

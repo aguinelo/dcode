@@ -303,3 +303,36 @@ func remindersOf(t *testing.T, st SessionState) string {
 	}
 	return b.String()
 }
+
+// An agent that is not told repeats the attempt believing it never happened,
+// which turns the safety net into a trap.
+func TestARolledBackCycleIsToldToTheModel(t *testing.T) {
+	var got string
+	for _, r := range Emit(SessionState{
+		UnmetCriteria: []string{"tests", "lint"},
+		Regressed:     []string{"lint"},
+		CycleUndone:   []string{"a.go", "b.go"},
+		CycleKept:     []string{"c.go"},
+	}) {
+		if r.Kind == ReminderCycleUndone {
+			got = r.Text
+		}
+	}
+	for _, want := range []string{
+		"was undone", "lint", "2 file(s) restored", "c.go",
+		"Try something else",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the rollback notice does not carry %q:\n%s", want, got)
+		}
+	}
+}
+
+// Nothing is rendered when nothing was rolled back.
+func TestNoRollbackNoNotice(t *testing.T) {
+	for _, r := range Emit(SessionState{UnmetCriteria: []string{"tests"}}) {
+		if r.Kind == ReminderCycleUndone {
+			t.Errorf("a rollback notice appeared with no rollback:\n%s", r.Text)
+		}
+	}
+}

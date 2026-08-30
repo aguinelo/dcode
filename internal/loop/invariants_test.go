@@ -1,7 +1,9 @@
 package loop
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/specguard"
@@ -283,5 +285,63 @@ func TestEveryFailureFeedbackInvariantHasATest(t *testing.T) {
 	}
 	for _, f := range findings {
 		t.Errorf("failure-feedback: %s", f)
+	}
+}
+
+// The recoverable cycle: what one cycle did, and putting it back when it broke
+// something.
+var cycleDirs = []string{".", filepath.Join("..", "behavior"), filepath.Join("..", "tools")}
+
+var cycleInvariants = map[string]string{
+	"distingue avanço, empate e regressão":       "TestMovedTellsForwardFromNowhereFromBackward",
+	"Trocar uma falha por outra é **regressão**": "TestSwappingAFailureIsRegressionAndNotADraw",
+	"Conjunto que esvazia é avanço":              "TestMovedTellsForwardFromNowhereFromBackward",
+	"não apaga o que o turno guardou":            "TestUndoCycleKeepsTheTurnUndoable",
+	"restaura só o que **este ciclo escreveu**":  "TestUndoCycleLeavesTheEarlierCyclesAlone",
+	"volta ao que o ciclo anterior deixou":       "TestUndoCycleLeavesTheEarlierCyclesAlone",
+	"recusa, por arquivo":                        "TestUndoCycleLeavesTheEarlierCyclesAlone",
+	"desfaz em regressão":                        "TestTheLoopUndoesARegressionAndNotADraw",
+	"continua contando como ciclo parado":        "TestARolledBackCycleStillCountsAsAStall",
+	"informado de que foi desfeito":              "TestARolledBackCycleIsToldToTheModel",
+	"Nada é restaurado sem dizer":                "TestNoRollbackNoNotice",
+	"não tem ferramenta que desfaça":             "TestUndoIsNotATheModelCanCall",
+}
+
+func TestEveryRecoverableCycleInvariantHasATest(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings, err := specguard.Check(root, "recoverable-cycle", cycleDirs, cycleInvariants)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range findings {
+		t.Errorf("recoverable-cycle: %s", f)
+	}
+}
+
+// Undo is the loop's or the person's, never the model's. An agent that can
+// revert its own work can revert the evidence, and erasing what came back red
+// is the cleanest way out of a loop that only ends when the red does.
+func TestUndoIsNotATheModelCanCall(t *testing.T) {
+	// Read from the source rather than from a registry built here: what the
+	// product offers is decided where the product builds it, and a registry
+	// assembled in a test would answer about itself.
+	root, err := filepath.Abs(filepath.Join("..", "app"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(filepath.Join(root, "app.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"tools.Undo{", "tools.UndoTool{"} {
+		if strings.Contains(string(src), forbidden) {
+			t.Errorf("%s is registered, and undo may not be a tool the model calls", forbidden)
+		}
+	}
+	if !strings.Contains(string(src), "NewRegistry(") {
+		t.Fatal("the registry is no longer built here; this guard is reading nothing")
 	}
 }
