@@ -26,10 +26,10 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 144 decision changelogs |
-| behavioural contracts | 56 declared |
-| contracts needing a model | 51 of the 56; 5 are settled by assertion |
-| **contracts ever actually measured** | **16** |
+| spec families | 18, with 145 decision changelogs |
+| behavioural contracts | 57 declared |
+| contracts needing a model | 52 of the 57; 5 are settled by assertion |
+| **contracts ever actually measured** | **17** |
 | coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.15.0** |
@@ -121,10 +121,10 @@ the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-one contracts that need a model, **thirty-five have never run against
+fifty-two contracts that need a model, **thirty-five have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
-Of the sixteen that have, **six did not meet their threshold**, and the
+Of the seventeen that have, **six did not meet their threshold**, and the
 thresholds did not move to meet them. The worst reads 30%: an instruction in the
 project file overriding the built-in floor, which the family that owns it calls
 its strongest rule.
@@ -156,6 +156,19 @@ exists to stop exactly that.
   read and closed nothing broke nothing. The model is told, and told to try
   something else — an agent that is not told repeats the edit believing it
   never happened.
+
+- **The harness can run a verification cycle, and the first contract measures
+  a correction.** Two families had shipped with nothing measured about them:
+  every scenario injected the reminder the cycle would have produced, so
+  `checkDone`, `Moved` and the rollback never ran. A scenario can now declare
+  criteria — predicates over the workspace, never shell — and the judge re-runs
+  the ruler instead of reading the transcript. `fixes-what-the-output-named`:
+  **100% of 20**.
+- **It read 65% first, and that was a criterion of mine.** It demanded one
+  particular implementation and its error message read as its own opposite, so
+  five of seven failures were runs stuck trying to satisfy it. Four times in two
+  days a rate has said something interesting about the model and been about the
+  instrument.
 
 ## 0.15.0 — 29 August 2026
 

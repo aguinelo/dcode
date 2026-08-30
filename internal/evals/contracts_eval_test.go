@@ -166,6 +166,14 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 	var tr Transcript
 	var injected bool
 
+	// A scenario that declares criteria runs the product's verification cycle
+	// instead of being handed the reminder one would have produced. Without
+	// this every contract about what a turn does when a check fails was
+	// measured against an injected sentence, and checkDone, Moved and the
+	// rollback never ran at all.
+	cycle := NewCycle(f.Criteria, w)
+	w.BeginTurn()
+
 	rounds := c.Rounds
 	if rounds < 1 {
 		rounds = 1
@@ -207,7 +215,16 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 			injected = true
 		}
 		if len(calls) == 0 && !injectNow {
-			break
+			// The turn does not end merely because the model stopped asking:
+			// done is a checked condition, which is the loop's own rule.
+			more := cycle.After()
+			if len(more) == 0 {
+				break
+			}
+			history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text})
+			history = append(history, more...)
+			cycle.Begin()
+			continue
 		}
 		// The model's turn, then what the product would have said back.
 		history = append(history, ce.Message{Role: ce.RoleAssistant, Text: text, ToolCalls: calls})
@@ -216,6 +233,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 			tr.InjectedAt = len(tr.Calls)
 		}
 	}
+	tr.CriteriaMet = cycle.Met()
 	return tr, nil
 }
 

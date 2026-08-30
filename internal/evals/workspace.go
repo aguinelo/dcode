@@ -145,6 +145,19 @@ const fetchRefusal = "the eval harness does not reach the network. " +
 const delegationRefusal = "the eval harness does not run delegated turns. " +
 	"Do the reading yourself with the tools you have, and say what you could not cover."
 
+// BeginCycle and UndoCycle expose the product's own rollback to a scenario
+// that runs a verification cycle. Through the same State the tools write
+// through, so what is put back is what they wrote.
+func (w *Workspace) BeginCycle() { w.state.BeginCycle() }
+
+// BeginTurn starts the set of changes a rollback can reach.
+func (w *Workspace) BeginTurn() { w.state.BeginTurn() }
+
+// UndoCycle puts back what this cycle wrote.
+func (w *Workspace) UndoCycle() (restored, refused []string, err error) {
+	return w.state.UndoCycle()
+}
+
 // Execute runs one call and returns what the model would have been shown.
 //
 // A tool that fails returns its message with isErr set, exactly as the loop

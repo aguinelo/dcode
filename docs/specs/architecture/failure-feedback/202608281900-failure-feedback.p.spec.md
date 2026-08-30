@@ -129,6 +129,22 @@ no contexto por este caminho. Ela é dita **uma vez, no bloco**, e não por saí
 
 **Nenhum novo, e isto é a decisão principal desta seção.**
 
+### O contrato que faltava
+
+| ID | Cenário | Comportamento esperado | Alvo |
+|---|---|---|---|
+| `fixes-what-the-output-named` | três critérios vermelhos, cada um nomeando o que falta | os três ficam verdes dentro do turno | ≥ 85% |
+
+**É o primeiro contrato desta suíte cujo cenário roda o ciclo de verificação de
+verdade.** Todos os outros injetam o lembrete que o ciclo teria produzido, então
+`loop.Check`, `loop.Moved` e a reversão nunca rodavam — e as duas famílias
+construídas em cima disso foram entregues sem medição possível.
+
+O juiz é o **workspace**, não o transcript: o arcabouço roda a régua de novo no
+fim. É o único juiz aqui que pode estar errado sobre o modelo e certo sobre o
+trabalho, e é esse o ponto — uma correção é boa quando o critério fica verde,
+não quando a frase sobre ela lê bem.
+
 ### Medido, antes e depois
 
 | contrato | sem a saída | com a saída | |
@@ -209,3 +225,4 @@ existe para que a etapa 3 tenha um "antes" que valha alguma coisa.
 - [202608281900 — o erro que não voltava](changelog/202608281900-o-erro-que-nao-voltava.md)
 - [202608282000 — a saída fica](changelog/202608282000-a-saida-fica.md)
 - [202608282100 — a saída chega ao modelo](changelog/202608282100-a-saida-chega-ao-modelo.md)
+- [202608301600 — o instrumento que faltava](changelog/202608301600-o-instrumento.md)

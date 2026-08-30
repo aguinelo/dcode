@@ -848,6 +848,19 @@ var Contracts = []Contract{
 		// Told once, in the turn, by the person doing the asking. Anything the
 		// floor would have said is now noise they already refused.
 		Judge: All(wroteSomething, SaysNone(noRepositoryClaim...), SaysNone("git init"))},
+	// The contract that measures a correction, and the first one whose
+	// scenario runs the verification cycle rather than being handed the
+	// reminder one would have produced.
+	//
+	// Two families shipped before it existed — the failing criterion's output
+	// reaching the model, and the loop rolling back a cycle that regressed —
+	// and neither could be measured, because nothing in this harness ran
+	// checkDone. The numbers taken anyway moved four points on a code path the
+	// runs never visited.
+	{ID: "fixes-what-the-output-named", Threshold: 0.85, Rounds: exploreThenActRounds,
+		// Every criterion green, judged by the harness re-running them rather
+		// than by anything the model said. What was written is the verdict.
+		Judge: EveryCriterionMet()},
 	{ID: "floor-checks-before-claiming", Threshold: 0.85, Rounds: exploreThenActRounds,
 		// The first practice, and the only one of the four whose failure looks
 		// exactly like success: a confident report about files nobody opened.
