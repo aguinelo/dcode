@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 143 changelogs de decisão |
+| famílias de spec | 18, com 144 changelogs de decisão |
 | contratos comportamentais | 56 declarados |
 | contratos que precisam de modelo | 51 dos 56; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **16** |
@@ -129,6 +129,15 @@ existe para impedir exatamente isso.
   retorno não precisa ser um commit**, e a fronteira de que git é do usuário
   fica inteira. Desfazer é decisão do laço e nunca do modelo — um agente que
   pode reverter o próprio trabalho pode reverter a evidência.
+
+- **Um ciclo que quebrou algo é desfeito.** O laço passa a classificar o que
+  um ciclo fez em três respostas em vez de duas, e reverte as que regrediram —
+  um critério que passava e parou. A máquina de instantâneo já existia; nada
+  dizia ao laço que um ciclo tinha piorado, e o recorte era o turno inteiro,
+  então desfazer depois de um ciclo ruim jogaria fora todo ciclo bom antes
+  dele. Empate nunca é desfeito: um ciclo que leu e não fechou nada não quebrou
+  nada. O modelo é avisado, e avisado a tentar outra coisa — quem não é avisado
+  repete a mesma edição achando que ela nunca aconteceu.
 
 ## 0.15.0 — 29 de agosto de 2026
 

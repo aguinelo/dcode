@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 143 decision changelogs |
+| spec families | 18, with 144 decision changelogs |
 | behavioural contracts | 56 declared |
 | contracts needing a model | 51 of the 56; 5 are settled by assertion |
 | **contracts ever actually measured** | **16** |
@@ -146,6 +146,16 @@ exists to stop exactly that.
   false: **a point of return does not have to be a commit**, so the boundary
   that git is the user's stays intact. Undo is the loop's decision and never the
   model's — an agent that can revert its own work can revert the evidence.
+
+- **A cycle that broke something is put back.** The loop now classifies what
+  a cycle did in three answers instead of two, and rolls back the ones that
+  regressed — a criterion that passed and stopped. The snapshot machinery was
+  already there; nothing told the loop a cycle had made things worse, and the
+  scope was the whole turn, so undoing after one bad cycle would have thrown
+  away every good one before it. Drawing is never rolled back: a cycle that
+  read and closed nothing broke nothing. The model is told, and told to try
+  something else — an agent that is not told repeats the edit believing it
+  never happened.
 
 ## 0.15.0 — 29 August 2026
 

@@ -37,6 +37,15 @@ type State struct {
 	// snaps is how the files this turn touches stood before it touched them.
 	// Replaced at each turn: undo means the last thing, not everything.
 	snaps map[string]snapshot
+	// cycleSnaps is how each already-touched path stood when the current
+	// verification cycle began, and cycleWrote is what the cycle has written
+	// since. Both nil when no cycle boundary has been marked.
+	//
+	// A second layer rather than a replacement: the turn's snapshot answers
+	// "how did this look before the model started" and must keep answering it,
+	// because that is what the person's own undo restores.
+	cycleSnaps map[string]snapshot
+	cycleWrote map[string]struct{}
 }
 
 type fileState struct {
@@ -171,6 +180,9 @@ func (s *State) MarkWritten(path string) {
 		s.written = map[string]struct{}{}
 	}
 	s.written[path] = struct{}{}
+	if s.cycleWrote != nil {
+		s.cycleWrote[path] = struct{}{}
+	}
 	s.writeSeq++
 }
 

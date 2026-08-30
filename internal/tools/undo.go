@@ -47,6 +47,77 @@ func (s *State) Snapshot(path string) {
 	s.snaps[path] = snapshot{content: body, existed: true}
 }
 
+// BeginCycle marks a point inside a turn that UndoCycle can come back to.
+//
+// A turn holds many verification cycles, and BeginTurn's snapshot set spans all
+// of them. Undoing at turn scope after one bad cycle would throw away every
+// good cycle that came before it, which is why the loop could not be given the
+// undo it already had.
+//
+// It takes a SECOND layer of snapshots — how each already-touched path stands
+// right now — and leaves the turn's own layer alone. One layer was tried and is
+// wrong: a path written in cycle one and again in cycle two would keep cycle
+// two's content, so the bad cycle's write survived the undo of the bad cycle.
+// Two layers because they answer different questions: the turn's is "how did
+// this look before the model started", the cycle's is "how did it look before
+// this attempt".
+func (s *State) BeginCycle() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cycleSnaps = make(map[string]snapshot, len(s.snaps))
+	for p := range s.snaps {
+		body, err := os.ReadFile(p)
+		if err != nil {
+			s.cycleSnaps[p] = snapshot{existed: false}
+			continue
+		}
+		s.cycleSnaps[p] = snapshot{content: body, existed: true}
+	}
+	s.cycleWrote = map[string]struct{}{}
+}
+
+// UndoCycle puts back what changed since the last BeginCycle.
+//
+// Only what this cycle wrote. A path the turn touched earlier and this cycle
+// left alone is not restored, because there is nothing about it to undo.
+//
+// Without a BeginCycle it undoes nothing and says so by returning nothing. A
+// cycle boundary nobody marked is not a boundary, and guessing one would undo
+// the whole turn under a name that promises less.
+func (s *State) UndoCycle() (restored, refused []string, err error) {
+	s.mu.Lock()
+	if s.cycleWrote == nil {
+		s.mu.Unlock()
+		return nil, nil, nil
+	}
+	// The turn's layer stays where it is; this builds the cycle's view and
+	// hands it to the same restore the person's undo uses.
+	turn := s.snaps
+	cycle := map[string]snapshot{}
+	for p := range s.cycleWrote {
+		if sn, ok := s.cycleSnaps[p]; ok {
+			cycle[p] = sn
+			continue
+		}
+		// First touched in this cycle: the turn's snapshot IS the cycle's, and
+		// for a file created here it records that there was nothing.
+		if sn, ok := turn[p]; ok {
+			cycle[p] = sn
+		}
+	}
+	s.snaps = cycle
+	s.mu.Unlock()
+
+	restored, refused, err = s.Undo()
+
+	s.mu.Lock()
+	s.snaps = turn
+	s.cycleSnaps = nil
+	s.cycleWrote = nil
+	s.mu.Unlock()
+	return restored, refused, err
+}
+
 // Undo puts back what the last turn changed, and reports what it would not
 // touch.
 //

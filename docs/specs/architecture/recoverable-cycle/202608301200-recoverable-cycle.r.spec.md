@@ -30,22 +30,43 @@ if Progressed(*unmet, now) || *unmet == nil {
 }
 ```
 
-**Um `/loop <objetivo>` de horas deixa uma árvore suja e nenhum ponto de
-retorno.** Vinte specs, cinco horas, e se a décima sétima quebrou o que a
-terceira construiu não há diff por spec, não há bisect, não há desfazer que não
-seja à mão. O único registro é o event log da sessão, que não é diff.
+### A metade que já existe, e que esta spec quase reinventou
 
-### A objeção que não existe
+**O instantâneo já existe, e o desfazer também.** A primeira versão desta seção
+dizia que o ponto de retorno não existia. Estava errada, e o erro foi ler
+`Progressed` e `State.Written()` sem ler o que os vizinhos fazem:
 
-Esta família ficou fora de escopo na `.r` da `failure-feedback` com a
-justificativa de que mexeria na fronteira declarada — *o `vcs` deste produto lê
-e não escreve*.
+| peça | onde |
+|---|---|
+| `Snapshot(path)`, antes de cada escrita, só o primeiro toque | `tools/undo.go` |
+| `BeginTurn()`, zerando o conjunto a cada turno | `turn.go:285` |
+| `Undo()`, restaurando conteúdo e removendo o que foi criado | `tools/undo.go` |
+| recusa de arquivo que mudou no disco depois do turno | `Undo()` |
+| por arquivo, nunca tudo-ou-nada | `Undo()` |
+| `/undo` para a pessoa | `tui`, `server` |
 
-**O ponto de retorno não precisa ser um commit.** O laço já sabe exatamente
-quais caminhos a sessão escreveu (`State.Written()`), e um instantâneo do
-**conteúdo** desses arquivos não toca no repositório do usuário: nada é
-commitado, nada entra no índice, nenhum branch se move. A fronteira fica
-intacta, e a objeção cai.
+O comentário no `file.go`, escrito muito antes desta família, já dizia o porquê:
+*"How it stood before, so the turn can be undone."*
+
+E não é commit, não toca em git, não move branch — a fronteira de que o `vcs` lê
+e não escreve **já estava respeitada** sem que ninguém precisasse descobrir isso
+de novo.
+
+### O que falta, então
+
+Três coisas, e as três são pequenas porque a máquina está pronta:
+
+1. **O laço nunca desfaz por decisão própria.** `Undo()` tem três chamadores —
+   o servidor, a sessão e o motor — e todos servem ao `/undo` que **a pessoa**
+   digita. Nada no ciclo o aciona.
+2. **Não há sinal para acionar.** `Progressed` devolve um booleano onde cabem
+   três respostas, então "regrediu" chega ao ciclo indistinguível de "empatou".
+3. **O escopo é o turno, não o ciclo.** `BeginTurn` zera o conjunto a cada
+   turno; um laço que roda vários ciclos dentro de um turno tem um ponto de
+   retorno só, e é o do começo do turno.
+
+Um `/loop <objetivo>` de horas continua deixando uma árvore suja: o desfazer
+alcança o último turno, e não a décima sétima spec.
 
 ## 2. Fronteira de determinismo
 
@@ -76,28 +97,31 @@ a mesma tentativa achando que ela nunca aconteceu.
 
 ## 4. Regras de negócio
 
-### RN-1 — Todo ciclo tem um ponto de retorno, tirado antes do trabalho
+### RN-1 — Todo **ciclo** tem um ponto de retorno, e hoje só o turno tem
 
-Antes, nunca depois. Um instantâneo tirado no fim do ciclo é uma foto do
-estrago, não um lugar para onde voltar.
+O instantâneo existe e é tirado antes de cada escrita, que é a metade certa. O
+que falta é o recorte: `BeginTurn` zera por turno, e um turno pode conter muitos
+ciclos de verificação.
 
-### RN-2 — O ponto de retorno é conteúdo, não commit
+Antes, nunca depois — e essa parte o produto já faz.
 
-Nada é commitado, indexado, nem faz branch andar. O `vcs` deste produto continua
-lendo e não escrevendo, e essa garantia não se troca por conveniência.
+### RN-2 — O ponto de retorno continua sendo conteúdo, não commit
 
-O que se guarda é o conteúdo dos caminhos que **a sessão** escreveu, e o
-conteúdo **anterior** de cada um no primeiro toque — porque sem isso não existe
-"antes do primeiro ciclo", e o primeiro é o que mais importa.
+Já é assim, e a regra existe para que continue sendo. Nada é commitado,
+indexado, nem faz branch andar.
 
-### RN-3 — Voltar é decisão do laço, nunca do modelo
+### RN-3 — Voltar é decisão do laço ou da pessoa, nunca do modelo
 
-Não há ferramenta de desfazer, e não vai haver.
+**Já é verdade e não pode deixar de ser.** `Undo` não está no registro de
+ferramentas; os três chamadores servem ao `/undo` que a pessoa digita.
 
 Um agente que pode reverter o próprio trabalho pode reverter a **evidência** —
 apagar o que ficou vermelho é a forma mais limpa de sair de um laço que só
 termina quando o vermelho acaba. É a mesma razão pela qual `done_propose` não
 existe num turno de trabalho, e pela qual o modelo não julga se terminou.
+
+O que esta família acrescenta é um **segundo** decisor não-modelo: o laço,
+quando a medição diz que regrediu.
 
 ### RN-4 — Só se volta de **regressão nomeada**, nunca de "não progrediu"
 

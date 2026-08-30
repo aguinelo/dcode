@@ -379,6 +379,13 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 			// asking for tools: done is a checked condition, not a declaration.
 			reason, more := e.checkDone(ctx, &stall, &unmet, &toldUnverified)
 			if more != nil {
+				// The cycle that is about to start is the unit that can be
+				// rolled back. Marked here, after the check that judged the
+				// last one, so a regression undoes the attempt that caused it
+				// and not the turn that led up to it.
+				if e.cfg.State != nil {
+					e.cfg.State.BeginCycle()
+				}
 				e.session.History = append(e.session.History, more...)
 				out.Iterations++
 				e.emitRounds(turnID, out.Iterations)
@@ -1070,10 +1077,30 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, tol
 		return protocol.StopDone, nil
 	}
 
-	if Progressed(*unmet, now) || *unmet == nil {
+	moved := Moved(*unmet, now)
+	if moved == MovedForward || *unmet == nil {
 		*stall = 0
 	} else {
 		*stall++
+	}
+
+	// A cycle that broke something goes back. The snapshot machinery was
+	// already here — it is what the person's /undo restores — and the loop
+	// could not use it because nothing told it a cycle had regressed: Moved
+	// used to be a boolean, so breaking a criterion and merely failing to fix
+	// one read the same.
+	//
+	// Only on regression, never on a draw. A cycle that read, understood and
+	// closed nothing did not break anything, and undoing it throws away good
+	// work.
+	//
+	// It still counts as a stall. Undoing is not progress, and zeroing the
+	// counter here would let the loop oscillate forever between the same two
+	// states — the risk the .r names.
+	var undone, kept, broke []string
+	if moved == MovedBackward && *unmet != nil {
+		broke = regressedNames(*unmet, now)
+		undone, kept = e.undoCycle()
 	}
 	*unmet = now
 
@@ -1088,7 +1115,43 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, tol
 		UnmetCriteria:    now,
 		CriterionOutputs: rep.OutputTexts(),
 		ProtectedTouched: rep.TouchedProtected,
+		CycleUndone:      undone,
+		CycleKept:        kept,
+		Regressed:        broke,
 	})
+}
+
+// undoCycle puts back what the cycle that regressed wrote.
+//
+// Nil State is not an error: a loop configured without one cannot undo, and
+// saying nothing happened is the honest answer. A failure to restore is the
+// same — reported as nothing undone rather than as work lost, because the
+// alternative is telling the model a rollback happened that did not.
+func (e *Engine) undoCycle() (undone, kept []string) {
+	if e.cfg.State == nil {
+		return nil, nil
+	}
+	restored, refused, err := e.cfg.State.UndoCycle()
+	if err != nil {
+		return nil, nil
+	}
+	return restored, refused
+}
+
+// regressedNames are the criteria that passed before this cycle and do not now.
+func regressedNames(before, after []string) []string {
+	had := make(map[string]struct{}, len(before))
+	for _, n := range before {
+		had[n] = struct{}{}
+	}
+	var out []string
+	for _, n := range after {
+		if _, ok := had[n]; !ok {
+			out = append(out, n)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // remindersFor renders a state as messages the model reads next turn.

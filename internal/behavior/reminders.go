@@ -23,6 +23,7 @@ const (
 	ReminderWorthRemembering        ReminderKind = "worth_remembering"
 	ReminderProtectedTouched        ReminderKind = "protected_touched"
 	ReminderInterrupted             ReminderKind = "interrupted"
+	ReminderCycleUndone             ReminderKind = "cycle_undone"
 )
 
 // BudgetBand is how full the context is, as announced to the model.
@@ -108,6 +109,16 @@ type SessionState struct {
 	//
 	// Data, never a reader: this package assembles text and runs nothing.
 	CriterionOutputs map[string]string
+	// CycleUndone and CycleKept are what a rolled-back cycle put back and what
+	// it left alone; Regressed names the criteria that passed before it and
+	// did not after.
+	//
+	// Set only when the loop actually rolled a cycle back. Nothing here is
+	// rendered silently: an agent that is not told repeats the attempt
+	// believing it never happened, which turns the safety net into a trap.
+	CycleUndone []string
+	CycleKept   []string
+	Regressed   []string
 	// ProtectedTouched are paths that ARE the measurement and were written this
 	// turn. Surfaced, never counted as progress in silence.
 	ProtectedTouched []string
@@ -199,6 +210,13 @@ func Emit(s SessionState) []Reminder {
 		out = append(out, Reminder{Kind: ReminderUnmetCriteria, Text: text})
 	}
 
+	if len(s.Regressed) > 0 {
+		out = append(out, Reminder{
+			Kind: ReminderCycleUndone,
+			Text: cycleUndone(s),
+		})
+	}
+
 	if s.UnplannedChange {
 		out = append(out, Reminder{
 			Kind: ReminderUnplannedChange,
@@ -268,6 +286,30 @@ func Emit(s SessionState) []Reminder {
 // answers it — which is both wrong and unnerving to watch.
 func Render(r Reminder) string {
 	return "<system-reminder>\n" + r.Text + "\n</system-reminder>"
+}
+
+// cycleUndone tells the model its last attempt was rolled back, and why.
+//
+// The last sentence is the point of the whole message. Without it the agent
+// tries the same edit again believing it never happened, and the rollback that
+// exists to stop damage becomes a loop that repeats it.
+//
+// Files left alone are named. A half-reverted tree is worse than none if
+// nobody knows which half.
+func cycleUndone(s SessionState) string {
+	var b strings.Builder
+	b.WriteString("Your last set of changes was undone. " +
+		strings.Join(uniqueSorted(s.Regressed), ", ") +
+		" passed before them and did not after, so what they wrote was put back.")
+	if n := len(s.CycleUndone); n > 0 {
+		fmt.Fprintf(&b, " %d file(s) restored.", n)
+	}
+	if len(s.CycleKept) > 0 {
+		fmt.Fprintf(&b, " Left alone because they changed on disk since: %s.",
+			strings.Join(uniqueSorted(s.CycleKept), ", "))
+	}
+	b.WriteString("\n\nTry something else. The same change will be undone the same way.")
+	return b.String()
 }
 
 // criterionOutputs renders what the failing criteria printed, or "".
