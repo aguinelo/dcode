@@ -32,7 +32,7 @@ fora do pacote isolado.
 | **contratos de fato já medidos** | **18** |
 | cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.15.0** |
+| versão publicada | **0.16.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -119,7 +119,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não lançado
+## 0.16.0 — 30 de agosto de 2026
 
 - **`recoverable-cycle`, família nova: o laço é fechado na detecção e aberto na
   recuperação.** Ele sabe que um ciclo piorou e não sabe voltar — o
