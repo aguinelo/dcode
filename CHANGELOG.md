@@ -32,7 +32,7 @@ isolated package.
 | **contracts ever actually measured** | **18** |
 | coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.15.0** |
+| published version | **0.16.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -136,7 +136,7 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
+## 0.16.0 — 30 August 2026
 
 - **`recoverable-cycle`, a new family: the loop is closed on detection and open
   on recovery.** It knows a cycle made things worse and cannot go back —
