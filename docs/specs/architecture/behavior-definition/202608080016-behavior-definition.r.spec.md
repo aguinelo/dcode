@@ -98,6 +98,10 @@ Skill entra no prefixo como **uma linha** descrevendo quando usá-la. O corpo é
 
 Carregar todo corpo de skill no prefixo é o caminho mais rápido para um prompt de dezenas de milhares de tokens pago em todo turno, com atenção diluída.
 
+**Corpo que entra no turno é anunciado.** O índice é auditável — está no prefixo, e `--dump-prompt` o imprime. O corpo não era: ele era anexado ao histórico como lembrete sem nada ser emitido, então um bloco de texto entrava no turno, gastava contexto e mudava o comportamento do modelo, sem a pessoa ter como saber que aconteceu nem qual skill foi.
+
+Trinta linhas acima da injeção, o teto do índice já se recusa a descartar em silêncio. O anúncio é essa mesma regra aplicada ao único fato observável que não estava viajando pelo log. Turno que não carrega skill nenhuma não anuncia nada: uma linha por turno cujo único conteúdo é que a funcionalidade existe é linha gasta.
+
 **O gatilho bate no que distingue a skill, não no que ela tem em comum.** Sem `triggers` explícito, a linha de quando-usar é casada pelas próprias palavras significativas, e duas condições valem juntas: dois acertos distintos, e pelo menos um numa palavra que é daquela skill e de nenhuma outra do índice.
 
 A primeira condição sozinha não bastava. Duas skills que dizem "projeto" e "versão" não se distinguem por essas palavras, então uma tarefa que citasse as duas carregava os dois corpos. Exigir um acerto que discrimina também mantém vizinhas de um mesmo domínio alcançáveis: elas compartilham a palavra do domínio e cada uma continua tendo a sua.

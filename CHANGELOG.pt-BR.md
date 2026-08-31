@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 148 changelogs de decisão |
+| famílias de spec | 18, com 149 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **18** |
-| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -121,6 +121,22 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Skill carregada se anuncia.** O corpo era anexado ao turno como lembrete sem
+  nada ser emitido: contexto gasto, comportamento mudado, e nenhum rastro em
+  lugar nenhum que a pessoa olhe — `grep -i skill internal/tui/` não devolvia
+  nada fora de teste. O índice sempre foi auditável, no prefixo e no
+  `--dump-prompt`; o que disparou, não. O `skill.loaded` carrega o nome e a
+  mesma linha de quando-usar que o modelo leu no índice, então os dois passam a
+  olhar a mesma frase, e o fluxo desenha isso como nota.
+- **Não o caminho, e não a cada turno.** O log de eventos é lido por outro
+  cliente em outra máquina, onde caminho absoluto de quem escreveu não é fato; de
+  qual raiz a skill veio é pergunta que o `--dump-prompt` e o sistema de arquivos
+  respondem. Turno que não carrega nada não anuncia nada, e anúncio sem nome não
+  desenha — linha cujo único conteúdo é que o recurso existe é linha gasta.
+- **`docs/ROADMAP.md` §16 registra as duas coisas que isto deliberadamente não
+  fez**: uma listagem `/skills`, e skills embutidas no binário. Contra a segunda
+  argumenta a própria RN-7 do produto — cada skill embutida é uma linha paga em
+  todo turno de toda sessão — com os três custos ainda não pagos nomeados.
 - **A skill carrega pelo que a distingue, não pelo que ela tem em comum.** A
   lista de palavras vazias tinha só inglês, num produto cujo `LANGUAGE.md`
   declara duas línguas e cujo usuário escreve prompt em português: `quando`,

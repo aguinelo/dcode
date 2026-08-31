@@ -509,3 +509,31 @@ func TestTheContextSaysItIsFillingBeforeItIsCut(t *testing.T) {
 		t.Error("an empty crossing drew a note")
 	}
 }
+
+// The stream says which skill fired and what it claims to be for.
+//
+// "A skill was loaded" would be a notice. The name and the when-to-use line
+// make it an answer, and the line is the same one the model read in the index —
+// so the person and the model are looking at the same sentence.
+func TestTheStreamNamesTheSkillThatLoaded(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m = m.Apply(ev(t, 1, protocol.EventSkillLoaded, protocol.SkillLoaded{
+		Name: "release", WhenToUse: "cutting a new version of the module",
+	}))
+	if len(m.Entries) != 1 {
+		t.Fatalf("the load produced %d entries", len(m.Entries))
+	}
+	got := m.Entries[0].Summary
+	if !strings.Contains(got, "release") || !strings.Contains(got, "cutting a new version") {
+		t.Errorf("the note does not say which skill or what for: %q", got)
+	}
+
+	// A payload with no name draws nothing. A row that says a skill loaded
+	// without saying which one is a row spent telling the reader the feature
+	// exists.
+	before := len(m.Entries)
+	m = m.Apply(ev(t, 2, protocol.EventSkillLoaded, protocol.SkillLoaded{}))
+	if len(m.Entries) != before {
+		t.Error("a nameless load drew a note")
+	}
+}

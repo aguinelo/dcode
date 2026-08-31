@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 148 decision changelogs |
+| spec families | 18, with 149 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **18** |
-| coverage | 93.3%, gate at 90% aggregate **and per package** |
+| coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -138,6 +138,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A loaded skill announces itself.** A skill body was appended to the turn as
+  a reminder with nothing emitted: spent context, changed behaviour, and no
+  trace anywhere the person looks — `grep -i skill internal/tui/` returned
+  nothing outside tests. The index was always auditable, in the prefix and in
+  `--dump-prompt`; what fired was not. `skill.loaded` carries the name and the
+  same when-to-use line the model read in the index, so both are looking at the
+  same sentence, and the stream draws it as a note.
+- **Not the path, and not every turn.** The event log is read by another client
+  on another machine, where an absolute path from the machine that wrote it is
+  not a fact; which root a skill came from is a question `--dump-prompt` and the
+  filesystem answer. A turn that loads nothing announces nothing, and an
+  announcement with no name draws nothing — a row whose only content is that the
+  feature exists is a row spent.
+- **`docs/ROADMAP.md` §16 records the two things this deliberately did not do**:
+  a `/skills` listing, and skills shipped inside the binary. The second is
+  argued against by the product's own RN-7 — every bundled skill is a line paid
+  on every turn of every session — with the three unpaid costs named.
 - **A skill loads on what distinguishes it, not on what it has in common.** The
   stop list held English only, in a product whose `LANGUAGE.md` declares two
   languages and whose user writes prompts in Portuguese: `quando`, `projeto` and
