@@ -30,9 +30,9 @@ isolated package.
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **18** |
-| coverage | 93.3%, gate at 90% aggregate **and per package** |
+| coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.16.0** |
+| published version | **0.17.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -136,7 +136,7 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
+## 0.17.0 — 31 August 2026
 
 - **A criterion that prints nothing now names its command.** Found by running
   the installed binary against a real workspace, not by reading code: a
