@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 150 decision changelogs |
+| spec families | 18, with 151 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,21 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A bad skill file no longer stops the product.** Found by field test, not by
+  reading code: a real skill from the ecosystem this format came from —
+  `ConardLi/garden-skills/skills/web-design-engineer`, with 455 characters of
+  `description` where the cap is 120 — made `LoadSkills` return an error, which
+  `app.go` propagated, which made dcode exit 1 in that workspace,
+  `--dump-prompt` included. `.dcode/skills/` arrives by `git clone`, so one file
+  in a cloned repository decided whether the binary ran at all.
+- **The caps stand; being fatal did not.** An over-long index line is trimmed at
+  a word boundary and the cut is reported; a file that cannot be a skill, or one
+  over the byte cap, is skipped and reported. The body is never cut — guidance
+  that stops mid-sentence is worse than guidance that is absent and said to be
+  absent. Only an unreadable directory is still an error, because that is the
+  machine failing rather than a file being wrong.
+- The notices appear in `--dump-prompt` in a block of their own, separate from
+  doctrine notices because they answer different questions.
 - **`skill-loaded-on-trigger` measured: 100% of 20 runs**, threshold 85%,
   MiniMax-M3. It was one of the contracts that had never run. The judge looks
   for the step nobody would guess — the skill says to record the version in

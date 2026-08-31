@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 150 changelogs de decisão |
+| famílias de spec | 18, com 151 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,21 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Arquivo de skill ruim não para mais o produto.** Achado por teste de campo,
+  não por leitura de código: uma skill real do ecossistema de onde este formato
+  veio — `ConardLi/garden-skills/skills/web-design-engineer`, com 455 caracteres
+  de `description` onde o teto é 120 — fazia o `LoadSkills` devolver erro, o
+  `app.go` propagar, e o dcode sair com 1 naquele workspace, `--dump-prompt`
+  incluído. `.dcode/skills/` chega por `git clone`, então um arquivo de um
+  repositório clonado decidia se o binário rodava.
+- **Os tetos continuam; ser fatal não.** Linha de índice longa demais é aparada
+  em fronteira de palavra e o corte é dito; arquivo que não pode ser skill, ou
+  acima do teto de bytes, é pulado e dito. O corpo nunca é cortado — orientação
+  que para no meio da frase é pior que orientação ausente e declarada ausente. Só
+  diretório ilegível continua sendo erro, porque aí é a máquina falhando e não um
+  arquivo estando errado.
+- Os avisos aparecem no `--dump-prompt`, em bloco próprio, separados dos avisos
+  de doutrina porque respondem perguntas diferentes.
 - **`skill-loaded-on-trigger` medido: 100% de 20 execuções**, limiar 85%,
   MiniMax-M3. Era um dos contratos que nunca tinham rodado. O juiz procura o
   passo que ninguém adivinharia — a skill manda registrar a versão em
