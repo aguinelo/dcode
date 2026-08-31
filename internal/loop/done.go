@@ -110,17 +110,45 @@ type Report struct {
 // sentence for a reader and Output.Truncated is a fact about the bytes. Storing
 // the sentence would put prose in a struct the loop compares, and would have to
 // be written in the product's voice by whoever ran the command.
-func (r Report) OutputTexts() map[string]string {
-	if len(r.Outputs) == 0 {
+func (r Report) OutputTexts(set DoneSet) map[string]string {
+	if len(r.States) == 0 {
 		return nil
 	}
-	out := make(map[string]string, len(r.Outputs))
-	for name, o := range r.Outputs {
+	// What each criterion IS, for the ones that said nothing about why they
+	// failed. Found running the product against a real workspace: a criterion
+	// like `test -f CHANGELOG.md` prints nothing when it fails, so the block
+	// did not render and the model was told the name and nothing else — the
+	// state this whole family exists to leave behind. It went and read
+	// done.toml to find out, which is two rounds spent on something the loop
+	// already had in hand.
+	command := map[string]string{}
+	for _, c := range set.Criteria {
+		command[c.Name] = strings.TrimSpace(c.Command)
+	}
+
+	out := map[string]string{}
+	for name, st := range r.States {
+		if st != CriterionUnmet {
+			continue
+		}
+		o, ok := r.Outputs[name]
+		if !ok || strings.TrimSpace(o.Text) == "" {
+			// The command is identity, never evidence: it says what the
+			// criterion is, not what happened. It only stands in when there is
+			// no evidence to show.
+			if cmd := command[name]; cmd != "" {
+				out[name] = "(it printed nothing) " + cmd
+			}
+			continue
+		}
 		text := o.Text
 		if o.Truncated {
 			text = "(only the last " + itoa(MaxCriterionOutput) + " bytes)\n" + text
 		}
 		out[name] = text
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

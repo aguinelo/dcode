@@ -97,13 +97,39 @@ anteriores" é uma suíte com um teste mal escrito, não uma ordem.
 Esta regra existe porque a superfície é nova: hoje nenhuma saída de comando
 entra no contexto por este caminho.
 
-### RN-3 — Truncar pelo fim, não pelo começo
+### RN-3 — Critério que não imprime nada nomeia o seu comando
+
+Encontrado rodando o produto contra um workspace de verdade. Um `done.toml` com
+
+```toml
+[changelog]
+command = "test -f CHANGELOG.md"
+```
+
+falha **em silêncio**: `test -f` não escreve nada. A saída fica vazia, o bloco da
+RN-1 não renderiza, e o modelo recebe exatamente o que recebia antes desta
+família existir — o nome, e nada.
+
+No teste de campo ele se virou: foi ler o `.dcode/done.toml` para descobrir o que
+`changelog` queria dizer. Duas rodadas e duas chamadas de ferramenta para achar
+uma informação que o produto **já tinha na mão** — o comando está no
+`Criterion.Command`, e foi o laço que o executou.
+
+Nomear o comando quando não há saída não é dizer mais; é parar de esconder o que
+já se sabe. E é a diferença entre "changelog falhou" e "changelog é
+`test -f CHANGELOG.md`, e falhou".
+
+**Não substitui a saída quando ela existe.** Saída é evidência do que aconteceu;
+o comando é só a identidade do critério. Mostrar os dois sempre gastaria contexto
+repetindo o que o nome já sugere na maioria dos casos.
+
+### RN-4 — Truncar pelo fim, não pelo começo
 
 A informação que interessa num relatório de teste está no fim: o resumo, a
 contagem, a última asserção. Cortar o fim para preservar o cabeçalho é preservar
 exatamente a parte que não decide nada.
 
-### RN-4 — Progresso não é só cardinalidade
+### RN-5 — Progresso não é só cardinalidade
 
 Hoje `Progressed` exige que o conjunto **encolha** e seja **subconjunto** do
 anterior. As duas metades estão certas e são insuficientes: o mesmo critério,
@@ -113,7 +139,7 @@ O que conta como aproximação é do `.p`. O que a `.r` fixa é que **existe** u
 terceiro estado entre "encolheu" e "parado", e que o laço não pode chamar os
 dois de stall.
 
-### RN-5 — O teto de paciência sobe **depois**, nunca antes
+### RN-6 — O teto de paciência sobe **depois**, nunca antes
 
 `MaxStallCycles` é 2 hoje. Ele é apertado porque o agente está cego: dois ciclos
 sem progresso com um agente que não sabe o que quebrou é uma decisão razoável.
@@ -122,7 +148,7 @@ Subir o teto antes de a RN-1 existir compraria mais ciclos de tentativa às
 cegas, que é gastar dinheiro para adiar a mesma desistência. A ordem é lei
 aqui.
 
-### RN-6 — Nada disto devolve a decisão de "pronto" ao modelo
+### RN-7 — Nada disto devolve a decisão de "pronto" ao modelo
 
 A RN-10 da `agent-loop` continua inteira. O modelo não julga se terminou; ele
 passa a **ver o que a régua viu**. A régua continua sendo o comando, o comando
@@ -138,7 +164,7 @@ sem resposta certa: pequeno demais e a evidência não serve, grande demais e o
 contexto vai embora numa rodada.
 
 O que **não** cobre isso: escolher um número e declará-lo bom. O que cobre
-parcialmente é a RN-3 — cortar pelo fim é o palpite menos ruim, porque é onde os
+parcialmente é a RN-4 — cortar pelo fim é o palpite menos ruim, porque é onde os
 executores de teste põem o resumo — e dizer que cortou, para o modelo saber que
 há mais.
 
