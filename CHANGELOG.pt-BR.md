@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 27 de agosto de 2026
+## Estado atual — 31 de agosto de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -107,8 +107,8 @@ três contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos dezoito que rodaram, **seis não atingiram o limiar**, e os limiares não
-desceram para encontrá-los. O pior marca 30%: uma instrução do arquivo do
+Dos dezoito que rodaram, **cinco não atingiram o limiar**, e os limiares não
+desceram para encontrá-los. O pior marca 5%: uma instrução do arquivo do
 projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
 regra mais forte.
 
@@ -118,6 +118,31 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não publicado
+
+- **A capa diz o que foi medido, e uma guarda conta.** O README ainda afirmava
+  que não havia TUI nem binário publicado, quatro meses e dezessete minors
+  depois de as duas coisas deixarem de ser verdade; o badge dizia dez specs
+  contra dezoito famílias, e a seção de testes anunciava um gate de cobertura de
+  95% contra um script que sempre leu 90. Ele agora abre com a razão que estava
+  escondendo — 58 contratos declarados, 18 medidos — e carrega a tabela de
+  contas, `floor-yields-to-project` em 5% incluído. A comparação com os quatro
+  agentes que chegaram antes desceu para o rodapé, onde crédito mora, e o ciclo
+  de verificação subiu, porque é a parte que mais ninguém tem.
+- **`TestTheReadmeBadgesAreCountedAndNotCarried` e
+  `TestEveryReceiptNamesAMeasurement`.** Os badges, a frase abaixo deles, a
+  tabela de specs e toda taxa da tabela de contas passam a ser lidos da árvore e
+  de `Measured`, nas duas edições — o tratamento que a tabela de estado do
+  changelog já tinha, aplicado ao documento que mais gente de fato lê. A guarda
+  reprovou na primeira execução, num número que esta mesma mudança havia
+  digitado: 40 contratos nunca medidos, onde a árvore dá 35. Cobertura é
+  conferida só quanto ao acordo entre README e changelog, porque um teste que
+  não roda o gate não pode honestamente afirmar mais, e isso está escrito no
+  teste em vez de ficar para ser descoberto.
+- **A prosa do próprio changelog estava dois números atrasada.** Dizia que seis
+  contratos medidos não atingiram o limiar e que o pior marcava 30%. São cinco,
+  e o pior marca 5%.
 
 ## 0.17.0 — 31 de agosto de 2026
 
