@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 153 changelogs de decisão |
+| famílias de spec | 18, com 154 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
-| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -121,6 +121,26 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O bloco de skills passa a dizer qual é o formato, não só onde ele mora.** A
+  correção anterior funcionou pela metade: o agente foi olhar o diretório, e
+  ainda assim concluiu que uma skill achada no GitHub "carrega no Claude Code,
+  não no meu agente". Ele acertou a parte difícil — que a URL apontava para um
+  skill dentro de um **plugin**, que plugin e marketplace são empacotamento de
+  outro produto, e que instalar um mexe em setup global e pede confirmação.
+  Errou a fácil: `curl` do `SKILL.md` e escrita em `.dcode/skills/`, duas linhas,
+  dentro do workspace, sem cruzar nada.
+- **É fato e não promessa, e por isso pode ser dito.** O bloco passa a nomear a
+  forma — `SKILL.md` numa pasta ou `<nome>.md`, com `name` e `description` no
+  topo — e a dizer que uma achada em qualquer lugar é, quase sempre, arquivo para
+  copiar sem alterar. O `description` é alias de `when_to_use` desde antes desta
+  família existir, e uma skill real de terceiro nesse formato exato foi carregada
+  e aplicada num teste de campo nesta tarde.
+- **O que fica de fora é deliberado**: plugin, marketplace e comando de
+  instalação são empacotamento, não formato, e o agente já raciocina bem sobre
+  isso sozinho. A divergência do casamento também — lá o modelo decide pela
+  descrição, aqui é determinístico por palavra — que é escolha de desenho de quem
+  escreve skill, e vive na `.r`. A seção tem 409 bytes contra um teto de 520 no
+  teste.
 - **O agente não sabia do próprio mecanismo de skills.** Pedido para instalar
   uma skill, respondeu que não conseguia — que skills são coisa do Claude Code e
   não se instalam a partir dali. Cada frase disso é falsa sobre o produto que ele

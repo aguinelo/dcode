@@ -102,7 +102,13 @@ Carregar todo corpo de skill no prefixo é o caminho mais rápido para um prompt
 
 O resultado foi uma resposta que o produto de fato deu: pedido para instalar uma skill, o agente respondeu que **não conseguia**, que skills são coisa do Claude Code e não se instalam a partir dali. É falso sobre o produto que ele é — escrever em `<workspace>/.dcode/skills/` é escrita dentro do workspace, que nem aprovação pede. Sem informação, ele respondeu pelo treino, com confiança.
 
-O bloco passa a dizer duas coisas: **onde as skills moram** e **o que escrever uma faz** (é escrita de arquivo comum, indexada a partir da sessão seguinte). Duas linhas, nunca um manual — a economia da RN-7 é a mesma que mantém os corpos fora do prefixo, e o que ela compra aqui é a alternativa não ser o produto desinformando a pessoa sobre ele mesmo.
+O bloco passa a dizer três coisas: **onde as skills moram**, **qual é o formato** e **o que escrever uma faz** (é escrita de arquivo comum, indexada a partir da sessão seguinte).
+
+O formato importa porque foi a lacuna que sobrou depois da primeira correção. Sabendo onde elas moram, o agente foi olhar o diretório — e ainda assim concluiu que uma skill achada no GitHub "carrega no Claude Code, não nele", porque nada dizia que **o formato é o mesmo**. É: `SKILL.md` numa pasta ou `<nome>.md`, com `name` e `description` no topo, que é a forma que outros agentes usam. O `description` já é aceito como `when_to_use` desde antes, e uma skill de terceiro carregou e foi aplicada num teste de campo. Então uma skill achada em qualquer lugar é, quase sempre, arquivo para copiar sem alterar.
+
+O que **não** é padrão fica de fora de propósito: plugin, marketplace e comando de instalação são empacotamento de outro produto, não formato. E o casamento diverge — lá o modelo decide pela descrição, aqui é determinístico por palavra, que é a razão do teto de 120 e do campo `triggers`.
+
+Três linhas, nunca um manual — a economia da RN-7 é a mesma que mantém os corpos fora do prefixo, e o que ela compra aqui é a alternativa não ser o produto desinformando a pessoa sobre ele mesmo.
 
 Cabeçalho vazio continua proibido pelo motivo de sempre: diferença de bytes contra uma sessão que nunca teve a seção erra o cache. Este bloco não é vazio — o conteúdo é fixo e idêntico entre sessões sem skill.
 
