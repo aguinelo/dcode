@@ -98,6 +98,12 @@ Skill entra no prefixo como **uma linha** descrevendo quando usá-la. O corpo é
 
 Carregar todo corpo de skill no prefixo é o caminho mais rápido para um prompt de dezenas de milhares de tokens pago em todo turno, com atenção diluída.
 
+**O gatilho bate no que distingue a skill, não no que ela tem em comum.** Sem `triggers` explícito, a linha de quando-usar é casada pelas próprias palavras significativas, e duas condições valem juntas: dois acertos distintos, e pelo menos um numa palavra que é daquela skill e de nenhuma outra do índice.
+
+A primeira condição sozinha não bastava. Duas skills que dizem "projeto" e "versão" não se distinguem por essas palavras, então uma tarefa que citasse as duas carregava os dois corpos. Exigir um acerto que discrimina também mantém vizinhas de um mesmo domínio alcançáveis: elas compartilham a palavra do domínio e cada uma continua tendo a sua.
+
+A lista de palavras vazias cobre **as duas línguas em que este produto é escrito**. Ela era só de inglês, e por isso `quando`, `projeto` e `estiver` contavam como significativas enquanto `when` e `that` não — a mesma frase era filtrada numa língua e não na outra. Uma lista por língua cobre só as línguas que estão nela; o que cobre o resto é `triggers`, casado como frase, que não passa por aqui.
+
 ### RN-8 — A formulação pertence à família; a regra, não
 Duas famílias de modelo não respondem igual à mesma frase — uma prefere estrutura marcada, outra prosa direta.
 

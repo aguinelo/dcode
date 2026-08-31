@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 147 decision changelogs |
+| spec families | 18, with 148 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **18** |
-| coverage | 93.4%, gate at 90% aggregate **and per package** |
+| coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -138,6 +138,24 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A skill loads on what distinguishes it, not on what it has in common.** The
+  stop list held English only, in a product whose `LANGUAGE.md` declares two
+  languages and whose user writes prompts in Portuguese: `quando`, `projeto` and
+  `estiver` counted as significant words while `when` and `that` did not, so the
+  same sentence was filtered in one language and pulled whole skill bodies in the
+  other. "quando o projeto estiver pronto me avisa" loaded two skills, neither of
+  which was about anything in that sentence.
+- **The Portuguese list alone did not fix it.** `projeto` and `versão` are
+  content words, they appear in both skills' when-to-use lines, and two hits are
+  still two hits. The defect is not that a word is common in the language — it is
+  that it is common *among the skills in the index*, and a word both of them say
+  tells neither apart. `Match` now needs two hits **and** at least one on a word
+  no other skill in the index carries. A single installed skill discriminates by
+  everything it says, which is the right answer: with no neighbour there is
+  nothing to be confused with.
+- **Neighbours in one domain stay reachable.** `release-go` and `release-node`
+  both say cut, version and new, and each still has `golang` and `typescript` —
+  which a blunter rule that simply discarded shared words would have broken.
 - **The front page says what was measured, and a guard counts it.** The README
   still claimed there was no TUI and no released binary, four months and
   seventeen minor versions after both stopped being true; its badge said ten
