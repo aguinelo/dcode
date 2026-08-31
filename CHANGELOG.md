@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 149 decision changelogs |
+| spec families | 18, with 150 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
-| **contracts ever actually measured** | **18** |
-| coverage | 93.4%, gate at 90% aggregate **and per package** |
+| **contracts ever actually measured** | **19** |
+| coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -121,10 +121,10 @@ the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-three contracts that need a model, **thirty-five have never run against
+fifty-three contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
-Of the eighteen that have, **five did not meet their threshold**, and the
+Of the nineteen that have, **five did not meet their threshold**, and the
 thresholds did not move to meet them. The worst reads 5%: an instruction in the
 project file overriding the built-in floor, which the family that owns it calls
 its strongest rule.
@@ -138,6 +138,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`skill-loaded-on-trigger` measured: 100% of 20 runs**, threshold 85%,
+  MiniMax-M3. It was one of the contracts that had never run. The judge looks
+  for the step nobody would guess — the skill says to record the version in
+  `RELEASING.md` before cutting the tag, and a model that never received the
+  body has no way to know that file exists. Twenty runs, twenty hits: the
+  mechanism works.
+- **The number says nothing about the ceiling, and the note says so.** `Rounds`
+  went from 12 to `exploreThenActRounds` *before* the run, by the definition
+  written on that constant and not by evidence from this scenario — and then no
+  run failed, so there is no failure to attribute to either number. A corrected
+  ceiling followed by 100% reads as cause and effect and is not. This repository
+  has already misread five numbers by confusing instrument with behaviour;
+  reading a correct number for the wrong reason is the same mistake with better
+  luck.
 - **A loaded skill announces itself.** A skill body was appended to the turn as
   a reminder with nothing emitted: spent context, changed behaviour, and no
   trace anywhere the person looks — `grep -i skill internal/tui/` returned
