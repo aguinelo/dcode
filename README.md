@@ -264,15 +264,38 @@ dcode --config model.name    # a setting's effective value, and where it came fr
 ### The boundary
 
 By default the agent runs in `workspace-write` with `on-request` approvals: it may edit
-inside the workspace, and anything crossing that boundary — a write outside it, or the
-network — stops and asks. Without an approver it denies, because with nobody to ask the
-only alternative is granting in silence.
+inside the workspace, and a **read** outside it stops and asks. Without an approver it
+denies, because with nobody to ask the only alternative is granting in silence.
+
+Two things that sound like they should ask do not, and both are deliberate.
+
+**The network is granted by default** (`sandbox.allow_network`, default `true`). A shell
+command is opaque, so `bash` declares the network on every call — there is no reading of
+the string that says whether *this* one reaches out. Asking about the declaration meant
+asking about every build, every test run and every commit, and wherever nobody was there
+to answer it denied the whole shell: an agent that can edit but never verify produces
+change nobody checked. Set it to `false` and the OS blocks the network instead, per
+command.
+
+**Some writes outside the workspace are granted too**: `/tmp`, `/private/tmp`,
+`/private/var/tmp`, `/dev`, and the toolchain caches named one by one — `GOCACHE`,
+`GOMODCACHE`, `CARGO_HOME`, `~/.npm`, `~/.m2`, `$TMPDIR`. Compilers and test runners stage
+work there, and refusing them makes ordinary builds fail in ways that look like the sandbox
+is broken rather than doing its job.
+
+So a turn that fetches a file from the internet and writes it to `/tmp` asks nothing, and
+then asking to `read` it back is the step that stops — which is what it looks like, and it
+is the honest tool being the one that is gated. `bash cat /tmp/x` would not have asked,
+because a shell command declares only the workspace and the network. Containment is
+identical either way; only the question differs.
 
 Inside the workspace a short list of rules asks about the things that are different in
 *kind* from ordinary work — writing `.git/**` (a hook runs on the next commit, outside the
 sandbox) or `.dcode/**` (the agent's own configuration), and reading a secret (which sends
 it to the model provider). They are **attention, not containment**: a command pattern is
-avoided by `bash -c`, and what actually contains the agent is the sandbox.
+avoided by `bash -c`, and what actually contains the agent is the sandbox. The read
+asymmetry above is the same principle, and it is written down here rather than discovered
+from a prompt that did not appear.
 
 ```toml
 [rules]

@@ -262,15 +262,37 @@ dcode --config model.name    # valor efetivo de uma chave, e de onde ele veio
 ### A fronteira
 
 Por default o agente roda em `workspace-write` com aprovação `on-request`: pode editar
-dentro do workspace, e qualquer coisa que cruze essa fronteira — escrita fora dela, ou
-rede — para e pergunta. Sem alguém para responder, ele nega: com ninguém para perguntar,
-a única alternativa seria conceder em silêncio.
+dentro do workspace, e **leitura** fora dele para e pergunta. Sem alguém para responder,
+ele nega: com ninguém para perguntar, a única alternativa seria conceder em silêncio.
+
+Duas coisas que parecem que deveriam perguntar não perguntam, e as duas são deliberadas.
+
+**A rede é concedida por default** (`sandbox.allow_network`, default `true`). Comando de
+shell é opaco, então o `bash` declara rede em toda chamada — não existe leitura da string
+que diga se *esta* aqui sai para fora. Perguntar sobre a declaração significava perguntar
+a cada build, a cada teste, a cada commit; e onde não havia ninguém para responder, isso
+negava o shell inteiro: agente que edita e nunca verifica produz mudança que ninguém
+conferiu. Ponha `false` e quem bloqueia passa a ser o sistema operacional, por comando.
+
+**Algumas escritas fora do workspace também são concedidas**: `/tmp`, `/private/tmp`,
+`/private/var/tmp`, `/dev`, e os caches de toolchain nomeados um a um — `GOCACHE`,
+`GOMODCACHE`, `CARGO_HOME`, `~/.npm`, `~/.m2`, `$TMPDIR`. Compilador e test runner
+montam trabalho ali, e recusá-los faz build comum falhar de um jeito que parece sandbox
+quebrado em vez de sandbox funcionando.
+
+Ou seja: um turno que baixa um arquivo da internet e o escreve em `/tmp` não pergunta
+nada, e pedir para **ler** de volta é o passo que para — que é como parece, e é a
+ferramenta honesta sendo a que leva a trava. `bash cat /tmp/x` não teria perguntado,
+porque comando de shell declara apenas o workspace e a rede. A contenção é a mesma nos
+dois casos; o que muda é só a pergunta.
 
 Dentro do workspace, uma lista curta de regras pergunta sobre o que é diferente **em
 natureza** do trabalho comum — escrever em `.git/**` (um hook roda no próximo commit,
 fora do sandbox) ou em `.dcode/**` (a configuração do próprio agente), e ler um segredo
 (que manda o conteúdo ao provedor do modelo). São **atenção, não contenção**: padrão de
-comando é contornado por `bash -c`, e quem contém de fato é o sandbox.
+comando é contornado por `bash -c`, e quem contém de fato é o sandbox. A assimetria da
+leitura, acima, é o mesmo princípio — e está escrita aqui em vez de ser descoberta por
+uma pergunta que não apareceu.
 
 ```toml
 [rules]
