@@ -33,6 +33,7 @@ var tuiInvariants = map[string]string{
 	"nunca do título derivado":                    "TestNamingStartsFromTheNameAndNotTheDerivedTitle",
 	"mantém o que havia":                          "TestEscapingNamingKeepsWhatWasThere",
 	"mesmo limite que o daemon":                   "TestTheDraftStopsAtTheLimitTheDaemonEnforces",
+	"nomeia a skill que carregou":                 "TestTheStreamNamesTheSkillThatLoaded",
 	"marcado como dado":                           "TestAGivenNameIsMarkedAsGiven",
 	"a coluna toma o teclado":                     "TestTheRailTakesTheKeyboardAndGivesItBack",
 	"nunca só cor, e `↑↓` não dão":                "TestTheRailCursorStopsAtBothEnds",

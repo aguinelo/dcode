@@ -600,6 +600,19 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 		m.Entries = append(m.Entries, Entry{Kind: KindNote, Summary: note, Seq: ev.Seq})
 
+	case protocol.EventSkillLoaded:
+		// Which one, and what it says it is for. "A skill was loaded" would be
+		// a notice; the name and the line make it an answer, and the line is
+		// the same one the model read in the index.
+		var d protocol.SkillLoaded
+		if err := json.Unmarshal(ev.Payload, &d); err == nil && d.Name != "" {
+			note := d.Name
+			if d.WhenToUse != "" {
+				note = fmt.Sprintf(Text(m.Lang).SkillLoaded, d.Name, d.WhenToUse)
+			}
+			m.Entries = append(m.Entries, Entry{Kind: KindNote, Summary: note, Seq: ev.Seq})
+		}
+
 	case protocol.EventSessionError:
 		var d protocol.Error
 		if err := json.Unmarshal(ev.Payload, &d); err == nil {

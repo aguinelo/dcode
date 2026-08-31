@@ -37,6 +37,8 @@ var behaviorInvariants = map[string]string{
 	"numa palavra que nenhuma outra":     "TestMatchNeedsAWordThatBelongsToThisSkillAlone",
 	"Palavra vazia de português":         "TestMatchDoesNotFireOnPortugueseFillerWords",
 	"Vizinhas de um mesmo domínio":       "TestSkillsInTheSameDomainStayReachable",
+	"é **anunciado** como evento":        "TestALoadedSkillIsAnnounced",
+	"não anuncia coisa alguma":           "TestATurnThatLoadsNoSkillAnnouncesNothing",
 	"famílias distintas produzem":        "TestTwoFamiliesProduceDifferentPrompts",
 
 	// The doctrine overlay, whose whole point is what it cannot reach.

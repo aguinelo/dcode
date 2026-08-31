@@ -85,8 +85,20 @@ const (
 	// is that every observable fact travels the same way.
 	EventSessionRenamed   EventType = "session.renamed"
 	EventSessionCompacted EventType = "session.compacted"
-	EventContextBand      EventType = "context.band"
-	EventSessionError     EventType = "session.error"
+	// EventSkillLoaded announces a skill body entering the turn.
+	//
+	// The index is auditable — it is in the prefix, and `--dump-prompt` prints
+	// it. The body was not: it was appended to the history as a reminder with
+	// nothing emitted, so a block of text joined the turn, cost tokens and
+	// changed how the model behaved, with no way for the person to know it had
+	// happened or which skill it was.
+	//
+	// Thirty lines above the injection, the same package refuses to drop a
+	// skill from the index in silence. This is the sentence at the top of this
+	// block applied to the one observable fact that was not travelling.
+	EventSkillLoaded  EventType = "skill.loaded"
+	EventContextBand  EventType = "context.band"
+	EventSessionError EventType = "session.error"
 	// EventSessionModeChanged announces a switch between plan, assist and auto.
 	//
 	// Carried over the event log rather than read from a side channel so a
@@ -677,6 +689,17 @@ type (
 		// notice and an answer.
 		Messages int `json:"messages,omitempty"`
 		Kept     int `json:"kept,omitempty"`
+	}
+	// SkillLoaded is one skill body appended to the turn.
+	//
+	// Name and WhenToUse, and not the path: the event log is read by another
+	// client, possibly on another machine, and an absolute path from the
+	// machine that wrote it is not a fact there. Which root a skill came from
+	// is a question `--dump-prompt` and the filesystem answer; which skill
+	// fired is the one nothing answered.
+	SkillLoaded struct {
+		Name      string `json:"name"`
+		WhenToUse string `json:"when_to_use,omitempty"`
 	}
 	// ContextBand is the context crossing a threshold on the way to being
 	// summarised.

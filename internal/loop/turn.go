@@ -275,6 +275,12 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 		e.session.History = append(e.session.History, ce.Message{
 			Role: ce.RoleUser, Text: behavior.RenderSkill(s), Reminder: true,
 		})
+		// Said, because it happened. A body that joins the turn is spent
+		// context and changed behaviour, and it used to arrive with no trace
+		// anywhere the person looks.
+		e.emit(protocol.EventSkillLoaded, protocol.SkillLoaded{
+			Name: s.Name, WhenToUse: s.WhenToUse,
+		})
 	}
 
 	// A turn is the unit that can be undone, so it is the unit that starts a

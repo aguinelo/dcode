@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/aguinelo/dcode?label=release&color=success)](https://github.com/aguinelo/dcode/releases)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
-![Coverage](https://img.shields.io/badge/coverage-93.3%25-success)
+![Coverage](https://img.shields.io/badge/coverage-93.4%25-success)
 ![Specs](https://img.shields.io/badge/specs-18%20families-informational)
 ![Contracts](https://img.shields.io/badge/contracts-18%20measured%20%2F%2058%20declared-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -564,7 +564,7 @@ Two deliberate non-choices:
 | TUI client, commands, skills, reminders, signed distribution | ✅ |
 | `/loop`, the done qualifier, failure feedback, cycle rollback | ✅ |
 
-Coverage is **93.3%**, the gate is 90% aggregate **and per package**, and the suite runs
+Coverage is **93.4%**, the gate is 90% aggregate **and per package**, and the suite runs
 under `-race` on macOS and Linux, gated on the union of the profiles.
 
 **What is open, in order of how much it bothers us.**
