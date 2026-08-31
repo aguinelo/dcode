@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 152 changelogs de decisão |
+| famílias de spec | 18, com 153 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
-| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -121,6 +121,24 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O agente não sabia do próprio mecanismo de skills.** Pedido para instalar
+  uma skill, respondeu que não conseguia — que skills são coisa do Claude Code e
+  não se instalam a partir dali. Cada frase disso é falsa sobre o produto que ele
+  é: o dcode carrega skills de `<workspace>/.dcode/skills/`, e escrever ali é
+  escrita **dentro** do workspace, que não cruza nada e não pergunta a ninguém.
+  Ele tinha a ferramenta e a permissão; faltava a informação.
+- **O bloco de skills passa a ser renderizado mesmo sem nenhuma instalada**, e a
+  dizer onde elas moram e o que escrever uma faz. Ele só aparecia quando já havia
+  alguma, então um workspace sem skill não contava nada ao modelo sobre o
+  mecanismo — e sem nada escrito, ele respondeu pelo treino, que é sobre outro
+  produto. Duas linhas, nunca um manual: a economia da RN-7 é a mesma que mantém
+  os corpos fora do prefixo, e o que essas duas linhas compram é a alternativa
+  não ser o produto desinformando a pessoa sobre ele mesmo.
+- **Uma guarda lia string vazia.** O `TestAbsentSectionsEmitNoHeading` afirmava
+  que `## Skills` era omitida quando vazia, e passava percorrendo nada: o
+  `Prompt` dele não tinha `Safety`, então o `Build` falhava e o laço varria saída
+  vazia procurando quatro cabeçalhos. Corrigida na mesma mudança, porque é o
+  comportamento que esta mudança altera.
 - **O parágrafo da fronteira no README dizia o contrário do que a fronteira
   faz.** Ele afirmava que "qualquer coisa que cruze essa fronteira — escrita fora
   dela, ou rede — para e pergunta", e nenhuma das duas metades é verdade nos

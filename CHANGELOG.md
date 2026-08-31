@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 152 decision changelogs |
+| spec families | 18, with 153 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
-| coverage | 93.4%, gate at 90% aggregate **and per package** |
+| coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -138,6 +138,24 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The agent did not know about its own skills mechanism.** Asked to install a
+  skill, it answered that it could not — that skills are a Claude Code thing and
+  not installable from here. Every sentence of that is false about the product
+  it is: dcode loads skills from `<workspace>/.dcode/skills/`, and writing there
+  is a write **inside** the workspace, which crosses nothing and asks nobody. It
+  had the tool and the permission; it lacked the information.
+- **The skills block now renders even with none installed**, and says where they
+  live and what writing one does. It used to render only when one existed, so a
+  workspace with no skills told the model nothing about the mechanism at all —
+  and with nothing written, the model answered from training, which is about
+  another product. Two lines, never a manual: RN-7's economics are why the
+  bodies are not in the prefix either, and what these two lines buy is the
+  alternative not being the product misinforming the person about itself.
+- **A guard was reading an empty string.** `TestAbsentSectionsEmitNoHeading`
+  claimed `## Skills` was omitted when empty, and passed by looping over
+  nothing: its `Prompt` had no `Safety`, so `Build` failed and the loop searched
+  an empty output for four headings. Fixed in the same change, because it is the
+  behaviour this change alters.
 - **The README's boundary paragraph said the opposite of what the boundary
   does.** It claimed that "anything crossing that boundary — a write outside it,
   or the network — stops and asks", and neither half is true under the defaults:

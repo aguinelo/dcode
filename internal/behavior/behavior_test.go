@@ -92,12 +92,57 @@ func TestEmptyInstructionsAreSkipped(t *testing.T) {
 func TestAbsentSectionsEmitNoHeading(t *testing.T) {
 	// An empty heading is still a byte difference against a session that never
 	// had the section, which is enough to miss the cache.
-	p := Prompt{Doctrine: Doctrine{Identity: "You are dcode."}}
-	out, _ := Build(p, FormulationFor("minimax-m3"))
-	for _, absent := range []string{"## Safety", "## Using tools", "## Style", "## Skills"} {
+	//
+	// This used to build a Prompt with no Safety, which does not build at all —
+	// so it looped over an empty string and passed by finding nothing. A guard
+	// that reads nothing agrees with everything.
+	p := base()
+	p.Doctrine.ToolPolicy = ""
+	p.Doctrine.Style = ""
+	out, err := Build(p, FormulationFor("minimax-m3"))
+	if err != nil {
+		t.Fatalf("the fixture has to build, or this test reads an empty string: %v", err)
+	}
+	if !strings.Contains(out, "## Safety") {
+		t.Fatal("Safety is not optional; if it is missing the rest of this test is reading the wrong output")
+	}
+	for _, absent := range []string{"## Using tools", "## Style"} {
 		if strings.Contains(out, absent) {
 			t.Errorf("%q should be omitted entirely when empty:\n%s", absent, out)
 		}
+	}
+}
+
+// Skills is the one section that renders with nothing in it, and the reason is
+// an answer this product actually gave.
+//
+// Asked to install a skill, it said it could not — skills being something it
+// knows from elsewhere, and nothing here having told it otherwise. The section
+// rendered only when one existed, so a workspace with none left the model to
+// answer from training, and it answered confidently and wrongly about the
+// product it is.
+func TestTheAgentIsToldWhereSkillsLiveEvenWithNoneInstalled(t *testing.T) {
+	out, err := Build(base(), FormulationFor("minimax-m3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "## Skills") {
+		t.Fatalf("the section is missing with none installed:\n%s", out)
+	}
+	for _, want := range []string{".dcode/skills/", "when_to_use", "None are installed"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the section does not say %q:\n%s", want, out)
+		}
+	}
+
+	// Two lines, not a manual. The prefix is paid on every turn of every
+	// session, which is the same economics that keeps the bodies out of it.
+	section := out[strings.Index(out, "## Skills"):]
+	if i := strings.Index(section[3:], "\n## "); i >= 0 {
+		section = section[:i+3]
+	}
+	if len(section) > 400 {
+		t.Errorf("the skills section is %d bytes; it is paid every turn:\n%s", len(section), section)
 	}
 }
 
