@@ -548,3 +548,54 @@ func stateFor(t *testing.T, dir string) *tools.State {
 	}
 	return tools.NewState(r, tools.DefaultLimits(), nil)
 }
+
+// A criterion that prints nothing names its command.
+//
+// Found running the product against a real workspace: `test -f CHANGELOG.md`
+// says nothing when it fails, so the block did not render and the model was
+// told the name and nothing else — the state this family exists to leave
+// behind. It went and read done.toml to find out what the criterion was, which
+// is two rounds spent on something the loop already had in hand.
+func TestASilentCriterionNamesItsCommand(t *testing.T) {
+	set := DoneSet{Criteria: []Criterion{{Name: "changelog", Command: "test -f CHANGELOG.md"}}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{"test -f CHANGELOG.md": {"", ""}},
+			map[string]int{"test -f CHANGELOG.md": 1}), 0)
+
+	got := rep.OutputTexts(set)["changelog"]
+	if !strings.Contains(got, "test -f CHANGELOG.md") {
+		t.Errorf("a silent criterion told the model only its name: %q", got)
+	}
+	if !strings.Contains(got, "printed nothing") {
+		t.Errorf("the stand-in does not say it is one: %q", got)
+	}
+}
+
+// The command is identity, never evidence: it stands in only when there is
+// nothing to show.
+func TestOutputWinsOverTheCommand(t *testing.T) {
+	set := DoneSet{Criteria: []Criterion{{Name: "tests", Command: "go test ./..."}}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{"go test ./...": {"--- FAIL: TestSlugify", ""}},
+			map[string]int{"go test ./...": 1}), 0)
+
+	got := rep.OutputTexts(set)["tests"]
+	if !strings.Contains(got, "--- FAIL") {
+		t.Errorf("the evidence is missing: %q", got)
+	}
+	if strings.Contains(got, "go test ./...") {
+		t.Errorf("the command displaced the evidence: %q", got)
+	}
+}
+
+// A criterion that passed contributes nothing, command or not.
+func TestAPassingCriterionNamesNothing(t *testing.T) {
+	set := DoneSet{Criteria: []Criterion{{Name: "vet", Command: "go vet ./..."}}}
+	rep := Check(context.Background(), set,
+		runnerSaying(map[string][2]string{"go vet ./...": {"", ""}},
+			map[string]int{"go vet ./...": 0}), 0)
+
+	if got := rep.OutputTexts(set); len(got) != 0 {
+		t.Errorf("a criterion that passed contributed %v", got)
+	}
+}

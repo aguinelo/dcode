@@ -169,7 +169,7 @@ func (c *Cycle) After() []ce.Message {
 
 	st := behavior.SessionState{
 		UnmetCriteria:    now,
-		CriterionOutputs: rep.OutputTexts(),
+		CriterionOutputs: rep.OutputTexts(c.set),
 	}
 	if c.unmet != nil && loop.Moved(c.unmet, now) == loop.MovedBackward {
 		st.Regressed = regressed(c.unmet, now)

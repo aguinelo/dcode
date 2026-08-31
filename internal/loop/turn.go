@@ -1113,7 +1113,7 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, tol
 
 	return "", remindersFor(behavior.SessionState{
 		UnmetCriteria:    now,
-		CriterionOutputs: rep.OutputTexts(),
+		CriterionOutputs: rep.OutputTexts(e.cfg.Done),
 		ProtectedTouched: rep.TouchedProtected,
 		CycleUndone:      undone,
 		CycleKept:        kept,

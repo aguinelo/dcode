@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 146 decision changelogs |
+| spec families | 18, with 147 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **18** |
@@ -135,6 +135,16 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **A criterion that prints nothing now names its command.** Found by running
+  the installed binary against a real workspace, not by reading code: a
+  `done.toml` with `test -f CHANGELOG.md` fails silently, so the output block
+  did not render and the reminder was back to the name and nothing else. The
+  model went and read `done.toml` to find out what the criterion was — two
+  rounds after something the loop had in hand. The command is identity and
+  never evidence: it stands in only when there is nothing to show.
 
 ## 0.16.0 — 30 August 2026
 

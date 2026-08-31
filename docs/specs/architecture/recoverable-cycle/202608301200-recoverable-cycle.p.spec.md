@@ -178,10 +178,10 @@ Dois turnos em cinquenta num caminho de código que a medição não percorre. A
 
 | ID | Cenário | Comportamento esperado | Alvo | Medido |
 |---|---|---|---|---|
-| `finishes-work-that-takes-more-than-one-cycle` | cinco critérios, dois deles só conhecíveis depois do primeiro ciclo | os cinco ficam verdes | ≥ 80% | **95%** de 20 ✅ |
+| `finishes-work-that-takes-more-than-one-cycle` | cinco critérios, dois deles só conhecíveis depois do primeiro ciclo | os cinco ficam verdes | ≥ 80% | **100%** de 20 ✅ |
 
 **Medido, e refutou o passo que ia justificar.** O teto de ciclos parados **não
-morde** em trabalho que continua fechando critério — dezenove de vinte
+morde** em trabalho que continua fechando critério — vinte de vinte
 execuções atravessaram vários ciclos, descobriram pela saída dois critérios que
 a tarefa não menciona, e terminaram com os cinco verdes.
 

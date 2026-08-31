@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 146 changelogs de decisão |
+| famílias de spec | 18, com 147 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **18** |
@@ -118,6 +118,16 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não lançado
+
+- **Critério que não imprime nada passa a nomear o seu comando.** Achado
+  rodando o binário instalado contra um workspace de verdade, não lendo código:
+  um `done.toml` com `test -f CHANGELOG.md` falha em silêncio, então o bloco de
+  saída não renderizava e o lembrete voltava a ser o nome e nada. O modelo foi
+  ler o `done.toml` para descobrir o que o critério era — duas rodadas atrás de
+  algo que o laço tinha em mãos. O comando é identidade e nunca evidência: só
+  entra quando não há o que mostrar.
 
 ## 0.16.0 — 30 de agosto de 2026
 
