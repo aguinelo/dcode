@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 27 August 2026
+## Current state — 31 August 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -124,8 +124,8 @@ agreement.
 fifty-three contracts that need a model, **thirty-five have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
-Of the eighteen that have, **six did not meet their threshold**, and the
-thresholds did not move to meet them. The worst reads 30%: an instruction in the
+Of the eighteen that have, **five did not meet their threshold**, and the
+thresholds did not move to meet them. The worst reads 5%: an instruction in the
 project file overriding the built-in floor, which the family that owns it calls
 its strongest rule.
 
@@ -135,6 +135,31 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **The front page says what was measured, and a guard counts it.** The README
+  still claimed there was no TUI and no released binary, four months and
+  seventeen minor versions after both stopped being true; its badge said ten
+  specs against eighteen families, and its testing section claimed a 95%
+  coverage gate against a script that has always read 90. It now opens with the
+  ratio it was hiding — 58 contracts declared, 18 measured — and carries the
+  receipts table, `floor-yields-to-project` at 5% included. The comparison with
+  the four agents that got here first moved to the bottom, where credit belongs,
+  and the verification cycle moved up, because it is the part nobody else has.
+- **`TestTheReadmeBadgesAreCountedAndNotCarried` and
+  `TestEveryReceiptNamesAMeasurement`.** The badges, the sentence under them,
+  the specs table and every rate in the receipts table are read from the tree
+  and from `Measured`, in both editions — the treatment the changelog's state
+  table already had, applied to the document more people actually read. The
+  guard failed on its first run, on a number this same change had typed: 40
+  contracts never measured, where the tree gives 35. Coverage is checked only
+  for agreement between README and changelog, because a test that does not run
+  the gate cannot honestly claim more, and that is said in the test rather than
+  left to be discovered.
+- **The changelog's own prose was two numbers stale.** It said six measured
+  contracts missed their threshold and that the worst read 30%. Five miss, and
+  the worst reads 5%.
 
 ## 0.17.0 — 31 August 2026
 
