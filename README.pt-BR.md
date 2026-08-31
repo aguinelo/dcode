@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/aguinelo/dcode?label=release&color=success)](https://github.com/aguinelo/dcode/releases)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
-![Cobertura](https://img.shields.io/badge/cobertura-93%2C3%25-success)
+![Cobertura](https://img.shields.io/badge/cobertura-93%2C4%25-success)
 ![Specs](https://img.shields.io/badge/specs-18%20fam%C3%ADlias-informational)
 ![Contratos](https://img.shields.io/badge/contratos-19%20medidos%20%2F%2058%20declarados-orange)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
@@ -560,7 +560,7 @@ Duas não-escolhas deliberadas:
 | cliente TUI, comandos, skills, lembretes, distribuição assinada | ✅ |
 | `/loop`, o qualificador de pronto, feedback de falha, rollback de ciclo | ✅ |
 
-A cobertura é **93,3%**, o gate é 90% agregado **e por pacote**, e a suíte roda sob
+A cobertura é **93,4%**, o gate é 90% agregado **e por pacote**, e a suíte roda sob
 `-race` no macOS e no Linux, com o gate sobre a união dos profiles.
 
 **O que está aberto, na ordem do quanto incomoda.**

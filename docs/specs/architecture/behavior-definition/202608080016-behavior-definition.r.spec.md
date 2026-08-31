@@ -98,6 +98,18 @@ Skill entra no prefixo como **uma linha** descrevendo quando usá-la. O corpo é
 
 Carregar todo corpo de skill no prefixo é o caminho mais rápido para um prompt de dezenas de milhares de tokens pago em todo turno, com atenção diluída.
 
+**Skill que alcança a fronteira é retida e perguntada, nunca carregada às cegas.** Este é o único defeito de arquivo de skill que vira **pergunta**. Os outros são autor desatento; este é autor passando por cima da fronteira, e o corpo entra no turno sem ninguém ler antes.
+
+Recusar de saída seria o produto decidindo o que é da pessoa: fronteira e autorização são eixos separados (ADR-02), e este é o segundo. Aprovada, a skill carrega inteira. Negada, não carrega. **Sem ninguém para perguntar, não carrega** — a mesma regra que o laço já aplica a toda travessia, e pelo mesmo motivo: com ninguém a quem perguntar, a única alternativa a recusar é conceder em silêncio.
+
+Os três desfechos deixam linha na auditoria, **o concedido inclusive**. Consentimento que não deixa rastro é indistinguível de pergunta que nunca foi feita.
+
+A diferença para a RN-10 é **procedência**, e é ela que justifica perguntar aqui e só reportar lá. Instrução é do usuário ou do projeto dele: descartar um arquivo inteiro por causa de uma frase custaria a ele uma regra que ele mesmo escreveu, então lá a assimetria corre ao contrário — falso positivo custa uma linha de saída, e reportar basta. Skill é o texto **menos** confiável que este produto carrega: chega por `git clone` em `.dcode/skills/`, ou é baixada do repositório de um estranho, que é exatamente o que a RN-11 chama de "não é o usuário". Aqui um falso positivo custa **uma pergunta**, que a pessoa responde vendo o trecho citado; um falso negativo carrega texto de terceiro direto no contexto do modelo, sem pergunta nenhuma.
+
+As duas metades são filtradas. O corpo é onde a carga estaria, e a linha de índice é paga em todo turno — corpo inofensivo sob uma linha que pede a fronteira é a versão mais barata do ataque.
+
+O filtro tem de ser estreito o bastante para sobreviver ao contato com skills reais: medido contra a `web-design-engineer`, 35 KB de orientação de terceiro, **zero casamentos**. Guarda que pergunta sobre tudo é guarda que a pessoa aprova sem ler, e aprovação sem leitura não protege nada.
+
 **Arquivo de skill ruim não para o produto.** Ele parava: uma skill real do ecossistema de onde este formato veio — `web-design-engineer`, com 455 caracteres de `description` onde o teto é 120 — fazia o carregamento devolver erro, o `app.go` propagar, e o `dcode` sair com código 1 naquele workspace, `--dump-prompt` incluído. `.dcode/skills/` chega por `git clone`, então um arquivo de um repositório clonado decidia se o binário rodava.
 
 Os tetos estão certos; ser fatal não estava. A regra passa a ser a que o resto desta família já segue: linha de quando-usar acima do teto é **aparada** em fronteira de palavra e o corte é dito; arquivo que não pode ser skill de jeito nenhum é **pulado** e dito; arquivo acima do teto de tamanho é pulado e dito, porque corpo cortado no meio é orientação que para no meio da frase, e ausente-e-declarado-ausente é melhor que isso. Só diretório ilegível continua sendo erro — aí é a máquina falhando, não um arquivo estando errado.

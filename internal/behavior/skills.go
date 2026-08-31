@@ -21,6 +21,9 @@ type Skill struct {
 	Triggers  []string
 	Body      string
 	Path      string
+	// Claims is what SkillSafetyClaims found, filled in only for a skill that
+	// is being held. A loaded skill has none by construction.
+	Claims []string
 }
 
 // SkillsDirName is the directory searched under each root.
@@ -37,6 +40,12 @@ const MaxWhenToUse = 120
 // A skill is either `<dir>/<name>.md` or `<dir>/<name>/SKILL.md`. The second
 // form exists so a skill can carry files beside it.
 //
+// A skill that reaches for the boundary is HELD rather than loaded or refused:
+// it comes back in Skills.Held with its Claims filled in, and loading it is an
+// approval a person gives. Deciding it here would be this package answering a
+// question that is theirs; loading it silently is the thing that must never
+// happen.
+//
 // A bad skill file never stops the product. It used to: a real skill from the
 // ecosystem this format came from — `web-design-engineer`, 455 characters of
 // `description` where the cap is 120 — made LoadSkills return an error, which
@@ -49,9 +58,10 @@ const MaxWhenToUse = 120
 // than truncating in silence, and an over-size instruction is trimmed with a
 // notice. Only a directory that cannot be read is still an error, because that
 // is the machine failing rather than a file being wrong.
-func LoadSkills(dirs []string, maxBytes int) ([]Skill, []Notice, error) {
+func LoadSkills(dirs []string, maxBytes int) (Skills, error) {
 	byName := map[string]Skill{}
 	var notices []Notice
+	var held []Skill
 
 	for _, dir := range dirs {
 		entries, err := os.ReadDir(dir)
@@ -59,7 +69,7 @@ func LoadSkills(dirs []string, maxBytes int) ([]Skill, []Notice, error) {
 			continue
 		}
 		if err != nil {
-			return nil, nil, err
+			return Skills{}, err
 		}
 		for _, e := range entries {
 			path := filepath.Join(dir, e.Name())
@@ -100,6 +110,20 @@ func LoadSkills(dirs []string, maxBytes int) ([]Skill, []Notice, error) {
 				}
 				s.Name = base
 			}
+			// Held, not refused and not quietly loaded. Everything else a
+			// skill file can get wrong is the author being careless; this is
+			// the one shape that is the author reaching past the boundary, and
+			// the body goes into the turn where nobody reads it first.
+			//
+			// Refusing outright would be this package deciding something that
+			// is the person's to decide — the same conflation of boundary and
+			// authorization that ADR-02 separates. What must never happen is
+			// the load happening unseen.
+			if claims := SkillSafetyClaims(s); len(claims) > 0 {
+				s.Claims = claims
+				held = append(held, s)
+				continue
+			}
 			byName[s.Name] = s
 		}
 	}
@@ -109,8 +133,21 @@ func LoadSkills(dirs []string, maxBytes int) ([]Skill, []Notice, error) {
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	sort.Slice(held, func(i, j int) bool { return held[i].Path < held[j].Path })
 	sort.Slice(notices, func(i, j int) bool { return notices[i].Path < notices[j].Path })
-	return out, notices, nil
+	return Skills{Loaded: out, Held: held, Notices: notices}, nil
+}
+
+// Skills is what a load produced: what went in, what is waiting on a person,
+// and what to say out loud about the rest.
+//
+// Held is separate from Notices because it is not a thing that happened — it is
+// a question nobody has answered yet, and the answer changes what the model
+// sees.
+type Skills struct {
+	Loaded  []Skill
+	Held    []Skill
+	Notices []Notice
 }
 
 // ParseSkill reads frontmatter and body. Pure over its input.

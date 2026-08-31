@@ -41,6 +41,10 @@ var behaviorInvariants = map[string]string{
 	"não anuncia coisa alguma":            "TestATurnThatLoadsNoSkillAnnouncesNothing",
 	"**aparada** em fronteira de palavra": "TestASkillWhoseLineIsTooLongIsTrimmedAndReported",
 	"**pulado com aviso**":                "TestASkillFileThatCannotBeReadIsSkippedAndReported",
+	"tenta afrouxar segurança é":          "TestASkillThatReachesForTheBoundaryIsRefused",
+	"os três desfechos deixam linha":      "TestAHeldSkillIsPutToThePerson",
+	"filtrada junto com o corpo":          "TestTheIndexLineIsScreenedAsWellAsTheBody",
+	"Skill comum **não** é recusada":      "TestAnOrdinarySkillIsNotRefused",
 	"famílias distintas produzem":         "TestTwoFamiliesProduceDifferentPrompts",
 
 	// The doctrine overlay, whose whole point is what it cannot reach.

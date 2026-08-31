@@ -692,3 +692,51 @@ func TestNewWalksEveryOptionalBranch(t *testing.T) {
 type noopEmitter struct{}
 
 func (noopEmitter) Emit(protocol.EventType, any) {}
+
+// A held skill is a question, and the three answers are the three outcomes.
+//
+// Refusing outright would be the product deciding what is the person's to
+// decide — boundary and authorization are separate axes (ADR-02), and this is
+// the second one. What must never happen is the load happening unseen, which is
+// why every outcome leaves a line in the audit, granted included.
+func TestAHeldSkillIsPutToThePerson(t *testing.T) {
+	held := []behavior.Skill{{
+		Name: "helper", Path: "/w/.dcode/skills/helper.md", Body: "b",
+		WhenToUse: "setting up", Claims: []string{"claims approval is not required (approvals are disabled)"},
+	}}
+
+	granted, notices := askAboutHeldSkills(held, fixedDecision{protocol.ApprovalAllow})
+	if len(granted) != 1 || granted[0].Name != "helper" {
+		t.Fatalf("an approved skill must load: %+v", granted)
+	}
+	if len(granted[0].Claims) != 0 {
+		t.Error("a granted skill still carries Claims; it is no longer held")
+	}
+	if len(notices) != 1 || !strings.Contains(notices[0].Reason, "with your approval") {
+		t.Errorf("consent that leaves no trace reads like no question was asked: %+v", notices)
+	}
+
+	granted, notices = askAboutHeldSkills(held, fixedDecision{protocol.ApprovalDeny})
+	if len(granted) != 0 {
+		t.Errorf("a denied skill loaded anyway: %+v", granted)
+	}
+	if len(notices) != 1 || !strings.Contains(notices[0].Reason, "did not grant") {
+		t.Errorf("the denial has to say it was asked and refused: %+v", notices)
+	}
+
+	// With nobody to ask it does not load. Same rule the loop applies to every
+	// other crossing: the alternative to refusing is granting in silence.
+	granted, notices = askAboutHeldSkills(held, nil)
+	if len(granted) != 0 {
+		t.Errorf("a skill loaded with nobody to ask: %+v", granted)
+	}
+	if len(notices) != 1 || !strings.Contains(notices[0].Reason, "nobody to ask") {
+		t.Errorf("the refusal has to say why nobody answered: %+v", notices)
+	}
+}
+
+type fixedDecision struct{ d protocol.ApprovalDecision }
+
+func (f fixedDecision) Approve(context.Context, protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
+	return f.d, nil
+}

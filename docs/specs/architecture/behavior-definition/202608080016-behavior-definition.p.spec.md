@@ -272,6 +272,10 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Turno que não carrega skill nenhuma não anuncia coisa alguma (RN-7).
 - Linha de quando-usar acima do teto é **aparada** em fronteira de palavra, com o corte reportado; a skill continua carregada (RN-7).
 - Arquivo de skill que não pode ser lido, indexado ou que estoura o teto de tamanho é **pulado com aviso**, e nunca para o produto (RN-7).
+- Skill que tenta afrouxar segurança é **retida**, com o trecho que casou, e nunca carregada sem alguém responder (RN-7, RN-10).
+- Retida aprovada carrega; negada não; **sem ninguém para perguntar, não carrega** — e os três desfechos deixam linha na auditoria (RN-7).
+- A linha de índice é filtrada junto com o corpo: corpo inofensivo sob linha ofensiva não passa (RN-7).
+- Skill comum **não** é recusada; o filtro é estreito o bastante para conviver com skills reais (RN-7).
 - Duas famílias distintas produzem prompts distintos a partir do **mesmo** `Prompt` — e ambos contêm todas as regras de `Doctrine.Safety`.
 - `Apply` é pura, e `Apply(DoctrineOverlay{})` devolve a doutrina embarcada inalterada.
 - Para **qualquer** `DoctrineOverlay`, `Apply(o).Safety == DefaultDoctrine().Safety`, byte a byte.
