@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 156 changelogs de decisão |
+| famílias de spec | 18, com 157 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`/loop oi` continuava falhando, e a RN-8 nunca chegava nele.** O
+  `specArgument` lê palavra solta como caminho, sempre — então a regra de
+  qualificar objetivo sem pasta valia a partir de duas palavras. Uma palavra
+  abria sessão contra um caminho que nunca esteve lá, e o daemon respondia com
+  erro cru de leitura carregando o caminho absoluto duas vezes. Palavra solta que
+  não nomeia pasta encontrada alguma passa a ser objetivo. O separador decide:
+  quem escreveu `specs/hoem` quis um caminho, e erro de digitação respondido com
+  qualificação é erro escondido, então esse continua sendo erro.
 - **Objetivo sem pasta de spec é qualificado, não recusado.** `/loop revise o
   projeto até entender` respondia *"no specs/ folder here, or nothing in it.
   /loop `<path>` works on one folder"* — o comando dizendo a alguém que o pedido

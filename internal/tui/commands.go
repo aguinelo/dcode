@@ -475,6 +475,41 @@ func GoalToQualify(spec LoopArgs, found []protocol.SpecFolder) (LoopArgs, bool) 
 	return spec, true
 }
 
+// ArgumentToQualify turns a `/loop <word>` that names no folder into a goal.
+//
+// specArgument reads a single word as a path, because "one word is what a
+// folder name looks like and the error names it when it is not there". The
+// error it named was the daemon's own:
+//
+//	could not open a session: invalid_input: loopcommand: read
+//	/Users/…/oi/tasks.md: open /Users/…/oi/tasks.md: no such file or directory
+//
+// The absolute path twice, for someone who typed a word. And the rule that a
+// goal with no folder gets qualified never reached it, because a bare word
+// never became a goal at all.
+//
+// The separator is what decides. Someone who wrote `specs/hoem` meant a path,
+// and a typo answered by qualifying it as a goal is a typo hidden — so that one
+// stays an error. A bare word that names nothing is prose, and prose is what
+// the qualifier is for.
+func ArgumentToQualify(spec LoopArgs, found []protocol.SpecFolder) (LoopArgs, bool) {
+	if spec.Goal || spec.Spec == "" || spec.Qualify {
+		return LoopArgs{}, false
+	}
+	if strings.ContainsAny(spec.Spec, "/"+string(filepath.Separator)) {
+		return LoopArgs{}, false
+	}
+	for _, f := range found {
+		if f.Path == spec.Spec {
+			return LoopArgs{}, false
+		}
+	}
+	// The word is the brief, and anything typed after it belongs to it.
+	spec.Task = strings.TrimSpace(spec.Spec + " " + spec.Task)
+	spec.Goal = true
+	return GoalToQualify(spec, nil)
+}
+
 // LoopPlan is what a `/loop <goal>` says before it starts.
 //
 // Every folder, not only the pending ones. A list that showed just the work

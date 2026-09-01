@@ -1716,6 +1716,13 @@ func (p *program) loopOne(spec LoopArgs) tea.Cmd {
 			// the survey holding the work hostage.
 			return p.loopSession(spec)()
 		}
+		// A bare word that names no folder at all is prose. Diverted before the
+		// loop below, because that loop only knows how to answer about folders
+		// it found — and falling through it opened a session against a path
+		// that does not exist, which the daemon answered with a raw read error.
+		if q, ok := ArgumentToQualify(spec, found); ok {
+			return p.loopSession(q)()
+		}
 		for _, f := range found {
 			if f.Path != spec.Spec {
 				continue

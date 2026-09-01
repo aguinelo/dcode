@@ -472,3 +472,78 @@ func TestTheHandlerStillDrawsThePlanWhenFoldersExist(t *testing.T) {
 		t.Errorf("the plan was not drawn: %+v", p.model.Entries)
 	}
 }
+
+// `/loop oi` is a goal, not a folder called oi.
+//
+// specArgument says a single word is a path, because "one word is what a folder
+// name looks like and the error names it when it is not there". The error it
+// names is this:
+//
+//	could not open a session: invalid_input: loopcommand: read
+//	/Users/…/dcode_test/oi/tasks.md: open /Users/…/oi/tasks.md: no such file
+//
+// A raw daemon error, the absolute path twice, for someone who typed a word.
+// The rule that a goal with no folder gets qualified never applied, because a
+// bare word never became a goal in the first place.
+func TestABareWordThatNamesNoFolderBecomesAGoal(t *testing.T) {
+	spec, err := ParseLoopArgs("oi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := ArgumentToQualify(spec, nil)
+	if !ok {
+		t.Fatal("a bare word naming no folder must be qualified, not read as a path")
+	}
+	if got.Task != "oi" {
+		t.Errorf("the word is the brief and it did not survive: %q", got.Task)
+	}
+	if !got.Qualify || !got.Goal {
+		t.Errorf("it did not become a qualifying goal: %+v", got)
+	}
+}
+
+// A word that names a folder the survey found is still a path. The diversion is
+// for arguments that name nothing, not for every single word.
+func TestABareWordThatNamesAFolderStaysAPath(t *testing.T) {
+	spec, _ := ParseLoopArgs("home")
+	found := []protocol.SpecFolder{{Path: "home", Criteria: 3, Pending: true}}
+	if _, ok := ArgumentToQualify(spec, found); ok {
+		t.Error("an argument naming a real spec folder was diverted into qualifying")
+	}
+}
+
+// Something written as a path stays an error when it is not there.
+//
+// `specs/hoem` is a typo, and a typo answered by qualifying it as a goal is a
+// typo hidden. The separator is what separates the two cases: a person who
+// wrote one meant a path.
+func TestAMistypedPathIsNotQualifiedAway(t *testing.T) {
+	spec, _ := ParseLoopArgs("specs/hoem")
+	if _, ok := ArgumentToQualify(spec, nil); ok {
+		t.Error("a mistyped path was turned into a goal, which hides the typo")
+	}
+}
+
+// Through loopOne, which is where the survey already happens and where the
+// fall-through opened a session against a path that was never there.
+func TestLoopOneDivertsABareWordThatNamesNothing(t *testing.T) {
+	p := &program{model: Model{Lang: En, State: protocol.SessionStateIdle},
+		opts: Options{Transport: newFakeTransport()}}
+	spec, _ := ParseLoopArgs("oi")
+
+	msg := p.loopOne(spec)()
+	note, refused := msg.(noteMsg)
+	if refused {
+		t.Fatalf("the word was refused instead of qualified: %v", string(note))
+	}
+	opened, ok := msg.(loopOpenedMsg)
+	if !ok {
+		t.Fatalf("got %T, want a session opened for the qualifying turn", msg)
+	}
+	if !opened.qualify {
+		t.Error("a session was opened, and it is not the qualifying one")
+	}
+	if !strings.Contains(opened.task, "oi") {
+		t.Errorf("the turn does not name what it is about:\n%s", opened.task)
+	}
+}
