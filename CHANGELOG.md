@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 155 decision changelogs |
+| spec families | 18, with 156 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,29 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A goal with no spec folder is qualified, not refused.** `/loop revise o
+  projeto até entender` answered *"no specs/ folder here, or nothing in it.
+  /loop `<path>` works on one folder"* — the command telling someone their
+  request was the wrong shape, in a product with a whole family for exactly that
+  shape. The done-qualifier's own research spec names the prose request as what
+  motivated it, and `/loop <path>` already qualified a folder that declared
+  nothing; only the sentence route died first, because it was built to **select**
+  among folders rather than to accept a brief.
+- **The sentence is the brief, so the sentence is what the turn names**, and the
+  turn no longer sends the model to read a specification that does not exist —
+  looking for one spends the rounds it has. The proposal is anchored at `.dcode`,
+  where a workspace's definition of done already lives, and **not** in a folder
+  derived from the sentence: RN-5 records the opposite defect, prose becoming a
+  path, and inventing `revise-o-projeto/` would be that defect wearing the other
+  hat.
+- **`.dcode` is the only directory the write creates**, deliberately. A wider fix
+  broke `TestACommitThatCannotWriteSaysWhere`, which has guarded since before
+  goals could be qualified that a spec path which does not exist stays an error —
+  a mistyped folder answered by creating it is the silence this family refuses.
+- **A test that would have been theatre, caught.** The first one exercised the
+  helper directly and passed with the handler wiring removed. The one that
+  counts goes through `Update`, where the refusal was drawn, and was seen red
+  without the wiring.
 - **A family for Gemini**, over the `openai` transport, through Google's
   compatibility surface. A family and not a transport: the dialect already
   exists, so `Gemini` embeds `MiniMaxM3` for the encoding and overrides exactly

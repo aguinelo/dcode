@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 155 changelogs de decisão |
+| famílias de spec | 18, com 156 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,28 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Objetivo sem pasta de spec é qualificado, não recusado.** `/loop revise o
+  projeto até entender` respondia *"no specs/ folder here, or nothing in it.
+  /loop `<path>` works on one folder"* — o comando dizendo a alguém que o pedido
+  dele era da forma errada, num produto que tem uma família inteira para
+  exatamente essa forma. A `.r` da done-qualifier nomeia o pedido em prosa como o
+  que a motivou, e `/loop <caminho>` já qualificava pasta que não declarava nada;
+  só o caminho da frase morria antes, porque foi construído para **escolher**
+  entre pastas em vez de aceitar um briefing.
+- **A frase é o briefing, então é ela que o turno nomeia**, e o turno não manda
+  mais ler especificação que não existe — procurar uma gasta as rodadas que ele
+  tem. A proposta é ancorada em `.dcode`, onde a definição de pronto de um
+  workspace já mora, e **não** em pasta derivada da frase: a RN-5 registra o
+  defeito oposto, prosa virando caminho, e inventar `revise-o-projeto/` seria o
+  mesmo defeito de chapéu trocado.
+- **`.dcode` é o único diretório que a escrita cria**, de propósito. Uma correção
+  mais larga quebrou o `TestACommitThatCannotWriteSaysWhere`, que guarda desde
+  antes de objetivo poder ser qualificado que caminho de spec inexistente
+  continua sendo erro — pasta digitada errada respondida com pasta criada é o
+  silêncio que esta família recusa.
+- **Um teste que seria teatro, evitado.** O primeiro exercitava o helper direto e
+  passava com a ligação no handler removida. O que vale passa pelo `Update`, que
+  é onde a recusa era desenhada, e foi visto vermelho sem a ligação.
 - **Uma família para o Gemini**, sobre o transporte `openai`, pela superfície de
   compatibilidade do Google. Família e não transporte: o dialeto já existe, então
   a `Gemini` embute a `MiniMaxM3` para a codificação e sobrescreve exatamente o

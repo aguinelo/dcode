@@ -118,7 +118,7 @@ func doneFilePath(override, workspace string) string {
 	if override != "" {
 		return override
 	}
-	return filepath.Join(workspace, ".dcode", DoneFileName)
+	return filepath.Join(workspace, protocol.WorkspaceDoneDir, DoneFileName)
 }
 
 // parseDuration reads a duration setting, falling back rather than failing.
@@ -266,6 +266,16 @@ func CommitProposal(ctx context.Context, p *Proposal, run loop.CriterionRunner, 
 		return "", err
 	}
 	path := filepath.Join(p.Spec, tools.DoneProposeFile)
+	// A goal with no spec folder is anchored at `.dcode`, which a fresh
+	// workspace does not have, so that one directory is created. Only that one:
+	// a spec path that does not exist is a typo, and creating it would answer a
+	// mistyped folder by making it — which is what TestACommitThatCannotWriteSaysWhere
+	// has been guarding since before goals could be qualified.
+	if filepath.Base(p.Spec) == protocol.WorkspaceDoneDir {
+		if err := os.MkdirAll(p.Spec, 0o755); err != nil {
+			return "", fmt.Errorf("could not create %s: %w", p.Spec, err)
+		}
+	}
 	if err := os.WriteFile(path, qualifier.Render(measured, p.Protected, cond), 0o644); err != nil {
 		return "", fmt.Errorf("could not write %s: %w", path, err)
 	}

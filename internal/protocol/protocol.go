@@ -107,6 +107,14 @@ const (
 	EventSessionModeChanged EventType = "session.mode_changed"
 )
 
+// WorkspaceDoneDir is the workspace's own definition-of-done directory.
+//
+// It is where a proposal lands when no spec folder claims it — a goal typed as
+// a sentence — and it lives here because both halves need it: the client
+// decides to anchor there, and the daemon writes there. It was a literal in
+// two places before that was true of only one of them.
+const WorkspaceDoneDir = ".dcode"
+
 // Mode names. The behavioural mode is what the user picks; the wire carries the
 // name, and Session.SetMode maps it to the pair of (SandboxMode, Policy) the
 // engine actually runs under.

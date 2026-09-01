@@ -364,3 +364,111 @@ func TestAnEmptyQueueEndsTheRun(t *testing.T) {
 		t.Error("the run did not end")
 	}
 }
+
+// A goal with no spec folder anywhere is qualified, not refused.
+//
+// `/loop revise o projeto até entender` answered "no specs/ folder here, or
+// nothing in it. /loop <path> works on one folder." — the command telling
+// someone their request was the wrong shape, in a product whose done-qualifier
+// family exists for exactly this case. Its own .r names the prose request as
+// what motivated it: "Faça um cadastro de clientes" carries no tasks.md, and
+// the constructive answer is to raise the criteria, measure them, and ask for a
+// signature.
+//
+// `/loop <path>` already does that when the folder declares nothing. Only the
+// sentence route dead-ended.
+func TestAGoalWithNoSpecFolderIsQualified(t *testing.T) {
+	got, ok := GoalToQualify(LoopArgs{Goal: true, Task: "revise o projeto até entender"}, nil)
+	if !ok {
+		t.Fatal("a goal with no spec folders must be qualified rather than refused")
+	}
+	if !got.Qualify {
+		t.Error("the session has to be the qualifying one")
+	}
+	if !got.Goal {
+		t.Error("the qualifying session lost the fact that its subject is a sentence")
+	}
+	if got.Task != "revise o projeto até entender" {
+		t.Errorf("the sentence is the whole brief and it did not survive: %q", got.Task)
+	}
+	// Anchored where a workspace's definition of done already lives, and not in
+	// a folder invented from the sentence. The loop-command .r records the
+	// opposite defect — prose becoming a path — and inventing
+	// `revise-o-projeto/` would be that defect again.
+	if got.Spec != ".dcode" {
+		t.Errorf("the proposal is anchored at %q, want .dcode", got.Spec)
+	}
+}
+
+// With folders present, nothing changes: the goal still selects among them.
+func TestAGoalWithSpecFoldersStillWorksThroughThem(t *testing.T) {
+	found := []protocol.SpecFolder{{Path: "specs/home", Pending: true, Criteria: 3}}
+	if _, ok := GoalToQualify(LoopArgs{Goal: true, Task: "implemente o que falta"}, found); ok {
+		t.Error("a goal with folders to work must not be diverted into qualifying")
+	}
+}
+
+// An empty sentence is not a brief. It cannot happen through ParseLoopArgs,
+// which refuses an empty argument, and a qualifying turn whose subject is ""
+// would ask the model to work out how nothing is finished.
+func TestAnEmptyGoalIsNotQualified(t *testing.T) {
+	if _, ok := GoalToQualify(LoopArgs{Goal: true, Task: "   "}, nil); ok {
+		t.Error("an empty sentence was accepted as a brief")
+	}
+}
+
+// The qualifying turn names the sentence, and does not send the model looking
+// for a specification that does not exist.
+func TestTheQualifyingTurnForAGoalNamesTheSentence(t *testing.T) {
+	task := LoopTask(LoopArgs{Qualify: true, Goal: true, Task: "revise o projeto", Spec: ".dcode"})
+	if !strings.Contains(task, "revise o projeto") {
+		t.Errorf("the turn does not name what it is about:\n%s", task)
+	}
+	if strings.Contains(task, ".dcode") {
+		t.Errorf("the turn names the anchor instead of the request:\n%s", task)
+	}
+	if strings.Contains(task, "Read the specification") {
+		t.Errorf("it sends the model to read a specification that does not exist:\n%s", task)
+	}
+	if !strings.Contains(task, "done_propose") {
+		t.Errorf("a qualifying turn that never mentions the tool proposes nothing:\n%s", task)
+	}
+}
+
+// The diversion has to be wired, not merely available.
+//
+// GoalToQualify passing on its own says nothing about whether the handler calls
+// it: a unit test of a helper the caller ignores is the shape that passes while
+// the product still refuses. This one goes through Update, which is where the
+// refusal was rendered.
+func TestTheHandlerDivertsAGoalWithNoFoldersInsteadOfRefusing(t *testing.T) {
+	p := &program{model: Model{Lang: En, State: protocol.SessionStateIdle}}
+	_, cmd := p.Update(specsFoundMsg{goal: "revise o projeto até entender"})
+
+	for _, e := range p.model.Entries {
+		if strings.Contains(e.Summary, "no specs/") {
+			t.Fatalf("the goal was refused instead of qualified: %q", e.Summary)
+		}
+	}
+	if cmd == nil {
+		t.Fatal("nothing was started; the goal went nowhere at all")
+	}
+}
+
+// And a goal that DID find folders still draws the plan. The diversion must not
+// swallow the case it was never about.
+func TestTheHandlerStillDrawsThePlanWhenFoldersExist(t *testing.T) {
+	p := &program{model: Model{Lang: En, State: protocol.SessionStateIdle}}
+	p.Update(specsFoundMsg{goal: "implemente o que falta", specs: []protocol.SpecFolder{
+		{Path: "specs/home", Pending: true, Criteria: 3},
+	}})
+	found := false
+	for _, e := range p.model.Entries {
+		if strings.Contains(e.Summary, "specs/home") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the plan was not drawn: %+v", p.model.Entries)
+	}
+}

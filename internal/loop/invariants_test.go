@@ -121,6 +121,10 @@ var loopCommandDirs = []string{
 
 var loopCommandInvariants = map[string]string{
 	"não panic) para `tasks.md` malformado":  "TestLoadSpecMalformedReturnsError",
+	"abre sessão de **qualificação**":        "TestAGoalWithNoSpecFolderIsQualified",
+	"nunca em pasta derivada da frase":       "TestTheHandlerDivertsAGoalWithNoFoldersInsteadOfRefusing",
+	"**nomeia a frase**":                     "TestTheQualifyingTurnForAGoalNamesTheSentence",
+	"continua desenhando o plano":            "TestTheHandlerStillDrawsThePlanWhenFoldersExist",
 	"sem nenhuma linha de tarefa":            "TestLoadSpecWithoutTaskLinesIsAnError",
 	"declaração de zero critérios":           "TestLoadSpecZeroCriteriaIsNotAnError",
 	"não é sintaxe":                          "TestLoadSpecSeparatorIsNotSyntax",

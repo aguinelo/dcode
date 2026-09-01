@@ -378,6 +378,12 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				pending = append(pending, f)
 			}
 		}
+		// No folder anywhere is not a refusal. The sentence is the brief, and
+		// the loop works out what finishing it means before working it — the
+		// same move loopOne already makes for a folder that declares nothing.
+		if q, ok := GoalToQualify(LoopArgs{Goal: true, Task: msg.goal, Protect: msg.protect}, msg.specs); ok {
+			return p, p.loopSession(q)
+		}
 		p.model.Entries = append(p.model.Entries, Entry{
 			Kind: KindNote, Summary: LoopPlan(msg.specs, t), Expanded: true,
 		})
