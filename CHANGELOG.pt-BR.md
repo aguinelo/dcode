@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 161 changelogs de decisão |
+| famílias de spec | 18, com 162 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,22 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O fim de uma corrida do laço é dito, com onde os critérios ficaram.** Era
+  silêncio — a função que puxa a próxima spec devolvia nada quando a fila
+  esvaziava. De fora, um laço que trabalhou quatro specs e parou é
+  indistinguível de um que travou na quarta: "acabou" lê exatamente como "está
+  pensando". O aviso diz quanto foi trabalhado, quantos critérios de quantos
+  foram cumpridos, e **nomeia** o que ficou por cumprir e o que não deu para
+  conferir — contagem responde *quanto*, nome responde *o que fazer agora*, e o
+  fim da corrida é quando essa é a pergunta.
+- O estado vem do evento de turno concluído, e não é relido das entradas
+  desenhadas: a completude viaja no protocolo justamente por ser a garantia que
+  sobrevive a um modelo afirmando sucesso em prosa, e re-derivá-la dessa prosa
+  seria pôr a prosa de volta no caminho do fato.
+- **Corrida que não trabalhou nada não diz nada.** A fila esvazia em toda
+  conclusão de proposta, inclusive nas em que fila nunca houve, e uma linha
+  anunciando o fim de uma corrida que não correu é linha sobre a funcionalidade,
+  não sobre a sessão.
 - **A barra inferior carrega o diretório corrente, na ponta direita.** O
   segmento de worktree sempre teve o nome base, que é a resposta rápida até dois
   checkouts terem o mesmo — `dcode` sob dois pais lê idêntico, e a sessão que

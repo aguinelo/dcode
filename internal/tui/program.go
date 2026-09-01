@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -143,6 +144,14 @@ type program struct {
 	loopQueue   []protocol.SpecFolder
 	loopGoal    string
 	loopProtect []string
+	// loopWorked counts the specs this run has started, so the run can say how
+	// much it did when it ends.
+	loopWorked int
+	// loopStanding is where the criteria stood when the last turn of the run
+	// ended. Kept rather than re-derived: the completion is the guarantee that
+	// survives a model claiming success in prose, and re-reading it from the
+	// entries would be parsing back out what was already stated once.
+	loopStanding *protocol.Completion
 	// loopQualified is the spec a qualifying session is proposing criteria
 	// for, so the loop knows what just finished and can say what to do next.
 	loopQualified string
@@ -471,6 +480,30 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// then waiting is the command doing half its job.
 		return p, tea.Batch(p.waitForEvent(), p.submit(msg.task))
 
+	case loopFinishedMsg:
+		t := Text(p.model.Lang)
+		text := fmt.Sprintf(t.CmdLoopFinished, msg.worked,
+			plural(msg.worked, t.LoopSpecOne, t.LoopSpecMany))
+		if c := msg.standing; c != nil {
+			total := len(c.Met) + len(c.Unmet) + len(c.Unavailable)
+			if total > 0 {
+				text += " · " + fmt.Sprintf(t.CmdLoopStanding, len(c.Met), total)
+			}
+			// What is left, by name. A count says how much; the names say what
+			// to do next, and the run ending is exactly when that is the
+			// question.
+			if len(c.Unmet) > 0 {
+				text += "\n" + t.CompletionUnmet + " " + strings.Join(c.Unmet, ", ")
+			}
+			if len(c.Unavailable) > 0 {
+				text += "\n" + t.CompletionUnchecked + " " + strings.Join(c.Unavailable, ", ")
+			}
+		}
+		p.model.Entries = append(p.model.Entries, Entry{
+			Kind: KindNote, Summary: text, Expanded: true,
+		})
+		return p, nil
+
 	case switchedMsg:
 		// A new session means a new event log, so the view is rebuilt rather
 		// than carried over: keeping entries from the old one would show a
@@ -500,6 +533,16 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmds []tea.Cmd
 		if c := p.resumeTicking(); c != nil {
 			cmds = append(cmds, c)
+		}
+		// Where done stood when this turn ended, kept while a run is going so
+		// the end of the run can say it. Read from the event rather than back
+		// out of the entries: the completion is stated once, by the thing that
+		// knows, and re-deriving it from prose breaks the day the wording does.
+		if msg.ev.Type == protocol.EventTurnCompleted && p.loopWorked > 0 {
+			var d protocol.TurnCompleted
+			if json.Unmarshal(msg.ev.Payload, &d) == nil && d.Completion != nil {
+				p.loopStanding = d.Completion
+			}
 		}
 		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
 			m, text := p.model.DrainQueue()
@@ -1739,12 +1782,29 @@ func (p *program) loopEverySpec(spec LoopArgs) tea.Cmd {
 // nextSpec starts the next spec in the queue, or reports that the run is over.
 func (p *program) nextSpec() tea.Cmd {
 	if len(p.loopQueue) == 0 {
-		p.loopGoal = ""
-		return nil
+		// The run ending used to be silence. A loop that works four specs and
+		// then simply stops is indistinguishable, from the outside, from a loop
+		// that stalled on the fourth — and the person watching has no way to
+		// tell "it is over" from "it is thinking".
+		worked, standing := p.loopWorked, p.loopStanding
+		p.loopGoal, p.loopWorked, p.loopStanding = "", 0, nil
+		if worked == 0 {
+			return nil
+		}
+		return func() tea.Msg {
+			return loopFinishedMsg{worked: worked, standing: standing}
+		}
 	}
+	p.loopWorked++
 	next := p.loopQueue[0]
 	p.loopQueue = p.loopQueue[1:]
 	return p.loopSession(LoopArgs{Spec: next.Path, Task: p.loopGoal, Protect: p.loopProtect})
+}
+
+// loopFinishedMsg is the run being over, and where done stands when it is.
+type loopFinishedMsg struct {
+	worked   int
+	standing *protocol.Completion
 }
 
 type specsFoundMsg struct {

@@ -128,6 +128,8 @@ var loopCommandInvariants = map[string]string{
 	"vira **objetivo qualificado**":          "TestLoopOneDivertsABareWordThatNamesNothing",
 	"qualificar um caminho digitado errado":  "TestAMistypedPathIsNotQualifiedAway",
 	"evento de **turno concluído**":          "TestTheProposalIsNotCommittedBeforeTheTurnStarts",
+	"fim da corrida é **dito**":              "TestTheLoopSaysItFinishedAndWhereDoneStands",
+	"não** anuncia fim":                      "TestARunThatWorkedNothingSaysNothing",
 	"sem nenhuma linha de tarefa":            "TestLoadSpecWithoutTaskLinesIsAnError",
 	"declaração de zero critérios":           "TestLoadSpecZeroCriteriaIsNotAnError",
 	"não é sintaxe":                          "TestLoadSpecSeparatorIsNotSyntax",
