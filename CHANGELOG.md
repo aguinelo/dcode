@@ -26,10 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 162 decision changelogs |
+| spec families | 18, with 163 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
+| of those, **against a prompt they cannot name** | **19** |
 | coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.18.0** |
@@ -149,6 +150,23 @@ of which families warn is checked against the measurements that exist rather
 than typed. That guard found `claude` had been in that condition since it was
 written.
 
+**What a measurement cannot say.** Which prompt it saw. A threshold belongs to a
+model **and** to a prompt, and only the first half was ever written down.
+
+On 1 September the skills block began rendering in every session, including
+those with no skill installed. Every prompt in this suite changed, and all
+nineteen measurements silently became descriptions of a product that no longer
+existed. Nothing could tell — the same defect as a count copied from a truth
+that moved, one level up: not a stale number *about* the measurements, but stale
+measurements.
+
+A measurement now records the fingerprint of the prefix it ran against, and the
+row above counts the ones that cannot. Empty means **not recorded**, which is the
+honest answer for everything measured before the field existed, and is not a
+synonym for current. It is reported rather than enforced: making a prompt change
+fail the build would mean every prompt pull request carrying fifty-three
+re-measurements, and a rule nobody can afford is a rule that gets switched off.
+
 **What this document does not say.** That the system is verified. Of the
 fifty-three contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
@@ -164,6 +182,28 @@ measured — a table describing a state that had moved, in the same document tha
 exists to stop exactly that.
 
 ---
+
+## Unreleased
+
+- **A measurement now records which prompt it saw, and the state table counts
+  the ones that cannot.** Deciding what to re-measure after this week asked
+  which contracts were affected, and the answer was **all of them**: the skills
+  block renders in every session, including those with no skill installed, so
+  every eval prompt changed and all nineteen recorded measurements silently
+  became descriptions of a product that no longer existed. Nothing could tell.
+- **It is the same defect one level up.** `Measurement.Model` exists because a
+  threshold measured against one model says nothing about another. That sentence
+  was half of one: a threshold belongs to a model **and to a prompt**, because
+  the prompt is what the model is measured through. Empty means *not recorded*,
+  which is the honest answer for everything measured before the field existed,
+  and is not a synonym for current.
+- **Reported, not enforced.** Failing the build on a prompt change would mean
+  every prompt pull request carrying fifty-three re-measurements, and a rule
+  nobody can afford is a rule that gets switched off. The eval report prints the
+  fingerprint beside the number, so recording one is copying a line.
+- The unused-export guard caught two things on the way: a `Stale` helper written
+  for later that nothing called, deleted; and a counter only its own tests read,
+  made internal.
 
 ## 0.18.0 — 1 September 2026
 

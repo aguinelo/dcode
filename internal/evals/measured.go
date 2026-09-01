@@ -23,6 +23,19 @@ type Measurement struct {
 	Model string
 	// Date is when, as YYYY-MM-DD.
 	Date string
+	// Prompt fingerprints the prefix this scenario was measured against.
+	//
+	// A threshold belongs to a model AND to a prompt, and only the first half
+	// was ever written down. On 1 September the skills block began rendering in
+	// every session, including those with no skill installed — so every prompt
+	// in this suite changed, and all nineteen measurements silently became
+	// descriptions of a product that no longer existed. Nothing could tell,
+	// which is the same defect as a count copied from a truth that moved.
+	//
+	// Empty means NOT RECORDED, and that is the honest answer for everything
+	// measured before this field existed: those runs cannot say what they saw.
+	// It is not a synonym for "current".
+	Prompt string
 	// Runs is how many times the scenario ran. A rate over three runs and a
 	// rate over fifty are different claims wearing the same percent sign.
 	Runs int

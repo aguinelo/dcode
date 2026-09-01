@@ -54,6 +54,10 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 			wantMeasured++
 		}
 	}
+	// A measurement that cannot say which prompt it saw. Counted here for the
+	// same reason "ever actually measured" is: the distance between a number
+	// and what it describes only stays visible while something counts it.
+	wantUnverifiable := unverifiable(Measured)
 
 	for _, e := range []edition{readEnglish(t, root), readPortuguese(t, root)} {
 		t.Run(filepath.Base(e.path), func(t *testing.T) {
@@ -64,6 +68,7 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 				"needModel":    wantNeedModel,
 				"byAssertion":  wantByAssertion,
 				"everMeasured": wantMeasured,
+				"unverifiable": wantUnverifiable,
 			} {
 				got, ok := e.rows[name]
 				if !ok {
@@ -165,6 +170,8 @@ func readEnglish(t *testing.T, root string) edition {
 	e.rows["needModel"] = row(t, body, `\| contracts needing a model \| (\d+) of the (\d+); (\d+) are settled by assertion \|`, 1)
 	e.rows["byAssertion"] = row(t, body, `\| contracts needing a model \| (\d+) of the (\d+); (\d+) are settled by assertion \|`, 3)
 	e.rows["everMeasured"] = row(t, body, `\| \*\*contracts ever actually measured\*\* \| \*\*(\d+)\*\* \|`, 1)
+	e.rows["unverifiable"] = row(t, body,
+		`\| of those, \*\*against a prompt they cannot name\*\* \| \*\*(\d+)\*\* \|`, 1)
 
 	// "Of the forty-three contracts that need a model, thirty-eight have never
 	// run against one"
@@ -187,6 +194,8 @@ func readPortuguese(t *testing.T, root string) edition {
 	e.rows["needModel"] = row(t, body, `\| contratos que precisam de modelo \| (\d+) dos (\d+); (\d+) se resolvem por asserção \|`, 1)
 	e.rows["byAssertion"] = row(t, body, `\| contratos que precisam de modelo \| (\d+) dos (\d+); (\d+) se resolvem por asserção \|`, 3)
 	e.rows["everMeasured"] = row(t, body, `\| \*\*contratos de fato já medidos\*\* \| \*\*(\d+)\*\* \|`, 1)
+	e.rows["unverifiable"] = row(t, body,
+		`\| destes, \*\*contra um prompt que não sabem nomear\*\* \| \*\*(\d+)\*\* \|`, 1)
 
 	m := regexp.MustCompile(`Dos\s+([a-zç-]+(?:\s+e\s+[a-zê-]+)?)\s+contratos que precisam de modelo, \*\*([a-zê-]+(?:\s+e\s+[a-zô-]+)?) nunca rodaram`).FindStringSubmatch(body)
 	if m == nil {
