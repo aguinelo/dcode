@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 154 changelogs de decisão |
+| famílias de spec | 18, com 155 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
-| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -121,6 +121,34 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma família para o Gemini**, sobre o transporte `openai`, pela superfície de
+  compatibilidade do Google. Família e não transporte: o dialeto já existe, então
+  a `Gemini` embute a `MiniMaxM3` para a codificação e sobrescreve exatamente o
+  que o eixo família carrega — nome, prefixos de modelo, janela, limites,
+  imagens. A superfície nativa é um transporte, e escrever um antes de alguém ter
+  rodado isto contra uma chave real seria construir a metade difícil primeiro, em
+  cima de um palpite.
+- **Os números são escolhidos, não copiados.** A janela é 1.000.000 contra
+  1.048.576 documentados, porque errar para baixo custa um resumo e errar para
+  cima perde o turno. O teto é 50 e explicitamente não as 2000 da MiniMax, que
+  são justificadas por uma execução de horizonte longo citada, que não fala nada
+  deste modelo — há teste afirmando que os dois diferem. O `Encode` recusa o
+  dialeto Anthropic que ele herdaria, para uma família cujo `Transports()` nomeia
+  um só.
+- **RN-11: família sem medição diz que não tem.** Nome de família aqui lê como
+  família medida, porque o `Measurement.Model` existe justamente para que limiar
+  pertença a um modelo e não fale de outro. O aviso nomeia a família e diz contra
+  o que os limiares *foram* medidos, e a lista de quem avisa é conferida contra
+  as medições que existem, nos dois sentidos — nada digitado.
+- **A guarda reprovou na primeira execução, por causa da `claude`.** Aquela
+  família existe desde o começo, para provar que os eixos são ortogonais, e nunca
+  carregou uma única medição — vinha rodando sem dizer isso. Não foi o que eu fui
+  procurar; foi o que a guarda achou por existir.
+- Apontar para o Gemini é `model.base_url` =
+  `https://generativelanguage.googleapis.com/v1beta/openai`. O `defaultBaseURL`
+  responde por **transporte**, não por família, e por isso não nomeia o Gemini:
+  transporte decidindo coisa a partir de família é o colapso dos eixos que a
+  documentação da própria interface proíbe.
 - **O bloco de skills passa a dizer qual é o formato, não só onde ele mora.** A
   correção anterior funcionou pela metade: o agente foi olhar o diretório, e
   ainda assim concluiu que uma skill achada no GitHub "carrega no Claude Code,

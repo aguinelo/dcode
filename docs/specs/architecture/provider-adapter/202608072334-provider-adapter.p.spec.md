@@ -230,6 +230,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - `Resolve` com transporte fora de `Transports()` da família devolve erro nomeando os compatíveis.
 - A mesma família codificando para dois transportes distintos produz corpos distintos e ambos válidos — o teste que prova que os dois eixos são de fato ortogonais.
 - `Limits()` devolve o default da família quando a configuração não sobrescreve.
+- Família cujo `Transports()` nomeia um dialeto **recusa** os outros no `Encode`; herdar a codificação não herda a declaração.
+- Família **sem nenhuma medição** registrada avisa isso na sessão, e a lista de quem avisa é conferida contra as medições que existem, nos dois sentidos.
 - Tool call cujos argumentos chegam partidos entre frames é montada inteira antes de ser emitida.
 - Duas tool calls paralelas no mesmo stream saem como duas calls, cada uma com seus argumentos.
 - `finish_reason` repetido não emite a mesma call duas vezes.
