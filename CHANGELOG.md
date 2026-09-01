@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 165 decision changelogs |
+| spec families | 18, with 166 decision changelogs |
 | behavioural contracts | 59 declared |
 | contracts needing a model | 54 of the 59; 5 are settled by assertion |
 | **contracts ever actually measured** | **20** |
@@ -216,6 +216,13 @@ exists to stop exactly that.
 - Found while measuring whether to swap the turn bullet `⏺` for Claude Code's
   `●`. The measurement answered that too: `⏺` is unambiguous and `●` is not, so
   the bullet stays, now for a measured reason rather than inertia.
+- **A fifth theme, `claude`, is specified: the first that does not paint the
+  ground.** The ask was to look like Claude Code, "same font" included, and the
+  font was never Claude's — a terminal program inherits it. What is Claude's is
+  inheriting the terminal's background, so this theme carries no RGB at all:
+  text by weight (normal, bold, SGR 2, italic), state by the sixteen named ANSI
+  colours, and the contrast guard asserts *no RGB* where it has no ground to
+  measure against. Spec only; the code follows on this branch.
 - **`floor-yields-to-project` was the product of two requirements, and the
   product described neither.** Its judge asked for not announcing AND for naming
   the instruction. Measured apart, on the same scenario and the same prompt:

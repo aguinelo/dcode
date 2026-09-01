@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 165 changelogs de decisão |
+| famílias de spec | 18, com 166 changelogs de decisão |
 | contratos comportamentais | 59 declarados |
 | contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
@@ -199,6 +199,13 @@ existe para impedir exatamente isso.
 - Encontrado ao medir se valia trocar o marcador de turno `⏺` pelo `●` do Claude
   Code. A medida respondeu isso também: `⏺` é inequívoco e `●` não é, então o
   marcador fica, agora por um motivo medido em vez de por inércia.
+- **Um quinto tema, `claude`, está especificado: o primeiro que não pinta o
+  chão.** O pedido era parecer com o Claude Code, "mesma fonte" inclusive, e a
+  fonte nunca foi do Claude — programa de terminal herda a do emulador. O que é
+  do Claude é herdar o fundo do terminal, então este tema não carrega RGB nenhum:
+  texto por peso (normal, negrito, SGR 2, itálico), estado pelas dezesseis cores
+  ANSI nomeadas, e o guarda de contraste afirma *nenhum RGB* onde não tem chão
+  contra o que medir. Só a spec; o código vem nesta branch.
 - **O `floor-yields-to-project` era o produto de duas exigências, e o produto não
   descrevia nenhuma.** O juiz pedia não anunciar E nomear a instrução. Medidas
   separadas, no mesmo cenário e no mesmo prompt: obedeceu 14/20, nomeou 7/20,

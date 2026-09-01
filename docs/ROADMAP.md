@@ -476,7 +476,7 @@ was missing was a measurement, and the measurement went the other way.
 the stream — shipped. These are the parts that did not, each with what stops
 them, so the specification that comes next knows where the request came from.
 
-**The chosen theme does not persist.** `t` cycles four of them and a restart
+**The chosen theme does not persist.** `t` cycles five of them and a restart
 comes back to neon. Remembering it needs a preference on disk, and
 `internal/tui` reads none by design — the edge injects. Same shape as
 remembering the column's state in §10, and the same open question inside it:
@@ -508,7 +508,7 @@ thing the 24 August measurement argues hardest against — if it ships it is a
 summoned overlay, like the conversation list.
 
 **Themes, cycled from the keyboard.** The design carries four (neon, ashes,
-ember, mono) and switches with `t`. The palette gained semantic roles on 24
+ember, mono), a fifth without a ground (`claude`) is specified, and `t` switches. The palette gained semantic roles on 24
 August, which is the foundation this needs; what it still needs is a config
 surface, and a KEY THAT IS NOT A LETTER — `t` on a line where you type is the
 defect fixed twice already, most recently that same day.
