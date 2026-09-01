@@ -34,6 +34,8 @@ var tuiInvariants = map[string]string{
 	"mantém o que havia":                          "TestEscapingNamingKeepsWhatWasThere",
 	"mesmo limite que o daemon":                   "TestTheDraftStopsAtTheLimitTheDaemonEnforces",
 	"nomeia a skill que carregou":                 "TestTheStreamNamesTheSkillThatLoaded",
+	"diz **qual build** está rodando":             "TestTheStatusBarSaysWhichBuild",
+	"primeiro campo entregue quando":              "TestTheBuildIsTheFirstFieldToGo",
 	"marcado como dado":                           "TestAGivenNameIsMarkedAsGiven",
 	"a coluna toma o teclado":                     "TestTheRailTakesTheKeyboardAndGivesItBack",
 	"nunca só cor, e `↑↓` não dão":                "TestTheRailCursorStopsAtBothEnds",

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/version"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -429,8 +430,15 @@ func renderStatus(m Model, g Geometry, showPanel bool) string {
 		drop int
 	}
 
+	// The build, beside the name. It is the first thing given up on a narrow
+	// terminal because it answers a question nobody asks mid-session — and the
+	// first thing wanted when a local build is being tested against a released
+	// one, which is the whole reason it is here: two binaries that behave
+	// differently and present identically cost an hour before anyone thinks to
+	// check which is running.
 	fields := []field{
 		{p.Apply(stateStyle, state) + " " + p.Apply(StyleBold, "dcode"), 0},
+		{p.Apply(StyleDim, version.Short()), 4},
 		{p.Apply(StyleDim, m.Model), 3},
 		{mode, 0},
 	}

@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 157 changelogs de decisão |
+| famílias de spec | 18, com 158 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,12 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A barra de status diz qual build está rodando.** Build local e release se
+  comportam diferente e se apresentavam igual, então a única forma de saber era
+  sair da sessão e perguntar ao `--version`. A string de versão já dizia
+  `-dev+sha` para build local; ela só não estava na tela. Fica ao lado do nome,
+  esmaecida, e é o **primeiro** campo entregue quando o terminal estreita —
+  antes do modelo, e o modo de sandbox continua não caindo nunca.
 - **`/loop oi` continuava falhando, e a RN-8 nunca chegava nele.** O
   `specArgument` lê palavra solta como caminho, sempre — então a regra de
   qualificar objetivo sem pasta valia a partir de duas palavras. Uma palavra
