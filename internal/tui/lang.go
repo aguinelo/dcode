@@ -125,6 +125,9 @@ type Strings struct {
 	Compacted      string
 	CompactedCount string
 
+	// A skill body joining the turn.
+	SkillLoaded string
+
 	// The approval modal. It was written in English literals — the ONE screen
 	// that asks whether a boundary may be crossed, in a language the reader may
 	// not have. Consent given to a sentence somebody could not read is not
@@ -356,6 +359,7 @@ var catalogue = map[Lang]Strings{
 		ContextFilling:         "the context is %d%% of the way to a summary",
 		Compacted:              "earlier history was summarised",
 		CompactedCount:         "%d earlier messages were summarised; %d kept",
+		SkillLoaded:            "skill %s loaded — %s",
 		ApprovalCrosses:        "crosses:",
 		ApprovalNetwork:        "Commands in this project may reach the network.",
 		ApprovalEnter:          "enter denies",
@@ -569,6 +573,7 @@ Environment:
 		ContextFilling:         "o contexto está a %d%% do ponto em que a conversa é resumida",
 		Compacted:              "o histórico anterior foi resumido",
 		CompactedCount:         "%d mensagens anteriores foram resumidas; %d mantidas",
+		SkillLoaded:            "skill %s carregada — %s",
 		ApprovalCrosses:        "cruza:",
 		ApprovalNetwork:        "Comandos deste projeto podem alcançar a rede.",
 		ApprovalEnter:          "enter nega",

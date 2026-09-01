@@ -653,6 +653,43 @@ justifies the build tag.
 Worth pairing with a progress line: the suite knows how many runs of how many it
 has done, and prints none of it until a contract ends.
 
+## 16. Skills: the two things this change deliberately did not do
+
+The body now announces itself, which was the defect. Two neighbours were looked
+at in the same pass and left alone on purpose.
+
+**`/skills`, listing what is installed.** `--dump-prompt` already prints the
+index, so "what exists" has an answer; what had none was "what just fired", and
+that is what shipped. A command would put the same list one keystroke closer,
+which is worth doing and is not worth widening a fix for. It would also be the
+natural place to say which root each skill came from — the fact the event
+deliberately does not carry, because an absolute path is not a fact on the
+machine that reads the log.
+
+**Skills shipped inside the binary.** This is the one to be careful with, and
+the product's own RN-7 is the argument against: every bundled skill is a line in
+the index paid on **every turn of every session**, for a context most sessions
+never enter. Shipping ten would tax everyone to serve the few, which is the
+economics that made progressive disclosure exist in the first place.
+
+Three costs, none of them paid yet: the index cap becomes a shared budget
+between what dcode ships and what the user wrote; precedence has to be decided
+(a bundled `release` against the user's `release` is the `.dcode/doctrine`
+question again, and RN-11 already answered a version of it); and bundled content
+versions with the binary while user skills do not, so an update silently changes
+guidance nobody edited.
+
+**Do not start this by writing skills.** The first question is whether there is
+anything a general model does not already know that is *sometimes* relevant and
+*not* enforceable in code — and this repository's own doctrine says a rule that
+can be enforced in code does not belong in a prompt. If the honest answer is
+"nothing generic", then shipping zero skills is the right answer and should be
+written down as a decision rather than left looking like an omission.
+
+The mechanism has to be measured before either is decided:
+`skill-loaded-on-trigger` is the contract, and it is worth reading its number
+before spending anything on content.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
