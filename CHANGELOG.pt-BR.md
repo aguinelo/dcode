@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 159 changelogs de decisão |
+| famílias de spec | 18, com 160 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A proposta era escrita antes de o turno rodar.** A sessão de qualificação
+  abria com o briefing certo e respondia *"nothing was proposed for
+  1a05dd01b2…"* — antes de o modelo terminar de pensar, que é o sinal. O gatilho
+  dizia "a sessão está ociosa e está qualificando", e sessão nasce ociosa
+  **antes do primeiro turno**, com o `attach` reproduzindo desde o começo. Passa
+  a ser o evento de turno concluído.
+- **A drenagem da fila ao lado continua lendo o estado, e está certa.** Ela quer
+  *qualquer* momento em que nada roda; a proposta quer *um* momento. As duas
+  linhas parecem a mesma condição e são perguntas diferentes — que é como uma
+  copiou a forma da outra e ficou errada.
+- Três defeitos em fila, e só o primeiro era visível de fora: a frase precisou
+  virar objetivo qualificado, depois o cliente precisou parar de morrer na troca
+  de sessão, para só então este aparecer.
 - **Trocar de sessão podia encerrar o cliente, e o `/loop oi` foi como isso
   apareceu.** O leitor de eventos captura os canais quando o comando é
   *construído*, então o leitor que assistia à sessão velha ainda está lendo os

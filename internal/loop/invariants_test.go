@@ -127,6 +127,7 @@ var loopCommandInvariants = map[string]string{
 	"continua desenhando o plano":            "TestTheHandlerStillDrawsThePlanWhenFoldersExist",
 	"vira **objetivo qualificado**":          "TestLoopOneDivertsABareWordThatNamesNothing",
 	"qualificar um caminho digitado errado":  "TestAMistypedPathIsNotQualifiedAway",
+	"evento de **turno concluído**":          "TestTheProposalIsNotCommittedBeforeTheTurnStarts",
 	"sem nenhuma linha de tarefa":            "TestLoadSpecWithoutTaskLinesIsAnError",
 	"declaração de zero critérios":           "TestLoadSpecZeroCriteriaIsNotAnError",
 	"não é sintaxe":                          "TestLoadSpecSeparatorIsNotSyntax",

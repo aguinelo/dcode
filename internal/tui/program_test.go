@@ -2102,3 +2102,50 @@ func TestAnEventFromAReplacedStreamIsDropped(t *testing.T) {
 		t.Error("a dropped event re-armed the reader, so two are now on the same channels")
 	}
 }
+
+// The proposal is written when the qualifying TURN ends, not whenever the
+// session happens to be idle.
+//
+// A session is idle before its first turn starts, and attach replays from the
+// beginning — so the first event of a brand-new qualifying session found
+// State == idle with loopQualified set, and committed a proposal nobody had
+// made yet:
+//
+//	could not write the proposed definition of done: invalid_input:
+//	nothing was proposed for 1a05dd01b225554ea98
+//
+// It arrived before the model had finished thinking, which is the tell.
+func TestTheProposalIsNotCommittedBeforeTheTurnStarts(t *testing.T) {
+	p := &program{ctx: context.Background(),
+		model: Model{Lang: En, State: protocol.SessionStateIdle},
+		opts:  Options{Transport: newFakeTransport(), SessionID: "s"}}
+	p.attach("s")
+	p.loopQualified = ".dcode"
+
+	// The event a fresh session opens with, replayed from seq 1. State is idle
+	// because nothing has run.
+	_, cmd := p.Update(eventMsg{ev: ev(t, 1, protocol.EventProgress,
+		protocol.Progress{}), gen: p.generation})
+	if p.loopQualified == "" {
+		t.Fatal("the proposal was committed before the turn had started")
+	}
+	_ = cmd
+}
+
+// And it IS written when the turn completes.
+func TestTheProposalIsCommittedWhenTheTurnCompletes(t *testing.T) {
+	p := &program{ctx: context.Background(),
+		model: Model{Lang: En, State: protocol.SessionStateIdle},
+		opts:  Options{Transport: newFakeTransport(), SessionID: "s"}}
+	p.attach("s")
+	p.loopQualified = ".dcode"
+
+	p.Update(eventMsg{ev: ev(t, 1, protocol.EventTurnStarted,
+		protocol.TurnStarted{TurnID: "t1"}), gen: p.generation})
+	p.Update(eventMsg{ev: ev(t, 2, protocol.EventTurnCompleted,
+		protocol.TurnCompleted{TurnID: "t1"}), gen: p.generation})
+
+	if p.loopQualified != "" {
+		t.Error("the turn ended and the proposal was never written")
+	}
+}

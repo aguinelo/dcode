@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 159 decision changelogs |
+| spec families | 18, with 160 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The proposal was written before the turn had run.** A qualifying session
+  opened with the right brief and answered *"nothing was proposed for
+  1a05dd01b2…"* — before the model had finished thinking, which is the tell. The
+  trigger read "the session is idle and it is qualifying", and a session is idle
+  **before its first turn starts**, with `attach` replaying from the beginning.
+  It is now the turn-completed event.
+- **The queue drain beside it still reads the state, and is right to.** It wants
+  *any* moment nothing is running; the proposal wants *one* moment. The two lines
+  look like the same condition and are different questions — which is how one
+  copied the other's shape and was wrong.
+- Three defects in a row, and only the first was visible from outside: the
+  sentence had to become a qualified goal, then the client had to stop dying on
+  the session switch, before this one could show at all.
 - **Switching sessions could quit the client, and `/loop oi` was how it showed.**
   The event reader captures its channels when the command is *built*, so the
   reader watching the old session is still selecting on the old channels when
