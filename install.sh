@@ -49,13 +49,13 @@ SUPPORTED="darwin/amd64 darwin/arm64 linux/amd64 linux/arm64"
 # BEGIN PINNED — gerado por scripts/installer.sh a partir do checksums.txt assinado.
 # Nao edite a mao. Estes sao os digests dos artefatos que foram assinados, e a
 # graca deles e viverem no historico do git, longe do host que serve o tarball.
-PINNED_VERSION="0.17.0"
+PINNED_VERSION="0.18.0"
 pinned_sum() {
   case "$1" in
-    dcode_0.17.0_darwin_amd64.tar.gz) echo b2c07d97c8ed3d50de813d8015ced5762446872c104af5ff8c99d856277b2810 ;;
-    dcode_0.17.0_darwin_arm64.tar.gz) echo 95174fd9a2afd3ed2fa81124bece0367b61316061a2fb7eedd1f8c2851cd2a94 ;;
-    dcode_0.17.0_linux_amd64.tar.gz) echo f2484955de78eb0460d994487a93790cd6a3d28df72d0bb1571ab301e5695c05 ;;
-    dcode_0.17.0_linux_arm64.tar.gz) echo 29aec15161887726fce299667843d4780ffe559847f834d59b0325b8e02e720f ;;
+    dcode_0.18.0_darwin_amd64.tar.gz) echo 1bec2c0dd0c764d44fc5bd5e989b44eaa5ac11c7056df79b51584590e0149fa7 ;;
+    dcode_0.18.0_darwin_arm64.tar.gz) echo dc73e479cb91118e61f615dc4bf9524ca7eeef31b9c56524db9554e35a7413b9 ;;
+    dcode_0.18.0_linux_amd64.tar.gz) echo b91ecae55ddd93c1cc4910cc7a45233392d0a4f90060f0eea2a74cc8c7b9c4d7 ;;
+    dcode_0.18.0_linux_arm64.tar.gz) echo 03e7cb595b06020826c37393591d30bb7e3955157be2b85f43552e9bb56d6ce0 ;;
   esac
 }
 # END PINNED
