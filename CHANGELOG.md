@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 151 decision changelogs |
+| spec families | 18, with 152 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
-| coverage | 93.3%, gate at 90% aggregate **and per package** |
+| coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -138,6 +138,38 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A skill that reaches for the boundary is held and put to the person, never
+  loaded blind.**
+  `SafetyClaims` has run over instructions since RN-10 asked for the attempt to
+  be recorded. Nothing ran over a skill — and a skill is the least trusted text
+  this product loads: it arrives by `git clone` into `.dcode/skills/`, or is
+  downloaded from a stranger's repository, which is what happened in this
+  afternoon's field test, and its body goes straight into the turn inside a
+  `<skill>` block with nobody reading it first.
+- **This one asks where RN-10 only reports, and the difference is provenance.**
+  An instruction is the user's; dropping a file over one sentence would cost them
+  a rule they wrote, so there a false positive costs a line of output and
+  reporting is enough. For a skill the asymmetry flips: a false positive costs
+  **one question**, answered with the matched text quoted — a false negative
+  loads third-party text into the model's context with no question at all.
+- **Asked, not refused.** Refusing outright would be the product deciding what is
+  the person's to decide; boundary and authorization are separate axes (ADR-02),
+  and this is the second. Approved, the skill loads whole — holding is a question,
+  not a deletion. Denied, it does not. **With nobody to ask, it does not load** —
+  the rule the loop already applies to every crossing, for the reason it already
+  gives: with nobody to ask, the only alternative to refusing is granting in
+  silence. All three outcomes leave a line in the audit, the granted one
+  included, because consent that leaves no trace is indistinguishable from no
+  question having been asked.
+- **Both halves are screened, and the filter has to stay narrow.** The body is
+  where a payload would sit; the index line is paid on every turn, so a harmless
+  body under an offending line is the cheapest version of the attack. Measured
+  against `web-design-engineer` — 35,012 bytes of real third-party guidance —
+  zero matches. One sample, and said to be one sample.
+- **The skill waits, the product does not stop.** Killing the process would hand
+  any cloned repository the power to stop dcode running, which is the defect
+  fixed in the entry above; recreating it in the name of safety would be trading
+  a problem for itself.
 - **A bad skill file no longer stops the product.** Found by field test, not by
   reading code: a real skill from the ecosystem this format came from —
   `ConardLi/garden-skills/skills/web-design-engineer`, with 455 characters of

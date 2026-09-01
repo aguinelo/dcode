@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -593,13 +594,18 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	var skills []behavior.Skill
 	var skillNotices []behavior.Notice
 	if opts.Skills {
-		skills, skillNotices, err = behavior.LoadSkills([]string{
+		loaded, err := behavior.LoadSkills([]string{
 			filepath.Join(roots.Config, behavior.SkillsDirName),
 			filepath.Join(opts.Workspace, ".dcode", behavior.SkillsDirName),
 		}, 256<<10)
 		if err != nil {
 			return nil, err
 		}
+		skills, skillNotices = loaded.Loaded, loaded.Notices
+		granted, refused := askAboutHeldSkills(loaded.Held, approver)
+		skills = append(skills, granted...)
+		skillNotices = append(skillNotices, refused...)
+		sort.Slice(skills, func(i, j int) bool { return skills[i].Name < skills[j].Name })
 	}
 
 	// The doctrine overlay is resolved once, here, like the instruction chain
@@ -1089,6 +1095,57 @@ func indent(s string) string {
 		lines = append(lines[:12], fmt.Sprintf("… %d more lines", len(lines)-12))
 	}
 	return strings.Join(lines, "\n  ")
+}
+
+// askAboutHeldSkills puts each held skill to the person, once, before the
+// session exists.
+//
+// It is asked here rather than at the moment of loading because this is where
+// an approver is available, and it is asked at all because refusing outright
+// would be the product deciding something that is the person's to decide. The
+// boundary and the authorization are separate axes (ADR-02), and this is the
+// second one.
+//
+// With no approver it is not loaded — the same rule the loop already applies to
+// every other crossing, and for the same reason: with nobody to ask, the only
+// alternative to refusing is granting in silence, which is the exact thing this
+// screen exists to prevent.
+//
+// What is returned either way is a record. A skill that was granted says so in
+// the audit, because consent that leaves no trace is indistinguishable from no
+// question having been asked.
+func askAboutHeldSkills(held []behavior.Skill, approver loop.Approver) ([]behavior.Skill, []behavior.Notice) {
+	var granted []behavior.Skill
+	var notices []behavior.Notice
+	for _, s := range held {
+		claims := strings.Join(s.Claims, "; ")
+		if approver == nil {
+			notices = append(notices, behavior.Notice{Path: s.Path, Reason: "not loaded: " + claims +
+				". It asks for something only you can grant, and there was nobody to ask. " +
+				"Run it where you can answer, or remove the line."})
+			continue
+		}
+		dec, err := approver.Approve(context.Background(), protocol.ApprovalRequest{
+			Tool:            "skill",
+			Command:         s.Name,
+			BoundaryCrossed: "a skill asks for the boundary to move",
+			Reason: "Loading " + s.Name + " (" + s.Path + ") puts its text into every turn it matches. " +
+				claims + ". Safety itself does not move — the sandbox is enforced by the operating " +
+				"system and approval stays yours — but the text will be in front of the model.",
+			Rule: "skill.safety_claim",
+		})
+		if err != nil || (dec != protocol.ApprovalAllow && dec != protocol.ApprovalAllowSession &&
+			dec != protocol.ApprovalAllowProject) {
+			notices = append(notices, behavior.Notice{Path: s.Path,
+				Reason: "not loaded: " + claims + ". You were asked and did not grant it."})
+			continue
+		}
+		s.Claims = nil
+		granted = append(granted, s)
+		notices = append(notices, behavior.Notice{Path: s.Path,
+			Reason: "loaded with your approval, despite: " + claims})
+	}
+	return granted, notices
 }
 
 // ConsoleApprover asks on the terminal.

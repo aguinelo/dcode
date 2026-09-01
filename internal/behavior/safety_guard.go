@@ -72,6 +72,46 @@ func SafetyClaims(in []Instruction) []Notice {
 	return out
 }
 
+// SkillSafetyClaims reports the places a skill reaches for the boundary.
+//
+// The difference from SafetyClaims is provenance, and it is the whole reason
+// this one DECIDES while that one only reports.
+//
+// An instruction is the user's, or their project's. Dropping a whole file over
+// one sentence would cost them a rule they wrote, so the asymmetry there runs
+// the other way: a false positive costs a line of output, and reporting is
+// enough.
+//
+// A skill is the least trusted text this product loads. It arrives by `git
+// clone` into `.dcode/skills/`, or is downloaded from a stranger's repository,
+// which is precisely what RN-11 calls "not the user" — and its body goes
+// straight into the turn inside a <skill> block, unread by anyone. There a
+// false positive costs one skill, which the person can see named and fix,
+// while a false negative loads attacker-authored text into the model's context.
+//
+// Both halves are screened. The body is where a payload would sit, and the
+// index line is loaded on every turn, so a harmless body under a line that asks
+// for the boundary is the cheapest version of the attack.
+func SkillSafetyClaims(s Skill) []string {
+	var out []string
+	seen := map[string]struct{}{}
+	for _, text := range []string{s.WhenToUse, s.Body} {
+		for _, c := range safetyClaims {
+			m := c.pattern.FindString(text)
+			if m == "" {
+				continue
+			}
+			if _, dup := seen[c.what]; dup {
+				continue
+			}
+			seen[c.what] = struct{}{}
+			out = append(out, c.what+" ("+strings.TrimSpace(m)+")")
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 func scopeOf(ins Instruction) string {
 	if ins.Scope != "" {
 		return ins.Scope

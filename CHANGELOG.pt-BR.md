@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 151 changelogs de decisão |
+| famílias de spec | 18, com 152 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
-| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -121,6 +121,38 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Skill que alcança a fronteira é retida e perguntada, nunca carregada às
+  cegas.** O
+  `SafetyClaims` roda sobre instruções desde que a RN-10 pediu que a tentativa
+  fosse registrada. Nada rodava sobre skill — e skill é o texto menos confiável
+  que este produto carrega: chega por `git clone` em `.dcode/skills/`, ou é
+  baixada do repositório de um estranho, que foi o que aconteceu no teste de
+  campo desta tarde, e o corpo dela vai direto para o turno dentro de um bloco
+  `<skill>` sem ninguém ler antes.
+- **Este pergunta onde a RN-10 só reporta, e a diferença é procedência.**
+  Instrução é do usuário; descartar um arquivo por uma frase custaria a ele uma
+  regra que ele escreveu, então lá falso positivo custa uma linha de saída e
+  reportar basta. Em skill a assimetria vira: falso positivo custa **uma
+  pergunta**, respondida com o trecho citado à vista — falso negativo carrega
+  texto de terceiro no contexto do modelo, sem pergunta nenhuma.
+- **Perguntar, e não recusar.** Recusar de saída seria o produto decidindo o que
+  é da pessoa; fronteira e autorização são eixos separados (ADR-02), e esta é a
+  segunda. Aprovada, a skill carrega inteira — reter é pergunta, não deleção.
+  Negada, não carrega. **Sem ninguém para perguntar, não carrega** — a regra que
+  o laço já aplica a toda travessia, pelo motivo que ele já dá: com ninguém a
+  quem perguntar, a única alternativa a recusar é conceder em silêncio. Os três
+  desfechos deixam linha na auditoria, o concedido inclusive, porque
+  consentimento que não deixa rastro é indistinguível de pergunta que nunca foi
+  feita.
+- **As duas metades são filtradas, e o filtro precisa continuar estreito.** O
+  corpo é onde a carga estaria; a linha de índice é paga em todo turno, então
+  corpo inofensivo sob linha ofensiva é a versão mais barata do ataque. Medido
+  contra a `web-design-engineer` — 35.012 bytes de orientação real de terceiro —
+  zero casamentos. Uma amostra só, e dito como uma amostra só.
+- **A skill espera, o produto não para.** Matar o processo daria a qualquer
+  repositório clonado o poder de impedir o dcode de rodar, que é o defeito
+  corrigido na entrada acima; recriá-lo em nome da segurança seria trocar um
+  problema por ele mesmo.
 - **Arquivo de skill ruim não para mais o produto.** Achado por teste de campo,
   não por leitura de código: uma skill real do ecossistema de onde este formato
   veio — `ConardLi/garden-skills/skills/web-design-engineer`, com 455 caracteres
