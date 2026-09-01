@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/aguinelo/dcode/internal/config"
@@ -416,10 +417,22 @@ func LoopTask(spec LoopArgs) string {
 		// A different job, so a different instruction. This turn produces a
 		// proposal and nothing else — it cannot write, and the tool is the
 		// only way its answer reaches anybody.
-		return "Work out how " + spec.Spec + " will be known to be finished.\n\n" +
-			"Read the specification, its tasks, and enough of the code to see what " +
-			"already exists and what the project can actually run. Then call " +
-			"`done_propose` with the criteria, as commands.\n\n" +
+		subject := spec.Spec
+		read := "Read the specification, its tasks, and enough of the code to see what " +
+			"already exists and what the project can actually run."
+		if spec.Goal {
+			// The sentence is the whole brief, so the sentence is what has to
+			// be named. "Work out how .dcode will be known to be finished" is
+			// the anchor talking rather than the request, and sending the model
+			// to read a specification that does not exist spends its rounds
+			// looking for one.
+			subject = strconv.Quote(strings.TrimSpace(spec.Task))
+			read = "No specification folder describes this: the sentence above is the " +
+				"whole brief. Read enough of the code to see what already exists and " +
+				"what the project can actually run."
+		}
+		return "Work out how " + subject + " will be known to be finished.\n\n" +
+			read + " Then call `done_propose` with the criteria, as commands.\n\n" +
 			"You are in plan mode: you cannot change anything, and you are not " +
 			"meant to. Propose, and stop."
 	}
@@ -431,6 +444,35 @@ func LoopTask(spec LoopArgs) string {
 		"definition of done, and the harness checks it — do not go looking for " +
 		"the criteria to run them yourself, and do not report done on your own " +
 		"word."
+}
+
+// GoalToQualify turns a goal that found no spec folders into the session that
+// works out what its criteria are.
+//
+// `/loop revise o projeto até entender` used to answer "no specs/ folder here"
+// — the command telling someone their request was the wrong shape, in a product
+// whose done-qualifier family exists for exactly this. That family's own
+// research spec names the prose request as what motivated it: "Faça um cadastro
+// de clientes" carries no tasks.md, and the constructive answer is to raise the
+// criteria, measure them, and ask for a signature.
+//
+// `/loop <path>` already does this when the folder declares nothing. Only the
+// sentence route dead-ended, and it dead-ended because it was built to SELECT
+// among folders rather than to accept a brief.
+//
+// The proposal is anchored at `.dcode`, where a workspace's definition of done
+// already lives and which is one of the three sources a DoneSet is read from.
+// Not a folder derived from the sentence: the loop-command spec records the
+// opposite defect, prose becoming a path, when `/loop implemente todas as specs
+// pendentes` went looking for `implemente/tasks.md`. Inventing
+// `revise-o-projeto/` would be that defect wearing the other hat.
+func GoalToQualify(spec LoopArgs, found []protocol.SpecFolder) (LoopArgs, bool) {
+	if !spec.Goal || len(found) > 0 || strings.TrimSpace(spec.Task) == "" {
+		return LoopArgs{}, false
+	}
+	spec.Qualify = true
+	spec.Spec = protocol.WorkspaceDoneDir
+	return spec, true
 }
 
 // LoopPlan is what a `/loop <goal>` says before it starts.
