@@ -129,7 +129,7 @@ func TestTheAgentIsToldWhereSkillsLiveEvenWithNoneInstalled(t *testing.T) {
 	if !strings.Contains(out, "## Skills") {
 		t.Fatalf("the section is missing with none installed:\n%s", out)
 	}
-	for _, want := range []string{".dcode/skills/", "when_to_use", "None are installed"} {
+	for _, want := range []string{".dcode/skills/", "SKILL.md", "description", "None are installed"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the section does not say %q:\n%s", want, out)
 		}
@@ -141,7 +141,7 @@ func TestTheAgentIsToldWhereSkillsLiveEvenWithNoneInstalled(t *testing.T) {
 	if i := strings.Index(section[3:], "\n## "); i >= 0 {
 		section = section[:i+3]
 	}
-	if len(section) > 400 {
+	if len(section) > 520 {
 		t.Errorf("the skills section is %d bytes; it is paid every turn:\n%s", len(section), section)
 	}
 }

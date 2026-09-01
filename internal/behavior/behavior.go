@@ -155,7 +155,9 @@ func Build(p Prompt, f Formulation) (string, error) {
 
 		var s strings.Builder
 		s.WriteString("Skills are markdown files under `.dcode/skills/` in the workspace " +
-			"and `skills/` in the user's dcode directory, each with a `when_to_use` line. " +
+			"and `skills/` in the user's dcode directory: a `SKILL.md` in a folder, or " +
+			"`<name>.md`, with `name` and `description` at the top. That is the same shape " +
+			"other agents use, so one found anywhere is usually a file to copy in unchanged. " +
 			"Writing one is an ordinary file write, and it is indexed from the next session.\n")
 		if len(entries) == 0 {
 			s.WriteString("\nNone are installed.")

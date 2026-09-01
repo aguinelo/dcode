@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 153 decision changelogs |
+| spec families | 18, with 154 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
-| coverage | 93.3%, gate at 90% aggregate **and per package** |
+| coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -138,6 +138,26 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The skills block now says what the format is, not only where it lives.** The
+  previous change half-worked: the agent went and looked at the directory, then
+  still concluded that a skill found on GitHub "loads in Claude Code, not in my
+  agent". It got the hard part right — that the URL pointed at a skill inside a
+  **plugin**, that plugins and marketplaces are another product's packaging, and
+  that installing one touches a global setup and needs confirmation. It missed
+  the easy part: `curl` the `SKILL.md` and write it to `.dcode/skills/`, two
+  lines, inside the workspace, crossing nothing.
+- **It is a fact rather than a promise, which is why it can be said.** The block
+  now names the shape — `SKILL.md` in a folder or `<name>.md`, with `name` and
+  `description` on top — and says one found anywhere is usually a file to copy in
+  unchanged. `description` has been an alias for `when_to_use` since before this
+  family existed, and a real third-party skill in exactly that format was loaded
+  and applied in a field test this afternoon.
+- **What stays out is deliberate**: plugins, marketplaces and install commands
+  are packaging, not format, and the agent already reasons about them correctly
+  on its own. So does the matching divergence — the model decides from the
+  description there, deterministic word matching here — which is a design choice
+  that belongs to whoever writes a skill, and lives in the `.r`. The section is
+  409 bytes against a 520-byte cap in the test.
 - **The agent did not know about its own skills mechanism.** Asked to install a
   skill, it answered that it could not — that skills are a Claude Code thing and
   not installable from here. Every sentence of that is false about the product
