@@ -286,9 +286,15 @@ func loadSkills(dir string) ([]behavior.Skill, error) {
 		if err != nil {
 			return nil, err
 		}
-		skill, err := behavior.ParseSkill(string(text), e.Name())
+		// A fixture is authored, not found, so a trimmed line here is a
+		// scenario written wrong rather than a file someone else shipped: the
+		// notice is an error in this one place, on purpose.
+		skill, note, err := behavior.ParseSkill(string(text), e.Name())
 		if err != nil {
 			return nil, err
+		}
+		if note != nil {
+			return nil, fmt.Errorf("skills/%s: %s", e.Name(), note.Reason)
 		}
 		if strings.TrimSpace(skill.WhenToUse) == "" {
 			return nil, fmt.Errorf("skills/%s has no when_to_use, so nothing tells the model when to load it", e.Name())

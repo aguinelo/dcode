@@ -98,6 +98,10 @@ Skill entra no prefixo como **uma linha** descrevendo quando usá-la. O corpo é
 
 Carregar todo corpo de skill no prefixo é o caminho mais rápido para um prompt de dezenas de milhares de tokens pago em todo turno, com atenção diluída.
 
+**Arquivo de skill ruim não para o produto.** Ele parava: uma skill real do ecossistema de onde este formato veio — `web-design-engineer`, com 455 caracteres de `description` onde o teto é 120 — fazia o carregamento devolver erro, o `app.go` propagar, e o `dcode` sair com código 1 naquele workspace, `--dump-prompt` incluído. `.dcode/skills/` chega por `git clone`, então um arquivo de um repositório clonado decidia se o binário rodava.
+
+Os tetos estão certos; ser fatal não estava. A regra passa a ser a que o resto desta família já segue: linha de quando-usar acima do teto é **aparada** em fronteira de palavra e o corte é dito; arquivo que não pode ser skill de jeito nenhum é **pulado** e dito; arquivo acima do teto de tamanho é pulado e dito, porque corpo cortado no meio é orientação que para no meio da frase, e ausente-e-declarado-ausente é melhor que isso. Só diretório ilegível continua sendo erro — aí é a máquina falhando, não um arquivo estando errado.
+
 **Corpo que entra no turno é anunciado.** O índice é auditável — está no prefixo, e `--dump-prompt` o imprime. O corpo não era: ele era anexado ao histórico como lembrete sem nada ser emitido, então um bloco de texto entrava no turno, gastava contexto e mudava o comportamento do modelo, sem a pessoa ter como saber que aconteceu nem qual skill foi.
 
 Trinta linhas acima da injeção, o teto do índice já se recusa a descartar em silêncio. O anúncio é essa mesma regra aplicada ao único fato observável que não estava viajando pelo log. Turno que não carrega skill nenhuma não anuncia nada: uma linha por turno cujo único conteúdo é que a funcionalidade existe é linha gasta.

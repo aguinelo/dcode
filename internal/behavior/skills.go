@@ -36,8 +36,22 @@ const MaxWhenToUse = 120
 //
 // A skill is either `<dir>/<name>.md` or `<dir>/<name>/SKILL.md`. The second
 // form exists so a skill can carry files beside it.
-func LoadSkills(dirs []string, maxBytes int) ([]Skill, error) {
+//
+// A bad skill file never stops the product. It used to: a real skill from the
+// ecosystem this format came from — `web-design-engineer`, 455 characters of
+// `description` where the cap is 120 — made LoadSkills return an error, which
+// app.go propagated, which made dcode exit 1 in that workspace, `--dump-prompt`
+// included. `.dcode/skills/` arrives by `git clone`, so one file in a cloned
+// repository decided whether the binary ran at all.
+//
+// The caps are right and being fatal was not, which is the rule the rest of
+// this package already follows: the index cap announces what it left out rather
+// than truncating in silence, and an over-size instruction is trimmed with a
+// notice. Only a directory that cannot be read is still an error, because that
+// is the machine failing rather than a file being wrong.
+func LoadSkills(dirs []string, maxBytes int) ([]Skill, []Notice, error) {
 	byName := map[string]Skill{}
+	var notices []Notice
 
 	for _, dir := range dirs {
 		entries, err := os.ReadDir(dir)
@@ -45,7 +59,7 @@ func LoadSkills(dirs []string, maxBytes int) ([]Skill, error) {
 			continue
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, e := range entries {
 			path := filepath.Join(dir, e.Name())
@@ -60,14 +74,24 @@ func LoadSkills(dirs []string, maxBytes int) ([]Skill, error) {
 
 			data, err := os.ReadFile(path)
 			if err != nil {
-				return nil, err
+				notices = append(notices, Notice{Path: path, Reason: err.Error()})
+				continue
 			}
+			// Skipped rather than cut. A body truncated at the cap is guidance
+			// that stops mid-sentence, and guidance that is absent and said to
+			// be absent is the better of the two.
 			if maxBytes > 0 && len(data) > maxBytes {
-				return nil, fmt.Errorf("behavior: %s is larger than the %d byte limit for a skill", path, maxBytes)
+				notices = append(notices, Notice{Path: path, Reason: fmt.Sprintf(
+					"%d bytes, over the %d byte limit for a skill; not loaded", len(data), maxBytes)})
+				continue
 			}
-			s, err := ParseSkill(string(data), path)
+			s, note, err := ParseSkill(string(data), path)
+			if note != nil {
+				notices = append(notices, *note)
+			}
 			if err != nil {
-				return nil, err
+				notices = append(notices, Notice{Path: path, Reason: err.Error()})
+				continue
 			}
 			if s.Name == "" {
 				base := strings.TrimSuffix(e.Name(), ".md")
@@ -85,11 +109,17 @@ func LoadSkills(dirs []string, maxBytes int) ([]Skill, error) {
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out, nil
+	sort.Slice(notices, func(i, j int) bool { return notices[i].Path < notices[j].Path })
+	return out, notices, nil
 }
 
 // ParseSkill reads frontmatter and body. Pure over its input.
-func ParseSkill(text, path string) (Skill, error) {
+//
+// The error and the notice are different answers. An error means this file
+// cannot be a skill at all and the caller skips it; a notice means it was
+// loaded with something changed, and the only such case is a when-to-use line
+// trimmed to the cap.
+func ParseSkill(text, path string) (Skill, *Notice, error) {
 	s := Skill{Path: path}
 	body := text
 
@@ -97,7 +127,7 @@ func ParseSkill(text, path string) (Skill, error) {
 		rest := text[4:]
 		end := strings.Index(rest, "\n---")
 		if end < 0 {
-			return s, fmt.Errorf("behavior: %s has an unterminated frontmatter block", path)
+			return s, nil, fmt.Errorf("behavior: %s has an unterminated frontmatter block", path)
 		}
 		front := rest[:end]
 		body = strings.TrimPrefix(rest[end+4:], "\n")
@@ -126,20 +156,44 @@ func ParseSkill(text, path string) (Skill, error) {
 
 	s.Body = strings.TrimSpace(body)
 	if s.Body == "" {
-		return s, fmt.Errorf("behavior: %s has no body, so there is nothing to load", path)
+		return s, nil, fmt.Errorf("behavior: %s has no body, so there is nothing to load", path)
 	}
 	if s.WhenToUse == "" {
-		return s, fmt.Errorf(
+		return s, nil, fmt.Errorf(
 			"behavior: %s has no `when_to_use` line. Without it the skill cannot be indexed, "+
 				"and an unindexed skill is one the model never learns exists", path)
 	}
+	// Trimmed, not refused. The line is the index economy and the cap stands;
+	// what the cap cannot justify is throwing away a working body because the
+	// sentence describing it was written for a product with no cap.
 	if len(s.WhenToUse) > MaxWhenToUse {
-		return s, fmt.Errorf(
-			"behavior: %s has a `when_to_use` of %d characters, over the %d limit. "+
+		full := len(s.WhenToUse)
+		s.WhenToUse = trimToWord(s.WhenToUse, MaxWhenToUse)
+		return s, &Notice{Path: path, Reason: fmt.Sprintf(
+			"`when_to_use` was %d characters and the index cap is %d; the line was trimmed. "+
 				"It goes in the prefix of every turn, so it has to be one line",
-			path, len(s.WhenToUse), MaxWhenToUse)
+			full, MaxWhenToUse)}, nil
 	}
-	return s, nil
+	return s, nil, nil
+}
+
+// trimToWord cuts at the last space before the cap, so the index line ends on a
+// word rather than inside one. A line that ends mid-word reads as corruption
+// and invites the reader to go looking for what went wrong.
+func trimToWord(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	// The ellipsis is part of the line and so part of the budget. Cutting to
+	// the cap and then appending it produces a line over the cap, which is the
+	// same class of mistake as the one this function exists to stop.
+	const ellipsis = "…"
+	room := max - len(ellipsis)
+	cut := s[:room]
+	if i := strings.LastIndexByte(cut, ' '); i > room/2 {
+		cut = cut[:i]
+	}
+	return strings.TrimRight(cut, " ,;:-") + ellipsis
 }
 
 func splitList(v string) []string {

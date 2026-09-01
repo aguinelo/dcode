@@ -408,6 +408,11 @@ type Session struct {
 	Notice         string
 	Origins        behavior.SectionOrigins
 	DoctrineNotice []behavior.Notice
+	// SkillNotice is what was trimmed or skipped while loading skills.
+	//
+	// Separate from DoctrineNotice because they answer different questions and
+	// a reader looking for one should not have to read past the other.
+	SkillNotice []behavior.Notice
 	// ContextWindow is what the provider reports for this model.
 	ContextWindow int
 	// Proposals is where a qualifying session keeps what the model proposed,
@@ -586,8 +591,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// once, here: a skill file written mid-session must not change the prefix,
 	// because the prefix is what the cache is keyed on.
 	var skills []behavior.Skill
+	var skillNotices []behavior.Notice
 	if opts.Skills {
-		skills, err = behavior.LoadSkills([]string{
+		skills, skillNotices, err = behavior.LoadSkills([]string{
 			filepath.Join(roots.Config, behavior.SkillsDirName),
 			filepath.Join(opts.Workspace, ".dcode", behavior.SkillsDirName),
 		}, 256<<10)
@@ -697,6 +703,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		ContextWindow:  window,
 		Origins:        overlay.Origins(),
 		DoctrineNotice: append(overlayNotices, safetyNotices...),
+		SkillNotice:    skillNotices,
 	}, nil
 }
 
@@ -1161,6 +1168,15 @@ func DoctrineAudit(s *Session) string {
 	if len(s.DoctrineNotice) > 0 {
 		b.WriteString("\n--- doctrine notices ---\n")
 		for _, n := range s.DoctrineNotice {
+			fmt.Fprintf(&b, "  %s\n", n)
+		}
+	}
+	// A skill that was trimmed or skipped is said here, because this is the
+	// surface that answers what actually reached the model. It used to be said
+	// by the process exiting.
+	if len(s.SkillNotice) > 0 {
+		b.WriteString("\n--- skill notices ---\n")
+		for _, n := range s.SkillNotice {
 			fmt.Fprintf(&b, "  %s\n", n)
 		}
 	}
