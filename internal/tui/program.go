@@ -505,7 +505,19 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
-		} else if p.model.State == protocol.SessionStateIdle && p.loopQualified != "" {
+		} else if msg.ev.Type == protocol.EventTurnCompleted && p.loopQualified != "" {
+			// On the turn ENDING, and not merely on the session being idle.
+			//
+			// A session is idle before its first turn starts, and attach
+			// replays from the beginning — so the first event of a brand-new
+			// qualifying session found idle with this set, and committed a
+			// proposal nobody had made yet: "nothing was proposed for
+			// 1a05dd01b2…", arriving before the model had finished thinking.
+			//
+			// The queue drain above is right to read the state: it wants any
+			// moment nothing is running. This wants one specific moment, and
+			// the event is what names it.
+			//
 			// The qualifying session is done proposing. The loop moves on by
 			// itself: it reads, projects, qualifies and only then executes,
 			// and waiting here for someone to say "now do it" would put the
