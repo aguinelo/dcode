@@ -36,6 +36,8 @@ var tuiInvariants = map[string]string{
 	"nomeia a skill que carregou":                 "TestTheStreamNamesTheSkillThatLoaded",
 	"diz **qual build** está rodando":             "TestTheStatusBarSaysWhichBuild",
 	"primeiro campo entregue quando":              "TestTheBuildIsTheFirstFieldToGo",
+	"não encerra o cliente, e não rearma":         "TestAReplacedStreamEndingDoesNotQuitTheClient",
+	"descartado em vez de desenhado":              "TestAnEventFromAReplacedStreamIsDropped",
 	"marcado como dado":                           "TestAGivenNameIsMarkedAsGiven",
 	"a coluna toma o teclado":                     "TestTheRailTakesTheKeyboardAndGivesItBack",
 	"nunca só cor, e `↑↓` não dão":                "TestTheRailCursorStopsAtBothEnds",
