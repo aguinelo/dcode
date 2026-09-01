@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 158 changelogs de decisão |
+| famílias de spec | 18, com 159 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,22 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Trocar de sessão podia encerrar o cliente, e o `/loop oi` foi como isso
+  apareceu.** O leitor de eventos captura os canais quando o comando é
+  *construído*, então o leitor que assistia à sessão velha ainda está lendo os
+  canais velhos quando o `attach` os cancela — e canal fechado é como um fluxo
+  relata que acabou. Sem marca de origem, isso chegava ao caso que encerra.
+- **Isto nunca foi sobre o `/loop`.** `/clear`, `/model` e `/resume` anexam pelo
+  mesmo caminho e teriam o mesmo fim. A correção anterior não introduziu o
+  defeito; ela o tornou **alcançável**, porque `/loop <palavra>` falhava antes de
+  chegar a trocar de sessão. As duas leituras têm consertos diferentes, e adotar
+  a primeira teria levado a reverter a correção certa.
+- **Cada assinatura recebe um número**, e as três mensagens que ela produz o
+  carregam. A conferência acontece no laço de atualização, que é de uma linha só
+  de execução: ler o número corrente de dentro do comando seria corrida de dados
+  com quem o escreve. Mensagem de fluxo substituído é descartada e **não rearma**
+  o leitor — quem anexou já iniciou o do fluxo novo. Fim do fluxo corrente
+  continua encerrando: a regra é sobre qual fluxo, não sobre nunca encerrar.
 - **A barra de status diz qual build está rodando.** Build local e release se
   comportam diferente e se apresentavam igual, então a única forma de saber era
   sair da sessão e perguntar ao `--version`. A string de versão já dizia

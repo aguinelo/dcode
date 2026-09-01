@@ -313,8 +313,8 @@ func TestWordsTypedMidTurnSteerIt(t *testing.T) {
 // session sees the turn change direction and why.
 func TestASteeredTurnShowsWhatWasSaid(t *testing.T) {
 	p, _ := newProgram(t)
-	p.Update(eventMsg(ev(t, 1, protocol.EventTurnSteered,
-		protocol.TurnSteered{TurnID: "t1", Text: "use tabs"})))
+	p.Update(eventMsg{ev: ev(t, 1, protocol.EventTurnSteered,
+		protocol.TurnSteered{TurnID: "t1", Text: "use tabs"})})
 
 	var found bool
 	for _, e := range p.model.Entries {
@@ -698,12 +698,12 @@ func TestAUserCommandExpandsIntoATurn(t *testing.T) {
 
 func TestEventsFoldIntoTheModelAndAStreamErrorQuits(t *testing.T) {
 	p, _ := newProgram(t)
-	p.Update(eventMsg(ev(t, 1, protocol.EventMessageDelta, protocol.MessageDelta{Text: "hi"})))
+	p.Update(eventMsg{ev: ev(t, 1, protocol.EventMessageDelta, protocol.MessageDelta{Text: "hi"})})
 	if len(p.model.Entries) != 1 {
 		t.Fatalf("got %+v", p.model.Entries)
 	}
 
-	_, cmd := p.Update(errMsg{errors.New("connection lost")})
+	_, cmd := p.Update(errMsg{err: errors.New("connection lost")})
 	if _, ok := run(t, p, cmd).(tea.QuitMsg); !ok {
 		t.Error("a fatal stream error ends the program")
 	}
@@ -990,7 +990,7 @@ func TestElapsedTimeComesFromTheInjectedClock(t *testing.T) {
 	now := time.Unix(1000, 0)
 	p, _ := newProgram(t, func(o *Options) { o.Now = func() time.Time { return now } })
 
-	p.Update(eventMsg(ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1"})))
+	p.Update(eventMsg{ev: ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1"})})
 	now = time.Unix(1042, 0)
 	p.Update(tickMsg(now))
 
@@ -2038,5 +2038,67 @@ func TestARunningTurnIsStillInterrupted(t *testing.T) {
 	}
 	if p.model.Leaving {
 		t.Error("interrupting armed leaving")
+	}
+}
+
+// Switching sessions must not quit the client.
+//
+// `/loop oi` closed dcode. The reader captures its channels when the command is
+// BUILT, so the reader watching the old session is still selecting on the old
+// channels when attach cancels them — and a closed channel is how a stream
+// reports that it ended. Untagged, that reached `case streamClosedMsg` and quit.
+//
+// It was never about /loop. /clear, /model and /resume all attach the same way;
+// /loop <word> was only the one that reached it, because the command used to
+// fail before it got that far.
+func TestAReplacedStreamEndingDoesNotQuitTheClient(t *testing.T) {
+	p := &program{ctx: context.Background(), model: Model{Lang: En},
+		opts: Options{Transport: newFakeTransport()}}
+	p.attach("first")
+	stale := p.generation
+	p.attach("second")
+
+	if _, cmd := p.Update(streamClosedMsg{gen: stale}); cmd != nil {
+		t.Error("the old stream ending quit the client")
+	}
+	if _, cmd := p.Update(errMsg{err: errors.New("stream over"), gen: stale}); cmd != nil {
+		t.Error("the old stream's error quit the client")
+	}
+	if p.fatal != "" {
+		t.Errorf("the old stream's ending was reported as this session's fatal error: %q", p.fatal)
+	}
+}
+
+// The current stream ending still quits. The guard is about which stream, not
+// about never quitting: a session whose event log really has ended is a session
+// there is nothing left to watch.
+func TestTheCurrentStreamEndingStillQuits(t *testing.T) {
+	p := &program{ctx: context.Background(), model: Model{Lang: En},
+		opts: Options{Transport: newFakeTransport()}}
+	p.attach("only")
+
+	if _, cmd := p.Update(streamClosedMsg{gen: p.generation}); cmd == nil {
+		t.Error("the live stream ended and the client stayed")
+	}
+}
+
+// An event from a replaced stream is dropped rather than rendered into the
+// session that replaced it — and it does not re-arm, which would leave two
+// readers on the new channels.
+func TestAnEventFromAReplacedStreamIsDropped(t *testing.T) {
+	p := &program{ctx: context.Background(), model: Model{Lang: En},
+		opts: Options{Transport: newFakeTransport()}}
+	p.attach("first")
+	stale := p.generation
+	p.attach("second")
+
+	before := len(p.model.Entries)
+	_, cmd := p.Update(eventMsg{ev: ev(t, 1, protocol.EventMessageDelta,
+		protocol.MessageDelta{Text: "from the old session"}), gen: stale})
+	if len(p.model.Entries) != before {
+		t.Errorf("the previous session's event was drawn into this one: %+v", p.model.Entries)
+	}
+	if cmd != nil {
+		t.Error("a dropped event re-armed the reader, so two are now on the same channels")
 	}
 }

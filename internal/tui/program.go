@@ -147,6 +147,11 @@ type program struct {
 	// for, so the loop knows what just finished and can say what to do next.
 	loopQualified string
 
+	// generation counts subscriptions, so a message from one that has been
+	// replaced can be told from one that is current. Switching sessions cancels
+	// the old stream, and a cancelled stream closing is not this session's
+	// fatal error.
+	generation int
 	// unsubscribe tears down the current subscription when the session is
 	// replaced by /clear or /model.
 	unsubscribe context.CancelFunc
@@ -219,10 +224,22 @@ func outcome(err error, fatal string) error {
 
 // attach subscribes to a session's event log from the beginning, which is what
 // makes reattaching identical to having watched it live.
+//
+// Each subscription gets a number, and it is what makes switching sessions
+// survivable. The reader captures its channels when the command is BUILT, so
+// the reader watching the old session is still selecting on the old channels
+// when attach cancels them — and a closed channel is how a stream reports that
+// it ended. Untagged, that reached `case streamClosedMsg` and quit the client.
+//
+// It killed dcode on `/loop`, and would have on `/clear`, `/model` and
+// `/resume`: every one of them opens a session and attaches. It was only
+// unreachable on `/loop <word>` because the command used to fail before it got
+// this far.
 func (p *program) attach(id string) {
 	if p.unsubscribe != nil {
 		p.unsubscribe()
 	}
+	p.generation++
 	subCtx, cancel := context.WithCancel(p.ctx)
 	p.unsubscribe = cancel
 	p.events, p.errs = p.opts.Transport.Subscribe(subCtx, id, max(1, p.opts.From))
@@ -230,10 +247,28 @@ func (p *program) attach(id string) {
 
 // ---------- bubbletea ----------
 
-type eventMsg protocol.Event
-type errMsg struct{ err error }
-type streamClosedMsg struct{}
+// The three messages a subscription produces all carry the generation they came
+// from. The check has to happen in Update, which is single-threaded: reading the
+// program's current generation inside the command would be a data race with the
+// update loop that writes it.
+type eventMsg struct {
+	ev  protocol.Event
+	gen int
+}
+type errMsg struct {
+	err error
+	gen int
+}
+type streamClosedMsg struct{ gen int }
 type noteMsg string
+
+// fromCurrentStream reports whether a subscription message belongs to the
+// subscription this program is on now.
+//
+// Zero means a message built before any attach, or by a test that did not care;
+// those are current by definition, because there is nothing they can be stale
+// against.
+func (p *program) fromCurrentStream(gen int) bool { return gen == 0 || gen == p.generation }
 
 // renamedMsg is a name that stuck.
 type renamedMsg struct{ id, name string }
@@ -305,7 +340,7 @@ func pending(errs <-chan error) error {
 }
 
 func (p *program) waitForEvent() tea.Cmd {
-	events, errs := p.events, p.errs
+	events, errs, gen := p.events, p.errs, p.generation
 	return func() tea.Msg {
 		select {
 		case ev, open := <-events:
@@ -316,18 +351,18 @@ func (p *program) waitForEvent() tea.Cmd {
 				// the reason away and the client quit saying nothing — which is
 				// exactly how "continuing does nothing" looked from outside.
 				if err := pending(errs); err != nil {
-					return errMsg{err}
+					return errMsg{err, gen}
 				}
-				return streamClosedMsg{}
+				return streamClosedMsg{gen}
 			}
-			return eventMsg(ev)
+			return eventMsg{ev, gen}
 		case err, open := <-errs:
 			if !open {
-				return streamClosedMsg{}
+				return streamClosedMsg{gen}
 			}
-			return errMsg{err}
+			return errMsg{err, gen}
 		case <-p.ctx.Done():
-			return streamClosedMsg{}
+			return streamClosedMsg{gen}
 		}
 	}
 }
@@ -450,8 +485,15 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return p, p.waitForEvent()
 
 	case eventMsg:
+		// From a stream that has been replaced: an event still in the old
+		// channel's buffer when it was cancelled. Dropped rather than rendered,
+		// and NOT re-armed — handling it would both show the previous session's
+		// event in this one's view and leave two readers on the new channels.
+		if !p.fromCurrentStream(msg.gen) {
+			return p, nil
+		}
 		p.model.Now = p.now()
-		p.model = p.model.Apply(protocol.Event(msg))
+		p.model = p.model.Apply(msg.ev)
 		// The queue drains when the session goes idle: the protocol refuses a
 		// concurrent turn, so waiting here is what turns a refusal into a
 		// usable experience.
@@ -498,6 +540,12 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return p, nil
 
 	case errMsg:
+		// A stream that has been replaced is allowed to end. Reporting its
+		// ending as this session's fatal error is how switching sessions became
+		// a way to quit.
+		if !p.fromCurrentStream(msg.gen) {
+			return p, nil
+		}
 		p.fatal = msg.err.Error()
 		return p, tea.Quit
 
@@ -513,6 +561,12 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return p, nil
 
 	case streamClosedMsg:
+		// And it is not re-armed: whoever attached started the reader for the
+		// stream that replaced this one, and arming a second would put two
+		// readers on the same channels.
+		if !p.fromCurrentStream(msg.gen) {
+			return p, nil
+		}
 		return p, tea.Quit
 
 	case tea.KeyPressMsg:
@@ -1216,7 +1270,10 @@ func (p *program) steer(text string) tea.Cmd {
 		if errors.As(err, &perr) && perr.Code == protocol.CodeNoActiveTurn {
 			return steerLateMsg{text}
 		}
-		return errMsg{err}
+		// Not a subscription message: it is this call failing, and it belongs
+		// to no stream. Generation zero, which fromCurrentStream reads as
+		// current because there is nothing for it to be stale against.
+		return errMsg{err: err}
 	}
 }
 
@@ -1229,7 +1286,7 @@ func (p *program) steer(text string) tea.Cmd {
 func (p *program) shell(command string) tea.Cmd {
 	return func() tea.Msg {
 		if err := p.opts.Transport.Exec(p.ctx, p.opts.SessionID, command); err != nil {
-			return errMsg{err}
+			return errMsg{err: err}
 		}
 		return nil
 	}
@@ -1245,7 +1302,7 @@ func (p *program) update() tea.Cmd {
 	return func() tea.Msg {
 		res, err := p.opts.Update(p.ctx)
 		if err != nil {
-			return errMsg{err}
+			return errMsg{err: err}
 		}
 		return updatedMsg{res}
 	}
@@ -1289,7 +1346,7 @@ func (p *program) submit(text string) tea.Cmd {
 	p.model.Attached = nil
 	return func() tea.Msg {
 		if err := p.opts.Transport.Submit(p.ctx, p.opts.SessionID, text, images...); err != nil {
-			return errMsg{err}
+			return errMsg{err: err}
 		}
 		return nil
 	}
@@ -1413,7 +1470,7 @@ func (p *program) newSession(model string) tea.Cmd {
 func (p *program) setMode(name string) tea.Cmd {
 	return func() tea.Msg {
 		if err := p.opts.Transport.SetMode(p.ctx, p.opts.SessionID, name); err != nil {
-			return errMsg{err}
+			return errMsg{err: err}
 		}
 		return nil
 	}

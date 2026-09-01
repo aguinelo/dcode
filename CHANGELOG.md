@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 158 decision changelogs |
+| spec families | 18, with 159 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Switching sessions could quit the client, and `/loop oi` was how it showed.**
+  The event reader captures its channels when the command is *built*, so the
+  reader watching the old session is still selecting on the old channels when
+  `attach` cancels them — and a closed channel is how a stream reports that it
+  ended. Untagged, that reached the case that quits.
+- **This was never about `/loop`.** `/clear`, `/model` and `/resume` attach the
+  same way and would have ended the same. The previous fix did not introduce the
+  defect; it made the defect **reachable**, because `/loop <word>` used to fail
+  before it got as far as switching sessions. The two readings have different
+  repairs, and taking the first would have meant reverting the right fix.
+- **Each subscription is numbered**, and the three messages it produces carry
+  the number. The check happens in the update loop, which is single-threaded:
+  reading the current generation from inside the command would be a data race
+  with the loop that writes it. A replaced stream's message is dropped and does
+  **not** re-arm the reader — whoever attached already started the reader for
+  the stream that replaced it. The current stream ending still quits: the rule
+  is about which stream, not about never quitting.
 - **The status bar says which build is running.** A local build and a released
   one behave differently and presented identically, so the only way to tell was
   to leave the session and ask `--version`. The version string already said
