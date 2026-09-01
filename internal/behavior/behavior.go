@@ -137,15 +137,33 @@ func Build(p Prompt, f Formulation) (string, error) {
 	writeBlock(&b, f, "Using tools", p.Doctrine.ToolPolicy)
 	writeBlock(&b, f, "Style", p.Doctrine.Style)
 
-	if len(p.SkillIndex) > 0 {
+	// Always, even with none installed, and the reason is a real answer this
+	// product gave: asked to install a skill, the model said it could not,
+	// because skills are something it knows from elsewhere and it had been told
+	// nothing about them here. The section used to render only when one existed,
+	// so a workspace with none left the model to answer from training — and it
+	// answered confidently and wrongly about the product it is.
+	//
+	// The cost is two lines of prefix per turn. The alternative was the product
+	// misinforming the person about itself, which is the more expensive of the
+	// two. It stays two lines: where they live and what writing one does, never
+	// a manual — RN-7's economics are why the bodies are not here either.
+	{
 		entries := make([]SkillIndexEntry, len(p.SkillIndex))
 		copy(entries, p.SkillIndex)
 		sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 
 		var s strings.Builder
-		s.WriteString("Load one of these only when the situation matches.\n")
-		for _, e := range entries {
-			fmt.Fprintf(&s, "\n- **%s** — %s", e.Name, e.WhenToUse)
+		s.WriteString("Skills are markdown files under `.dcode/skills/` in the workspace " +
+			"and `skills/` in the user's dcode directory, each with a `when_to_use` line. " +
+			"Writing one is an ordinary file write, and it is indexed from the next session.\n")
+		if len(entries) == 0 {
+			s.WriteString("\nNone are installed.")
+		} else {
+			s.WriteString("\nLoad one of these only when the situation matches.\n")
+			for _, e := range entries {
+				fmt.Fprintf(&s, "\n- **%s** — %s", e.Name, e.WhenToUse)
+			}
 		}
 		writeBlock(&b, f, "Skills", s.String())
 	}

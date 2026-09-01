@@ -98,6 +98,14 @@ Skill entra no prefixo como **uma linha** descrevendo quando usá-la. O corpo é
 
 Carregar todo corpo de skill no prefixo é o caminho mais rápido para um prompt de dezenas de milhares de tokens pago em todo turno, com atenção diluída.
 
+**O bloco de skills é renderizado sempre, mesmo com nenhuma instalada.** Ele dizia apenas "carregue uma destas quando a situação bater", e só aparecia quando já havia alguma — então um workspace sem skill nenhuma não contava ao modelo que o mecanismo existe.
+
+O resultado foi uma resposta que o produto de fato deu: pedido para instalar uma skill, o agente respondeu que **não conseguia**, que skills são coisa do Claude Code e não se instalam a partir dali. É falso sobre o produto que ele é — escrever em `<workspace>/.dcode/skills/` é escrita dentro do workspace, que nem aprovação pede. Sem informação, ele respondeu pelo treino, com confiança.
+
+O bloco passa a dizer duas coisas: **onde as skills moram** e **o que escrever uma faz** (é escrita de arquivo comum, indexada a partir da sessão seguinte). Duas linhas, nunca um manual — a economia da RN-7 é a mesma que mantém os corpos fora do prefixo, e o que ela compra aqui é a alternativa não ser o produto desinformando a pessoa sobre ele mesmo.
+
+Cabeçalho vazio continua proibido pelo motivo de sempre: diferença de bytes contra uma sessão que nunca teve a seção erra o cache. Este bloco não é vazio — o conteúdo é fixo e idêntico entre sessões sem skill.
+
 **Skill que alcança a fronteira é retida e perguntada, nunca carregada às cegas.** Este é o único defeito de arquivo de skill que vira **pergunta**. Os outros são autor desatento; este é autor passando por cima da fronteira, e o corpo entra no turno sem ninguém ler antes.
 
 Recusar de saída seria o produto decidindo o que é da pessoa: fronteira e autorização são eixos separados (ADR-02), e este é o segundo. Aprovada, a skill carrega inteira. Negada, não carrega. **Sem ninguém para perguntar, não carrega** — a mesma regra que o laço já aplica a toda travessia, e pelo mesmo motivo: com ninguém a quem perguntar, a única alternativa a recusar é conceder em silêncio.

@@ -48,6 +48,8 @@ If you did not run it, do not say it works. Report what you executed and what ca
 
 ## Skills
 
+Skills are markdown files under `.dcode/skills/` in the workspace and `skills/` in the user's dcode directory, each with a `when_to_use` line. Writing one is an ordinary file write, and it is indexed from the next session.
+
 Load one of these only when the situation matches.
 
 - **debug** — chasing a failing test

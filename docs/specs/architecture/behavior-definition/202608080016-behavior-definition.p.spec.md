@@ -265,6 +265,7 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - O aviso de trabalho sem plano é emitido **uma vez**, some enquanto houver plano, e rearma quando o plano deixa de existir.
 - Nenhum lembrete carrega contagem no texto: número que varia entre execuções idênticas quebra a reprodutibilidade (RN-7 de `context-engine`).
 - Índice de skill contém apenas uma linha por skill; nenhum corpo (RN-7).
+- O bloco de skills é renderizado **mesmo sem nenhuma instalada**, e diz onde elas moram e o que escrever uma faz (RN-7).
 - Skill sem `triggers` só carrega com dois acertos **e** ao menos um numa palavra que nenhuma outra skill do índice carrega (RN-7).
 - Palavra vazia de português não conta como acerto — a lista cobre as duas línguas do produto, e não só uma delas (RN-7).
 - Vizinhas de um mesmo domínio continuam alcançáveis: compartilhar a palavra do domínio não torna nenhuma delas inatingível (RN-7).
