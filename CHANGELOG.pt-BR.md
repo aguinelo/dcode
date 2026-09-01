@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 147 changelogs de decisão |
+| famílias de spec | 18, com 148 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **18** |
-| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -121,6 +121,25 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A skill carrega pelo que a distingue, não pelo que ela tem em comum.** A
+  lista de palavras vazias tinha só inglês, num produto cujo `LANGUAGE.md`
+  declara duas línguas e cujo usuário escreve prompt em português: `quando`,
+  `projeto` e `estiver` contavam como significativas enquanto `when` e `that`
+  não, então a mesma frase era filtrada numa língua e puxava corpo inteiro de
+  skill na outra. "quando o projeto estiver pronto me avisa" carregava duas
+  skills, e nenhuma delas era sobre nada daquela frase.
+- **A lista de português sozinha não resolveu.** `projeto` e `versão` são
+  palavras de conteúdo, aparecem nas duas linhas de quando-usar, e dois acertos
+  continuam sendo dois acertos. O defeito não é a palavra ser comum na língua — é
+  ela ser comum **entre as skills do índice**, e palavra que as duas dizem não
+  distingue nenhuma. `Match` passa a exigir dois acertos **e** ao menos um numa
+  palavra que nenhuma outra skill do índice carrega. Uma skill sozinha discrimina
+  por tudo o que diz, que é a resposta certa: sem vizinha, não há com o que se
+  confundir.
+- **Vizinhas de um mesmo domínio continuam alcançáveis.** `release-go` e
+  `release-node` dizem as duas cortar, versão e nova, e cada uma ainda tem
+  `golang` e `typescript` — o que uma regra mais grosseira, de simplesmente
+  descartar palavra compartilhada, teria quebrado.
 - **A capa diz o que foi medido, e uma guarda conta.** O README ainda afirmava
   que não havia TUI nem binário publicado, quatro meses e dezessete minors
   depois de as duas coisas deixarem de ser verdade; o badge dizia dez specs

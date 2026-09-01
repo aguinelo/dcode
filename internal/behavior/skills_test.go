@@ -194,3 +194,68 @@ func TestRenderSkillMarksTheChannel(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+// The stop list was English only, in a product whose users write prompts in
+// Portuguese. `quando`, `projeto` and `estiver` counted as significant words,
+// two of them were enough, and a task about nothing in particular loaded whole
+// skill bodies into the turn.
+func TestMatchDoesNotFireOnPortugueseFillerWords(t *testing.T) {
+	skills := []Skill{
+		{Name: "release", WhenToUse: "quando for cortar uma versão nova do projeto", Body: "x"},
+		{Name: "deploy", WhenToUse: "para publicar o projeto quando a versão estiver pronta", Body: "y"},
+	}
+	for _, task := range []string{
+		"quando o projeto estiver pronto me avisa",
+		"olha esse projeto e me diz quando a versão sobe",
+	} {
+		if got := Match(task, skills); len(got) != 0 {
+			t.Errorf("%q loaded %s on filler words alone", task, names(got))
+		}
+	}
+}
+
+// The words a skill shares with its neighbours cannot be what selects it: two
+// skills that both say "projeto" and "versão" are indistinguishable by them, so
+// a match needs at least one word that belongs to this skill and not the others.
+func TestMatchNeedsAWordThatBelongsToThisSkillAlone(t *testing.T) {
+	skills := []Skill{
+		{Name: "release", WhenToUse: "quando for cortar uma versão nova do projeto", Body: "x"},
+		{Name: "deploy", WhenToUse: "para publicar o projeto quando a versão estiver pronta", Body: "y"},
+	}
+	if got := Match("quero cortar uma versão nova", skills); len(got) != 1 || got[0].Name != "release" {
+		t.Errorf("the discriminating words are cortar and nova, got %s", names(got))
+	}
+	if got := Match("quero publicar essa versão", skills); len(got) != 1 || got[0].Name != "deploy" {
+		t.Errorf("the discriminating word is publicar, got %s", names(got))
+	}
+	// One discriminating word is still one word. The two-hit rule is older than
+	// this fix and it is the reason a task that merely mentions a subject does
+	// not drag a body in; `triggers` is the escape hatch for a skill that wants
+	// to fire on a single term.
+	if got := Match("como faço para publicar isso", skills); len(got) != 0 {
+		t.Errorf("one word is not enough even when it discriminates, got %s", names(got))
+	}
+}
+
+// Sharing a word must not make two neighbours unreachable: skills in the same
+// domain say the same domain word, and each still has its own.
+func TestSkillsInTheSameDomainStayReachable(t *testing.T) {
+	skills := []Skill{
+		{Name: "release-go", WhenToUse: "cortar uma versão nova do módulo golang", Body: "x"},
+		{Name: "release-node", WhenToUse: "cortar uma versão nova do pacote typescript", Body: "y"},
+	}
+	if got := Match("quero cortar uma versão nova do golang", skills); len(got) != 1 || got[0].Name != "release-go" {
+		t.Errorf("got %s, want release-go alone", names(got))
+	}
+}
+
+func names(ss []Skill) string {
+	out := ""
+	for _, s := range ss {
+		out += s.Name + " "
+	}
+	if out == "" {
+		return "(nothing)"
+	}
+	return out
+}

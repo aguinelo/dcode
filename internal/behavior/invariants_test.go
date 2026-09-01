@@ -34,6 +34,9 @@ var behaviorInvariants = map[string]string{
 	"Nenhum lembrete aparece no prefixo": "TestNoReminderTextEverReachesThePrefix",
 	"idêntico entre emissões":            "TestEmitNormalisesOrderAndDuplicates",
 	"apenas uma linha por skill":         "TestIndexCarriesOnlyTheLine",
+	"numa palavra que nenhuma outra":     "TestMatchNeedsAWordThatBelongsToThisSkillAlone",
+	"Palavra vazia de português":         "TestMatchDoesNotFireOnPortugueseFillerWords",
+	"Vizinhas de um mesmo domínio":       "TestSkillsInTheSameDomainStayReachable",
 	"famílias distintas produzem":        "TestTwoFamiliesProduceDifferentPrompts",
 
 	// The doctrine overlay, whose whole point is what it cannot reach.

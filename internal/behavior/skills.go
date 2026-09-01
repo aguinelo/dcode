@@ -195,12 +195,19 @@ func IndexCapped(skills []Skill, max int) []SkillIndexEntry {
 // session identical to the live one.
 //
 // An explicit `triggers` list is matched as a phrase. Without one, the
-// when-to-use line is matched on its own significant words, and two distinct
-// hits are required — a single common word would load a skill into a task that
-// merely mentioned it in passing.
+// when-to-use line is matched on its own significant words, and two conditions
+// have to hold together: two distinct hits, and at least one of them on a word
+// that belongs to this skill and to no other in the index.
+//
+// The second condition is what the first alone could not do. Two skills that
+// both say "projeto" and "versão" are not told apart by those words, so a task
+// mentioning both was loading both bodies. Requiring a discriminating hit also
+// keeps neighbours in one domain reachable — they share the domain word and
+// each still has its own.
 func Match(task string, skills []Skill) []Skill {
 	lower := strings.ToLower(task)
 	words := significantWords(lower)
+	own := discriminating(skills)
 
 	var out []Skill
 	for _, s := range skills {
@@ -217,15 +224,47 @@ func Match(task string, skills []Skill) []Skill {
 			}
 			continue
 		}
-		hits := 0
+		hits, distinct := 0, false
 		for w := range significantWords(strings.ToLower(s.WhenToUse)) {
-			if _, ok := words[w]; ok {
-				hits++
+			if _, ok := words[w]; !ok {
+				continue
+			}
+			hits++
+			if _, ok := own[s.Name][w]; ok {
+				distinct = true
 			}
 		}
-		if hits >= 2 {
+		if hits >= 2 && distinct {
 			out = append(out, s)
 		}
+	}
+	return out
+}
+
+// discriminating maps each skill to the significant words of its when-to-use
+// line that no other skill's when-to-use carries.
+//
+// A single installed skill discriminates by everything it says, which is the
+// right answer: with no neighbour there is nothing to be confused with.
+func discriminating(skills []Skill) map[string]map[string]struct{} {
+	seen := map[string]int{}
+	per := make(map[string]map[string]struct{}, len(skills))
+	for _, s := range skills {
+		w := significantWords(strings.ToLower(s.WhenToUse))
+		per[s.Name] = w
+		for word := range w {
+			seen[word]++
+		}
+	}
+	out := make(map[string]map[string]struct{}, len(skills))
+	for name, w := range per {
+		own := map[string]struct{}{}
+		for word := range w {
+			if seen[word] == 1 {
+				own[word] = struct{}{}
+			}
+		}
+		out[name] = own
 	}
 	return out
 }
@@ -237,6 +276,16 @@ func RenderSkill(s Skill) string {
 }
 
 // stopWords are the words too common to carry meaning in a trigger match.
+//
+// Both languages this product is written in, because the list used to hold only
+// one of them. `quando`, `projeto` and `estiver` counted as significant, two of
+// them were enough, and a Portuguese task about nothing in particular pulled
+// whole skill bodies into the turn — while the same sentence in English was
+// protected by `when` and `that` being on the list.
+//
+// A per-language list only ever covers the languages on it. What covers the
+// rest is the `triggers` field, which is matched as a phrase and never goes
+// through here.
 var stopWords = map[string]struct{}{}
 
 func init() {
@@ -245,6 +294,15 @@ between both could does each from have here into just like made make more most
 much must only other over same should some such than that their them then there
 these they this those through under were what when where which while will with
 would your`) {
+		stopWords[w] = struct{}{}
+	}
+	for _, w := range strings.Fields(`agora ainda algum alguma antes apenas
+aquele aquela assim ates cada coisa como dele dela deles delas depois dessa
+desse desta deste enquanto entao entre esse essa esta este estar estava esteja
+estiver estou fazer feito ficar foram forem isso isto mais menos mesmo muito
+nada nossa nosso onde outra outro para pela pelo pode podem pois porque pouco
+pronta pronto qual quando quanto seja sempre sendo ser sobre sua suas teve tudo
+voce`) {
 		stopWords[w] = struct{}{}
 	}
 }
