@@ -45,11 +45,157 @@ func RenderStatusBar(m Model, g Geometry) string {
 	// somewhere else goes before what exists nowhere else. The diff is on the
 	// diff of the turn; where you are, and what is blocked on you, are not.
 	for {
-		if fits(segs, g.Width) || !dropOne(&segs) {
+		if !fits(segs, g.Width) {
+			if !dropOne(&segs) {
+				break
+			}
+			continue
+		}
+		// It fits, and the path still has nowhere to go. Give up only what the
+		// path outranks — the key hints, which `?` restates in full.
+		//
+		// Taking the leftover space alone was not enough: the segments fit at
+		// eighty cells and left nine, so the path vanished between roughly
+		// seventy and ninety-five and came back below it, once the hints were
+		// dropped for width. It disappeared at the one width most terminals
+		// actually are, and reappeared as the window got smaller.
+		if roomForPath(segs, g.Width) || !dropOneAbove(&segs, pathOutranks) {
 			break
 		}
 	}
-	return assemble(segs, g)
+	return withWorkspacePath(assemble(segs, g), m, g)
+}
+
+// pathOutranks is the drop order the path beats.
+//
+// Above the key hints, which `?` restates in full, and below everything else:
+// the diff, the position and the mode are each the only place their fact
+// appears, and a bar that keeps a path by dropping what changed has chosen the
+// address over the news.
+const pathOutranks = 3
+
+// roomForPath reports whether the bar could still draw a usable path.
+func roomForPath(segs []segment, width int) bool {
+	return barWidth(segs)+minPathCells+2 <= width
+}
+
+// dropOneAbove gives up the most expendable segment ranked above a floor, and
+// reports whether it could.
+func dropOneAbove(segs *[]segment, floor int) bool {
+	worst, at := floor, -1
+	for i, s := range *segs {
+		if s.drop > worst {
+			worst, at = s.drop, i
+		}
+	}
+	if at < 0 {
+		return false
+	}
+	*segs = append((*segs)[:at], (*segs)[at+1:]...)
+	return true
+}
+
+// minPathCells is the narrowest a path may be drawn at.
+//
+// Below this it is an ellipsis and two letters, which answers nothing and costs
+// the room the segments were dropped to free.
+const minPathCells = 14
+
+// withWorkspacePath puts the working directory at the right-hand end, in
+// whatever the bar has left.
+//
+// The worktree segment on the left carries the BASE name, and that is the fast
+// answer — until two checkouts share one. `dcode` and `dcode` in different
+// parents read identically, and the session that ran in the wrong one looks
+// exactly like the session that ran in the right one.
+//
+// Right-aligned rather than appended, because it is a standing fact about the
+// window and not another segment competing in the flow. It is drawn only when
+// there is room after everything droppable has already gone: it is the most
+// reconstructible thing on the line — `pwd` answers it — so it gives way to
+// anything that exists nowhere else.
+func withWorkspacePath(left string, m Model, g Geometry) string {
+	if strings.TrimSpace(m.Workspace) == "" {
+		return left
+	}
+	used := visibleWidth(left)
+	room := g.Width - used - 2 // a cell of air on each side
+	if room < minPathCells {
+		return left
+	}
+	path := elideLeft(m.Workspace, room, g.Unicode)
+	gap := g.Width - used - visibleWidth(path) - 1
+	if gap < 1 {
+		return left
+	}
+	return left + strings.Repeat(" ", gap) + g.Palette.Apply(StyleHint, path)
+}
+
+// elideLeft drops the FRONT of a path rather than the back.
+//
+// The tail is what distinguishes two worktrees; the head is what they have in
+// common. `/Users/…/dreibox/dcode` cut from the right becomes `/Users/agui…`,
+// which is the half every path on the machine shares.
+func elideLeft(s string, w int, unicode bool) string {
+	if visibleWidth(s) <= w {
+		return s
+	}
+	mark := "…"
+	if !unicode {
+		mark = "..."
+	}
+	keep := w - visibleWidth(mark)
+	if keep <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	out := ""
+	for i := len(r) - 1; i >= 0; i-- {
+		next := string(r[i]) + out
+		if visibleWidth(next) > keep {
+			break
+		}
+		out = next
+	}
+	return mark + out
+}
+
+// WindowTitle is what the terminal window is called.
+//
+// The session's name when someone gave it one, its derived title when they did
+// not, and where it is running when there is neither. All three answer the
+// question a row of identical terminal tabs asks, and the name is the best
+// answer because it is the only one a person chose.
+//
+// Pure over the model, like everything else that draws here: the title is a
+// field of the view, not an escape written on the side.
+func WindowTitle(m Model) string {
+	for _, s := range m.Sessions {
+		if s.ID != m.SessionID {
+			continue
+		}
+		if n := strings.TrimSpace(s.Name); n != "" {
+			return "dcode · " + n
+		}
+		if t := strings.TrimSpace(s.Title); t != "" {
+			return "dcode · " + t
+		}
+		break
+	}
+	if base := workspaceName(m.Workspace); base != "" {
+		return "dcode · " + base
+	}
+	return "dcode"
+}
+
+// workspaceName is the short name of a workspace: its last path element, or the
+// whole thing when that says nothing.
+func workspaceName(workspace string) string {
+	name := filepath.Base(strings.TrimRight(workspace, string(filepath.Separator)))
+	if name == "" || name == "." || name == string(filepath.Separator) {
+		return workspace
+	}
+	return name
 }
 
 // segment is one region of the bar.
@@ -69,10 +215,7 @@ type segment struct {
 // information; with forty it is the most expensive thing on the screen, and the
 // bar is where a person looks to answer it without moving.
 func worktreeSegment(m Model, g Geometry) segment {
-	name := filepath.Base(strings.TrimRight(m.Workspace, string(filepath.Separator)))
-	if name == "" || name == "." || name == string(filepath.Separator) {
-		name = m.Workspace
-	}
+	name := workspaceName(m.Workspace)
 	mark := "⎇"
 	if !g.Unicode {
 		mark = "wt"

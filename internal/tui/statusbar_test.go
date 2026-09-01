@@ -163,3 +163,102 @@ func TestTheBarIsTheLastLineOfEveryScreen(t *testing.T) {
 		}
 	}
 }
+
+// The bar carries the working directory at its right-hand end.
+//
+// The worktree segment on the left carries the BASE name, which is the fast
+// answer until two checkouts share one: `dcode` under two different parents
+// reads identically, and the session that ran in the wrong one looks exactly
+// like the session that ran in the right one.
+func TestTheBarSaysWhichDirectoryYouAreIn(t *testing.T) {
+	m := NewModel("s", "/Users/x/work/dreibox/dcode", "m", "workspace-write", En)
+	got := RenderStatusBar(m, DefaultGeometry(200, 40))
+	if !strings.Contains(got, "/Users/x/work/dreibox/dcode") {
+		t.Errorf("the bar does not say where it is running:\n%s", got)
+	}
+	// At the right-hand end, not in the middle of the segments.
+	if i, j := strings.Index(got, "/Users/x"), strings.Index(got, "NAV"); i < j {
+		t.Errorf("the path is left of the segments; it belongs at the end:\n%s", got)
+	}
+}
+
+// It is elided from the FRONT. The tail distinguishes two worktrees; the head
+// is what every path on the machine shares.
+func TestALongPathKeepsItsTail(t *testing.T) {
+	long := "/Users/aguinelo/very/deeply/nested/place/dreibox/dcode"
+	got := elideLeft(long, 20, true)
+	if visibleWidth(got) > 20 {
+		t.Errorf("%q is %d cells, over 20", got, visibleWidth(got))
+	}
+	if !strings.HasSuffix(got, "dcode") {
+		t.Errorf("the tail was cut instead of the head: %q", got)
+	}
+	if !strings.HasPrefix(got, "…") {
+		t.Errorf("the cut is not marked: %q", got)
+	}
+	if ascii := elideLeft(long, 20, false); strings.Contains(ascii, "…") {
+		t.Errorf("a terminal without unicode got the ellipsis rune: %q", ascii)
+	}
+}
+
+// The path does not vanish as the terminal gets WIDER.
+//
+// Taking the leftover space alone was not enough. At eighty cells the segments
+// fit and left nine, so the path was dropped — while at sixty, where the hints
+// had already gone for width, it was drawn. It disappeared at the one width
+// most terminals actually are, and came back as the window shrank.
+//
+// It now outranks the key hints, which `?` restates in full, and yields to
+// everything else on the bar.
+func TestThePathDoesNotVanishAsTheTerminalWidens(t *testing.T) {
+	m := NewModel("s", "/Users/x/work/dreibox/dcode", "m", "workspace-write", En)
+	shown := func(w int) bool {
+		return strings.Contains(RenderStatusBar(m, DefaultGeometry(w, 40)), "dreibox/dcode")
+	}
+	for w := 30; w <= 200; w += 2 {
+		if !shown(w) {
+			t.Fatalf("the path is missing at %d cells, and present at 30", w)
+		}
+	}
+}
+
+// And the bar stays one line, inside the terminal, at every width.
+func TestTheBarNeverOutgrowsTheTerminal(t *testing.T) {
+	m := NewModel("s", "/Users/x/work/dreibox/dcode", "m", "workspace-write", En)
+	for w := 8; w <= 200; w++ {
+		got := RenderStatusBar(m, DefaultGeometry(w, 40))
+		if visibleWidth(got) > w {
+			t.Fatalf("the bar is %d cells on a %d-cell terminal: %q",
+				visibleWidth(got), w, stripANSI(got))
+		}
+		if strings.Contains(got, "\n") {
+			t.Fatalf("the bar wrapped at %d cells", w)
+		}
+		if !strings.Contains(got, "dcode") {
+			t.Fatalf("at %d cells it dropped where you are, which nothing else carries: %q",
+				w, stripANSI(got))
+		}
+	}
+}
+
+// The window title is the session's name when it has one.
+func TestTheWindowTitleIsTheSessionName(t *testing.T) {
+	m := NewModel("s1", "/Users/x/dcode", "m", "workspace-write", En)
+	m.Sessions = []SessionChoice{{ID: "s1", Name: "a família de skills"}}
+	if got := WindowTitle(m); !strings.Contains(got, "a família de skills") {
+		t.Errorf("got %q, want the name the person chose", got)
+	}
+
+	// A derived title when nobody named it.
+	m.Sessions = []SessionChoice{{ID: "s1", Title: "arrumar o matcher"}}
+	if got := WindowTitle(m); !strings.Contains(got, "arrumar o matcher") {
+		t.Errorf("got %q, want the derived title", got)
+	}
+
+	// And where it is running when there is neither. A row of tabs all called
+	// `dcode` answers nothing, which is the whole point.
+	m.Sessions = nil
+	if got := WindowTitle(m); !strings.Contains(got, "dcode") {
+		t.Errorf("got %q, want at least where it is", got)
+	}
+}

@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 160 changelogs de decisão |
+| famílias de spec | 18, com 161 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
@@ -121,6 +121,23 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A barra inferior carrega o diretório corrente, na ponta direita.** O
+  segmento de worktree sempre teve o nome base, que é a resposta rápida até dois
+  checkouts terem o mesmo — `dcode` sob dois pais lê idêntico, e a sessão que
+  rodou no lugar errado parece a que rodou no certo. Ele é elidido pela
+  **frente**: a cauda distingue dois worktrees, a cabeça é o que todos os
+  caminhos da máquina compartilham.
+- **Ele não some ao terminal alargar.** A primeira versão pegava só a sobra,
+  então em oitenta colunas os segmentos cabiam e sobravam nove e o caminho era
+  descartado — enquanto em sessenta, onde as dicas já tinham caído, ele era
+  desenhado. Sumia na largura que a maioria dos terminais tem e voltava conforme
+  a janela encolhia. Agora ele supera as dicas de tecla, que o `?` reapresenta
+  por inteiro, e cede ao diff, à posição e ao modo, cada um o único lugar onde
+  aquele fato aparece. O teste varre de 30 a 200 colunas, porque o defeito era
+  não-monotônico e asserção numa largura só teria passado nas duas pontas.
+- **O título da janela é o nome da sessão**, o título derivado quando ninguém a
+  nomeou, e onde ela roda quando não há nem um nem outro. Uma fileira de abas
+  todas chamadas `dcode` não responde nada.
 - **A proposta era escrita antes de o turno rodar.** A sessão de qualificação
   abria com o briefing certo e respondia *"nothing was proposed for
   1a05dd01b2…"* — antes de o modelo terminar de pensar, que é o sinal. O gatilho

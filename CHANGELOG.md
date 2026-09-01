@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 160 decision changelogs |
+| spec families | 18, with 161 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The bottom bar carries the working directory, at its right-hand end.** The
+  worktree segment always had the base name, which is the fast answer until two
+  checkouts share one — `dcode` under two parents reads identically, and the
+  session that ran in the wrong one looks like the session that ran in the right
+  one. It elides from the **front**: the tail distinguishes two worktrees, the
+  head is what every path on the machine shares.
+- **It does not vanish as the terminal gets wider.** The first version took only
+  leftover space, so at eighty cells the segments fit and left nine and the path
+  was dropped — while at sixty, where the hints had already gone, it was drawn.
+  It disappeared at the width most terminals are and came back as the window
+  shrank. It now outranks the key hints, which `?` restates in full, and yields
+  to the diff, the position and the mode, each the only place its fact appears.
+  The test sweeps 30 to 200 cells, because the defect was non-monotonic and an
+  assertion at one width would have passed at both ends.
+- **The window title is the session's name**, its derived title when nobody
+  named it, and where it is running when there is neither. A row of terminal
+  tabs all called `dcode` answers nothing.
 - **The proposal was written before the turn had run.** A qualifying session
   opened with the right brief and answered *"nothing was proposed for
   1a05dd01b2…"* — before the model had finished thinking, which is the tell. The
