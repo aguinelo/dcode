@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 156 decision changelogs |
+| spec families | 18, with 157 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`/loop oi` still failed, and RN-8 never reached it.** `specArgument` reads a
+  single word as a path, always — so the rule that a goal with no folder gets
+  qualified applied from two words up. One word opened a session against a path
+  that was never there, and the daemon answered with a raw read error carrying
+  the absolute path twice. A bare word that names no folder the survey found is
+  now a goal. The separator decides: someone who wrote `specs/hoem` meant a path,
+  and a typo answered by qualifying it is a typo hidden, so that stays an error.
 - **A goal with no spec folder is qualified, not refused.** `/loop revise o
   projeto até entender` answered *"no specs/ folder here, or nothing in it.
   /loop `<path>` works on one folder"* — the command telling someone their

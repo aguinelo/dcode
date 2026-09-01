@@ -125,6 +125,8 @@ var loopCommandInvariants = map[string]string{
 	"nunca em pasta derivada da frase":       "TestTheHandlerDivertsAGoalWithNoFoldersInsteadOfRefusing",
 	"**nomeia a frase**":                     "TestTheQualifyingTurnForAGoalNamesTheSentence",
 	"continua desenhando o plano":            "TestTheHandlerStillDrawsThePlanWhenFoldersExist",
+	"vira **objetivo qualificado**":          "TestLoopOneDivertsABareWordThatNamesNothing",
+	"qualificar um caminho digitado errado":  "TestAMistypedPathIsNotQualifiedAway",
 	"sem nenhuma linha de tarefa":            "TestLoadSpecWithoutTaskLinesIsAnError",
 	"declaração de zero critérios":           "TestLoadSpecZeroCriteriaIsNotAnError",
 	"não é sintaxe":                          "TestLoadSpecSeparatorIsNotSyntax",
