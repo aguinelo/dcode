@@ -133,7 +133,7 @@ func TestAFixtureOverlaysTheSharedWorkspace(t *testing.T) {
 // Every scenario gets the shared workspace without asking for it.
 func TestEveryFixtureCarriesAWorkspace(t *testing.T) {
 	for _, c := range Contracts {
-		f, err := LoadFixture(FixtureRoot, c.ID)
+		f, err := LoadFixture(FixtureRoot, c.FixtureID())
 		if err != nil {
 			t.Errorf("%s: %v", c.ID, err)
 			continue

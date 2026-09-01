@@ -6,7 +6,7 @@
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
 ![Cobertura](https://img.shields.io/badge/cobertura-93%2C3%25-success)
 ![Specs](https://img.shields.io/badge/specs-18%20fam%C3%ADlias-informational)
-![Contratos](https://img.shields.io/badge/contratos-19%20medidos%20%2F%2058%20declarados-orange)
+![Contratos](https://img.shields.io/badge/contratos-20%20medidos%20%2F%2059%20declarados-orange)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
 <img src="docs/brand/mascot.svg" width="72" align="right" alt="mascote do dcode">
@@ -16,9 +16,9 @@ não conquistou.**
 
 Todo agente de terminal entrega comportamento como texto de prompt e torce. O dcode
 entrega como **contrato com limiar**, roda contra um modelo de verdade, e anota o que
-voltou — o 98% e o 5% do mesmo jeito.
+voltou — o 98% e o 35% do mesmo jeito.
 
-Hoje: **58 contratos declarados, 19 de fato medidos.** Essa razão está na capa de
+Hoje: **59 contratos declarados, 20 de fato medidos.** Essa razão está na capa de
 propósito. É o número mais incômodo deste repositório e o único honesto.
 
 > **Estado.** Publicado e instalável. O daemon, o cliente de terminal, o laço do
@@ -105,12 +105,19 @@ tabela que alguém mantém.
 | `qualifier-declares-regression` | 80% | 20 | MiniMax-M3 |
 | `delegates-writing-when-disjoint` | 50% | 50 | MiniMax-M3 |
 | `floor-says-it-once` | 50% | 20 | MiniMax-M3 |
-| **`floor-yields-to-project`** | **5%** | 20 | MiniMax-M3 |
+| **`floor-yields-to-project`** | **70%** | 20 | MiniMax-M3 |
+| **`floor-names-what-it-yields-to`** | **35%** | 20 | MiniMax-M3 |
 
-**A última linha fica.** É a mesma regra do `floor-yields-to-user`, que marca 96% — a
-única diferença é se a instrução chega no turno ou vem de um arquivo do projeto.
-Posição no prefixo não era precedência. Isso precisa de mecanismo, não de texto melhor,
-e não vai melhorar sozinho enquanto ninguém olha.
+**As duas últimas linhas ficam.** Eram um contrato só até 1º de setembro, e o
+número dele era o produto delas — 70% × 35% lia 15%, que não descreve nenhuma das
+metades e parece fracasso das duas. Juiz conjuntivo reporta produto, e produto
+não é achado.
+
+Separadas, cada uma diz alguma coisa. Obedecer arquivo de projeto marca 70% onde
+a **mesma regra vinda do turno** marca 96%: vinte e seis pontos dizendo que
+posição no prefixo não é precedência, e isso pede mecanismo, não texto melhor.
+Nomear a instrução marca 35%, e a doutrina pede que a sobreposição seja obedecida
+**e** dita uma vez. Dois defeitos diferentes; corrigir um não move o outro.
 
 **Cinco vezes numa semana uma taxa baixa era o instrumento, não o modelo** — um juiz
 casando pelo campo errado, um teto de rodadas que encerrava execuções ainda
@@ -119,7 +126,7 @@ número parecia afirmação sobre o modelo e era afirmação sobre o cenário. �
 medir compra, e que uma segunda opinião não compra: um revisor teria concordado com as
 cinco.
 
-Cinquenta e três dos 58 precisam de modelo para serem respondidos; cinco se resolvem
+Cinquenta e quatro dos 59 precisam de modelo para serem respondidos; cinco se resolvem
 por asserção. Os 34 contratos que nunca rodaram contra um são a razão do badge. Cada um
 custa chamadas reais a um modelo real, e o número só anda gastando isso.
 
@@ -587,7 +594,7 @@ A cobertura é **93,3%**, o gate é 90% agregado **e por pacote**, e a suíte ro
 
 **O que está aberto, na ordem do quanto incomoda.**
 
-1. **`floor-yields-to-project` em 5%.** Instrução de projeto não governa o piso embutido
+1. **`floor-yields-to-project` em 15%.** Instrução de projeto não governa o piso embutido
    como o prompt do usuário governa. Mesma regra, lugar diferente. Precisa de mecanismo.
 2. **40 contratos declarados e nunca medidos.** Cada um custa chamadas reais ao modelo.
 3. Múltiplos providers, MCP, plugins, sessão compartilhada, desktop, IDE.

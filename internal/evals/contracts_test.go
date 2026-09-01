@@ -145,7 +145,7 @@ func TestEveryFixtureHasAJudge(t *testing.T) {
 // nothing and hides that it does.
 func TestEveryJudgeHasItsFixture(t *testing.T) {
 	for _, c := range Contracts {
-		if _, err := LoadFixture(FixtureRoot, c.ID); err != nil {
+		if _, err := LoadFixture(FixtureRoot, c.FixtureID()); err != nil {
 			t.Errorf("%s is judged and its material does not load: %v", c.ID, err)
 		}
 	}
@@ -496,7 +496,7 @@ func TestNoJudgeNamesAToolItsScenarioDoesNotOffer(t *testing.T) {
 		if _, exempt := judgesOnAbsence[id]; exempt {
 			continue
 		}
-		f, err := LoadFixture(FixtureRoot, id)
+		f, err := LoadFixture(FixtureRoot, c.FixtureID())
 		if err != nil {
 			t.Errorf("%s: %v", id, err)
 			continue
@@ -875,7 +875,7 @@ func TestAnInjectedErrorNamesAToolTheScenarioOffers(t *testing.T) {
 		if len(c.InjectOn) == 0 {
 			continue
 		}
-		f, err := LoadFixture(FixtureRoot, c.ID)
+		f, err := LoadFixture(FixtureRoot, c.FixtureID())
 		if err != nil {
 			t.Errorf("%s: %v", c.ID, err)
 			continue
@@ -1121,7 +1121,7 @@ func TestAFixtureWithFilesOffersTheToolForFindingThem(t *testing.T) {
 		if !c.Measured() {
 			continue
 		}
-		f, err := LoadFixture(FixtureRoot, c.ID)
+		f, err := LoadFixture(FixtureRoot, c.FixtureID())
 		if err != nil {
 			t.Errorf("%s: %v", c.ID, err)
 			continue
@@ -1185,7 +1185,7 @@ func TestOnlyAScenarioThatNeedsTheShellIsOfferedOne(t *testing.T) {
 		if !c.Measured() {
 			continue
 		}
-		f, err := LoadFixture(FixtureRoot, c.ID)
+		f, err := LoadFixture(FixtureRoot, c.FixtureID())
 		if err != nil {
 			t.Errorf("%s: %v", c.ID, err)
 			continue

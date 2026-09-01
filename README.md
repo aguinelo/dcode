@@ -6,7 +6,7 @@
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
 ![Coverage](https://img.shields.io/badge/coverage-93.3%25-success)
 ![Specs](https://img.shields.io/badge/specs-18%20families-informational)
-![Contracts](https://img.shields.io/badge/contracts-19%20measured%20%2F%2058%20declared-orange)
+![Contracts](https://img.shields.io/badge/contracts-20%20measured%20%2F%2059%20declared-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <img src="docs/brand/mascot.svg" width="72" align="right" alt="dcode mascot">
@@ -16,9 +16,9 @@ has not earned yet.**
 
 Every terminal agent ships behaviour as prompt text and hopes. dcode ships it as
 **contracts with thresholds**, runs them against a real model, and writes down what
-came back — the 98% and the 5% alike.
+came back — the 98% and the 35% alike.
 
-Right now: **58 contracts declared, 19 actually measured.** That ratio is on the
+Right now: **59 contracts declared, 20 actually measured.** That ratio is on the
 front page on purpose. It is the most uncomfortable number in this repository and
 the only honest one.
 
@@ -106,12 +106,19 @@ reads, not a table someone keeps up to date.
 | `qualifier-declares-regression` | 80% | 20 | MiniMax-M3 |
 | `delegates-writing-when-disjoint` | 50% | 50 | MiniMax-M3 |
 | `floor-says-it-once` | 50% | 20 | MiniMax-M3 |
-| **`floor-yields-to-project`** | **5%** | 20 | MiniMax-M3 |
+| **`floor-yields-to-project`** | **70%** | 20 | MiniMax-M3 |
+| **`floor-names-what-it-yields-to`** | **35%** | 20 | MiniMax-M3 |
 
-**The last row stays.** It is the same rule as `floor-yields-to-user`, which reads
-96% — the only difference is whether the instruction arrives in the turn or from a
-project file. Position in the prefix turned out not to be precedence. It needs a
-mechanism, not better wording, and it will not quietly improve while nobody looks.
+**The last two rows stay.** They were one contract until 1 September, and its
+number was the product of theirs — 70% × 35% read as 15%, which describes neither
+half and looks like a failure of both. A conjunctive judge reports a product, and
+a product is not a finding.
+
+Apart, each says something. Obeying a project file runs at 70% where the *same
+rule from the turn* runs at 96%: twenty-six points that say position in the
+prefix is not precedence, and that needs a mechanism rather than better wording.
+Naming the instruction runs at 35%, and the doctrine asks for an override to be
+obeyed **and** stated once. Two different defects; fixing one moves neither.
 
 **Five times in one week a low score turned out to be the instrument, not the
 model** — a judge matching on the wrong field, a round ceiling that ended runs
@@ -120,7 +127,7 @@ the number looked like a statement about the model and was a statement about the
 scenario. That is what measuring buys you, and what a second opinion does not: a
 reviewer would have agreed with all five.
 
-Fifty-three of the 58 need a model to answer at all; five are settled by assertion.
+Fifty-four of the 59 need a model to answer at all; five are settled by assertion.
 The 34 contracts never run against one are the point of the badge. Each costs real
 calls to a real model, and the number only moves by spending them.
 
@@ -592,7 +599,7 @@ under `-race` on macOS and Linux, gated on the union of the profiles.
 
 **What is open, in order of how much it bothers us.**
 
-1. **`floor-yields-to-project` at 5%.** Project instructions do not govern the built-in
+1. **`floor-yields-to-project` at 15%.** Project instructions do not govern the built-in
    floor the way a user's prompt does. Same rule, different place. It needs a mechanism.
 2. **40 declared contracts never measured.** Each costs real model calls.
 3. Multiple providers, MCP, plugins, session sharing, desktop, IDE.

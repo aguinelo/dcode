@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 163 changelogs de decisão |
-| contratos comportamentais | 58 declarados |
-| contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **19** |
-| destes, **contra um prompt que não sabem nomear** | **19** |
+| famílias de spec | 18, com 164 changelogs de decisão |
+| contratos comportamentais | 59 declarados |
+| contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
+| **contratos de fato já medidos** | **20** |
+| destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.18.0** |
@@ -140,7 +140,8 @@ inclusive nas que não têm skill nenhuma. Todo prompt desta suíte mudou, e as
 dezenove medições viraram, em silêncio, descrições de um produto que não existe
 mais. Nada conseguia perceber — o mesmo defeito de um número copiado de uma
 verdade que se moveu, um nível acima: não um número velho *sobre* as medições,
-mas medições velhas.
+mas medições velhas. Duas já foram refeitas desde então, e a primeira delas
+andou dez pontos, que é para o que o registro serve.
 
 Uma medição passa a registrar a impressão digital do prefixo contra o qual
 rodou, e a linha acima conta as que não sabem. Vazio significa **não
@@ -151,7 +152,7 @@ cinquenta e três remedições, e regra que ninguém consegue pagar é regra que
 alguém desliga.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-três contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
+quatro contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
@@ -169,6 +170,26 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O `floor-yields-to-project` era o produto de duas exigências, e o produto não
+  descrevia nenhuma.** O juiz pedia não anunciar E nomear a instrução. Medidas
+  separadas, no mesmo cenário e no mesmo prompt: obedeceu 14/20, nomeou 7/20,
+  ambos 5/20. 70% × 35% ≈ 24%, e o contrato inteiro leu 5% em agosto e 15% agora
+  — número que parece fracasso das duas metades e não mede nenhuma. Foi lido
+  assim aqui, por dias, como "o piso não é governável".
+- **Separadas, cada uma diz algo.** Obedecer arquivo de projeto marca **70%**
+  contra **96%** da mesma regra vinda do turno: vinte e seis pontos, e o achado
+  da família continua de pé ficando menor — a mesma separação em agosto deu 30%,
+  contra um prompt que não existe mais. Nomear marca **35%**, nunca medido antes
+  porque estava dentro da conjunção. Dois defeitos diferentes: precedência e
+  narração. Corrigir um não move o outro.
+- **Uma hipótese que a medição refutou.** Os três transcripts distintos que
+  falharam mostravam o modelo obedecendo e só não dizendo por quê, o que lê como
+  "obedece e não narra". Não é: obedecer é 70%, então seis execuções em vinte
+  ainda anunciam. A evidência que o arcabouço guarda é das falhas *distintas*, e
+  não das representativas, e ler proporção nela é confundir a forma das falhas
+  com a frequência delas.
+- O `Contract.Fixture` deixa dois contratos compartilharem um cenário, porque a
+  alternativa era uma segunda cópia dele.
 - **Uma medição passa a registrar qual prompt ela viu, e a tabela de estado
   conta as que não sabem.** Decidir o que remedir depois desta semana começou
   perguntando quais contratos foram afetados, e a resposta foi **todos**: o bloco

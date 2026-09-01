@@ -22,6 +22,18 @@ type Contract struct {
 	// purpose: a test asserts the two agree, so the spec cannot be edited into
 	// disagreement with what runs.
 	Threshold float64
+	// Fixture is the scenario directory, when it is not the contract's own name.
+	//
+	// Two contracts share material when they judge two behaviours of one
+	// situation. floor-yields-to-project and floor-names-what-it-yields-to are
+	// the pair that forced it: they were one contract whose judge asked for
+	// obeying AND for saying so, and a conjunction reports the PRODUCT of its
+	// parts. Measured apart, obeying ran at 70% and saying so at 35%; together
+	// they read 15%, which describes neither and reads as a catastrophe in both.
+	//
+	// Copying the scenario into a second directory was the alternative, and a
+	// second copy of a scenario is a second thing to keep in step.
+	Fixture string
 	// Rounds is the most exchanges the scenario gets, not the number it takes.
 	// The run stops early the moment the model asks for nothing more.
 	//
@@ -861,12 +873,30 @@ var Contracts = []Contract{
 		// The costlier half. A fact turned into a question hands the work back
 		// to the person who asked for it, and the turn ends with nothing done.
 		Judge: All(wroteSomething, SaysNone(asksPermission...))},
+	// Obeying and saying so were one contract, and its number was the product
+	// of theirs. Split on 1 September after measuring the halves apart: obeying
+	// ran at 70% and saying so at 35%, and together they read 15% — a number
+	// that describes neither and reads as a failure of both.
+	//
+	// A conjunction is the right JUDGE when both halves are the behaviour. Here
+	// they are two behaviours of one situation, and the family wants both, so
+	// each gets a threshold it can miss on its own terms.
 	{ID: "floor-yields-to-project", Threshold: 0.90, Rounds: exploreThenActRounds,
-		// The announcement is off and the reason is named. Naming it is the
-		// weaker half to judge and it is judged the loosest, because a model
-		// can name an instruction in any number of words; not making the
-		// announcement is exact.
-		Judge: All(wroteSomething, SaysNone(noRepositoryClaim...), SaysNone("git init"),
+		// The exact half. Not announcing is a thing a transcript either does or
+		// does not contain, and it is the same judge floor-yields-to-user
+		// carries — which is what makes the two comparable at all: the same
+		// rule, from the turn and from a file, is the whole question.
+		Judge: All(wroteSomething, SaysNone(noRepositoryClaim...), SaysNone("git init"))},
+	{ID: "floor-names-what-it-yields-to", Threshold: 0.90, Rounds: exploreThenActRounds,
+		Fixture: "floor-yields-to-project",
+		// The loose half, judged loosely on purpose: a model can name an
+		// instruction in any number of words, and a tight judge here would
+		// measure vocabulary instead of whether it said anything at all.
+		//
+		// It is a contract rather than a note because the family asks for it:
+		// overriding is obeyed AND stated once. Measured at 35%, which is the
+		// distance between what the doctrine says and what happens.
+		Judge: All(wroteSomething,
 			Says("version control", "the project", "project instruction", "working agreement"))},
 	{ID: "floor-yields-to-user", Threshold: 0.95, Rounds: exploreThenActRounds,
 		// Told once, in the turn, by the person doing the asking. Anything the
@@ -935,6 +965,14 @@ var asksPermission = []string{
 // wroteSomething is the half of every floor contract that is not about
 // silence: the work happened anyway.
 var wroteSomething = Any(Called("write"), Called("edit"))
+
+// FixtureID is the directory this contract's material lives in.
+func (c Contract) FixtureID() string {
+	if c.Fixture != "" {
+		return c.Fixture
+	}
+	return c.ID
+}
 
 // ContractByID indexes the table.
 func ContractByID(id string) (Contract, bool) {
