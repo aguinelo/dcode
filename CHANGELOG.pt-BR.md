@@ -121,6 +121,22 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O parágrafo da fronteira no README dizia o contrário do que a fronteira
+  faz.** Ele afirmava que "qualquer coisa que cruze essa fronteira — escrita fora
+  dela, ou rede — para e pergunta", e nenhuma das duas metades é verdade nos
+  defaults: `sandbox.allow_network` é `true`, e `/tmp`, `/private/tmp`,
+  `/private/var/tmp`, `/dev` e os caches de toolchain são graváveis. As duas
+  concessões são deliberadas e os motivos estão escritos no código; o que
+  faltava era a capa dizer isso, no único parágrafo em que alguém confia para
+  decidir se deixa isto rodando sozinho.
+- **A assimetria da leitura está registrada.** `read /tmp/x` declara aquele
+  caminho, que está fora do workspace, e pergunta. `bash cat /tmp/x` declara
+  apenas o workspace e a rede, e não pergunta. A contenção é idêntica — o SO
+  permite a leitura nos dois casos — então o que muda é só a pergunta, e a
+  ferramenta que pergunta é a que está sendo honesta sobre o que toca. Achado
+  vendo uma sessão real buscar um arquivo na internet, escrevê-lo em `/tmp` sem
+  perguntar, e então parar para perguntar se podia ler o que acabara de
+  escrever.
 - **Skill que alcança a fronteira é retida e perguntada, nunca carregada às
   cegas.** O
   `SafetyClaims` roda sobre instruções desde que a RN-10 pediu que a tentativa

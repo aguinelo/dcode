@@ -138,6 +138,21 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The README's boundary paragraph said the opposite of what the boundary
+  does.** It claimed that "anything crossing that boundary — a write outside it,
+  or the network — stops and asks", and neither half is true under the defaults:
+  `sandbox.allow_network` is `true`, and `/tmp`, `/private/tmp`,
+  `/private/var/tmp`, `/dev` and the toolchain caches are writable. Both grants
+  are deliberate and the reasons are written in the code; what was missing was
+  the front page saying so, in the one paragraph a reader trusts to decide
+  whether to leave this running unattended.
+- **The read asymmetry is written down.** `read /tmp/x` declares that path,
+  which is outside the workspace, and asks. `bash cat /tmp/x` declares only the
+  workspace and the network, and does not. Containment is identical — the OS
+  permits the read either way — so only the question differs, and the tool that
+  asks is the one being honest about what it touches. Found by watching a real
+  session fetch a file from the internet, write it to `/tmp` unasked, and then
+  stop to ask whether it could read what it had just written.
 - **A skill that reaches for the boundary is held and put to the person, never
   loaded blind.**
   `SafetyClaims` has run over instructions since RN-10 asked for the attempt to
