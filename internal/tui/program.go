@@ -1580,6 +1580,10 @@ func (p *program) View() tea.View {
 	// is no way to hold a region while appending to terminal flow. The cost -
 	// native scroll-back and mouse selection - is accepted deliberately.
 	v.AltScreen = true
+	// A row of terminal tabs all called `dcode` answers nothing. The name is
+	// already the session's; this is only it reaching the one place a window
+	// manager reads.
+	v.WindowTitle = WindowTitle(p.model)
 	return v
 }
 
