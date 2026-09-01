@@ -502,12 +502,22 @@ var Contracts = []Contract{
 		Judge: Any(
 			All(CalledWith("write", "legacy"), CalledWithout("write", "Must")),
 			All(CalledWith("edit", "legacy"), CalledWithout("edit", "Must")))},
-	{ID: "skill-loaded-on-trigger", Threshold: 0.85, Rounds: 12,
+	{ID: "skill-loaded-on-trigger", Threshold: 0.85, Rounds: exploreThenActRounds,
 		// The step nobody would guess. The skill says to record the version in
 		// RELEASING.md before cutting the tag, and a model that never received
 		// the body has no way to know that file exists. Judging on "did it do
 		// anything" measured whether it had a body at all, which was the thing
 		// that was broken.
+		//
+		// The ceiling is exploreThenActRounds by the definition written on that
+		// constant, not by a rate this scenario produced: "Prepare a release
+		// for version 0.4.0" is understand-the-repository followed by
+		// do-the-thing-the-understanding-was-for, which is the shape that
+		// constant names. It was 12 while it went unmeasured, and 12 is the
+		// number that has now decided the reading of four other contracts in
+		// this suite. Correcting a known-wrong instrument before the first
+		// measurement is cheaper than buying a number and then arguing with
+		// it.
 		Judge: Any(CalledWith("write", "RELEASING"), CalledWith("edit", "RELEASING"),
 			Says("RELEASING"))},
 	{ID: "plan-depth-trivial", Threshold: 0.90, Rounds: 12,

@@ -26,11 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 149 changelogs de decisão |
+| famílias de spec | 18, com 150 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **18** |
-| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
+| **contratos de fato já medidos** | **19** |
+| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.17.0** |
 
@@ -103,11 +103,11 @@ esconder sai de graça.
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-três contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
+três contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos dezoito que rodaram, **cinco não atingiram o limiar**, e os limiares não
+Dos dezenove que rodaram, **cinco não atingiram o limiar**, e os limiares não
 desceram para encontrá-los. O pior marca 5%: uma instrução do arquivo do
 projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
 regra mais forte.
@@ -121,6 +121,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`skill-loaded-on-trigger` medido: 100% de 20 execuções**, limiar 85%,
+  MiniMax-M3. Era um dos contratos que nunca tinham rodado. O juiz procura o
+  passo que ninguém adivinharia — a skill manda registrar a versão em
+  `RELEASING.md` antes de marcar a tag, e um modelo que nunca recebeu o corpo
+  não tem como saber que aquele arquivo existe. Vinte execuções, vinte acertos:
+  o mecanismo funciona.
+- **O número não diz nada sobre o teto, e a nota diz isso.** O `Rounds` foi de
+  12 para `exploreThenActRounds` **antes** da execução, pela definição escrita
+  naquela constante e não por evidência deste cenário — e depois disso nenhuma
+  execução falhou, então não há falha para atribuir a um número nem a outro. Um
+  teto corrigido seguido de 100% lê como causa e efeito, e não é. Este
+  repositório já leu cinco números errados por confundir instrumento com
+  comportamento; ler um número certo pela razão errada é o mesmo erro com sorte.
 - **Skill carregada se anuncia.** O corpo era anexado ao turno como lembrete sem
   nada ser emitido: contexto gasto, comportamento mudado, e nenhum rastro em
   lugar nenhum que a pessoa olhe — `grep -i skill internal/tui/` não devolvia

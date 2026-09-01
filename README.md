@@ -4,9 +4,9 @@
 
 [![Release](https://img.shields.io/github/v/release/aguinelo/dcode?label=release&color=success)](https://github.com/aguinelo/dcode/releases)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
-![Coverage](https://img.shields.io/badge/coverage-93.4%25-success)
+![Coverage](https://img.shields.io/badge/coverage-93.3%25-success)
 ![Specs](https://img.shields.io/badge/specs-18%20families-informational)
-![Contracts](https://img.shields.io/badge/contracts-18%20measured%20%2F%2058%20declared-orange)
+![Contracts](https://img.shields.io/badge/contracts-19%20measured%20%2F%2058%20declared-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <img src="docs/brand/mascot.svg" width="72" align="right" alt="dcode mascot">
@@ -18,7 +18,7 @@ Every terminal agent ships behaviour as prompt text and hopes. dcode ships it as
 **contracts with thresholds**, runs them against a real model, and writes down what
 came back — the 98% and the 5% alike.
 
-Right now: **58 contracts declared, 18 actually measured.** That ratio is on the
+Right now: **58 contracts declared, 19 actually measured.** That ratio is on the
 front page on purpose. It is the most uncomfortable number in this repository and
 the only honest one.
 
@@ -121,7 +121,7 @@ scenario. That is what measuring buys you, and what a second opinion does not: a
 reviewer would have agreed with all five.
 
 Fifty-three of the 58 need a model to answer at all; five are settled by assertion.
-The 35 contracts never run against one are the point of the badge. Each costs real
+The 34 contracts never run against one are the point of the badge. Each costs real
 calls to a real model, and the number only moves by spending them.
 
 ---
@@ -564,7 +564,7 @@ Two deliberate non-choices:
 | TUI client, commands, skills, reminders, signed distribution | ✅ |
 | `/loop`, the done qualifier, failure feedback, cycle rollback | ✅ |
 
-Coverage is **93.4%**, the gate is 90% aggregate **and per package**, and the suite runs
+Coverage is **93.3%**, the gate is 90% aggregate **and per package**, and the suite runs
 under `-race` on macOS and Linux, gated on the union of the profiles.
 
 **What is open, in order of how much it bothers us.**
