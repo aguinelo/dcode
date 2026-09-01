@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 31 de agosto de 2026
+## Estado atual — 1 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -32,7 +32,7 @@ fora do pacote isolado.
 | **contratos de fato já medidos** | **19** |
 | cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.17.0** |
+| versão publicada | **0.18.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -46,6 +46,27 @@ aplica a mesma regra lendo os digests do instalador da `main`.
 
 Homebrew ainda não é canal — publicava-se num tap que nunca havia sido criado.
 Removido em vez de deixado rodando; o `docs/ROADMAP.md` §9 diz o que seria preciso.
+
+**Skills.** Orientação que só importa às vezes: um `SKILL.md` numa pasta ou um
+`<nome>.md`, sob `.dcode/skills/` aqui ou `skills/` na raiz do usuário, com
+`name` e `description` no topo. É a forma que outros agentes usam, então uma
+achada em qualquer lugar é quase sempre arquivo para copiar sem alterar —
+medido, não torcido: uma skill real de terceiro foi baixada, posta ali, e
+aplicada.
+
+Só a linha de índice é paga em todo turno; o corpo chega quando o gatilho bate, e
+a carga é anunciada, porque um bloco de texto que entra no turno e muda o que o
+modelo faz não deixava rastro em lugar nenhum que a pessoa olhe. O gatilho exige
+dois acertos de palavra **e** um numa palavra que nenhuma outra skill instalada
+carrega — compartilhar "projeto" e "versão" não distinguia duas skills em nada —
+e a lista de palavras vazias cobre as duas línguas em que este produto é escrito.
+
+Nada que um arquivo de skill erre para o produto: linha de índice comprida demais
+é aparada e dita, arquivo ilegível é pulado e dito. A única forma que não é
+nenhuma das duas é skill alcançando a fronteira — aprovação desligada, sandbox
+contornado — que é **retida e perguntada**. Conceder carrega inteira, e todos os
+desfechos deixam linha, porque consentimento sem rastro lê como pergunta que
+nunca foi feita.
 
 **A interface.** A conversa fica com o terminal. A coluna de arquivos nasce
 escondida e `^B` a invoca; a lista de conversas é sobreposição em `^R`, que é o
@@ -102,6 +123,14 @@ esconder sai de graça.
 **Delegação.** Um filho delegado escreve, dentro do que declarou possuir, com a
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
+**Qual modelo.** Transporte × família: o formato de fio é reusável, e os limiares
+medidos pertencem ao modelo. Quatro famílias — MiniMax-M3, Claude, Gemini e a
+saída explícita `generic` — sobre dois dialetos.
+
+Família sem medição atrás dela **diz isso na sessão**, e a lista de quem avisa é
+conferida contra as medições que existem, em vez de digitada. Essa guarda
+descobriu que a `claude` estava nessa condição desde que foi escrita.
+
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
 três contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
@@ -119,7 +148,7 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não publicado
+## 0.18.0 — 1 de setembro de 2026
 
 - **O fim de uma corrida do laço é dito, com onde os critérios ficaram.** Era
   silêncio — a função que puxa a próxima spec devolvia nada quando a fila

@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 31 August 2026
+## Current state — 1 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -32,7 +32,7 @@ isolated package.
 | **contracts ever actually measured** | **19** |
 | coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.17.0** |
+| published version | **0.18.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -60,6 +60,26 @@ is outranked by anything anyone actually said. What can be a **fact** is a fact
 rather than prose — that there is no repository, and which checks the project
 declares — because prose is the weakest layer this repository recognises, and a
 rule that needs a lookup first is a rule followed by accident.
+
+**Skills.** Guidance that only matters sometimes: a `SKILL.md` in a folder or a
+`<name>.md`, under `.dcode/skills/` here or `skills/` in the user's directory,
+with `name` and `description` at the top. That is the shape other agents use, so
+one found anywhere is usually a file to copy in unchanged — measured, not hoped:
+a real third-party skill was downloaded, dropped in, and applied.
+
+Only the index line is paid for every turn; the body arrives when the trigger
+fires, and the load is announced, because a block of text that joins the turn and
+changes what the model does used to leave no trace anywhere a person looks. The
+trigger needs two word hits **and** one on a word no other installed skill
+carries — sharing "projeto" and "versão" told two skills apart not at all, and
+the stop list holds both languages this product is written in.
+
+Nothing a skill file gets wrong stops the product: an over-long index line is
+trimmed and said, an unreadable one is skipped and said. The one shape that is
+neither is a skill reaching for the boundary — approvals disabled, sandbox
+bypassed — which is **held and put to the person**. Granting it loads it whole,
+and every outcome leaves a line, because consent that leaves no trace reads like
+no question was asked.
 
 **The interface.** The conversation gets the terminal. The file column starts
 hidden and `^B` summons it; the conversation list is an overlay on `^R`, which
@@ -120,6 +140,15 @@ nothing.
 the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
 
+**Which model.** Transport × family: the wire format is reusable, and the
+measured thresholds belong to the model. Four families — MiniMax-M3, Claude,
+Gemini and the explicit `generic` escape hatch — over two dialects.
+
+A family with no measurement behind it **says so in the session**, and the list
+of which families warn is checked against the measurements that exist rather
+than typed. That guard found `claude` had been in that condition since it was
+written.
+
 **What this document does not say.** That the system is verified. Of the
 fifty-three contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
@@ -136,7 +165,7 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
+## 0.18.0 — 1 September 2026
 
 - **The end of a loop run is said, with where the criteria stand.** It used to
   be silence — the function that pulls the next spec returned nothing when the
