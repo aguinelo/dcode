@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 161 decision changelogs |
+| spec families | 18, with 162 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,22 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The end of a loop run is said, with where the criteria stand.** It used to
+  be silence — the function that pulls the next spec returned nothing when the
+  queue emptied. From outside, a loop that worked four specs and stopped is
+  indistinguishable from one that stalled on the fourth: "it is over" reads
+  exactly like "it is thinking". The notice says how much was worked, how many
+  criteria are met of how many, and **names** what is unmet and what could not be
+  checked — a count answers *how much*, a name answers *what to do next*, and the
+  end of the run is when that is the question.
+- The state comes from the turn-completed event, not re-read from the drawn
+  entries: the completion travels on the wire precisely because it is the
+  guarantee that survives a model claiming success in prose, and re-deriving it
+  from that prose would put the prose back in the path of the fact.
+- **A run that worked nothing says nothing.** The queue empties on every
+  proposal commit, including the ones where there was never a queue, and a line
+  announcing the end of a run that never ran is a line about the feature rather
+  than the session.
 - **The bottom bar carries the working directory, at its right-hand end.** The
   worktree segment always had the base name, which is the fast answer until two
   checkouts share one — `dcode` under two parents reads identically, and the

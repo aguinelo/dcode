@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -545,5 +546,58 @@ func TestLoopOneDivertsABareWordThatNamesNothing(t *testing.T) {
 	}
 	if !strings.Contains(opened.task, "oi") {
 		t.Errorf("the turn does not name what it is about:\n%s", opened.task)
+	}
+}
+
+// The run ending says so, and says where done stands.
+//
+// It used to be silence: nextSpec returned nil when the queue emptied. From
+// outside, a loop that worked four specs and stopped is indistinguishable from
+// one that stalled on the fourth — and "it is over" reads exactly like "it is
+// thinking".
+func TestTheLoopSaysItFinishedAndWhereDoneStands(t *testing.T) {
+	p := &program{ctx: context.Background(),
+		model: Model{Lang: En, State: protocol.SessionStateIdle},
+		opts:  Options{Transport: newFakeTransport()}}
+
+	p.Update(loopFinishedMsg{worked: 4, standing: &protocol.Completion{
+		Met:         []string{"tests", "vet"},
+		Unmet:       []string{"coverage"},
+		Unavailable: []string{"integration"},
+	}})
+
+	if len(p.model.Entries) != 1 {
+		t.Fatalf("the run ended and drew %d entries", len(p.model.Entries))
+	}
+	got := p.model.Entries[0].Summary
+	for _, want := range []string{"finished", "4", "2 of 4", "coverage", "integration"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the notice does not carry %q:\n%s", want, got)
+		}
+	}
+}
+
+// A run that worked nothing says nothing. The queue empties on every commit,
+// including the ones where there was never a queue — and a line announcing the
+// end of a run that never ran is a line about the feature, not the session.
+func TestARunThatWorkedNothingSaysNothing(t *testing.T) {
+	p := &program{ctx: context.Background(), model: Model{Lang: En},
+		opts: Options{Transport: newFakeTransport()}}
+	if cmd := p.nextSpec(); cmd != nil {
+		t.Error("an empty run announced itself")
+	}
+}
+
+// And the standing report survives a completion with nothing left: "4 of 4" is
+// the answer somebody wants at the end, not an omission.
+func TestAFinishedRunWithEverythingMetStillReportsIt(t *testing.T) {
+	p := &program{ctx: context.Background(), model: Model{Lang: En},
+		opts: Options{Transport: newFakeTransport()}}
+	p.Update(loopFinishedMsg{worked: 1, standing: &protocol.Completion{
+		Met: []string{"a", "b", "c", "d"},
+	}})
+	got := p.model.Entries[0].Summary
+	if !strings.Contains(got, "4 of 4") {
+		t.Errorf("a fully met run does not say so:\n%s", got)
 	}
 }

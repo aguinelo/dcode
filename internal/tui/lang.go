@@ -205,62 +205,68 @@ type Strings struct {
 	// Help. The key and command descriptions live here too: a /help with
 	// translated headings and English descriptions is worse than an untranslated
 	// one, because it reads as a bug rather than as a language.
-	HelpCommands       string
-	HelpApprovals      string
-	HelpKeys           string
-	HelpYours          string
-	KeyEnter           string
-	KeyNewline         string
-	KeyPasteImage      string
-	CmdUndo            string
-	CmdUpdate          string
-	CmdImage           string
-	CmdImageArgs       string
-	ImageUsage         string
-	ImageAttached      string
-	ImageFailed        string
-	ImageUnsupported   string
-	ImagePasted        string
-	ImageTooBig        string
-	ClipboardEmpty     string
-	ClipboardMissing   string
-	UndoRestored       string
-	UndoRefused        string
-	UndoNothing        string
-	UndoFailed         string
-	KeyArrows          string
-	KeyPage            string
-	KeyTab             string
-	KeyEsc             string
-	KeyPanel           string
-	KeyDequeue         string
-	KeyEditing         string
-	KeyInterrupt       string
-	KeyQuit            string
-	CmdHelp            string
-	CmdInit            string
-	CmdClear           string
-	CmdPlan            string
-	CmdPlanArgs        string
-	CmdConfig          string
-	CmdConfigArgs      string
-	CmdModel           string
-	CmdModelArgs       string
-	CmdResume          string
-	CmdResumeArgs      string
-	CmdMode            string
-	CmdModeArgs        string
-	CmdModeCurrent     string // takes a mode name
-	CmdModeUnnamed     string // the boundary in force is none of the three
-	CmdModeUnknown     string // takes the name that is not a mode
-	CmdLoop            string
-	CmdLoopArgs        string
-	CmdLoopUsage       string
-	CmdLoopFlag        string // takes the flag that is not one
-	CmdLoopOpened      string // takes the spec path and the criterion count
-	CmdLoopEmpty       string // takes the spec path
-	CmdLoopProposed    string // takes the criterion count, the file and the spec path
-	CmdLoopQualifying  string // takes the spec path
+	HelpCommands      string
+	HelpApprovals     string
+	HelpKeys          string
+	HelpYours         string
+	KeyEnter          string
+	KeyNewline        string
+	KeyPasteImage     string
+	CmdUndo           string
+	CmdUpdate         string
+	CmdImage          string
+	CmdImageArgs      string
+	ImageUsage        string
+	ImageAttached     string
+	ImageFailed       string
+	ImageUnsupported  string
+	ImagePasted       string
+	ImageTooBig       string
+	ClipboardEmpty    string
+	ClipboardMissing  string
+	UndoRestored      string
+	UndoRefused       string
+	UndoNothing       string
+	UndoFailed        string
+	KeyArrows         string
+	KeyPage           string
+	KeyTab            string
+	KeyEsc            string
+	KeyPanel          string
+	KeyDequeue        string
+	KeyEditing        string
+	KeyInterrupt      string
+	KeyQuit           string
+	CmdHelp           string
+	CmdInit           string
+	CmdClear          string
+	CmdPlan           string
+	CmdPlanArgs       string
+	CmdConfig         string
+	CmdConfigArgs     string
+	CmdModel          string
+	CmdModelArgs      string
+	CmdResume         string
+	CmdResumeArgs     string
+	CmdMode           string
+	CmdModeArgs       string
+	CmdModeCurrent    string // takes a mode name
+	CmdModeUnnamed    string // the boundary in force is none of the three
+	CmdModeUnknown    string // takes the name that is not a mode
+	CmdLoop           string
+	CmdLoopArgs       string
+	CmdLoopUsage      string
+	CmdLoopFlag       string // takes the flag that is not one
+	CmdLoopOpened     string // takes the spec path and the criterion count
+	CmdLoopEmpty      string // takes the spec path
+	CmdLoopProposed   string // takes the criterion count, the file and the spec path
+	CmdLoopQualifying string // takes the spec path
+	// CmdLoopFinished is the run ending, with what done says. It takes the
+	// number of specs worked and the state of the criteria.
+	CmdLoopFinished    string // takes the spec count
+	CmdLoopStanding    string // takes met and total
+	LoopSpecOne        string
+	LoopSpecMany       string
 	LoopNoSpecs        string
 	LoopPlanHead       string // takes pending and total
 	LoopSpecPending    string // takes unmet and total criteria
@@ -470,6 +476,10 @@ var catalogue = map[Lang]Strings{
 		LoopSpecNoCriteria: "no definition of done; nothing says it is finished",
 		LoopSpecUnreadable: "could not be read: %s",
 		CmdLoopQualifying:  "loop: %s declares no criteria, so this turn works out what they should be. It cannot change anything — it proposes, and you review the file before any work runs against it.",
+		CmdLoopFinished:    "the loop is finished — %d %s worked",
+		CmdLoopStanding:    "done: %d of %d criteria met",
+		LoopSpecOne:        "spec",
+		LoopSpecMany:       "specs",
 		CmdLoopProposed:    "loop: %d criteria written to %s, measured before any work. Read it, change what is wrong, then /loop %s to work it.",
 		CmdLoopOpened:      "loop: %s, %d criteria",
 		CmdLoopEmpty:       "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
@@ -675,6 +685,10 @@ Environment:
 		LoopSpecNoCriteria: "sem definição de pronto; nada afirma que está terminada",
 		LoopSpecUnreadable: "não deu para ler: %s",
 		CmdLoopQualifying:  "loop: %s não declara critério, então este turno descobre quais deveriam ser. Ele não pode mudar nada — propõe, e você revisa o arquivo antes de qualquer trabalho rodar contra ele.",
+		CmdLoopFinished:    "o laço terminou — %d %s trabalhada(s)",
+		CmdLoopStanding:    "pronto: %d de %d critérios cumpridos",
+		LoopSpecOne:        "spec",
+		LoopSpecMany:       "specs",
 		CmdLoopProposed:    "loop: %d critérios escritos em %s, medidos antes de qualquer trabalho. Leia, corrija o que estiver errado, e então /loop %s para trabalhá-la.",
 		CmdLoopOpened:      "loop: %s, %d critérios",
 		CmdLoopEmpty:       "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
