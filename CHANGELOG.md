@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 157 decision changelogs |
+| spec families | 18, with 158 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
@@ -138,6 +138,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The status bar says which build is running.** A local build and a released
+  one behave differently and presented identically, so the only way to tell was
+  to leave the session and ask `--version`. The version string already said
+  `-dev+sha` for a local build; it just was not on screen. It sits beside the
+  name, dimmed, and is the **first** field given up as the terminal narrows —
+  before the model, and the sandbox mode still never.
 - **`/loop oi` still failed, and RN-8 never reached it.** `specArgument` reads a
   single word as a path, always — so the rule that a goal with no folder gets
   qualified applied from two words up. One word opened a session against a path

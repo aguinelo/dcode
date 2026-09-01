@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/version"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -810,5 +811,39 @@ func TestATurnBeginsWithAVisibleBoundary(t *testing.T) {
 		if len(out) > 0 && out[len(out)-1] == "" {
 			t.Errorf("unicode=%v: the stream ends on a blank row", unicode)
 		}
+	}
+}
+
+// The status bar says which build is running.
+//
+// A local build and a released one behave differently and used to present
+// identically, which is how a bug report costs an hour before anybody thinks to
+// check what is actually running. The version string already says `-dev+sha`
+// for a local build; it just was not on screen.
+func TestTheStatusBarSaysWhichBuild(t *testing.T) {
+	m := NewModel("s", "/w", "MiniMax-M3", "workspace-write", En)
+	got := renderStatus(m, DefaultGeometry(120, 40), false)
+	if !strings.Contains(got, version.Short()) {
+		t.Errorf("the bar does not say which build:\n%s", got)
+	}
+}
+
+// And it is the first field given up when the terminal narrows. The mode is a
+// safety indicator and the model is what being wrong about is dangerous; the
+// build answers a question nobody asks mid-session.
+func TestTheBuildIsTheFirstFieldToGo(t *testing.T) {
+	wide := renderStatus(NewModel("s", "/w", "MiniMax-M3", "workspace-write", En),
+		DefaultGeometry(120, 40), false)
+	narrow := renderStatus(NewModel("s", "/w", "MiniMax-M3", "workspace-write", En),
+		DefaultGeometry(34, 40), false)
+
+	if !strings.Contains(wide, version.Short()) {
+		t.Fatal("the wide bar has no build to give up")
+	}
+	if strings.Contains(narrow, version.Short()) && !strings.Contains(narrow, "workspace-write") {
+		t.Error("the build survived while the sandbox mode did not; the drop order is inverted")
+	}
+	if !strings.Contains(narrow, "workspace-write") {
+		t.Errorf("the sandbox mode is not droppable and it was dropped:\n%s", narrow)
 	}
 }
