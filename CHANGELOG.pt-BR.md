@@ -205,7 +205,15 @@ existe para impedir exatamente isso.
   do Claude é herdar o fundo do terminal, então este tema não carrega RGB nenhum:
   texto por peso (normal, negrito, SGR 2, itálico), estado pelas dezesseis cores
   ANSI nomeadas, e o guarda de contraste afirma *nenhum RGB* onde não tem chão
-  contra o que medir. Só a spec; o código vem nesta branch.
+  contra o que medir — pular o tema deixaria um tema inteiro fora de todo guarda.
+- **O raciocínio do modelo ganhou papel.** Era desenhado como cromo, e o itálico
+  não tinha onde pousar. `StyleReasoning` é mapeado para a cor que ele já tinha
+  nos quatro temas com chão, então nenhum pixel muda neles, e a calha ao lado
+  continua cromo — é moldura, não pensamento.
+- **`paint` distingue RGB de índice**, em vez de carregar uma cor com duas
+  grafias: RGB é cor que este produto escolheu, índice é cor que o terminal
+  escolheu, e só a segunda se confia a um fundo que este produto não escolheu. O
+  tipo impede a confusão em vez de um comentário pedindo cuidado.
 - **O `floor-yields-to-project` era o produto de duas exigências, e o produto não
   descrevia nenhuma.** O juiz pedia não anunciar E nomear a instrução. Medidas
   separadas, no mesmo cenário e no mesmo prompt: obedeceu 14/20, nomeou 7/20,

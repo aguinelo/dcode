@@ -50,6 +50,20 @@ escolher cinza nenhum:
   alto, e é assim que o Claude Code a desenha. Os outros quatro temas não mudam
   por isso — o atributo existe na tabela, e a tabela de cada tema decide.
 
+## O raciocínio ganhou papel
+
+Para o itálico ter onde pousar, o corpo do raciocínio deixou de ser desenhado em
+`StyleChrome` e passou a ter `StyleReasoning`. Nos quatro temas com chão o papel
+é mapeado para **a mesma cor de antes**: nenhum pixel muda neles.
+
+A calha à esquerda continua cromo. Ela é moldura, e uma barra vertical em
+itálico é uma barra vertical torta — o papel é do pensamento, não do que o
+emoldura.
+
+Que ele seja apagado como cromo nos quatro temas é herança, não decisão: era
+assim antes de existir papel para discutir. Agora existe, e mudá-lo é uma
+decisão que se toma em uma linha.
+
 ## O guarda de contraste não tem o que medir, e diz outra coisa
 
 `TestEveryRoleIsLegibleAgainstTheGround` mede WCAG contra `Ground`. Num tema sem
@@ -58,6 +72,17 @@ guarda. O guarda passa a afirmar, para tema sem chão, a condição que torna a
 legibilidade **do terminal**: nenhum papel carrega RGB, em `fg` nem em `bg`. Um
 RGB num tema sem chão é o cinza cravado voltando pela porta dos fundos, e é
 exatamente o que o teste tem de pegar.
+
+## O tipo diz qual cor é qual
+
+`paint` carrega `fg`/`bg` (RGB) e `fgIdx`/`bgIdx` (índice), e não uma cor só com
+duas grafias. Não é redundância: um RGB é uma cor **que este produto escolheu**,
+e um índice é uma cor **que o terminal escolheu**. Só a segunda espécie pode ser
+confiada a um fundo que este produto não escolheu, e é o tipo que impede a
+confusão em vez de um comentário pedindo cuidado.
+
+O zero de `ansi` é "nada", e por isso as dezesseis são deslocadas de um: preto é
+uma cor que alguém pode querer, e papel não preenchido tem de desenhar sem cor.
 
 ## Profundidade
 

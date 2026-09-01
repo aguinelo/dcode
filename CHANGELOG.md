@@ -222,7 +222,17 @@ exists to stop exactly that.
   inheriting the terminal's background, so this theme carries no RGB at all:
   text by weight (normal, bold, SGR 2, italic), state by the sixteen named ANSI
   colours, and the contrast guard asserts *no RGB* where it has no ground to
-  measure against. Spec only; the code follows on this branch.
+  measure against — skipping the theme would leave a whole theme outside every
+  guard.
+- **The model's reasoning gained a role.** It was drawn as chrome, which left
+  italic nowhere to land. `StyleReasoning` maps to the colour it already had in
+  the four themes with a ground, so not a pixel moves in them, and the gutter
+  beside it stays chrome — it is a frame, not a thought.
+- **`paint` distinguishes an RGB from an index**, rather than carrying one colour
+  in two spellings: an RGB is a colour this product chose and an index is one the
+  terminal chose, and only the second can be trusted over a ground this product
+  did not pick. The type prevents the confusion instead of a comment asking for
+  care.
 - **`floor-yields-to-project` was the product of two requirements, and the
   product described neither.** Its judge asked for not announcing AND for naming
   the instruction. Measured apart, on the same scenario and the same prompt:

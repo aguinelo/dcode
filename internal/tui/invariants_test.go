@@ -164,6 +164,10 @@ var tuiInvariants = map[string]string{
 	// Width does not move with the locale.
 	"Nenhuma medida deste cliente muda com o locale": "TestTheLocaleDoesNotDecideHowWideAGlyphIs",
 	"nada no pacote mede por fora da régua":          "TestNothingMeasuresWithTheGlobalRuler",
+	// A theme that gives the ground back.
+	"sem chão não carrega RGB":     "TestEveryRoleIsLegibleAgainstTheGround",
+	"Tema sem chão emite só SGR":   "TestAThemeWithNoGroundEmitsOnlyWeightAndIndexedColour",
+	"Itálico é atributo da tabela": "TestItalicIsAnAttributeOfTheThemeTable",
 
 	// A marker still arriving.
 	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",

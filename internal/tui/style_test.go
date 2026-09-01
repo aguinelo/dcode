@@ -2,6 +2,7 @@ package tui
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -316,9 +317,144 @@ func TestTheAnswerIsBrighterThanWhatQualifiesIt(t *testing.T) {
 // be read at 3, and chrome at 1.5 — a rule is meant to be SEEN and not read,
 // and holding it to text contrast would make every gutter shout.
 func TestEveryRoleIsLegibleAgainstTheGround(t *testing.T) {
+	ground := 0
 	for _, th := range Themes() {
+		if th.Ground.zero() {
+			// A theme with no ground has nothing to measure against, and
+			// skipping it would leave a whole theme outside every guard. So it
+			// is held to the condition that makes the TERMINAL's legibility
+			// hold instead: no role picks an RGB. An RGB here is the hard-coded
+			// grey coming back in through the side door — the exact thing the
+			// ground was what made safe.
+			checkNoRGB(t, th)
+			continue
+		}
+		ground++
 		checkLegible(t, th)
 	}
+	if ground == 0 {
+		t.Fatal("no theme paints a ground; the contrast half of this guard measured nothing")
+	}
+}
+
+// A theme with no ground carries no RGB, in fg or in bg, in any role.
+func checkNoRGB(t *testing.T, th Theme) {
+	t.Helper()
+	if len(th.Role) == 0 {
+		t.Fatalf("%s has no roles at all", th.Name)
+	}
+	for style, paint := range th.Role {
+		if !paint.fg.zero() {
+			t.Errorf("%s: role %v picks a foreground RGB %v and paints no ground to read it against",
+				th.Name, style, paint.fg)
+		}
+		if !paint.bg.zero() {
+			t.Errorf("%s: role %v picks a background RGB %v and paints no ground to read it against",
+				th.Name, style, paint.bg)
+		}
+	}
+}
+
+// A theme with no ground emits only weight and indexed colour.
+//
+// The RGB check above is about the table; this one is about what reaches the
+// terminal, because the two are only the same while nothing between them
+// invents a colour. 38;2 on a terminal that cannot draw it is not a fallback,
+// it is text the reader cannot see.
+func TestAThemeWithNoGroundEmitsOnlyWeightAndIndexedColour(t *testing.T) {
+	var th Theme
+	for _, c := range Themes() {
+		if c.Ground.zero() {
+			th = c
+			break
+		}
+	}
+	if th.Name == "" {
+		t.Fatal("no theme without a ground; this guard is asking about nothing")
+	}
+
+	allowed := map[string]bool{"1": true, "2": true, "3": true}
+	for n := 30; n <= 37; n++ {
+		allowed[strconv.Itoa(n)] = true
+	}
+	for n := 40; n <= 47; n++ {
+		allowed[strconv.Itoa(n)] = true
+	}
+	for n := 90; n <= 97; n++ {
+		allowed[strconv.Itoa(n)] = true
+	}
+	for n := 100; n <= 107; n++ {
+		allowed[strconv.Itoa(n)] = true
+	}
+
+	// Both depths, because a theme that is drawable anywhere must not change
+	// what it emits when the terminal happens to be able to take more.
+	for _, depth := range []Depth{DepthTrue, Depth256} {
+		p := Palette{Enabled: true, Theme: th, Depth: depth}
+		if got := p.Ground(); got != "" {
+			t.Errorf("%s paints a ground: %q", th.Name, got)
+		}
+		for style := range th.Role {
+			for _, param := range strings.Split(th.Role[style].sgr(depth), ";") {
+				if param == "" {
+					continue
+				}
+				if !allowed[param] {
+					t.Errorf("%s: role %v emits SGR %q, which is neither a weight nor one of the sixteen",
+						th.Name, style, param)
+				}
+			}
+		}
+	}
+}
+
+// Italic is given by the theme's table, and only one theme gives it.
+//
+// Stated as a guard rather than left to reading, because the failure it
+// prevents is silent: an attribute added for one theme and set in the shared
+// mapping changes all five, and nobody notices until the theme they use looks
+// different for a reason nobody wrote down.
+func TestItalicIsAnAttributeOfTheThemeTable(t *testing.T) {
+	italic := map[string][]Style{}
+	for _, th := range Themes() {
+		for style, paint := range th.Role {
+			if paint.italic {
+				italic[th.Name] = append(italic[th.Name], style)
+			}
+		}
+	}
+	for _, th := range Themes() {
+		if th.Ground.zero() {
+			continue
+		}
+		if got := italic[th.Name]; len(got) > 0 {
+			t.Errorf("%s paints a ground and still uses italic, in %v; the four with a ground do not",
+				th.Name, got)
+		}
+	}
+	claude := italic["claude"]
+	if len(claude) != 1 || claude[0] != StyleReasoning {
+		t.Errorf("the claude theme gives italic to %v; it is for the model's reasoning and nothing else", claude)
+	}
+
+	// And it reaches the screen as SGR 3, closed by SGR 23 — not by a reset,
+	// which would take the row's ground with it in every other theme.
+	p := Palette{Enabled: true, Theme: claudeThemeForTest(t)}
+	got := p.Apply(StyleReasoning, "x")
+	if !strings.Contains(got, "\x1b[2;3m") || !strings.Contains(got, "\x1b[22;23m") {
+		t.Errorf("reasoning renders as %q, want it opened with 2;3 and closed with 22;23", got)
+	}
+}
+
+func claudeThemeForTest(t *testing.T) Theme {
+	t.Helper()
+	for _, th := range Themes() {
+		if th.Name == "claude" {
+			return th
+		}
+	}
+	t.Fatal("no claude theme")
+	return Theme{}
 }
 
 func checkLegible(t *testing.T, th Theme) {
