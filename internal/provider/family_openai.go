@@ -66,7 +66,10 @@ func (f MiniMaxM3) NewDecoder(tools []ce.ToolDef) Decoder {
 // implementation never validates an abstraction.
 type Claude struct{}
 
-func (Claude) Name() string { return "claude" }
+// ClaudeName is the family, and the credential store with it.
+const ClaudeName = "claude"
+
+func (Claude) Name() string { return ClaudeName }
 
 // AcceptsImages is true, through a source block rather than a data URL.
 func (Claude) AcceptsImages() bool  { return true }

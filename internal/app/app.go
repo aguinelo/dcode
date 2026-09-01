@@ -693,9 +693,12 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	notice := ""
 	// A model nobody measured is usable and must say so. Reading a difference
 	// in behaviour as a defect in dcode is the cost of not saying it.
-	if resolvedFamily(opts) == provider.GenericName {
-		notice = provider.GenericWarning
-	}
+	//
+	// Asked of the family rather than compared against one name: gemini is the
+	// second family with no measurements behind it, and a chain of equality
+	// checks is a list that grows silently wrong. provider.Unmeasured is the
+	// list, and a guard checks it against the measurements that exist.
+	notice = provider.Unmeasured(resolvedFamily(opts))
 	if opts.InstructionNotice {
 		notice = InstructionNotice(opts.Workspace,
 			foreignFiles(opts.InstructionForeign), registry.Names())
@@ -715,7 +718,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 // Families are the adaptations this build supports, in registration order.
 func Families() []provider.Family {
-	return []provider.Family{provider.MiniMaxM3{}, provider.Claude{}, provider.Generic{}}
+	return []provider.Family{
+		provider.MiniMaxM3{}, provider.Claude{}, provider.Gemini{}, provider.Generic{},
+	}
 }
 
 // CredentialName is the family this model belongs to.
@@ -903,6 +908,17 @@ func NewHTTPTransport(name, baseURL, apiKey string) *HTTPTransport {
 	}
 }
 
+// defaultBaseURL answers per TRANSPORT, which is why gemini is not here.
+//
+// Google's OpenAI-compatible surface is a different host speaking the same
+// dialect, and this function cannot see which family is about to use the
+// transport. Pointing it there means `model.base_url`:
+//
+//	https://generativelanguage.googleapis.com/v1beta/openai
+//
+// Naming a family here would be the axes collapsing back into one — a transport
+// deciding something from a family, which the Transport doc forbids in the
+// sentence above its own definition.
 func defaultBaseURL(name string) string {
 	switch name {
 	case provider.TransportAnthropic:

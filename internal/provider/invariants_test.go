@@ -13,23 +13,25 @@ import (
 )
 
 var providerInvariants = map[string]string{
-	"termina em exatamente um":     "TestStreamAlwaysEndsWithExactlyOneTerminal",
-	"Cancelar `ctx` fecha o canal": "TestCancelClosesChannelWithCanceled",
-	"cruza a fronteira do pacote":  "TestNoProviderSpecificTypeCrossesTheBoundary",
-	"Nenhuma credencial aparece":   "TestCredentialsNeverAppearInErrorMessages",
-	"nunca chega ao consumidor":    "TestUndeclaredToolNeverReachesTheLoop",
-	"roda com a rede desligada":    "TestTheSuiteCannotReachTheNetwork",
-	"apenas em `ErrClassRateLimit": "TestOnlyARateLimitCarriesARetryAfter",
-	"não se sobrepõem entre":       "TestOverlappingModelPrefixesAreRejected",
-	"nomeando os compatíveis":      "TestTransportOverrideIsHonouredAndValidated",
-	"corpos distintos e ambos":     "TestOneFamilyEncodesForBothTransports",
-	"devolve o default da família": "TestLimitsComeFromTheFamily",
-	"partidos entre frames":        "TestToolCallArgumentsAreAssembledAcrossFrames",
-	"Duas tool calls paralelas":    "TestParallelToolCallsAreKeptApart",
-	"repetido não emite":           "TestUsageSurvivesARepeatedFinishReason",
-	"vira erro `tool_schema`":      "TestATruncatedToolCallIsAnErrorRatherThanAnEmptyCall",
-	"nem no histórico (RN-10)":     "TestReasoningNeverBecomesAnswerText",
-	"marcador de raciocínio e esp": "TestAFrameOfPureFramingProducesNothing",
+	"termina em exatamente um":       "TestStreamAlwaysEndsWithExactlyOneTerminal",
+	"Cancelar `ctx` fecha o canal":   "TestCancelClosesChannelWithCanceled",
+	"cruza a fronteira do pacote":    "TestNoProviderSpecificTypeCrossesTheBoundary",
+	"Nenhuma credencial aparece":     "TestCredentialsNeverAppearInErrorMessages",
+	"nunca chega ao consumidor":      "TestUndeclaredToolNeverReachesTheLoop",
+	"roda com a rede desligada":      "TestTheSuiteCannotReachTheNetwork",
+	"herdar a codificação não herda": "TestGeminiEncodesOpenAIAndRefusesTheOther",
+	"conferida contra as medições":   "TestEveryUnmeasuredFamilySaysSo",
+	"apenas em `ErrClassRateLimit":   "TestOnlyARateLimitCarriesARetryAfter",
+	"não se sobrepõem entre":         "TestOverlappingModelPrefixesAreRejected",
+	"nomeando os compatíveis":        "TestTransportOverrideIsHonouredAndValidated",
+	"corpos distintos e ambos":       "TestOneFamilyEncodesForBothTransports",
+	"devolve o default da família":   "TestLimitsComeFromTheFamily",
+	"partidos entre frames":          "TestToolCallArgumentsAreAssembledAcrossFrames",
+	"Duas tool calls paralelas":      "TestParallelToolCallsAreKeptApart",
+	"repetido não emite":             "TestUsageSurvivesARepeatedFinishReason",
+	"vira erro `tool_schema`":        "TestATruncatedToolCallIsAnErrorRatherThanAnEmptyCall",
+	"nem no histórico (RN-10)":       "TestReasoningNeverBecomesAnswerText",
+	"marcador de raciocínio e esp":   "TestAFrameOfPureFramingProducesNothing",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
@@ -37,7 +39,13 @@ func TestEveryInvariantHasATest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := specguard.Check(root, "provider-adapter", []string{"."}, providerInvariants)
+	// The unmeasured-family rule is asserted in internal/evals, and it has to
+	// be: it compares the warning list against evals.Measured, and this package
+	// cannot import that one — evals imports provider, so the dependency only
+	// runs the other way. Asserting it here would mean a second copy of the
+	// measurements, which is the thing the rule exists to prevent.
+	findings, err := specguard.Check(root, "provider-adapter",
+		[]string{".", filepath.Join("..", "evals")}, providerInvariants)
 	if err != nil {
 		t.Fatal(err)
 	}

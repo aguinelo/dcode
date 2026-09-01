@@ -57,6 +57,16 @@ O caso que prova a necessidade dos dois eixos é o MiniMax M3, que fala **os doi
 
 Uma família declara os transportes com que é compatível, em ordem de preferência. Um adaptador que precise de `if modelo == X` interno é sinal de que são duas famílias.
 
+### RN-11 — Família sem medição diz que não tem
+
+Nome de família, neste repositório, lê como família **medida**. O `Measurement.Model` existe exatamente porque limiar pertence a um modelo e não fala nada de outro, então acrescentar uma família e não dizer nada põe um nome onde a verificação não está.
+
+Uma família sem nenhuma medição registrada **avisa isso na sessão**. O aviso nomeia a família, diz que o formato de fio e a janela são conhecidos, e diz contra o que os limiares *foram* medidos — que é o fato que torna a ressalva legível. É mais estreito que o aviso da `generic`, onde o endpoint em si é desconhecido e a janela e as imagens também são chute.
+
+A lista de quem avisa **não é digitada**: uma guarda a confere contra as medições que existem, nos dois sentidos. Família que ganha medição e continua avisando reprova; família que sai da lista sem medição reprova também.
+
+Isso foi escrito quando a `gemini` entrou — e a guarda, na primeira execução, achou que a `claude` estava nessa condição desde sempre, calada.
+
 ### RN-9 — Limites padrão do turno são da família
 Modelo treinado para horizonte longo precisa de teto de iteração maior que modelo afinado para tarefas curtas. Um número global serve mal aos dois.
 

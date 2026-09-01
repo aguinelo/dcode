@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 154 decision changelogs |
+| spec families | 18, with 155 decision changelogs |
 | behavioural contracts | 58 declared |
 | contracts needing a model | 53 of the 58; 5 are settled by assertion |
 | **contracts ever actually measured** | **19** |
-| coverage | 93.4%, gate at 90% aggregate **and per package** |
+| coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.17.0** |
 
@@ -138,6 +138,33 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A family for Gemini**, over the `openai` transport, through Google's
+  compatibility surface. A family and not a transport: the dialect already
+  exists, so `Gemini` embeds `MiniMaxM3` for the encoding and overrides exactly
+  what the family axis is for — name, model prefixes, window, limits, images.
+  The native surface is a transport, and writing one before anyone has run this
+  against a real key would be building the harder half first on a guess.
+- **The numbers are chosen, not copied.** The window is 1,000,000 against a
+  documented 1,048,576, because under-guessing costs a summary and over-guessing
+  loses the turn. The ceiling is 50 and explicitly not MiniMax's 2000, which is
+  justified by a cited long-horizon run that says nothing about this model — a
+  test asserts the two differ. `Encode` refuses the Anthropic dialect it would
+  have inherited, for a family whose `Transports()` names one.
+- **RN-11: a family with no measurements says so.** A family name reads as a
+  measured family here, because `Measurement.Model` exists precisely so a
+  threshold belongs to one model and says nothing about another. The warning
+  names the family and says what the thresholds *were* measured against, and the
+  list of who warns is checked against the measurements that exist, in both
+  directions — nothing typed.
+- **The guard failed on its first run, on `claude`.** That family has existed
+  since the beginning, to prove the axes are orthogonal, and has never carried a
+  single measurement — it had been running without saying so. Not what I went
+  looking for; what the guard found by existing.
+- Pointing at Gemini is `model.base_url` =
+  `https://generativelanguage.googleapis.com/v1beta/openai`. `defaultBaseURL`
+  answers per **transport**, not per family, which is why it does not name
+  Gemini: a transport deciding something from a family is the axes collapsing,
+  which the interface's own documentation forbids.
 - **The skills block now says what the format is, not only where it lives.** The
   previous change half-worked: the agent went and looked at the directory, then
   still concluded that a skill found on GitHub "loads in Claude Code, not in my
