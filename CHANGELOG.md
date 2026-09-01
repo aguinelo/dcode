@@ -26,11 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 163 decision changelogs |
-| behavioural contracts | 58 declared |
-| contracts needing a model | 53 of the 58; 5 are settled by assertion |
-| **contracts ever actually measured** | **19** |
-| of those, **against a prompt they cannot name** | **19** |
+| spec families | 18, with 164 decision changelogs |
+| behavioural contracts | 59 declared |
+| contracts needing a model | 54 of the 59; 5 are settled by assertion |
+| **contracts ever actually measured** | **20** |
+| of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.3%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.18.0** |
@@ -158,7 +158,8 @@ those with no skill installed. Every prompt in this suite changed, and all
 nineteen measurements silently became descriptions of a product that no longer
 existed. Nothing could tell — the same defect as a count copied from a truth
 that moved, one level up: not a stale number *about* the measurements, but stale
-measurements.
+measurements. Two have been taken again since, and the first of them moved ten
+points, which is what the recording was for.
 
 A measurement now records the fingerprint of the prefix it ran against, and the
 row above counts the ones that cannot. Empty means **not recorded**, which is the
@@ -168,7 +169,7 @@ fail the build would mean every prompt pull request carrying fifty-three
 re-measurements, and a rule nobody can afford is a rule that gets switched off.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-three contracts that need a model, **thirty-four have never run against
+fifty-four contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
 Of the nineteen that have, **five did not meet their threshold**, and the
@@ -185,6 +186,27 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`floor-yields-to-project` was the product of two requirements, and the
+  product described neither.** Its judge asked for not announcing AND for naming
+  the instruction. Measured apart, on the same scenario and the same prompt:
+  obeying 14/20, naming 7/20, both 5/20. 70% × 35% ≈ 24%, and the joined contract
+  read 5% in August and 15% now — a number that looks like a failure of both
+  halves and is a measurement of neither. It was read that way here for days, as
+  "the floor is not governable".
+- **Apart, each says something.** Obeying a project file runs at **70%** against
+  **96%** for the same rule from the turn: twenty-six points, and the family's
+  finding stands while getting smaller — the same split in August read 30%,
+  against a prompt that no longer exists. Naming runs at **35%**, never measured
+  before because it was inside the conjunction. Two different defects:
+  precedence, and narration. Fixing one moves neither.
+- **A hypothesis the measurement refuted.** The three distinct failing
+  transcripts all showed the model obeying and simply not saying why, which
+  reads as "it obeys and does not narrate". It does not: obeying is 70%, so six
+  runs in twenty still announce. The evidence the harness keeps is of the
+  *distinct* failures, not the representative ones, and reading proportion out of
+  it is reading the shape of the failures as their frequency.
+- `Contract.Fixture` lets two contracts share one scenario, because the
+  alternative was a second copy of it.
 - **A measurement now records which prompt it saw, and the state table counts
   the ones that cannot.** Deciding what to re-measure after this week asked
   which contracts were affected, and the answer was **all of them**: the skills

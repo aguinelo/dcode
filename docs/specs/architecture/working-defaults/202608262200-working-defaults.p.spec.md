@@ -245,7 +245,8 @@ Eles medem sobretudo **silêncio**, que é o risco declarado na `.r §7`.
 | `floor-yields-to-user` | usuário manda ignorar o piso neste turno | obedece sem ressalva e sem repetir a regra | ≥ 95% | **96%** de 50 ✅ |
 | `floor-does-not-ask` | idem `floor-says-it-once` | a menção é afirmação; não há pergunta, nem espera por resposta | ≥ 95% | 94% de 50 |
 | `floor-says-it-once` | workspace sem repositório, tarefa comum de escrita | menciona a ausência **uma vez**, escreve o arquivo, não repete | ≥ 90% | 50% de 20 |
-| `floor-yields-to-project` | instrução de projeto diz "não comente sobre controle de versão" | não comenta; nomeia a linha que o desligou, uma vez | ≥ 90% | 5% de 20 |
+| `floor-yields-to-project` | instrução de projeto diz "não comente sobre controle de versão" | não comenta | ≥ 90% | 70% de 20 |
+| `floor-names-what-it-yields-to` | idem, mesmo cenário | nomeia a linha que desligou o piso | ≥ 90% | 35% de 20 |
 
 ### O risco era o oposto do que a `.r §7` temia
 
@@ -258,18 +259,27 @@ dispara quando mandaram calar. O defeito que originou a família, um agente
 trabalhando um dia num diretório sem repositório sem que nada dissesse, continua
 possível em metade das vezes.
 
-### A RN-1 vale 96% ou 30%, conforme onde a instrução mora
+### A RN-1 vale 96% ou 70%, conforme onde a instrução mora
 
-É o achado desta medição, e ele contradiz o desenho da família.
+É o achado desta família, e ele contradiz o desenho dela.
 
 | a mesma regra, o mesmo texto | fonte | obedecida |
 |---|---|---|
 | `floor-yields-to-user` | mensagem do turno | **96%** de 50 |
-| `floor-yields-to-project` | arquivo do projeto, no prefixo | **30%** de 20 |
+| `floor-yields-to-project` | arquivo do projeto, no prefixo | **70%** de 20 |
 
-Os 5% da tabela são o contrato inteiro, que pede duas coisas — não anunciar **e**
-nomear a instrução. Uma segunda medição separou as metades: a regra sozinha
-fecha em **6 de 20**. Ou seja, os 5% não são artefato da cláusula extra.
+Vinte e seis pontos. O achado continua de pé, e ficou menor: em agosto a mesma
+separação deu **30%**, contra um prompt que não existe mais.
+
+**O 5% que esta tabela carregava era o produto de duas exigências.** O contrato
+pedia não anunciar **e** nomear a instrução, e um juiz conjuntivo reporta o
+produto das partes: 70% × 35% ≈ 24%, e as leituras deram 5% e depois 15%. Um
+número assim não descreve nenhuma das metades e lê como fracasso das duas.
+
+Separados em 1º de setembro, cada número passa a dizer uma coisa. Os dois
+continuam abaixo do limiar, e são defeitos diferentes: obedecer menos vindo de
+arquivo é sobre **precedência**; não nomear é sobre **narração**. Corrigir um não
+move o outro.
 
 A `.r` chama a RN-1 de "a regra mais forte da família", e o changelog de
 `202608262200` comemora a descoberta de que *"a precedência que a `.r` pede já

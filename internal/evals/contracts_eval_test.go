@@ -50,7 +50,7 @@ func TestEveryContract(t *testing.T) {
 			continue // established by assertion; running it would print a free green
 		}
 		t.Run(contract.ID, func(t *testing.T) {
-			f, err := LoadFixture(FixtureRoot, contract.ID)
+			f, err := LoadFixture(FixtureRoot, contract.FixtureID())
 			if err != nil {
 				t.Fatal(err)
 			}

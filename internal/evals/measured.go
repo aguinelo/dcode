@@ -90,8 +90,19 @@ var Measured = []Measurement{
 		Note: "the failures divide into opposite halves — said twice, and not said at all"},
 	{ID: "floor-does-not-ask", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 50, Rate: 0.94, Sound: true,
 		Note: "86% on 27 Aug. Its ceiling was already 20, so only the practice and the workspace separate the two readings"},
-	{ID: "floor-yields-to-project", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 0.05, Sound: true,
-		Note: "the contract asks two things; a second measurement split them and found the rule alone at 6/20, so 5% is not an artefact of the second clause"},
+	{ID: "floor-yields-to-project", Model: "MiniMax-M3", Date: "2026-09-01", Runs: 20, Rate: 0.70, Sound: true,
+		Prompt: "d1b79bcbb00a",
+		Note: "the obeying half alone, measured by judging one run of the scenario both ways. " +
+			"The joined contract read 5% in August and 15% now, and that number was the PRODUCT " +
+			"of two requirements: 70% times 35% is 24%. Still not met, and still the finding — " +
+			"floor-yields-to-user is the same rule from the turn instead of a file, at 96%. " +
+			"Twenty-six points, not ninety-one"},
+	{ID: "floor-names-what-it-yields-to", Model: "MiniMax-M3", Date: "2026-09-01", Runs: 20, Rate: 0.35, Sound: true,
+		Prompt: "d1b79bcbb00a",
+		Note: "the saying-so half, from the same twenty runs and therefore the same prompt. " +
+			"The doctrine asks that an override be obeyed AND stated once; it is stated in " +
+			"seven runs of twenty. Never measured before, because it was hidden inside a " +
+			"conjunction whose number nobody could attribute"},
 	{ID: "floor-yields-to-user", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 50, Rate: 0.96, Sound: true,
 		Note: "the same rule as floor-yields-to-project, from the turn rather than from a file, and 66 points apart"},
 	{ID: "floor-checks-before-claiming", Model: "MiniMax-M3", Date: "2026-08-27", Runs: 20, Rate: 1.0, Sound: true},
@@ -111,12 +122,12 @@ var Measured = []Measurement{
 	{ID: "fixes-what-the-output-named", Model: "MiniMax-M3", Date: "2026-08-31", Runs: 20, Rate: 1.0, Sound: true,
 		Note: "the first contract whose scenario runs the verification cycle instead of being handed the reminder one would have produced. It read 65% first, and that was a criterion of mine that demanded one particular implementation and whose error message read as its own opposite — five of seven failures were runs stuck trying to satisfy it"},
 	// docs/specs/architecture/behavior-definition/changelog/202608311800-a-skill-medida.md
-	{ID: "skill-loaded-on-trigger", Model: "MiniMax-M3", Date: "2026-08-31", Runs: 20, Rate: 1.0, Sound: true,
-		Note: "the first reading this contract ever had, and it says nothing about the ceiling. " +
-			"It was raised from 12 to exploreThenActRounds BEFORE the run, by the definition written " +
-			"on that constant rather than by evidence from this scenario — and then no run failed, so " +
-			"there is no failure to attribute to either number. The correction stands on the constant's " +
-			"own terms; it is not something this measurement proved"},
+	{ID: "skill-loaded-on-trigger", Model: "MiniMax-M3", Date: "2026-09-01", Runs: 20, Rate: 0.90, Sound: true,
+		Prompt: "1831fe1fdf85",
+		Note: "100% on 31 Aug, against a prompt that no longer exists: the skills block now renders " +
+			"in every session and says where skills live and what the format is. Ten points is what " +
+			"those three changes cost, and the only reason the movement is visible at all is that this " +
+			"is the first reading to record which prompt it saw"},
 
 	{ID: "states-unmet-on-stall", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 50, Rate: 0.94, Sound: true,
 		Note: "92% without the output and 94% with it, at the same ceiling — two points, the smallest difference 50 runs can see. All three remaining failures were runs the harness cut mid-work; none was behavioural"},
