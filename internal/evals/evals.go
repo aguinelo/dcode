@@ -125,6 +125,12 @@ type Result struct {
 	Retries int
 	Model   string
 	Build   string
+	// Prompt fingerprints the prefix the scenario ran against.
+	//
+	// The other half of "a threshold belongs to a model". The prompt is what
+	// the model is being measured through, and it changed under nineteen
+	// recorded measurements without any of them being able to say so.
+	Prompt string
 	// FirstError is why the errored runs errored, or empty when none did.
 	//
 	// The count alone cannot be acted on. A measurement that reports "20
@@ -201,6 +207,12 @@ func (r Result) String() string {
 	}
 	if r.Build != "" {
 		fmt.Fprintf(&b, " · build %s", r.Build)
+	}
+	// The prefix this ran against, so recording the measurement is copying a
+	// line rather than a second manual step. A threshold belongs to a model AND
+	// to a prompt, and the prompt half used to reach nobody.
+	if r.Prompt != "" {
+		fmt.Fprintf(&b, " · prompt %s", r.Prompt)
 	}
 	return b.String()
 }

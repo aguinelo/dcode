@@ -26,10 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 162 changelogs de decisão |
+| famílias de spec | 18, com 163 changelogs de decisão |
 | contratos comportamentais | 58 declarados |
 | contratos que precisam de modelo | 53 dos 58; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **19** |
+| destes, **contra um prompt que não sabem nomear** | **19** |
 | cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.18.0** |
@@ -131,6 +132,24 @@ Família sem medição atrás dela **diz isso na sessão**, e a lista de quem av
 conferida contra as medições que existem, em vez de digitada. Essa guarda
 descobriu que a `claude` estava nessa condição desde que foi escrita.
 
+**O que uma medição não sabe dizer.** Qual prompt ela viu. Um limiar pertence a
+um modelo **e** a um prompt, e só a primeira metade era escrita.
+
+Em 1º de setembro o bloco de skills passou a ser renderizado em toda sessão,
+inclusive nas que não têm skill nenhuma. Todo prompt desta suíte mudou, e as
+dezenove medições viraram, em silêncio, descrições de um produto que não existe
+mais. Nada conseguia perceber — o mesmo defeito de um número copiado de uma
+verdade que se moveu, um nível acima: não um número velho *sobre* as medições,
+mas medições velhas.
+
+Uma medição passa a registrar a impressão digital do prefixo contra o qual
+rodou, e a linha acima conta as que não sabem. Vazio significa **não
+registrado**, que é a resposta honesta para tudo o que foi medido antes de o
+campo existir, e não é sinônimo de atual. É reportado e não imposto: fazer uma
+mudança de prompt reprovar o build significaria todo PR de prompt carregando
+cinquenta e três remedições, e regra que ninguém consegue pagar é regra que
+alguém desliga.
+
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
 três contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
@@ -147,6 +166,29 @@ tabela descrevendo um estado que já tinha se movido, dentro do documento que
 existe para impedir exatamente isso.
 
 ---
+
+## Não publicado
+
+- **Uma medição passa a registrar qual prompt ela viu, e a tabela de estado
+  conta as que não sabem.** Decidir o que remedir depois desta semana começou
+  perguntando quais contratos foram afetados, e a resposta foi **todos**: o bloco
+  de skills é renderizado em toda sessão, inclusive nas sem skill nenhuma, então
+  todo prompt de eval mudou e as dezenove medições registradas viraram, em
+  silêncio, descrições de um produto que não existe mais. Nada conseguia
+  perceber.
+- **É o mesmo defeito um nível acima.** O `Measurement.Model` existe porque um
+  limiar medido contra um modelo não diz nada sobre outro. A frase estava pela
+  metade: um limiar pertence a um modelo **e a um prompt**, porque o prompt é
+  através do que o modelo é medido. Vazio significa *não registrado*, que é a
+  resposta honesta para tudo o que foi medido antes do campo existir, e não é
+  sinônimo de atual.
+- **Reportado, não imposto.** Reprovar o build a cada mudança de prompt
+  significaria todo PR de prompt carregando cinquenta e três remedições, e regra
+  que ninguém paga é regra que alguém desliga. O relatório do eval imprime a
+  impressão digital ao lado do número, então registrar uma é copiar uma linha.
+- A guarda de exportação sem uso pegou duas coisas no caminho: um `Stale` escrito
+  para depois que nada chamava, apagado; e um contador lido só pelos próprios
+  testes, tornado interno.
 
 ## 0.18.0 — 1 de setembro de 2026
 

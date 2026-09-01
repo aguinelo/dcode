@@ -127,6 +127,12 @@ func TestEveryContract(t *testing.T) {
 			// contract got blamed for the suite running long.
 			r := Measure(context.Background(), runCfg, contract.ID, contract.Threshold, attempt)
 			r.Retries = retries
+			// The prefix this ran against, printed with the number so that
+			// recording the measurement is copying a line rather than a second
+			// manual step nobody would do twice.
+			if fp, ferr := f.Fingerprint(); ferr == nil {
+				r.Prompt = fp
+			}
 			measured = append(measured, r)
 			// Evidence on failure, and evidence whenever the contract is
 			// measuring rather than judging.
