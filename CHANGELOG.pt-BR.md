@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 1 de setembro de 2026
+## Estado atual — 2 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -31,9 +31,9 @@ fora do pacote isolado.
 | contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
-| cobertura | 93,3%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.18.0** |
+| versão publicada | **0.19.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -109,6 +109,26 @@ partida em duas media como duas linhas curtas. A guarda de linha em branco
 trimava certo e nunca tinha visto prosa. Cada uma agora é feita como pergunta
 sobre a tela inteira, e não sobre uma lista.
 
+**Como ela se parece, e quem escolhe.** Cinco temas, percorridos com `t` dentro
+do fluxo. Quatro pintam o próprio chão e carregam RGB medido contra ele, porque
+âmbar sobre um fundo que o produto escolheu é sinal, e âmbar sobre um fundo
+desconhecido é só uma cor. O quinto, `claude`, devolve o chão ao terminal e por
+isso não carrega RGB nenhum: texto é peso e estado são as dezesseis cores ANSI
+nomeadas, que são as que o próprio tema do terminal já escolheu para se lerem
+contra o fundo dele. É também o único desenhável em terminal de dezesseis cores.
+Cor desligada continua não emitindo escape algum, fundo incluído.
+
+**Um glifo vale uma célula, diga o locale o que disser.** A tela é desenhada com
+caracteres de caixa, e todos eles são ambíguos na tabela East Asian Width do
+Unicode. `LANG=ja_JP.UTF-8` fazia o cliente escolher esse conjunto — o locale é
+UTF-8 — e fazia a biblioteca de medida desenhá-lo com duas células, a partir da
+mesma variável: a tela inteira saía com o dobro da largura do terminal, e onze
+guardas pegaram isso no instante em que a suíte rodou nesse locale. O locale diz
+que língua a pessoa lê, não quantas células o terminal dela dá a uma régua
+vertical. A medida agora é uma régua deste cliente, e terminal que de fato
+desenha essas marcas mais largas recebe outro conjunto de glifos, não outra
+aritmética.
+
 **Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
 bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
 Autorização é a política de aprovação mais as regras. Os dois são ortogonais, e
@@ -169,6 +189,8 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+## 0.19.0 — 2 de setembro de 2026
 
 - **Em locale japonês a tela inteira saía com o dobro da largura do terminal.**
   Uma variável de ambiente decidia duas coisas que precisam concordar e as levava

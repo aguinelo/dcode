@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 1 September 2026
+## Current state — 2 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -31,9 +31,9 @@ isolated package.
 | contracts needing a model | 54 of the 59; 5 are settled by assertion |
 | **contracts ever actually measured** | **20** |
 | of those, **against a prompt they cannot name** | **17** |
-| coverage | 93.3%, gate at 90% aggregate **and per package** |
+| coverage | 93.4%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.18.0** |
+| published version | **0.19.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -124,6 +124,27 @@ measuring, so a row broken in two measured as two short rows. The blank-row
 guard trimmed correctly and had never been shown prose. Each is now asked as a
 question about the whole screen rather than about a list.
 
+**How it looks, and who chooses.** Five themes, cycled with `t` inside the
+transcript. Four of them paint their own ground and carry RGB measured against
+it, because amber over a background the product picked is a signal while amber
+over an unknown one is just a colour. The fifth, `claude`, gives the ground back
+to the terminal, and therefore carries no RGB at all: text is weight and state
+is the sixteen named ANSI colours, which are the ones the terminal's own theme
+already chose to be readable against its own background. It is also the only one
+drawable on a sixteen-colour terminal. Colour switched off still emits no escape
+at all, ground included.
+
+**A glyph is one cell, whatever the locale says.** The screen is drawn out of
+box-drawing characters, and every one of them is ambiguous in Unicode's East
+Asian Width table. `LANG=ja_JP.UTF-8` made the client pick that set — the locale
+is UTF-8 — while making the measuring library render it at two cells, from the
+same variable: the whole screen came out at twice the terminal's width, and
+eleven guards caught it the moment a suite was run in that locale. The locale
+says which language the person reads, not how many cells their terminal gives a
+vertical rule. Measurement is now a ruler this client owns, and a terminal that
+really draws those marks wider gets a different glyph set rather than different
+arithmetic.
+
 **Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
 bubblewrap on Linux, with the boundary tested against the kernel and exercised
 in CI. Authorisation is the approval policy plus the rules. The two are
@@ -185,6 +206,8 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+## 0.19.0 — 2 September 2026
 
 - **In a Japanese locale the whole screen came out twice the width of the
   terminal.** One environment variable drove two decisions that have to agree,
