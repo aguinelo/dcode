@@ -35,6 +35,10 @@ const (
 	StyleMeta    // a fact qualifying another: a count, a duration, a summary
 	StyleHint    // a key somebody may press
 	StyleChrome  // a rule, a gutter, a frame: present, never read
+	// StyleReasoning is the model thinking aloud. Its own role rather than
+	// borrowing chrome: a theme has something to say about it that it does not
+	// say about a gutter, and one of them does — in italic.
+	StyleReasoning
 
 	// The lanes. Colours of their own rather than reuse: a lane is not a
 	// state, and borrowing StyleOK for the answer lane would make every

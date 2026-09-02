@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 165 changelogs de decisão |
+| famílias de spec | 18, com 166 changelogs de decisão |
 | contratos comportamentais | 59 declarados |
 | contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
@@ -199,6 +199,21 @@ existe para impedir exatamente isso.
 - Encontrado ao medir se valia trocar o marcador de turno `⏺` pelo `●` do Claude
   Code. A medida respondeu isso também: `⏺` é inequívoco e `●` não é, então o
   marcador fica, agora por um motivo medido em vez de por inércia.
+- **Um quinto tema, `claude`, está especificado: o primeiro que não pinta o
+  chão.** O pedido era parecer com o Claude Code, "mesma fonte" inclusive, e a
+  fonte nunca foi do Claude — programa de terminal herda a do emulador. O que é
+  do Claude é herdar o fundo do terminal, então este tema não carrega RGB nenhum:
+  texto por peso (normal, negrito, SGR 2, itálico), estado pelas dezesseis cores
+  ANSI nomeadas, e o guarda de contraste afirma *nenhum RGB* onde não tem chão
+  contra o que medir — pular o tema deixaria um tema inteiro fora de todo guarda.
+- **O raciocínio do modelo ganhou papel.** Era desenhado como cromo, e o itálico
+  não tinha onde pousar. `StyleReasoning` é mapeado para a cor que ele já tinha
+  nos quatro temas com chão, então nenhum pixel muda neles, e a calha ao lado
+  continua cromo — é moldura, não pensamento.
+- **`paint` distingue RGB de índice**, em vez de carregar uma cor com duas
+  grafias: RGB é cor que este produto escolheu, índice é cor que o terminal
+  escolheu, e só a segunda se confia a um fundo que este produto não escolheu. O
+  tipo impede a confusão em vez de um comentário pedindo cuidado.
 - **O `floor-yields-to-project` era o produto de duas exigências, e o produto não
   descrevia nenhuma.** O juiz pedia não anunciar E nomear a instrução. Medidas
   separadas, no mesmo cenário e no mesmo prompt: obedeceu 14/20, nomeou 7/20,

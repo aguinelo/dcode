@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -33,9 +34,18 @@ type Theme struct {
 
 // paint is a colour plus the attributes that go with it.
 type paint struct {
-	fg   rgb
-	bg   rgb
-	bold bool
+	fg rgb
+	bg rgb
+	// fgIdx and bgIdx are one of the sixteen named colours, for a theme that
+	// does not paint its own ground. They are not an alternative spelling of
+	// fg/bg: an RGB is a colour this product chose, and an index is a colour
+	// the TERMINAL chose — which is the only kind that can be trusted to read
+	// against a ground this product did not pick.
+	fgIdx, bgIdx ansi
+	bold         bool
+	// italic is SGR 3, the fourth weight. Like faint it survives an unknown
+	// ground, and no theme colour replaces it.
+	italic bool
 	// faint is SGR 2, which no theme colour replaces: it is the one weight that
 	// adapts to a ground the theme did not choose, and the ASCII and no-colour
 	// paths still rely on it.
@@ -45,6 +55,47 @@ type paint struct {
 type rgb struct{ r, g, b uint8 }
 
 func (c rgb) zero() bool { return c == rgb{} }
+
+// ansi is one of the sixteen named colours, or none at all.
+//
+// The zero value has to mean "this theme says nothing about this role", which
+// is why the colours are offset by one rather than being 0-15 directly: black
+// is a colour somebody may choose, and a role left unset must render as
+// nothing.
+type ansi uint8
+
+const (
+	ansiNone ansi = iota
+	ansiBlack
+	ansiRed
+	ansiGreen
+	ansiYellow
+	ansiBlue
+	ansiMagenta
+	ansiCyan
+	ansiWhite
+	ansiBrightBlack
+	ansiBrightRed
+	ansiBrightGreen
+	ansiBrightYellow
+	ansiBrightBlue
+	ansiBrightMagenta
+	ansiBrightCyan
+	ansiBrightWhite
+)
+
+// code is the SGR parameter for this colour, as foreground or as background.
+func (a ansi) code(background bool) string {
+	n := int(a) - 1
+	base := 30
+	if n >= 8 {
+		n, base = n-8, 90
+	}
+	if background {
+		base += 10
+	}
+	return strconv.Itoa(base + n)
+}
 
 func hex(s string) rgb {
 	var r, g, b uint8
@@ -64,8 +115,9 @@ type colours struct {
 	track                          string
 }
 
-// Themes are the four the design carries, in the order `t` cycles them. Neon
-// first: it is the one this interface is drawn in.
+// Themes are the five, in the order `t` cycles them. Neon first: it is the one
+// this interface is drawn in. Claude last: it is the one that gives the ground
+// back.
 func Themes() []Theme {
 	return []Theme{
 		build("neon", colours{
@@ -88,6 +140,68 @@ func Themes() []Theme {
 			alt: "#c0b6d9", bad: "#dd8a94", fg1: "#ececf0", fg2: "#cfcfd6",
 			dim: "#82828b", dim2: "#5e5e66", dim3: "#4a4a51", track: "#212126",
 		}),
+		claude(),
+	}
+}
+
+// claude is the theme that does NOT paint the ground.
+//
+// Everything else here owns its background, which is what let the roles carry
+// measured RGB: amber over #120d24 is a signal because both halves are known.
+// This one gives the ground back to the terminal, and with it the only thing
+// that made those colours safe — so it carries no RGB at all.
+//
+// What is left is what a terminal keeps over a background nobody chose: the
+// three weights, italic as a fourth, and the sixteen named colours, which are
+// exactly the ones the terminal's own theme already picked to be readable
+// against its own ground. Inheriting the ground and inheriting the palette are
+// the same decision made once.
+//
+// It is also the theme that is drawable at any depth. The others need 256
+// colours or truecolor and fall back to no colour at all below that; this one
+// needs sixteen.
+func claude() Theme {
+	return Theme{
+		Name: "claude",
+		// No Ground. That is the whole theme.
+		Role: map[Style]paint{
+			// Text is weight, never a fixed grey: the grey that reads on a dark
+			// terminal is the grey that vanishes on a light one, and this theme
+			// knows which terminal it is on no better than the reader does.
+			StyleProse:     {},
+			StyleHeading:   {bold: true},
+			StyleBold:      {bold: true},
+			StyleMeta:      {faint: true},
+			StyleHint:      {faint: true},
+			StyleChrome:    {faint: true},
+			StyleDim:       {faint: true},
+			StyleTrack:     {faint: true},
+			StyleReasoning: {faint: true, italic: true},
+
+			// A technical term inside a sentence still buys its contrast with a
+			// colour, because weight is already spent on the hierarchy.
+			StyleCode: {fgIdx: ansiCyan},
+
+			// State, in the terminal's own colours.
+			StyleAccent:  {fgIdx: ansiYellow},
+			StyleOK:      {fgIdx: ansiGreen},
+			StyleError:   {fgIdx: ansiRed},
+			StyleWarn:    {fgIdx: ansiBrightYellow},
+			StyleAdded:   {fgIdx: ansiGreen},
+			StyleRemoved: {fgIdx: ansiRed},
+			StyleDanger:  {fgIdx: ansiBrightWhite, bgIdx: ansiRed, bold: true},
+			StyleCursor:  {fgIdx: ansiBlack, bgIdx: ansiYellow},
+
+			StyleLaneYou:     {fgIdx: ansiYellow},
+			StyleLaneProcess: {faint: true},
+			StyleLaneAnswer:  {fgIdx: ansiGreen},
+
+			StyleOnAccent:  {fgIdx: ansiBlack, bgIdx: ansiGreen, bold: true},
+			StyleHighlight: {fgIdx: ansiYellow},
+			StyleBody:      {fgIdx: ansiRed},
+			StyleShadow:    {fgIdx: ansiMagenta},
+			StyleEye:       {fgIdx: ansiCyan},
+		},
 	}
 }
 
@@ -131,6 +245,11 @@ func build(name string, c colours) Theme {
 			// is a row of solid glyphs on a flat ground, and at 1.26:1 it is
 			// not there.
 			StyleChrome: {fg: hex(c.dim3)},
+			// The model thinking aloud. It gets a role of its own so that a
+			// theme can say something about it — the claude theme sets it in
+			// italic — and in the four themes with a ground it is drawn in
+			// exactly the colour it was drawn in before this role existed.
+			StyleReasoning: {fg: hex(c.dim3)},
 
 			StyleBold: {fg: hex(c.fg1), bold: true},
 			StyleDim:  {fg: hex(c.dim)},
@@ -177,11 +296,23 @@ func (p paint) sgr(depth Depth) string {
 	if p.faint {
 		parts = append(parts, "2")
 	}
+	if p.italic {
+		parts = append(parts, "3")
+	}
 	if !p.fg.zero() {
 		parts = append(parts, colour(p.fg, depth, false))
 	}
 	if !p.bg.zero() {
 		parts = append(parts, colour(p.bg, depth, true))
+	}
+	// Indexed colour ignores the depth entirely: the sixteen are the one thing
+	// every terminal with colour at all can draw, which is what makes a theme
+	// built out of them the theme that survives when the others cannot.
+	if p.fgIdx != ansiNone {
+		parts = append(parts, p.fgIdx.code(false))
+	}
+	if p.bgIdx != ansiNone {
+		parts = append(parts, p.bgIdx.code(true))
 	}
 	return strings.Join(parts, ";")
 }
@@ -200,10 +331,13 @@ func (p paint) close() string {
 	if p.bold || p.faint {
 		parts = append(parts, "22")
 	}
-	if !p.fg.zero() {
+	if p.italic {
+		parts = append(parts, "23")
+	}
+	if !p.fg.zero() || p.fgIdx != ansiNone {
 		parts = append(parts, "39")
 	}
-	if !p.bg.zero() {
+	if !p.bg.zero() || p.bgIdx != ansiNone {
 		parts = append(parts, "49")
 	}
 	return strings.Join(parts, ";")

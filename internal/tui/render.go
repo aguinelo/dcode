@@ -957,7 +957,7 @@ func renderThought(e Entry, cursor, cont string, gl marks, g Geometry) []string 
 		}
 		out := make([]string, 0, len(lines))
 		for _, l := range lines {
-			out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" "+l), w))
+			out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" ")+p.Apply(StyleReasoning, l), w))
 		}
 		return out
 	}
@@ -973,7 +973,7 @@ func renderThought(e Entry, cursor, cont string, gl marks, g Geometry) []string 
 
 	out := []string{clipStyled(head, w)}
 	for _, l := range wrap(strings.TrimSpace(e.Summary), w-4) {
-		out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" "+l), w))
+		out = append(out, clipStyled(cont+p.Apply(StyleChrome, gl.gutter+" ")+p.Apply(StyleReasoning, l), w))
 	}
 	return out
 }
