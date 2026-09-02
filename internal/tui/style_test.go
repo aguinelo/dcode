@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aguinelo/dcode/internal/protocol"
-	"github.com/mattn/go-runewidth"
 )
 
 func envOf(m map[string]string) func(string) string {
@@ -44,9 +43,9 @@ func TestStylingDoesNotChangeDisplayWidth(t *testing.T) {
 	for _, s := range []Style{StyleDim, StyleBold, StyleAccent, StyleAdded, StyleError, StyleDanger} {
 		text := "configuração"
 		styled := p.Apply(s, text)
-		if visibleWidth(styled) != runewidth.StringWidth(text) {
+		if visibleWidth(styled) != ruler.StringWidth(text) {
 			t.Errorf("style %d changed the measured width: %d vs %d",
-				s, visibleWidth(styled), runewidth.StringWidth(text))
+				s, visibleWidth(styled), ruler.StringWidth(text))
 		}
 	}
 }
@@ -158,7 +157,7 @@ func TestSpinnerAnimatesAndDegrades(t *testing.T) {
 	}
 	// One cell wide in every frame, or the line jitters as it turns.
 	for i := 0; i < 10; i++ {
-		if w := runewidth.StringWidth(Spinner(i, true)); w != 1 {
+		if w := ruler.StringWidth(Spinner(i, true)); w != 1 {
 			t.Errorf("frame %d is %d cells", i, w)
 		}
 		if got := Spinner(i, false); got > "\x7f" {

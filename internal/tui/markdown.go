@@ -2,8 +2,6 @@ package tui
 
 import (
 	"strings"
-
-	"github.com/mattn/go-runewidth"
 )
 
 // renderProse draws what the model wrote.
@@ -187,7 +185,7 @@ func wrapStyled(runs []textRun, w int, g Geometry) []string {
 			width++
 		}
 		line.WriteString(p.Apply(style, word))
-		width += runewidth.StringWidth(word)
+		width += ruler.StringWidth(word)
 	}
 
 	for _, r := range runs {
@@ -207,11 +205,11 @@ func wrapStyled(runs []textRun, w int, g Geometry) []string {
 				// A word wider than the column is broken rather than merely
 				// given its own line: a path longer than the stream would
 				// otherwise wrap in the terminal and destroy the layout.
-				for runewidth.StringWidth(word) > w {
+				for ruler.StringWidth(word) > w {
 					if width > 0 {
 						newline()
 					}
-					head := runewidth.Truncate(word, w, "")
+					head := ruler.Truncate(word, w, "")
 					put(head, r.style, false)
 					newline()
 					word = word[len(head):]
@@ -220,7 +218,7 @@ func wrapStyled(runs []textRun, w int, g Geometry) []string {
 					continue
 				}
 				space := width > 0
-				cost := runewidth.StringWidth(word)
+				cost := ruler.StringWidth(word)
 				if space {
 					cost++
 				}

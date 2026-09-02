@@ -7,7 +7,6 @@ import (
 
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/version"
-	"github.com/mattn/go-runewidth"
 )
 
 func lines(s string) []string { return strings.Split(strings.TrimRight(s, "\n"), "\n") }
@@ -246,21 +245,21 @@ func TestRenderOfADegenerateGeometry(t *testing.T) {
 // Byte width breaks on accents and on CJK, and the failure only shows with the
 // non-ASCII input a Portuguese-speaking user types.
 func TestWidthHelpersMeasureDisplayCells(t *testing.T) {
-	if got := clip("configuração", 6); runewidth.StringWidth(got) > 6 {
+	if got := clip("configuração", 6); ruler.StringWidth(got) > 6 {
 		t.Errorf("clip measured bytes, got %q", got)
 	}
-	if got := pad("日本", 6); runewidth.StringWidth(got) != 6 {
-		t.Errorf("pad measured bytes, got %q (%d cells)", got, runewidth.StringWidth(got))
+	if got := pad("日本", 6); ruler.StringWidth(got) != 6 {
+		t.Errorf("pad measured bytes, got %q (%d cells)", got, ruler.StringWidth(got))
 	}
 	if got := clip("abc", 0); got != "" {
 		t.Errorf("got %q", got)
 	}
-	if got := pad("abcdef", 3); runewidth.StringWidth(got) != 3 {
+	if got := pad("abcdef", 3); ruler.StringWidth(got) != 3 {
 		t.Errorf("pad must clip when the text is already too wide, got %q", got)
 	}
 
 	for _, l := range wrap("uma frase razoavelmente longa em português", 12) {
-		if runewidth.StringWidth(l) > 12 {
+		if ruler.StringWidth(l) > 12 {
 			t.Errorf("wrap produced %q", l)
 		}
 	}
@@ -346,9 +345,9 @@ func TestWrapBreaksAWordWiderThanTheColumn(t *testing.T) {
 		got := wrap(tc.word, tc.width)
 		joined := strings.Join(got, "")
 		for _, l := range got {
-			if runewidth.StringWidth(l) > tc.width {
+			if ruler.StringWidth(l) > tc.width {
 				t.Errorf("%s: line %q is %d cells, over %d",
-					tc.name, l, runewidth.StringWidth(l), tc.width)
+					tc.name, l, ruler.StringWidth(l), tc.width)
 			}
 		}
 		// Breaking must not lose characters.

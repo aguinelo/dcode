@@ -161,6 +161,9 @@ var tuiInvariants = map[string]string{
 	// Text has a hierarchy.
 	"é **mais clara** que o que a qualifica":  "TestTheAnswerIsBrighterThanWhatQualifiesIt",
 	"legível contra o fundo que o tema pinta": "TestEveryRoleIsLegibleAgainstTheGround",
+	// Width does not move with the locale.
+	"Nenhuma medida deste cliente muda com o locale": "TestTheLocaleDoesNotDecideHowWideAGlyphIs",
+	"nada no pacote mede por fora da régua":          "TestNothingMeasuresWithTheGlobalRuler",
 
 	// A marker still arriving.
 	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",

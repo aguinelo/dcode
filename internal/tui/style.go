@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/mattn/go-runewidth"
 )
 
 // Style is one visual role, not one colour.
@@ -257,7 +255,7 @@ func humanTokens(n int) string {
 
 // visibleWidth measures display cells, ignoring escape sequences.
 func visibleWidth(s string) int {
-	return runewidth.StringWidth(stripANSI(s))
+	return ruler.StringWidth(stripANSI(s))
 }
 
 // stripANSI removes CSI sequences. Only what this package emits, deliberately:
@@ -317,7 +315,7 @@ func clipStyled(s string, w int) string {
 			continue
 		}
 		r, size := utf8.DecodeRuneInString(s[i:])
-		rw := runewidth.RuneWidth(r)
+		rw := ruler.RuneWidth(r)
 		if cells+rw > w {
 			break
 		}

@@ -8,7 +8,6 @@ import (
 	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/version"
-	"github.com/mattn/go-runewidth"
 )
 
 // RailMode is the sidebar's visibility.
@@ -1084,11 +1083,11 @@ func ellipsisTail(s string, w int, mark string) string {
 	if w <= 0 || clipWidth(s) <= w {
 		return s
 	}
-	mw := runewidth.StringWidth(mark)
+	mw := ruler.StringWidth(mark)
 	if w <= mw {
 		return clip(s, w)
 	}
-	return runewidth.Truncate(s, w-mw, "") + mark
+	return ruler.Truncate(s, w-mw, "") + mark
 }
 
 // ellipsis shortens the middle of a path, keeping the end.
@@ -1096,11 +1095,11 @@ func ellipsis(s string, w int, mark string) string {
 	if w <= 0 || clipWidth(s) <= w {
 		return s
 	}
-	mw := runewidth.StringWidth(mark)
+	mw := ruler.StringWidth(mark)
 	if w <= mw {
 		return clip(s, w)
 	}
-	tail := runewidth.Truncate(reverse(s), w-mw, "")
+	tail := ruler.Truncate(reverse(s), w-mw, "")
 	return mark + reverse(tail)
 }
 
@@ -1484,7 +1483,7 @@ func overlay(screen string, modal []string, g Geometry) string {
 		if r >= len(rows) {
 			break
 		}
-		left := (g.Width - runewidth.StringWidth(ml)) / 2
+		left := (g.Width - ruler.StringWidth(ml)) / 2
 		if left < 0 {
 			left = 0
 		}
@@ -1575,14 +1574,14 @@ func clip(s string, w int) string {
 	if w <= 0 {
 		return ""
 	}
-	if runewidth.StringWidth(s) <= w {
+	if ruler.StringWidth(s) <= w {
 		return s
 	}
-	return runewidth.Truncate(s, w, "")
+	return ruler.Truncate(s, w, "")
 }
 
 func pad(s string, w int) string {
-	d := w - runewidth.StringWidth(s)
+	d := w - ruler.StringWidth(s)
 	if d <= 0 {
 		return clip(s, w)
 	}
@@ -1605,12 +1604,12 @@ func wrap(s string, w int) []string {
 			// on a line of its own: a path or a stack frame longer than the
 			// panel would otherwise overflow and wrap in the terminal, which is
 			// what destroys the fixed layout the panel depends on.
-			for runewidth.StringWidth(word) > w {
+			for ruler.StringWidth(word) > w {
 				if line.Len() > 0 {
 					out = append(out, line.String())
 					line.Reset()
 				}
-				head := runewidth.Truncate(word, w, "")
+				head := ruler.Truncate(word, w, "")
 				out = append(out, head)
 				word = word[len(head):]
 			}
@@ -1620,7 +1619,7 @@ func wrap(s string, w int) []string {
 			switch {
 			case line.Len() == 0:
 				line.WriteString(word)
-			case runewidth.StringWidth(line.String())+1+runewidth.StringWidth(word) <= w:
+			case ruler.StringWidth(line.String())+1+ruler.StringWidth(word) <= w:
 				line.WriteString(" ")
 				line.WriteString(word)
 			default:

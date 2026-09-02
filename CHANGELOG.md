@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 164 decision changelogs |
+| spec families | 18, with 165 decision changelogs |
 | behavioural contracts | 59 declared |
 | contracts needing a model | 54 of the 59; 5 are settled by assertion |
 | **contracts ever actually measured** | **20** |
@@ -186,6 +186,36 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **In a Japanese locale the whole screen came out twice the width of the
+  terminal.** One environment variable drove two decisions that have to agree,
+  and drove them into a contradiction: `supportsUnicode` sees UTF-8 and reaches
+  for the box-drawing set, while `go-runewidth`'s own `init()` sees `ja_JP` and
+  measures that same set at two cells. Every box-drawing character is ambiguous
+  in Unicode's East Asian Width table, so the client picked the glyphs by
+  exactly the signal that doubled them.
+- **Eleven of the repository's own guards fail on it, and none of them was
+  wrong.** They all ran in a process whose locale was not East Asian: the suite
+  was making the same bet as the product. `RUNEWIDTH_EASTASIAN=1 go test
+  ./internal/tui` is the reproduction, and it is one line.
+- **The locale says which language the person reads, not how many cells their
+  terminal gives a vertical rule.** This product already draws that distinction
+  for colour, where `DCODE_COLOR` is the user answering for their own terminal
+  and the rest is inference. The difference here is that nobody in this
+  repository ever chose — a dependency's `init()` chose, from a variable read
+  for something else.
+- Measurement now goes through a ruler owned by the package, pinned to one cell,
+  rather than the global. A terminal that really draws those marks wider needs a
+  different **glyph set** (`DCODE_ASCII=1`, one cell by construction), not
+  different arithmetic — honouring `RUNEWIDTH_EASTASIAN=1` would promise a
+  layout that does not work.
+- **The guard that matters asks the source, not the behaviour.** Behaviour keeps
+  passing with half the call sites back on the global, because the failure only
+  shows in a locale the suite does not run in — which is how this arrived. Tests
+  measure with the package's ruler too: a guard measuring differently from what
+  the product draws reports failures nobody has and misses the ones they do.
+- Found while measuring whether to swap the turn bullet `⏺` for Claude Code's
+  `●`. The measurement answered that too: `⏺` is unambiguous and `●` is not, so
+  the bullet stays, now for a measured reason rather than inertia.
 - **`floor-yields-to-project` was the product of two requirements, and the
   product described neither.** Its judge asked for not announcing AND for naming
   the instruction. Measured apart, on the same scenario and the same prompt:
