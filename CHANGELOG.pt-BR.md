@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 164 changelogs de decisão |
+| famílias de spec | 18, com 165 changelogs de decisão |
 | contratos comportamentais | 59 declarados |
 | contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
@@ -170,6 +170,35 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Em locale japonês a tela inteira saía com o dobro da largura do terminal.**
+  Uma variável de ambiente decidia duas coisas que precisam concordar e as levava
+  à contradição: `supportsUnicode` vê UTF-8 e escolhe o conjunto de caixa,
+  enquanto o `init()` do `go-runewidth` vê `ja_JP` e mede esse mesmo conjunto com
+  duas células. Todo caractere de caixa é ambíguo na tabela East Asian Width, ou
+  seja, o cliente escolhia os glifos exatamente pelo sinal que os dobrava.
+- **Onze guardas do próprio repositório reprovam, e nenhum estava errado.** Todos
+  rodavam num processo cujo locale não era asiático: a suíte fazia a mesma aposta
+  que o produto. `RUNEWIDTH_EASTASIAN=1 go test ./internal/tui` é a reprodução, e
+  é uma linha.
+- **O locale diz que língua a pessoa lê, não quantas células o terminal dela dá a
+  uma régua vertical.** Este produto já faz essa distinção para cor, em que
+  `DCODE_COLOR` é a pessoa respondendo pelo próprio terminal e o resto é
+  inferência. A diferença aqui é que ninguém neste repositório escolheu — quem
+  escolheu foi o `init()` de uma dependência, a partir de uma variável lida para
+  outra coisa.
+- A medida passa por régua do pacote, fixada em uma célula, e não pelo global.
+  Terminal que de fato desenha essas marcas mais largas pede outro **conjunto de
+  glifos** (`DCODE_ASCII=1`, uma célula por construção), não outra aritmética —
+  honrar `RUNEWIDTH_EASTASIAN=1` seria prometer um layout que não funciona.
+- **O guarda que importa pergunta ao código-fonte, não ao comportamento.** O
+  comportamento continua passando com metade das chamadas de volta no global,
+  porque a falha só aparece num locale em que a suíte não roda — que é por onde
+  isto entrou. Os testes também medem pela régua do pacote: guarda que mede
+  diferente do que o produto desenha reprova o que ninguém vê e aprova o que
+  todo mundo vê.
+- Encontrado ao medir se valia trocar o marcador de turno `⏺` pelo `●` do Claude
+  Code. A medida respondeu isso também: `⏺` é inequívoco e `●` não é, então o
+  marcador fica, agora por um motivo medido em vez de por inércia.
 - **O `floor-yields-to-project` era o produto de duas exigências, e o produto não
   descrevia nenhuma.** O juiz pedia não anunciar E nomear a instrução. Medidas
   separadas, no mesmo cenário e no mesmo prompt: obedeceu 14/20, nomeou 7/20,

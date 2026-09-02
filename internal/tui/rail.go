@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/mattn/go-runewidth"
 )
 
 // The sidebar: what this turn has touched, in the order a reader can scan.
@@ -190,7 +188,7 @@ func trimTo(s string, w int) string {
 	}
 	out, used := make([]rune, 0, len(s)), 0
 	for _, r := range s {
-		rw := runewidth.RuneWidth(r)
+		rw := ruler.RuneWidth(r)
 		if used+rw > w {
 			break
 		}

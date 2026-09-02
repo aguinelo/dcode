@@ -2,7 +2,6 @@ package tui
 
 import (
 	"github.com/aguinelo/dcode/internal/protocol"
-	"github.com/mattn/go-runewidth"
 )
 
 // The stream is taller than the screen almost immediately, so what the user
@@ -206,4 +205,4 @@ func ScrollHint(m Model, g Geometry, top, total, height int) string {
 }
 
 // clipWidth is a small helper shared by the renderers.
-func clipWidth(s string) int { return runewidth.StringWidth(s) }
+func clipWidth(s string) int { return ruler.StringWidth(s) }

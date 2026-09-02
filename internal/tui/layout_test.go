@@ -3,8 +3,6 @@ package tui
 import (
 	"strings"
 	"testing"
-
-	"github.com/mattn/go-runewidth"
 )
 
 // The end is what identifies a file; the directories leading to it are what
@@ -14,8 +12,8 @@ func TestATooLongPathIsCutAtTheFrontAndFitsItsColumn(t *testing.T) {
 	long := "internal/tui/very/deep/path/render.go"
 
 	got := ellipsis(long, 20, "…")
-	if runewidth.StringWidth(got) > 20 {
-		t.Errorf("%q is %d wide, want at most 20", got, runewidth.StringWidth(got))
+	if ruler.StringWidth(got) > 20 {
+		t.Errorf("%q is %d wide, want at most 20", got, ruler.StringWidth(got))
 	}
 	if !strings.HasSuffix(got, "render.go") {
 		t.Errorf("got %q, want the filename kept", got)
@@ -35,7 +33,7 @@ func TestATooLongPathIsCutAtTheFrontAndFitsItsColumn(t *testing.T) {
 		t.Errorf("got %q with no column given, want it unchanged", got)
 	}
 	for _, w := range []int{1, 2, 3} {
-		if got := ellipsis(long, w, "…"); runewidth.StringWidth(got) > w {
+		if got := ellipsis(long, w, "…"); ruler.StringWidth(got) > w {
 			t.Errorf("width %d: %q is wider than the column", w, got)
 		}
 	}
@@ -45,8 +43,8 @@ func TestATooLongPathIsCutAtTheFrontAndFitsItsColumn(t *testing.T) {
 // the line one column past the box and the frame breaks.
 func TestCuttingAPathRespectsWideGlyphs(t *testing.T) {
 	got := ellipsis("caminho/muito/comprido/日本語のファイル.go", 20, "…")
-	if runewidth.StringWidth(got) > 20 {
-		t.Errorf("%q is %d wide, want at most 20", got, runewidth.StringWidth(got))
+	if ruler.StringWidth(got) > 20 {
+		t.Errorf("%q is %d wide, want at most 20", got, ruler.StringWidth(got))
 	}
 	if strings.Contains(got, "�") {
 		t.Errorf("the path was cut mid-character: %q", got)
@@ -140,8 +138,8 @@ func TestAWordWiderThanTheColumnIsBrokenNotOverflowed(t *testing.T) {
 	long := strings.Repeat("x", 100)
 	for _, w := range []int{10, 20, 40} {
 		for i, line := range renderProse(long, w, g) {
-			if runewidth.StringWidth(line) > w {
-				t.Errorf("width %d: line %d is %d wide: %q", w, i, runewidth.StringWidth(line), line)
+			if ruler.StringWidth(line) > w {
+				t.Errorf("width %d: line %d is %d wide: %q", w, i, ruler.StringWidth(line), line)
 			}
 		}
 	}
