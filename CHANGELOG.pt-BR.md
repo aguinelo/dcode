@@ -247,6 +247,14 @@ existe para impedir exatamente isso.
   forma nova: invariante sobre a corrida, conferida contra o desenho.
 - Critério que não pôde ser conferido conta como pendente, não como cumprido.
   Dobrá-lo em cumprido é anunciar sucesso de trabalho que nada mediu.
+- **A §17 do roadmap agora nomeia o que sobrou, não o que foi entregue.** Ela
+  foi escrita quando o relato chegou, e a correção saiu na mesma semana, então a
+  maior parte descrevia trabalho que já existe. O que resta é a metade de que o
+  relato de fato falava: a fronteira decaindo ao longo de TURNOS. O contrato novo
+  julga as rodadas de um turno, o que é mais forte que julgar a primeira e ainda
+  não é vinte turnos com troca de modo no meio. Medir isso pede um fixture de
+  vários turnos, que é mudança de harness e não de contrato — e a primeira
+  pergunta é se isso cabe numa suíte que custa dinheiro por execução.
 
 ## 0.19.0 — 2 de setembro de 2026
 

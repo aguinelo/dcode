@@ -266,6 +266,14 @@ exists to stop exactly that.
   shape: an invariant about the run, checked against the drawing.
 - A criterion that could not be checked counts as outstanding rather than met.
   Folding it into met is announcing success for work nothing measured.
+- **Roadmap §17 now names what is left rather than what was shipped.** It was
+  written as the report came in, and the fix landed in the same week, so most of
+  it described work that exists. What remains is the half the report was actually
+  about: the boundary decaying across TURNS. The new contract judges the rounds
+  of one turn, which is stronger than judging the first and is still not twenty
+  turns with a mode change in the middle. Measuring that needs a multi-turn
+  fixture, which is a harness change rather than a contract — and the first
+  question is whether it belongs in a suite that costs money per run at all.
 
 ## 0.19.0 — 2 September 2026
 
