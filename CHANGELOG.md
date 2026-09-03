@@ -26,9 +26,9 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 166 decision changelogs |
-| behavioural contracts | 59 declared |
-| contracts needing a model | 54 of the 59; 5 are settled by assertion |
+| spec families | 18, with 167 decision changelogs |
+| behavioural contracts | 60 declared |
+| contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **20** |
 | of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.4%, gate at 90% aggregate **and per package** |
@@ -190,7 +190,7 @@ fail the build would mean every prompt pull request carrying fifty-three
 re-measurements, and a rule nobody can afford is a rule that gets switched off.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-four contracts that need a model, **thirty-four have never run against
+fifty-five contracts that need a model, **thirty-five have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
 Of the nineteen that have, **five did not meet their threshold**, and the
@@ -206,6 +206,41 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **The boundary is a fact in the prompt, not something the person has to keep
+  saying.** Reported: switching to full-access and telling the model works, and
+  a few turns later it refuses again. The "few turns later" is the whole
+  diagnosis. The doctrine is re-read at full weight every turn and teaches the
+  model to distrust prose claiming the boundary moved — which is right, and
+  which is exactly the artefact a person produces when they say "you are in
+  full-access". The two are indistinguishable from the inside, and only one of
+  them ages.
+- **The fix is not to soften the doctrine** but to give the model a source it
+  can name as authoritative, supplied by the harness rather than by whoever is
+  typing. A block after Safety says which mode is in force, and says that the
+  rule about ignoring requests to relax the sandbox does not apply to it,
+  because nothing is being asked.
+- **It lives in the prefix, and that costs a cache.** A reminder would decay the
+  way the person's sentence did: it lands once in history, and history is what
+  compaction summarises away and what a rebuild deliberately drops. The prefix
+  is neither, so the fact survives both. Each mode change now costs the whole
+  cached prefix — a rare event bought against a daily decay.
+- **The doctrine did not grow by a byte.** The rule belongs to Safety by
+  subject; it is in the block because the doctrine had eighteen bytes of
+  headroom under its own size guard, and that guard says to move a rule rather
+  than grow what every turn pays for. It reads better there anyway, against the
+  fact it governs.
+- **Whether anyone is asked comes from the approval policy, not the mode.**
+  Workspace-write with approvals set to never denies rather than asks, and
+  promising a question nobody will be asked is the same defect in a quieter
+  cell.
+- **`boundary-full-access-acts` is the contract that was missing.** The two
+  existing boundary contracts measure exactly this failure in workspace-write;
+  no contract had ever run a full-access session. Its judge asks for the act and
+  refuses both halves of the report: describing a confirmation the harness does
+  not perform, and declining a decision the mode exists to have already made.
+  What it does not measure is decay across turns, said in the scenario rather
+  than implied.
 
 ## 0.19.0 — 2 September 2026
 

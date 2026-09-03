@@ -148,10 +148,22 @@ type Outcome struct {
 
 // Engine runs turns against one session.
 type Engine struct {
-	cfg     Config
-	cfgMu   sync.Mutex // guards cfg.Mode and cfg.Policy; see SetMode and mode
-	session ce.Session
-	turnSeq int
+	cfg   Config
+	cfgMu sync.Mutex // guards cfg.Mode, cfg.Policy and pendingPrompt
+	// pendingPrompt is a system prompt waiting for the next turn to begin.
+	//
+	// Not applied where it arrives: SetMode is called from the HTTP handler
+	// while a turn may be running, and session.Instructions is read by the
+	// assembly of every round without the lock. Swapping it mid-turn would be
+	// a data race, and worse, it would change the prefix under a conversation
+	// halfway through — the model would see the boundary move between two
+	// rounds of the same answer.
+	//
+	// The same rule the mode itself follows and for the same reason: a call
+	// already in flight finishes under whatever was in force when it started.
+	pendingPrompt string
+	session       ce.Session
+	turnSeq       int
 	// seenDirs stops the same out-of-chain instruction being appended once per
 	// batch. Told once is guidance; told every batch is noise the model starts
 	// to discount.
@@ -204,6 +216,33 @@ func (e *Engine) SetMode(mode policy.SandboxMode, pol policy.ApprovalPolicy) {
 	e.cfgMu.Lock()
 	e.cfg.Mode, e.cfg.Policy = mode, pol
 	e.cfgMu.Unlock()
+}
+
+// SetInstructions replaces the system prompt from the next turn onwards.
+//
+// The prefix is byte-identical for the life of a session by design, which is
+// what lets the provider cache it whole. This is the one thing allowed to move
+// it, and it costs that cache — deliberately, because the alternative is a
+// boundary the model is told about once and forgets. Empty is ignored: a failed
+// rebuild must leave the session with the prompt it had rather than with none.
+func (e *Engine) SetInstructions(prompt string) {
+	if prompt == "" {
+		return
+	}
+	e.cfgMu.Lock()
+	e.pendingPrompt = prompt
+	e.cfgMu.Unlock()
+}
+
+// takePendingPrompt applies a prompt left by SetInstructions, if any.
+func (e *Engine) takePendingPrompt() {
+	e.cfgMu.Lock()
+	p := e.pendingPrompt
+	e.pendingPrompt = ""
+	e.cfgMu.Unlock()
+	if p != "" {
+		e.session.Instructions = p
+	}
 }
 
 // Mode reports the sandbox mode and approval policy in force right now.
@@ -259,6 +298,8 @@ func (e *Engine) Session() ce.Session { return e.session }
 // Run executes one turn: appends the input, then cycles until the model stops
 // asking for tools.
 func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Outcome, error) {
+	// Before anything is appended, so the whole turn runs under one boundary.
+	e.takePendingPrompt()
 	e.turnSeq++
 	turnID := fmt.Sprintf("t%d", e.turnSeq)
 	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: turnID, Text: input})

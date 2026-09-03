@@ -14,6 +14,7 @@ import (
 	"github.com/aguinelo/dcode/internal/behavior"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/memory"
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/tui"
 	"github.com/aguinelo/dcode/internal/vcs"
 )
@@ -92,6 +93,15 @@ type World struct {
 	// product rather than from task.md, done_propose answers, and the boundary
 	// is the one the product forces. Empty is every other scenario.
 	Qualify string `json:"qualify"`
+	// Mode is the boundary this scenario runs under, when it is not the
+	// workspace-write every other one takes.
+	//
+	// It exists because no contract had ever run a full-access session, so the
+	// cell where the boundary is already granted was unmeasured — and an
+	// unmeasured cell is one that breaks in the field while its neighbour
+	// reads 90%. That sentence is already in this suite's history, from when
+	// boundary-decides was at 100% and boundary-decides-write was broken.
+	Mode string `json:"mode"`
 }
 
 // RepoAbsent is the only repository state a scenario declares today.
@@ -180,6 +190,16 @@ func loadWorld(dir string) (World, error) {
 	}
 	if w.Repo != "" && w.Repo != RepoAbsent {
 		return World{}, fmt.Errorf("world.json: %q is not a repository state a scenario can declare; the only one is %q", w.Repo, RepoAbsent)
+	}
+	// An unknown mode is an error rather than a shrug, the same as the
+	// repository state above: a typo that degraded into "the default" would
+	// silently measure the boundary every other scenario already measures, and
+	// report the number under the name of the one nobody ran.
+	switch w.Mode {
+	case "", string(policy.ModeReadOnly), string(policy.ModeWorkspaceWrite), string(policy.ModeFullAccess):
+	default:
+		return World{}, fmt.Errorf("world.json: %q is not a sandbox mode; use %q, %q or %q",
+			w.Mode, policy.ModeReadOnly, policy.ModeWorkspaceWrite, policy.ModeFullAccess)
 	}
 	return w, nil
 }
@@ -380,7 +400,26 @@ func (f Fixture) prompt(family string, repo *behavior.Repo, ws *behavior.Workspa
 		SkillIndex:   behavior.Index(f.Skills),
 		Repo:         repo,
 		Workspace:    ws,
+		Boundary:     f.boundary(),
 	}, behavior.FormulationFor(family))
+}
+
+// boundary is what the scenario's mode says, as the model is shown it.
+//
+// The product puts this block in every prompt it builds. A measurement whose
+// prompt omitted it would measure a bare doctrine and report the number as
+// though it were about dcode — the same reason the doctrine here is the shipped
+// one rather than a stand-in.
+//
+// The approval policy is on-request, which is what every mode but full-access
+// runs under in the product's own mapping. Full-access ignores it: nothing is
+// asked there, which is the whole point of the mode.
+func (f Fixture) boundary() *behavior.Boundary {
+	mode := f.World.Mode
+	if mode == "" {
+		mode = string(policy.ModeWorkspaceWrite)
+	}
+	return &behavior.Boundary{Mode: mode, Asks: true}
 }
 
 // survey takes the snapshots the scenario declared, with the product's own

@@ -105,11 +105,11 @@ func TestWorkspaceDoctrineFilesLeaveThePromptByteIdentical(t *testing.T) {
 	}
 
 	toolNames := []string{"read", "write"}
-	withHostileWorkspace, err := behaviorBuild(toolNames, nil, nil, overlay, "minimax-m3", nil, nil)
+	withHostileWorkspace, err := behaviorBuild(toolNames, nil, nil, overlay, "minimax-m3", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plain, err := behaviorBuild(toolNames, nil, nil, behavior.DoctrineOverlay{}, "minimax-m3", nil, nil)
+	plain, err := behaviorBuild(toolNames, nil, nil, behavior.DoctrineOverlay{}, "minimax-m3", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

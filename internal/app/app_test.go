@@ -315,7 +315,7 @@ func buildTestPrompt(t *testing.T, ws string, reg *tools.Registry) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prompt, err := behaviorBuild(reg.Names(), instructions, nil, behavior.DoctrineOverlay{}, "minimax-m3", nil, nil)
+	prompt, err := behaviorBuild(reg.Names(), instructions, nil, behavior.DoctrineOverlay{}, "minimax-m3", nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,6 +19,11 @@ var behaviorDirs = []string{
 	".",
 	filepath.Join("..", "app"),
 	filepath.Join("..", "loop"),
+	// The boundary rules end where the mode is switched, which is the session.
+	// Same reason app and loop are already here: the invariant is this
+	// family's, and the only place that can assert it is the one that owns the
+	// transition.
+	filepath.Join("..", "session"),
 	filepath.Join("..", "vcs"),
 	filepath.Join("..", "workspace"),
 }
@@ -98,6 +103,13 @@ var behaviorInvariants = map[string]string{
 	"**não executa** nenhum deles":              "TestPackageScriptsBecomeGates",
 	"regra com padrão não viram portão":         "TestMakefileNoiseIsNotAGate",
 	"Sonda cancelada":                           "TestACancelledProbeReadsNothing",
+
+	// The boundary, as a fact in the prompt.
+	"Todo modo que a política aceita":        "TestEveryPolicyModeIsDescribedToTheModel",
+	"carrega a regra que a torna autoridade": "TestEveryModeCarriesTheRuleThatMakesItAuthoritative",
+	"A grafia dos modos":                     "TestTheBoundarySpellingsAgreeWithThePolicy",
+	"Troca de modo reconstrói o prompt":      "TestAModeChangeRebuildsTheSystemPrompt",
+	"Prompt novo só entra no turno seguinte": "TestANewPromptWaitsForTheNextTurn",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
