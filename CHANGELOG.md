@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 168 decision changelogs |
+| spec families | 18, with 169 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | behavioural contracts | 59 declared |
@@ -219,6 +219,25 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **The Gemini family could not make a single tool call, and nothing said so.**
+  The OpenAI-dialect decoder read the usage before the frame's content, so a
+  frame carrying both had its content thrown away: the flush ran on a decoder
+  that had absorbed nothing, the terminal event went out, and the function
+  returned before looking at the choices. OpenAI and MiniMax send usage on a
+  frame of its own, which is why this held for as long as it did. Gemini sends
+  one frame with the call, the finish reason and the usage together.
+- **The symptom pointed nowhere.** From outside, a model that answers nothing and
+  a decoder that discards the answer are identical, and the usage numbers came
+  back correct throughout, which reads as a healthy call. The first measurement
+  against Gemini read 0% with the evidence `1 round(s): no tool calls` — exactly
+  what a model refusing would produce, and refusing was what that contract
+  measured. What told them apart was sending the client's own request body to
+  the provider by hand and getting back a tool call the client had not seen.
+- The missing `index` on Gemini's tool-call delta was the first suspect and was
+  wrong: absent decodes as zero, and zero is the first call. The fixture keeps
+  the frame verbatim rather than tidying it, because a frame edited into what the
+  wire "should" say is a fixture that has stopped testing the wire.
 
 ## 0.20.0 — 3 September 2026
 

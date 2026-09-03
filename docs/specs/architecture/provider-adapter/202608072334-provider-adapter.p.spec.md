@@ -224,6 +224,7 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Nenhum tipo específico de provedor cruza a fronteira do pacote (RN-2), verificado por teste de importação.
 - Nenhuma credencial aparece em `ProviderError.Message`, em log ou em evento (RN-6) — teste injeta chave sentinela e varre toda a saída.
 - Tool call que não valida contra o schema nunca chega ao consumidor como `EventToolCall` (RN-8).
+- Frame que traz **uso e conteúdo juntos** entrega o conteúdo: o uso é lido depois das escolhas, nunca antes, e uso em frame separado continua terminando sem reemitir a chamada.
 - Todo teste da suíte padrão roda com a rede desligada (RN-4).
 - `RetryAfter > 0` apenas em `ErrClassRateLimit`.
 - Prefixos de `Models()` não se sobrepõem entre famílias; sobreposição é erro de inicialização.

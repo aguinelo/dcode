@@ -18,6 +18,8 @@ var providerInvariants = map[string]string{
 	"cruza a fronteira do pacote":    "TestNoProviderSpecificTypeCrossesTheBoundary",
 	"Nenhuma credencial aparece":     "TestCredentialsNeverAppearInErrorMessages",
 	"nunca chega ao consumidor":      "TestUndeclaredToolNeverReachesTheLoop",
+	"uso e conteúdo juntos":          "TestAFrameCarryingUsageStillYieldsItsToolCall",
+	"sem reemitir a chamada":         "TestUsageOnItsOwnFrameTerminatesWithoutRepeatingTheCall",
 	"roda com a rede desligada":      "TestTheSuiteCannotReachTheNetwork",
 	"herdar a codificação não herda": "TestGeminiEncodesOpenAIAndRefusesTheOther",
 	"conferida contra as medições":   "TestEveryUnmeasuredFamilySaysSo",
