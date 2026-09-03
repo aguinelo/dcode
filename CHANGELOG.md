@@ -26,9 +26,11 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 167 decision changelogs |
+| spec families | 18, with 168 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
+| behavioural contracts | 59 declared |
+| contracts needing a model | 54 of the 59; 5 are settled by assertion |
 | **contracts ever actually measured** | **20** |
 | of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.4%, gate at 90% aggregate **and per package** |
@@ -241,6 +243,29 @@ exists to stop exactly that.
   not perform, and declining a decision the mode exists to have already made.
   What it does not measure is decay across turns, said in the scenario rather
   than implied.
+- **A `/loop` run never announced its own end, and its verdict was about the
+  last spec.** Three findings behind one report. The advance was gated on
+  "there is more queued", so when the last spec finished the queue was already
+  empty and the notice that says the run is over was never produced — the only
+  path that ever reached it was a proposal commit.
+- **The standing was overwritten by every completed turn**, so a run whose first
+  spec left coverage unmet and whose second was clean announced that everything
+  was met. Nothing lied: the number was true about the last spec and printed
+  under a sentence about the run, which is the worst kind of wrong, because the
+  reader cannot tell and the specs that failed are the ones they most need
+  named. Results are now kept per spec, criteria summed across the run, and the
+  specs that did not finish are named beside the criteria.
+- **The first spec was never counted as worked**, so a one-spec run ended with
+  `worked == 0` and the "a run that worked nothing says nothing" rule silenced
+  it, and that spec's own standing was never recorded either.
+- **The invariant was already declared and a test already claimed it.** The test
+  injected the finished-message ready-made and asserted the notice draws what it
+  is handed, which measures the rendering and nothing else. What the run hands
+  it, after several specs with different outcomes, was asserted nowhere. Same
+  family as "every guard was asking about a set it already knew", in a new
+  shape: an invariant about the run, checked against the drawing.
+- A criterion that could not be checked counts as outstanding rather than met.
+  Folding it into met is announcing success for work nothing measured.
 
 ## 0.19.0 — 2 September 2026
 

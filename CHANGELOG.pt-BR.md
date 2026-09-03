@@ -26,9 +26,11 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 167 changelogs de decisão |
+| famílias de spec | 18, com 168 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
+| contratos comportamentais | 59 declarados |
+| contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
@@ -221,6 +223,30 @@ existe para impedir exatamente isso.
   do relato: descrever uma confirmação que o harness não faz, e recusar uma
   decisão que o modo existe para já ter tomado. O que ele não mede é decaimento
   ao longo de turnos, dito no cenário em vez de subentendido.
+- **Uma corrida do `/loop` nunca anunciava o próprio fim, e o veredito era da
+  última spec.** Três achados atrás de um relato. O avanço estava atrás de "há
+  mais na fila", então quando a última spec terminava a fila já estava vazia e o
+  aviso de fim nunca era produzido — o único caminho que chegava nele era o
+  commit de uma proposta.
+- **O estado era sobrescrito por todo turno concluído**, então corrida cuja
+  primeira spec deixou cobertura por cumprir e cuja segunda passou limpa
+  anunciava que estava tudo cumprido. Ninguém mentiu: o número era verdadeiro
+  sobre a última spec e foi impresso debaixo de uma frase sobre a corrida, que é
+  o pior tipo de errado, porque quem lê não percebe e as specs que falharam são
+  as que ele mais precisa ver nomeadas. Agora os resultados são guardados por
+  spec, os critérios somados sobre a corrida, e as specs que não terminaram
+  aparecem ao lado dos critérios.
+- **A primeira spec nunca contava como trabalhada**, então corrida de uma spec
+  terminava com `worked == 0` e a regra "corrida que não trabalhou nada não
+  anuncia fim" a calava, e o estado dessa spec também nunca era guardado.
+- **A invariante já estava declarada e já havia teste nomeando-a.** O teste
+  injetava a mensagem de fim pronta e afirmava que o aviso desenha o que recebe,
+  o que mede a renderização e mais nada. O que a corrida entrega, depois de
+  várias specs com desfechos diferentes, não era afirmado em lugar nenhum. Mesma
+  família do "cada guarda perguntava sobre um conjunto que já conhecia", em
+  forma nova: invariante sobre a corrida, conferida contra o desenho.
+- Critério que não pôde ser conferido conta como pendente, não como cumprido.
+  Dobrá-lo em cumprido é anunciar sucesso de trabalho que nada mediu.
 
 ## 0.19.0 — 2 de setembro de 2026
 

@@ -560,11 +560,14 @@ func TestTheLoopSaysItFinishedAndWhereDoneStands(t *testing.T) {
 		model: Model{Lang: En, State: protocol.SessionStateIdle},
 		opts:  Options{Transport: newFakeTransport()}}
 
-	p.Update(loopFinishedMsg{worked: 4, standing: &protocol.Completion{
-		Met:         []string{"tests", "vet"},
-		Unmet:       []string{"coverage"},
-		Unavailable: []string{"integration"},
-	}})
+	p.Update(loopFinishedMsg{worked: 4, results: []loopResult{{
+		spec: "docs/specs/architecture/one",
+		standing: &protocol.Completion{
+			Met:         []string{"tests", "vet"},
+			Unmet:       []string{"coverage"},
+			Unavailable: []string{"integration"},
+		},
+	}}})
 
 	if len(p.model.Entries) != 1 {
 		t.Fatalf("the run ended and drew %d entries", len(p.model.Entries))
@@ -593,9 +596,10 @@ func TestARunThatWorkedNothingSaysNothing(t *testing.T) {
 func TestAFinishedRunWithEverythingMetStillReportsIt(t *testing.T) {
 	p := &program{ctx: context.Background(), model: Model{Lang: En},
 		opts: Options{Transport: newFakeTransport()}}
-	p.Update(loopFinishedMsg{worked: 1, standing: &protocol.Completion{
-		Met: []string{"a", "b", "c", "d"},
-	}})
+	p.Update(loopFinishedMsg{worked: 1, results: []loopResult{{
+		spec:     "docs/specs/architecture/one",
+		standing: &protocol.Completion{Met: []string{"a", "b", "c", "d"}},
+	}}})
 	got := p.model.Entries[0].Summary
 	if !strings.Contains(got, "4 of 4") {
 		t.Errorf("a fully met run does not say so:\n%s", got)
