@@ -690,6 +690,36 @@ The mechanism has to be measured before either is decided:
 `skill-loaded-on-trigger` is the contract, and it is worth reading its number
 before spending anything on content.
 
+## 17. The boundary decays across turns, and nothing measures that
+
+Most of what this section described was shipped in #372, and what it asked for
+is in the changelog of `behavior-definition` rather than repeated here: the
+sandbox mode is now a fact in the prefix, carrying the rule that makes it
+authoritative, and `boundary-full-access-acts` measures the cell no contract had
+ever run.
+
+**What is left is the half the report was actually about.** The person switched
+to full-access, told the model, and it worked — and then a few turns later it
+refused again. The fix addresses the mechanism of that decay directly: the fact
+now lives where the doctrine lives and is re-read at the same weight, rather
+than ageing in history. But **nothing measures the decay itself**.
+
+The new contract judges the rounds of one turn. A judge over the whole
+transcript catches a refusal in any round, which is stronger than judging the
+first, and it is still not twenty turns of conversation with a mode change in
+the middle. The scenario says so in its own words rather than leaving it
+implied.
+
+Measuring it needs something this suite does not have: a scenario that runs
+several user turns, changes the mode partway, and judges what happens well
+after. Every fixture today is one task and one turn. That is the gap, and it is
+a harness change rather than a contract — which is why it is here and not in the
+`.p`.
+
+**Do not start it by writing the scenario.** The question is whether a
+multi-turn fixture belongs in this suite at all, given what it costs per run,
+and the answer may be that decay is measured some other way entirely.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -723,6 +753,7 @@ has not weakened.
 | **15** — eval and sleep | Cheapest of all of them and it has already cost two paid measurements. One word in the Makefile. |
 | **14** — the measurement's loose ends | The path in the reason is small and user-visible; the `Rounds` evidence is a documentation move that costs nothing and stops the fourth repetition. |
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
+| **17** — measuring decay across turns | The fact and the contract shipped in #372; what is left needs a multi-turn fixture, which is a harness change. Decide whether that belongs here at all before writing one. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
