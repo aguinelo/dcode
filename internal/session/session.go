@@ -33,6 +33,13 @@ type Session struct {
 	// the next round to deliver it.
 	steering []string
 
+	// Reprompt rebuilds the system prompt for a boundary, so a mode change
+	// reaches the model as a fact rather than only as a change in what the
+	// harness allows. Optional: without one the mode still changes and the
+	// model is simply not told, which is the behaviour this field exists to
+	// end and the behaviour a session with no app behind it keeps.
+	Reprompt func(policy.SandboxMode, policy.ApprovalPolicy) (string, error)
+
 	// Standing is the record of decisions that outlive the session. Optional:
 	// without one the session asks every time, which is what it did before.
 	//
@@ -175,6 +182,27 @@ func (s *Session) SetMode(name string) error {
 	s.mu.Unlock()
 
 	s.engine.SetMode(sandbox, pol)
+
+	// The prompt follows the boundary, and the order matters: the engine is
+	// told what to enforce before it is told what to say about it, so there is
+	// no window in which the model is promised a freedom it does not have yet.
+	//
+	// A rebuild that fails is reported and not fatal. The mode has already
+	// changed and the session is usable; what is lost is the model being told,
+	// which is worse than nothing said but far better than a switch that
+	// half-applied and left the engine and the announcement disagreeing.
+	if s.Reprompt != nil {
+		prompt, err := s.Reprompt(sandbox, pol)
+		if err != nil {
+			s.Emit(protocol.EventSessionError, protocol.Error{
+				Code:    "prompt_rebuild_failed",
+				Message: "mode changed to " + name + ", but the model was not told: " + err.Error(),
+			})
+		} else {
+			s.engine.SetInstructions(prompt)
+		}
+	}
+
 	s.Emit(protocol.EventSessionModeChanged, protocol.SessionModeChanged{
 		Previous: previous, Mode: name, SandboxMode: string(sandbox),
 	})

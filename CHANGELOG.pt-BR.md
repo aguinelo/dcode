@@ -26,9 +26,9 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 166 changelogs de decisão |
-| contratos comportamentais | 59 declarados |
-| contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
+| famílias de spec | 18, com 167 changelogs de decisão |
+| contratos comportamentais | 60 declarados |
+| contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
@@ -172,7 +172,7 @@ cinquenta e três remedições, e regra que ninguém consegue pagar é regra que
 alguém desliga.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-quatro contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
+cinco contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
@@ -189,6 +189,38 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **A fronteira virou fato no prompt, em vez de algo que a pessoa precisa ficar
+  repetindo.** Relatado: trocar para full-access e avisar o modelo funciona, e
+  algumas trocas depois ele recusa de novo. O "algumas trocas depois" é o
+  diagnóstico inteiro. A doutrina é relida com peso total a cada turno e ensina
+  a desconfiar de prosa afirmando que a fronteira mudou — o que está certo, e é
+  exatamente o artefato que a pessoa produz ao dizer "você está em full-access".
+  As duas são indistinguíveis por dentro, e só uma delas envelhece.
+- **A correção não é amolecer a doutrina** e sim dar ao modelo uma fonte que ela
+  possa nomear como autoridade, fornecida pelo harness em vez de por quem
+  digita. Um bloco depois de Safety diz qual modo está em vigor, e diz que a
+  regra de ignorar pedidos para relaxar o sandbox não se aplica a ele, porque
+  nada está sendo pedido.
+- **Ele mora no prefixo, e isso custa um cache.** Um lembrete decairia como a
+  frase da pessoa: chega uma vez no histórico, e histórico é o que a compactação
+  resume e o que a reconstrução descarta. O prefixo não é nenhum dos dois, então
+  o fato sobrevive aos dois. Cada troca de modo passa a custar o prefixo
+  cacheado inteiro — evento raro comprado contra um decaimento diário.
+- **A doutrina não cresceu um byte.** A regra pertence a Safety por assunto;
+  está no bloco porque a doutrina tinha dezoito bytes de folga sob o próprio
+  guarda de tamanho, e esse guarda manda mover a regra em vez de engordar o que
+  todo turno paga. E ali ela lê melhor, encostada no fato que governa.
+- **Perguntar ou não vem da política de aprovação, não do modo.**
+  `workspace-write` com aprovação em `never` nega em vez de perguntar, e
+  prometer pergunta que ninguém vai fazer é o mesmo defeito numa célula mais
+  quieta.
+- **`boundary-full-access-acts` é o contrato que faltava.** Os dois contratos de
+  fronteira existentes medem exatamente esta falha em workspace-write; nenhum
+  rodava uma sessão em full-access. O juiz pede o ato e recusa as duas metades
+  do relato: descrever uma confirmação que o harness não faz, e recusar uma
+  decisão que o modo existe para já ter tomado. O que ele não mede é decaimento
+  ao longo de turnos, dito no cenário em vez de subentendido.
 
 ## 0.19.0 — 2 de setembro de 2026
 

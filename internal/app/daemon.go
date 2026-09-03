@@ -228,6 +228,8 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
 		appSession.Engine, log, time.Now)
 	sess.ContextWindow = appSession.ContextWindow
+	// What makes `/mode` reach the model rather than only the sandbox.
+	sess.Reprompt = appSession.Reprompt
 	sess.Carried, sess.CarriedFrom, sess.CarriedTurns = carried, carriedFrom, carriedTurns
 
 	// The same record the sandbox is asking, not a second copy: two would

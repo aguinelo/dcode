@@ -105,6 +105,13 @@ type Prompt struct {
 	// creation. Nil when nothing was probed — and nil is silent, because a
 	// project that declares no gate is ordinary.
 	Workspace *Workspace
+	// Boundary is the sandbox mode in force, as a fact. Nil renders nothing,
+	// which is the honest answer for a session with no engine behind it.
+	//
+	// Unlike every other field here it is NOT frozen at session creation: it is
+	// what `/mode` changes, and the prompt is rebuilt when it does. See
+	// boundary.go for why that cost is paid.
+	Boundary *Boundary
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
@@ -127,6 +134,14 @@ func Build(p Prompt, f Formulation) (string, error) {
 
 	writeBlock(&b, f, "", p.Doctrine.Identity)
 	writeBlock(&b, f, "Safety", p.Doctrine.Safety)
+	// Immediately after Safety, because it is the fact those rules are read
+	// against rather than a fact about the work. The rules say a crossing is
+	// put to the person; this says whether anyone will be asked at all, and
+	// read in the other order the model has to hold the rule for a paragraph
+	// before learning which case it is in.
+	if rendered := renderBoundary(p.Boundary); rendered != "" {
+		writeBlock(&b, f, "The boundary right now", rendered)
+	}
 	// After Safety and before everything the user or the project says. The
 	// position IS the precedence: what comes earlier is context for reading
 	// what comes later, and the project instructions are the last block of all.

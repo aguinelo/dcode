@@ -400,6 +400,10 @@ type Session struct {
 	State   *tools.State
 	Prompt  string
 	Options Options
+	// Reprompt rebuilds the system prompt for a boundary. It is what makes the
+	// mode a fact that survives a mode change rather than one frozen at
+	// creation, and it is the only input to the prefix that is allowed to move.
+	Reprompt func(policy.SandboxMode, policy.ApprovalPolicy) (string, error)
 	// Origins is where each doctrine section came from, and Notices is what
 	// the overlay loader refused to do silently. Both exist for the audit:
 	// an invisible replacement would be worse than the immutability it
@@ -639,8 +643,17 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// changes is that the attempt is now visible.
 	safetyNotices := behavior.SafetyClaims(instructions)
 
-	prompt, err := behaviorBuild(registry.Names(), instructions, behavior.Index(skills), overlay, CredentialName(opts), repo,
-		declaredGates(opts.Workspace, opts.WorkspaceGates))
+	// Captured once so the prompt can be rebuilt for a different boundary
+	// without re-reading instruction files, re-probing the repository or
+	// re-indexing skills. Everything except the boundary is frozen at session
+	// creation, so rebuilding from anything else would be rebuilding a session.
+	gates := declaredGates(opts.Workspace, opts.WorkspaceGates)
+	names, idx, family := registry.Names(), behavior.Index(skills), CredentialName(opts)
+	reprompt := func(mode policy.SandboxMode, pol policy.ApprovalPolicy) (string, error) {
+		return behaviorBuild(names, instructions, idx, overlay, family, repo, gates, boundaryOf(mode, pol))
+	}
+
+	prompt, err := reprompt(opts.SandboxMode, opts.Policy)
 	if err != nil {
 		return nil, err
 	}
@@ -706,6 +719,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 
 	return &Session{
 		Engine: engine, Registry: registry, State: state, Prompt: prompt, Options: opts,
+		Reprompt:       reprompt,
 		Proposals:      proposals,
 		Standing:       standing,
 		Notice:         notice,
@@ -793,9 +807,26 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 	}
 }
 
+// boundaryOf is the policy pair as the fact the model is shown.
+//
+// The translation lives here rather than in behavior, which must not learn
+// what a boundary means, and not in policy, which must not learn that anything
+// renders prompts. Here is where the two already meet.
+//
+// `Asks` is derived from the policy rather than assumed from the mode: a
+// workspace-write session with approvals set to never denies rather than asks,
+// and telling the model it will be asked when nobody will is the same class of
+// defect as telling it a full-access crossing needs confirming.
+func boundaryOf(mode policy.SandboxMode, pol policy.ApprovalPolicy) *behavior.Boundary {
+	if mode == "" {
+		return nil
+	}
+	return &behavior.Boundary{Mode: string(mode), Asks: pol != policy.PolicyNever}
+}
+
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo, ws *behavior.Workspace) (string, error) {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo, ws *behavior.Workspace, boundary *behavior.Boundary) (string, error) {
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(toolNames).Apply(overlay),
 		Tools:        toolNames,
@@ -803,6 +834,7 @@ func behaviorBuild(toolNames []string, instructions []behavior.Instruction, inde
 		SkillIndex:   index,
 		Repo:         repo,
 		Workspace:    ws,
+		Boundary:     boundary,
 	}, behavior.FormulationFor(family))
 }
 

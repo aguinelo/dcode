@@ -20,6 +20,7 @@ import (
 	"github.com/aguinelo/dcode/internal/app"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/loop"
+	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/provider"
 )
 
@@ -89,6 +90,13 @@ func TestEveryContract(t *testing.T) {
 				if f.World.Qualifying() {
 					w.Qualify = qualifying(f.World.Qualify)
 					w.Mode = app.QualifyMode(app.Options{}, true).SandboxMode
+				}
+				// A scenario that declares a boundary runs under it. The
+				// prompt already says which one; if the tools did not enforce
+				// the same one, the run would measure a model told one thing
+				// and answered by another.
+				if f.World.Mode != "" {
+					w.Mode = policy.SandboxMode(f.World.Mode)
 				}
 				// The deadline belongs to the run, not to the contract. It
 				// used to cover all of them at once, which meant one hung
