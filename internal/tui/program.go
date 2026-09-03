@@ -147,11 +147,24 @@ type program struct {
 	// loopWorked counts the specs this run has started, so the run can say how
 	// much it did when it ends.
 	loopWorked int
-	// loopStanding is where the criteria stood when the last turn of the run
-	// ended. Kept rather than re-derived: the completion is the guarantee that
+	// loopSpec is the spec being worked right now, so a completion can be
+	// attributed to the spec it is about.
+	loopSpec string
+	// loopResults is where each spec of the run ended, in the order they ran.
+	//
+	// A slice and not one standing, which is what this was. One standing was
+	// overwritten by every turn-completed event, so when the queue emptied it
+	// held whatever the LAST spec happened to say — and a run whose first spec
+	// left coverage unmet and whose second was clean announced that everything
+	// was met. Nothing lied: the number was true about the last spec and
+	// printed under a sentence about the run, which is the worst kind of wrong,
+	// because the reader has no way to tell and the specs that failed are the
+	// ones they most need named.
+	//
+	// Kept rather than re-derived: the completion is the guarantee that
 	// survives a model claiming success in prose, and re-reading it from the
 	// entries would be parsing back out what was already stated once.
-	loopStanding *protocol.Completion
+	loopResults []loopResult
 	// loopQualified is the spec a qualifying session is proposing criteria
 	// for, so the loop knows what just finished and can say what to do next.
 	loopQualified string
@@ -441,6 +454,13 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// interrupted with the finished ones finished.
 		p.loopQueue = pending[1:]
 		p.loopGoal, p.loopProtect = msg.goal, msg.protect
+		// Counted here, because this is where the first spec starts. It was
+		// not, and the consequence reached the screen twice: a run of one spec
+		// finished with worked == 0 and said nothing at all, and the gate on
+		// the completion recording meant that spec's own standing was never
+		// kept either.
+		p.loopWorked++
+		p.loopSpec = pending[0].Path
 		return p, p.loopSession(LoopArgs{Spec: pending[0].Path, Task: msg.goal, Protect: msg.protect})
 
 	case proposalWrittenMsg:
@@ -484,20 +504,23 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		t := Text(p.model.Lang)
 		text := fmt.Sprintf(t.CmdLoopFinished, msg.worked,
 			plural(msg.worked, t.LoopSpecOne, t.LoopSpecMany))
-		if c := msg.standing; c != nil {
-			total := len(c.Met) + len(c.Unmet) + len(c.Unavailable)
-			if total > 0 {
-				text += " · " + fmt.Sprintf(t.CmdLoopStanding, len(c.Met), total)
-			}
-			// What is left, by name. A count says how much; the names say what
-			// to do next, and the run ending is exactly when that is the
-			// question.
-			if len(c.Unmet) > 0 {
-				text += "\n" + t.CompletionUnmet + " " + strings.Join(c.Unmet, ", ")
-			}
-			if len(c.Unavailable) > 0 {
-				text += "\n" + t.CompletionUnchecked + " " + strings.Join(c.Unavailable, ", ")
-			}
+		met, total, unmet, unchecked, specs := loopVerdict(msg.results)
+		if total > 0 {
+			text += " · " + fmt.Sprintf(t.CmdLoopStanding, met, total)
+		}
+		// What is left, by name. A count says how much; the names say what
+		// to do next, and the run ending is exactly when that is the
+		// question.
+		if len(unmet) > 0 {
+			text += "\n" + t.CompletionUnmet + " " + strings.Join(unmet, ", ")
+		}
+		if len(unchecked) > 0 {
+			text += "\n" + t.CompletionUnchecked + " " + strings.Join(unchecked, ", ")
+		}
+		// And which specs those belong to. Without this the run says a
+		// criterion is unmet and leaves the person to work out where.
+		if len(specs) > 0 {
+			text += "\n" + t.CmdLoopUnfinished + " " + strings.Join(specs, ", ")
 		}
 		p.model.Entries = append(p.model.Entries, Entry{
 			Kind: KindNote, Summary: text, Expanded: true,
@@ -541,7 +564,7 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.ev.Type == protocol.EventTurnCompleted && p.loopWorked > 0 {
 			var d protocol.TurnCompleted
 			if json.Unmarshal(msg.ev.Payload, &d) == nil && d.Completion != nil {
-				p.loopStanding = d.Completion
+				p.recordLoopResult(d.Completion)
 			}
 		}
 		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
@@ -572,9 +595,20 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			spec := p.loopQualified
 			p.loopQualified = ""
 			cmds = append(cmds, p.commitProposal(p.opts.SessionID, spec))
-		} else if p.model.State == protocol.SessionStateIdle && len(p.loopQueue) > 0 {
+		} else if p.model.State == protocol.SessionStateIdle && p.loopWorked > 0 {
 			// This spec is done with; the next one gets its own session, its
-			// own definition of done and its own budget.
+			// own definition of done and its own budget. With nothing left in
+			// the queue this is where the run ENDS, which is why the condition
+			// is "a run is going" and not "there is more queued".
+			//
+			// It was the latter, and the consequence was that an ordinary run
+			// never announced its own end at all: when the last spec finished
+			// the queue was already empty, so nothing was called and nothing
+			// was said. The only path that ever produced the finishing notice
+			// was a proposal commit.
+			//
+			// nextSpec clears the run, so this cannot fire twice on the idle
+			// events that follow.
 			//
 			// After the typed queue, not before: something the person typed
 			// while watching is about the spec on screen, and moving on first
@@ -1786,25 +1820,86 @@ func (p *program) nextSpec() tea.Cmd {
 		// then simply stops is indistinguishable, from the outside, from a loop
 		// that stalled on the fourth — and the person watching has no way to
 		// tell "it is over" from "it is thinking".
-		worked, standing := p.loopWorked, p.loopStanding
-		p.loopGoal, p.loopWorked, p.loopStanding = "", 0, nil
+		worked, results := p.loopWorked, p.loopResults
+		p.loopGoal, p.loopWorked, p.loopResults, p.loopSpec = "", 0, nil, ""
 		if worked == 0 {
 			return nil
 		}
 		return func() tea.Msg {
-			return loopFinishedMsg{worked: worked, standing: standing}
+			return loopFinishedMsg{worked: worked, results: results}
 		}
 	}
 	p.loopWorked++
 	next := p.loopQueue[0]
+	p.loopSpec = next.Path
 	p.loopQueue = p.loopQueue[1:]
 	return p.loopSession(LoopArgs{Spec: next.Path, Task: p.loopGoal, Protect: p.loopProtect})
 }
 
+// recordLoopResult files a completion under the spec it is about.
+//
+// The last word for a spec wins rather than a new row: a spec can complete
+// several turns — the done loop re-prompts while criteria are unmet — and each
+// of them reports where things stand. What matters at the end is where the spec
+// was LEFT, and appending every turn would count one spec's criteria as many.
+func (p *program) recordLoopResult(c *protocol.Completion) {
+	if n := len(p.loopResults); n > 0 && p.loopResults[n-1].spec == p.loopSpec {
+		p.loopResults[n-1].standing = c
+		return
+	}
+	p.loopResults = append(p.loopResults, loopResult{spec: p.loopSpec, standing: c})
+}
+
+// loopVerdict folds the run's results into the numbers and names it reports.
+//
+// Across every spec, not the last one. Criteria are summed because each spec
+// carries its own set; the names are deduplicated because the same criterion
+// failing in two specs is one thing to go and fix, and the specs are named
+// separately because that is what says where to go.
+func loopVerdict(results []loopResult) (met, total int, unmet, unchecked, specs []string) {
+	seenUnmet, seenUnchecked := map[string]bool{}, map[string]bool{}
+	add := func(dst *[]string, seen map[string]bool, names []string) {
+		for _, n := range names {
+			if !seen[n] {
+				seen[n] = true
+				*dst = append(*dst, n)
+			}
+		}
+	}
+	for _, r := range results {
+		if r.standing == nil {
+			continue
+		}
+		met += len(r.standing.Met)
+		total += len(r.standing.Met) + len(r.standing.Unmet) + len(r.standing.Unavailable)
+		add(&unmet, seenUnmet, r.standing.Unmet)
+		add(&unchecked, seenUnchecked, r.standing.Unavailable)
+		if r.unfinished() && r.spec != "" {
+			specs = append(specs, r.spec)
+		}
+	}
+	return met, total, unmet, unchecked, specs
+}
+
+// loopResult is where one spec of the run ended.
+type loopResult struct {
+	spec     string
+	standing *protocol.Completion
+}
+
+// unfinished reports whether this spec ended with anything outstanding.
+//
+// Unavailable counts. A criterion nobody could check is not a criterion that
+// passed, and folding it into "met" is how a run reports success for work
+// nothing measured.
+func (r loopResult) unfinished() bool {
+	return r.standing != nil && (len(r.standing.Unmet) > 0 || len(r.standing.Unavailable) > 0)
+}
+
 // loopFinishedMsg is the run being over, and where done stands when it is.
 type loopFinishedMsg struct {
-	worked   int
-	standing *protocol.Completion
+	worked  int
+	results []loopResult
 }
 
 type specsFoundMsg struct {

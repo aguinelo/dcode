@@ -263,8 +263,14 @@ type Strings struct {
 	CmdLoopQualifying string // takes the spec path
 	// CmdLoopFinished is the run ending, with what done says. It takes the
 	// number of specs worked and the state of the criteria.
-	CmdLoopFinished    string // takes the spec count
-	CmdLoopStanding    string // takes met and total
+	CmdLoopFinished string // takes the spec count
+	CmdLoopStanding string // takes met and total
+	// CmdLoopUnfinished names the specs the run did not finish.
+	//
+	// The names and not only a count, for the reason the criteria are already
+	// named beside it: a count answers how much, a name answers what to go
+	// back to, and the end of a run is exactly when that is the question.
+	CmdLoopUnfinished  string
 	LoopSpecOne        string
 	LoopSpecMany       string
 	LoopNoSpecs        string
@@ -477,6 +483,7 @@ var catalogue = map[Lang]Strings{
 		LoopSpecUnreadable: "could not be read: %s",
 		CmdLoopQualifying:  "loop: %s declares no criteria, so this turn works out what they should be. It cannot change anything — it proposes, and you review the file before any work runs against it.",
 		CmdLoopFinished:    "the loop is finished — %d %s worked",
+		CmdLoopUnfinished:  "not finished:",
 		CmdLoopStanding:    "done: %d of %d criteria met",
 		LoopSpecOne:        "spec",
 		LoopSpecMany:       "specs",
@@ -686,6 +693,7 @@ Environment:
 		LoopSpecUnreadable: "não deu para ler: %s",
 		CmdLoopQualifying:  "loop: %s não declara critério, então este turno descobre quais deveriam ser. Ele não pode mudar nada — propõe, e você revisa o arquivo antes de qualquer trabalho rodar contra ele.",
 		CmdLoopFinished:    "o laço terminou — %d %s trabalhada(s)",
+		CmdLoopUnfinished:  "não terminadas:",
 		CmdLoopStanding:    "pronto: %d de %d critérios cumpridos",
 		LoopSpecOne:        "spec",
 		LoopSpecMany:       "specs",
