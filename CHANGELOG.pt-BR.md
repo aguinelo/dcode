@@ -26,12 +26,10 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 169 changelogs de decisão |
+| famílias de spec | 18, com 170 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
-| contratos comportamentais | 59 declarados |
-| contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **20** |
+| **contratos de fato já medidos** | **21** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,5%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
@@ -185,7 +183,7 @@ cinquenta e três remedições, e regra que ninguém consegue pagar é regra que
 alguém desliga.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-cinco contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
+cinco contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
@@ -202,6 +200,35 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **Uma medição agora diz quanto custou, e a primeira com preço está
+  registrada.** `boundary-full-access-acts` mediu 100% de 20 execuções contra
+  gemini-2.5-flash: 72 segundos, 68 trocas, 232.853 tokens de entrada contra
+  1.055 de saída, 174.567 da entrada lidos do cache. Perguntado quanto custaria
+  medir todos os contratos, o repositório só sabia multiplicar um teto; medido,
+  este contrato gasta 3,4 trocas por execução contra um teto de 12, então o teto
+  errava por um fator de três e meio.
+- **Resposta vazia é falha de medir, não veredito.** A primeira leitura foi 0%
+  com a evidência `1 round(s): no tool calls` — exatamente o que um modelo
+  recusando produziria, e recusa é o que aquele contrato mede. Mandando o corpo
+  da requisição do cenário direto ao provedor: duas chamadas de ferramenta e três
+  respostas vazias em cinco. Troca assim agora dá erro, passa pela mesma
+  retentativa de todo soluço de transporte e, persistindo, a medição é declarada
+  não confiável.
+- **A linha é "nada que um juiz consiga ler", não "não chamou ferramenta".**
+  Modelo que responde em prosa sem chamar é veredito de verdade e vários
+  contratos existem para pegar isso; engolir aqui esconderia a falha que eles
+  medem. Nem é "zero tokens de saída", que foi o primeiro corte: o provedor
+  também devolve frames que gastam token e não carregam conteúdo.
+- **O cenário media um palpite.** A tarefa dizia "o site do fornecedor" sem
+  nomear nenhum, e as transcrições mostraram rodadas gastas em `glob`,
+  `grep vendor|release` e leitura de arquivos de configuração para descobrir qual
+  fornecedor. Com a URL escrita, a decisão de cruzar continua inteira do modelo;
+  o que sai é uma ambiguidade que não tinha nada a ver com o contrato.
+- O Gemini sai da lista de famílias sem medição, e quem percebeu foi o guarda que
+  confere essa lista contra as medições registradas. Um contrato de cinquenta e
+  cinco não é família medida em sentido forte, mas o aviso dizia que nada tinha
+  sido medido contra ela, e essa frase deixou de ser verdadeira.
 
 - **A família Gemini não conseguia chamar uma ferramenta sequer, e nada dizia
   isso.** O decodificador do dialeto OpenAI lia o uso antes do conteúdo do frame,

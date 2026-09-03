@@ -67,6 +67,12 @@ func TestEveryContract(t *testing.T) {
 			// stays invisible.
 			evidence := NewEvidence(MaxEvidence)
 			retries := 0
+			// What the whole contract consumes, accumulated across runs and
+			// across retries. Retries are IN it deliberately: a retried run
+			// was paid for twice, and a cost that omitted the second payment
+			// would forecast a suite cheaper than it is.
+			var cost Cost
+			started := time.Now()
 			// A transport error is not behaviour. Two full runs came back
 			// unsound because DNS failed partway through, after hours of paid
 			// measurement — a lost packet must not cost that. It does not
@@ -106,7 +112,7 @@ func TestEveryContract(t *testing.T) {
 				runCtx, done := context.WithTimeout(ctx, runTimeout*time.Duration(contract.Rounds))
 				defer done()
 
-				tr, err := exchangeRounds(runCtx, p, cfg.Model, f, contract, w)
+				tr, err := exchangeRounds(runCtx, p, cfg.Model, f, contract, w, &cost)
 				if err != nil {
 					return false, err
 				}
@@ -135,6 +141,12 @@ func TestEveryContract(t *testing.T) {
 			// contract got blamed for the suite running long.
 			r := Measure(context.Background(), runCfg, contract.ID, contract.Threshold, attempt)
 			r.Retries = retries
+			// Wall clock closed here rather than inside Measure: what a person
+			// planning the next run cares about is how long the contract took
+			// from the outside, retries and all, and Measure does not know it
+			// is being retried.
+			cost.Elapsed = time.Since(started)
+			r.Cost = cost
 			// The prefix this ran against, printed with the number so that
 			// recording the measurement is copying a line rather than a second
 			// manual step nobody would do twice.
@@ -170,7 +182,7 @@ func TestEveryContract(t *testing.T) {
 // product would have appended — a tool error, a reminder. The wording of those
 // is the product's own, because RN-3 makes tool error text a behaviour surface
 // and measuring against text dcode does not emit measures a different product.
-func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fixture, c Contract, w *Workspace) (Transcript, error) {
+func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fixture, c Contract, w *Workspace, cost *Cost) (Transcript, error) {
 	// History, not the whole message list. The prompt is rebuilt around it on
 	// every round by the same code path the product uses — which is the fix:
 	// this used to be the entire list, hand-built as one user message, so the
@@ -197,7 +209,7 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		if err != nil {
 			return Transcript{}, err
 		}
-		calls, text, err := exchange(ctx, p, model, msgs, f.Tools)
+		calls, text, err := exchange(ctx, p, model, msgs, f.Tools, cost)
 		if err != nil {
 			return Transcript{}, err
 		}
@@ -302,7 +314,7 @@ func childTurn(p provider.Provider, model string, f Fixture, w *Workspace) func(
 				Text: loop.DelegateInstructions(names, owns),
 			}}, history...)
 
-			calls, text, err := exchange(ctx, p, model, msgs, defs)
+			calls, text, err := exchange(ctx, p, model, msgs, defs, nil)
 			if err != nil {
 				// Named, never swallowed: the parent is told which child did
 				// not answer, which is the third contract's whole subject.

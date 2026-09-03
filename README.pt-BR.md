@@ -6,7 +6,7 @@
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
 ![Cobertura](https://img.shields.io/badge/cobertura-93%2C5%25-success)
 ![Specs](https://img.shields.io/badge/specs-18%20fam%C3%ADlias-informational)
-![Contratos](https://img.shields.io/badge/contratos-20%20medidos%20%2F%2060%20declarados-orange)
+![Contratos](https://img.shields.io/badge/contratos-21%20medidos%20%2F%2060%20declarados-orange)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
 <img src="docs/brand/mascot.svg" width="72" align="right" alt="mascote do dcode">
@@ -18,7 +18,7 @@ Todo agente de terminal entrega comportamento como texto de prompt e torce. O dc
 entrega como **contrato com limiar**, roda contra um modelo de verdade, e anota o que
 voltou — o 98% e o 35% do mesmo jeito.
 
-Hoje: **60 contratos declarados, 20 de fato medidos.** Essa razão está na capa de
+Hoje: **60 contratos declarados, 21 de fato medidos.** Essa razão está na capa de
 propósito. É o número mais incômodo deste repositório e o único honesto.
 
 > **Estado.** Publicado e instalável. O daemon, o cliente de terminal, o laço do
@@ -127,7 +127,7 @@ medir compra, e que uma segunda opinião não compra: um revisor teria concordad
 cinco.
 
 Cinquenta e quatro dos 59 precisam de modelo para serem respondidos; cinco se resolvem
-por asserção. Os 35 contratos que nunca rodaram contra um são a razão do badge. Cada um
+por asserção. Os 34 contratos que nunca rodaram contra um são a razão do badge. Cada um
 custa chamadas reais a um modelo real, e o número só anda gastando isso.
 
 ---

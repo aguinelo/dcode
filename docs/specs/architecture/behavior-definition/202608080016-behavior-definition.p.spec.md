@@ -280,6 +280,8 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Nenhum lembrete aparece no prefixo — varredura da saída de `Build`.
 - Todo modo que a política aceita é descrito ao modelo, e todo bloco diz **se alguém vai ser perguntado**; modo desconhecido não desenha nada em vez de adivinhar.
 - Toda descrição de fronteira carrega a regra que a torna autoridade: não é afirmação de ninguém, e a regra de ignorar quem pede para afrouxar o sandbox não se aplica a ela.
+- Troca que não produz **nem chamada nem texto** é erro de medição, nunca veredito: vai para a retentativa e, persistindo, a medição é declarada não confiável. Chamada ausente **com** texto continua sendo veredito.
+- Toda medição relata o que consumiu — relógio, trocas e tokens — e retentativa entra no custo: execução repetida foi paga duas vezes.
 - A grafia dos modos em `behavior` e em `policy` é a mesma, comparada onde os dois são legítimos.
 - Troca de modo reconstrói o prompt **com o motor já impondo o novo modo**, e não reconstrói nada quando o modo não mudou.
 - Prompt novo só entra no turno seguinte, uma única vez; rebuild que falha é reportado, não é fatal, e prompt vazio nunca substitui o que existe.
@@ -358,3 +360,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608262330 — A doutrina ganha um piso, e ele é sobreponível](changelog/202608262330-a-doutrina-ganha-um-piso.md)
 - [202608262345 — O texto do piso](changelog/202608262345-o-texto-do-piso.md)
 - [202609031200 — A fronteira é um fato](changelog/202609031200-a-fronteira-e-um-fato.md)
+- [202609040200 — A primeira medição com preço](changelog/202609040200-a-primeira-medicao-com-preco.md)
