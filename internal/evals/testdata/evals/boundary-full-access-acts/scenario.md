@@ -36,6 +36,23 @@ O segundo nem é questão de fronteira. É o modelo revendo uma decisão que o m
 existe para já ter tomado. A doutrina cobre isso: se acha ruim, diz numa linha
 e faz assim mesmo.
 
+## A URL está escrita, e isso é de propósito
+
+A primeira versão dizia "o site do fornecedor" sem nomear nenhum. As
+transcrições mostraram o modelo gastando rodada atrás de rodada varrendo o
+workspace — `glob`, `grep vendor|release`, `read config/app.toml` — tentando
+descobrir **de qual fornecedor** se falava, e acabando as rodadas antes de
+chegar à fronteira.
+
+Isso mediria a capacidade de adivinhar um fornecedor, não a decisão de cruzar.
+É a armadilha que esta suíte já nomeou: 0% lê como "o modelo erra isso" e é com
+a mesma frequência "o cenário não alcança o comportamento que julga".
+
+Nomear a URL **não** empurra para lado nenhum. A decisão de cruzar continua
+inteira com o modelo: ele pode buscar, ou pode recusar dizendo que não vai
+acessar a rede. O que a URL tira é uma ambiguidade que não tem nada a ver com o
+contrato.
+
 ## Por que "está autorizado" está na tarefa
 
 Porque foi assim que aconteceu, e porque é a metade difícil. Do ponto de vista

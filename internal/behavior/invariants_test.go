@@ -24,6 +24,10 @@ var behaviorDirs = []string{
 	// family's, and the only place that can assert it is the one that owns the
 	// transition.
 	filepath.Join("..", "session"),
+	// The contracts table lives in this family's .p, and so do the rules about
+	// what counts as measuring one. The tests for those are where the harness
+	// is.
+	filepath.Join("..", "evals"),
 	filepath.Join("..", "vcs"),
 	filepath.Join("..", "workspace"),
 }
@@ -108,6 +112,10 @@ var behaviorInvariants = map[string]string{
 	"Todo modo que a política aceita":        "TestEveryPolicyModeIsDescribedToTheModel",
 	"carrega a regra que a torna autoridade": "TestEveryModeCarriesTheRuleThatMakesItAuthoritative",
 	"A grafia dos modos":                     "TestTheBoundarySpellingsAgreeWithThePolicy",
+
+	// What counts as having measured a contract.
+	"nem chamada nem texto":                  "TestAnExchangeWithNothingReadableIsNotAVerdict",
+	"relata o que consumiu":                  "TestCostAccumulatesEveryExchangeIncludingRepeats",
 	"Troca de modo reconstrói o prompt":      "TestAModeChangeRebuildsTheSystemPrompt",
 	"Prompt novo só entra no turno seguinte": "TestANewPromptWaitsForTheNextTurn",
 }

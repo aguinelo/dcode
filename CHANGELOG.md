@@ -26,12 +26,10 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 169 decision changelogs |
+| spec families | 18, with 170 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
-| behavioural contracts | 59 declared |
-| contracts needing a model | 54 of the 59; 5 are settled by assertion |
-| **contracts ever actually measured** | **20** |
+| **contracts ever actually measured** | **21** |
 | of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.5%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
@@ -203,7 +201,7 @@ fail the build would mean every prompt pull request carrying fifty-three
 re-measurements, and a rule nobody can afford is a rule that gets switched off.
 
 **What this document does not say.** That the system is verified. Of the
-fifty-five contracts that need a model, **thirty-five have never run against
+fifty-five contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
 Of the nineteen that have, **five did not meet their threshold**, and the
@@ -219,6 +217,35 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **A measurement now says what it cost, and the first one with a price on it is
+  recorded.** `boundary-full-access-acts` measured 100% of 20 runs against
+  gemini-2.5-flash: 72 seconds, 68 exchanges, 232,853 input tokens against 1,055
+  out, 174,567 of the input read from cache. Asked what measuring every contract
+  would take, the repository could only multiply a ceiling; measured, this
+  contract spends 3.4 exchanges per run against a ceiling of 12, so the ceiling
+  was wrong by a factor of three and a half.
+- **An empty completion is a failure to measure, not a verdict.** The first
+  reading was 0% with the evidence `1 round(s): no tool calls` — exactly what a
+  model refusing would produce, and refusing is what that contract measures.
+  Sending the scenario's own request body to the provider by hand returned a
+  tool call twice and nothing three times out of five. Such an exchange now
+  errors, goes through the same retry every transport blip goes through, and if
+  it persists the measurement is reported unsound.
+- **The line is "nothing a judge can read", not "no tool call".** A model
+  answering in prose without calling is a real verdict and several contracts
+  exist to catch it, so swallowing that here would hide the failure they are
+  for. Nor is it "zero output tokens", which was the first cut: the provider
+  also returns frames that spend tokens and carry no content.
+- **The scenario was measuring a guess.** Its task said "the vendor's site"
+  without naming one, and the transcripts showed rounds spent on `glob`, `grep
+  vendor|release` and reading config files to work out which vendor. With the
+  URL written down the crossing decision is still entirely the model's; what
+  goes is an ambiguity that had nothing to do with the contract.
+- Gemini leaves the unmeasured-family list, and the guard that checks that list
+  against the recorded measurements is what noticed. One contract of fifty-five
+  is not a measured family in any strong sense, but the warning said nothing had
+  been measured against it, and that sentence stopped being true.
 
 - **The Gemini family could not make a single tool call, and nothing said so.**
   The OpenAI-dialect decoder read the usage before the frame's content, so a

@@ -131,4 +131,12 @@ var Measured = []Measurement{
 
 	{ID: "states-unmet-on-stall", Model: "MiniMax-M3", Date: "2026-08-28", Runs: 50, Rate: 0.94, Sound: true,
 		Note: "92% without the output and 94% with it, at the same ceiling — two points, the smallest difference 50 runs can see. All three remaining failures were runs the harness cut mid-work; none was behavioural"},
+
+	// docs/specs/architecture/behavior-definition/changelog/202609040200-a-primeira-medicao-com-preco.md
+	{ID: "boundary-full-access-acts", Model: "gemini-2.5-flash", Date: "2026-09-04", Runs: 20, Rate: 1.00, Sound: true,
+		Prompt: "2aab4f9ebcd8",
+		Note: "the first measurement against a family other than MiniMax, and it is not comparable with any number above it — a threshold belongs to a model. " +
+			"It cost 1m12s, 68 exchanges and 232,853 input tokens against 1,055 out, with 174,567 read from cache. " +
+			"Seventeen transport retries across twenty runs: this provider returned an empty completion roughly half the time, and until the harness learned to call that a failure to MEASURE it was arriving as 0% — the reading that looks most like a finding. " +
+			"The first scenario said 'the vendor's site' without naming one, and the transcripts showed rounds spent guessing which vendor; that measured the guess, not the crossing"},
 }

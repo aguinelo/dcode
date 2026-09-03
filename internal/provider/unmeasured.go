@@ -19,8 +19,14 @@ func Unmeasured(family string) string {
 		// Broader than the others: with generic, the endpoint itself is
 		// unknown, so the window and the images are guesses too.
 		return GenericWarning
-	case GeminiName, ClaudeName:
+	case ClaudeName:
 		return unmeasuredWarning(family)
+		// Gemini left this list on 4 September, when boundary-full-access-acts
+		// was measured against gemini-2.5-flash. One contract of fifty-five is
+		// not a measured family in any strong sense — but the warning says
+		// "nothing here has been measured against this family", and that
+		// sentence stopped being true. A warning that outlives what it
+		// described teaches people to ignore warnings.
 	}
 	return ""
 }

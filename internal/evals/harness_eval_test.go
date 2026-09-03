@@ -4,6 +4,7 @@ package evals
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -73,10 +74,22 @@ func setup(t *testing.T) (provider.Provider, Config) {
 //
 // The error return is reserved for a failure to MEASURE. A model that answers
 // badly is a verdict and comes back through calls and text, not through err.
-func exchange(ctx context.Context, p provider.Provider, model string, msgs []ce.Message, tools []ce.ToolDef) (calls []ce.ToolCall, text string, err error) {
+// cost, when non-nil, accumulates what this exchange consumed.
+//
+// A parameter rather than a return value: every caller wants it folded into a
+// running total and none wants it on its own, and threading a fourth return
+// through two call sites to add it up in both is the shape that lets the two
+// disagree.
+func exchange(ctx context.Context, p provider.Provider, model string, msgs []ce.Message, tools []ce.ToolDef, cost *Cost) (calls []ce.ToolCall, text string, err error) {
 	events, err := p.Stream(ctx, provider.Request{Model: model, Messages: msgs, Tools: tools})
 	if err != nil {
 		return nil, "", err
+	}
+	// Counted here, before the stream is drained, so a call that starts and
+	// fails still counts as a call. It was paid for.
+	var usage *provider.Usage
+	if cost != nil {
+		defer func() { cost.Add(usage) }()
 	}
 	for ev := range events {
 		switch ev.Type {
@@ -86,6 +99,8 @@ func exchange(ctx context.Context, p provider.Provider, model string, msgs []ce.
 			}
 		case provider.EventTextDelta:
 			text += ev.Text
+		case provider.EventDone:
+			usage = ev.Usage
 		case provider.EventError:
 			// A tool_schema error is the adapter refusing a call, which is a
 			// verdict about the model rather than a failure to measure — and
@@ -97,6 +112,44 @@ func exchange(ctx context.Context, p provider.Provider, model string, msgs []ce.
 			if ev.Err != nil {
 				return nil, "", ev.Err
 			}
+		}
+	}
+	// An empty completion is a failure to MEASURE, not a verdict.
+	//
+	// Nothing came back: no call, no text, and the provider's own accounting
+	// says zero output tokens. That is not a model declining to act — declining
+	// costs tokens and leaves a sentence. It is a call that produced nothing,
+	// and counting it as behaviour is the same error as reading a lost packet
+	// as a regression, which this suite already refuses to do.
+	//
+	// Measured, not assumed: sending one scenario's exact request body to the
+	// provider by hand returned a tool call twice and nothing three times out of
+	// five. Left as a verdict, that provider alone would have printed 0% for a
+	// contract whose behaviour was never exercised — and 0%% is the reading that
+	// looks most like a finding.
+	//
+	// Returned as an error so it goes through the retry every transport blip
+	// goes through, and if it persists the measurement is reported unsound
+	// rather than green or red. The one outcome that must not happen is a
+	// confident number with no exchange behind it.
+	//
+	// The line is "nothing a judge can read", not "zero output tokens". The
+	// token count was the first cut and it was too narrow: the provider also
+	// returns frames that spend tokens and carry no content, and those reached
+	// the judge as "did not call the tool" just the same.
+	//
+	// It is NOT "no tool call". A model that answers in prose without calling
+	// is a real verdict, and several contracts exist to catch exactly that —
+	// swallowing it here would hide the failure they are for.
+	if unreadable(len(calls), text) {
+		spent := 0
+		if usage != nil {
+			spent = usage.OutputTokens
+		}
+		return nil, "", &provider.ProviderError{
+			Class: provider.ErrClassProvider,
+			Message: fmt.Sprintf(
+				"empty completion: no tool call and no text (%d output tokens spent)", spent),
 		}
 	}
 	return calls, text, nil

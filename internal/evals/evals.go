@@ -17,6 +17,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/aguinelo/dcode/internal/provider"
 
 	"github.com/aguinelo/dcode/internal/version"
 )
@@ -131,6 +134,19 @@ type Result struct {
 	// the model is being measured through, and it changed under nineteen
 	// recorded measurements without any of them being able to say so.
 	Prompt string
+	// Cost is what the measurement consumed: wall clock, exchanges and tokens.
+	//
+	// It exists because "what would it take to measure all of them" had no
+	// answer but a ceiling. The suite could say a contract held and could not
+	// say what holding it had cost, so planning a full run meant multiplying
+	// guesses — and the one number everybody reaches for, the count of
+	// contracts, is the least useful of the three.
+	//
+	// Measured rather than estimated, and per contract rather than for the
+	// suite, because contracts differ by an order of magnitude: one that
+	// settles in two exchanges and one that spends twelve are not the same
+	// purchase.
+	Cost Cost
 	// FirstError is why the errored runs errored, or empty when none did.
 	//
 	// The count alone cannot be acted on. A measurement that reports "20
@@ -139,6 +155,69 @@ type Result struct {
 	// key, or a bug in the harness — which is the same defect as a rate with
 	// no transcript behind it, in the one place it is most expensive.
 	FirstError string
+}
+
+// Cost is what a measurement consumed.
+//
+// Exchanges and not just runs: a run is one scenario played out, and it costs
+// as many model calls as the model asked for. The ratio between them is the
+// thing no ceiling can predict, because it is the model deciding when it has
+// finished, and it is what makes a forecast from Rounds wrong by a factor of
+// three or more in both directions.
+type Cost struct {
+	// Elapsed is wall clock for the whole contract, including retries.
+	Elapsed time.Duration
+	// Exchanges is how many times the model was actually called.
+	Exchanges int
+	// The tokens the provider reported. Cache reads are kept apart because
+	// they are what says the append-only prefix is working, and folding them
+	// into input would hide exactly that.
+	InputTokens, OutputTokens, CacheReadTokens int
+}
+
+// Add folds one exchange's usage in.
+func (c *Cost) Add(u *provider.Usage) {
+	c.Exchanges++
+	if u == nil {
+		return
+	}
+	c.InputTokens += u.InputTokens
+	c.OutputTokens += u.OutputTokens
+	c.CacheReadTokens += u.CacheReadTokens
+}
+
+// PerRun divides by the runs that happened, which is what a forecast needs.
+//
+// Zero runs returns a zero cost rather than dividing: a measurement that never
+// ran has no per-run cost, and reporting one would be inventing the number this
+// type exists to stop people inventing.
+func (c Cost) PerRun(runs int) Cost {
+	if runs <= 0 {
+		return Cost{}
+	}
+	return Cost{
+		Elapsed:         c.Elapsed / time.Duration(runs),
+		Exchanges:       c.Exchanges / runs,
+		InputTokens:     c.InputTokens / runs,
+		OutputTokens:    c.OutputTokens / runs,
+		CacheReadTokens: c.CacheReadTokens / runs,
+	}
+}
+
+// unreadable reports that an exchange produced nothing a judge can read.
+//
+// It lives here rather than in the harness beside its caller so it can be
+// asserted without a build tag and without a provider: it is a rule about what
+// counts as a measurement, not test scaffolding.
+//
+// The line is "nothing a judge can read". Not "zero output tokens", which was
+// the first cut and too narrow — the provider also returns frames that spend
+// tokens and carry no content. And emphatically NOT "no tool call": a model
+// that answers in prose without calling is a real verdict, and several
+// contracts exist to catch exactly that, so swallowing it here would hide the
+// failure they are for.
+func unreadable(calls int, text string) bool {
+	return calls == 0 && strings.TrimSpace(text) == ""
 }
 
 // Rate is the share of runs that behaved as contracted.
@@ -200,6 +279,18 @@ func (r Result) String() string {
 		fmt.Fprintf(&b, " — %d run(s) errored, measurement unsound", r.Errors)
 		if r.FirstError != "" {
 			fmt.Fprintf(&b, ": %s", r.FirstError)
+		}
+	}
+	// What it cost, beside what it found. A rate with no cost behind it is a
+	// number nobody can plan the next run from.
+	if r.Cost.Exchanges > 0 {
+		fmt.Fprintf(&b, "\n%-32s %.0fs · %d exchanges · in %d out %d cached %d tokens",
+			"", r.Cost.Elapsed.Seconds(), r.Cost.Exchanges,
+			r.Cost.InputTokens, r.Cost.OutputTokens, r.Cost.CacheReadTokens)
+		if per := r.Cost.PerRun(r.Runs); per.Exchanges > 0 {
+			fmt.Fprintf(&b, "\n%-32s per run: %.1fs · %d exchanges · %d tokens",
+				"", per.Elapsed.Seconds(), per.Exchanges,
+				per.InputTokens+per.OutputTokens)
 		}
 	}
 	if r.Model != "" {
