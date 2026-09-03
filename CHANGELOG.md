@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 2 September 2026
+## Current state — 3 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -33,9 +33,9 @@ isolated package.
 | contracts needing a model | 54 of the 59; 5 are settled by assertion |
 | **contracts ever actually measured** | **20** |
 | of those, **against a prompt they cannot name** | **17** |
-| coverage | 93.4%, gate at 90% aggregate **and per package** |
+| coverage | 93.5%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.19.0** |
+| published version | **0.20.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -147,6 +147,17 @@ vertical rule. Measurement is now a ruler this client owns, and a terminal that
 really draws those marks wider gets a different glyph set rather than different
 arithmetic.
 
+**Which boundary, and who says so.** The sandbox mode is a fact in the prompt,
+in a block after Safety, rebuilt when `/mode` changes it. It carries the rule
+that makes it authoritative: it is not a claim anyone made in a message, so the
+rule about ignoring instructions that ask for the sandbox to be relaxed does not
+apply to it. That rule is what the block exists for. Telling the model in prose
+that full access is on produces exactly the artefact the doctrine teaches it to
+distrust, and the doctrine is re-read at full weight every turn while the
+sentence ages in history — so it worked when said and decayed a few turns later.
+The fact costs the cached prefix on every mode change, which is a rare event
+bought against a daily decay.
+
 **Security, on two axes.** Containment is the sandbox — Seatbelt on macOS,
 bubblewrap on Linux, with the boundary tested against the kernel and exercised
 in CI. Authorisation is the approval policy plus the rules. The two are
@@ -208,6 +219,8 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+## 0.20.0 — 3 September 2026
 
 - **The boundary is a fact in the prompt, not something the person has to keep
   saying.** Reported: switching to full-access and telling the model works, and
