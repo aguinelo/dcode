@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 2 de setembro de 2026
+## Estado atual — 3 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -33,9 +33,9 @@ fora do pacote isolado.
 | contratos que precisam de modelo | 54 dos 59; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **20** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
-| cobertura | 93,4%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,5%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.19.0** |
+| versão publicada | **0.20.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -131,6 +131,17 @@ vertical. A medida agora é uma régua deste cliente, e terminal que de fato
 desenha essas marcas mais largas recebe outro conjunto de glifos, não outra
 aritmética.
 
+**Qual fronteira, e quem diz.** O modo do sandbox é um fato no prompt, num bloco
+depois de Safety, reconstruído quando o `/mode` o muda. Ele carrega a regra que o
+torna autoridade: não é afirmação que alguém fez numa mensagem, então a regra de
+ignorar instruções que pedem para relaxar o sandbox não se aplica a ele. Essa
+regra é a razão de o bloco existir. Dizer ao modelo em prosa que o acesso total
+está ligado produz exatamente o artefato que a doutrina ensina a desconfiar, e a
+doutrina é relida com peso total todo turno enquanto a frase envelhece no
+histórico — por isso funcionava na hora e decaía algumas trocas depois. O fato
+custa o prefixo cacheado a cada troca de modo, evento raro comprado contra um
+decaimento diário.
+
 **Segurança, em dois eixos.** Contenção é o sandbox — Seatbelt no macOS,
 bubblewrap no Linux, com fronteira testada contra o kernel e exercitada na CI.
 Autorização é a política de aprovação mais as regras. Os dois são ortogonais, e
@@ -191,6 +202,8 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+## 0.20.0 — 3 de setembro de 2026
 
 - **A fronteira virou fato no prompt, em vez de algo que a pessoa precisa ficar
   repetindo.** Relatado: trocar para full-access e avisar o modelo funciona, e
