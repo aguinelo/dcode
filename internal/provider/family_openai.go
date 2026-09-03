@@ -282,44 +282,65 @@ func (d *openAIDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		}
 	}
 
-	if c.Usage != nil {
-		out, err := d.flush()
-		return append(out, d.terminal(&Usage{
-			InputTokens:     c.Usage.PromptTokens,
-			OutputTokens:    c.Usage.CompletionTokens,
-			CacheReadTokens: c.Usage.PromptTokensDetails.CachedTokens,
-		})...), err
-	}
-	if len(c.Choices) == 0 {
-		return nil, nil
-	}
-
-	ch := c.Choices[0]
+	// The CONTENT of the frame first, and the usage after it.
+	//
+	// This was the other way round, and a frame that carried both was a frame
+	// whose content was thrown away: the usage branch flushed a decoder that
+	// had absorbed nothing yet, emitted the terminal event and returned. Every
+	// tool call in that frame vanished, silently, with the stream reporting a
+	// clean end.
+	//
+	// It is not a hypothetical shape. OpenAI and MiniMax send usage on a frame
+	// of its own, after the one that finishes — which is why this held for as
+	// long as it did. Gemini sends ONE frame carrying the tool call, the finish
+	// reason and the usage together, so the whole family could not make a
+	// single tool call, and the failure looked like a model that answered
+	// nothing rather than like a decoder that dropped it.
 	var out []StreamEvent
+	if len(c.Choices) > 0 {
+		ch := c.Choices[0]
 
-	for _, tc := range ch.Delta.ToolCalls {
-		d.absorb(tc)
+		for _, tc := range ch.Delta.ToolCalls {
+			d.absorb(tc)
+		}
+
+		// A frame carrying reasoning is a thinking frame. Its Content repeats
+		// the same text with <think> markers around it, so reading Content here
+		// would put the model's thinking in its own mouth.
+		if ch.Delta.Reasoning != "" {
+			out = append(out, StreamEvent{Type: EventReasoningDelta, Text: ch.Delta.Reasoning})
+		} else if text, ok := answerText(ch.Delta.Content); ok {
+			out = append(out, StreamEvent{Type: EventTextDelta, Text: text})
+		}
+
+		if ch.FinishReason != nil {
+			flushed, err := d.flush()
+			out = append(out, flushed...)
+			if err != nil {
+				return out, err
+			}
+			// Finished, but not necessarily over: the usage may ride on a later
+			// frame that repeats this one. Terminating here is what threw the
+			// token accounting away.
+			d.finished = true
+		}
 	}
 
-	// A frame carrying reasoning is a thinking frame. Its Content repeats the
-	// same text with <think> markers around it, so reading Content here would
-	// put the model's thinking in its own mouth.
-	if ch.Delta.Reasoning != "" {
-		out = append(out, StreamEvent{Type: EventReasoningDelta, Text: ch.Delta.Reasoning})
-	} else if text, ok := answerText(ch.Delta.Content); ok {
-		out = append(out, StreamEvent{Type: EventTextDelta, Text: text})
-	}
-
-	if ch.FinishReason != nil {
+	if c.Usage != nil {
+		// Flushed again rather than assumed flushed: a provider may put usage
+		// on a frame with no finish_reason at all, and the calls absorbed
+		// before it still have to come out. flush is once-only, so a second
+		// call after the branch above costs nothing.
 		flushed, err := d.flush()
 		out = append(out, flushed...)
 		if err != nil {
 			return out, err
 		}
-		// Finished, but not necessarily over: the usage rides on a later frame
-		// that repeats this one. Terminating here is what threw the token
-		// accounting away.
-		d.finished = true
+		return append(out, d.terminal(&Usage{
+			InputTokens:     c.Usage.PromptTokens,
+			OutputTokens:    c.Usage.CompletionTokens,
+			CacheReadTokens: c.Usage.PromptTokensDetails.CachedTokens,
+		})...), nil
 	}
 	return out, nil
 }

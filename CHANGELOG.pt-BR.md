@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 168 changelogs de decisão |
+| famílias de spec | 18, com 169 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | contratos comportamentais | 59 declarados |
@@ -202,6 +202,26 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **A família Gemini não conseguia chamar uma ferramenta sequer, e nada dizia
+  isso.** O decodificador do dialeto OpenAI lia o uso antes do conteúdo do frame,
+  então frame que trazia os dois tinha o conteúdo descartado: o flush rodava num
+  decodificador que ainda não absorvera nada, o evento terminal saía, e a função
+  retornava antes de olhar as escolhas. OpenAI e MiniMax mandam o uso em frame
+  próprio, que é por isso que aguentou tanto tempo. O Gemini manda um frame só,
+  com a chamada, o motivo de término e o uso juntos.
+- **O sintoma não apontava para lugar nenhum.** De fora, modelo que responde nada
+  e decodificador que joga a resposta fora são idênticos, e os números de uso
+  voltavam corretos o tempo todo, o que parece chamada saudável. A primeira
+  medição contra o Gemini leu 0% com a evidência `1 round(s): no tool calls` —
+  exatamente o que um modelo recusando produziria, e recusa era o que aquele
+  contrato media. O que separou os dois foi mandar o corpo da requisição do
+  próprio cliente ao provedor, por fora do cliente, e receber de volta uma
+  chamada que o cliente não tinha visto.
+- O `index` ausente no delta do Gemini foi a primeira suspeita e estava errada:
+  ausente decodifica como zero, e zero é a primeira chamada. O fixture guarda o
+  frame verbatim em vez de arrumá-lo, porque frame editado para o que o fio
+  "deveria" dizer é fixture que parou de testar o fio.
 
 ## 0.20.0 — 3 de setembro de 2026
 
