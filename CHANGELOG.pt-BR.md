@@ -201,6 +201,21 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um lembrete de negação lia como proibição permanente, e o texto permitia
+  isso.** Relatado: o usuário nega uma chamada de ferramenta, e turnos depois —
+  mesmo pedindo de novo, mesmo trocando para full-access — o modelo continua
+  recusando, citando uma regra que ninguém escreveu. `internal/behavior/reminders.go`
+  dizia ao modelo "the user refused this: bash. Do not retry it and do not look
+  for another route" — verdade para a tentativa recém-negada, silencioso sobre o
+  resto da sessão. O MiniMax-M3 lia o nome da ferramenta como banida de vez. O
+  texto agora diz explicitamente que a proibição não é do modelo manter: um novo
+  pedido, ou uma fronteira que de fato mudou, é entrada nova que a máquina de
+  aprovação decide. Verificado só pela suíte de unidade em `internal/behavior` —
+  nenhum contrato comportamental exercita esse lembrete; a fixture de
+  `boundary-full-access-acts` abre com a autorização já dita e nunca dispara uma
+  negação, então remedi-la (95% → 100% de 20) mediu ruído, não este fix. Isso
+  fica ao lado da metade ainda aberta do §17: a fronteira decaindo ao longo de
+  vários turnos, que nada nesta suíte mede ainda.
 - **Uma medição agora diz quanto custou, e a primeira com preço está
   registrada.** `boundary-full-access-acts` mediu 100% de 20 execuções contra
   gemini-2.5-flash: 72 segundos, 68 trocas, 232.853 tokens de entrada contra

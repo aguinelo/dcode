@@ -218,6 +218,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A denial reminder read as a permanent ban, and its wording let it.** Reported:
+  the user refuses one tool call, and turns later — after asking again, and after
+  switching to full-access — the model still refuses, citing a rule nobody wrote.
+  `internal/behavior/reminders.go` told the model "the user refused this: bash. Do
+  not retry it and do not look for another route", true for the one attempt just
+  declined and silent about the rest of the session. MiniMax-M3 read the tool's
+  name as banned outright. The text now says the ban is not the model's to keep
+  enforcing: a fresh ask, or a boundary that actually changed, is new input the
+  approval machinery gets to answer. Verified by the unit suite in
+  `internal/behavior` only — no behavioural contract exercises this reminder;
+  `boundary-full-access-acts`'s fixture opens with authorization already stated
+  and never triggers a denial, so re-running it (95% → 100% of 20) measured noise,
+  not this fix. This sits beside the still-open half of §17: the boundary decaying
+  across many turns, which nothing in this suite measures yet.
 - **A measurement now says what it cost, and the first one with a price on it is
   recorded.** `boundary-full-access-acts` measured 100% of 20 runs against
   gemini-2.5-flash: 72 seconds, 68 exchanges, 232,853 input tokens against 1,055
