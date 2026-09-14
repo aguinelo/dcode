@@ -176,9 +176,13 @@ func Emit(s SessionState) []Reminder {
 		names := uniqueSorted(s.DeniedTools)
 		out = append(out, Reminder{
 			Kind: ReminderApprovalDenied,
-			Text: "The user refused this: " + strings.Join(names, ", ") +
+			Text: "The user just refused this attempt: " + strings.Join(names, ", ") +
 				". Do not retry it and do not look for another route to the same " +
-				"effect. Say what you cannot do, and carry on with what you can.",
+				"effect on your own judgment. Say what you cannot do, and carry on " +
+				"with what you can. This is not a standing ban on the tool: it is not " +
+				"for you to lift, but it is not for you to keep enforcing either. If " +
+				"the user asks for it again, or the boundary itself changes, that is " +
+				"new input the approval machinery gets to answer — let it.",
 		})
 	}
 
