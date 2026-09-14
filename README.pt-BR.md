@@ -302,8 +302,10 @@ window    = 32000
 ```
 
 ```bash
-DCODE_API_KEY=x dcode   # qualquer valor não vazio; a checagem é que existe uma
-                         # chave, não que o servidor a valida
+dcode login   # cola qualquer valor não vazio, salvo sob a família "generic" —
+              # o `family` no config.toml já nomeia ela, sem precisar de
+              # --family. A checagem é que existe uma chave, não que o
+              # servidor a valida. Dali em diante é só `dcode`, sem env var.
 ```
 
 `window` é a que vale a pena ajustar à mão pra um modelo local: `generic`

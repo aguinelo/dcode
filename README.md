@@ -304,8 +304,10 @@ window    = 32000
 ```
 
 ```bash
-DCODE_API_KEY=x dcode   # any non-empty value; the check is that a key exists,
-                         # not that the server verifies one
+dcode login   # paste any non-empty value, stored under the "generic" family —
+              # `family` in config.toml already names it, so no --family flag
+              # is needed. The check is that a key exists, not that the
+              # server verifies one. Plain `dcode` from then on, no env var.
 ```
 
 `window` is the one worth setting by hand for a local model: `generic` reports
