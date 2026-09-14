@@ -146,8 +146,8 @@ type Model struct {
 	// Navigating says the transcript has the keyboard.
 	//
 	// A MODE, and that is the whole point of it. The design's footer offers
-	// `j/k move` and `t theme`, which are letters, and a letter on a line where
-	// you type is the defect this product has fixed twice. Inside a mode that
+	// `j/k move`, which is a letter, and a letter on a line where you type is
+	// the defect this product has fixed twice. Inside a mode that
 	// owns the keyboard a letter is safe — the approval modal and the session
 	// list already work that way — and the design implies exactly this by
 	// putting a NAV badge in the footer at all.

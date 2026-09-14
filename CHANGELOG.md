@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 170 decision changelogs |
+| spec families | 18, with 171 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The interface has one theme now, and it does not paint a ground.**
+  Requested: colour that carries meaning stays, everything decorative is the
+  terminal's to decide. The four themes that owned their own background and
+  carried RGB measured against it — `neon`, `ashes`, `ember`, `mono` — are
+  removed, not hidden behind an option: colour with no meaning is decoration,
+  and decoration that owns its own ground is an interface that stopped
+  inheriting the terminal it runs in. What is left is the fifth theme, `claude`,
+  now the only one: text by weight (normal, bold, faint, italic) and state by
+  the terminal's own sixteen named colours. `t`, which cycled the five, is gone
+  — there is nothing left to cycle, and pressing it in NAV mode is now simply
+  swallowed like any other unbound letter. `paint` no longer has `fg`/`bg` RGB
+  fields at all, so an invented grey has nowhere left to enter; `Palette.Depth`,
+  `ColorDepth` and the truecolor/256-cube machinery they fed go with it — none
+  of it survives contact with a theme that only ever emits indexed colour.
 - **A measurement now says what it cost, and the first one with a price on it is
   recorded.** `boundary-full-access-acts` measured 100% of 20 runs against
   gemini-2.5-flash: 72 seconds, 68 exchanges, 232,853 input tokens against 1,055

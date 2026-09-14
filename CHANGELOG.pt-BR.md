@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 170 changelogs de decisão |
+| famílias de spec | 18, com 171 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,20 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A interface tem um tema só agora, e ele não pinta chão.** Pedido: cor que
+  carrega significado fica, tudo decorativo é o terminal quem decide. Os quatro
+  temas que pintavam o próprio fundo e carregavam RGB medido contra ele —
+  `neon`, `ashes`, `ember`, `mono` — foram removidos, não escondidos atrás de
+  uma opção: cor sem significado é decoração, e decoração dona do próprio chão
+  é interface que parou de herdar o terminal em que roda. O que sobra é o quinto
+  tema, `claude`, agora o único: texto por peso (normal, negrito, SGR 2,
+  itálico) e estado pelas dezesseis cores nomeadas do próprio terminal. O `t`,
+  que ciclava os cinco, sumiu — não há mais o que ciclar, e apertá-lo no modo
+  NAV agora é só engolido como qualquer outra letra sem atalho. `paint` não
+  carrega mais campos `fg`/`bg` de RGB: o tipo não tem por onde um cinza
+  inventado entrar. `Palette.Depth`, `ColorDepth` e a máquina de cubo
+  256/truecolor que alimentavam somem junto — nada disso sobrevive a um tema
+  que só emite cor indexada.
 - **Uma medição agora diz quanto custou, e a primeira com preço está
   registrada.** `boundary-full-access-acts` mediu 100% de 20 execuções contra
   gemini-2.5-flash: 72 segundos, 68 trocas, 232.853 tokens de entrada contra

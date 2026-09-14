@@ -1726,13 +1726,6 @@ func (p *program) onNavKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return p, nil
 
-	case "t":
-		// The theme, cycled. A letter, and legal precisely because this mode
-		// owns the keyboard — outside it, `t` is the first character of "tenta",
-		// "test", "the".
-		p.geo.Palette.Theme = NextTheme(p.geo.Palette.Theme)
-		return p, nil
-
 	case "/":
 		// Leave and start a command in one keystroke, which is what the design
 		// means by `/ prompt`. Anything else would make the commonest exit from

@@ -1678,40 +1678,6 @@ func TestNavModeSwallowsEveryKeyItDoesNotName(t *testing.T) {
 	}
 }
 
-// The theme key is a letter, and it exists only where a letter is safe.
-//
-// Outside the mode `t` is the first character of "tenta", "test", "the" — which
-// is the defect this product has fixed twice, at the user's report both times.
-func TestTheThemeKeyOnlyExistsInsideTheMode(t *testing.T) {
-	p, _ := newProgram(t)
-	p.model.Entries = []Entry{{Kind: KindUser, Summary: "algo"}}
-	first := p.geo.Palette.Theme.Name
-
-	// Outside: a letter.
-	p.Update(key("t"))
-	if p.model.Input != "t" {
-		t.Errorf("t was eaten outside the mode: input %q", p.model.Input)
-	}
-	if p.geo.Palette.Theme.Name != first {
-		t.Error("typing t changed the theme")
-	}
-
-	// Inside: the theme, and it comes back round.
-	p.model = p.model.SetInput("")
-	p.Update(special(tea.KeyEsc))
-	seen := map[string]bool{}
-	for i := 0; i < len(Themes()); i++ {
-		p.Update(key("t"))
-		seen[p.geo.Palette.Theme.Name] = true
-	}
-	if len(seen) != len(Themes()) {
-		t.Errorf("cycling reached %d of %d themes: %v", len(seen), len(Themes()), seen)
-	}
-	if p.geo.Palette.Theme.Name != first {
-		t.Errorf("a full cycle did not come back to %q, got %q", first, p.geo.Palette.Theme.Name)
-	}
-}
-
 // Resuming paints one screen, not one per event.
 //
 // Continuing a conversation writes the whole of the old log into the new
