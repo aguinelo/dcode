@@ -24,10 +24,11 @@ import (
 func runLogin(args []string) error {
 	fs := flag.NewFlagSet("dcode login", flag.ContinueOnError)
 	var (
-		family = fs.String("family", "", "which family this key belongs to (default: the one the model resolves to)")
-		list   = fs.Bool("list", false, "list stored credentials, masked")
-		remove = fs.Bool("delete", false, "remove the stored credential")
-		reveal = fs.Bool("reveal", false, "print the stored key in full — it will appear on screen and in scrollback")
+		family  = fs.String("family", "", "which family this key belongs to (default: the one the model resolves to)")
+		profile = fs.String("profile", "", "store for a configured model profile instead of the current model")
+		list    = fs.Bool("list", false, "list stored credentials, masked")
+		remove  = fs.Bool("delete", false, "remove the stored credential")
+		reveal  = fs.Bool("reveal", false, "print the stored key in full — it will appear on screen and in scrollback")
 	)
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, `dcode login — store the model credential outside the files you sync
@@ -38,6 +39,7 @@ taken as an argument: an argument lands in shell history and is visible in `+"`p
 Examples:
   dcode login                       store the key for the current model's family
   dcode login --family claude       store a second key for another family
+  dcode login --profile qwen-local  store for a configured model profile
   dcode login --list                what is stored, masked
   dcode login --reveal              print the key in full, on purpose
   dcode login --delete
@@ -79,13 +81,9 @@ Flags:
 		return err
 	}
 
-	name := *family
-	if name == "" {
-		if name = app.CredentialName(opts); name == "" {
-			return fmt.Errorf(
-				"no family claims the model %q, so there is nowhere to file the key. "+
-					"Name one with --family", opts.Model)
-		}
+	name, err := credentialName(*family, *profile, opts)
+	if err != nil {
+		return err
 	}
 
 	switch {
@@ -106,6 +104,37 @@ Flags:
 	}
 
 	return storeCredential(store, name)
+}
+
+// credentialName decides which name to file the key under.
+//
+// --family wins over everything, including a profile named alongside it —
+// it is the person overriding the default explicitly, the same standing it
+// already had before profiles existed. --profile resolves through the same
+// CredentialName the ordinary path uses, so a profile that only renames a
+// known cloud model needs no family of its own to file its key correctly:
+// CredentialName reads Family first and falls back to the model's prefix.
+// With neither, the current model decides, exactly as before this flag
+// existed.
+func credentialName(family, profile string, opts app.Options) (string, error) {
+	name := family
+	switch {
+	case name != "":
+	case profile != "":
+		p, ok := opts.Profiles[profile]
+		if !ok {
+			return "", fmt.Errorf("no profile named %q; configured: %s", profile, strings.Join(profileNames(opts.Profiles), ", "))
+		}
+		name = app.CredentialName(app.Options{Model: p.Model, Family: p.Family})
+	default:
+		name = app.CredentialName(opts)
+	}
+	if name == "" {
+		return "", fmt.Errorf(
+			"no family claims the model %q, so there is nowhere to file the key. "+
+				"Name one with --family or --profile", opts.Model)
+	}
+	return name, nil
 }
 
 func storeCredential(store credential.Store, name string) error {

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/app"
+	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/credential"
 )
 
@@ -126,4 +128,89 @@ func TestAStoreThatRefusesReportsWhy(t *testing.T) {
 			t.Errorf("the reason was lost: %v", err)
 		}
 	})
+}
+
+// --family wins over a profile named alongside it — the explicit override
+// this flag already had, unchanged by profiles existing.
+func TestCredentialNameFamilyWinsOverProfile(t *testing.T) {
+	opts := app.Options{
+		Model: "MiniMax-M3",
+		Profiles: map[string]config.Profile{
+			"qwen-local": {Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic"},
+		},
+	}
+	got, err := credentialName("claude", "qwen-local", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "claude" {
+		t.Errorf("got %q, want the explicit family", got)
+	}
+}
+
+// A profile resolves through the same path any other model does: its own
+// Family when it set one.
+func TestCredentialNameResolvesAProfilesFamily(t *testing.T) {
+	opts := app.Options{
+		Model: "MiniMax-M3",
+		Profiles: map[string]config.Profile{
+			"qwen-local": {Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic"},
+		},
+	}
+	got, err := credentialName("", "qwen-local", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "generic" {
+		t.Errorf("got %q, want the profile's family", got)
+	}
+}
+
+// A profile that only renames a known cloud model needs no family of its
+// own — the model's prefix resolves it, same as the ordinary path.
+func TestCredentialNameResolvesAProfileWithNoFamilyByModelPrefix(t *testing.T) {
+	opts := app.Options{
+		Model: "qwen3.5-9b",
+		Profiles: map[string]config.Profile{
+			"cloud": {Name: "cloud", Model: "MiniMax-M3"},
+		},
+	}
+	got, err := credentialName("", "cloud", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "minimax-m3" {
+		t.Errorf("got %q, want the family MiniMax-M3's prefix resolves to", got)
+	}
+}
+
+// An unknown profile name is an error naming what is actually configured,
+// not a silent fall-through to the current model.
+func TestCredentialNameUnknownProfileNamesWhatExists(t *testing.T) {
+	opts := app.Options{
+		Model: "MiniMax-M3",
+		Profiles: map[string]config.Profile{
+			"qwen-local": {Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic"},
+		},
+	}
+	_, err := credentialName("", "typo-d", opts)
+	if err == nil {
+		t.Fatal("an unknown profile name was accepted")
+	}
+	if !strings.Contains(err.Error(), "qwen-local") {
+		t.Errorf("the error does not name what is configured: %v", err)
+	}
+}
+
+// With neither flag, the current model decides — exactly the behaviour from
+// before --profile existed.
+func TestCredentialNameDefaultsToTheCurrentModel(t *testing.T) {
+	opts := app.Options{Model: "claude-sonnet"}
+	got, err := credentialName("", "", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "claude" {
+		t.Errorf("got %q", got)
+	}
 }

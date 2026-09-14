@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 172 decision changelogs |
+| spec families | 18, with 173 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,21 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Several models, saved once, switched on the fly.** Requested: "can I have
+  several models already configured and switch that on the fly?" after
+  setting up a local endpoint. `/model <name>` already existed, but only
+  swapped the model string — family, transport and endpoint stayed whatever
+  the session already had, because they were decided once when the daemon
+  started. New `models.toml` (same directories as `config.toml`, project
+  extending user by name, parsed with `ParseSections` rather than the
+  bijective schema `config.toml` enforces — the same reason
+  `requirements.toml` is its own file) holds named profiles bundling model,
+  family, transport, base URL and window together. `/model <name>` now
+  resolves against them before falling back to the ordinary bare-model-name
+  path, and applies the whole bundle. No protocol change: `buildProvider`
+  already runs fresh per session inside `Daemon.build`, so this is one `if`
+  there rather than a new surface. `dcode login --profile <name>` and
+  `dcode config`'s new "model profiles" section round it out.
 - **A local model can say how much context it actually has.** Requested:
   pointing dcode at a local OpenAI-compatible server (LM Studio, `qwen3.5-9b`,
   ~32k context) via `--family generic`. `Generic.Window` always answers

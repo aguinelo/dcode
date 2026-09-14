@@ -319,6 +319,32 @@ provider rejects the request for exceeding its real window first, tens of
 thousands of tokens before dcode thought there was anything to warn about.
 Naming the real number is information you already have, typing the URL.
 
+**Switching between several, on the fly.** `config.toml` holds one active
+model; `models.toml` — same directories, project extending user by name —
+holds as many named profiles as you want, each bundling everything above at
+once:
+
+```toml
+# models.toml
+[profile.cloud]
+model = "MiniMax-M3"
+
+[profile.qwen-local]
+model     = "qwen3.5-9b"
+family    = "generic"
+transport = "openai"
+base_url  = "http://192.168.0.149:1234/v1"
+window    = 32000
+```
+
+`/model qwen-local` inside a running session switches the whole bundle — not
+just the model name — and `/model cloud` switches back, both without
+restarting. `/model` with no argument lists the profiles you have configured.
+A name matching no profile still works the ordinary way, resolved by prefix,
+so this changes nothing for anyone who has never written a profile.
+`dcode login --profile qwen-local` stores the key under the profile's family
+without having to spell it out.
+
 ### The boundary
 
 By default the agent runs in `workspace-write` with `on-request` approvals: it may edit

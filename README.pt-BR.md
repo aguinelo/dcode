@@ -317,6 +317,32 @@ alvo: o provedor recusa a requisição por estourar a janela real primeiro,
 dezenas de milhares de tokens antes de o dcode achar que havia algo a avisar.
 Nomear o número real é informação que você já tem, ao digitar a URL.
 
+**Alternando entre vários, ao vivo.** `config.toml` guarda um modelo ativo;
+`models.toml` — mesmos diretórios, projeto estendendo usuário por nome —
+guarda quantos perfis nomeados você quiser, cada um empacotando tudo acima de
+uma vez:
+
+```toml
+# models.toml
+[profile.cloud]
+model = "MiniMax-M3"
+
+[profile.qwen-local]
+model     = "qwen3.5-9b"
+family    = "generic"
+transport = "openai"
+base_url  = "http://192.168.0.149:1234/v1"
+window    = 32000
+```
+
+`/model qwen-local` dentro de uma sessão em andamento troca o pacote
+inteiro — não só o nome do modelo — e `/model cloud` volta, os dois sem
+reiniciar. `/model` sem argumento lista os perfis configurados. Um nome que
+não casa com nenhum perfil continua funcionando do jeito de sempre, resolvido
+por prefixo — isso não muda nada pra quem nunca escreveu um perfil.
+`dcode login --profile qwen-local` guarda a chave sob a família do perfil sem
+precisar soletrar qual é.
+
 ### A fronteira
 
 Por default o agente roda em `workspace-write` com aprovação `on-request`: pode editar

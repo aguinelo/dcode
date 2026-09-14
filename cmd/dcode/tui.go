@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"syscall"
 	"time"
 
@@ -152,6 +153,7 @@ func runTUI(args []string) error {
 		Sessions:      recordedSessions(recordDir(resolved), ws),
 		AcceptsImages: acceptsImages(opts.Model),
 		Lookup:        lookup(resolved),
+		ProfileNames:  profileNames(opts.Profiles),
 		// Resolved at the edge, once. The client package renders and never
 		// reads the environment, the same way it never builds its own palette.
 		Lang:   langOf(resolved),
@@ -428,4 +430,15 @@ func acceptsImages(model string) bool {
 		return false
 	}
 	return f.AcceptsImages()
+}
+
+// profileNames lists the configured model profiles, sorted so `/model` with
+// no argument shows the same order every time it is asked.
+func profileNames(profiles map[string]config.Profile) []string {
+	names := make([]string, 0, len(profiles))
+	for name := range profiles {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

@@ -316,6 +316,66 @@ func TestDaemonBuildHonoursTheRequestedModel(t *testing.T) {
 
 }
 
+// A name matching a configured profile switches the whole bundle it names —
+// model, family, transport, endpoint, window — not just the model string,
+// which is what makes it a profile rather than a friendlier model name.
+func TestDaemonBuildResolvesAConfiguredProfileAsOneBundle(t *testing.T) {
+	ws := t.TempDir()
+	base, _, err := FromEnv(envFrom(map[string]string{}), ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base.SandboxMode = policy.ModeReadOnly
+	requireSandbox(t, base)
+	base.Profiles = map[string]config.Profile{
+		"qwen-local": {
+			Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic",
+			Transport: "openai", BaseURL: "http://127.0.0.1:1234/v1", Window: 32000,
+		},
+	}
+
+	d := NewDaemon(DaemonOptions{SocketPath: "/tmp/unused.sock", Base: base})
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: ws, Model: "qwen-local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := sess.Describe()
+	if got.Model != "qwen3.5-9b" {
+		t.Errorf("model: got %q", got.Model)
+	}
+	// The window is the one part of the bundle already visible on the wire —
+	// Generic.Window guesses 128,000 for anything it was not told, so seeing
+	// 32,000 here is proof the whole profile was applied, not only the name.
+	if got.ContextWindow != 32000 {
+		t.Errorf("context window: got %d, want the profile's 32000 rather than generic's guess", got.ContextWindow)
+	}
+}
+
+// A name matching no profile is the ordinary path: a bare model string,
+// resolved by prefix exactly as it always was. A profile system that changed
+// this would break every session that has never heard of one.
+func TestDaemonBuildFallsThroughWhenNoProfileMatches(t *testing.T) {
+	ws := t.TempDir()
+	base, _, err := FromEnv(envFrom(map[string]string{}), ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base.SandboxMode = policy.ModeReadOnly
+	requireSandbox(t, base)
+	base.Profiles = map[string]config.Profile{
+		"qwen-local": {Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic"},
+	}
+
+	d := NewDaemon(DaemonOptions{SocketPath: "/tmp/unused.sock", Base: base})
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: ws, Model: "claude-sonnet"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sess.Describe().Model; got != "claude-sonnet" {
+		t.Errorf("got %q", got)
+	}
+}
+
 // configRoots builds a Roots whose four directories collapse onto one, which is
 // what DCODE_HOME does in production.
 func configRoots(home string) config.Roots {

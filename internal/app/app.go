@@ -49,7 +49,12 @@ type Options struct {
 	// wrong in the dangerous direction for a small local model, which would
 	// otherwise be told it has room it does not have and find out from the
 	// provider erroring mid-turn rather than from dcode compacting in time.
-	Window       int
+	Window int
+	// Profiles are named bundles of Model/Family/Transport/BaseURL/Window,
+	// read from models.toml, project layered over user by name. `/model
+	// <name>` resolves against this before falling back to the ordinary path
+	// of treating the name as a bare model string.
+	Profiles     map[string]config.Profile
 	SandboxMode  policy.SandboxMode
 	Policy       policy.ApprovalPolicy
 	Backend      string
@@ -345,19 +350,43 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 			MaxTurnTokens:     r.Int("limits.max_turn_tokens", 0),
 		},
 	}
+	roots, err := config.DiscoverRoots(env)
+	if err != nil {
+		return Options{}, r, err
+	}
 	if opts.APIKey != "" {
 		opts.CredentialFrom = "DCODE_API_KEY"
 	} else {
 		// The environment wins because it is explicit and scoped to one
 		// invocation; the store is what makes the ordinary case not require it.
-		roots, err := config.DiscoverRoots(env)
-		if err != nil {
-			return Options{}, r, err
-		}
 		secret, from := LookupCredential(roots, opts)
 		opts.APIKey, opts.CredentialFrom = secret, from
 	}
+
+	profiles, err := loadProfiles(roots, ws)
+	if err != nil {
+		return Options{}, r, err
+	}
+	opts.Profiles = profiles
+
 	return opts, r, nil
+}
+
+// loadProfiles reads named model profiles, project extending user by name.
+//
+// Read here rather than through config.Resolved because a profile is not a
+// flat key: it is a bundle, and the bijective schema ParseTOML enforces has
+// no room for one. See config.LoadModels.
+func loadProfiles(roots config.Roots, workspace string) (map[string]config.Profile, error) {
+	user, err := config.LoadModels(roots.Config)
+	if err != nil {
+		return nil, err
+	}
+	project, err := config.LoadModels(filepath.Join(workspace, ".dcode"))
+	if err != nil {
+		return nil, err
+	}
+	return config.MergeModels(user, project), nil
 }
 
 // resolveRules reads the rule lists from the resolved configuration.
