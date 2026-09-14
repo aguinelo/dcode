@@ -266,6 +266,55 @@ dcode --dump-prompt          # exatamente o que iria para o modelo
 dcode --config model.name    # valor efetivo de uma chave, e de onde ele veio
 ```
 
+### Escolhendo um modelo
+
+Quatro chaves, todas opcionais, todas em `config.toml` sob `[model]` ou como
+variáveis de ambiente `DCODE_*` — precedência é flag, depois ambiente, depois
+arquivo, depois o padrão embutido.
+
+```toml
+[model]
+name      = "MiniMax-M3"   # DCODE_MODEL      — o prefixo que resolve uma família
+family    = ""             # DCODE_FAMILY     — força uma, pula a resolução por prefixo
+transport = ""             # DCODE_TRANSPORT  — "openai" ou "anthropic"; vazio usa o dialeto preferido da família
+base_url  = ""             # DCODE_BASE_URL   — um endpoint diferente para a mesma família
+window    = 0              # DCODE_WINDOW     — sobrescreve a janela de contexto que a família devolve; 0 é "pergunte à família"
+```
+
+Um nome de modelo desconhecido é erro, nomeando as famílias que existem —
+nunca cai num palpite, porque um default silencioso entregaria tool-calling
+não testado sem nada na tela dizendo isso. `--family generic` é o escape hatch
+explícito: qualquer endpoint compatível com OpenAI, ao custo de um aviso de
+que os limiares comportamentais deste produto foram medidos contra famílias
+nomeadas e nenhum deles vale aqui. Funciona; o quão bem não é algo que o dcode
+sabe dizer.
+
+É o que um modelo local pede — um LM Studio, Ollama, ou servidor parecido
+falando o dialeto OpenAI na sua própria rede:
+
+```toml
+[model]
+name      = "qwen3.5-9b"
+family    = "generic"
+transport = "openai"
+base_url  = "http://192.168.0.149:1234/v1"
+window    = 32000
+```
+
+```bash
+DCODE_API_KEY=x dcode   # qualquer valor não vazio; a checagem é que existe uma
+                         # chave, não que o servidor a valida
+```
+
+`window` é a que vale a pena ajustar à mão pra um modelo local: `generic`
+reporta um conservador 128.000 pra qualquer modelo, porque nunca viu aquele
+endpoint e tem de chutar pro lado seguro contra um desconhecido. Deixado no
+chute contra um modelo de 32k de verdade, os próprios avisos de orçamento de
+contexto do dcode — os que disparam em 60/80/92% cheio — nunca alcançam o
+alvo: o provedor recusa a requisição por estourar a janela real primeiro,
+dezenas de milhares de tokens antes de o dcode achar que havia algo a avisar.
+Nomear o número real é informação que você já tem, ao digitar a URL.
+
 ### A fronteira
 
 Por default o agente roda em `workspace-write` com aprovação `on-request`: pode editar

@@ -268,6 +268,55 @@ dcode --dump-prompt          # exactly what would be sent to the model
 dcode --config model.name    # a setting's effective value, and where it came from
 ```
 
+### Choosing a model
+
+Four keys, all optional, all in `config.toml` under `[model]` or as `DCODE_*`
+environment variables — precedence is flag, then environment, then file, then
+built-in default.
+
+```toml
+[model]
+name      = "MiniMax-M3"   # DCODE_MODEL      — the prefix that resolves a family
+family    = ""             # DCODE_FAMILY     — force one, skip prefix resolution
+transport = ""             # DCODE_TRANSPORT  — "openai" or "anthropic"; empty uses the family's preferred dialect
+base_url  = ""             # DCODE_BASE_URL   — a different endpoint for the same family
+window    = 0              # DCODE_WINDOW     — override the context window the family reports; 0 means "ask the family"
+```
+
+An unknown model name is an error naming the families that exist — it never
+falls back to a guess, because a silent default would ship untested
+tool-calling with nothing on screen to say so. `--family generic` is the
+explicit escape hatch: any OpenAI-compatible endpoint, at the cost of a
+warning that this product's behavioural thresholds were measured against
+named families and none of them applies here. It works; how well is not
+something dcode knows.
+
+That is what a local model needs — an LM Studio, Ollama, or similar server
+speaking the OpenAI dialect on your own network:
+
+```toml
+[model]
+name      = "qwen3.5-9b"
+family    = "generic"
+transport = "openai"
+base_url  = "http://192.168.0.149:1234/v1"
+window    = 32000
+```
+
+```bash
+DCODE_API_KEY=x dcode   # any non-empty value; the check is that a key exists,
+                         # not that the server verifies one
+```
+
+`window` is the one worth setting by hand for a local model: `generic` reports
+a conservative 128,000 for every model, because it has never seen the
+endpoint and has to guess in the safe direction for an unknown one. Left at
+the guess against a real 32k-context model, dcode's own context-budget
+warnings — the ones that fire at 60/80/92% full — never reach their target: the
+provider rejects the request for exceeding its real window first, tens of
+thousands of tokens before dcode thought there was anything to warn about.
+Naming the real number is information you already have, typing the URL.
+
 ### The boundary
 
 By default the agent runs in `workspace-write` with `on-request` approvals: it may edit
