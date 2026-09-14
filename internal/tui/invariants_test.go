@@ -159,13 +159,11 @@ var tuiInvariants = map[string]string{
 	"Nenhuma tela é escrita em literal": "TestNoEnglishSurvivesAPortugueseScreen",
 
 	// Text has a hierarchy.
-	"é **mais clara** que o que a qualifica":  "TestTheAnswerIsBrighterThanWhatQualifiesIt",
-	"legível contra o fundo que o tema pinta": "TestEveryRoleIsLegibleAgainstTheGround",
+	"é **mais clara** que o que a qualifica": "TestTheAnswerIsBrighterThanWhatQualifiesIt",
 	// Width does not move with the locale.
 	"Nenhuma medida deste cliente muda com o locale": "TestTheLocaleDoesNotDecideHowWideAGlyphIs",
 	"nada no pacote mede por fora da régua":          "TestNothingMeasuresWithTheGlobalRuler",
-	// A theme that gives the ground back.
-	"sem chão não carrega RGB":     "TestEveryRoleIsLegibleAgainstTheGround",
+	// The one theme, which gives the ground back.
 	"Tema sem chão emite só SGR":   "TestAThemeWithNoGroundEmitsOnlyWeightAndIndexedColour",
 	"Itálico é atributo da tabela": "TestItalicIsAnAttributeOfTheThemeTable",
 
@@ -211,7 +209,6 @@ var tuiInvariants = map[string]string{
 	"nunca é atalho":                           "TestVIsALetterWhereverTheCursorIs",
 	"Entrar no fluxo é **deliberado**":         "TestSteppingIntoTheTranscriptIsDeliberate",
 	"toda tecla que ele não nomeia é engolida": "TestNavModeSwallowsEveryKeyItDoesNotName",
-	"`t` percorre os temas":                    "TestTheThemeKeyOnlyExistsInsideTheMode",
 	"ela é dona do teclado":                    "TestCopyModeOwnsTheKeyboardWhileItIsOpen",
 	"A cópia sai por `Esc`":                    "TestEveryWayOutOfCopyModeWorks",
 

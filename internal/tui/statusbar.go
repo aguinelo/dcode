@@ -250,11 +250,11 @@ func diffSegment(m Model, g Geometry) (segment, bool) {
 // screen is a product whose keys nobody finds.
 //
 // The keys it names are the ones that are BINDINGS. The design's footer also
-// offers `j/k move` and `t theme`, which are letters, and a letter on a line
-// where you type is the defect this product has fixed twice. They belong to a
-// mode that owns the keyboard — the design implies one by putting a NAV badge
-// there at all — and until that mode exists, naming them here would advertise
-// keys that eat what you are typing.
+// offers `j/k move`, which is a letter, and a letter on a line where you type
+// is the defect this product has fixed twice. It belongs to a mode that owns
+// the keyboard — the design implies one by putting a NAV badge there at all —
+// and until that mode exists, naming it here would advertise a key that eats
+// what you are typing.
 func navSegment(m Model, g Geometry) segment {
 	gl := glyphs(g.Unicode)
 	t := Text(m.Lang)
@@ -275,7 +275,6 @@ func navSegment(m Model, g Geometry) segment {
 		keys = []string{
 			keyHint(p, "j/k", t.NavMove),
 			keyHint(p, gl.enter, t.NavOpen),
-			keyHint(p, "t", p.theme().Name),
 			keyHint(p, "/", t.NavPrompt),
 			keyHint(p, "esc", t.NavLeave),
 		}

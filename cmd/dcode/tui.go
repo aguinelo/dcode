@@ -171,7 +171,6 @@ func geometry() tui.Geometry {
 	// Only what the edge can know: the client never reads the environment, and
 	// the theme it starts in is already in the defaults.
 	geo.Palette.Enabled = tui.ColorEnabled(os.Getenv) && isTerminal(os.Stdout)
-	geo.Palette.Depth = tui.ColorDepth(os.Getenv)
 	return geo
 }
 

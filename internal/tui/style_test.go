@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"math"
 	"strconv"
 	"strings"
 	"testing"
@@ -275,103 +274,45 @@ func TestContextLabel(t *testing.T) {
 	}
 }
 
-// The model's prose is most of what is on the screen, and it was the one thing
-// on it drawn faint.
+// The model's prose is most of what is on the screen, and it is the one thing
+// on it drawn at normal weight rather than faint.
 //
-// It used to be asserted as "prose carries no attribute at all", which was the
-// only way to say "normal weight" while the product did not choose its ground.
-// With a theme the claim is the one that was always meant: prose is BRIGHTER
-// than the things that qualify it, measured against the ground both are drawn
-// on.
+// There is one theme now, and it does not paint a ground, so the claim is back
+// to what it was before a theme could carry RGB: prose is normal weight, and
+// what qualifies it — meta, a hint, chrome — is faint. A terminal's faint is
+// always dimmer than its normal text, which is the one thing this palette can
+// promise without knowing the ground it is drawn on.
 func TestTheAnswerIsBrighterThanWhatQualifiesIt(t *testing.T) {
-	th := Neon()
-	prose := contrast(th.Role[StyleProse].fg, th.Ground)
+	th := Default()
+	prose := th.Role[StyleProse]
+	if prose.bold || prose.faint {
+		t.Errorf("prose carries a weight (%+v); it must be the normal one, so qualifiers have somewhere to sit below it", prose)
+	}
 	for _, c := range []struct {
 		style Style
 		name  string
 	}{{StyleMeta, "meta"}, {StyleHint, "hint"}, {StyleChrome, "chrome"}} {
-		if got := contrast(th.Role[c.style].fg, th.Ground); got >= prose {
-			t.Errorf("%s is %.2f:1 and prose is %.2f:1; the answer must be the brighter",
-				c.name, got, prose)
+		if !th.Role[c.style].faint {
+			t.Errorf("%s is not faint, and must sit below prose", c.name)
 		}
 	}
-	// And the contrast inside a sentence is still bought, with the term.
-	if th.Role[StyleCode].fg == th.Role[StyleProse].fg {
+	// And the term inside a sentence is still picked out, with a colour.
+	if th.Role[StyleCode].fgIdx == ansiNone {
 		t.Error("a technical term inside a sentence is not picked out at all")
 	}
 }
 
 // Every role in the hierarchy maps to something, and to one of the three
-// weights a terminal has that survive an unknown background.
+// weights a terminal has that survive an unknown background, or to one of the
+// sixteen named colours — never to an RGB the product chose, because the theme
+// does not paint its own ground to read one against.
 //
-// Every role in the hierarchy is legible against the ground the theme paints.
-//
-// This test asserted the opposite rule until the theme arrived: that no role
-// may pick a colour, because "a grey chosen for a dark theme is unreadable on a
-// light one". That was right for exactly as long as the product did not choose
-// the ground. It does now, so the constraint is no longer "pick no colour" — it
-// is "pick one that can be read against the ground you picked", which is a
-// stronger claim and a measurable one.
-//
-// The ratios are WCAG relative luminance. Body text at 4.5, anything meant to
-// be read at 3, and chrome at 1.5 — a rule is meant to be SEEN and not read,
-// and holding it to text contrast would make every gutter shout.
-func TestEveryRoleIsLegibleAgainstTheGround(t *testing.T) {
-	ground := 0
-	for _, th := range Themes() {
-		if th.Ground.zero() {
-			// A theme with no ground has nothing to measure against, and
-			// skipping it would leave a whole theme outside every guard. So it
-			// is held to the condition that makes the TERMINAL's legibility
-			// hold instead: no role picks an RGB. An RGB here is the hard-coded
-			// grey coming back in through the side door — the exact thing the
-			// ground was what made safe.
-			checkNoRGB(t, th)
-			continue
-		}
-		ground++
-		checkLegible(t, th)
-	}
-	if ground == 0 {
-		t.Fatal("no theme paints a ground; the contrast half of this guard measured nothing")
-	}
-}
-
-// A theme with no ground carries no RGB, in fg or in bg, in any role.
-func checkNoRGB(t *testing.T, th Theme) {
-	t.Helper()
-	if len(th.Role) == 0 {
-		t.Fatalf("%s has no roles at all", th.Name)
-	}
-	for style, paint := range th.Role {
-		if !paint.fg.zero() {
-			t.Errorf("%s: role %v picks a foreground RGB %v and paints no ground to read it against",
-				th.Name, style, paint.fg)
-		}
-		if !paint.bg.zero() {
-			t.Errorf("%s: role %v picks a background RGB %v and paints no ground to read it against",
-				th.Name, style, paint.bg)
-		}
-	}
-}
-
-// A theme with no ground emits only weight and indexed colour.
-//
-// The RGB check above is about the table; this one is about what reaches the
-// terminal, because the two are only the same while nothing between them
-// invents a colour. 38;2 on a terminal that cannot draw it is not a fallback,
-// it is text the reader cannot see.
+// The `paint` type has no fg/bg RGB fields any more, which makes most of this
+// guard structural rather than measured: there is no field left to hold a
+// colour this product invented. What is left to check is what actually reaches
+// the terminal.
 func TestAThemeWithNoGroundEmitsOnlyWeightAndIndexedColour(t *testing.T) {
-	var th Theme
-	for _, c := range Themes() {
-		if c.Ground.zero() {
-			th = c
-			break
-		}
-	}
-	if th.Name == "" {
-		t.Fatal("no theme without a ground; this guard is asking about nothing")
-	}
+	th := Default()
 
 	allowed := map[string]bool{"1": true, "2": true, "3": true}
 	for n := 30; n <= 37; n++ {
@@ -387,128 +328,48 @@ func TestAThemeWithNoGroundEmitsOnlyWeightAndIndexedColour(t *testing.T) {
 		allowed[strconv.Itoa(n)] = true
 	}
 
-	// Both depths, because a theme that is drawable anywhere must not change
-	// what it emits when the terminal happens to be able to take more.
-	for _, depth := range []Depth{DepthTrue, Depth256} {
-		p := Palette{Enabled: true, Theme: th, Depth: depth}
-		if got := p.Ground(); got != "" {
-			t.Errorf("%s paints a ground: %q", th.Name, got)
-		}
-		for style := range th.Role {
-			for _, param := range strings.Split(th.Role[style].sgr(depth), ";") {
-				if param == "" {
-					continue
-				}
-				if !allowed[param] {
-					t.Errorf("%s: role %v emits SGR %q, which is neither a weight nor one of the sixteen",
-						th.Name, style, param)
-				}
+	p := Palette{Enabled: true, Theme: th}
+	if got := p.Ground(); got != "" {
+		t.Errorf("the theme paints a ground: %q", got)
+	}
+	for style := range th.Role {
+		for _, param := range strings.Split(th.Role[style].sgr(), ";") {
+			if param == "" {
+				continue
+			}
+			if !allowed[param] {
+				t.Errorf("role %v emits SGR %q, which is neither a weight nor one of the sixteen",
+					style, param)
 			}
 		}
 	}
 }
 
-// Italic is given by the theme's table, and only one theme gives it.
+// Italic is given by the theme's table, to StyleReasoning and nothing else.
 //
 // Stated as a guard rather than left to reading, because the failure it
-// prevents is silent: an attribute added for one theme and set in the shared
-// mapping changes all five, and nobody notices until the theme they use looks
-// different for a reason nobody wrote down.
+// prevents is silent: an attribute meant for one role reaching the shared
+// table changes everything drawn in that role, and nobody notices until it
+// looks different for a reason nobody wrote down.
 func TestItalicIsAnAttributeOfTheThemeTable(t *testing.T) {
-	italic := map[string][]Style{}
-	for _, th := range Themes() {
-		for style, paint := range th.Role {
-			if paint.italic {
-				italic[th.Name] = append(italic[th.Name], style)
-			}
+	th := Default()
+	var italic []Style
+	for style, paint := range th.Role {
+		if paint.italic {
+			italic = append(italic, style)
 		}
 	}
-	for _, th := range Themes() {
-		if th.Ground.zero() {
-			continue
-		}
-		if got := italic[th.Name]; len(got) > 0 {
-			t.Errorf("%s paints a ground and still uses italic, in %v; the four with a ground do not",
-				th.Name, got)
-		}
-	}
-	claude := italic["claude"]
-	if len(claude) != 1 || claude[0] != StyleReasoning {
-		t.Errorf("the claude theme gives italic to %v; it is for the model's reasoning and nothing else", claude)
+	if len(italic) != 1 || italic[0] != StyleReasoning {
+		t.Errorf("italic is given to %v; it is for the model's reasoning and nothing else", italic)
 	}
 
 	// And it reaches the screen as SGR 3, closed by SGR 23 — not by a reset,
-	// which would take the row's ground with it in every other theme.
-	p := Palette{Enabled: true, Theme: claudeThemeForTest(t)}
+	// which would take the row's ground with it if the theme ever painted one.
+	p := Palette{Enabled: true, Theme: th}
 	got := p.Apply(StyleReasoning, "x")
 	if !strings.Contains(got, "\x1b[2;3m") || !strings.Contains(got, "\x1b[22;23m") {
 		t.Errorf("reasoning renders as %q, want it opened with 2;3 and closed with 22;23", got)
 	}
-}
-
-func claudeThemeForTest(t *testing.T) Theme {
-	t.Helper()
-	for _, th := range Themes() {
-		if th.Name == "claude" {
-			return th
-		}
-	}
-	t.Fatal("no claude theme")
-	return Theme{}
-}
-
-func checkLegible(t *testing.T, th Theme) {
-	t.Helper()
-	for _, c := range []struct {
-		style Style
-		name  string
-		min   float64
-	}{
-		{StyleProse, "prose", 4.5},
-		{StyleHeading, "heading", 4.5},
-		{StyleBold, "bold", 4.5},
-		{StyleCode, "code", 3},
-		{StyleMeta, "meta", 3},
-		{StyleAccent, "accent", 3},
-		{StyleOK, "ok", 3},
-		{StyleError, "error", 3},
-		{StyleWarn, "warn", 3},
-		{StyleLaneYou, "lane you", 3},
-		{StyleLaneAnswer, "lane answer", 3},
-		{StyleHint, "hint", 1.8},
-		{StyleLaneProcess, "lane process", 1.8},
-		{StyleChrome, "chrome", 1.5},
-	} {
-		paint, ok := th.Role[c.style]
-		if !ok {
-			t.Errorf("%s has no colour in %s", c.name, th.Name)
-			continue
-		}
-		if got := contrast(paint.fg, th.Ground); got < c.min {
-			t.Errorf("%s: %s is %.2f:1 against the ground, want at least %.1f",
-				th.Name, c.name, got, c.min)
-		}
-	}
-}
-
-// contrast is the WCAG ratio between two colours.
-func contrast(a, b rgb) float64 {
-	la, lb := luminance(a), luminance(b)
-	if lb > la {
-		la, lb = lb, la
-	}
-	return (la + 0.05) / (lb + 0.05)
-}
-
-func luminance(c rgb) float64 {
-	f := func(v uint8) float64 {
-		x := float64(v) / 255
-		if x <= 0.03928 {
-			return x / 12.92
-		}
-		return math.Pow((x+0.055)/1.055, 2.4)
-	}
-	return 0.2126*f(c.r) + 0.7152*f(c.g) + 0.0722*f(c.b)
 }
 
 // Colour switched off emits no escape at all, the ground included.

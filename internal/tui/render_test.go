@@ -441,17 +441,17 @@ func TestTheMascotIsColouredWithTheBrandPalette(t *testing.T) {
 
 	th := g.Palette.theme()
 	for name, code := range map[string]string{
-		"highlight": th.Role[StyleHighlight].sgr(g.Palette.Depth),
-		"body":      th.Role[StyleBody].sgr(g.Palette.Depth),
-		"shadow":    th.Role[StyleShadow].sgr(g.Palette.Depth),
-		"eye":       th.Role[StyleEye].sgr(g.Palette.Depth),
+		"highlight": th.Role[StyleHighlight].sgr(),
+		"body":      th.Role[StyleBody].sgr(),
+		"shadow":    th.Role[StyleShadow].sgr(),
+		"eye":       th.Role[StyleEye].sgr(),
 	} {
 		if !strings.Contains(got, "\x1b["+code+"m") {
 			t.Errorf("the %s tone is missing from the mark", name)
 		}
 	}
 	// The eye is the one terracotta in the whole interface.
-	if n := strings.Count(got, "\x1b["+th.Role[StyleEye].sgr(g.Palette.Depth)+"m"); n != 1 {
+	if n := strings.Count(got, "\x1b["+th.Role[StyleEye].sgr()+"m"); n != 1 {
 		t.Errorf("the eye must appear exactly once, got %d", n)
 	}
 	if n := widest(got); n > 100 {
@@ -587,10 +587,10 @@ func TestDiffLinesAreColouredBySign(t *testing.T) {
 		Diff: "@@ -1 +1 @@ x.go\n-antes\n+depois",
 	}}
 	got := Render(m, g)
-	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleAdded].sgr(g.Palette.Depth)+"m") {
+	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleAdded].sgr()+"m") {
 		t.Error("an added line must be green")
 	}
-	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleRemoved].sgr(g.Palette.Depth)+"m") {
+	if !strings.Contains(got, "\x1b["+g.Palette.theme().Role[StyleRemoved].sgr()+"m") {
 		t.Error("a removed line must be red")
 	}
 }

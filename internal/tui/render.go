@@ -90,10 +90,10 @@ func DefaultGeometry(w, h int) Geometry {
 		DiffPreviewLines: 8, DiffMaxLines: 40, CompletionRows: 5,
 		ThoughtLines: 4, Unicode: true, ActivityVerbs: true,
 		// The theme is named here rather than left to the zero value. A zero
-		// theme reads as neon at draw time and as nothing when asked which one
-		// it is, so cycling from it skipped a step — and a default nobody can
-		// find in the defaults is one the next reader has to infer.
-		Palette: Palette{Theme: Neon()},
+		// theme reads as the default at draw time and as nothing when asked
+		// which one it is, and a default nobody can find in the defaults is
+		// one the next reader has to infer.
+		Palette: Palette{Theme: Default()},
 	}
 }
 
