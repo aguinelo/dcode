@@ -48,6 +48,7 @@ var wiringTable = []configOption{
 	{"Transport", "model.transport", "String", ""},
 	{"Family", "model.family", "String", ""},
 	{"BaseURL", "model.base_url", "String", ""},
+	{"Window", "model.window", "Int", ""},
 
 	{"SandboxMode", "sandbox.mode", "String", "Mode"},
 	{"Policy", "sandbox.approval_policy", "String", "Policy"},

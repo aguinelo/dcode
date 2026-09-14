@@ -123,7 +123,20 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		cerr         error
 	)
 	if req.Model != "" {
-		opts.Model = req.Model
+		// A name matching a configured profile switches everything the
+		// profile bundles at once — model, family, transport, endpoint,
+		// window — which is the whole reason a profile is a bundle and not
+		// just a friendlier spelling of the model string. A name that
+		// matches no profile falls through to the ordinary path: a bare
+		// model name, resolved by prefix the way it always was.
+		if p, ok := opts.Profiles[req.Model]; ok {
+			opts.Model, opts.Family, opts.Transport, opts.BaseURL = p.Model, p.Family, p.Transport, p.BaseURL
+			if p.Window > 0 {
+				opts.Window = p.Window
+			}
+		} else {
+			opts.Model = req.Model
+		}
 	}
 	if req.Resume != "" {
 		// The record is the only copy of what happened, so continuing means

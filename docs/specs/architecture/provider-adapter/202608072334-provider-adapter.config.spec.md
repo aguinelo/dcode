@@ -10,6 +10,7 @@
 | `DCODE_MODEL` | string | `MiniMax-M3` | Identificador do modelo. O prefixo resolve a **família** no `Registry`. Modelo desconhecido falha na criação da sessão, com a lista de famílias disponíveis no erro — nunca cai em família genérica. |
 | `DCODE_TRANSPORT` | enum | vazio | Sobrescreve o formato de fio: `openai` ou `anthropic`. Vazio usa o preferido da família. Valor fora de `Transports()` da família falha nomeando os compatíveis. Existe para contornar bug de um lado do provedor sem trocar de modelo. |
 | `DCODE_FAMILY` | string | vazio | Força a família, ignorando a resolução por prefixo. `generic` é o escape hatch para modelo não suportado: funciona, mas **emite aviso de que os limiares de contrato comportamental não foram medidos** para ele. |
+| `DCODE_WINDOW` | inteiro | vazio (usa o palpite da família) | Sobrescreve a janela de contexto que a família devolveria. Existe para `generic`, onde a janela é chute — ver `.r`, seção sobre família sem medição — e o chute erra no sentido perigoso contra um endpoint pequeno: `dcode` acha que sobra espaço, o provedor é quem descobre que não sobrava, no meio do turno. Zero ou ausente não desliga a janela, só deixa a família decidir. |
 
 ## 2. Credenciais
 
@@ -64,3 +65,4 @@ Registra contra o que os limiares foram medidos. Trocar qualquer valor aqui **in
 ## 6. Changelog
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
+- [202609141800 — A janela agora pode ser dita](changelog/202609141800-a-janela-agora-pode-ser-dita.md)

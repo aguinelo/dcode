@@ -52,7 +52,7 @@ Flags:
 	fmt.Printf("workspace  %s\n\n", ws)
 
 	fmt.Println("model")
-	for _, k := range []string{"model.name", "model.transport", "model.base_url"} {
+	for _, k := range []string{"model.name", "model.transport", "model.base_url", "model.window"} {
 		v, ok := resolved.Get(k)
 		if !ok || v.Value == "" {
 			continue
@@ -61,6 +61,15 @@ Flags:
 	}
 	if name := app.CredentialName(opts); name != "" {
 		fmt.Printf("  %-16s %s\n", "family", name)
+	}
+
+	if len(opts.Profiles) > 0 {
+		fmt.Println("\nmodel profiles")
+		for _, name := range profileNames(opts.Profiles) {
+			p := opts.Profiles[name]
+			fmt.Printf("  %-16s %s\n", name, p.Model)
+		}
+		fmt.Println("\n  Switch to one with `/model <name>` inside a session.")
 	}
 
 	fmt.Println("\nsandbox")

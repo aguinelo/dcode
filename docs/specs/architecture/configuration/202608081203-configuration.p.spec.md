@@ -17,7 +17,7 @@ Segue XDG Base Directory. Cada raiz tem ciclo de vida próprio (RN-1).
 
 | Raiz | Linux e BSD | macOS | Conteúdo |
 |---|---|---|---|
-| **config** | `$XDG_CONFIG_HOME/dcode`, ou `~/.config/dcode` | `~/Library/Application Support/dcode` | `config.toml`, `AGENTS.md`, `DCODE.md`, `skills/`, `commands/` |
+| **config** | `$XDG_CONFIG_HOME/dcode`, ou `~/.config/dcode` | `~/Library/Application Support/dcode` | `config.toml`, `models.toml`, `AGENTS.md`, `DCODE.md`, `skills/`, `commands/` |
 | **dados** | `$XDG_DATA_HOME/dcode`, ou `~/.local/share/dcode` | `~/Library/Application Support/dcode` | artefatos de longa vida |
 | **estado** | `$XDG_STATE_HOME/dcode`, ou `~/.local/state/dcode` | `~/Library/Application Support/dcode` | log de sessão, `profiles/`, socket |
 | **cache** | `$XDG_CACHE_HOME/dcode`, ou `~/.cache/dcode` | `~/Library/Caches/dcode` | consulta de versão, temporários |

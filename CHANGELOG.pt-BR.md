@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 171 changelogs de decisão |
+| famílias de spec | 18, com 173 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,35 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Vários modelos, salvos de uma vez, trocáveis ao vivo.** Pedido: "consigo
+  ter vários modelos já configurados e trocar isso on the fly?", depois de
+  configurar um endpoint local. `/model <nome>` já existia, mas só trocava o
+  texto do modelo — família, transporte e endpoint continuavam os da sessão
+  anterior, porque eram decididos uma vez quando o daemon subia. Novo
+  `models.toml` (mesmos diretórios de `config.toml`, projeto estendendo
+  usuário por nome, lido com `ParseSections` em vez do schema bijetivo que
+  `config.toml` aplica — a mesma razão de `requirements.toml` ser arquivo
+  à parte) guarda perfis nomeados empacotando modelo, família, transporte,
+  URL base e janela juntos. `/model <nome>` agora resolve contra eles antes
+  de cair no caminho comum de nome de modelo cru, e aplica o pacote inteiro.
+  Sem mudança de protocolo: `buildProvider` já roda do zero a cada sessão
+  dentro de `Daemon.build`, então isso é um `if` a mais ali, não uma
+  superfície nova. `dcode login --profile <nome>` e a nova seção "model
+  profiles" de `dcode config` fecham o resto.
+- **Um modelo local agora pode dizer quanto contexto realmente tem.** Pedido:
+  apontar o dcode pra um servidor local compatível com OpenAI (LM Studio,
+  `qwen3.5-9b`, ~32k de contexto) via `--family generic`. `Generic.Window`
+  sempre responde 128.000 — um chute conservador pra um endpoint que o dcode
+  nunca viu — e contra um modelo real de 32k o chute erra no sentido perigoso:
+  os avisos de orçamento de contexto que disparam em 60/80/92% cheio nunca
+  alcançam o alvo, porque o provedor recusa a requisição por estourar a
+  janela real dezenas de milhares de tokens antes de o dcode achar que havia
+  algo a avisar. Nova `DCODE_WINDOW` / `model.window` sobrescreve o que a
+  família reporta; zero ou ausente deixa a resposta da família de pé. A
+  interface `Family.Window` continua intocada — o override mora em
+  `internal/app`, a mesma camada onde `DCODE_BASE_URL` já troca um endpoint
+  sem tocar na família (RN-1). README e README.pt-BR ganharam uma seção
+  "Escolhendo um modelo" com o exemplo completo de modelo local.
 - **A interface tem um tema só agora, e ele não pinta chão.** Pedido: cor que
   carrega significado fica, tudo decorativo é o terminal quem decide. Os quatro
   temas que pintavam o próprio fundo e carregavam RGB medido contra ele —

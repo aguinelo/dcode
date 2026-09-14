@@ -109,6 +109,12 @@ type Options struct {
 	// the client is not where configuration is resolved.
 	Lookup func(key string) (string, bool)
 
+	// ProfileNames are the configured model profiles, sorted, read once by the
+	// caller from models.toml. `/model` with no argument shows them, so a
+	// person does not have to keep a profile's name in their head — the same
+	// reason Sessions is passed in rather than fetched from inside a command.
+	ProfileNames []string
+
 	// Notice is the passive version check. It runs off the critical path and
 	// its failure is silent by contract.
 	Notice func(context.Context) string
@@ -1277,7 +1283,11 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 	case "model":
 		name := strings.TrimSpace(r.Args)
 		if name == "" {
-			return note("Usage: /model <name>. Currently " + p.model.Model)
+			usage := "Usage: /model <name>. Currently " + p.model.Model
+			if len(p.opts.ProfileNames) > 0 {
+				usage += ". Configured profiles: " + strings.Join(p.opts.ProfileNames, ", ")
+			}
+			return note(usage)
 		}
 		return p, p.newSession(name)
 

@@ -100,6 +100,40 @@ type Request struct {
 
 **Família desconhecida não existe.** Modelo que não casa com nenhum `Models()` falha na criação da sessão, listando as famílias disponíveis. O escape hatch é explícito — `--family generic` — e emite aviso de que os limiares não foram medidos para aquele modelo.
 
+### 2.2 Perfis de modelo
+
+Um perfil nomeia o pacote inteiro — modelo, família, transporte, endpoint,
+janela — pra `/model <nome>` trocar tudo de uma vez, em vez de só o nome do
+modelo. Vive em `models.toml` (`docs/specs/architecture/configuration`, §2),
+lido com `ParseSections` em vez do parser bijetivo de `config.toml`: o nome do
+perfil é dado que a pessoa escolheu, não uma chave que o produto declarou —
+exatamente o caso que `ParseSections` existe pra atender, e o mesmo motivo por
+que `requirements.toml` também é um arquivo à parte.
+
+```toml
+[profile.qwen-local]
+model     = "qwen3.5-9b"
+family    = "generic"
+transport = "openai"
+base_url  = "http://192.168.0.149:1234/v1"
+window    = 32000
+```
+
+`model` é obrigatório; o resto é opcional, com o mesmo default de sempre —
+vazio deixa o prefixo do modelo resolver a família. Projeto **estende** usuário
+por nome: um perfil do projeto com o nome de um do usuário é a resposta do
+projeto, não uma colisão.
+
+**A resolução é por sessão, não por processo.** `Daemon.build` resolve
+`req.Model` contra os perfis carregados na inicialização do daemon antes de
+tratá-lo como nome de modelo cru: um nome que casa com um perfil aplica o
+pacote inteiro (`Model`, `Family`, `Transport`, `BaseURL`, e `Window` quando
+maior que zero); um nome que não casa segue o caminho de sempre. Não há
+mudança de protocolo — `CreateSessionRequest.Model` continua sendo uma
+string — porque a resolução acontece inteiramente do lado do daemon, que já
+recarrega o `Provider` do zero a cada sessão (RN de isolamento por sessão,
+`build`'s próprio comentário: "each session gets its own... provider").
+
 ## 3. Eventos de stream
 
 ```go
@@ -244,3 +278,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
 - [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md)
+- [202609141900 — Um nome troca o pacote inteiro](changelog/202609141900-um-nome-troca-o-pacote-inteiro.md)

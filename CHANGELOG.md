@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 171 decision changelogs |
+| spec families | 18, with 173 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,35 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Several models, saved once, switched on the fly.** Requested: "can I have
+  several models already configured and switch that on the fly?" after
+  setting up a local endpoint. `/model <name>` already existed, but only
+  swapped the model string — family, transport and endpoint stayed whatever
+  the session already had, because they were decided once when the daemon
+  started. New `models.toml` (same directories as `config.toml`, project
+  extending user by name, parsed with `ParseSections` rather than the
+  bijective schema `config.toml` enforces — the same reason
+  `requirements.toml` is its own file) holds named profiles bundling model,
+  family, transport, base URL and window together. `/model <name>` now
+  resolves against them before falling back to the ordinary bare-model-name
+  path, and applies the whole bundle. No protocol change: `buildProvider`
+  already runs fresh per session inside `Daemon.build`, so this is one `if`
+  there rather than a new surface. `dcode login --profile <name>` and
+  `dcode config`'s new "model profiles" section round it out.
+- **A local model can say how much context it actually has.** Requested:
+  pointing dcode at a local OpenAI-compatible server (LM Studio, `qwen3.5-9b`,
+  ~32k context) via `--family generic`. `Generic.Window` always answers
+  128,000 — a conservative guess for an endpoint dcode has never seen — and
+  against a real 32k model the guess is wrong in the dangerous direction: the
+  context-budget warnings that fire at 60/80/92% full never reach their
+  target, because the provider rejects the request for exceeding its real
+  window tens of thousands of tokens before dcode thought there was anything
+  to warn about. New `DCODE_WINDOW` / `model.window` overrides what the
+  family reports; zero or absent leaves the family's own answer standing. The
+  `Family.Window` interface itself is untouched — the override lives in
+  `internal/app`, the same layer `DCODE_BASE_URL` already changes an endpoint
+  from without touching the family (RN-1). README and README.pt-BR gained a
+  "Choosing a model" section with the full local-model example.
 - **The interface has one theme now, and it does not paint a ground.**
   Requested: colour that carries meaning stays, everything decorative is the
   terminal's to decide. The four themes that owned their own background and
