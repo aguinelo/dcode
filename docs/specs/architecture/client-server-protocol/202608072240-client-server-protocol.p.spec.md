@@ -62,6 +62,7 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `POST` | `/sessions/{id}/interrupt` | `experimental` | Cancela o turno em andamento. Idempotente. |
 | `POST` | `/sessions/{id}/approvals/{approval_id}` | `experimental` | Resolve pedido de permissão. `409` se já resolvido (RN-4). |
 | `POST` | `/sessions/{id}/mode` | `experimental` | Troca o modo comportamental. Corpo `{"mode":"plan"\|"assist"\|"auto"}`. `204` sem corpo; `4xx` nomeando o modo recusado. |
+| `POST` | `/sessions/{id}/compact` | `experimental` | Força compactação fora de qualquer turno, ligado ou não o gatilho automático. Sem corpo de entrada. `200` com `CompactResult`; `4xx` se houver turno em andamento (mesma razão de `/exec`: o histórico do motor não tem mutex próprio). |
 | `GET` | `/health` | `stable` | Liveness. Sem corpo além de `{"status":"ok"}`. |
 | `GET` | `/version` | `stable` | Versão do servidor e do protocolo. |
 
@@ -114,6 +115,13 @@ const (
 
 type ResolveApprovalRequest struct {
     Decision ApprovalDecision `json:"decision"`
+}
+
+// CompactResult responde a compactação forçada diretamente, ao lado do que
+// EventSessionCompacted já carrega a um cliente conectado. O evento nada diz
+// quando não havia o que compactar; este é o único lugar que diz.
+type CompactResult struct {
+    Compacted bool `json:"compacted"`
 }
 
 type Error struct {

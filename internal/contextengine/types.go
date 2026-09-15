@@ -119,6 +119,16 @@ type Config struct {
 	Margin float64
 	// Window is the model's context window in tokens. Supplied by the provider.
 	Window int
+	// Disabled turns the automatic trigger off. Zero (false) is enabled,
+	// deliberately: a zero-value Config built anywhere other than
+	// DefaultConfig must still compact rather than silently never firing,
+	// the same reason every other "off" switch in this product is spelled
+	// so that the empty value is the safe one.
+	//
+	// Does not touch a forced compaction (Engine.Compact, the /compact
+	// command's path): that is the person asking directly, which this
+	// switch was never about.
+	Disabled bool
 }
 
 // DefaultConfig mirrors the defaults documented in the config spec.

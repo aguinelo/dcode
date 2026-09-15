@@ -986,6 +986,41 @@ func TestAnUnfinishedTurnIsAStateAndNotAnError(t *testing.T) {
 	}
 }
 
+// Disabled turns the automatic trigger off, and only the automatic one — a
+// forced compaction is the person asking directly (or the provider refusing
+// a context too large to send), and the switch that turns the 80%-threshold
+// trigger off was never about either of those.
+func TestDisabledGatesOnlyTheAutomaticTrigger(t *testing.T) {
+	long := ce.Session{Instructions: "You are dcode."}
+	for i := 0; i < 30; i++ {
+		long.History = append(long.History,
+			ce.Message{Role: ce.RoleUser, Text: strings.Repeat("q ", 30)},
+			ce.Message{Role: ce.RoleAssistant, Text: strings.Repeat("a ", 30)},
+		)
+	}
+	// Window: 1 would trigger unconditionally if Disabled did not gate it —
+	// the same trick forceCompact and Compact use to force their own.
+	e := New(Config{
+		Mode: policy.ModeWorkspaceWrite, Policy: policy.PolicyOnRequest,
+		CtxConfig: ce.Config{Window: 1, Disabled: true},
+	}, long)
+
+	if err := e.maybeCompact(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(e.session.History) != len(long.History) {
+		t.Error("the automatic trigger compacted while Disabled was set")
+	}
+
+	compacted, err := e.Compact(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !compacted {
+		t.Error("a forced compaction was also gated by Disabled; it must not be")
+	}
+}
+
 // Compaction costs a model call, and that call must not spend the iteration
 // budget the user's work is measured against. Otherwise a long session silently
 // gets fewer turns than its ceiling says, and the ceiling stops meaning what it

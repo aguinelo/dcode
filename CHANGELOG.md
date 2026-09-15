@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 177 decision changelogs |
+| spec families | 18, with 179 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -254,6 +254,25 @@ exists to stop exactly that.
   Requested directly, in the same conversation. `DCODE_MAX_IDENTICAL_CALLS`,
   `--max-identical` and `loop.DefaultLimits()` all move together — one
   number, three places that cited it, none left to drift.
+- **`/compact` forces compaction now, and the automatic trigger can be
+  turned off.** Requested: the existing 80%-threshold auto-compact should
+  stay on by default, but be toggleable, with a manual `/compact` for the
+  rest — not implemented until now. New `DCODE_COMPACTION_ENABLED` /
+  `compaction.enabled` (default `true`) gates only the automatic trigger —
+  `Engine.maybeCompact` is the one place that reads it. `/compact` calls a
+  new `Engine.Compact`, exported from what was already the provider-error
+  recovery path (`forceCompact`), through a new `POST
+  /sessions/{id}/compact` route and `Session.Compact`, which takes the same
+  lock `Exec` does and refuses for the same reason: the engine's history has
+  no mutex of its own, because nothing but the turn loop was ever meant to
+  touch it while one runs. Neither the route nor `Engine.Compact` reads the
+  toggle — a person asking directly, or a provider refusing a context too
+  large, was never what "turn auto-compact off" meant. The client stays
+  quiet when something was compacted (`EventSessionCompacted` already says
+  so the ordinary way) and speaks up only for the two things that event
+  never covers: nothing was worth compacting, or the request was refused —
+  as a note, never as the fatal `errMsg`, which would have quit the client
+  over an ordinary "a turn is running".
 - **Several models, saved once, switched on the fly.** Requested: "can I have
   several models already configured and switch that on the fly?" after
   setting up a local endpoint. `/model <name>` already existed, but only

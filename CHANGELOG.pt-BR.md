@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 177 changelogs de decisão |
+| famílias de spec | 18, com 179 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -238,6 +238,26 @@ existe para impedir exatamente isso.
   Pedido direto, na mesma conversa. `DCODE_MAX_IDENTICAL_CALLS`,
   `--max-identical` e `loop.DefaultLimits()` andam juntos — um número, três
   lugares que o citavam, nenhum deixado pra trás pra divergir.
+- **`/compact` força compactação na hora, e o gatilho automático agora pode
+  ser desligado.** Pedido: o auto-compact de 80% que já existia devia
+  continuar ligado por padrão, mas ser configurável, com um `/compact`
+  manual pro resto — não implementado até agora. Novo
+  `DCODE_COMPACTION_ENABLED` / `compaction.enabled` (default `true`) só
+  trava o gatilho automático — `Engine.maybeCompact` é o único lugar que lê
+  esse campo. `/compact` chama um novo `Engine.Compact`, exportado do que já
+  era o caminho de recuperação quando o provedor recusa por contexto
+  (`forceCompact`), através de uma rota nova `POST
+  /sessions/{id}/compact` e `Session.Compact`, que usa o mesmo lock que
+  `Exec` já usa e recusa pelo mesmo motivo: o histórico do motor não tem
+  mutex próprio, porque nada além do laço do turno deveria tocá-lo enquanto
+  um roda. Nem a rota nem `Engine.Compact` leem o interruptor — pessoa
+  pedindo direto, ou provedor recusando um contexto grande demais, nunca foi
+  o que "desligar o auto-compact" quis dizer. O cliente fica quieto quando
+  algo foi compactado (`EventSessionCompacted` já diz isso do jeito de
+  sempre) e só fala nos dois casos que esse evento nunca cobre: não havia o
+  que compactar, ou o pedido foi recusado — como nota, nunca como o `errMsg`
+  fatal, que teria encerrado o cliente por causa de um "há um turno rodando"
+  totalmente comum.
 - **Vários modelos, salvos de uma vez, trocáveis ao vivo.** Pedido: "consigo
   ter vários modelos já configurados e trocar isso on the fly?", depois de
   configurar um endpoint local. `/model <nome>` já existia, mas só trocava o

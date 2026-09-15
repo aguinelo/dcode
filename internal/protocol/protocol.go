@@ -331,6 +331,14 @@ type ResolveApprovalRequest struct {
 	Decision ApprovalDecision `json:"decision"`
 }
 
+// CompactResult answers a forced compaction directly, alongside whatever
+// EventSessionCompacted already carried to an attached client. The event
+// says nothing when there was nothing worth compacting; this is the one
+// place that says so.
+type CompactResult struct {
+	Compacted bool `json:"compacted"`
+}
+
 // ApprovalRequest is emitted when execution crosses the sandbox boundary. The
 // turn blocks until it is resolved or ExpiresAt passes, which denies.
 type ApprovalRequest struct {

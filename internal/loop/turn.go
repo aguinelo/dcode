@@ -901,8 +901,16 @@ func (e *Engine) ctxConfig() ce.Config {
 	return cfg
 }
 
+// maybeCompact is the automatic trigger, checked once per iteration. The only
+// caller that reads cfg.Disabled — a forced compaction is the person asking
+// directly, and the switch that turns automatic compaction off was never
+// about that.
 func (e *Engine) maybeCompact(ctx context.Context) error {
-	plan, ok := ce.Plan(e.session, e.ctxConfig())
+	cfg := e.ctxConfig()
+	if cfg.Disabled {
+		return nil
+	}
+	plan, ok := ce.Plan(e.session, cfg)
 	if !ok {
 		return nil
 	}
@@ -912,13 +920,29 @@ func (e *Engine) maybeCompact(ctx context.Context) error {
 // forceCompact is the recovery path when the provider says the context is too
 // large: compact even if the local estimate disagreed.
 func (e *Engine) forceCompact(ctx context.Context) bool {
+	ok, _ := e.Compact(ctx)
+	return ok
+}
+
+// Compact forces compaction outside any turn — the /compact command's path,
+// and the automatic recovery path's shared core.
+//
+// Unlike maybeCompact, this never reads cfg.Disabled: the switch turns the
+// 80%-threshold trigger off, and a person typing /compact or a provider
+// refusing the context is neither of those. The caller here wants to know
+// whether anything happened and why not, which is why this returns an error
+// rather than swallowing one — forceCompact still only wants the bool.
+func (e *Engine) Compact(ctx context.Context) (bool, error) {
 	cfg := e.ctxConfig()
 	cfg.Window = 1 // force the trigger; the estimate cannot be below this
 	plan, ok := ce.Plan(e.session, cfg)
 	if !ok {
-		return false
+		return false, nil
 	}
-	return e.applyCompaction(ctx, plan) == nil
+	if err := e.applyCompaction(ctx, plan); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (e *Engine) applyCompaction(ctx context.Context, plan ce.CompactionPlan) error {

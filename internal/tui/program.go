@@ -35,6 +35,7 @@ type Transport interface {
 	RenameSession(ctx context.Context, id, name string) error
 	Resolve(ctx context.Context, id, approvalID string, d protocol.ApprovalDecision) error
 	SetMode(ctx context.Context, id, mode string) error
+	Compact(ctx context.Context, id string) (bool, error)
 	Subscribe(ctx context.Context, id string, from uint64) (<-chan protocol.Event, <-chan error)
 }
 
@@ -1273,6 +1274,9 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		// judgment undo exists for is the person's.
 		return p, p.undo()
 
+	case "compact":
+		return p, p.compact()
+
 	case "clear":
 		// A fresh session rather than a cleared screen: context is server-side
 		// and append-only, so there is no way to unsay something to the model.
@@ -1591,6 +1595,28 @@ func (p *program) setMode(name string) tea.Cmd {
 	return func() tea.Msg {
 		if err := p.opts.Transport.SetMode(p.ctx, p.opts.SessionID, name); err != nil {
 			return errMsg{err: err}
+		}
+		return nil
+	}
+}
+
+// compact asks the daemon to force compaction outside any turn.
+//
+// A note, never errMsg: a turn happening to be running when someone types
+// /compact is an ordinary thing to hear about, not a reason to quit the
+// client — errMsg is for the stream itself failing, which this is not.
+// Success announces nothing here on purpose: EventSessionCompacted already
+// reaches this same client the ordinary way, and a second note for what the
+// stream is about to say anyway is noise. Only "nothing was worth
+// compacting" needs saying — the one answer the event never arrives to give.
+func (p *program) compact() tea.Cmd {
+	return func() tea.Msg {
+		compacted, err := p.opts.Transport.Compact(p.ctx, p.opts.SessionID)
+		if err != nil {
+			return noteMsg(err.Error())
+		}
+		if !compacted {
+			return noteMsg(Text(p.model.Lang).CompactNothingToDo)
 		}
 		return nil
 	}
