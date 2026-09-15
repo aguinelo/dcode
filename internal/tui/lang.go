@@ -195,6 +195,12 @@ type Strings struct {
 	CompletionUnchecked string
 	CompletionMeasure   string
 
+	// A turn cut off mid-work, for a reason that is not a checked completion
+	// and not an error already reported elsewhere.
+	TurnStoppedMaxIterations string // takes rounds done, rounds allowed
+	TurnStoppedRepeatLoop    string
+	TurnStoppedMaxTokens     string
+
 	// Approval
 	ApprovalDeny         string
 	ApprovalAllowOnce    string
@@ -421,6 +427,10 @@ var catalogue = map[Lang]Strings{
 		CompletionUnmet:     "not met",
 		CompletionUnchecked: "could not be checked",
 		CompletionMeasure:   "measurement changed",
+		TurnStoppedMaxIterations: "Stopped: hit the round ceiling (%d/%d) before finishing. " +
+			"Ask to continue, or raise limits.max_iterations.",
+		TurnStoppedRepeatLoop: "Stopped: the same call repeated too many times in a row.",
+		TurnStoppedMaxTokens:  "Stopped: hit the token ceiling for this turn.",
 
 		ApprovalDeny:         "deny",
 		ApprovalAllowOnce:    "allow once",
@@ -645,6 +655,10 @@ Environment:
 		CompletionUnmet:     "não cumprido",
 		CompletionUnchecked: "não pôde ser conferido",
 		CompletionMeasure:   "medição alterada",
+		TurnStoppedMaxIterations: "Parou: bateu o teto de rodadas (%d/%d) antes de terminar. " +
+			"Peça pra continuar, ou suba limits.max_iterations.",
+		TurnStoppedRepeatLoop: "Parou: a mesma chamada se repetiu vezes demais seguidas.",
+		TurnStoppedMaxTokens:  "Parou: bateu o teto de tokens deste turno.",
 
 		ApprovalDeny:         "negar",
 		ApprovalAllowOnce:    "permitir uma vez",

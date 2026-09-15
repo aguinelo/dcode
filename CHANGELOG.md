@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 174 decision changelogs |
+| spec families | 18, with 177 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -229,6 +229,31 @@ exists to stop exactly that.
   its own chrome, read by nothing in `internal/app` or `internal/behavior`.
   Accepts any spelling `DCODE_LANG` would (`pt_BR.UTF-8`, `pt-br`, `en_US`),
   reusing the same parser. Confirms in the language just switched TO.
+- **A turn cut off mid-work now says why.** Reported with a screenshot: a
+  coding task against a local model (Qwen, `--family generic`) "just
+  stopped" — no error, just `round 50/50` frozen on the status bar. Asking
+  "how's it going" seemed to resume, but the task never finished.
+  `protocol.TurnCompleted.Reason` has travelled on the wire since the event
+  existed and was never once read in `internal/tui` — a turn that ended
+  normally needs nothing (its own last message is the answer), but one cut
+  off by the round ceiling, a repeated call, or the token ceiling ended
+  exactly as abruptly as an error would have and was reported exactly as
+  loudly: not at all. Now it says so, with the round numbers when the
+  ceiling is what stopped it. `interrupted` and `error` are left alone —
+  both already have their own channel.
+- **`generic` errs toward the long horizon, not the short one.** Same
+  report: the round ceiling for custom/local models was 50, inherited from
+  `claude`'s ten-file-refactor sizing — wrong for what `generic` actually
+  serves, more often a local model somebody is running specifically to
+  avoid a cloud ceiling. Now 5,000. Asked what raising it risks: nothing new
+  — the repeat detector (`MaxIdenticalCalls`), not the iteration cap, is
+  the real defence against a pathological loop, and it does not change with
+  this number. `models.toml` profiles can also declare their own
+  `max_iterations` now, same override shape as `window`.
+- **The repeat detector fires at five identical calls, not three.**
+  Requested directly, in the same conversation. `DCODE_MAX_IDENTICAL_CALLS`,
+  `--max-identical` and `loop.DefaultLimits()` all move together — one
+  number, three places that cited it, none left to drift.
 - **Several models, saved once, switched on the fly.** Requested: "can I have
   several models already configured and switch that on the fly?" after
   setting up a local endpoint. `/model <name>` already existed, but only

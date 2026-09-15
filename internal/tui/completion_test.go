@@ -19,6 +19,41 @@ func TestNothingIsShownWhenThereIsNothingToCheck(t *testing.T) {
 	}
 }
 
+// A turn cut off mid-work used to end in total silence: d.Reason travelled on
+// the wire and was never once read on this side of it. Reported in the
+// field as a turn that "just stops", with the round counter frozen and
+// nothing on screen saying why.
+func TestATurnStoppedMidWorkSaysWhy(t *testing.T) {
+	for _, tc := range []struct {
+		reason string
+		want   string
+	}{
+		{protocol.StopMaxIterations, "50/50"},
+		{protocol.StopRepeatLoop, "repeated"},
+		{protocol.StopMaxTokens, "token ceiling"},
+	} {
+		e, ok := stopReasonEntry(tc.reason, 50, 50, En)
+		if !ok {
+			t.Fatalf("%s produced no entry", tc.reason)
+		}
+		if !strings.Contains(e.Summary, tc.want) {
+			t.Errorf("%s: got %q, want it to contain %q", tc.reason, e.Summary, tc.want)
+		}
+	}
+}
+
+// Done needs nothing: the model's own last message IS the visible answer.
+// Interrupted and error already have their own channel — a keypress the
+// person just made, and EventSessionError with the actual message — and a
+// second notice for either would only repeat what already showed.
+func TestOrdinaryAndAlreadyExplainedStopsProduceNoExtraNote(t *testing.T) {
+	for _, reason := range []string{protocol.StopDone, protocol.StopInterrupted, protocol.StopError, ""} {
+		if _, ok := stopReasonEntry(reason, 3, 50, En); ok {
+			t.Errorf("%q produced a note; it has its own channel already", reason)
+		}
+	}
+}
+
 func TestAFailedCheckSaysSoInWordsNotOnlyInColour(t *testing.T) {
 	e, ok := completionEntry(&protocol.Completion{
 		Verification: string(loop.VerificationFailed),
@@ -113,9 +148,33 @@ func TestTheModelKeepsTheSealOfTheLastTurn(t *testing.T) {
 	}
 }
 
+// The end-to-end path: a real event, through Apply, onto the screen.
+func TestATurnThatHitTheRoundCeilingReachesTheStream(t *testing.T) {
+	m := Model{Lang: En, Rounds: 50, MaxRounds: 50}
+	m = m.Apply(stoppedEvent(t, protocol.StopMaxIterations))
+	var found bool
+	for _, e := range m.Entries {
+		if e.Kind == KindNote && strings.Contains(e.Summary, "50/50") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("the turn ended with nothing on screen saying why")
+	}
+}
+
 func completedEvent(t *testing.T, c *protocol.Completion) protocol.Event {
 	t.Helper()
 	payload, err := json.Marshal(protocol.TurnCompleted{TurnID: "t1", Completion: c})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return protocol.Event{Type: protocol.EventTurnCompleted, Payload: payload}
+}
+
+func stoppedEvent(t *testing.T, reason string) protocol.Event {
+	t.Helper()
+	payload, err := json.Marshal(protocol.TurnCompleted{TurnID: "t1", Reason: reason})
 	if err != nil {
 		t.Fatal(err)
 	}

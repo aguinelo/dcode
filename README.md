@@ -330,11 +330,13 @@ once:
 model = "MiniMax-M3"
 
 [profile.qwen-local]
-model     = "qwen3.5-9b"
-family    = "generic"
-transport = "openai"
-base_url  = "http://192.168.0.149:1234/v1"
-window    = 32000
+model          = "qwen3.5-9b"
+family         = "generic"
+transport      = "openai"
+base_url       = "http://192.168.0.149:1234/v1"
+window         = 32000
+max_iterations = 5000   # generic already defaults to 5000; set this to
+                         # override it for one profile specifically
 ```
 
 `/model qwen-local` inside a running session switches the whole bundle — not
@@ -344,6 +346,17 @@ A name matching no profile still works the ordinary way, resolved by prefix,
 so this changes nothing for anyone who has never written a profile.
 `dcode login --profile qwen-local` stores the key under the profile's family
 without having to spell it out.
+
+**On the iteration ceiling.** `generic` allows up to 5,000 tool-call rounds
+per turn by default — errs toward the long horizon, because `generic` is,
+more often than not, a local model somebody is running specifically to avoid
+a cloud ceiling, and a short cap silently truncated real coding work. What
+actually defends against a pathological loop is unrelated to this number:
+the repeat detector (`limits.identical`, default 5) fires the moment the
+same call repeats that many times in a row, independent of how many rounds
+have run. If a turn ever ends before finishing — the ceiling, a repeated
+call, or the per-turn token cap — the client now says which, instead of
+going silent with the round counter frozen.
 
 ### The boundary
 

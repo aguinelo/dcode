@@ -51,8 +51,19 @@ func TestGenericGuessesConservatively(t *testing.T) {
 	if w >= mini {
 		t.Errorf("generic guesses %d, which is not more cautious than the measured %d", w, mini)
 	}
-	if g.DefaultLimits().MaxIterations > m.DefaultLimits().MaxIterations {
-		t.Error("generic allows a longer horizon than a family that was measured for one")
+}
+
+// The window guess errs toward the safe side of the asymmetry; the round
+// ceiling errs the other way, on purpose. Generic is, more often than not,
+// a local model somebody is running specifically to avoid a cloud ceiling —
+// a low cap truncated real coding work silently, reported in the field as a
+// turn that "just stops". The repeat detector is what actually defends
+// against a pathological loop; this number only bounds cost and wall-clock
+// time, and a local model pays neither in API dollars.
+func TestGenericErrsTowardTheLongHorizonNotTheShortOne(t *testing.T) {
+	var g Generic
+	if got := g.DefaultLimits().MaxIterations; got < 1000 {
+		t.Errorf("generic's ceiling is %d, too close to a cloud family's cost-bounded default for what this family actually serves", got)
 	}
 }
 

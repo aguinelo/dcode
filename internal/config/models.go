@@ -39,6 +39,14 @@ type Profile struct {
 	// Window overrides what the family reports, same meaning as
 	// DCODE_WINDOW. Zero means unset.
 	Window int
+	// MaxIterations overrides what the family reports, same meaning as
+	// limits.max_iterations. Zero means unset: the family's own answer
+	// stands. Exists because the family default is a property of the MODEL
+	// (a cloud family's cost-bounded guess), and a profile names one
+	// specific endpoint, which may warrant a horizon of its own — tighter
+	// for a fast profile, looser for one running a local model with no API
+	// cost to bound.
+	MaxIterations int
 }
 
 // LoadModels reads models.toml from root. An absent file is an empty map, the
@@ -83,17 +91,35 @@ func LoadModels(root string) (map[string]Profile, error) {
 			Transport: fields["transport"],
 			BaseURL:   fields["base_url"],
 		}
-		if w := strings.TrimSpace(fields["window"]); w != "" {
-			n, werr := strconv.Atoi(w)
-			if werr != nil || n < 0 {
-				return nil, fmt.Errorf("config: %s: profile %q has a window of %q, want a non-negative integer",
-					ModelsFile, name, w)
-			}
-			p.Window = n
+		w, err := parseNonNegativeField(fields, "window", ModelsFile, name)
+		if err != nil {
+			return nil, err
 		}
+		p.Window = w
+		mi, err := parseNonNegativeField(fields, "max_iterations", ModelsFile, name)
+		if err != nil {
+			return nil, err
+		}
+		p.MaxIterations = mi
 		out[name] = p
 	}
 	return out, nil
+}
+
+// parseNonNegativeField reads an optional integer field. Empty is zero,
+// meaning unset in every field that uses this: the family's own answer
+// stands.
+func parseNonNegativeField(fields map[string]string, key, file, profile string) (int, error) {
+	v := strings.TrimSpace(fields[key])
+	if v == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("config: %s: profile %q has a %s of %q, want a non-negative integer",
+			file, profile, key, v)
+	}
+	return n, nil
 }
 
 // MergeModels layers project profiles over user profiles, by name.

@@ -55,7 +55,7 @@ func TestFromEnvAppliesDefaults(t *testing.T) {
 	if opts.Limits.MaxIterations != 0 {
 		t.Errorf("the iteration cap should default to the family, got %d", opts.Limits.MaxIterations)
 	}
-	if opts.Limits.MaxIdenticalCalls != 3 {
+	if opts.Limits.MaxIdenticalCalls != 5 {
 		t.Errorf("got %d", opts.Limits.MaxIdenticalCalls)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/sandbox"
@@ -373,6 +374,45 @@ func TestDaemonBuildFallsThroughWhenNoProfileMatches(t *testing.T) {
 	}
 	if got := sess.Describe().Model; got != "claude-sonnet" {
 		t.Errorf("got %q", got)
+	}
+}
+
+// A profile's own iteration ceiling wins over the family's — the same
+// override direction Window already has, for the same reason: a profile
+// names one specific endpoint, and that is worth a horizon of its own.
+func TestApplyModelRequestAppliesAProfilesIterationCeiling(t *testing.T) {
+	opts := Options{Profiles: map[string]config.Profile{
+		"qwen-local": {Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic", MaxIterations: 5000},
+	}}
+	got := applyModelRequest(opts, "qwen-local")
+	if got.Limits.MaxIterations != 5000 {
+		t.Errorf("got %d", got.Limits.MaxIterations)
+	}
+}
+
+// A profile that does not name one leaves whatever the base Options already
+// had — zero, ordinarily, which is "ask the family" — untouched.
+func TestApplyModelRequestLeavesTheCeilingAloneWhenTheProfileNamesNone(t *testing.T) {
+	opts := Options{
+		Limits: loop.Limits{MaxIterations: 42},
+		Profiles: map[string]config.Profile{
+			"cloud": {Name: "cloud", Model: "MiniMax-M3"},
+		},
+	}
+	got := applyModelRequest(opts, "cloud")
+	if got.Limits.MaxIterations != 42 {
+		t.Errorf("got %d, want the base ceiling left standing", got.Limits.MaxIterations)
+	}
+}
+
+// A name matching no profile is the ordinary path, untouched by any of this.
+func TestApplyModelRequestFallsThroughForAnUnconfiguredName(t *testing.T) {
+	got := applyModelRequest(Options{}, "claude-sonnet")
+	if got.Model != "claude-sonnet" {
+		t.Errorf("got %q", got.Model)
+	}
+	if got.Family != "" || got.BaseURL != "" || got.Limits.MaxIterations != 0 {
+		t.Errorf("an unconfigured name touched something besides the model: %+v", got)
 	}
 }
 
