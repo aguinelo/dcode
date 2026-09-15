@@ -7,6 +7,7 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
+| `DCODE_COMPACTION_ENABLED` | booleano | `true` | Liga o gatilho automático (80% do orçamento). Desligado, nada dispara sozinho — mas `/compact` e a recuperação forçada (provedor recusando por contexto grande) continuam funcionando: a pessoa pedindo direto, ou o provedor recusando, nunca foi o que este interruptor decide. `Engine.Compact` nem lê este campo. |
 
 > `DCODE_COMPACT_AT` é fração da janela **do modelo em uso**, resolvida pelo adaptador de provider. O motor de contexto não conhece modelos.
 
@@ -45,3 +46,4 @@ Fixas em código, documentadas porque afetam comportamento observável.
 ## 4. Changelog
 
 - [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)
+- [202609151700 — Compactar por pedido](changelog/202609151700-compactar-por-pedido.md)

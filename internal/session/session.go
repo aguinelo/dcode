@@ -355,6 +355,41 @@ func (s *Session) Exec(ctx context.Context, command string) error {
 	return err
 }
 
+// Compact forces compaction outside any turn — the /compact command's path.
+//
+// Same lock and the same refusal as Exec, for the same reason: the engine's
+// history has no mutex of its own, because nothing but the turn loop was ever
+// meant to touch it while one runs. Reports whether anything was compacted —
+// a short conversation has nothing worth summarising, and that is the honest
+// answer to give back, not an error.
+func (s *Session) Compact(ctx context.Context) (bool, error) {
+	s.mu.Lock()
+	switch {
+	case s.state == protocol.SessionStateClosed:
+		s.mu.Unlock()
+		return false, protocol.Errorf(protocol.CodeSessionNotFound, "session %s is closed", s.ID)
+	case s.state != protocol.SessionStateIdle:
+		s.mu.Unlock()
+		return false, protocol.Errorf(protocol.CodeTurnAlreadyActive,
+			"a turn is running; wait for it to finish or interrupt it")
+	case s.engine == nil:
+		s.mu.Unlock()
+		return false, protocol.Errorf(protocol.CodeInternal, "session %s has no engine", s.ID)
+	}
+	s.state = protocol.SessionStateRunning
+	engine := s.engine
+	s.mu.Unlock()
+
+	compacted, err := engine.Compact(ctx)
+
+	s.mu.Lock()
+	if s.state != protocol.SessionStateClosed {
+		s.state = protocol.SessionStateIdle
+	}
+	s.mu.Unlock()
+	return compacted, err
+}
+
 // Interrupt cancels the running turn. Idempotent: interrupting an idle session
 // is not an error, because the user cannot know the turn just finished.
 func (s *Session) Interrupt() {

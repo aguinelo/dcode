@@ -211,67 +211,71 @@ type Strings struct {
 	// Help. The key and command descriptions live here too: a /help with
 	// translated headings and English descriptions is worse than an untranslated
 	// one, because it reads as a bug rather than as a language.
-	HelpCommands      string
-	HelpApprovals     string
-	HelpKeys          string
-	HelpYours         string
-	KeyEnter          string
-	KeyNewline        string
-	KeyPasteImage     string
-	CmdUndo           string
-	CmdUpdate         string
-	CmdImage          string
-	CmdImageArgs      string
-	ImageUsage        string
-	ImageAttached     string
-	ImageFailed       string
-	ImageUnsupported  string
-	ImagePasted       string
-	ImageTooBig       string
-	ClipboardEmpty    string
-	ClipboardMissing  string
-	UndoRestored      string
-	UndoRefused       string
-	UndoNothing       string
-	UndoFailed        string
-	KeyArrows         string
-	KeyPage           string
-	KeyTab            string
-	KeyEsc            string
-	KeyPanel          string
-	KeyDequeue        string
-	KeyEditing        string
-	KeyInterrupt      string
-	KeyQuit           string
-	CmdHelp           string
-	CmdInit           string
-	CmdClear          string
-	CmdPlan           string
-	CmdPlanArgs       string
-	CmdConfig         string
-	CmdConfigArgs     string
-	CmdModel          string
-	CmdModelArgs      string
-	CmdResume         string
-	CmdResumeArgs     string
-	CmdMode           string
-	CmdModeArgs       string
-	CmdModeCurrent    string // takes a mode name
-	CmdModeUnnamed    string // the boundary in force is none of the three
-	CmdModeUnknown    string // takes the name that is not a mode
-	CmdLang           string
-	CmdLangArgs       string
-	CmdLangCurrent    string // takes the language name
-	CmdLangUnknown    string // takes the name that is not a declared language
-	CmdLangSwitched   string // takes the language name; shown IN that language
-	CmdLoop           string
-	CmdLoopArgs       string
-	CmdLoopUsage      string
-	CmdLoopFlag       string // takes the flag that is not one
-	CmdLoopOpened     string // takes the spec path and the criterion count
-	CmdLoopEmpty      string // takes the spec path
-	CmdLoopProposed   string // takes the criterion count, the file and the spec path
-	CmdLoopQualifying string // takes the spec path
+	HelpCommands  string
+	HelpApprovals string
+	HelpKeys      string
+	HelpYours     string
+	KeyEnter      string
+	KeyNewline    string
+	KeyPasteImage string
+	CmdUndo       string
+	CmdUpdate     string
+	CmdCompact    string
+	// CompactNothingToDo answers a forced compaction that found nothing worth
+	// summarising — the one thing EventSessionCompacted never arrives to say.
+	CompactNothingToDo string
+	CmdImage           string
+	CmdImageArgs       string
+	ImageUsage         string
+	ImageAttached      string
+	ImageFailed        string
+	ImageUnsupported   string
+	ImagePasted        string
+	ImageTooBig        string
+	ClipboardEmpty     string
+	ClipboardMissing   string
+	UndoRestored       string
+	UndoRefused        string
+	UndoNothing        string
+	UndoFailed         string
+	KeyArrows          string
+	KeyPage            string
+	KeyTab             string
+	KeyEsc             string
+	KeyPanel           string
+	KeyDequeue         string
+	KeyEditing         string
+	KeyInterrupt       string
+	KeyQuit            string
+	CmdHelp            string
+	CmdInit            string
+	CmdClear           string
+	CmdPlan            string
+	CmdPlanArgs        string
+	CmdConfig          string
+	CmdConfigArgs      string
+	CmdModel           string
+	CmdModelArgs       string
+	CmdResume          string
+	CmdResumeArgs      string
+	CmdMode            string
+	CmdModeArgs        string
+	CmdModeCurrent     string // takes a mode name
+	CmdModeUnnamed     string // the boundary in force is none of the three
+	CmdModeUnknown     string // takes the name that is not a mode
+	CmdLang            string
+	CmdLangArgs        string
+	CmdLangCurrent     string // takes the language name
+	CmdLangUnknown     string // takes the name that is not a declared language
+	CmdLangSwitched    string // takes the language name; shown IN that language
+	CmdLoop            string
+	CmdLoopArgs        string
+	CmdLoopUsage       string
+	CmdLoopFlag        string // takes the flag that is not one
+	CmdLoopOpened      string // takes the spec path and the criterion count
+	CmdLoopEmpty       string // takes the spec path
+	CmdLoopProposed    string // takes the criterion count, the file and the spec path
+	CmdLoopQualifying  string // takes the spec path
 	// CmdLoopFinished is the run ending, with what done says. It takes the
 	// number of specs worked and the state of the criteria.
 	CmdLoopFinished string // takes the spec count
@@ -447,6 +451,8 @@ var catalogue = map[Lang]Strings{
 		KeyPasteImage:      "paste an image from the clipboard",
 		CmdUndo:            "put back the files the last turn changed",
 		CmdUpdate:          "install the latest release",
+		CmdCompact:         "compact now, whether or not the automatic trigger is on",
+		CompactNothingToDo: "nothing worth compacting yet",
 		CmdImage:           "show the model a picture with your next message",
 		CmdImageArgs:       "<path>",
 		ImageUsage:         "Usage: /image <path to a png, jpeg, gif or webp>",
@@ -675,6 +681,8 @@ Environment:
 		KeyPasteImage:      "cola uma imagem da área de transferência",
 		CmdUndo:            "restaura os arquivos que o último turno mudou",
 		CmdUpdate:          "instala a release mais recente",
+		CmdCompact:         "compacta agora, ligado ou não o gatilho automático",
+		CompactNothingToDo: "nada que valesse a pena compactar ainda",
 		CmdImage:           "mostra uma imagem ao modelo junto da próxima mensagem",
 		CmdImageArgs:       "<caminho>",
 		ImageUsage:         "Uso: /image <caminho de png, jpeg, gif ou webp>",

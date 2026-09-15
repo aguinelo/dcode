@@ -152,6 +152,18 @@ func (c *Client) SetMode(ctx context.Context, id, mode string) error {
 		}{Mode: mode}, nil)
 }
 
+// Compact forces compaction outside a turn, whether or not the automatic
+// 80%-threshold trigger is on for this session.
+//
+// The bool answers the one thing EventSessionCompacted cannot: a session
+// with nothing worth summarising produces no event at all, and the person
+// who just asked deserves to be told that rather than left to wonder.
+func (c *Client) Compact(ctx context.Context, id string) (bool, error) {
+	var out protocol.CompactResult
+	err := c.do(ctx, http.MethodPost, "/sessions/"+id+"/compact", nil, &out)
+	return out.Compacted, err
+}
+
 // Exec runs a command the person typed, outside a turn.
 //
 // It blocks until the command finishes. The output arrives on the event stream,

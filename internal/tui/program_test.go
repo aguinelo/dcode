@@ -37,6 +37,11 @@ type fakeTransport struct {
 	execErr  error
 	// modesSet is every behavioural mode the client asked the daemon for.
 	modesSet []string
+	// compactCalls counts /compact requests. compactResult and compactErr
+	// answer the next one; compacted is what CompactResult reports.
+	compactCalls  int
+	compactResult bool
+	compactErr    error
 
 	submitErr error
 	steerErr  error
@@ -169,6 +174,13 @@ func (f *fakeTransport) modes() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.modesSet...)
+}
+
+func (f *fakeTransport) Compact(context.Context, string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.compactCalls++
+	return f.compactResult, f.compactErr
 }
 
 func (f *fakeTransport) Subscribe(_ context.Context, _ string, from uint64) (<-chan protocol.Event, <-chan error) {
@@ -673,6 +685,39 @@ func TestLangWithoutAnArgumentReportsTheCurrentOne(t *testing.T) {
 	}
 }
 
+// /compact reaches the transport, and stays quiet when there was something
+// to compact — EventSessionCompacted already says so the ordinary way, and a
+// second note for what the stream is about to say anyway would be noise.
+func TestCompactStaysQuietWhenSomethingWasCompacted(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.compactResult = true
+
+	msg := run(t, p, typeLine(t, p, "/compact"))
+	if tr.compactCalls != 1 {
+		t.Fatalf("got %d calls to Compact", tr.compactCalls)
+	}
+	if msg != nil {
+		t.Errorf("a successful compaction produced a message: %v", msg)
+	}
+}
+
+// Nothing worth compacting is the one answer EventSessionCompacted never
+// arrives to give, so /compact says it directly.
+func TestCompactSaysSoWhenThereWasNothingToDo(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.compactResult = false
+
+	msg := run(t, p, typeLine(t, p, "/compact"))
+	note, ok := msg.(noteMsg)
+	if !ok {
+		t.Fatalf("got %T, want a note saying there was nothing to compact", msg)
+	}
+	p.Update(note)
+	if got := p.model.Entries[len(p.model.Entries)-1].Summary; got != Text(En).CompactNothingToDo {
+		t.Errorf("got %q", got)
+	}
+}
+
 // A locale dcode does not have is named in the error, and changes nothing —
 // the same rule /mode already holds for a name that is not a mode.
 func TestLangRejectsAnUndeclaredLocale(t *testing.T) {
@@ -694,6 +739,23 @@ func TestLangAcceptsTheSameSpellingsAsTheEnvironment(t *testing.T) {
 	p.runBuiltin(Resolved{Name: "lang", Args: "pt_BR.UTF-8"})
 	if p.model.Lang != PtBR {
 		t.Errorf("got %q, want a locale-shaped argument to resolve the same way DCODE_LANG does", p.model.Lang)
+	}
+}
+
+// A refusal — a turn running, say — reaches the screen as a note, never as
+// errMsg: errMsg quits the client, and hearing that a turn is running is an
+// ordinary thing, not a reason to end the session.
+func TestCompactFailureIsANoteNotAFatalError(t *testing.T) {
+	p, tr := newProgram(t)
+	tr.compactErr = errors.New("a turn is running; wait for it to finish or interrupt it")
+
+	msg := run(t, p, typeLine(t, p, "/compact"))
+	note, ok := msg.(noteMsg)
+	if !ok {
+		t.Fatalf("got %T, want a note carrying the refusal", msg)
+	}
+	if !strings.Contains(string(note), "turn is running") {
+		t.Errorf("got %q", note)
 	}
 }
 

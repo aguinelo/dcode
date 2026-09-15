@@ -357,6 +357,25 @@ terminar antes de concluir — o teto, uma chamada repetida, ou o teto de
 tokens por turno — o cliente agora diz qual, em vez de ficar mudo com o
 contador de rodadas congelado.
 
+### Contexto e compactação
+
+Uma conversa que ultrapassa a janela do modelo é resumida automaticamente:
+em 80% cheio, a parte mais antiga que não é mais necessária é substituída
+por um resumo, anunciado na tela, mantendo a tarefa atual e turnos recentes
+o suficiente intactos por construção. Ligado por padrão, e configurável:
+
+```toml
+[compaction]
+enabled = true   # DCODE_COMPACTION_ENABLED
+```
+
+Desligado, nada compacta sozinho — mas `/compact` continua funcionando
+dentro de uma sessão em andamento, forçando na hora independente desse
+ajuste. Fica quieto quando achou algo pra resumir (o aviso na tela já diz
+isso); só fala nos dois casos que esse aviso nunca cobre: não havia o que
+compactar ainda, ou um turno está em andamento e o pedido é recusado em vez
+de competir com ele.
+
 ### A fronteira
 
 Por default o agente roda em `workspace-write` com aprovação `on-request`: pode editar

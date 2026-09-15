@@ -30,7 +30,7 @@ type Builtin struct {
 var Builtins = []Builtin{
 	{Name: "help"}, {Name: "init"}, {Name: "clear"}, {Name: "plan"},
 	{Name: "config"}, {Name: "model"}, {Name: "mode"}, {Name: "lang"}, {Name: "loop"}, {Name: "resume"},
-	{Name: "undo"}, {Name: "image"}, {Name: "update"},
+	{Name: "undo"}, {Name: "image"}, {Name: "update"}, {Name: "compact"},
 }
 
 // builtinText resolves a command's argument shape and help in one language.
@@ -62,6 +62,8 @@ func builtinText(name string, t Strings) (args, help string) {
 		return t.CmdImageArgs, t.CmdImage
 	case "update":
 		return "", t.CmdUpdate
+	case "compact":
+		return "", t.CmdCompact
 	}
 	return "", ""
 }

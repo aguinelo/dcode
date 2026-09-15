@@ -358,6 +358,25 @@ have run. If a turn ever ends before finishing — the ceiling, a repeated
 call, or the per-turn token cap — the client now says which, instead of
 going silent with the round counter frozen.
 
+### Context and compaction
+
+A conversation that outgrows the model's window is summarised automatically:
+at 80% full, the oldest part not still needed is replaced with a summary,
+announced on screen, keeping the current task and enough recent turns intact
+by construction. On by default, and configurable:
+
+```toml
+[compaction]
+enabled = true   # DCODE_COMPACTION_ENABLED
+```
+
+Turned off, nothing compacts on its own — but `/compact` still works inside a
+running session, forcing it right then regardless of the setting above. It
+stays quiet when it found something to summarise (the same on-screen notice
+already says so); it speaks up only for the two things that notice never
+covers: nothing was worth compacting yet, or a turn is currently running and
+the request is refused rather than racing it.
+
 ### The boundary
 
 By default the agent runs in `workspace-write` with `on-request` approvals: it may edit

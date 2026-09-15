@@ -64,6 +64,10 @@ type Options struct {
 	DumpPrompt   bool
 	// Reminders switches the appended-notice channel on.
 	Reminders bool
+	// CompactionEnabled switches the automatic 80%-threshold trigger on. Off
+	// leaves the manual path (/compact, Engine.Compact) untouched — this
+	// only ever gates the one that fires on its own.
+	CompactionEnabled bool
 	// ShowReasoning forwards the model's thinking to clients.
 	ShowReasoning bool
 	// Instructions switches the reading of AGENTS.md and DCODE.md on. Off runs
@@ -225,6 +229,7 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			"behavior.instructions_enabled": "true",
 			"behavior.skills_enabled":       "true",
 			"behavior.reminders_enabled":    "true",
+			"compaction.enabled":            "true",
 			"behavior.show_reasoning":       "true",
 			"rules.confirm_write":           policy.JoinList(defaults.ConfirmWrite),
 			"rules.confirm_read":            policy.JoinList(defaults.ConfirmRead),
@@ -301,6 +306,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 	opts := Options{
 		Env:                    env,
 		Reminders:              r.Bool("behavior.reminders_enabled", true),
+		CompactionEnabled:      r.Bool("compaction.enabled", true),
 		ShowReasoning:          r.Bool("behavior.show_reasoning", true),
 		Instructions:           r.Bool("behavior.instructions_enabled", true),
 		Skills:                 r.Bool("behavior.skills_enabled", true),
@@ -701,6 +707,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	}
 	ctxCfg := ce.DefaultConfig()
 	ctxCfg.Window = window
+	ctxCfg.Disabled = !opts.CompactionEnabled
 
 	engine := loop.New(loop.Config{
 		Provider: p, Tools: registry, State: state,

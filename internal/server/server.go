@@ -182,6 +182,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/undo", s.undo)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/approvals/{approvalID}", s.resolveApproval)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/mode", s.setMode)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/compact", s.compact)
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
@@ -331,6 +332,30 @@ func (s *Server) exec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// compact forces compaction outside any turn.
+//
+// Its own route rather than a flag on exec, the same reason setMode is its
+// own route rather than a flag on submitTurn: this is not a turn and not a
+// shell command, it is a third thing. The result travels twice, on purpose:
+// EventSessionCompacted already reaches an attached client the ordinary way,
+// and the response body answers the one thing the event cannot — a session
+// with nothing worth compacting produces no event at all, and the person who
+// just asked deserves to be told that rather than left to wonder if the
+// request went anywhere.
+func (s *Server) compact(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	compacted, err := sess.Compact(r.Context())
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, protocol.CompactResult{Compacted: compacted})
 }
 
 // decodeImages turns the wire form back into bytes.
