@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 173 decision changelogs |
+| spec families | 18, with 174 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,17 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`/lang` switches the interface language live.** The bilingual interface
+  (English/pt-BR, `internal/tui/lang.go`) and the doctrine rule that answers
+  in whatever language the person wrote in already existed; what was missing
+  was a way to switch without editing `config.toml` or exporting
+  `DCODE_LANG`. `/lang [en|pt-BR]` shows the current one with no argument,
+  switches with a valid one, and refuses an unknown one naming it — the same
+  shape as `/mode`. Unlike `/model` and `/mode`, it never opens a new session
+  or reaches the daemon: `Lang` governs only how this client process draws
+  its own chrome, read by nothing in `internal/app` or `internal/behavior`.
+  Accepts any spelling `DCODE_LANG` would (`pt_BR.UTF-8`, `pt-br`, `en_US`),
+  reusing the same parser. Confirms in the language just switched TO.
 - **Several models, saved once, switched on the fly.** Requested: "can I have
   several models already configured and switch that on the fly?" after
   setting up a local endpoint. `/model <name>` already existed, but only

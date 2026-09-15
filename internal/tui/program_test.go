@@ -642,6 +642,61 @@ func TestModelWithoutAnArgumentReportsTheCurrentOne(t *testing.T) {
 	}
 }
 
+// /lang never touches the daemon: it is what this process renders its own
+// chrome in, and nothing about the prompt or the session depends on it.
+func TestLangSwitchesTheInterfaceWithoutTouchingTheSession(t *testing.T) {
+	p, tr := newProgram(t)
+	p.model.Lang = PtBR
+
+	p.runBuiltin(Resolved{Name: "lang", Args: "en"})
+	if p.model.Lang != En {
+		t.Errorf("got %q", p.model.Lang)
+	}
+	if len(tr.created) != 0 {
+		t.Error("/lang created a session; it must never reach the daemon")
+	}
+	// Confirmed in the language just switched TO, not the one left behind.
+	if got := p.model.Entries[len(p.model.Entries)-1].Summary; !strings.Contains(got, "en") {
+		t.Errorf("confirmation is not in the new language: %q", got)
+	}
+}
+
+func TestLangWithoutAnArgumentReportsTheCurrentOne(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Lang = En
+	p.runBuiltin(Resolved{Name: "lang"})
+	if p.model.Lang != En {
+		t.Error("no argument must not switch anything")
+	}
+	if got := p.model.Entries[len(p.model.Entries)-1].Summary; !strings.Contains(got, "en") {
+		t.Errorf("got %q", got)
+	}
+}
+
+// A locale dcode does not have is named in the error, and changes nothing —
+// the same rule /mode already holds for a name that is not a mode.
+func TestLangRejectsAnUndeclaredLocale(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Lang = PtBR
+	p.runBuiltin(Resolved{Name: "lang", Args: "klingon"})
+	if p.model.Lang != PtBR {
+		t.Error("an unknown language must not switch anything")
+	}
+	if got := p.model.Entries[len(p.model.Entries)-1].Summary; !strings.Contains(got, "klingon") {
+		t.Errorf("the error does not name what was typed: %q", got)
+	}
+}
+
+// Any spelling the environment uses is accepted, the same as DCODE_LANG.
+func TestLangAcceptsTheSameSpellingsAsTheEnvironment(t *testing.T) {
+	p, _ := newProgram(t)
+	p.model.Lang = En
+	p.runBuiltin(Resolved{Name: "lang", Args: "pt_BR.UTF-8"})
+	if p.model.Lang != PtBR {
+		t.Errorf("got %q, want a locale-shaped argument to resolve the same way DCODE_LANG does", p.model.Lang)
+	}
+}
+
 func TestResumeListsAndReattaches(t *testing.T) {
 	p, tr := newProgram(t)
 	tr.sessions = []protocol.Session{{ID: "s9", State: protocol.SessionStateIdle, Workspace: "/x"}}

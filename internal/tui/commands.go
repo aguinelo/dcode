@@ -29,7 +29,7 @@ type Builtin struct {
 // stays English.
 var Builtins = []Builtin{
 	{Name: "help"}, {Name: "init"}, {Name: "clear"}, {Name: "plan"},
-	{Name: "config"}, {Name: "model"}, {Name: "mode"}, {Name: "loop"}, {Name: "resume"},
+	{Name: "config"}, {Name: "model"}, {Name: "mode"}, {Name: "lang"}, {Name: "loop"}, {Name: "resume"},
 	{Name: "undo"}, {Name: "image"}, {Name: "update"},
 }
 
@@ -46,6 +46,8 @@ func builtinText(name string, t Strings) (args, help string) {
 		return t.CmdPlanArgs, t.CmdPlan
 	case "mode":
 		return t.CmdModeArgs, t.CmdMode
+	case "lang":
+		return t.CmdLangArgs, t.CmdLang
 	case "loop":
 		return t.CmdLoopArgs, t.CmdLoop
 	case "config":

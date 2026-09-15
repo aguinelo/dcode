@@ -1314,6 +1314,27 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 		}
 		return p, p.setMode(name)
 
+	case "lang":
+		// Client-only. Unlike /model and /mode this never touches the
+		// daemon: Lang governs how THIS process renders its own chrome, and
+		// nothing about the prompt or the session depends on it — the
+		// doctrine's own rule already has the model answer in whatever
+		// language the person just wrote in, independent of this setting.
+		t := Text(p.model.Lang)
+		arg := strings.TrimSpace(r.Args)
+		if arg == "" {
+			return note(fmt.Sprintf(t.CmdLangCurrent, p.model.Lang))
+		}
+		lang, ok := parseLang(arg)
+		if !ok {
+			return note(fmt.Sprintf(t.CmdLangUnknown, arg))
+		}
+		p.model.Lang = lang
+		// Confirmed in the language just switched to, not the one left
+		// behind — the same reason a denial names what was denied rather
+		// than restating the request back.
+		return note(fmt.Sprintf(Text(lang).CmdLangSwitched, lang))
+
 	case "loop":
 		t := Text(p.model.Lang)
 		spec, err := ParseLoopArgs(r.Args)
