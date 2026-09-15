@@ -253,6 +253,11 @@ type Strings struct {
 	CmdModeCurrent    string // takes a mode name
 	CmdModeUnnamed    string // the boundary in force is none of the three
 	CmdModeUnknown    string // takes the name that is not a mode
+	CmdLang           string
+	CmdLangArgs       string
+	CmdLangCurrent    string // takes the language name
+	CmdLangUnknown    string // takes the name that is not a declared language
+	CmdLangSwitched   string // takes the language name; shown IN that language
 	CmdLoop           string
 	CmdLoopArgs       string
 	CmdLoopUsage      string
@@ -471,6 +476,11 @@ var catalogue = map[Lang]Strings{
 		CmdModeCurrent:     "current mode: %s",
 		CmdModeUnnamed:     "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
 		CmdModeUnknown:     "%s is not a mode — want plan, assist or auto",
+		CmdLang:            "show the interface language, or switch it — en or pt-BR",
+		CmdLangArgs:        "[en|pt-BR]",
+		CmdLangCurrent:     "current language: %s",
+		CmdLangUnknown:     "%s is not a declared language — want en or pt-BR",
+		CmdLangSwitched:    "interface language: %s",
 		CmdLoop:            "work a spec folder, measured against its definition of done — opens a new session",
 		CmdLoopArgs:        "<path> [what to do] [--protect <glob>]",
 		CmdLoopUsage:       "Usage: /loop <path to a spec folder> [what to do] [--protect <glob>]",
@@ -709,6 +719,11 @@ Environment:
 		CmdModeCurrent:     "modo atual: %s",
 		CmdModeUnnamed:     "o limite desta sessão não é nenhum dos três modos; /mode plan, assist ou auto escolhe um",
 		CmdModeUnknown:     "%s não é um modo — use plan, assist ou auto",
+		CmdLang:            "mostra o idioma da interface, ou troca — en ou pt-BR",
+		CmdLangArgs:        "[en|pt-BR]",
+		CmdLangCurrent:     "idioma atual: %s",
+		CmdLangUnknown:     "%s não é um idioma declarado — use en ou pt-BR",
+		CmdLangSwitched:    "idioma da interface: %s",
 
 		Usage: `dcode %s — um harness de programação agêntica
 

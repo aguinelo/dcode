@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 173 changelogs de decisão |
+| famílias de spec | 18, com 174 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,17 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`/lang` troca o idioma da interface ao vivo.** A interface bilíngue
+  (inglês/pt-BR, `internal/tui/lang.go`) e a regra da doutrina que responde
+  na língua de quem escreveu já existiam; faltava um jeito de trocar sem
+  editar `config.toml` ou exportar `DCODE_LANG`. `/lang [en|pt-BR]` mostra o
+  atual sem argumento, troca com um válido, e recusa um desconhecido nomeando
+  o que foi digitado — mesma forma do `/mode`. Diferente de `/model` e
+  `/mode`, nunca abre sessão nova nem toca o daemon: `Lang` só governa como
+  este processo cliente desenha o próprio cromo, e nada em `internal/app` nem
+  `internal/behavior` o lê. Aceita qualquer grafia que `DCODE_LANG` aceitaria
+  (`pt_BR.UTF-8`, `pt-br`, `en_US`), reaproveitando o mesmo parser. Confirma
+  na língua pra qual trocou.
 - **Vários modelos, salvos de uma vez, trocáveis ao vivo.** Pedido: "consigo
   ter vários modelos já configurados e trocar isso on the fly?", depois de
   configurar um endpoint local. `/model <nome>` já existia, mas só trocava o
