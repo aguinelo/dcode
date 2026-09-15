@@ -540,6 +540,19 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// history the model no longer has.
 		p.opts.SessionID = msg.session.ID
 		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
+		// Backlog and From belong to the session that just replaced the old
+		// one, not the one the client happened to start attached to.
+		//
+		// Left at the previous session's numbers, catchingUp() compares this
+		// session's own LastSeq — freshly zero for /model and /clear — against
+		// a backlog that session can never produce, because it is a different
+		// event log with its own numbering starting at 1. The screen was stuck
+		// reading forever: not a slow catch-up, a catch-up that had nothing
+		// left to reach. /resume is the one path where a real backlog belongs
+		// here, and it already arrives on msg.session — GetSession answers
+		// with the session actually being attached to, backlog and all.
+		p.opts.Backlog = msg.session.LastSeq
+		p.opts.From = msg.session.FirstSeq
 		// The recorded conversations do not belong to the session that was
 		// replaced: they are the workspace's, and the sidebar would otherwise
 		// empty itself the first time somebody ran /clear.

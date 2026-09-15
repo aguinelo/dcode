@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 179 changelogs de decisão |
+| famílias de spec | 18, com 180 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -258,6 +258,19 @@ existe para impedir exatamente isso.
   que compactar, ou o pedido foi recusado — como nota, nunca como o `errMsg`
   fatal, que teria encerrado o cliente por causa de um "há um turno rodando"
   totalmente comum.
+- **Trocar para um modelo sem histórico próprio não trava mais o cliente.**
+  Relatado: `/model qwen-local` travando para sempre em "reading the
+  conversation · 0 lines · ^C". `p.catchingUp()` mantém essa linha na tela
+  até `p.model.LastSeq` alcançar `p.opts.Backlog`; `/model`, `/clear` e
+  `/resume` caem todos em `case switchedMsg:`, mas só `/resume` — que monta
+  seu `Options` a partir do `LastSeq`/`FirstSeq` da sessão retomada antes de
+  chegar nesse código — sempre acertou `Backlog`/`From`. `/model` e `/clear`
+  abrem uma sessão sem histórico nenhum, então o tratador mantinha o backlog
+  que a sessão *anterior* tinha deixado: um alvo que a sessão nova, vazia,
+  jamais alcançaria. `switchedMsg` agora adota `Backlog`/`From` da sessão
+  para a qual está de fato trocando, a mesma fonte que `/resume` já usava,
+  então uma sessão nova lê como "nada para recuperar" em vez de um alvo
+  inalcançável.
 - **Vários modelos, salvos de uma vez, trocáveis ao vivo.** Pedido: "consigo
   ter vários modelos já configurados e trocar isso on the fly?", depois de
   configurar um endpoint local. `/model <nome>` já existia, mas só trocava o

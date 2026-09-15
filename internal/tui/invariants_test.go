@@ -201,6 +201,9 @@ var tuiInvariants = map[string]string{
 	"desenha **uma linha** enquanto lê": "TestResumingPaintsALoadingLineUntilTheBacklogIsRead",
 	"A linha se move":                   "TestTheLoadingLineKeepsTicking",
 
+	// Switching sessions adopts the new session's own backlog.
+	"adota o alvo de \"lendo o histórico\" **da sessão nova**": "TestSwitchingSessionsAdoptsTheNewOnesOwnBacklog",
+
 	// The context says it is filling.
 	"avisada de que o contexto está enchendo": "TestTheContextSaysItIsFillingBeforeItIsCut",
 
