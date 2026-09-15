@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 179 decision changelogs |
+| spec families | 18, with 180 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -273,6 +273,19 @@ exists to stop exactly that.
   never covers: nothing was worth compacting, or the request was refused —
   as a note, never as the fatal `errMsg`, which would have quit the client
   over an ordinary "a turn is running".
+- **Switching to a model with no history of its own no longer hangs the
+  client.** Reported: `/model qwen-local` stuck forever on "reading the
+  conversation · 0 lines · ^C". `p.catchingUp()` keeps that line on screen
+  until `p.model.LastSeq` reaches `p.opts.Backlog`; `/model`, `/clear` and
+  `/resume` all land in `case switchedMsg:`, but only `/resume` — which
+  builds its `Options` from the resumed session's own `LastSeq`/`FirstSeq`
+  before reaching this code — ever set `Backlog`/`From` correctly.
+  `/model` and `/clear` start a session with no history at all, so the
+  handler kept whatever backlog the *previous* session had left behind: a
+  target the new, empty session could never reach. `switchedMsg` now adopts
+  `Backlog`/`From` from the session it is actually switching to, the same
+  source `/resume` already used, so a fresh session reads as nothing left to
+  catch up on rather than an unreachable one.
 - **Several models, saved once, switched on the fly.** Requested: "can I have
   several models already configured and switch that on the fly?" after
   setting up a local endpoint. `/model <name>` already existed, but only

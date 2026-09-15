@@ -607,6 +607,40 @@ func TestConfigLookup(t *testing.T) {
 	}
 }
 
+// Switching sessions used to leave Backlog and From at the REPLACED
+// session's numbers. A fresh session's own log starts at 1 and can never
+// reach a backlog left over from a different one, so the loading screen —
+// "reading the conversation" — got stuck forever: not a slow catch-up, one
+// with nothing left to reach. Reported in the field as /model qwen-local
+// hanging on that exact screen.
+func TestSwitchingSessionsAdoptsTheNewOnesOwnBacklog(t *testing.T) {
+	p, _ := newProgram(t)
+	// As if the client had started attached to a resumed conversation with
+	// real history — the one case where a nonzero Backlog is correct.
+	p.opts.Backlog, p.opts.From = 500, 200
+	if !p.catchingUp() {
+		t.Fatal("setup: the old session's backlog should read as catching up")
+	}
+
+	msg := run(t, p, func() tea.Cmd {
+		_, c := p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "model", Args: "claude"})
+		return c
+	}())
+	sw, ok := msg.(switchedMsg)
+	if !ok {
+		t.Fatalf("got %T", msg)
+	}
+	p.Update(sw)
+
+	if p.opts.Backlog != 0 || p.opts.From != 0 {
+		t.Errorf("Backlog=%d From=%d after switching to a fresh session, want both 0",
+			p.opts.Backlog, p.opts.From)
+	}
+	if p.catchingUp() {
+		t.Error("the loading screen is stuck: a fresh session can never reach a backlog that was never its own")
+	}
+}
+
 func TestConfigWithoutALookup(t *testing.T) {
 	p, _ := newProgram(t)
 	run(t, p, typeLine(t, p, "/config model.name"))
