@@ -23,11 +23,12 @@ func TestAProfileCarriesEverythingASwitchNeeds(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, ModelsFile), `
 [profile.qwen-local]
-model     = "qwen3.5-9b"
-family    = "generic"
-transport = "openai"
-base_url  = "http://192.168.0.149:1234/v1"
-window    = 32000
+model          = "qwen3.5-9b"
+family         = "generic"
+transport      = "openai"
+base_url       = "http://192.168.0.149:1234/v1"
+window         = 32000
+max_iterations = 5000
 `)
 	got, err := LoadModels(root)
 	if err != nil {
@@ -39,7 +40,8 @@ window    = 32000
 	}
 	want := Profile{
 		Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic",
-		Transport: "openai", BaseURL: "http://192.168.0.149:1234/v1", Window: 32000,
+		Transport: "openai", BaseURL: "http://192.168.0.149:1234/v1",
+		Window: 32000, MaxIterations: 5000,
 	}
 	if p != want {
 		t.Errorf("got %+v, want %+v", p, want)

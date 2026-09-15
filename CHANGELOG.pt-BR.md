@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 174 changelogs de decisão |
+| famílias de spec | 18, com 177 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -212,6 +212,32 @@ existe para impedir exatamente isso.
   `internal/behavior` o lê. Aceita qualquer grafia que `DCODE_LANG` aceitaria
   (`pt_BR.UTF-8`, `pt-br`, `en_US`), reaproveitando o mesmo parser. Confirma
   na língua pra qual trocou.
+- **Um turno cortado no meio do trabalho agora diz por quê.** Relatado com
+  print: uma tarefa de código contra um modelo local (Qwen, `--family
+  generic`) "ficou assim" — nenhum erro, só `round 50/50` congelado na
+  barra. Perguntar "como está" parecia retomar, mas a tarefa nunca
+  concluía. `protocol.TurnCompleted.Reason` viaja no protocolo desde que o
+  evento existe e nunca tinha sido lido em `internal/tui` — um turno que
+  termina normalmente não precisa de nada (a própria última mensagem já é a
+  resposta), mas um cortado pelo teto de rodadas, por uma chamada repetida
+  ou pelo teto de tokens terminava exatamente tão abrupto quanto um erro
+  terminaria, e era reportado exatamente tão alto quanto um: nada. Agora
+  diz, com os números de rodada quando o motivo é o teto de iterações.
+  `interrupted` e `error` ficam de fora — os dois já têm canal próprio.
+- **`generic` erra para o horizonte longo, não para o curto.** Mesmo
+  relato: o teto de rodadas pra modelos custom/local era 50, herdado do
+  dimensionamento de refactor-de-dez-arquivos do `claude` — errado pro que
+  `generic` de fato serve, mais frequentemente um modelo local rodado
+  especificamente pra fugir de um teto de nuvem. Agora 5.000. Perguntado o
+  que subir arrisca: nada de novo — o detector de repetição
+  (`MaxIdenticalCalls`), não o teto de iteração, é a defesa real contra
+  loop patológico, e não muda com esse número. Perfis em `models.toml`
+  também podem declarar seu próprio `max_iterations` agora, mesma forma de
+  sobrescrita que `window` já tinha.
+- **O detector de repetição dispara em cinco chamadas idênticas, não três.**
+  Pedido direto, na mesma conversa. `DCODE_MAX_IDENTICAL_CALLS`,
+  `--max-identical` e `loop.DefaultLimits()` andam juntos — um número, três
+  lugares que o citavam, nenhum deixado pra trás pra divergir.
 - **Vários modelos, salvos de uma vez, trocáveis ao vivo.** Pedido: "consigo
   ter vários modelos já configurados e trocar isso on the fly?", depois de
   configurar um endpoint local. `/model <nome>` já existia, mas só trocava o

@@ -94,7 +94,18 @@ type Request struct {
 | `minimax-m3` | `MiniMax-M3`, `minimax-m3` | `openai`, `anthropic` | **2.000** |
 | `claude` | `claude-` | `anthropic` | **50** |
 
-**Por que 2.000 para M3 e 50 para Claude.** O default de 50 foi dimensionado pelo caso de um refactor cruzando dez arquivos. M3 é treinado para horizonte longo — a MiniMax demonstrou uma execução com 1.959 tool calls — e 50 truncaria trabalho legítimo. O número foi 200 até esta citação ser levada a sério: o teto ficava em um décimo da execução que o justificava, e truncou uma real. O detector de repetição em 3 chamadas idênticas continua sendo o mecanismo real contra loop patológico; o teto é backstop, e backstop acompanha o horizonte do modelo.
+**Por que 2.000 para M3 e 50 para Claude.** O default de 50 foi dimensionado pelo caso de um refactor cruzando dez arquivos. M3 é treinado para horizonte longo — a MiniMax demonstrou uma execução com 1.959 tool calls — e 50 truncaria trabalho legítimo. O número foi 200 até esta citação ser levada a sério: o teto ficava em um décimo da execução que o justificava, e truncou uma real. O detector de repetição em 5 chamadas idênticas continua sendo o mecanismo real contra loop patológico; o teto é backstop, e backstop acompanha o horizonte do modelo.
+
+**`generic` usa 5.000, não 50.** Herdava o mesmo default de `Claude` até este
+número ser questionado — errado para o que essa família de fato serve: mais
+frequentemente um modelo local, rodado especificamente pra fugir de um teto
+de nuvem. Relatado em campo: um turno cortado em silêncio pelo teto, sem
+nada na tela dizendo por quê — a metade do defeito que
+`202609151400-o-turno-que-parava-mudo.md` corrige do lado do cliente; esta é
+a outra metade, do lado do número. O detector de repetição continua sendo o
+mecanismo real e não muda com este número; o teto aqui só limita custo e
+tempo de parede, e um modelo local não paga o primeiro em dólar de API
+nenhum.
 
 `minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
 
@@ -112,11 +123,12 @@ que `requirements.toml` também é um arquivo à parte.
 
 ```toml
 [profile.qwen-local]
-model     = "qwen3.5-9b"
-family    = "generic"
-transport = "openai"
-base_url  = "http://192.168.0.149:1234/v1"
-window    = 32000
+model          = "qwen3.5-9b"
+family         = "generic"
+transport      = "openai"
+base_url       = "http://192.168.0.149:1234/v1"
+window         = 32000
+max_iterations = 5000
 ```
 
 `model` é obrigatório; o resto é opcional, com o mesmo default de sempre —
@@ -126,13 +138,16 @@ projeto, não uma colisão.
 
 **A resolução é por sessão, não por processo.** `Daemon.build` resolve
 `req.Model` contra os perfis carregados na inicialização do daemon antes de
-tratá-lo como nome de modelo cru: um nome que casa com um perfil aplica o
-pacote inteiro (`Model`, `Family`, `Transport`, `BaseURL`, e `Window` quando
-maior que zero); um nome que não casa segue o caminho de sempre. Não há
-mudança de protocolo — `CreateSessionRequest.Model` continua sendo uma
-string — porque a resolução acontece inteiramente do lado do daemon, que já
-recarrega o `Provider` do zero a cada sessão (RN de isolamento por sessão,
-`build`'s próprio comentário: "each session gets its own... provider").
+tratá-lo como nome de modelo cru, através de `applyModelRequest` — função
+pura, testada separadamente de `build`, pela mesma razão que
+`Limits.withFamily` fica fora do laço do turno. Um nome que casa com um
+perfil aplica o pacote inteiro (`Model`, `Family`, `Transport`, `BaseURL`,
+`Window` e `MaxIterations`, cada um só quando maior que zero); um nome que
+não casa segue o caminho de sempre. Não há mudança de protocolo —
+`CreateSessionRequest.Model` continua sendo uma string — porque a resolução
+acontece inteiramente do lado do daemon, que já recarrega o `Provider` do
+zero a cada sessão (RN de isolamento por sessão, `build`'s próprio
+comentário: "each session gets its own... provider").
 
 ## 3. Eventos de stream
 
@@ -279,3 +294,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
 - [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md)
 - [202609141900 — Um nome troca o pacote inteiro](changelog/202609141900-um-nome-troca-o-pacote-inteiro.md)
+- [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)

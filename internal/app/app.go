@@ -346,7 +346,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Rules:             resolveRules(r),
 		Limits: loop.Limits{
 			MaxIterations:     r.Int("limits.max_iterations", 0),
-			MaxIdenticalCalls: r.Int("limits.identical", 3),
+			MaxIdenticalCalls: r.Int("limits.identical", 5),
 			MaxTurnTokens:     r.Int("limits.max_turn_tokens", 0),
 		},
 	}

@@ -46,9 +46,19 @@ func (Generic) AcceptsImages() bool { return false }
 // window and loses the turn. The asymmetry decides the number.
 func (Generic) Window(string) (int, error) { return 128_000, nil }
 
-// DefaultLimits are the cautious ones, for the same reason.
+// DefaultLimits errs toward the long horizon, not the short one.
+//
+// It used to be 50 — the same figure as Claude, sized for a ten-file
+// refactor. Wrong for what this family actually serves: an endpoint dcode
+// has never measured is, more often than not, a local model somebody is
+// running specifically to avoid a cloud ceiling, and a low cap truncated
+// real coding work silently — reported in the field as a turn that "just
+// stops", with the round counter frozen and nothing on screen saying why.
+// The repeat detector (MaxIdenticalCalls) is the real defence against a
+// pathological loop, unrelated to this number; this is backstop against
+// cost and wall-clock time, and a local model pays neither in API dollars.
 func (Generic) DefaultLimits() Limits {
-	return Limits{MaxIterations: 50}
+	return Limits{MaxIterations: 5000}
 }
 
 // Warning is what a session using this family has to say.

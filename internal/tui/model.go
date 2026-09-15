@@ -650,6 +650,8 @@ func (m Model) Apply(ev protocol.Event) Model {
 		}
 		if e, ok := completionEntry(d.Completion, m.Lang); ok {
 			m.Entries = append(m.Entries, e)
+		} else if e, ok := stopReasonEntry(d.Reason, m.Rounds, m.MaxRounds, m.Lang); ok {
+			m.Entries = append(m.Entries, e)
 		}
 		m.Verification = ""
 		if d.Completion != nil {
@@ -678,6 +680,38 @@ func (m Model) Apply(ev protocol.Event) Model {
 // Nothing is shown when there was no definition of done: a line saying
 // "nothing to check" on every turn is a line that stops being read, and it
 // would drown the turns where there IS something to say.
+// stopReasonEntry says why a turn ended when nothing else already did.
+//
+// completionEntry covers the done-criteria path; the ordinary path — the
+// model answered and stopped calling tools — needs nothing, because its own
+// last message IS the visible answer. What neither covers is a turn cut off
+// mid-work: the ceiling was hit, or the same call repeated, or the token
+// budget ran out. Those ended the turn exactly as abruptly as an error would
+// have, and reported it exactly as loudly as one before this existed — which
+// is to say not at all. `d.Reason` travelled on the wire from the first
+// version of this event and was never once read on this side of it.
+//
+// Interrupted is not named here: the person who pressed the key already sees
+// the line clear, and a second notice for the thing they just did is noise.
+// Error is not named here either: the paths that produce it already emit
+// EventSessionError with the actual message, and this would only repeat it
+// less usefully.
+func stopReasonEntry(reason string, rounds, maxRounds int, lang Lang) (Entry, bool) {
+	t := Text(lang)
+	var summary string
+	switch reason {
+	case protocol.StopMaxIterations:
+		summary = fmt.Sprintf(t.TurnStoppedMaxIterations, rounds, maxRounds)
+	case protocol.StopRepeatLoop:
+		summary = t.TurnStoppedRepeatLoop
+	case protocol.StopMaxTokens:
+		summary = t.TurnStoppedMaxTokens
+	default:
+		return Entry{}, false
+	}
+	return Entry{Kind: KindNote, Summary: summary, Expanded: true}, true
+}
+
 func completionEntry(c *protocol.Completion, lang Lang) (Entry, bool) {
 	t := Text(lang)
 	if c == nil {

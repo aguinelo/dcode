@@ -102,6 +102,33 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 	return d
 }
 
+// applyModelRequest resolves a requested model name against configured
+// profiles.
+//
+// A name matching one switches everything it bundles at once — model,
+// family, transport, endpoint, window, iteration ceiling — which is the
+// whole reason a profile is a bundle and not just a friendlier spelling of
+// the model string. A name that matches no profile falls through to the
+// ordinary path: a bare model name, resolved by prefix the way it always
+// was. Pure, and separated from build for the same reason Limits.withFamily
+// is separated from the turn loop: a transformation with no I/O in it is
+// exactly testable without building a session to observe it.
+func applyModelRequest(opts Options, name string) Options {
+	p, ok := opts.Profiles[name]
+	if !ok {
+		opts.Model = name
+		return opts
+	}
+	opts.Model, opts.Family, opts.Transport, opts.BaseURL = p.Model, p.Family, p.Transport, p.BaseURL
+	if p.Window > 0 {
+		opts.Window = p.Window
+	}
+	if p.MaxIterations > 0 {
+		opts.Limits.MaxIterations = p.MaxIterations
+	}
+	return opts
+}
+
 // build creates a session for a request.
 //
 // Each session gets its own sandbox, resolver and provider: a session is the
@@ -123,20 +150,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		cerr         error
 	)
 	if req.Model != "" {
-		// A name matching a configured profile switches everything the
-		// profile bundles at once — model, family, transport, endpoint,
-		// window — which is the whole reason a profile is a bundle and not
-		// just a friendlier spelling of the model string. A name that
-		// matches no profile falls through to the ordinary path: a bare
-		// model name, resolved by prefix the way it always was.
-		if p, ok := opts.Profiles[req.Model]; ok {
-			opts.Model, opts.Family, opts.Transport, opts.BaseURL = p.Model, p.Family, p.Transport, p.BaseURL
-			if p.Window > 0 {
-				opts.Window = p.Window
-			}
-		} else {
-			opts.Model = req.Model
-		}
+		opts = applyModelRequest(opts, req.Model)
 	}
 	if req.Resume != "" {
 		// The record is the only copy of what happened, so continuing means

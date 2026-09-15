@@ -328,11 +328,13 @@ uma vez:
 model = "MiniMax-M3"
 
 [profile.qwen-local]
-model     = "qwen3.5-9b"
-family    = "generic"
-transport = "openai"
-base_url  = "http://192.168.0.149:1234/v1"
-window    = 32000
+model          = "qwen3.5-9b"
+family         = "generic"
+transport      = "openai"
+base_url       = "http://192.168.0.149:1234/v1"
+window         = 32000
+max_iterations = 5000   # generic já usa 5000 por padrão; ajuste aqui pra
+                         # sobrescrever só nesse perfil específico
 ```
 
 `/model qwen-local` dentro de uma sessão em andamento troca o pacote
@@ -342,6 +344,18 @@ não casa com nenhum perfil continua funcionando do jeito de sempre, resolvido
 por prefixo — isso não muda nada pra quem nunca escreveu um perfil.
 `dcode login --profile qwen-local` guarda a chave sob a família do perfil sem
 precisar soletrar qual é.
+
+**Sobre o teto de iterações.** `generic` permite até 5.000 rodadas de
+ferramenta por turno por padrão — erra pro lado do horizonte longo, porque
+`generic` é, mais frequentemente, um modelo local rodado especificamente
+pra fugir de um teto de nuvem, e um teto curto truncava trabalho real de
+código em silêncio. O que de fato defende contra um loop patológico não
+tem relação com esse número: o detector de repetição (`limits.identical`,
+padrão 5) dispara assim que a mesma chamada se repete essa quantidade de
+vezes seguidas, independente de quantas rodadas já rolaram. Se um turno
+terminar antes de concluir — o teto, uma chamada repetida, ou o teto de
+tokens por turno — o cliente agora diz qual, em vez de ficar mudo com o
+contador de rodadas congelado.
 
 ### A fronteira
 

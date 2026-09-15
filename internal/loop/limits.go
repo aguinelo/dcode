@@ -28,7 +28,7 @@ type Limits struct {
 	// ten-file refactor truncates legitimate work on a long-horizon model.
 	MaxIterations int
 	// MaxIdenticalCalls is the real mechanism. A pathological loop shows up in
-	// three repeats, long before any sane iteration cap.
+	// five repeats, long before any sane iteration cap.
 	MaxIdenticalCalls int
 	// MaxTurnTokens is a hard cost ceiling. Zero is unlimited, and that is the
 	// default: cutting mid-turn leaves the workspace half-edited, which is a
@@ -40,7 +40,7 @@ type Limits struct {
 // DefaultLimits returns the documented defaults. MaxIterations stays zero so
 // the family supplies it.
 func DefaultLimits() Limits {
-	return Limits{MaxIdenticalCalls: 3}
+	return Limits{MaxIdenticalCalls: 5}
 }
 
 // withFamily fills anything the caller left unset from the family's defaults.
