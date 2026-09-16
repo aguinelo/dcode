@@ -713,6 +713,43 @@ func TestResumingWithAnExplicitModelOverridesTheCarriedBundle(t *testing.T) {
 	}
 }
 
+// A record from before this feature shipped has a Model and no Family — the
+// exact case that turned "wrong model" into "cannot build at all": applying
+// a local model's bare name with nothing saying which family claims it fails
+// provider resolution outright, with no session and no daemon left to say
+// why. Falling back to Base here is wrong in the same way the bug this
+// feature fixes was wrong, but it builds — and a record this old ages out of
+// retention like any other.
+func TestResumingAnOldRecordWithNoFamilyFallsBackRatherThanFailingToBuild(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"seq":1,"type":"session.created","at":"2026-09-14T12:00:00Z","payload":{"id":"old","workspace":"/w","model":"qwen3.5-9b"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "old.jsonl"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	base := baseOpts(t)
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           base,
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Resume: "old",
+	})
+	if err != nil {
+		t.Fatalf("a Family-less record made the daemon refuse to build at all: %v", err)
+	}
+	defer sess.Close()
+
+	if sess.Model != base.Model {
+		t.Errorf("got model=%q, want the daemon's own default %q since the record named no family to reach %q with",
+			sess.Model, base.Model, "qwen3.5-9b")
+	}
+}
+
 // Asking to continue something that is not there fails loudly. Starting fresh
 // instead would be discovered only once the model had forgotten everything.
 func TestContinuingAMissingSessionIsAnError(t *testing.T) {

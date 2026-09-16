@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 182 changelogs de decisão |
+| famílias de spec | 18, com 183 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,17 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O pacote de uma sessão retomada só se aplica com uma família nele.**
+  Descoberto minutos depois de instalar o fix abaixo: `dcode -c` numa sessão
+  gravada **antes** dele trocou "volta pro default em silêncio" por "recusa
+  construir a sessão inteira" — `no family claims model "qwen3.5-9b"`, e não
+  havia nada ainda escutando pra dizer por quê. Um registro de antes desse
+  fix não tem o campo `family`; aplicar um nome de modelo cru contra nenhuma
+  família falha a resolução do provedor de vez, antes de haver sessão ou
+  daemon pra reportar isso. O pacote só se aplica agora com `Family`
+  presente — um registro sem ele cai pro default do daemon, a mesma resposta
+  errada-mas-funcional que o fix abaixo substitui, em vez de uma construção
+  que não tem como dar certo.
 - **Continuar uma sessão não move mais o modelo dela de volta pro default.**
   Relatado: trocar pra um modelo local com `/model qwen-local`, fechar, e
   `dcode -c` volta pro MiniMax-M3 em vez de continuar no Qwen. `session.created`

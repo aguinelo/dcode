@@ -243,6 +243,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Continuar cria sessão **nova** carregando a conversa; a antiga acabou com o cliente que a rodou.
 - Continuar sessão inexistente falha; nunca começa em branco em silêncio.
 - `CreateSessionRequest.Model` vazio, junto de `Resume`, reconecta ao pacote (`model`, `family`, `transport`, `base_url`, `window`) que a sessão retomada de fato usava — lido do `session.created` dela, não do default do daemon. `Model` presente sempre vence, retomando ou não.
+- O pacote de origem só é aplicado com `family` presente. Um registro sem esse campo — de antes de ele existir — cai pro default do daemon em vez de tentar reconstruir com um modelo sem família nenhuma, o que falharia a construção da sessão inteira.
 - A conversa continuada entra no log da sessão nova atrás de `session.resumed`, com a sequência e o id dela.
 - Ela entra no log **e não no registro**: o registro guarda o marcador, e ler um registro segue a cadeia para trás. Cópia faria cada continuação copiar todas as anteriores.
 - Uma cadeia que aponta para si mesma é lida uma vez e não trava.
@@ -275,3 +276,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202608250100 — A sessão se descreve depois de a conversa entrar](changelog/202608250100-a-sessao-se-descreve-depois.md)
 - [202608251200 — O modo viaja pelo log](changelog/202608251200-o-modo-viaja-pelo-log.md)
 - [202609161500 — O resume carrega o pacote, não só o nome](changelog/202609161500-o-resume-carrega-o-pacote-nao-so-o-nome.md)
+- [202609161700 — Um registro sem família cai pro default em vez de travar](changelog/202609161700-um-registro-sem-familia-cai-pro-default-em-vez-de-travar.md)
