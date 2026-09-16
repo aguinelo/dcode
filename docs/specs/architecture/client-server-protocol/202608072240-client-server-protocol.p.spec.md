@@ -83,6 +83,14 @@ type Session struct {
     State     SessionState `json:"state"`
     Workspace string       `json:"workspace"`  // caminho absoluto, raiz do sandbox
     Model     string       `json:"model"`
+    // Family, Transport e BaseURL são o resto do pacote que um nome de perfil
+    // resolve (202608072334-provider-adapter.p.spec.md §2.2). Vazio == default
+    // da família, a mesma leitura que model.family/model.transport/model.base_url
+    // já dão pra um override ausente. Carregado no session.created pra um
+    // resume poder reconectar no mesmo endpoint em vez de cair no default.
+    Family    string       `json:"family,omitempty"`
+    Transport string       `json:"transport,omitempty"`
+    BaseURL   string       `json:"base_url,omitempty"`
     CreatedAt time.Time    `json:"created_at"`
     LastSeq   uint64       `json:"last_seq"`
     FirstSeq  uint64       `json:"first_seq,omitempty"` // evento mais antigo ainda guardado
@@ -234,6 +242,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Desfazer durante um turno em curso é recusado.
 - Continuar cria sessão **nova** carregando a conversa; a antiga acabou com o cliente que a rodou.
 - Continuar sessão inexistente falha; nunca começa em branco em silêncio.
+- `CreateSessionRequest.Model` vazio, junto de `Resume`, reconecta ao pacote (`model`, `family`, `transport`, `base_url`, `window`) que a sessão retomada de fato usava — lido do `session.created` dela, não do default do daemon. `Model` presente sempre vence, retomando ou não.
 - A conversa continuada entra no log da sessão nova atrás de `session.resumed`, com a sequência e o id dela.
 - Ela entra no log **e não no registro**: o registro guarda o marcador, e ler um registro segue a cadeia para trás. Cópia faria cada continuação copiar todas as anteriores.
 - Uma cadeia que aponta para si mesma é lida uma vez e não trava.
@@ -265,3 +274,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202608181900 — Continuar mostra o que carrega](changelog/202608181900-continuar-mostra-o-que-carrega.md)
 - [202608250100 — A sessão se descreve depois de a conversa entrar](changelog/202608250100-a-sessao-se-descreve-depois.md)
 - [202608251200 — O modo viaja pelo log](changelog/202608251200-o-modo-viaja-pelo-log.md)
+- [202609161500 — O resume carrega o pacote, não só o nome](changelog/202609161500-o-resume-carrega-o-pacote-nao-so-o-nome.md)

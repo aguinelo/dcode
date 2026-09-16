@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 180 changelogs de decisão |
+| famílias de spec | 18, com 182 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,18 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Continuar uma sessão não move mais o modelo dela de volta pro default.**
+  Relatado: trocar pra um modelo local com `/model qwen-local`, fechar, e
+  `dcode -c` volta pro MiniMax-M3 em vez de continuar no Qwen. `session.created`
+  gravava só `Model` — nunca `Family`, `Transport` ou `BaseURL` — e `dcode
+  -c`/`dcode -r` sempre mandavam `model.name` resolvido na máquina que digitou
+  o comando, ignorando o que a sessão retomada de fato usava.
+  `protocol.Session` agora carrega o pacote inteiro que um perfil resolve; um
+  resume sem modelo explícito no pedido lê de volta do registro
+  (`session.Origin`) e reconecta no mesmo endpoint em vez do default. O
+  cliente só omite o modelo ao retomar E `model.name` veio só do default
+  embutido (proveniência do próprio `config.Resolved`) — uma flag, variável de
+  ambiente ou config.toml dessa execução continua ganhando, retomando ou não.
 - **`/lang` troca o idioma da interface ao vivo.** A interface bilíngue
   (inglês/pt-BR, `internal/tui/lang.go`) e a regra da doutrina que responde
   na língua de quem escreveu já existiam; faltava um jeito de trocar sem

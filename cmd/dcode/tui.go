@@ -120,7 +120,7 @@ func runTUI(args []string) error {
 	if sessionID == "" {
 		sess, err = c.CreateSession(ctx, protocol.CreateSessionRequest{
 			Workspace:   ws,
-			Model:       opts.Model,
+			Model:       modelOverride(opts.Model, resolved, carry),
 			SandboxMode: string(opts.SandboxMode),
 			Resume:      carry,
 		})
@@ -160,6 +160,29 @@ func runTUI(args []string) error {
 		Notice: versionNotice,
 		Update: updater,
 	})
+}
+
+// modelOverride is the model to request, or empty to let a resumed session
+// keep its own.
+//
+// Not resuming: there is nothing to keep, so the effective value always
+// applies. Resuming and model.name came from something a person actually
+// said this run — a flag, an env var, a project or user config.toml — that
+// still means what it always meant: use this model. Resuming and model.name
+// is only the built-in default is the one case this exists for: nobody typed
+// anything about the model, so `dcode -c` on a session that had switched to a
+// local endpoint must not silently move it back to whatever the default
+// happens to be. The daemon reads the resumed record's own bundle instead
+// (internal/app/daemon.go, Daemon.build), which is what remembers `qwen-local`
+// without this needing to.
+func modelOverride(model string, resolved config.Resolved, carry string) string {
+	if carry == "" {
+		return model
+	}
+	if v, ok := resolved.Get("model.name"); ok && v.Source == config.SourceDefault {
+		return ""
+	}
+	return model
 }
 
 // geometry reads the terminal once. Built here rather than in the client for

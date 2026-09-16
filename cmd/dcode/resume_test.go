@@ -136,3 +136,43 @@ func TestTheLanguageIsResolvedAtTheEdge(t *testing.T) {
 		t.Errorf("the environment gave %q", got)
 	}
 }
+
+// Not resuming: the effective model always applies, whatever its source —
+// there is no carried bundle to defer to.
+func TestModelOverrideAppliesOutsideAResume(t *testing.T) {
+	r := config.Resolve([]config.Layer{{
+		Source: config.SourceDefault, Origin: "built-in",
+		Values: map[string]string{"model.name": "MiniMax-M3"},
+	}})
+	if got := modelOverride("MiniMax-M3", r, ""); got != "MiniMax-M3" {
+		t.Errorf("got %q", got)
+	}
+}
+
+// Resuming, and nobody said anything about the model this run: the request
+// carries no model, so the daemon falls back to the bundle the resumed
+// session actually used instead of silently moving it to the built-in
+// default. Reported: switching to a local model, then `dcode -c`, landed
+// back on the cloud default.
+func TestModelOverrideDefersToTheCarriedSessionWhenNothingWasSaid(t *testing.T) {
+	r := config.Resolve([]config.Layer{{
+		Source: config.SourceDefault, Origin: "built-in",
+		Values: map[string]string{"model.name": "MiniMax-M3"},
+	}})
+	if got := modelOverride("MiniMax-M3", r, "old-session-id"); got != "" {
+		t.Errorf("got %q, want empty so the daemon restores the resumed session's own bundle", got)
+	}
+}
+
+// Resuming, and this run DID say something about the model — a flag, an env
+// var, a project or user config.toml. That still means what it always meant:
+// use this model, carried bundle or not.
+func TestModelOverrideStillWinsWhenExplicitlySetDuringAResume(t *testing.T) {
+	r := config.Resolve([]config.Layer{{
+		Source: config.SourceEnv, Origin: "DCODE_MODEL",
+		Values: map[string]string{"model.name": "claude-5"},
+	}})
+	if got := modelOverride("claude-5", r, "old-session-id"); got != "claude-5" {
+		t.Errorf("got %q, want the explicit choice to win over the carried bundle", got)
+	}
+}

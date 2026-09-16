@@ -167,11 +167,21 @@ func (s SessionState) Valid() bool {
 // Session is the server-owned session record. Clients hold no session state of
 // their own beyond scroll position, panel visibility and their input queue.
 type Session struct {
-	ID          string       `json:"id"`
-	State       SessionState `json:"state"`
-	Workspace   string       `json:"workspace"`
-	Model       string       `json:"model"`
-	SandboxMode string       `json:"sandbox_mode"`
+	ID        string       `json:"id"`
+	State     SessionState `json:"state"`
+	Workspace string       `json:"workspace"`
+	Model     string       `json:"model"`
+	// Family, Transport and BaseURL are the rest of the bundle a name like
+	// `qwen-local` resolves to (202608072334-provider-adapter.p.spec.md §2.2).
+	// Carried so a resumed session can reconnect to the same endpoint rather
+	// than falling back to whatever `model.name` resolves to on the machine
+	// that types `dcode -c` — empty means the family's own default, the same
+	// reading `model.family`/`model.transport`/`model.base_url` already give
+	// an unset override.
+	Family      string `json:"family,omitempty"`
+	Transport   string `json:"transport,omitempty"`
+	BaseURL     string `json:"base_url,omitempty"`
+	SandboxMode string `json:"sandbox_mode"`
 	// Mode is the behavioural mode the session runs under: plan, assist or
 	// auto. Defaults to assist when the request does not set it. SandboxMode is
 	// the technical consequence; Mode is the name the user picks.
