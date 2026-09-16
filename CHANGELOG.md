@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 182 decision changelogs |
+| spec families | 18, with 183 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,17 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A resumed session's own bundle only applies with a family in it.**
+  Found minutes after shipping the fix below: `dcode -c` on a session
+  recorded *before* it went from "silently moves the model back to the
+  default" to "refuses to build the session at all" —
+  `no family claims model "qwen3.5-9b"`, and nothing was listening yet to
+  report why. A record from before that fix has no `family` field; applying
+  a bare model name against no family fails provider resolution outright,
+  before there is a session or a daemon left to say so. The bundle now only
+  applies with `Family` present — a record missing it falls back to the
+  daemon's own default, the same wrong-but-working answer the fix below
+  replaces, rather than a build that cannot succeed.
 - **Continuing a session no longer moves its model back to the default.**
   Reported: switch to a local model with `/model qwen-local`, close, and
   `dcode -c` lands back on MiniMax-M3 rather than staying on Qwen.

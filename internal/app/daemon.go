@@ -181,8 +181,18 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		// on whatever machine typed `dcode -c`, which is whatever the config
 		// chain happens to default to and, for a session that had switched to
 		// a local endpoint, is not that endpoint.
+		//
+		// Family is required, not just Model. A record from before this field
+		// existed has an empty one — restoring only Model against a Family no
+		// family in the registry claims (a local model's bare name, "qwen3.5-9b"
+		// with nothing saying it is generic) turns a session that could not be
+		// carried into a session that cannot be BUILT: build fails outright,
+		// and there was no daemon left to tell the person why. Falling through
+		// to Base here is the same answer this whole feature replaces — but
+		// wrong-and-recoverable beats crashed, and a record from before this
+		// shipped ages out of retention like any other.
 		if req.Model == "" {
-			if origin, oerr := session.Origin(path); oerr == nil && origin.Model != "" {
+			if origin, oerr := session.Origin(path); oerr == nil && origin.Model != "" && origin.Family != "" {
 				opts.Model, opts.Family, opts.Transport, opts.BaseURL = origin.Model, origin.Family, origin.Transport, origin.BaseURL
 				if origin.ContextWindow > 0 {
 					opts.Window = origin.ContextWindow
