@@ -227,6 +227,7 @@ var tuiInvariants = map[string]string{
 	"sair sem escolher":                "TestChoosingReturnsTheOneUnderTheCursorAndCancellingReturnsNothing",
 	"não oferece sessão em que nada":   "TestThePickListLeavesOutSessionsNobodyAskedAnythingIn",
 	"`-c` continua a última":           "TestResumeAsksAndContinueTakesTheLast",
+	"reconecta ao **pacote**":          "TestModelOverrideDefersToTheCarriedSessionWhenNothingWasSaid",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

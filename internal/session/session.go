@@ -17,9 +17,16 @@ import (
 // killing, restarting or swapping a client does not touch a session, and a turn
 // in flight continues with zero clients attached.
 type Session struct {
-	ID            string
-	Workspace     string
-	Model         string
+	ID        string
+	Workspace string
+	Model     string
+	// Family, Transport and BaseURL are the rest of the bundle Model came
+	// from — set by the daemon alongside ContextWindow, for the same reason:
+	// Describe() and the session.created record need to carry more than the
+	// bare model name for a resume to reconnect to the same endpoint.
+	Family        string
+	Transport     string
+	BaseURL       string
 	Mode          string
 	behaviourMode string
 	CreatedAt     time.Time
@@ -138,6 +145,7 @@ func (s *Session) Describe() protocol.Session {
 	}
 	return protocol.Session{
 		ID: s.ID, State: state, Workspace: s.Workspace, Model: s.Model,
+		Family: s.Family, Transport: s.Transport, BaseURL: s.BaseURL,
 		SandboxMode: sandbox, Mode: behaviour,
 		CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
 		FirstSeq:      s.Log.FirstSeq(),

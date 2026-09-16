@@ -175,6 +175,20 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 				"session %s cannot be continued: %v", req.Resume, cerr)
 		}
 		carriedFrom, carriedTurns = req.Resume, turns
+		// An explicit model in the request always wins (handled above, before
+		// this block runs). Otherwise the session being continued reconnects
+		// to the bundle IT was built with — not to model.name resolved fresh
+		// on whatever machine typed `dcode -c`, which is whatever the config
+		// chain happens to default to and, for a session that had switched to
+		// a local endpoint, is not that endpoint.
+		if req.Model == "" {
+			if origin, oerr := session.Origin(path); oerr == nil && origin.Model != "" {
+				opts.Model, opts.Family, opts.Transport, opts.BaseURL = origin.Model, origin.Family, origin.Transport, origin.BaseURL
+				if origin.ContextWindow > 0 {
+					opts.Window = origin.ContextWindow
+				}
+			}
+		}
 	}
 	if req.LoopSpec != "" {
 		// Resolved under the workspace, and refused if it climbs out. A spec
@@ -255,6 +269,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
 		appSession.Engine, log, time.Now)
 	sess.ContextWindow = appSession.ContextWindow
+	sess.Family, sess.Transport, sess.BaseURL = opts.Family, opts.Transport, opts.BaseURL
 	// What makes `/mode` reach the model rather than only the sandbox.
 	sess.Reprompt = appSession.Reprompt
 	sess.Carried, sess.CarriedFrom, sess.CarriedTurns = carried, carriedFrom, carriedTurns

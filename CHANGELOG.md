@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 180 decision changelogs |
+| spec families | 18, with 182 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Continuing a session no longer moves its model back to the default.**
+  Reported: switch to a local model with `/model qwen-local`, close, and
+  `dcode -c` lands back on MiniMax-M3 rather than staying on Qwen.
+  `session.created` recorded only `Model` — never `Family`, `Transport` or
+  `BaseURL` — and `dcode -c`/`dcode -r` always sent `model.name` as resolved
+  on the machine typing the command, ignoring what the resumed session
+  actually used. `protocol.Session` now carries the whole bundle a profile
+  resolves to; a resume with no explicit model in the request reads it back
+  from the record (`session.Origin`) and reconnects to the same endpoint
+  instead of the default. The client only omits the model when resuming AND
+  `model.name` came from nothing stronger than the built-in default
+  (`config.Resolved`'s own provenance) — a flag, env var or config.toml this
+  run still wins, resuming or not.
 - **`/lang` switches the interface language live.** The bilingual interface
   (English/pt-BR, `internal/tui/lang.go`) and the doctrine rule that answers
   in whatever language the person wrote in already existed; what was missing

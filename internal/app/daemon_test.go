@@ -645,6 +645,74 @@ func TestContinuingASessionCarriesItsConversation(t *testing.T) {
 	}
 }
 
+// A resume with no model of its own reconnects to the endpoint the resumed
+// session actually used — not to whatever model.name resolves to on the
+// machine that typed the resume. Reported: switching to a local model via
+// /model, then continuing with `dcode -c`, silently landed back on the
+// cloud default.
+func TestResumingWithNoModelRestoresTheSessionsOwnBundle(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"seq":1,"type":"session.created","at":"2026-09-16T12:00:00Z","payload":{"id":"old","workspace":"/w","model":"qwen3.5-9b","family":"generic","transport":"openai","base_url":"http://192.168.0.149:1234/v1","context_window":32000}}
+{"seq":2,"type":"turn.started","at":"2026-09-16T12:00:01Z","payload":{"turn_id":"t1","text":"hi"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "old.jsonl"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           baseOpts(t),
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Resume: "old",
+	})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	defer sess.Close()
+
+	if sess.Model != "qwen3.5-9b" || sess.Family != "generic" ||
+		sess.Transport != "openai" || sess.BaseURL != "http://192.168.0.149:1234/v1" {
+		t.Errorf("got model=%q family=%q transport=%q base_url=%q, want the resumed session's own bundle",
+			sess.Model, sess.Family, sess.Transport, sess.BaseURL)
+	}
+}
+
+// A model named on the request still wins over the resumed session's own
+// bundle — a deliberate `/model` (or `--model`, or DCODE_MODEL) during a
+// resume is not the case this exists for.
+func TestResumingWithAnExplicitModelOverridesTheCarriedBundle(t *testing.T) {
+	dir := t.TempDir()
+	body := `{"seq":1,"type":"session.created","at":"2026-09-16T12:00:00Z","payload":{"id":"old","workspace":"/w","model":"qwen3.5-9b","family":"generic","transport":"openai","base_url":"http://192.168.0.149:1234/v1"}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "old.jsonl"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath:     filepath.Join(t.TempDir(), "d.sock"),
+		EventRetention: 10000,
+		RecordDir:      dir,
+		Base:           baseOpts(t),
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{
+		Workspace: t.TempDir(), Model: "MiniMax-M3", Resume: "old",
+	})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	defer sess.Close()
+
+	if sess.Model != "MiniMax-M3" || sess.Family != "" || sess.Transport != "" || sess.BaseURL != "" {
+		t.Errorf("got model=%q family=%q transport=%q base_url=%q, want the explicit request to win",
+			sess.Model, sess.Family, sess.Transport, sess.BaseURL)
+	}
+}
+
 // Asking to continue something that is not there fails loudly. Starting fresh
 // instead would be discovered only once the model had forgotten everything.
 func TestContinuingAMissingSessionIsAnError(t *testing.T) {
