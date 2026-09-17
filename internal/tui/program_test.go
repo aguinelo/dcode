@@ -868,6 +868,51 @@ func TestEventsFoldIntoTheModelAndAStreamErrorQuits(t *testing.T) {
 	}
 }
 
+// An embedded daemon dying on its own — nobody here asked it to stop — must
+// reach the screen, not leave the person staring at a session that will never
+// answer again. AGENTS.md: "every failure fails explicitly."
+func TestAnEmbeddedDaemonDyingOnItsOwnEndsTheProgram(t *testing.T) {
+	failed := make(chan error, 1)
+	failed <- errors.New("listener closed unexpectedly")
+	p, _ := newProgram(t, func(o *Options) { o.DaemonFailed = failed })
+
+	msg := run(t, p, p.watchDaemon())
+	em, ok := msg.(errMsg)
+	if !ok {
+		t.Fatalf("got %T, want errMsg", msg)
+	}
+	_, cmd := p.Update(em)
+	if _, ok := run(t, p, cmd).(tea.QuitMsg); !ok {
+		t.Error("the daemon dying on its own must end the program")
+	}
+	if !strings.Contains(p.View().Content, "listener closed unexpectedly") {
+		t.Errorf("the reason must be visible:\n%s", p.View().Content)
+	}
+}
+
+// Attached to a daemon this client did not start (`--socket`, or an
+// already-running `dcode serve`), there is no channel to watch: that daemon
+// outliving this client is the point, not a failure of this client's to
+// report. Init must not schedule a command that blocks forever on a nil
+// channel.
+func TestNoDaemonWatchIsScheduledWithoutAnEmbeddedOne(t *testing.T) {
+	p, _ := newProgram(t)
+	if p.opts.DaemonFailed != nil {
+		t.Fatal("setup: expected no DaemonFailed channel")
+	}
+	// Counted rather than invoked: watchDaemon() receiving on a nil channel
+	// blocks forever by Go's own rules, so running every command Init
+	// returns would hang this test the same way it would hang the program —
+	// which is exactly the bug this guards against, not a way to detect it.
+	batch, ok := p.Init()().(tea.BatchMsg)
+	if !ok {
+		t.Fatalf("got %T, want tea.BatchMsg", batch)
+	}
+	if len(batch) != 2 {
+		t.Errorf("got %d command(s), want 2 (waitForEvent, tick) — no daemon to watch, so nothing scheduled to watch it", len(batch))
+	}
+}
+
 func TestSubmitFailureSurfacesAsAFatalMessage(t *testing.T) {
 	p, tr := newProgram(t)
 	tr.submitErr = errors.New("daemon went away")

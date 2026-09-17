@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/session"
@@ -174,5 +177,53 @@ func TestModelOverrideStillWinsWhenExplicitlySetDuringAResume(t *testing.T) {
 	}})
 	if got := modelOverride("claude-5", r, "old-session-id"); got != "claude-5" {
 		t.Errorf("got %q, want the explicit choice to win over the carried bundle", got)
+	}
+}
+
+// An ordinary shutdown — ctx cancelled, serve honours it and returns nil, its
+// own contract for "this is the exit you asked for" — reports nothing. A
+// silently discarded error here is exactly the failure AGENTS.md's "every
+// failure fails explicitly" rule exists to rule out for an embedded daemon
+// dying with the TUI still attached to it.
+func TestWatchServeReportsNothingForAnOrdinaryShutdown(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	failed, done := watchServe(ctx, func(ctx context.Context) error {
+		close(started)
+		<-ctx.Done()
+		return nil
+	})
+	<-started
+	cancel()
+	<-done
+
+	select {
+	case err := <-failed:
+		t.Fatalf("an ordinary shutdown reported a failure: %v", err)
+	default:
+	}
+}
+
+// serve returning a real error — the daemon exiting on its own, not because
+// anything here asked it to — is reported, so a client attached to a daemon
+// that just disappeared finds out rather than sitting in front of a session
+// that will never answer again.
+func TestWatchServeReportsAnUnaskedForExit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	boom := errors.New("boom")
+
+	failed, done := watchServe(ctx, func(ctx context.Context) error {
+		return boom
+	})
+	<-done
+
+	select {
+	case err := <-failed:
+		if !errors.Is(err, boom) {
+			t.Errorf("got %v, want %v", err, boom)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("an unasked-for exit was not reported")
 	}
 }

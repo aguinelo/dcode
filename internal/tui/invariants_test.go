@@ -38,6 +38,7 @@ var tuiInvariants = map[string]string{
 	"primeiro campo entregue quando":              "TestTheBuildIsTheFirstFieldToGo",
 	"não encerra o cliente, e não rearma":         "TestAReplacedStreamEndingDoesNotQuitTheClient",
 	"descartado em vez de desenhado":              "TestAnEventFromAReplacedStreamIsDropped",
+	"morrendo sozinho":                            "TestAnEmbeddedDaemonDyingOnItsOwnEndsTheProgram",
 	"não some ao terminal alargar":                "TestThePathDoesNotVanishAsTheTerminalWidens",
 	"cabe numa linha em toda largura":             "TestTheBarNeverOutgrowsTheTerminal",
 	"título da janela é o **nome da sessão**":     "TestTheWindowTitleIsTheSessionName",
