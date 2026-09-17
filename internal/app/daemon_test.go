@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -642,6 +643,38 @@ func TestContinuingASessionCarriesItsConversation(t *testing.T) {
 
 	if sess.ID == "old" {
 		t.Error("continuing reopened the old session rather than starting one that carries it")
+	}
+}
+
+// A session built in a repository reports its branch on the wire, not only
+// in the prompt the model reads — the status bar needs the same fact the
+// model got, and needs it without reading git itself.
+func TestASessionBuiltInARepositoryDescribesItsBranch(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	ws := t.TempDir()
+	gitIn(t, ws, "init", "-q", "-b", "feat/branch-on-the-wire")
+	gitIn(t, ws, "config", "user.email", "t@example.com")
+	gitIn(t, ws, "config", "user.name", "T")
+	gitIn(t, ws, "config", "commit.gpgsign", "false")
+	writeIn(t, ws, "a.txt", "one\n")
+	gitIn(t, ws, "add", "a.txt")
+	gitIn(t, ws, "commit", "-qm", "init")
+
+	d := NewDaemon(DaemonOptions{
+		SocketPath: filepath.Join(t.TempDir(), "d.sock"),
+		Base:       baseOpts(t),
+	})
+
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: ws})
+	if err != nil {
+		t.Skipf("a session cannot be built here: %v", err)
+	}
+	defer sess.Close()
+
+	if got := sess.Describe().Branch; got != "feat/branch-on-the-wire" {
+		t.Errorf("got %q", got)
 	}
 }
 

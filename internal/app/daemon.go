@@ -280,6 +280,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		appSession.Engine, log, time.Now)
 	sess.ContextWindow = appSession.ContextWindow
 	sess.Family, sess.Transport, sess.BaseURL = opts.Family, opts.Transport, opts.BaseURL
+	sess.Branch = appSession.Branch
 	// What makes `/mode` reach the model rather than only the sandbox.
 	sess.Reprompt = appSession.Reprompt
 	sess.Carried, sess.CarriedFrom, sess.CarriedTurns = carried, carriedFrom, carriedTurns

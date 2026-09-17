@@ -85,6 +85,46 @@ func TestTheDiffGivesGroundBeforeTheWorktreeDoes(t *testing.T) {
 	}
 }
 
+// The branch draws when the session has one, and dissolves without a trace
+// when it does not — no repository, git not installed, or a detached head
+// are all "nothing to say", not an empty badge.
+func TestTheBranchDrawsWhenThereIsOneAndVanishesWhenThereIsNot(t *testing.T) {
+	m := barModel()
+	m.Branch = "feat/status-bar-shows-branch"
+	out := RenderStatusBar(m, DefaultGeometry(120, 24))
+	if !strings.Contains(out, "feat/status-bar-shows-branch") {
+		t.Fatalf("the branch is missing on a wide terminal:\n%q", out)
+	}
+
+	m.Branch = ""
+	out = RenderStatusBar(m, DefaultGeometry(120, 24))
+	// Exactly one "⎇": the worktree's own, unconditional mark. A second one
+	// would mean an empty branch still drew something.
+	if n := strings.Count(out, "⎇"); n != 1 {
+		t.Errorf("got %d branch-shaped mark(s) with no branch to show, want 1 (the worktree's):\n%q", n, out)
+	}
+}
+
+// The branch is the most expendable fact on the bar — a line of work, easily
+// asked again elsewhere — so it gives way before the worktree, which answers
+// "where am I" and nowhere else.
+func TestTheBranchGivesGroundBeforeTheWorktreeDoes(t *testing.T) {
+	m := barModel()
+	m.Branch = "a-rather-long-branch-name-for-this-test"
+	wide := RenderStatusBar(m, DefaultGeometry(120, 24))
+	if !strings.Contains(wide, m.Branch) {
+		t.Fatalf("the branch is missing on a wide terminal:\n%q", wide)
+	}
+
+	narrow := RenderStatusBar(m, DefaultGeometry(28, 24))
+	if strings.Contains(narrow, m.Branch) {
+		t.Errorf("the branch survived a terminal too narrow for it:\n%q", narrow)
+	}
+	if !strings.Contains(narrow, "checkout") {
+		t.Errorf("the worktree was dropped before the branch:\n%q", narrow)
+	}
+}
+
 // A session that has changed nothing has no diff to report, and reporting
 // `+0 −0` would be noise dressed as information.
 func TestASessionThatChangedNothingShowsNoDiff(t *testing.T) {

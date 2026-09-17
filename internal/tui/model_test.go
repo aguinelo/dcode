@@ -28,6 +28,30 @@ func apply(t *testing.T, m Model, evs ...protocol.Event) Model {
 	return m
 }
 
+// session.created carries the branch the same way it carries the model and
+// the sandbox mode — read once by Apply, never by this package going to git
+// itself.
+func TestSessionCreatedCarriesTheBranch(t *testing.T) {
+	m := apply(t, NewModel("", "", "", "", En),
+		ev(t, 1, protocol.EventSessionCreated, protocol.Session{Branch: "main"}),
+	)
+	if m.Branch != "main" {
+		t.Errorf("got %q", m.Branch)
+	}
+}
+
+// A workspace with no repository, or a session from before Branch existed on
+// the wire, has nothing to draw — empty, not a stale value carried over from
+// a model that never saw this field cleared.
+func TestSessionCreatedWithNoBranchLeavesNoneToDraw(t *testing.T) {
+	m := apply(t, NewModel("", "", "", "", En),
+		ev(t, 1, protocol.EventSessionCreated, protocol.Session{}),
+	)
+	if m.Branch != "" {
+		t.Errorf("got %q, want empty", m.Branch)
+	}
+}
+
 // The same sequence of events always produces the same model. That is what
 // makes reattaching to a session indistinguishable from having watched it live.
 func TestApplyIsAPureReducer(t *testing.T) {

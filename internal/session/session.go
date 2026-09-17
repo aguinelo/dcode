@@ -24,9 +24,14 @@ type Session struct {
 	// from — set by the daemon alongside ContextWindow, for the same reason:
 	// Describe() and the session.created record need to carry more than the
 	// bare model name for a resume to reconnect to the same endpoint.
-	Family        string
-	Transport     string
-	BaseURL       string
+	Family    string
+	Transport string
+	BaseURL   string
+	// Branch is the git branch the workspace was on when this session was
+	// built. Set alongside Family/Transport/BaseURL, for the same reason:
+	// Describe() carries it so the status bar can draw it without this
+	// package — or the client — ever reading git itself.
+	Branch        string
 	Mode          string
 	behaviourMode string
 	CreatedAt     time.Time
@@ -145,7 +150,7 @@ func (s *Session) Describe() protocol.Session {
 	}
 	return protocol.Session{
 		ID: s.ID, State: state, Workspace: s.Workspace, Model: s.Model,
-		Family: s.Family, Transport: s.Transport, BaseURL: s.BaseURL,
+		Family: s.Family, Transport: s.Transport, BaseURL: s.BaseURL, Branch: s.Branch,
 		SandboxMode: sandbox, Mode: behaviour,
 		CreatedAt: s.CreatedAt, LastSeq: s.Log.LastSeq(),
 		FirstSeq:      s.Log.FirstSeq(),

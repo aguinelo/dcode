@@ -91,6 +91,10 @@ type Session struct {
     Family    string       `json:"family,omitempty"`
     Transport string       `json:"transport,omitempty"`
     BaseURL   string       `json:"base_url,omitempty"`
+    // Branch é a branch git do workspace na construção da sessão, lida uma
+    // vez pelo mesmo vcs.Read que já monta o prompt. Vazio == sem
+    // repositório, git ausente, ou HEAD destacado.
+    Branch    string       `json:"branch,omitempty"`
     CreatedAt time.Time    `json:"created_at"`
     LastSeq   uint64       `json:"last_seq"`
     FirstSeq  uint64       `json:"first_seq,omitempty"` // evento mais antigo ainda guardado
@@ -244,6 +248,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Continuar sessão inexistente falha; nunca começa em branco em silêncio.
 - `CreateSessionRequest.Model` vazio, junto de `Resume`, reconecta ao pacote (`model`, `family`, `transport`, `base_url`, `window`) que a sessão retomada de fato usava — lido do `session.created` dela, não do default do daemon. `Model` presente sempre vence, retomando ou não.
 - O pacote de origem só é aplicado com `family` presente. Um registro sem esse campo — de antes de ele existir — cai pro default do daemon em vez de tentar reconstruir com um modelo sem família nenhuma, o que falharia a construção da sessão inteira.
+- `Session.Branch` é lido uma vez, na construção — o mesmo `vcs.Read` que já monta o prompt — e nunca de novo: duas leituras de git numa sessão só podem discordar. Não faz parte do pacote de modelo (`Family`/`Transport`/`BaseURL`) nem é restaurado num resume — é um fato do workspace, não do modelo, e a sessão nova de um resume lê o seu próprio.
 - A conversa continuada entra no log da sessão nova atrás de `session.resumed`, com a sequência e o id dela.
 - Ela entra no log **e não no registro**: o registro guarda o marcador, e ler um registro segue a cadeia para trás. Cópia faria cada continuação copiar todas as anteriores.
 - Uma cadeia que aponta para si mesma é lida uma vez e não trava.
@@ -277,3 +282,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202608251200 — O modo viaja pelo log](changelog/202608251200-o-modo-viaja-pelo-log.md)
 - [202609161500 — O resume carrega o pacote, não só o nome](changelog/202609161500-o-resume-carrega-o-pacote-nao-so-o-nome.md)
 - [202609161700 — Um registro sem família cai pro default em vez de travar](changelog/202609161700-um-registro-sem-familia-cai-pro-default-em-vez-de-travar.md)
+- [202609172000 — `Session` carrega a branch](changelog/202609172000-session-carrega-a-branch.md)

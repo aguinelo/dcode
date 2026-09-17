@@ -66,6 +66,9 @@ type Options struct {
 	Workspace string
 	Model     string
 	Sandbox   string
+	// Branch is the git branch the workspace was on when this session was
+	// built, resolved once daemon-side. Empty when there is none to draw.
+	Branch string
 	// Window is the model's context window, so a token count can become the
 	// percentage a person can act on.
 	Window int
@@ -236,6 +239,7 @@ func Run(ctx context.Context, opts Options) error {
 	}
 	p.cancel = cancel
 	p.model.Window = opts.Window
+	p.model.Branch = opts.Branch
 	p.model.Now = p.now()
 	p.attach(opts.SessionID)
 

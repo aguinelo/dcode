@@ -178,9 +178,15 @@ type Session struct {
 	// that types `dcode -c` — empty means the family's own default, the same
 	// reading `model.family`/`model.transport`/`model.base_url` already give
 	// an unset override.
-	Family      string `json:"family,omitempty"`
-	Transport   string `json:"transport,omitempty"`
-	BaseURL     string `json:"base_url,omitempty"`
+	Family    string `json:"family,omitempty"`
+	Transport string `json:"transport,omitempty"`
+	BaseURL   string `json:"base_url,omitempty"`
+	// Branch is the git branch the workspace was on when this session was
+	// built, frozen at that moment like the rest of the session's facts.
+	// Empty when the workspace has no repository, git is not installed, or
+	// the head is detached — the status bar draws nothing for it then, the
+	// same reading "no data" already gets everywhere else on that bar.
+	Branch      string `json:"branch,omitempty"`
 	SandboxMode string `json:"sandbox_mode"`
 	// Mode is the behavioural mode the session runs under: plan, assist or
 	// auto. Defaults to assist when the request does not set it. SandboxMode is

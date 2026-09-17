@@ -470,6 +470,12 @@ type Session struct {
 	// so the daemon attaches the same record the sandbox is asking, rather than
 	// loading a second copy that could answer differently.
 	Standing *StandingGrants
+	// Branch is the git branch this session's workspace was on when it was
+	// built — from the same vcs.Read the prompt already reads, frozen at the
+	// same moment and for the same reason (RN above: two readings of git in
+	// one session can disagree). Empty when the workspace has no repository,
+	// git is not installed, or the head is detached.
+	Branch string
 }
 
 // New wires a session.
@@ -764,6 +770,11 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 			foreignFiles(opts.InstructionForeign), registry.Names())
 	}
 
+	var branch string
+	if repo != nil {
+		branch = repo.Branch
+	}
+
 	return &Session{
 		Engine: engine, Registry: registry, State: state, Prompt: prompt, Options: opts,
 		Reprompt:       reprompt,
@@ -774,6 +785,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Origins:        overlay.Origins(),
 		DoctrineNotice: append(overlayNotices, safetyNotices...),
 		SkillNotice:    skillNotices,
+		Branch:         branch,
 	}, nil
 }
 
