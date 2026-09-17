@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 184 changelogs de decisão |
+| famílias de spec | 18, com 185 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,21 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma regra de projeto: toda falha falha explícito, com aviso visível** —
+  falha de LLM, timeout, beco sem saída que o código não consegue passar, ou
+  erro interno (`AGENTS.md`). O primeiro caso que ela pegou: um daemon
+  embutido do `dcode` morrendo sozinho deixava o cliente falhando toda
+  chamada seguinte contra um socket que ninguém mais responde, sem nunca
+  dizer por quê — indistinguível de uma resposta lenta até a pessoa desistir.
+  O erro do `Serve` era descartado (`_ = d.Serve(serveCtx)`) mesmo já
+  devolvendo `nil` pra um encerramento pedido e o erro de verdade pra
+  qualquer outra saída. `watchServe`, extraída pra o contrato ficar testável
+  contra um `serve` falso em vez de só derrubando um daemon de verdade, agora
+  encaminha esse erro pro cliente, que encerra o programa com o motivo na
+  tela normal — o mesmo caminho que uma conexão remota derrubada já usava.
+  Anexado a um daemon que este cliente não abriu (`--socket`, ou um `dcode
+  serve` já rodando), nada observa a saída dele: esse daemon sobreviver ao
+  cliente é o esperado.
 - **`fetch` liga por default.** Pedido: acesso à rede já devia ser tão livre
   quanto escrita, com restrição só onde escrita já tem uma. Investigando,
   metade já era verdade: `sandbox.allow_network` já é `true` por default, e

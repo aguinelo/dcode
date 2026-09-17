@@ -129,6 +129,19 @@ type Options struct {
 	// Now is the clock for elapsed time. Injected so a test can assert an
 	// exact duration instead of sleeping for one.
 	Now func() time.Time
+
+	// DaemonFailed reports a daemon this client embedded dying on its own —
+	// not this program asking it to stop. Nil when attached to a daemon
+	// someone else owns (`--socket`, or an already-running `dcode serve`):
+	// that daemon outliving this client is the point, so its exit is not
+	// this client's failure to report.
+	//
+	// Without this, an embedded daemon crashing left every subsequent request
+	// failing against a socket nothing answers on — indistinguishable from a
+	// slow response until the person gave up and quit, having never been told
+	// why. A dead end reached in the code is exactly the kind of failure that
+	// must reach the screen, not just the process's exit code nobody reads.
+	DaemonFailed <-chan error
 }
 
 type program struct {
@@ -308,7 +321,27 @@ func (p *program) Init() tea.Cmd {
 	if p.opts.Notice != nil {
 		cmds = append(cmds, p.checkVersion())
 	}
+	if p.opts.DaemonFailed != nil {
+		cmds = append(cmds, p.watchDaemon())
+	}
 	return tea.Batch(cmds...)
+}
+
+// watchDaemon reports the one failure nothing else here can see: the embedded
+// daemon dying on its own, mid-session, with nobody having asked it to.
+//
+// gen 0 so fromCurrentStream treats it as current by definition — this has
+// nothing to do with which session's event stream is live, and tagging it
+// into that generation scheme would make a daemon crash look like it belongs
+// to whichever session happened to be attached when it happened.
+func (p *program) watchDaemon() tea.Cmd {
+	return func() tea.Msg {
+		err, ok := <-p.opts.DaemonFailed
+		if !ok || err == nil {
+			return nil
+		}
+		return errMsg{err: fmt.Errorf("the daemon stopped on its own: %w", err)}
+	}
 }
 
 // tickInterval is the animation rate: fast enough to read as motion, slow

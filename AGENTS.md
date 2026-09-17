@@ -21,6 +21,11 @@ of the tool that has it.
   under git and GitHub convention; a tool is the facilitator, not a co-author.
 - Keep files under 500 lines
 - Validate input at system boundaries
+- Every failure fails explicitly, with a visible warning — an LLM failure, a
+  timeout, a dead end the code cannot get past, or an internal error. Never
+  silent, never a state that looks like success, never a bare fallback with
+  nothing said about why. See `docs/conventions/GO-CODE-REVIEW.md`'s Errors
+  section for what this looks like at the code level.
 
 ## Working agreement — branches, staging, CI
 

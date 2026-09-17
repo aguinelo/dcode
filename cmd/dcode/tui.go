@@ -86,6 +86,11 @@ func runTUI(args []string) error {
 		path = app.DefaultSocketPath(os.Getenv)
 	}
 
+	// Nil unless this process starts its own daemon below — an already-running
+	// one outliving this client is the point, so only an embedded daemon dying
+	// on its own is this client's failure to report.
+	var daemonFailed <-chan error
+
 	c := client.New(path)
 	if err := healthy(ctx, c); err != nil {
 		if explicit {
@@ -93,12 +98,13 @@ func runTUI(args []string) error {
 			// not an invitation to start something somewhere else.
 			return fmt.Errorf("no daemon answered on %s: %w", path, err)
 		}
-		embedded, cleanup, err := startEmbedded(ctx, opts, recordDir(resolved), recordBudget(resolved))
+		embedded, failed, cleanup, err := startEmbedded(ctx, opts, recordDir(resolved), recordBudget(resolved))
 		if err != nil {
 			return err
 		}
 		defer cleanup()
 		c = embedded
+		daemonFailed = failed
 	}
 
 	// An id given as a bare argument continues that one without asking, which
@@ -156,9 +162,10 @@ func runTUI(args []string) error {
 		ProfileNames:  profileNames(opts.Profiles),
 		// Resolved at the edge, once. The client package renders and never
 		// reads the environment, the same way it never builds its own palette.
-		Lang:   langOf(resolved),
-		Notice: versionNotice,
-		Update: updater,
+		Lang:         langOf(resolved),
+		Notice:       versionNotice,
+		Update:       updater,
+		DaemonFailed: daemonFailed,
 	})
 }
 
@@ -267,15 +274,41 @@ func healthy(ctx context.Context, c *client.Client) error {
 	return c.Health(probe)
 }
 
+// watchServe runs serve until ctx is cancelled, reporting a failure only for
+// an exit serve did not ask for.
+//
+// serve's own contract (Daemon.Serve, Server.Serve) is to return nil when it
+// stopped because ctx was cancelled and the real error otherwise — a shutdown
+// this caller asked for is not a failure to report, and everything else is.
+// Extracted from startEmbedded so that contract is testable against a fake
+// serve, rather than only by actually crashing a daemon.
+//
+// The returned channel is buffered by one: the send must never block on a
+// reader that has not started yet (the TUI wires its read a step after this
+// returns) or never will (an ordinary, requested shutdown sends nothing at
+// all). done closes when serve has returned, so a caller can wait for the
+// goroutine to actually finish before tearing down what serve was using.
+func watchServe(ctx context.Context, serve func(context.Context) error) (failed <-chan error, done <-chan struct{}) {
+	f := make(chan error, 1)
+	d := make(chan struct{})
+	go func() {
+		defer close(d)
+		if err := serve(ctx); err != nil {
+			f <- err
+		}
+	}()
+	return f, d
+}
+
 // startEmbedded runs a daemon inside this process on a private socket.
 //
 // Private rather than the default path: two terminals opened without a shared
 // daemon would otherwise race to bind the same socket, and the loser would fail
 // to start for a reason the user cannot act on.
-func startEmbedded(ctx context.Context, base app.Options, recordDir string, budget session.PruneBudget) (*client.Client, func(), error) {
+func startEmbedded(ctx context.Context, base app.Options, recordDir string, budget session.PruneBudget) (*client.Client, <-chan error, func(), error) {
 	dir, err := os.MkdirTemp("", "dcode")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	path := filepath.Join(dir, "d.sock")
 
@@ -291,15 +324,11 @@ func startEmbedded(ctx context.Context, base app.Options, recordDir string, budg
 	})
 	if err := d.Listen(); err != nil {
 		os.RemoveAll(dir)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	serveCtx, cancel := context.WithCancel(ctx)
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		_ = d.Serve(serveCtx)
-	}()
+	failed, done := watchServe(serveCtx, d.Serve)
 
 	cleanup := func() {
 		cancel()
@@ -313,9 +342,9 @@ func startEmbedded(ctx context.Context, base app.Options, recordDir string, budg
 	c := client.New(path)
 	if err := waitReady(ctx, c); err != nil {
 		cleanup()
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return c, cleanup, nil
+	return c, failed, cleanup, nil
 }
 
 // waitReady polls until the embedded daemon answers. Listen has already bound

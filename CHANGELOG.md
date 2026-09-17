@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 184 decision changelogs |
+| spec families | 18, with 185 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A project-wide rule: every failure fails explicitly, with a visible
+  warning** — an LLM failure, a timeout, a dead end the code cannot get past,
+  or an internal error (`AGENTS.md`). The first case it caught: an embedded
+  `dcode` daemon dying on its own left the client failing every subsequent
+  request against a socket nothing answers on, with nobody ever told why —
+  indistinguishable from a slow response until the person gave up. `Serve`'s
+  error was discarded (`_ = d.Serve(serveCtx)`) even though it already
+  returned `nil` for an asked-for shutdown and the real error for anything
+  else. `watchServe`, extracted so the contract is testable against a fake
+  `serve` rather than only by crashing a real daemon, now forwards that error
+  to the TUI, which ends the program with the reason on the normal screen —
+  the same path a dropped remote connection already used. Attached to a
+  daemon this client did not start (`--socket`, or an already-running `dcode
+  serve`), nothing watches it: that daemon outliving the client is the point.
 - **`fetch` is on by default.** Requested: network access should already be
   as free as writing is, with restriction only where writing already has
   one. Investigating found that half already true: `sandbox.allow_network`
