@@ -246,7 +246,7 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			// says is a replace_all that hit more than one occurrence.
 			"tools.edit_echo_diff":     tools.EchoDiffMulti,
 			"tools.symbol_max_matches": "200",
-			"tools.fetch_enabled":      "false",
+			"tools.fetch_enabled":      "true",
 			"tools.fetch_max_bytes":    "262144",
 			// The model is told how much of its budget is gone before it runs
 			// out, not after. Off leaves the post-compaction notice as the only
@@ -312,7 +312,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		Skills:                 r.Bool("behavior.skills_enabled", true),
 		EditEchoDiff:           r.String("tools.edit_echo_diff", tools.EchoDiffMulti),
 		SymbolMaxMatches:       r.Int("tools.symbol_max_matches", 200),
-		Fetch:                  r.Bool("tools.fetch_enabled", false),
+		Fetch:                  r.Bool("tools.fetch_enabled", true),
 		FetchMaxBytes:          r.Int("tools.fetch_max_bytes", 262144),
 		BudgetNotice:           r.Bool("budget.notice", true),
 		VerifyCommand:          r.String("verify.command", ""),

@@ -58,6 +58,14 @@ func TestFromEnvAppliesDefaults(t *testing.T) {
 	if opts.Limits.MaxIdenticalCalls != 5 {
 		t.Errorf("got %d", opts.Limits.MaxIdenticalCalls)
 	}
+	// sandbox.allow_network already grants network with no per-crossing
+	// approval in workspace-write (TestNetworkAccessIsDeniedWithoutApprovalWhenTheNetworkIsOpen
+	// covers the denial-when-refused half); fetch being off by default was the
+	// one capability treated differently from that with no remaining reason
+	// to be.
+	if !opts.Fetch {
+		t.Error("fetch should be on by default now that the network permission it relies on already is")
+	}
 }
 
 func TestFromEnvHonoursTheEnvironment(t *testing.T) {
@@ -68,13 +76,14 @@ func TestFromEnvHonoursTheEnvironment(t *testing.T) {
 		"DCODE_MAX_ITERATIONS":      "7",
 		"DCODE_MAX_IDENTICAL_CALLS": "2",
 		"DCODE_ALLOW_NETWORK":       "true",
+		"DCODE_FETCH_ENABLED":       "false",
 	}), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if opts.Model != "claude-sonnet" || opts.SandboxMode != policy.ModeReadOnly ||
 		opts.Policy != policy.PolicyNever || opts.Limits.MaxIterations != 7 ||
-		opts.Limits.MaxIdenticalCalls != 2 || !opts.AllowNetwork {
+		opts.Limits.MaxIdenticalCalls != 2 || !opts.AllowNetwork || opts.Fetch {
 		t.Errorf("got %+v", opts)
 	}
 }

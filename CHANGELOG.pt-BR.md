@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 183 changelogs de decisão |
+| famílias de spec | 18, com 184 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,21 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`fetch` liga por default.** Pedido: acesso à rede já devia ser tão livre
+  quanto escrita, com restrição só onde escrita já tem uma. Investigando,
+  metade já era verdade: `sandbox.allow_network` já é `true` por default, e
+  uma vez concedida, uma travessia de rede não pede aprovação por travessia
+  no `workspace-write` — o mesmo tratamento que escrever dentro do workspace
+  já tinha. `fetch` era a única ferramenta presa a um default mais estrito
+  que esse, desligada por um motivo (`tools.fetch_enabled` era falso porque
+  "rede sem modelo de permissão é buraco") que não valia mais desde que o
+  modelo de permissão passou a existir. Nada na ferramenta em si muda —
+  continua rodando fora do sandbox do SO, continua recusando corpo binário,
+  continua nomeando a origem na resposta; a garantia de segurança sempre foi
+  o veredito da política, nunca a parede do sistema operacional, e continua
+  sendo. `--fetch-enabled false` / `DCODE_FETCH_ENABLED=false` continua
+  desligando, e `sandbox.allow_network=false` continua bloqueando a rede
+  inteira, `fetch` incluído.
 - **O pacote de uma sessão retomada só se aplica com uma família nele.**
   Descoberto minutos depois de instalar o fix abaixo: `dcode -c` numa sessão
   gravada **antes** dele trocou "volta pro default em silêncio" por "recusa

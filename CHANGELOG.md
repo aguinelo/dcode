@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 183 decision changelogs |
+| spec families | 18, with 184 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,21 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`fetch` is on by default.** Requested: network access should already be
+  as free as writing is, with restriction only where writing already has
+  one. Investigating found that half already true: `sandbox.allow_network`
+  defaults to `true`, and once granted, a network crossing gets no
+  per-crossing approval in `workspace-write` — the exact treatment writing
+  inside the workspace already gets. `fetch` was the one tool held to a
+  stricter default than that, opted out for a reason (`tools.fetch_enabled`
+  was off because "network with no permission model is a hole") that no
+  longer applied once the permission model existed. Nothing about the tool
+  itself changes — it still runs outside the OS sandbox, still refuses
+  binary bodies, still names its source in the response; the security
+  guarantee was always the policy verdict, never the OS wall, and stays
+  that way. `--fetch-enabled false` / `DCODE_FETCH_ENABLED=false` still
+  turns it off, and `sandbox.allow_network=false` still blocks the network
+  outright, `fetch` included.
 - **A resumed session's own bundle only applies with a family in it.**
   Found minutes after shipping the fix below: `dcode -c` on a session
   recorded *before* it went from "silently moves the model back to the
