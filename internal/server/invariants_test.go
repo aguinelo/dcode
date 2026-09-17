@@ -67,6 +67,7 @@ var protocolInvariants = map[string]string{
 	"Continuar uma continuação":       "TestContinuingAContinuationKeepsTheWholeConversation",
 	"sem resultado não entra":         "TestACallWithNoResultIsDropped",
 	"reconecta ao pacote":             "TestResumingWithNoModelRestoresTheSessionsOwnBundle",
+	"`Session.Branch` é lido uma vez": "TestASessionBuiltInARepositoryDescribesItsBranch",
 	"só é aplicado com `family`":      "TestResumingAnOldRecordWithNoFamilyFallsBackRatherThanFailingToBuild",
 	// Undo. The state owns what changed, the session owns when it may be
 	// asked for, and the assertions live with each.

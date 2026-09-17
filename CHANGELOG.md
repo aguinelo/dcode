@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 185 decision changelogs |
+| spec families | 18, with 187 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -218,6 +218,22 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The status bar shows the git branch.** Requested: reflect the project's
+  current branch too. `internal/vcs` already read it — since
+  `202608170200-onde-o-agente-esta.md`, the same reading that names it in
+  the model's own prompt — but the value died in a local variable inside
+  `app.New`; it never reached `app.Session`, `session.Session` or
+  `protocol.Session`. The model knew which branch it was on; the person
+  looking at the screen did not, for a read that had already happened.
+  `Session.Branch` now carries it the same way `Family`/`Transport`/`BaseURL`
+  do, read once at session birth and never re-read (two readings of git in
+  one session can only disagree). The bottom bar draws it beside the
+  worktree, empty renders nothing, and it gives way before the mode when the
+  terminal is narrow — but never to the workspace path competing for room,
+  since losing the branch to show an address the worktree already names the
+  tail of would trade information for redundancy. Not restored on a resume,
+  unlike the model bundle: it is a fact about the workspace, not the model,
+  and a continued session reads its own.
 - **A project-wide rule: every failure fails explicitly, with a visible
   warning** — an LLM failure, a timeout, a dead end the code cannot get past,
   or an internal error (`AGENTS.md`). The first case it caught: an embedded

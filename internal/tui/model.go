@@ -127,6 +127,12 @@ type Model struct {
 	Workspace string
 	Model     string
 	Sandbox   string
+	// Branch is the git branch the workspace was on when this session was
+	// built — read once, daemon-side, frozen like the rest of the session's
+	// facts. Empty when there is none to draw: no repository, git not
+	// installed, or a detached head. The bottom bar draws nothing for it
+	// then, the same reading every other segment without data already gets.
+	Branch string
 	// Mode is the session behavioural mode (plan, assist, auto). Empty when
 	// the session has not yet announced its mode — older sessions reply
 	// without it and a missing label is the honest rendering.
@@ -290,6 +296,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.SessionID, m.Workspace = s.ID, s.Workspace
 			m.Model, m.Sandbox, m.Mode, m.State = s.Model, s.SandboxMode, s.Mode, s.State
 			m.Window = s.ContextWindow
+			m.Branch = s.Branch
 		}
 
 	case protocol.EventSessionModeChanged:

@@ -144,6 +144,7 @@ func runTUI(args []string) error {
 		Workspace: sess.Workspace,
 		Model:     sess.Model,
 		Sandbox:   sess.SandboxMode,
+		Branch:    sess.Branch,
 		Window:    sess.ContextWindow,
 		// Everything already in the log is history: continuing replays the
 		// whole of the old conversation into the new session.

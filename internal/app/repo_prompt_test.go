@@ -86,3 +86,52 @@ func TestASessionOutsideARepositoryIsUnchanged(t *testing.T) {
 		t.Error("a directory that is not a repository got a branch in its prompt")
 	}
 }
+
+// The branch reaches Session.Branch too, not only the prompt — the same
+// vcs.Read, read once, has to answer both the model's question ("where is
+// this") and the status bar's ("where is this", asked by a person who is not
+// reading the prompt).
+func TestASessionInARepositoryCarriesItsBranchOnTheSessionToo(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git here")
+	}
+	ws := t.TempDir()
+	gitIn(t, ws, "init", "-q", "-b", "feat/branch-on-the-bar")
+	gitIn(t, ws, "config", "user.email", "t@example.com")
+	gitIn(t, ws, "config", "user.name", "T")
+	gitIn(t, ws, "config", "commit.gpgsign", "false")
+	writeIn(t, ws, "a.txt", "one\n")
+	gitIn(t, ws, "add", "a.txt")
+	gitIn(t, ws, "commit", "-qm", "init")
+
+	opts := baseOpts(t)
+	opts.Workspace = ws
+	requireSandbox(t, opts)
+
+	sess, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
+	if err != nil {
+		t.Fatalf("wiring a session failed: %v", err)
+	}
+	defer sess.Engine.Close()
+
+	if sess.Branch != "feat/branch-on-the-bar" {
+		t.Errorf("got %q", sess.Branch)
+	}
+}
+
+// A workspace with no repository has no branch to report — empty, not a
+// placeholder a renderer would have to know to hide.
+func TestASessionOutsideARepositoryHasNoBranch(t *testing.T) {
+	opts := baseOpts(t)
+	requireSandbox(t, opts)
+
+	sess, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
+	if err != nil {
+		t.Fatalf("wiring a session failed: %v", err)
+	}
+	defer sess.Engine.Close()
+
+	if sess.Branch != "" {
+		t.Errorf("got %q, want empty outside a repository", sess.Branch)
+	}
+}

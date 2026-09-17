@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 185 changelogs de decisão |
+| famílias de spec | 18, com 187 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,23 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A barra de status mostra a branch git.** Pedido: refletir também a
+  branch atual do projeto. `internal/vcs` já lia isso — desde
+  `202608170200-onde-o-agente-esta.md`, a mesma leitura que a nomeia no
+  próprio prompt do modelo — mas o valor morria numa variável local dentro
+  de `app.New`; nunca chegava em `app.Session`, `session.Session` nem
+  `protocol.Session`. O modelo sabia em qual branch estava; a pessoa
+  olhando a tela, não, pra uma leitura que já tinha acontecido.
+  `Session.Branch` agora carrega isso do mesmo jeito que `Family`/
+  `Transport`/`BaseURL` já faziam, lido uma vez no nascimento da sessão e
+  nunca de novo (duas leituras de git numa sessão só podem discordar). A
+  barra inferior desenha ao lado do worktree, vazio não desenha nada, e cede
+  espaço antes do modo quando o terminal aperta — mas nunca pro caminho do
+  workspace competir por espaço, já que perder a branch pra mostrar um
+  endereço que o worktree já nomeia a cauda trocaria informação por
+  redundância. Não é restaurada num resume, diferente do pacote de modelo:
+  é um fato do workspace, não do modelo, e uma sessão continuada lê o seu
+  próprio.
 - **Uma regra de projeto: toda falha falha explícito, com aviso visível** —
   falha de LLM, timeout, beco sem saída que o código não consegue passar, ou
   erro interno (`AGENTS.md`). O primeiro caso que ela pegou: um daemon

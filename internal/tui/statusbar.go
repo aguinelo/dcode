@@ -25,6 +25,9 @@ func RenderStatusBar(m Model, g Geometry) string {
 	// badge vazio" — and it generalises: a bar of empty slots describes the bar
 	// rather than the session.
 	segs := []segment{navSegment(m, g), worktreeSegment(m, g)}
+	if seg, ok := branchSegment(m, g); ok {
+		segs = append(segs, seg)
+	}
 	if seg, ok := modeSegment(m, g); ok {
 		segs = append(segs, seg)
 	}
@@ -69,9 +72,9 @@ func RenderStatusBar(m Model, g Geometry) string {
 // pathOutranks is the drop order the path beats.
 //
 // Above the key hints, which `?` restates in full, and below everything else:
-// the diff, the position and the mode are each the only place their fact
-// appears, and a bar that keeps a path by dropping what changed has chosen the
-// address over the news.
+// the diff, the position, the mode and the branch are each the only place
+// their fact appears, and a bar that keeps a path by dropping what changed
+// has chosen the address over the news.
 const pathOutranks = 3
 
 // roomForPath reports whether the bar could still draw a usable path.
@@ -221,6 +224,29 @@ func worktreeSegment(m Model, g Geometry) segment {
 		mark = "wt"
 	}
 	return segment{text: mark + " " + name, solid: true, drop: 0}
+}
+
+// branchSegment names the git branch the workspace was on when the session
+// was built.
+//
+// Empty renders nothing — no repository, git not installed, or a detached
+// head are all "nothing to say", the same reading every other segment
+// without data already gets.
+//
+// drop: 3, tied with the mode and ahead of it in the segment order, so a tie
+// drops the branch first — it is supplementary to "where am I", the mode is
+// the boundary in force. Deliberately at or below pathOutranks (3, not
+// higher): the workspace path competing for room must not evict the branch
+// to show an address the worktree segment already names the tail of.
+func branchSegment(m Model, g Geometry) (segment, bool) {
+	if m.Branch == "" {
+		return segment{}, false
+	}
+	mark := "⎇"
+	if !g.Unicode {
+		mark = "br"
+	}
+	return segment{text: mark + " " + m.Branch, drop: 3}, true
 }
 
 // diffSegment is what has changed here, summed from what each tool reported.
