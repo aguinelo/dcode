@@ -218,6 +218,17 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The repository no longer carries ruflo.** Requested: remove ruflo and
+  claude-flow, and leave the project with rtk alone. What remained in tracked
+  files was a `.gitignore` block for ruflo's runtime (`.claude-flow/`,
+  `.swarm/`, `.agents/`, `.codex/`, `ruvector.db`), ignoring directories
+  nothing generates any more, and a line in `CLAUDE.md` naming Ruflo among the
+  configuration kept in `~/.claude/` — a line `dcode` itself reads as project
+  instructions. Both go, and `CLAUDE.md` now says where hook and MCP
+  configuration actually lives: `~/.claude/`, and the git-ignored `.claude/`
+  and `.mcp.json`. The install itself — hooks, agents, commands, skills, MCP
+  servers and runtime data — was never tracked, and left the working copy
+  outside this change.
 - **The status bar shows the git branch.** Requested: reflect the project's
   current branch too. `internal/vcs` already read it — since
   `202608170200-onde-o-agente-esta.md`, the same reading that names it in
