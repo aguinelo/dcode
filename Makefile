@@ -1,4 +1,4 @@
-.PHONY: test race cover lint build install install-fast uninstall clean tidy check eval
+.PHONY: test race cover lint build install install-fast uninstall clean tidy check eval eval-build
 
 GO      ?= go
 PKGS    := ./...
@@ -82,7 +82,7 @@ uninstall:
 tidy:
 	$(GO) mod tidy
 
-check: lint race cover build
+check: lint eval-build race cover build
 
 # Contratos comportamentais. Fora do `check` de propósito: cada cenário roda
 # DCODE_EVAL_RUNS vezes contra um modelo de verdade, e uma suíte que gasta
@@ -123,6 +123,10 @@ eval:
 # Compila os cenários sem executá-los. É o que impede a suíte de eval apodrecer
 # em silêncio enquanto o código que ela mede muda por baixo — o modo de falha
 # de todo teste que vive atrás de build tag.
+#
+# Part of `check`, and of CI, rather than a step to remember in pull requests
+# that touch the contracts: the rot comes from the ones that do not — the pull
+# requests that move the code underneath.
 eval-build:
 	$(GO) vet -tags eval ./internal/evals/...
 

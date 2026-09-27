@@ -201,6 +201,18 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O gate compila os contratos de eval.** Pedido: pôr o `make eval-build` no
+  CI. Os contratos moram atrás da build tag `eval`, e o `make eval-build` era a
+  única coisa que os compilava — rodado à mão, e só em PRs que tocavam
+  `internal/evals`. Isso vigiava os PRs errados: teste atrás de tag apodrece
+  quando o código embaixo dele muda, e doze PRs tinham entrado desde a última
+  mudança nos contratos, vários mexendo em pacotes que eles importam (`loop`,
+  `provider`, `tools`, `behavior`, `app`), sem nada conferindo se ainda
+  compilavam. Compilavam — o que o gate não tinha como saber. O `make check`
+  agora roda depois do `lint`, e o CI nas duas plataformas da matriz; é
+  `go vet`, não execução, então custa um segundo e nenhum dinheiro. O
+  `AGENTS.md`, os dois READMEs e o `docs/DECISIONS.md` diziam que nada no gate
+  compilava os contratos, e agora dizem que compila.
 - **A barra de status mostra a branch git.** Pedido: refletir também a
   branch atual do projeto. `internal/vcs` já lia isso — desde
   `202608170200-onde-o-agente-esta.md`, a mesma leitura que a nomeia no

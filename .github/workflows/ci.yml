@@ -65,6 +65,10 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go vet ./...
+      # Compiled, not run: the contracts sit behind the `eval` tag, where nothing
+      # else here looks, and they rot in the pull requests that move the code
+      # under them without touching them.
+      - run: make eval-build
       - name: gofmt
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - run: go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...

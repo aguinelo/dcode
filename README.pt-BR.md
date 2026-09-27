@@ -830,14 +830,15 @@ O gate é piso, não meta. Teste que exercita uma linha sem afirmar nada é acha
 mesmo com a cobertura verde.
 
 ```bash
-make check   # lint, race, gate de cobertura, build — o gate inteiro
+make check   # lint, compilação dos evals, race, gate de cobertura, build — o gate inteiro
 make test    # só a suíte
 make eval    # os contratos comportamentais, contra modelo real, com dinheiro real
 ```
 
-`make eval` está fora do `make check` de propósito, e nada no `make check` sequer compila
-o que está atrás daquela tag — então `make eval-build` roda em todo PR que toca os
-contratos, ou eles apodrecem em silêncio.
+`make eval` está fora do `make check` de propósito: custa dinheiro. O que o `make check` e
+o CI fazem, a cada mudança, é compilar os contratos (`make eval-build`) — código atrás de
+build tag que nada compila apodrece em silêncio, e apodrece nos PRs que mexem no código
+embaixo dele.
 
 Regras completas em [`docs/conventions/TESTING.pt-BR.md`](docs/conventions/TESTING.pt-BR.md).
 

@@ -773,6 +773,11 @@ Nothing in `make check` compiles a file behind the `eval` tag, so the scenarios
 would drift out of sync with the code they measure and nobody would learn until
 the next paid run. `go vet -tags eval` costs a second and makes that impossible.
 
+Only if something runs it. It was a step to remember in pull requests that
+touched `internal/evals`, which guarded the wrong ones: the drift comes from
+pull requests that move the code underneath without touching the contracts.
+Since 2026-09-26 it runs in `make check` and in CI, on every change.
+
 ### Nada sobrevive ao que criou
 
 Decidido em 2026-08-13, e é escolha de escopo antes de ser de arquitetura: o
