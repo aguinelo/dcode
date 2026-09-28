@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 193 changelogs de decisão |
+| famílias de spec | 18, com 194 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -232,6 +232,27 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma sessão retomada guarda todas as chamadas de um lote paralelo.**
+  Pedido: corrigir o `Rebuild`, que transforma um registro de volta no
+  histórico que uma sessão continuada recebe. Ele despachava a mensagem do
+  assistente no primeiro `tool.completed`, só com as chamadas respondidas até
+  ali, e zerava a lista — então um lote de duas voltava como
+  `assistant [c1], tool c1, tool c2`, um resultado que não responde chamada
+  nenhuma. O loop roda leituras independentes juntas; a Anthropic exige que
+  todo `tool_result` corresponda a um `tool_use` da mensagem anterior, e a
+  OpenAI que toda mensagem `tool` corresponda a uma entrada de `tool_calls` do
+  assistente, então uma sessão retomada com um lote paralelo em qualquer ponto
+  do registro falhava no primeiro turno, e em todos os seguintes. Os
+  resultados de um lote agora esperam o modelo voltar a falar, e saem atrás de
+  uma mensagem só com todas as chamadas respondidas, na ordem em que as
+  chamadas foram feitas e não na ordem em que terminaram: é a ordem em que a
+  sessão ao vivo os anexou (RN-3 do agent-loop), então a reconstrução continua
+  a conversa que o modelo recebeu e não depende de qual leitura ganhou a
+  corrida. "Respondida" vale para a mensagem aberta, e não é calculada sobre o
+  registro inteiro, porque o id de uma chamada é único dentro de uma resposta
+  e não ao longo de uma cadeia: a numeração de um comando digitado recomeça a
+  cada trecho. Duas invariantes novas na spec do protocolo, cada uma com o seu
+  teste.
 - **Toda linha de invariante é reivindicada por exatamente um teste.**
   `specguard.Check` reivindicava uma linha de invariante pelo primeiro fragmento
   do mapeamento que ela contivesse, percorrendo um `map` do Go, cuja ordem é
