@@ -59,6 +59,10 @@ var exportedWithoutUser = map[string]string{
 	"TransportNames": "lets a test assert the registry reports what it holds",
 	"WasRead":        "lets a test observe the read-before-edit record directly",
 
+	// The walk the guards that read the source share. A guard is a test, and
+	// they live in other packages, so every caller is one this scan skips.
+	"WalkCheckout": "the one walk of the tree for guards in other packages; what counts as this checkout is a single rule",
+
 	// The replay harness. It is production code by package and test
 	// infrastructure by purpose: it is how the provider suite runs against
 	// recorded frames instead of a network.
@@ -137,8 +141,8 @@ func scanRepository(t *testing.T, root string) (map[string]string, map[string]in
 	uses := map[string]int{}
 	fset := token.NewFileSet()
 
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+	err := WalkCheckout(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {
 			return err
 		}
 		rel, _ := filepath.Rel(root, path)

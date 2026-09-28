@@ -15,9 +15,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/aguinelo/dcode/internal/specguard"
 	"github.com/aguinelo/dcode/internal/version"
 )
 
@@ -818,9 +820,28 @@ func TestNothingAppliesAnUpdateWithoutTheUpdateCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	callers := applyCallers(t, root)
+	// One place, still, now that there are two ways of asking: `dcode update`
+	// and `/update` from inside the client both go through replaceBinary. The
+	// rule is not "one entry point" — it is that no path replaces the binary
+	// without having been asked to, and two doors would be two things to check
+	// every time either of them changes.
+	if len(callers) != 1 {
+		t.Fatalf("Apply is called from %d places: %v\n"+
+			"one of them is a path that updates without being asked", len(callers), callers)
+	}
+	if !strings.HasPrefix(callers[0], filepath.Join("cmd", "dcode")) {
+		t.Errorf("Apply is called from %s, outside the update command", callers[0])
+	}
+}
+
+// applyCallers is every line under root that calls Apply, outside a test and
+// in a file that can reach this package.
+func applyCallers(t *testing.T, root string) []string {
+	t.Helper()
 	var callers []string
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+	err := specguard.WalkCheckout(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {
 			return err
 		}
 		if strings.HasSuffix(path, "_test.go") {
@@ -850,17 +871,44 @@ func TestNothingAppliesAnUpdateWithoutTheUpdateCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// One place, still, now that there are two ways of asking: `dcode update`
-	// and `/update` from inside the client both go through replaceBinary. The
-	// rule is not "one entry point" — it is that no path replaces the binary
-	// without having been asked to, and two doors would be two things to check
-	// every time either of them changes.
-	if len(callers) != 1 {
-		t.Fatalf("Apply is called from %d places: %v\n"+
-			"one of them is a path that updates without being asked", len(callers), callers)
+	return callers
+}
+
+// On 2026-09-28 the guard above failed in a working copy and passed in CI:
+// "Apply is called from 2 places", the second being
+// .claude/worktrees/elastic-leavitt-b4883b/cmd/dcode/update.go. The Claude
+// desktop app keeps its session worktrees there, inside the repository and
+// ignored by git, and each one is a whole checkout — cmd/dcode included. The
+// walk read one as more of this repository and found the real caller twice.
+//
+// A directory holding a .git of its own is another checkout, wherever it sits.
+// The root holds one too, and is still read: that one is this checkout.
+func TestAWorktreeInsideTheRepositoryIsNotASecondCaller(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, ".claude", "worktrees", "elastic-leavitt-b4883b")
+	caller := "package main\n\n" +
+		"import \"github.com/aguinelo/dcode/internal/update\"\n\n" +
+		"func replaceBinary(ctx context.Context, u *update.GitHub, rel update.Release) error {\n" +
+		"\treturn u.Apply(ctx, rel)\n" +
+		"}\n"
+	for path, body := range map[string]string{
+		filepath.Join(root, ".git", "HEAD"):                "ref: refs/heads/main\n",
+		filepath.Join(root, "cmd", "dcode", "update.go"):   caller,
+		filepath.Join(nested, ".git"):                      "gitdir: " + filepath.Join(root, ".git", "worktrees", "elastic-leavitt-b4883b") + "\n",
+		filepath.Join(nested, "cmd", "dcode", "update.go"): caller,
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if !strings.HasPrefix(callers[0], filepath.Join("cmd", "dcode")) {
-		t.Errorf("Apply is called from %s, outside the update command", callers[0])
+
+	want := []string{filepath.Join("cmd", "dcode", "update.go") + ":6"}
+	if got := applyCallers(t, root); !slices.Equal(got, want) {
+		t.Fatalf("Apply is called from %d places: %v\n"+
+			"a worktree inside the repository was read as part of it; want %v", len(got), got, want)
 	}
 }
 
