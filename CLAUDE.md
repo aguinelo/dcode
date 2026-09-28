@@ -20,6 +20,6 @@ Claude Code.
   refactor, an API change, security or performance. Not for a single-file edit,
   a two-line fix, a documentation change or a question.
 
-Ruflo, MCP and hook configuration is user-level, in `~/.claude/`. It is not
-repeated here: a per-project copy is a copy that drifts, and this repository has
-been bitten by exactly that.
+Hook and MCP configuration is machine-local — in `~/.claude/`, and in the
+git-ignored `.claude/` and `.mcp.json` — and is not repeated here: a per-project
+copy is a copy that drifts, and this repository has been bitten by exactly that.

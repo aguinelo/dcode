@@ -213,6 +213,17 @@ existe para impedir exatamente isso.
   `go vet`, não execução, então custa um segundo e nenhum dinheiro. O
   `AGENTS.md`, os dois READMEs e o `docs/DECISIONS.md` diziam que nada no gate
   compilava os contratos, e agora dizem que compila.
+- **O repositório não carrega mais o ruflo.** Pedido: remover o ruflo e o
+  claude-flow, e deixar o projeto só com o rtk. O que sobrava em arquivo
+  versionado era um bloco do `.gitignore` para o runtime do ruflo
+  (`.claude-flow/`, `.swarm/`, `.agents/`, `.codex/`, `ruvector.db`),
+  ignorando diretórios que nada mais gera, e uma linha do `CLAUDE.md` citando
+  o Ruflo entre a configuração guardada em `~/.claude/` — linha que o próprio
+  `dcode` lê como instrução de projeto. As duas saem, e o `CLAUDE.md` passa a
+  dizer onde a configuração de hooks e MCP de fato mora: `~/.claude/`, e os
+  `.claude/` e `.mcp.json` ignorados pelo git. A instalação em si — hooks,
+  agentes, comandos, skills, servidores MCP e dados de runtime — nunca foi
+  versionada, e saiu da cópia de trabalho fora desta mudança.
 - **A barra de status mostra a branch git.** Pedido: refletir também a
   branch atual do projeto. `internal/vcs` já lia isso — desde
   `202608170200-onde-o-agente-esta.md`, a mesma leitura que a nomeia no

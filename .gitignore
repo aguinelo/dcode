@@ -3,14 +3,6 @@
 .env.local
 .env.*.local
 
-# Runtime e dados gerados pelo ruflo — regeneráveis com `ruflo init`
-.claude-flow/
-.swarm/
-.agents/
-.codex/
-ruvector.db
-ruvector.db-*
-
 # Config de ferramenta local (contém caminhos absolutos desta máquina)
 .mcp.json
 .claude/
