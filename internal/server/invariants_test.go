@@ -66,6 +66,8 @@ var protocolInvariants = map[string]string{
 	"entra no log da sessão nova":     "TestContinuingShowsAndRecordsWhatItCarries",
 	"Continuar uma continuação":       "TestContinuingAContinuationKeepsTheWholeConversation",
 	"sem resultado não entra":         "TestACallWithNoResultIsDropped",
+	"é reconstruído inteiro":          "TestABatchOfCallsIsRebuiltWhole",
+	"não na ordem em que terminaram":  "TestABatchIsRebuiltInTheOrderItsCallsWereMade",
 	"reconecta ao pacote":             "TestResumingWithNoModelRestoresTheSessionsOwnBundle",
 	"`Session.Branch` é lido uma vez": "TestASessionBuiltInARepositoryDescribesItsBranch",
 	"só é aplicado com `family`":      "TestResumingAnOldRecordWithNoFamilyFallsBackRatherThanFailingToBuild",

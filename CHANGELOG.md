@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 195 decision changelogs |
+| spec families | 18, with 196 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -234,6 +234,25 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A resumed session keeps every call of a parallel batch.** Requested: fix
+  `Rebuild`, which turns a record back into the history a continued session
+  is sent. It sent the assistant message out at the first `tool.completed`,
+  carrying only the calls answered so far, and then cleared the list — so a
+  batch of two came back as `assistant [c1], tool c1, tool c2`, a result
+  answering no call. The loop runs independent reads together; Anthropic
+  wants every `tool_result` to match a `tool_use` in the message before it,
+  and OpenAI every `tool` message to match an assistant `tool_calls` entry, so
+  a resumed session with a parallel batch anywhere in its record failed on
+  its first turn, and on every turn after. A batch's results are now held
+  until the model is heard from again, and written behind one message
+  carrying every answered call, in the order the calls were made rather than
+  the order they finished: that is the order the live session appended them
+  in (RN-3 of the agent loop), so the rebuild continues the conversation the
+  model was sent and does not depend on which read won a race. "Answered" is
+  scoped to the open message rather than worked out over the whole record,
+  because a call id is unique within one reply and not across a chain: a
+  typed command's numbering starts again in every leg. Two new invariants in
+  the protocol spec, each claimed by its test.
 - **A cancelled stream ends canceled, whichever case the pump's select
   takes.** Found while diagnosing the flaky test below, which it did not
   cause. Once the context is done the transport's channel can still be

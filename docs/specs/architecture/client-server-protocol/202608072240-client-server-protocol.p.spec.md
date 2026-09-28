@@ -255,6 +255,8 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Uma cadeia que aponta para si mesma é lida uma vez e não trava.
 - Continuar uma continuação carrega a conversa inteira, não só o último trecho.
 - Chamada de ferramenta sem resultado não entra no histórico reconstruído.
+- Lote de chamadas é reconstruído inteiro: uma mensagem do assistente com todas as chamadas que tiveram resultado, seguida de um resultado por chamada, e todo resultado responde a uma chamada dessa mensagem.
+- Os resultados de um lote voltam na ordem em que as chamadas foram feitas, não na ordem em que terminaram — a do histórico ao vivo (RN-3 do agent-loop).
 - Listagem de sessões vem do registro em disco, ordenada da mais recente, filtrada pelo workspace por default.
 - Sessão é titulada pela primeira pergunta; sem pergunta ainda, aparece assim mesmo.
 - Arquivo sem `session.created` não é registro e não entra na listagem.
@@ -285,3 +287,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609161700 — Um registro sem família cai pro default em vez de travar](changelog/202609161700-um-registro-sem-familia-cai-pro-default-em-vez-de-travar.md)
 - [202609172000 — `Session` carrega a branch](changelog/202609172000-session-carrega-a-branch.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202609281750 — Um lote volta inteiro, na ordem em que foi feito](changelog/202609281750-um-lote-volta-inteiro.md)
