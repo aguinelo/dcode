@@ -75,7 +75,7 @@ var sandboxInvariants = map[string]string{
 	"onde já se pode escrever":                             "TestAUnixSocketIsReachableWhereWritingIs",
 	"não é lido de dentro do sandbox":                      "TestARealNamedStoreCannotBeReadFromInside",
 	"não esconde nada":                                     "TestSeatbeltFullAccessHidesNothing",
-	"o home inteiro nunca é um nome válido":                "TestUnreadableExpandsHomeAndRefusesIt",
+	"home inteiro nunca é um nome válido":                  "TestUnreadableExpandsHomeAndRefusesIt",
 	"esconde os cofres de credencial mesmo assim":          "TestUnreadableDefaultsToHidingCredentialStores",
 	"própria credencial do dcode está entre os escondidos": "TestTheDefaultHidesDcodesOwnCredential",
 	"acompanha o que o cofre escreve":                      "TestTheHiddenCredentialNameMatchesTheStore",

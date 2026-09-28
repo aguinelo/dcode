@@ -273,7 +273,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Nenhum tipo específico de provedor cruza a fronteira do pacote (RN-2), verificado por teste de importação.
 - Nenhuma credencial aparece em `ProviderError.Message`, em log ou em evento (RN-6) — teste injeta chave sentinela e varre toda a saída.
 - Tool call que não valida contra o schema nunca chega ao consumidor como `EventToolCall` (RN-8).
-- Frame que traz **uso e conteúdo juntos** entrega o conteúdo: o uso é lido depois das escolhas, nunca antes, e uso em frame separado continua terminando sem reemitir a chamada.
+- Frame que traz **uso e conteúdo juntos** entrega o conteúdo: o uso é lido depois das escolhas, nunca antes.
+- Uso em frame separado continua terminando sem reemitir a chamada.
 - Todo teste da suíte padrão roda com a rede desligada (RN-4).
 - `RetryAfter > 0` apenas em `ErrClassRateLimit`.
 - Prefixos de `Models()` não se sobrepõem entre famílias; sobreposição é erro de inicialização.
@@ -295,3 +296,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md)
 - [202609141900 — Um nome troca o pacote inteiro](changelog/202609141900-um-nome-troca-o-pacote-inteiro.md)
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
+- [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)

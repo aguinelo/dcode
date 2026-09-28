@@ -32,13 +32,13 @@ var loopInvariants = map[string]string{
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
 
 	// Definition of done.
-	"usa a reentrada da RN-10":         "TestNoProgressEndsTheTurnAsIncomplete",
-	"não percorrem nenhum caminho":     "TestAnUnfinishedTurnIsAStateAndNotAnError",
-	"encolher estritamente":            "TestProgressedRequiresTheUnmetSetToShrinkStrictly",
-	"encerra em `StopIncomplete`":      "TestNoProgressEndsTheTurnAsIncomplete",
-	"anexa o lembrete **uma vez**":     "TestChangedWithNothingAbleToCheckEndsUnverified",
-	"não provoca reentrada":            "TestChangedWithNothingAbleToCheckEndsUnverified",
-	"Mudança em caminho de `Protected": "TestWritingATestFileIsSurfaced",
+	"usa a reentrada da RN-10":          "TestNoProgressEndsTheTurnAsIncomplete",
+	"não percorrem nenhum caminho":      "TestAnUnfinishedTurnIsAStateAndNotAnError",
+	"encolher estritamente":             "TestProgressedRequiresTheUnmetSetToShrinkStrictly",
+	"vezes encerra em `StopIncomplete`": "TestNoProgressEndsTheTurnAsIncomplete",
+	"anexa o lembrete **uma vez**":      "TestChangedWithNothingAbleToCheckEndsUnverified",
+	"não provoca reentrada":             "TestChangedWithNothingAbleToCheckEndsUnverified",
+	"Mudança em caminho de `Protected":  "TestWritingATestFileIsSurfaced",
 
 	// Delegation.
 	"construído em `ModeReadOnly`":  "TestTheChildIsReadOnlyEvenWithAWritingToolInReach",

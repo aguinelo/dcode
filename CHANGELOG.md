@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 187 decision changelogs |
+| spec families | 18, with 193 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -234,6 +234,32 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Every invariant line is claimed by exactly one test.** `specguard.Check`
+  claimed an invariant line with the first mapping fragment it contained,
+  ranging over a Go map, whose order is random: a line holding two fragments
+  went to either, and only that one's test was looked for on that run. On the
+  provider-adapter line where it was found, renaming one of the two tests
+  turned `TestEveryInvariantHasATest` red on 49 runs in 100, and renaming the
+  other on 20 in 100 — the odds themselves moved with each process's map seed.
+  A line must now be claimed by exactly one fragment, and a fragment that claims
+  no line is a finding as well. Pinned by
+  `TestARenamedTestIsReportedOnEveryRunWhenTwoFragmentsShareItsLine`, committed
+  red (the renamed test caught on 30 of 200 runs), with
+  `TestALineClaimedByTwoFragmentsIsReported` and
+  `TestAFragmentInNoInvariantIsReported`. Across the sixteen guards the rule
+  found 21 lines claimed twice or more, in six families, and 8 fragments
+  claiming nothing. Twenty of those lines carried more than one promise and are
+  now one line per promise; agent-loop's was one fragment reaching past its own
+  line, and was tightened. Of the orphans, one had never matched since #241
+  (`TestNoSidebarRowOverflowsTheColumn` was never looked for) and now does;
+  three were left behind by lines reworded or replaced, two of them naming
+  tests deleted with the behaviour, and were removed; four were invariants lost
+  while their tests stayed green — three learned-memory lines #175 dropped
+  instead of moving up, and client-tui's "a turn that touched nothing opens no
+  column", lost in the side column's second version while `ShowRail` kept the
+  rule — and are restored. The decisions are in
+  `202609281513-uma-linha-uma-promessa.md`, in each of the six families whose
+  spec changed.
 - **The guards that read the source read only this checkout.** Requested:
   `make check` failed in the working copy, with
   `Apply is called from 2 places`, and passed in CI. The Claude desktop app
