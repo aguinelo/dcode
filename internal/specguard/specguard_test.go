@@ -1,9 +1,11 @@
 package specguard
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -326,4 +328,74 @@ func TestEveryFamilyThatDeclaresInvariantsHasAGuard(t *testing.T) {
 		t.Fatal("no family was checked; the guard would pass vacuously")
 	}
 	t.Logf("%d families with invariants", checked)
+}
+
+// A checkout nested inside the one being walked is not part of it — a worktree,
+// whose .git is a file, or a clone or submodule, whose .git is a directory.
+// The root holds a .git as well and is walked, because it is the checkout; its
+// .git is git's bookkeeping, not one of the checkout's files.
+func TestWalkCheckoutLeavesOutWhatIsNotThisCheckout(t *testing.T) {
+	root := t.TempDir()
+	for rel, body := range map[string]string{
+		".git/HEAD":                              "ref: refs/heads/main\n",
+		".claude/settings.local.json":            "{}\n",
+		".claude/worktrees/wt/.git":              "gitdir: /elsewhere/.git/worktrees/wt\n",
+		".claude/worktrees/wt/cmd/dcode/main.go": "package main\n",
+		"cmd/dcode/main.go":                      "package main\n",
+		"third_party/clone/.git/HEAD":            "ref: refs/heads/main\n",
+		"third_party/clone/lib.go":               "package lib\n",
+	} {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var walked []string
+	err := WalkCheckout(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		if d.IsDir() {
+			rel += "/"
+		}
+		walked = append(walked, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"./",
+		".claude/",
+		".claude/settings.local.json",
+		".claude/worktrees/",
+		"cmd/",
+		"cmd/dcode/",
+		"cmd/dcode/main.go",
+		"third_party/",
+	}
+	if !slices.Equal(walked, want) {
+		t.Errorf("walked %v\nwant   %v", walked, want)
+	}
+}
+
+// A directory the walk cannot look inside for a .git is one it cannot place.
+// Reading it as this checkout's would be the same mistake, made silently.
+func TestWalkCheckoutFailsWhereItCannotTell(t *testing.T) {
+	root := t.TempDir()
+	locked := filepath.Join(root, "locked")
+	if err := os.Mkdir(locked, 0o600); err != nil { // listable, not searchable
+		t.Fatal(err)
+	}
+	defer os.Chmod(locked, 0o700)
+
+	err := WalkCheckout(root, func(string, fs.DirEntry, error) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), locked) {
+		t.Fatalf("walked a directory it could not look inside for a .git: %v", err)
+	}
 }

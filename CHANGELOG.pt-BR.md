@@ -201,6 +201,23 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **As guardas que leem o código leem só este checkout.** Pedido: o
+  `make check` reprovava na cópia de trabalho, com
+  `Apply is called from 2 places`, e passava no CI. O app desktop do Claude
+  guarda os worktrees de sessão em `.claude/worktrees/`, dentro do
+  repositório e ignorados pelo git, e cada um é um checkout inteiro; a guarda
+  do `update` percorria tudo abaixo da raiz e achava o único chamador real de
+  `Apply` uma segunda vez, na cópia de `cmd/dcode` de um worktree. Outras duas
+  guardas percorriam do mesmo jeito, e um checkout plantado ali mostrou cada
+  uma errando para um lado: a que proíbe atribuir `Tools` de uma sessão
+  reprovou por código do outro checkout, e a que exige que toda chave de
+  configuração declarada seja lida aprovou uma chave que só o outro checkout
+  lia. A varredura de nomes exportados só acertava porque fica com caminhos
+  sob `internal/`, `pkg/` e `cmd/`. As quatro agora percorrem pelo
+  `specguard.WalkCheckout`, que deixa de fora o `.git` e todo diretório com
+  um `.git` próprio — worktree, clone, submódulo —, onde o git também para. O
+  `gofmt -l .`, do `make lint` e do CI, ainda desce neles; isso é uma mudança
+  à parte.
 - **O gate compila os contratos de eval.** Pedido: pôr o `make eval-build` no
   CI. Os contratos moram atrás da build tag `eval`, e o `make eval-build` era a
   única coisa que os compilava — rodado à mão, e só em PRs que tocavam

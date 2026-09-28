@@ -10,10 +10,17 @@
 // that is a reading a person does once, at review. What it does is make the
 // claim explicit and keep it from rotting: rename the test and this goes red,
 // add an invariant and this goes red until someone names its test.
+//
+// It also holds WalkCheckout, the walk every guard that reads the source goes
+// through. Those guards are tests in several packages, and what counts as this
+// repository is one rule rather than one per guard: written separately, none of
+// them left out a checkout nested inside this one.
 package specguard
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -102,6 +109,43 @@ func Invariants(specRoot, family string) ([]string, error) {
 		return nil, fmt.Errorf("%s: no invariant lines parsed", family)
 	}
 	return lines, nil
+}
+
+// WalkCheckout walks the checkout at root as filepath.WalkDir does, and leaves
+// out what is not the checkout's: the .git at root, and every directory below
+// root that holds a .git of its own.
+//
+// Such a directory is another checkout — a worktree, a clone, a submodule — and
+// git does not descend into it either. The Claude desktop app keeps its session
+// worktrees under .claude/worktrees/, inside the repository and ignored by git,
+// so a guard walking everything under root read each one as more of this
+// checkout: on 2026-09-28 the update guard found the one caller of Apply twice,
+// and failed in a working copy while CI, with no worktree, passed.
+//
+// A directory it cannot look inside for a .git stops the walk with an error,
+// rather than being read as this checkout's.
+func WalkCheckout(root string, fn fs.WalkDirFunc) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || path == root {
+			return fn(path, d, err)
+		}
+		if d.Name() == ".git" {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() {
+			_, err := os.Lstat(filepath.Join(path, ".git"))
+			if err == nil {
+				return filepath.SkipDir
+			}
+			if !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("%s: cannot tell whether it is another checkout: %w", path, err)
+			}
+		}
+		return fn(path, d, nil)
+	})
 }
 
 func claim(line string, mapping map[string]string) string {
