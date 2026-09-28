@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 194 decision changelogs |
+| spec families | 18, with 195 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -234,6 +234,37 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A cancelled stream ends canceled, whichever case the pump's select
+  takes.** Found while diagnosing the flaky test below, which it did not
+  cause. Once the context is done the transport's channel can still be
+  ready — both transports close it because of the cancel — and the pump's
+  `select` picked between that and `ctx.Done()` at random, with the
+  closed-channel branch giving the decoder the last word. After a frame
+  that finished the answer but not its usage (MiniMax and OpenAI send usage
+  on a frame of its own) the decoder answered the close with `done`: an
+  interrupt landing while the pump was busy with that frame ended `done`
+  49,948 times in 100,000. `done` is an answer the loop records and acts
+  on — its tool calls go to `execute` with nobody looking at the context
+  again — where `canceled` goes to silence. The channel's case now asks the
+  context first: once cancelled, nothing the transport still had is
+  decoded, a waiting frame included, so a transport that buffers cannot
+  bring the coin back either. Pinned by
+  `TestACancelledStreamEndsCanceledWhateverTheSelectPicks`, committed red
+  (400 of 400 subtests) before the fix, and written as an invariant of the
+  provider adapter; the decision is in
+  `202609281439-cancelado-nao-e-cara-ou-coroa.md`.
+- **The cancellation test cancels while its stream is still open.**
+  `TestCancelClosesChannelWithCanceled` failed once on CI, on #390 — a pull
+  request with no Go in it — with "the stream ended with done". It replayed
+  a whole answer, `[DONE]` included, and cancelled as soon as `Stream`
+  returned, so on a loaded machine the pump could take all three frames and
+  finish before `cancel()` ran: `done` was the right answer, because nothing
+  had been cancelled yet. Under load it failed 43 runs in 40,000 locally,
+  every one with that message. The transport is now held open after its
+  frames, as #113 did for the test beside it, and the cancel waits until the
+  answer has visibly started: 0 in 40,000 under the same load. The
+  cancellation tests first move to `cancel_test.go` verbatim, because
+  `provider_test.go` was five lines under the 500-line cap.
 - **An interrupt runs no tool call that has not started.** The provider can end
   a stream `done` at the very instant the person presses stop — a terminal frame
   the pump took before the cancel is still decoded, a window #392 narrows and

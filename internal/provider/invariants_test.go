@@ -15,6 +15,7 @@ import (
 var providerInvariants = map[string]string{
 	"termina em exatamente um":       "TestStreamAlwaysEndsWithExactlyOneTerminal",
 	"Cancelar `ctx` fecha o canal":   "TestCancelClosesChannelWithCanceled",
+	"nada que o transporte ainda":    "TestACancelledStreamEndsCanceledWhateverTheSelectPicks",
 	"cruza a fronteira do pacote":    "TestNoProviderSpecificTypeCrossesTheBoundary",
 	"Nenhuma credencial aparece":     "TestCredentialsNeverAppearInErrorMessages",
 	"nunca chega ao consumidor":      "TestUndeclaredToolNeverReachesTheLoop",
