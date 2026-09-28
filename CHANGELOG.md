@@ -33,7 +33,7 @@ isolated package.
 | of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.7%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.21.0** |
+| published version | **0.21.1** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -113,6 +113,14 @@ the first fix required the stream cursor to be in the stream, which **narrowed
 the rule instead of applying it**. The input line is always a line where you
 type, so no condition could satisfy "a letter is not a shortcut" — only giving
 the letter back could.
+
+**What an interrupt means.** The end of the turn, even when it lands in the
+instant the model finishes. A stream can still end `done` after the stop — the
+provider decodes a frame it took before the cancel — and the loop no longer
+takes that at its word: a cancelled stream ends canceled, no tool call that has
+not started starts, an approval granted after the stop runs nothing, and an
+answer with no call runs no criterion — so nothing a person simply stopped is
+reported as work that could not be verified.
 
 **What the guards could not see.** Eight of the defects fixed on 24 August had
 guards written for exactly them, and every guard was asking about a set it
@@ -233,6 +241,8 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+## 0.21.1 — 28 September 2026
 
 - **An interrupt as a final answer ends runs no criterion.** The provider can
   end a stream `done` at the very instant the person presses stop, and with no

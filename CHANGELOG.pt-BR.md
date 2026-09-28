@@ -33,7 +33,7 @@ fora do pacote isolado.
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,7%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.21.0** |
+| versão publicada | **0.21.1** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -111,6 +111,15 @@ A cópia é `^O`. Foi `v` duas vezes, e a segunda é a instrutiva: a primeira
 correção exigiu o cursor no fluxo, o que **estreitou a regra em vez de
 aplicá-la**. A linha de digitar é sempre uma linha em que se digita, então
 nenhuma condição podia satisfazer "letra não é atalho" — só devolver a letra.
+
+**O que interromper quer dizer.** O fim do turno, mesmo quando a interrupção
+chega no instante em que o modelo termina. Um stream ainda pode terminar `done`
+depois dela — o provider decodifica um frame que já tinha pego antes do
+cancelamento —, e o laço não aceita mais isso ao pé da letra: stream cancelado
+termina cancelado, chamada que não começou não começa, aprovação concedida
+depois da interrupção não roda nada, e resposta sem chamada não roda critério
+nenhum — então nada que a pessoa só interrompeu é reportado como trabalho que
+não pôde ser conferido.
 
 **O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
 agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
@@ -231,6 +240,8 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+## 0.21.1 — 28 de setembro de 2026
 
 - **Interrupção que chega quando a resposta final termina não roda critério.** O
   provider pode terminar um stream `done` no instante exato em que a pessoa pede
