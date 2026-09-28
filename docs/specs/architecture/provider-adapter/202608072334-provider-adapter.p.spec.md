@@ -270,6 +270,7 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 
 - Todo stream termina em exatamente um `EventDone` **ou** um `EventError`, nunca ambos, nunca nenhum.
 - Cancelar `ctx` fecha o canal e emite `EventError` com `ErrClassCanceled`.
+- Depois de cancelado o `ctx`, nada que o transporte ainda tinha é decodificado — nem frame à espera, nem o fechamento: o `select` não decide como um stream cancelado termina.
 - Nenhum tipo específico de provedor cruza a fronteira do pacote (RN-2), verificado por teste de importação.
 - Nenhuma credencial aparece em `ProviderError.Message`, em log ou em evento (RN-6) — teste injeta chave sentinela e varre toda a saída.
 - Tool call que não valida contra o schema nunca chega ao consumidor como `EventToolCall` (RN-8).
@@ -295,3 +296,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md)
 - [202609141900 — Um nome troca o pacote inteiro](changelog/202609141900-um-nome-troca-o-pacote-inteiro.md)
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
+- [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)

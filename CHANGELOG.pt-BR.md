@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 187 changelogs de decisão |
+| famílias de spec | 18, com 188 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,26 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um stream cancelado termina cancelado, seja qual for o caso que o
+  `select` do pump escolha.** Achado ao diagnosticar o teste instável
+  abaixo, que ele não causou. Com o contexto cancelado o canal do
+  transporte ainda pode estar pronto — os dois transportes o fecham por
+  causa do cancelamento —, e o `select` do pump sorteava entre ele e
+  `ctx.Done()`, com o ramo do canal fechado dando ao decodificador a última
+  palavra. Depois de um frame que termina a resposta mas não traz o uso
+  (MiniMax e OpenAI mandam o uso num frame próprio), o decodificador
+  respondia ao fechamento com `done`: uma interrupção que chegasse com o
+  pump ocupado com esse frame terminava em `done` 49.948 vezes em 100.000.
+  `done` é uma resposta que o laço grava e executa — as chamadas de
+  ferramenta seguem para `execute` sem ninguém olhar o contexto de novo —,
+  enquanto `canceled` vai para o silêncio. O caso do canal agora pergunta ao
+  contexto primeiro: depois do cancelamento, nada que o transporte ainda
+  tinha é decodificado, frame à espera incluído, então um transporte que
+  guarde frames num buffer também não traz a moeda de volta. Preso por
+  `TestACancelledStreamEndsCanceledWhateverTheSelectPicks`, commitado
+  vermelho (400 de 400 subtestes) antes do conserto, e escrito como
+  invariante do adaptador de provider; a decisão está em
+  `202609281439-cancelado-nao-e-cara-ou-coroa.md`.
 - **O teste de cancelamento cancela com o stream ainda aberto.**
   `TestCancelClosesChannelWithCanceled` falhou uma vez na CI, no #390 — um
   pull request sem Go nenhum — com "the stream ended with done". Ele
