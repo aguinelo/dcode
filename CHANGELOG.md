@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 193 decision changelogs |
+| spec families | 18, with 194 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -234,6 +234,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An interrupt as a final answer ends runs no criterion.** The provider can
+  end a stream `done` at the very instant the person presses stop, and with no
+  calls in the answer the loop went straight into the definition of done under
+  the cancelled context. No criterion can start there — `exec.Cmd.Start`
+  answers a cancelled context with its error — so each one read as unavailable:
+  a round was spent telling the model its work could not be verified, and the
+  seal in `turn.completed` named the criteria unavailable, when the person had
+  simply stopped the turn. The loop now looks at the context before the check.
+  The check does not start, the answer stays whole in the history, and the turn
+  ends `interrupted`. It ends `interrupted` with no definition of done as well,
+  where that instant used to end `done`: the loop saw the stop before the turn
+  was over, and one instant should not read two ways depending on
+  configuration. That changes the reason and adds the note every interrupted
+  turn leaves about the files the session wrote; nothing else. A stop that
+  lands while a check is already running still reads as unavailable, and is
+  left to its own branch. The decision is in
+  `docs/specs/architecture/agent-loop/changelog/202609281755-a-verificacao-nao-comeca-depois-da-interrupcao.md`.
 - **Every invariant line is claimed by exactly one test.** `specguard.Check`
   claimed an invariant line with the first mapping fragment it contained,
   ranging over a Go map, whose order is random: a line holding two fragments

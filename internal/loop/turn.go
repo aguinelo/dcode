@@ -422,6 +422,35 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 			})
 		}
 		if len(calls) == 0 {
+			// The stream can end done at the very instant the person presses
+			// stop — the provider still decodes a terminal frame it took before
+			// the cancel — so the loop looks here, before the check, and not
+			// only at the top of the next round. A check under a cancelled
+			// context cannot start a single criterion: each reads unavailable,
+			// and a round is spent telling the model its work could not be
+			// verified, when the truth is that the person stopped the turn.
+			//
+			// Interrupted, even though the answer is whole, and it stays whole
+			// in the history. What the stop cut is the end of the turn, which
+			// with a definition of done is the check: done would claim a check
+			// that never ran, the claim RN-9 exists to stop, and unverified that
+			// no check could run, when one could.
+			//
+			// With no definition of done there was nothing to check, and the
+			// turn still ends interrupted rather than done. The loop saw the
+			// stop before the turn was over, and what it would have done next is
+			// configuration, not what happened: the same instant reads the same
+			// way whatever is configured. What that changes is the reason, and
+			// the note every interrupted turn leaves about the files the session
+			// wrote; no check runs either way.
+			//
+			// Only on this path. An answer with calls cannot end by returning:
+			// a call with no reply is a conversation the provider rejects on the
+			// next turn.
+			if ctx.Err() != nil {
+				return e.finishInterrupted(out), nil
+			}
+
 			// Step 4. The turn does not end merely because the model stopped
 			// asking for tools: done is a checked condition, not a declaration.
 			reason, more := e.checkDone(ctx, &stall, &unmet, &toldUnverified)

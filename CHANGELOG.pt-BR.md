@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 193 changelogs de decisão |
+| famílias de spec | 18, com 194 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -232,6 +232,23 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Interrupção que chega quando a resposta final termina não roda critério.** O
+  provider pode terminar um stream `done` no instante exato em que a pessoa pede
+  para parar, e, sem chamada na resposta, o laço ia direto para a definição de
+  pronto com o contexto cancelado. Ali nenhum critério consegue começar —
+  `exec.Cmd.Start` responde contexto cancelado com o erro dele —, então cada um
+  contava como `unavailable`: uma rodada era gasta dizendo ao modelo que o
+  trabalho não pôde ser conferido, e o selo em `turn.completed` dava os
+  critérios como `unavailable`, quando a pessoa só tinha parado o turno. O laço
+  agora olha o contexto antes da verificação. A verificação não começa, a
+  resposta fica inteira no histórico, e o turno termina `interrupted`. Termina
+  `interrupted` também sem definição de pronto, onde esse instante terminava
+  `done`: o laço viu a interrupção antes de o turno acabar, e um instante não
+  deve ter dois nomes conforme a configuração. Isso muda o motivo e acrescenta a
+  nota que todo turno interrompido deixa sobre os arquivos que a sessão
+  escreveu; nada mais. Interrupção que chega com a verificação já rodando ainda
+  conta como `unavailable`, e fica para outra branch. A decisão está em
+  `docs/specs/architecture/agent-loop/changelog/202609281755-a-verificacao-nao-comeca-depois-da-interrupcao.md`.
 - **Toda linha de invariante é reivindicada por exatamente um teste.**
   `specguard.Check` reivindicava uma linha de invariante pelo primeiro fragmento
   do mapeamento que ela contivesse, percorrendo um `map` do Go, cuja ordem é

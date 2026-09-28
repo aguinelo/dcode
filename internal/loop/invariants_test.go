@@ -27,6 +27,7 @@ var loopInvariants = map[string]string{
 	"mesma ferramenta com input diferente":        "TestIsRepeatDistinguishesDifferentInputs",
 	"Interrupção em qualquer fase":                "TestInterruptEndsTheTurnCleanly",
 	"efeito no disco anexa o resultado":           "TestAnInterruptedTurnRecordsWhatWasAlreadyWritten",
+	"resposta sem chamada termina":                "TestAnInterruptAsTheAnswerEndsRunsNoCriterion",
 	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
 	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
