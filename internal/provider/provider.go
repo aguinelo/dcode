@@ -198,6 +198,22 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, 
 			emit(canceledEvent(ctx))
 			return
 		case wev, open := <-raw:
+			// Cancelled means cancelled, whichever case the select took.
+			//
+			// Cancelling makes this case ready as well as the one above: the
+			// transport closes because of it, and one that had a frame waiting
+			// still has it. select picks between ready cases at random, so a
+			// cancelled stream used to end however that coin landed. On the
+			// close it was a truncated stream, which Decide sends to retry, so
+			// the loop answered an interrupt by calling the provider again; on
+			// the close after a frame that finished the answer but not its
+			// usage, the decoder made it a clean done, which the loop records
+			// and acts on. So once the context is done, nothing the transport
+			// still had is decoded — not a frame, and not its close.
+			if ctx.Err() != nil {
+				emit(canceledEvent(ctx))
+				return
+			}
 			if !open {
 				// The decoder gets the last word: a dialect that ends by
 				// simply stopping still finished cleanly, and only it knows
@@ -210,19 +226,7 @@ func (c *composed) pump(ctx context.Context, raw <-chan WireEvent, dec Decoder, 
 				// Otherwise the transport closed without saying why. Treat it
 				// as a truncated stream rather than a clean finish: a silent
 				// success here would hand the loop a half-formed turn.
-				//
-				// Unless the reason is that WE stopped it. Cancelling closes the
-				// transport too, so both this and ctx.Done() become ready at the
-				// same instant and the select above picks between them at
-				// random. Reporting a user's interrupt as a transport failure is
-				// not a cosmetic misfile: Decide sends transport to retry and
-				// cancellation to silence, so the loop answered an interrupt by
-				// calling the provider again.
 				if !terminal {
-					if ctx.Err() != nil {
-						emit(canceledEvent(ctx))
-						return
-					}
 					emit(errorEvent(&ProviderError{
 						Class:     ErrClassTransport,
 						Message:   "stream ended without a terminal event",
