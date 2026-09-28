@@ -27,18 +27,21 @@ var loopInvariants = map[string]string{
 	"mesma ferramenta com input diferente":        "TestIsRepeatDistinguishesDifferentInputs",
 	"Interrupção em qualquer fase":                "TestInterruptEndsTheTurnCleanly",
 	"efeito no disco anexa o resultado":           "TestAnInterruptedTurnRecordsWhatWasAlreadyWritten",
+	"quando o stream termina `done`":              "TestAnInterruptAsTheStreamEndsRunsNoTool",
+	"chamada de grupo seguinte":                   "TestAnInterruptDuringABatchStartsNoLaterCall",
+	"Aprovação concedida depois da interrupção":   "TestAGrantThatArrivesWithTheInterruptRunsNothing",
 	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
 	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
 
 	// Definition of done.
-	"usa a reentrada da RN-10":         "TestNoProgressEndsTheTurnAsIncomplete",
-	"não percorrem nenhum caminho":     "TestAnUnfinishedTurnIsAStateAndNotAnError",
-	"encolher estritamente":            "TestProgressedRequiresTheUnmetSetToShrinkStrictly",
-	"encerra em `StopIncomplete`":      "TestNoProgressEndsTheTurnAsIncomplete",
-	"anexa o lembrete **uma vez**":     "TestChangedWithNothingAbleToCheckEndsUnverified",
-	"não provoca reentrada":            "TestChangedWithNothingAbleToCheckEndsUnverified",
-	"Mudança em caminho de `Protected": "TestWritingATestFileIsSurfaced",
+	"usa a reentrada da RN-10":          "TestNoProgressEndsTheTurnAsIncomplete",
+	"não percorrem nenhum caminho":      "TestAnUnfinishedTurnIsAStateAndNotAnError",
+	"encolher estritamente":             "TestProgressedRequiresTheUnmetSetToShrinkStrictly",
+	"vezes encerra em `StopIncomplete`": "TestNoProgressEndsTheTurnAsIncomplete",
+	"anexa o lembrete **uma vez**":      "TestChangedWithNothingAbleToCheckEndsUnverified",
+	"não provoca reentrada":             "TestChangedWithNothingAbleToCheckEndsUnverified",
+	"Mudança em caminho de `Protected":  "TestWritingATestFileIsSurfaced",
 
 	// Delegation.
 	"construído em `ModeReadOnly`":  "TestTheChildIsReadOnlyEvenWithAWritingToolInReach",

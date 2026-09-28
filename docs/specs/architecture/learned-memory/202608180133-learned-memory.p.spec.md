@@ -149,6 +149,9 @@ verdade num commit que não está mais aqui" e pesa por conta própria.
 - Memória sem procedência é memória válida: arquivo escrito à mão não é rejeitado.
 - Lista de tipos fechada em três; qualquer outro é recusado.
 - Workspace sem memória, e memória desligada, produzem o prefixo de antes.
+- Memória cujo commit não existe mais é marcada, e continua no arquivo.
+- Prefixo com memória além do teto declara o corte.
+- `Build` continua pura com memória: mesma entrada, mesmo prefixo.
 - `remember` recusa tipo fora dos três e nomeia os três na recusa.
 - `remember` recusa assunto vazio.
 - `remember` acrescenta e nunca reescreve o que já estava no arquivo.
@@ -195,3 +198,4 @@ seguinte. Um contrato que mede a presença aprova um agente que grava tudo.
 ## 12. Changelog
 
 - [202608180133 — Memória aprendida](changelog/202608180133-memoria-aprendida.md)
+- [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
