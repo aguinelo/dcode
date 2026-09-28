@@ -835,14 +835,15 @@ The gate is a floor, not a target. A test that exercises a line without assertin
 is a review finding even when coverage is green.
 
 ```bash
-make check   # lint, race, coverage gate, build — the whole gate
+make check   # lint, eval compile, race, coverage gate, build — the whole gate
 make test    # the suite alone
 make eval    # the behavioural contracts, against a real model, for real money
 ```
 
-`make eval` is not in `make check` on purpose, and nothing in `make check` even compiles
-it — so `make eval-build` runs in any PR that touches the contracts, or they rot in
-silence.
+`make eval` is not in `make check` on purpose: it costs money. What `make check` and CI
+do, on every change, is compile the contracts (`make eval-build`) — code behind a build
+tag that nothing compiles rots in silence, and it rots in the PRs that move the code
+under it.
 
 Full rules in [`docs/conventions/TESTING.md`](docs/conventions/TESTING.md).
 

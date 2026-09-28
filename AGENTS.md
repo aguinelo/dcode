@@ -103,7 +103,7 @@ can be recognised before it repeats rather than after.
 ## Build and test
 
 ```bash
-make check   # lint, race, coverage gate, build — the whole gate
+make check   # lint, eval compile, race, coverage gate, build — the whole gate
 make test    # the suite alone
 make cover   # the suite with the coverage gate
 make install # build and install into ~/.local/bin
@@ -111,11 +111,12 @@ make install # build and install into ~/.local/bin
 
 `make check` is the local approximation of CI, and CI is the claim that counts.
 
-Behavioural contracts live behind the `eval` build tag and are **not** in
+Behavioural contracts live behind the `eval` build tag and are **not run** by
 `make check`: each scenario runs against a real model and costs money. Run them
-with `make eval`, and run `make eval-build` in any pull request that touches
-`internal/evals` — nothing in `make check` compiles code behind that tag, so it
-rots in silence.
+with `make eval`. `make check` and CI do compile them (`make eval-build`), on
+every change: code behind a build tag that nothing compiles rots in silence, and
+it rots in the pull requests that move the code under it, not in the ones that
+touch it.
 
 ## Where the rules are written
 

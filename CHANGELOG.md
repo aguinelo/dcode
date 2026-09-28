@@ -218,6 +218,18 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The gate compiles the eval contracts.** Requested: put `make eval-build` in
+  CI. The contracts live behind the `eval` build tag, and `make eval-build` was
+  the only thing that compiled them — run by hand, and only in pull requests
+  that touched `internal/evals`. That guarded the wrong pull requests: a tagged
+  test rots when the code under it moves, and twelve had merged since the
+  contracts last changed, several moving packages they import (`loop`,
+  `provider`, `tools`, `behavior`, `app`), with nothing checking they still
+  compiled. They did, which the gate had no way of knowing. `make check` now
+  runs it after `lint`, and CI on both platforms of the matrix; it is `go vet`,
+  not a run, so it costs a second and no money. `AGENTS.md`, both READMEs and
+  `docs/DECISIONS.md` said nothing in the gate compiled the contracts, and now
+  say it does.
 - **The repository no longer carries ruflo.** Requested: remove ruflo and
   claude-flow, and leave the project with rtk alone. What remained in tracked
   files was a `.gitignore` block for ruflo's runtime (`.claude-flow/`,
