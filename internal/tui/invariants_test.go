@@ -44,7 +44,7 @@ var tuiInvariants = map[string]string{
 	"título da janela é o **nome da sessão**":     "TestTheWindowTitleIsTheSessionName",
 	"marcado como dado":                           "TestAGivenNameIsMarkedAsGiven",
 	"a coluna toma o teclado":                     "TestTheRailTakesTheKeyboardAndGivesItBack",
-	"nunca só cor, e `↑↓` não dão":                "TestTheRailCursorStopsAtBothEnds",
+	"`↑↓` não dão a volta":                        "TestTheRailCursorStopsAtBothEnds",
 	"é **caractere**":                             "TestTheCursorIsACharacterAndNotOnlyAColour",
 	"limpa o filtro primeiro":                     "TestTheRailTakesTheKeyboardAndGivesItBack",
 	"escolhe nada, e a lista diz":                 "TestAnEmptyResultSaysSoRatherThanGoingBlank",
@@ -67,17 +67,16 @@ var tuiInvariants = map[string]string{
 	"linha de comando não entram":                 "TestPatternsAndCommandsStayOutOfTheFileList",
 	"não tocou nada não abre coluna":              "TestATurnThatTouchedNothingGetsNoSidebar",
 	"nomeia a tecla que a traz":                   "TestASidebarHiddenByWidthSaysSoAndNamesTheKey",
-	"visível, não diz nada":                       "TestAVisibleSidebarSaysNothingAboutItself",
-	"vazia, não é anunciada":                      "TestAnEmptySidebarIsNotAdvertised",
-	"abaixo de 100 colunas ela some":              "TestTheSidebarDisappearsOnANarrowTerminal",
+	"Coluna visível não diz nada":                 "TestAVisibleSidebarSaysNothingAboutItself",
+	"Coluna vazia não é anunciada":                "TestAnEmptySidebarIsNotAdvertised",
 	"vence nos dois sentidos":                     "TestAnExplicitChoiceWinsAtAnyWidthBothWays",
 	"nunca lida de volta da frase":                "TestTheCountComesFromTheToolAndNotFromItsSentence",
-	"não ultrapassa a largura dela":               "TestNoSidebarRowOverflowsTheColumn",
+	"Nenhuma linha da coluna ultrapassa":          "TestNoSidebarRowOverflowsTheColumn",
 	"ela não emite escape nenhum":                 "TestTheSidebarEmitsNoEscapeWithoutColour",
 	"distintos por caractere":                     "TestTheStatesStayApartWithoutUnicode",
 	"exatamente uma vez, numa função":             "TestTheStreamPaysForEveryColumnExactlyOnce",
 	"carrega corpo é bloco":                       "TestACallWithABodyIsSeparatedFromWhatCameBefore",
-	"e do que vem depois dela":                    "TestWhatFollowsABlockIsSeparatedFromIt",
+	"O que vem depois de um bloco":                "TestWhatFollowsABlockIsSeparatedFromIt",
 	"continua uma linha só":                       "TestCallsWithoutBodiesStayPacked",
 	"duas linhas em branco seguidas":              "TestTwoBlocksAreSeparatedByExactlyOneBlankLine",
 	"termina em linha em branco":                  "TestTheStreamDoesNotEndOnABlankLine",
@@ -147,9 +146,6 @@ var tuiInvariants = map[string]string{
 	// Where an exchange begins.
 	"Toda pergunta abre com uma régua": "TestATurnBeginsWithAVisibleBoundary",
 
-	// The column is summoned, not resident.
-	"A coluna **nasce escondida**": "TestTheSidebarStartsHidden",
-
 	// The list is legible.
 	"diz **quando** e **quanto**": "TestConversationRowsSayWhenAndHowMuch",
 	"não lê relógio nenhum":       "TestTheConversationListReadsNoClock",
@@ -163,7 +159,7 @@ var tuiInvariants = map[string]string{
 	"é **mais clara** que o que a qualifica": "TestTheAnswerIsBrighterThanWhatQualifiesIt",
 	// Width does not move with the locale.
 	"Nenhuma medida deste cliente muda com o locale": "TestTheLocaleDoesNotDecideHowWideAGlyphIs",
-	"nada no pacote mede por fora da régua":          "TestNothingMeasuresWithTheGlobalRuler",
+	"Nada no pacote mede por fora da régua":          "TestNothingMeasuresWithTheGlobalRuler",
 	// The one theme, which gives the ground back.
 	"Tema sem chão emite só SGR":   "TestAThemeWithNoGroundEmitsOnlyWeightAndIndexedColour",
 	"Itálico é atributo da tabela": "TestItalicIsAnAttributeOfTheThemeTable",
@@ -172,8 +168,8 @@ var tuiInvariants = map[string]string{
 	"ainda sem par não é desenhado": "TestAMarkerStillArrivingIsNotDrawn",
 
 	// The input area is a field.
-	"delimitada nos quatro lados": "TestTheInputAreaIsDelimited",
-	"a cor não muda a forma dela": "TestTheFrameIsTheSameShapeWithAndWithoutColour",
+	"delimitada nos quatro lados":       "TestTheInputAreaIsDelimited",
+	"A cor não muda a forma da moldura": "TestTheFrameIsTheSameShapeWithAndWithoutColour",
 
 	// Lanes.
 	"está numa **raia**":       "TestEveryStreamRowIsInALane",
@@ -225,7 +221,7 @@ var tuiInvariants = map[string]string{
 	"carrega a pergunta que foi feita": "TestThePickerShowsWhatEachConversationWasAbout",
 	"cursor para nas duas pontas":      "TestTheCursorStopsAtBothEnds",
 	"marcada **sem cor**":              "TestTheSelectedRowIsMarkedWithoutColour",
-	"sair sem escolher":                "TestChoosingReturnsTheOneUnderTheCursorAndCancellingReturnsNothing",
+	"Sair sem escolher":                "TestChoosingReturnsTheOneUnderTheCursorAndCancellingReturnsNothing",
 	"não oferece sessão em que nada":   "TestThePickListLeavesOutSessionsNobodyAskedAnythingIn",
 	"`-c` continua a última":           "TestResumeAsksAndContinueTakesTheLast",
 	"reconecta ao **pacote**":          "TestModelOverrideDefersToTheCarriedSessionWhenNothingWasSaid",

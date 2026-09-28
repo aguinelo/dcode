@@ -267,13 +267,15 @@ type Sandbox interface {
 - Duas trocas concorrentes deixam a sessão em um dos modos, com o par do motor de acordo com o nome anunciado.
 - O executor pergunta o modo **a cada comando**: comando rodado depois da troca corre sob a fronteira nova, e não sob a que valia quando a sessão nasceu.
 - Executor sem fonte de modo roda em `read-only` — fronteira que ninguém decidiu falha fechada (RN-3).
-- `operation not permitted` vindo do sandbox **diz como se abre**: nomeia `/mode auto` e `sandbox.writable`, e diz que pergunta nenhuma vem. Só EPERM, e nunca sob `full-access`.
+- `operation not permitted` vindo do sandbox **diz como se abre**: nomeia `/mode auto` e `sandbox.writable`, e diz que pergunta nenhuma vem.
+- Só EPERM, e nunca sob `full-access`, recebe a nota de como se abre.
 
 - Rede concedida não entrega socket unix: no macOS o perfil libera tráfego IP e o resolvedor de nomes, nunca `(allow network*)`.
 - Rede concedida inclui escutar: uma suíte que não abre porta não roda.
 - Caminho nomeado como não legível não é lido de dentro do sandbox, e o mesmo caminho sem ser nomeado continua legível.
 - `full-access` não esconde nada: modo que não promete fronteira não mantém uma escondida.
-- Nada nomeado esconde os cofres de credencial mesmo assim; o home inteiro nunca é um nome válido.
+- Nada nomeado esconde os cofres de credencial mesmo assim.
+- O home inteiro nunca é um nome válido.
 - A própria credencial do dcode está entre os escondidos por default.
 - O nome do arquivo de credencial escondido acompanha o que o cofre escreve.
 - Socket concedido por nome é alcançável; o não concedido continua fora.
@@ -300,3 +302,4 @@ type Sandbox interface {
 - [202608251200 — O modo é um nome para um par](changelog/202608251200-o-modo-e-um-nome-para-um-par.md)
 - [202608252359 — O sandbox segue o modo](changelog/202608252359-o-sandbox-segue-o-modo.md)
 - [202608260100 — Uma parede que diz como se abre](changelog/202608260100-uma-parede-que-diz-como-se-abre.md)
+- [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)

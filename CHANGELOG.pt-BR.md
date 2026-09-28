@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 188 changelogs de decisão |
+| famílias de spec | 18, com 194 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -251,6 +251,50 @@ existe para impedir exatamente isso.
   deixaria o texto do modelo prometendo o que não aconteceu. A decisão, com as
   alternativas, está em
   `docs/specs/architecture/agent-loop/changelog/202609281516-nenhuma-chamada-comeca-depois-da-interrupcao.md`.
+- **Toda linha de invariante é reivindicada por exatamente um teste.**
+  `specguard.Check` reivindicava uma linha de invariante pelo primeiro fragmento
+  do mapeamento que ela contivesse, percorrendo um `map` do Go, cuja ordem é
+  sorteada: linha com dois fragmentos ia para qualquer um dos dois, e só o teste
+  daquele era procurado naquela execução. Na linha do `provider-adapter` onde o
+  defeito foi achado, renomear um dos dois testes deixava
+  `TestEveryInvariantHasATest` vermelho em 49 execuções de 100, e renomear o
+  outro, em 20 de 100 — a própria chance mudava com a semente do `map` de cada
+  processo. Agora cada linha precisa ser reivindicada por exatamente um
+  fragmento, e fragmento que não reivindica linha nenhuma também é achado. Preso
+  por `TestARenamedTestIsReportedOnEveryRunWhenTwoFragmentsShareItsLine`,
+  commitado vermelho (o teste renomeado pego em 30 de 200 execuções), junto de
+  `TestALineClaimedByTwoFragmentsIsReported` e
+  `TestAFragmentInNoInvariantIsReported`. Nas dezesseis guardas, a regra achou
+  21 linhas reivindicadas duas vezes ou mais, em seis famílias, e 8 fragmentos
+  sem linha. Vinte dessas linhas carregavam mais de uma promessa e viraram uma
+  linha por promessa; a do `agent-loop` era um fragmento alcançando além da
+  própria linha, e foi apertado. Dos órfãos, um nunca tinha casado desde o #241
+  (`TestNoSidebarRowOverflowsTheColumn` nunca foi procurado) e agora casa; três
+  sobraram de linhas reescritas ou substituídas, dois deles nomeando testes
+  apagados junto com o comportamento, e saíram; quatro eram invariantes perdidas
+  com os testes ainda verdes — três da `learned-memory` que o #175 tirou em vez
+  de subir, e a "turno que não tocou nada não abre coluna" do `client-tui`,
+  perdida na segunda versão da coluna lateral enquanto `ShowRail` mantinha a
+  regra — e voltam. As decisões estão em
+  `202609281513-uma-linha-uma-promessa.md`, em cada uma das seis famílias cuja
+  spec mudou.
+- **As guardas que leem o código leem só este checkout.** Pedido: o
+  `make check` reprovava na cópia de trabalho, com
+  `Apply is called from 2 places`, e passava no CI. O app desktop do Claude
+  guarda os worktrees de sessão em `.claude/worktrees/`, dentro do
+  repositório e ignorados pelo git, e cada um é um checkout inteiro; a guarda
+  do `update` percorria tudo abaixo da raiz e achava o único chamador real de
+  `Apply` uma segunda vez, na cópia de `cmd/dcode` de um worktree. Outras duas
+  guardas percorriam do mesmo jeito, e um checkout plantado ali mostrou cada
+  uma errando para um lado: a que proíbe atribuir `Tools` de uma sessão
+  reprovou por código do outro checkout, e a que exige que toda chave de
+  configuração declarada seja lida aprovou uma chave que só o outro checkout
+  lia. A varredura de nomes exportados só acertava porque fica com caminhos
+  sob `internal/`, `pkg/` e `cmd/`. As quatro agora percorrem pelo
+  `specguard.WalkCheckout`, que deixa de fora o `.git` e todo diretório com
+  um `.git` próprio — worktree, clone, submódulo —, onde o git também para. O
+  `gofmt -l .`, do `make lint` e do CI, ainda desce neles; isso é uma mudança
+  à parte.
 
 ## 0.21.0 — 28 de setembro de 2026
 

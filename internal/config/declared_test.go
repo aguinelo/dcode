@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/specguard"
 )
 
 // specRow matches a key declared in a `.config.spec.md` table.
@@ -91,13 +93,13 @@ func repoRoot(t *testing.T) string {
 func goSources(t *testing.T, root string) string {
 	t.Helper()
 	var b strings.Builder
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+	err := specguard.WalkCheckout(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".git", "bin", "docs":
+			case "bin", "docs":
 				return filepath.SkipDir
 			}
 			return nil

@@ -1,9 +1,11 @@
 package specguard
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -102,6 +104,78 @@ func TestAClaimMatchesTheWholeTestName(t *testing.T) {
 	}
 	if len(got) != 1 {
 		t.Fatalf("findings = %v; TestOrderedAndStable must not satisfy a claim on TestOrdered", got)
+	}
+}
+
+// The guard used to take the first fragment the line contained, ranging over
+// a map, whose order Go randomises. A line holding two fragments was claimed by
+// either, and only that one's test was looked for — so renaming the other went
+// red on some runs and green on the rest. The provider family had such a line.
+func TestARenamedTestIsReportedOnEveryRunWhenTwoFragmentsShareItsLine(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\nfunc TestOrdered(t *testing.T) {}\n")
+	mapping := map[string]string{
+		"A escrita":  "TestAtomic",
+		"é atômica":  "TestWrittenAtomically", // renamed away
+		"é ordenado": "TestOrdered",
+	}
+
+	// Map order is not a fair coin, so one run proves nothing either way; two
+	// hundred make a pass by luck vanishingly unlikely.
+	const runs = 200
+	caught := 0
+	for range runs {
+		got, err := Check(root, "fam", []string{dir}, mapping)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range got {
+			if strings.Contains(f, "TestWrittenAtomically, which does not exist") {
+				caught++
+				break
+			}
+		}
+	}
+	if caught != runs {
+		t.Fatalf("the renamed test was reported on %d of %d runs", caught, runs)
+	}
+}
+
+// Which test a line means is what the mapping is there to say, so a line two
+// fragments claim is a finding even when both tests exist.
+func TestALineClaimedByTwoFragmentsIsReported(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\n"+
+		"func TestWrittenAtomically(t *testing.T) {}\nfunc TestOrdered(t *testing.T) {}\n")
+
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
+		"A escrita":  "TestAtomic",
+		"é atômica":  "TestWrittenAtomically",
+		"é ordenado": "TestOrdered",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], `"A escrita"`) || !strings.Contains(got[0], `"é atômica"`) {
+		t.Fatalf("findings = %v, want one naming both claims on the atomic line", got)
+	}
+}
+
+// A fragment in no invariant line is what a mapping keeps after the line was
+// reworded or removed: its test reads as asserting a promise the spec no longer
+// makes, and nothing said so.
+func TestAFragmentInNoInvariantIsReported(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\n"+
+		"func TestOrdered(t *testing.T) {}\nfunc TestDurable(t *testing.T) {}\n")
+
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
+		"escrita é atômica": "TestAtomic",
+		"é ordenado":        "TestOrdered",
+		"é durável":         "TestDurable", // its invariant was removed
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], `"é durável"`) || !strings.Contains(got[0], "TestDurable") {
+		t.Fatalf("findings = %v, want the fragment that claims nothing", got)
 	}
 }
 
@@ -326,4 +400,74 @@ func TestEveryFamilyThatDeclaresInvariantsHasAGuard(t *testing.T) {
 		t.Fatal("no family was checked; the guard would pass vacuously")
 	}
 	t.Logf("%d families with invariants", checked)
+}
+
+// A checkout nested inside the one being walked is not part of it — a worktree,
+// whose .git is a file, or a clone or submodule, whose .git is a directory.
+// The root holds a .git as well and is walked, because it is the checkout; its
+// .git is git's bookkeeping, not one of the checkout's files.
+func TestWalkCheckoutLeavesOutWhatIsNotThisCheckout(t *testing.T) {
+	root := t.TempDir()
+	for rel, body := range map[string]string{
+		".git/HEAD":                              "ref: refs/heads/main\n",
+		".claude/settings.local.json":            "{}\n",
+		".claude/worktrees/wt/.git":              "gitdir: /elsewhere/.git/worktrees/wt\n",
+		".claude/worktrees/wt/cmd/dcode/main.go": "package main\n",
+		"cmd/dcode/main.go":                      "package main\n",
+		"third_party/clone/.git/HEAD":            "ref: refs/heads/main\n",
+		"third_party/clone/lib.go":               "package lib\n",
+	} {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var walked []string
+	err := WalkCheckout(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		if d.IsDir() {
+			rel += "/"
+		}
+		walked = append(walked, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"./",
+		".claude/",
+		".claude/settings.local.json",
+		".claude/worktrees/",
+		"cmd/",
+		"cmd/dcode/",
+		"cmd/dcode/main.go",
+		"third_party/",
+	}
+	if !slices.Equal(walked, want) {
+		t.Errorf("walked %v\nwant   %v", walked, want)
+	}
+}
+
+// A directory the walk cannot look inside for a .git is one it cannot place.
+// Reading it as this checkout's would be the same mistake, made silently.
+func TestWalkCheckoutFailsWhereItCannotTell(t *testing.T) {
+	root := t.TempDir()
+	locked := filepath.Join(root, "locked")
+	if err := os.Mkdir(locked, 0o600); err != nil { // listable, not searchable
+		t.Fatal(err)
+	}
+	defer os.Chmod(locked, 0o700)
+
+	err := WalkCheckout(root, func(string, fs.DirEntry, error) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), locked) {
+		t.Fatalf("walked a directory it could not look inside for a .git: %v", err)
+	}
 }

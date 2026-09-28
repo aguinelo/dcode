@@ -223,7 +223,8 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - A sequência é lida antes de acrescentar, nunca presumida.
 - Renomear duas vezes é mudar de ideia: o último nome vence.
 - Nome vazio devolve o título derivado; não é erro.
-- Caractere de controle não chega ao registro, e nome longo demais é **recusado**, não aparado.
+- Caractere de controle não chega ao registro.
+- Nome longo demais é **recusado**, não aparado.
 - Nomear conversa inexistente diz isso, e não cria registro.
 - Chamada de ferramenta se anuncia no instante em que o nome é conhecido, antes de os argumentos terminarem.
 - Argumentos que chegam são reportados em **bytes**, sem total, e com passo — fragmento abaixo do passo não vira evento.
@@ -283,3 +284,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609161500 — O resume carrega o pacote, não só o nome](changelog/202609161500-o-resume-carrega-o-pacote-nao-so-o-nome.md)
 - [202609161700 — Um registro sem família cai pro default em vez de travar](changelog/202609161700-um-registro-sem-familia-cai-pro-default-em-vez-de-travar.md)
 - [202609172000 — `Session` carrega a branch](changelog/202609172000-session-carrega-a-branch.md)
+- [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
