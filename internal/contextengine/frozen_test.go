@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/specguard"
 )
 
 // "Tools is frozen at session creation" is a comment on an exported slice. The
@@ -31,8 +33,8 @@ func TestNothingAssignsToASessionsToolsAfterItIsBuilt(t *testing.T) {
 	assign := regexp.MustCompile(`\.Tools\s*(=[^=]|\+=)`)
 
 	checked := 0
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
+	err = specguard.WalkCheckout(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") {
 			return err
 		}
 		rel, _ := filepath.Rel(root, path)

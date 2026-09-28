@@ -234,6 +234,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The guards that read the source read only this checkout.** Requested:
+  `make check` failed in the working copy, with
+  `Apply is called from 2 places`, and passed in CI. The Claude desktop app
+  keeps its session worktrees under `.claude/worktrees/`, inside the
+  repository and ignored by git, and each is a whole checkout; the update
+  guard walked everything under the root and found the one real caller of
+  `Apply` a second time, in a worktree's copy of `cmd/dcode`. Two more guards
+  walked the same way, and a checkout planted there showed each going wrong in
+  a different direction: the one forbidding assignment to a session's `Tools`
+  failed on the other checkout's code, and the one requiring every declared
+  configuration key to be read passed a key only the other checkout read. The
+  exported-name scan was right only because it keeps paths under `internal/`,
+  `pkg/` and `cmd/`. All four now walk through `specguard.WalkCheckout`, which
+  leaves out `.git` and every directory holding a `.git` of its own — a
+  worktree, a clone, a submodule — where git stops too. `gofmt -l .`, in
+  `make lint` and CI, still descends into them; that is a change of its own.
+
 ## 0.21.0 — 28 September 2026
 
 - **The gate compiles the eval contracts.** Requested: put `make eval-build` in
