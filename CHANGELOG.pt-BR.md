@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 193 changelogs de decisão |
+| famílias de spec | 18, com 194 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -232,6 +232,25 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Interrupção não deixa rodar chamada que ainda não começou.** O provider pode
+  terminar um stream `done` no instante exato em que a pessoa pede para parar —
+  frame terminal que o pump tirou antes do cancelamento ainda é decodificado,
+  janela que o #392 estreita e não consegue fechar —, e o laço tomava o `done`
+  ao pé da letra: anexava a resposta, ia direto para `execute` e só olhava o
+  contexto de novo no topo da iteração seguinte, depois de as chamadas terem
+  rodado. `write` e `edit` ignoram o contexto de propósito, então uma escrita
+  aprovada automaticamente caía no disco depois de o turno ter acabado. O laço
+  agora olha em três instantes: quando o stream termina, antes do lote; quando
+  cada chamada começa, para que parar durante um grupo não comece nada depois
+  dele nem pergunte nada à pessoa (o aprovador responde contexto cancelado com
+  negação, que chegava ao modelo como "the user just refused this attempt… do
+  not retry it"); e logo antes de `Execute`, depois da aprovação, que uma
+  concessão permanente responde sem olhar o contexto. Toda chamada que não
+  começou é respondida no histórico como não executada, e a resposta que a pediu
+  fica: chamada sem resposta é conversa que o provider recusa, e apagá-la
+  deixaria o texto do modelo prometendo o que não aconteceu. A decisão, com as
+  alternativas, está em
+  `docs/specs/architecture/agent-loop/changelog/202609281516-nenhuma-chamada-comeca-depois-da-interrupcao.md`.
 - **Toda linha de invariante é reivindicada por exatamente um teste.**
   `specguard.Check` reivindicava uma linha de invariante pelo primeiro fragmento
   do mapeamento que ela contivesse, percorrendo um `map` do Go, cuja ordem é

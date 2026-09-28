@@ -444,6 +444,28 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 			return e.finish(out, reason), nil
 		}
 
+		// The stream can end done at the very instant the person presses stop:
+		// the provider decodes a terminal frame it took before the cancel, a
+		// window it can narrow and not close. So the loop looks for itself,
+		// here, before any call starts, and not only at the top of the next
+		// iteration, which comes after the calls have run.
+		//
+		// The answer stays in the history, and every call in it is answered as
+		// not run. Dropping the answer would leave the model not knowing what
+		// it asked for, while the person watched it arrive. Keeping its calls
+		// unanswered is a conversation the provider rejects on the next turn.
+		// Keeping only its text leaves the model's own words promising work
+		// that never happened — a history that lies about the disk, which RN-5
+		// ranks below an incomplete one. And ending before the repeat detector
+		// and the round count keeps out everything that describes a batch that
+		// ran, in a turn where none did.
+		if ctx.Err() != nil {
+			for _, c := range calls {
+				e.session.History = append(e.session.History, notRun(c))
+			}
+			return e.finishInterrupted(out), nil
+		}
+
 		recent = append(recent, calls...)
 		if IsRepeat(recent, e.cfg.Limits.MaxIdenticalCalls) {
 			// The same call three times is a loop, not persistence. Stopping
@@ -734,6 +756,15 @@ func (e *Engine) outOfChain(dirs []string) []behavior.OutOfChainInstruction {
 // second return reports a refusal by the user, which is not the same thing as
 // an error and must not be reported as one.
 func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (ce.Message, bool, string) {
+	// A call does not start once the turn is interrupted, as when the stop
+	// lands while an earlier group runs: not run, and not put to the person
+	// either. The approver answers a cancelled context with deny, and a denial
+	// reaches the model as the person refusing. They refused nothing; they
+	// stopped the turn.
+	if ctx.Err() != nil {
+		return notRun(ex.Call), false, ""
+	}
+
 	fail := func(msg string) ce.Message {
 		return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
 			ToolCallID: ex.Call.ID, Output: msg, IsError: true,
@@ -772,6 +803,15 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 		return fail(fmt.Sprintf("not permitted: %s", verdict.Reason)), false, ""
 	}
 
+	// The last instant the loop can see the stop before the tool has an
+	// effect. After the approval, because that is a wait the stop can land in,
+	// and a standing grant answers it without looking at the context; and here
+	// rather than in the tools, because `write` and `edit` ignore their context
+	// on purpose — a half-applied edit is worse than a slow one.
+	if ctx.Err() != nil {
+		return notRun(ex.Call), false, ""
+	}
+
 	// Measured around Execute only: the wait for an approval is the user's
 	// time, not the tool's, and folding it in would make every gated call look
 	// slow.
@@ -805,6 +845,16 @@ func (e *Engine) runOne(ctx context.Context, turnID string, ex ToolExecution) (c
 		ToolCallID: ex.Call.ID, Output: res.Output,
 		IsError: res.IsError, Truncated: res.Truncated,
 	}}, false, wallKey(ex, res)
+}
+
+// notRun answers a call that did not start because the turn was interrupted
+// first. An error, like every answer that is not the tool's own, and it says
+// exactly what is true: nothing the call asked for was done.
+func notRun(c ce.ToolCall) ce.Message {
+	return ce.Message{Role: ce.RoleTool, ToolResult: &ce.ToolResult{
+		ToolCallID: c.ID, IsError: true,
+		Output: "not run: the turn was interrupted before this call started",
+	}}
 }
 
 // wallKey identifies a failure precisely enough that hitting it twice means

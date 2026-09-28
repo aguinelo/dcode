@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 193 decision changelogs |
+| spec families | 18, with 194 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -234,6 +234,24 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An interrupt runs no tool call that has not started.** The provider can end
+  a stream `done` at the very instant the person presses stop — a terminal frame
+  the pump took before the cancel is still decoded, a window #392 narrows and
+  cannot close — and the loop took `done` at its word: it appended the answer,
+  went straight to `execute`, and looked at the context again only at the top of
+  the next iteration, after the calls had run. `write` and `edit` ignore their
+  context on purpose, so an auto-approved write landed on disk after the turn
+  was over. The loop now looks three times: when the stream ends, before the
+  batch; when each call starts, so a stop during one group starts nothing after
+  it and asks the person nothing (the approver answers a cancelled context with
+  deny, which reached the model as "the user just refused this attempt… do not
+  retry it"); and right before `Execute`, after the approval, which a standing
+  grant answers without looking at the context. Every call that did not start
+  is answered in the history as not run, and the answer that asked for it
+  stays: an unanswered call is a conversation providers reject, and erasing it
+  would leave the model's own words promising work that never happened. The
+  decision and the alternatives are in
+  `docs/specs/architecture/agent-loop/changelog/202609281516-nenhuma-chamada-comeca-depois-da-interrupcao.md`.
 - **Every invariant line is claimed by exactly one test.** `specguard.Check`
   claimed an invariant line with the first mapping fragment it contained,
   ranging over a Go map, whose order is random: a line holding two fragments
