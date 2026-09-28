@@ -206,3 +206,96 @@ func TestATransportErrorWithALiveContextStaysTransport(t *testing.T) {
 		t.Error("a real transport failure is not retryable, so a blip ends the turn")
 	}
 }
+
+// A cancelled stream ends canceled, whichever case the pump's select takes.
+//
+// With the context done, ctx.Done() is ready — and so is the transport's
+// channel, whenever the transport still has something in it. select picks
+// between ready cases at random, so a cancelled stream ended however that coin
+// landed:
+//
+//   - on the close. Both real transports close once cancelled, and after a
+//     frame that finished the answer but not its usage — MiniMax and OpenAI
+//     send usage on a frame of its own — the decoder answers the close with
+//     done;
+//   - on a frame still waiting, decoded after the cancel. The transports here
+//     cannot hand one over, since they send unbuffered and select on
+//     ctx.Done() themselves, but Transport does not promise that.
+//
+// Done is not a cosmetic misfile: Decide sends canceled to silence, while a
+// done stream is an answer the loop records and acts on, tool calls and all.
+//
+// Nothing is left to scheduling. The first frame is taken while the context is
+// live, the cancel lands while it is decoded, and whatever the transport still
+// has is already in its channel. What remains is the choice the language
+// specifies as uniform: each run failed half the time, so a hundred passing by
+// luck is a 2^-100 event.
+func TestACancelledStreamEndsCanceledWhateverTheSelectPicks(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		frames []string
+	}{
+		{"the close, after a frame that finished the answer", []string{
+			`{"choices":[{"delta":{"content":"a"},"finish_reason":"stop"}]}`,
+		}},
+		{"a frame still waiting", []string{
+			`{"choices":[{"delta":{"content":"a"}}]}`,
+			"[DONE]",
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const runs = 100
+			ended := map[string]int{}
+			for i := 0; i < runs; i++ {
+				ended[howItEnded(interruptedStream(t, tc.frames))]++
+			}
+			if ended[string(ErrClassCanceled)] != runs {
+				t.Errorf("a cancelled stream ended %v across %d runs; want %v in every one",
+					ended, runs, ErrClassCanceled)
+			}
+		})
+	}
+}
+
+// interruptedStream runs the pump over a transport that already holds frames
+// and its close, with the user interrupting while the first frame is decoded.
+func interruptedStream(t *testing.T, frames []string) []StreamEvent {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	raw := make(chan WireEvent, len(frames))
+	for _, f := range frames {
+		raw <- WireEvent{Data: []byte(f)}
+	}
+	close(raw)
+
+	out := make(chan StreamEvent, 16)
+	dec := &interruptedWhileDecoding{Decoder: MiniMaxM3{}.NewDecoder(tools()), cancel: cancel}
+	new(composed).pump(ctx, raw, dec, out)
+	return drain(t, out)
+}
+
+// interruptedWhileDecoding is the user interrupting while a frame is decoded:
+// after the pump has taken it, before it asks the transport for anything else.
+type interruptedWhileDecoding struct {
+	Decoder
+	cancel context.CancelFunc
+}
+
+func (d *interruptedWhileDecoding) Decode(ev WireEvent) ([]StreamEvent, error) {
+	d.cancel()
+	return d.Decoder.Decode(ev)
+}
+
+// howItEnded names a stream's terminal event: its error class, or its type.
+func howItEnded(got []StreamEvent) string {
+	if len(got) == 0 {
+		return "nothing"
+	}
+	last := got[len(got)-1]
+	if last.Type == EventError && last.Err != nil {
+		return string(last.Err.Class)
+	}
+	return string(last.Type)
+}
