@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 3 September 2026
+## Current state — 28 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -31,9 +31,9 @@ isolated package.
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
 | of those, **against a prompt they cannot name** | **17** |
-| coverage | 93.5%, gate at 90% aggregate **and per package** |
+| coverage | 93.7%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.20.0** |
+| published version | **0.21.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -124,15 +124,17 @@ measuring, so a row broken in two measured as two short rows. The blank-row
 guard trimmed correctly and had never been shown prose. Each is now asked as a
 question about the whole screen rather than about a list.
 
-**How it looks, and who chooses.** Five themes, cycled with `t` inside the
-transcript. Four of them paint their own ground and carry RGB measured against
-it, because amber over a background the product picked is a signal while amber
-over an unknown one is just a colour. The fifth, `claude`, gives the ground back
-to the terminal, and therefore carries no RGB at all: text is weight and state
-is the sixteen named ANSI colours, which are the ones the terminal's own theme
-already chose to be readable against its own background. It is also the only one
-drawable on a sixteen-colour terminal. Colour switched off still emits no escape
-at all, ground included.
+**How it looks, and who chooses.** One theme, and the terminal chooses. Colour
+that carries meaning stays; everything decorative is the terminal's to decide.
+The four themes that painted their own ground and carried RGB measured against
+it are gone rather than hidden behind an option — decoration that owns its own
+ground is an interface that stopped inheriting the terminal it runs in. What is
+left is `claude`: text is weight — normal, bold, faint, italic — and state is
+the sixteen named ANSI colours, which are the ones the terminal's own theme
+already chose to be readable against its own background. That also makes it
+drawable on a sixteen-colour terminal, and leaves an invented grey nowhere to
+enter. `t`, which cycled the five, has nothing left to cycle and is gone. Colour
+switched off still emits no escape at all.
 
 **A glyph is one cell, whatever the locale says.** The screen is drawn out of
 box-drawing characters, and every one of them is ambiguous in Unicode's East
@@ -169,6 +171,13 @@ path **by name**; and hides `~/.ssh` as soon as the `ssh-agent` socket is
 granted — because then ssh signs without reading the key and hiding costs
 nothing.
 
+The network gets the treatment writing inside the workspace gets: allowed by
+default (`sandbox.allow_network`), with no per-crossing approval in
+`workspace-write`, and `fetch` on by default. `fetch` runs outside the OS
+sandbox, so its guarantee is the policy verdict rather than the OS wall;
+`sandbox.allow_network=false` still blocks the network outright, `fetch`
+included.
+
 **Delegation.** A delegated child writes, inside what it declared it owns, with
 the parent's containment narrowed to that set. Ownership is a boundary, not an
 agreement.
@@ -176,6 +185,12 @@ agreement.
 **Which model.** Transport × family: the wire format is reusable, and the
 measured thresholds belong to the model. Four families — MiniMax-M3, Claude,
 Gemini and the explicit `generic` escape hatch — over two dialects.
+
+Several can be saved once, as named profiles in `models.toml` bundling model,
+family, transport, endpoint and window, and `/model <name>` switches the whole
+bundle on the fly. A continued session reconnects to the bundle it was built
+with rather than to whatever the config defaults to; asking for another model
+when continuing wins over that.
 
 A family with no measurement behind it **says so in the session**, and the list
 of which families warn is checked against the measurements that exist rather
@@ -204,10 +219,11 @@ re-measurements, and a rule nobody can afford is a rule that gets switched off.
 fifty-five contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
 
-Of the nineteen that have, **five did not meet their threshold**, and the
-thresholds did not move to meet them. The worst reads 5%: an instruction in the
-project file overriding the built-in floor, which the family that owns it calls
-its strongest rule.
+Of the twenty-one that have, **six did not meet their threshold**, and the
+thresholds did not move to meet them. The worst reads 35%: an instruction in
+the project file overriding the built-in floor is obeyed 70% of the time and
+named 35% — and obeyed *and* stated once is what the family that owns the floor
+calls its strongest rule.
 
 The two numbers above are counted, not carried. The row used to read "4", from
 the release before this one, and it stayed 4 while `boundary-decides-write` was
@@ -244,6 +260,9 @@ exists to stop exactly that.
   rule — and are restored. The decisions are in
   `202609281513-uma-linha-uma-promessa.md`, in each of the six families whose
   spec changed.
+
+## 0.21.0 — 28 September 2026
+
 - **The gate compiles the eval contracts.** Requested: put `make eval-build` in
   CI. The contracts live behind the `eval` build tag, and `make eval-build` was
   the only thing that compiled them — run by hand, and only in pull requests

@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 3 de setembro de 2026
+## Estado atual — 28 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -31,9 +31,9 @@ fora do pacote isolado.
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
-| cobertura | 93,5%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,7%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.20.0** |
+| versão publicada | **0.21.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -47,6 +47,20 @@ aplica a mesma regra lendo os digests do instalador da `main`.
 
 Homebrew ainda não é canal — publicava-se num tap que nunca havia sido criado.
 Removido em vez de deixado rodando; o `docs/ROADMAP.md` §9 diz o que seria preciso.
+
+**O piso.** Uma lista curta do que o dcode faz quando ninguém pediu, e uma regra
+dizendo quem pode mudá-la. O prompt do usuário vale mais que o arquivo do
+projeto, que vale mais que o default embutido, e quem está acima **substitui** em
+vez de negociar — sem confirmação, sem ponderação, sem aviso de que isso
+contraria boa prática. Sobrescrever é obedecido *e* dito uma vez, e dizer não é
+perguntar.
+
+Nada disso precisou de um resolvedor de precedência: o prefixo é montado em
+ordem e as instruções do projeto são o último bloco, então um default desenhado
+antes delas perde para qualquer coisa que alguém de fato disse. O que pode ser
+**fato** é fato, e não prosa — que não há repositório, e quais checagens o
+projeto declara — porque prosa é a camada mais fraca que este repositório
+reconhece, e regra que precisa de consulta antes é regra seguida por acaso.
 
 **Skills.** Orientação que só importa às vezes: um `SKILL.md` numa pasta ou um
 `<nome>.md`, sob `.dcode/skills/` aqui ou `skills/` na raiz do usuário, com
@@ -109,14 +123,17 @@ partida em duas media como duas linhas curtas. A guarda de linha em branco
 trimava certo e nunca tinha visto prosa. Cada uma agora é feita como pergunta
 sobre a tela inteira, e não sobre uma lista.
 
-**Como ela se parece, e quem escolhe.** Cinco temas, percorridos com `t` dentro
-do fluxo. Quatro pintam o próprio chão e carregam RGB medido contra ele, porque
-âmbar sobre um fundo que o produto escolheu é sinal, e âmbar sobre um fundo
-desconhecido é só uma cor. O quinto, `claude`, devolve o chão ao terminal e por
-isso não carrega RGB nenhum: texto é peso e estado são as dezesseis cores ANSI
-nomeadas, que são as que o próprio tema do terminal já escolheu para se lerem
-contra o fundo dele. É também o único desenhável em terminal de dezesseis cores.
-Cor desligada continua não emitindo escape algum, fundo incluído.
+**Como ela se parece, e quem escolhe.** Um tema, e quem escolhe é o terminal. Cor
+que carrega significado fica; tudo o que é decorativo é o terminal quem decide.
+Os quatro temas que pintavam o próprio chão e carregavam RGB medido contra ele
+saíram, em vez de ficarem escondidos atrás de uma opção — decoração dona do
+próprio chão é interface que parou de herdar o terminal em que roda. O que sobra
+é o `claude`: texto é peso — normal, negrito, esmaecido, itálico — e estado são
+as dezesseis cores ANSI nomeadas, que são as que o próprio tema do terminal já
+escolheu para se lerem contra o fundo dele. Isso também o torna desenhável em
+terminal de dezesseis cores, e deixa um cinza inventado sem por onde entrar. O
+`t`, que percorria os cinco, não tem mais o que percorrer e saiu. Cor desligada
+continua não emitindo escape algum.
 
 **Um glifo vale uma célula, diga o locale o que disser.** A tela é desenhada com
 caracteres de caixa, e todos eles são ambíguos na tabela East Asian Width do
@@ -152,12 +169,25 @@ concede socket e caminho gravável **por nome**; e esconde `~/.ssh` assim que o
 socket do `ssh-agent` é concedido — porque aí o `ssh` assina sem ler a chave e
 esconder sai de graça.
 
+A rede recebe o tratamento que escrever dentro do workspace recebe: liberada por
+default (`sandbox.allow_network`), sem aprovação a cada travessia em
+`workspace-write`, e o `fetch` ligado por default. O `fetch` roda fora do
+sandbox do sistema, então a garantia dele é o veredito da política, e não a
+parede do SO; `sandbox.allow_network=false` continua bloqueando a rede de vez,
+`fetch` incluído.
+
 **Delegação.** Um filho delegado escreve, dentro do que declarou possuir, com a
 contenção do pai estreitada ao conjunto. Posse é fronteira, não combinado.
 
 **Qual modelo.** Transporte × família: o formato de fio é reusável, e os limiares
 medidos pertencem ao modelo. Quatro famílias — MiniMax-M3, Claude, Gemini e a
 saída explícita `generic` — sobre dois dialetos.
+
+Vários podem ser salvos uma vez, como perfis nomeados em `models.toml` que
+agrupam modelo, família, transporte, endpoint e janela, e `/model <nome>` troca o
+pacote inteiro na hora. Uma sessão continuada reconecta ao pacote com que foi
+construída, e não ao que a configuração tiver como default; pedir outro modelo
+ao continuar vence isso.
 
 Família sem medição atrás dela **diz isso na sessão**, e a lista de quem avisa é
 conferida contra as medições que existem, em vez de digitada. Essa guarda
@@ -187,10 +217,11 @@ cinco contratos que precisam de modelo, **trinta e quatro nunca rodaram contra u
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos dezenove que rodaram, **cinco não atingiram o limiar**, e os limiares não
-desceram para encontrá-los. O pior marca 5%: uma instrução do arquivo do
-projeto sobrepondo o piso embutido, que é o que a família dona dela chama de sua
-regra mais forte.
+Dos vinte e um que rodaram, **seis não atingiram o limiar**, e os limiares não
+desceram para encontrá-los. O pior marca 35%: uma instrução do arquivo do
+projeto sobrepondo o piso embutido é obedecida em 70% das vezes e dita em 35% —
+e obedecer *e* dizer uma vez é o que a família dona do piso chama de sua regra
+mais forte.
 
 Os dois números acima são contados, não herdados. A linha dizia "4", da release
 anterior, e continuou 4 enquanto `boundary-decides-write` era medido — uma
@@ -228,6 +259,9 @@ existe para impedir exatamente isso.
   regra — e voltam. As decisões estão em
   `202609281513-uma-linha-uma-promessa.md`, em cada uma das seis famílias cuja
   spec mudou.
+
+## 0.21.0 — 28 de setembro de 2026
+
 - **O gate compila os contratos de eval.** Pedido: pôr o `make eval-build` no
   CI. Os contratos moram atrás da build tag `eval`, e o `make eval-build` era a
   única coisa que os compilava — rodado à mão, e só em PRs que tocavam
