@@ -201,6 +201,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O teste de cancelamento cancela com o stream ainda aberto.**
+  `TestCancelClosesChannelWithCanceled` falhou uma vez na CI, no #390 — um
+  pull request sem Go nenhum — com "the stream ended with done". Ele
+  reproduzia uma resposta inteira, `[DONE]` incluído, e cancelava assim que
+  `Stream` voltava, então numa máquina carregada o pump podia pegar os três
+  frames e terminar antes de `cancel()` rodar: `done` era a resposta certa,
+  porque nada tinha sido cancelado ainda. Sob carga ele falhou 43 execuções
+  em 40.000 localmente, todas com essa mensagem. O transporte agora fica
+  preso depois dos frames, como o #113 fez com o teste ao lado, e o
+  cancelamento espera a resposta ter visivelmente começado: 0 em 40.000 sob
+  a mesma carga. Antes disso, os testes de cancelamento se mudam sem
+  alteração para `cancel_test.go`, porque `provider_test.go` estava a cinco
+  linhas do teto de 500.
 - **O gate compila os contratos de eval.** Pedido: pôr o `make eval-build` no
   CI. Os contratos moram atrás da build tag `eval`, e o `make eval-build` era a
   única coisa que os compilava — rodado à mão, e só em PRs que tocavam

@@ -218,6 +218,18 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The cancellation test cancels while its stream is still open.**
+  `TestCancelClosesChannelWithCanceled` failed once on CI, on #390 — a pull
+  request with no Go in it — with "the stream ended with done". It replayed
+  a whole answer, `[DONE]` included, and cancelled as soon as `Stream`
+  returned, so on a loaded machine the pump could take all three frames and
+  finish before `cancel()` ran: `done` was the right answer, because nothing
+  had been cancelled yet. Under load it failed 43 runs in 40,000 locally,
+  every one with that message. The transport is now held open after its
+  frames, as #113 did for the test beside it, and the cancel waits until the
+  answer has visibly started: 0 in 40,000 under the same load. The
+  cancellation tests first move to `cancel_test.go` verbatim, because
+  `provider_test.go` was five lines under the 500-line cap.
 - **The gate compiles the eval contracts.** Requested: put `make eval-build` in
   CI. The contracts live behind the `eval` build tag, and `make eval-build` was
   the only thing that compiled them — run by hand, and only in pull requests

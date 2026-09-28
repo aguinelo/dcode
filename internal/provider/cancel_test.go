@@ -8,15 +8,37 @@ import (
 	"time"
 )
 
+// Cancelled mid-answer, with the transport held open after its frames so the
+// stream cannot end first.
+//
+// It replayed a whole answer, [DONE] included, and cancelled as soon as Stream
+// returned. On a loaded machine the pump could take all three frames and end
+// with done before cancel() ran on this goroutine — right, since nothing had
+// been cancelled yet, and red about one run in a thousand: once on CI, on a
+// pull request that touched no Go. The same race the test below had, taken out
+// the same way.
 func TestCancelClosesChannelWithCanceled(t *testing.T) {
-	r, _ := registry(t, `{"choices":[{"delta":{"content":"a"}}]}`,
-		`{"choices":[{"delta":{"content":"b"}}]}`, "[DONE]")
+	held := &heldTransport{frames: []string{
+		`{"choices":[{"delta":{"content":"a"}}]}`,
+		`{"choices":[{"delta":{"content":"b"}}]}`,
+	}}
+	r := NewRegistry()
+	r.RegisterTransport(held)
+	if err := r.RegisterFamily(MiniMaxM3{}); err != nil {
+		t.Fatal(err)
+	}
 	p, _ := r.Resolve("MiniMax-M3", "")
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	ch, err := p.Stream(ctx, request())
 	if err != nil {
 		t.Fatal(err)
+	}
+	// In flight for certain: the answer has started, and the transport will
+	// not end it on its own.
+	if ev := <-ch; ev.Type != EventTextDelta {
+		t.Fatalf("the stream opened with %v; want the first frame's text", ev.Type)
 	}
 	cancel()
 
@@ -115,7 +137,13 @@ func assertCancelled(t *testing.T, got []StreamEvent) {
 
 // heldTransport keeps a stream open until the test lets it go, which is what
 // makes "cancelled in flight" a fact rather than a hope.
-type heldTransport struct{ released chan struct{} }
+//
+// Its frames go out first, one at a time and each racing the context, the way
+// both real transports send them. Then it holds.
+type heldTransport struct {
+	frames   []string
+	released chan struct{}
+}
 
 func (heldTransport) Name() string { return TransportOpenAI }
 
@@ -123,6 +151,13 @@ func (h *heldTransport) Do(ctx context.Context, _ WireRequest) (<-chan WireEvent
 	out := make(chan WireEvent)
 	go func() {
 		defer close(out)
+		for _, f := range h.frames {
+			select {
+			case <-ctx.Done():
+				return
+			case out <- WireEvent{Data: []byte(f)}:
+			}
+		}
 		select {
 		case <-ctx.Done():
 		case <-h.released:
