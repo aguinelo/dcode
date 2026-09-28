@@ -20,17 +20,16 @@ var memoryDirs = []string{
 }
 
 var memoryInvariants = map[string]string{
-	"Nada aprendido ordena acima":     "TestNothingLearnedOutranksAnythingAPersonWrote",
-	"Nenhuma chave de configuração":   "TestNoConfigurationReachesTheAuthorityTable",
-	"nomeia a procedência aprendida":  "TestThePromptNamesLearnedProvenanceAsLearned",
-	"Memória cujo commit não existe":  "TestAMemoryFromAVanishedCommitIsMarkedAndKept",
-	"além do teto declara o corte":    "TestPastTheCapTheOldestGoAndTheCutIsDeclared",
-	"Bloco torto no arquivo":          "TestACrookedBlockIsReportedAndTheRestSurvives",
-	"Memória sem procedência":         "TestAMemoryWrittenByHandNeedsNoProvenance",
-	"Lista de tipos fechada em três":  "TestOnlyThreeKindsAreValid",
-	"Workspace sem memória":           "TestAWorkspaceWithNoMemoryIsUnchanged",
-	"continua pura com memória":       "TestTheLearnedBlockIsPure",
-	"Workspace sem `.dcode/memory.md": "TestAWorkspaceWithNoMemoryReadsAsEmpty",
+	"Nada aprendido ordena acima":    "TestNothingLearnedOutranksAnythingAPersonWrote",
+	"Nenhuma chave de configuração":  "TestNoConfigurationReachesTheAuthorityTable",
+	"nomeia a procedência aprendida": "TestThePromptNamesLearnedProvenanceAsLearned",
+	"Memória cujo commit não existe": "TestAMemoryFromAVanishedCommitIsMarkedAndKept",
+	"além do teto declara o corte":   "TestPastTheCapTheOldestGoAndTheCutIsDeclared",
+	"Bloco torto no arquivo":         "TestACrookedBlockIsReportedAndTheRestSurvives",
+	"Memória sem procedência":        "TestAMemoryWrittenByHandNeedsNoProvenance",
+	"Lista de tipos fechada em três": "TestOnlyThreeKindsAreValid",
+	"Workspace sem memória":          "TestAWorkspaceWithNoMemoryIsUnchanged",
+	"continua pura com memória":      "TestTheLearnedBlockIsPure",
 
 	// The tool.
 	"recusa tipo fora dos três":       "TestAKindOutsideTheThreeIsRefusedByName",

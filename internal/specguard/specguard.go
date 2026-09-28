@@ -9,7 +9,8 @@
 // What this does NOT do is judge whether the named test really covers the line;
 // that is a reading a person does once, at review. What it does is make the
 // claim explicit and keep it from rotting: rename the test and this goes red,
-// add an invariant and this goes red until someone names its test.
+// add an invariant and this goes red until someone names its test, remove one
+// and this goes red until its claim is removed too.
 package specguard
 
 import (
@@ -17,14 +18,17 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
-// Findings are the problems in one family, in spec order.
+// Findings are the problems in one family: the invariants in spec order, then
+// the fragments that claim nothing, sorted.
 type Findings []string
 
-// Check reports every invariant of family that no test claims, and every claim
-// naming a test that does not exist.
+// Check reports every invariant of family that no fragment claims or that more
+// than one does, every claim naming a test that does not exist, and every
+// fragment that claims no invariant at all.
 //
 // specRoot is the repository root; testDirs are the directories whose
 // `_test.go` files are searched. Several, because a spec family is not a Go
@@ -36,7 +40,9 @@ type Findings []string
 //
 // mapping keys are fragments matched against the invariant line — a fragment,
 // not the whole line, because the lines carry markup and rule references that
-// churn without the invariant changing.
+// churn without the invariant changing. A line takes exactly one fragment. Two
+// on one line used to be settled by map order: the line went to whichever the
+// range reached first, and the other's test was never looked for on that run.
 func Check(specRoot, family string, testDirs []string, mapping map[string]string) (Findings, error) {
 	lines, err := Invariants(specRoot, family)
 	if err != nil {
@@ -52,15 +58,39 @@ func Check(specRoot, family string, testDirs []string, mapping map[string]string
 	}
 
 	var out Findings
+	used := map[string]bool{}
 	for _, line := range lines {
-		name := claim(line, mapping)
-		if name == "" {
+		frags := claims(line, mapping)
+		switch len(frags) {
+		case 0:
 			out = append(out, fmt.Sprintf("no test claims this invariant:\n  %s", short(line)))
-			continue
+		case 1:
+		default:
+			var who strings.Builder
+			for _, frag := range frags {
+				fmt.Fprintf(&who, "\n  %q → %s", frag, mapping[frag])
+			}
+			out = append(out, fmt.Sprintf("the invariant\n  %s\nis claimed by %d fragments, and takes exactly one:%s",
+				short(line), len(frags), who.String()))
 		}
-		if !regexp.MustCompile(`func ` + regexp.QuoteMeta(name) + `\b`).MatchString(src) {
-			out = append(out, fmt.Sprintf("the invariant\n  %s\nnames %s, which does not exist", short(line), name))
+		for _, frag := range frags {
+			used[frag] = true
+			name := mapping[frag]
+			if !regexp.MustCompile(`func ` + regexp.QuoteMeta(name) + `\b`).MatchString(src) {
+				out = append(out, fmt.Sprintf("the invariant\n  %s\nnames %s, which does not exist", short(line), name))
+			}
 		}
+	}
+	var unused []string
+	for frag := range mapping {
+		if !used[frag] {
+			unused = append(unused, frag)
+		}
+	}
+	slices.Sort(unused)
+	for _, frag := range unused {
+		out = append(out, fmt.Sprintf("the fragment %q is in no invariant, so its claim for %s is on nothing",
+			frag, mapping[frag]))
 	}
 	return out, nil
 }
@@ -104,13 +134,17 @@ func Invariants(specRoot, family string) ([]string, error) {
 	return lines, nil
 }
 
-func claim(line string, mapping map[string]string) string {
-	for frag, name := range mapping {
+// claims returns every fragment the line contains, sorted, so that nothing
+// Check reports depends on the order a map was ranged in.
+func claims(line string, mapping map[string]string) []string {
+	var out []string
+	for frag := range mapping {
 		if strings.Contains(line, frag) {
-			return name
+			out = append(out, frag)
 		}
 	}
-	return ""
+	slices.Sort(out)
+	return out
 }
 
 func testSource(dir string) (string, error) {

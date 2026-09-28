@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 187 changelogs de decisão |
+| famílias de spec | 18, com 193 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -201,6 +201,33 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Toda linha de invariante é reivindicada por exatamente um teste.**
+  `specguard.Check` reivindicava uma linha de invariante pelo primeiro fragmento
+  do mapeamento que ela contivesse, percorrendo um `map` do Go, cuja ordem é
+  sorteada: linha com dois fragmentos ia para qualquer um dos dois, e só o teste
+  daquele era procurado naquela execução. Na linha do `provider-adapter` onde o
+  defeito foi achado, renomear um dos dois testes deixava
+  `TestEveryInvariantHasATest` vermelho em 49 execuções de 100, e renomear o
+  outro, em 20 de 100 — a própria chance mudava com a semente do `map` de cada
+  processo. Agora cada linha precisa ser reivindicada por exatamente um
+  fragmento, e fragmento que não reivindica linha nenhuma também é achado. Preso
+  por `TestARenamedTestIsReportedOnEveryRunWhenTwoFragmentsShareItsLine`,
+  commitado vermelho (o teste renomeado pego em 30 de 200 execuções), junto de
+  `TestALineClaimedByTwoFragmentsIsReported` e
+  `TestAFragmentInNoInvariantIsReported`. Nas dezesseis guardas, a regra achou
+  21 linhas reivindicadas duas vezes ou mais, em seis famílias, e 8 fragmentos
+  sem linha. Vinte dessas linhas carregavam mais de uma promessa e viraram uma
+  linha por promessa; a do `agent-loop` era um fragmento alcançando além da
+  própria linha, e foi apertado. Dos órfãos, um nunca tinha casado desde o #241
+  (`TestNoSidebarRowOverflowsTheColumn` nunca foi procurado) e agora casa; três
+  sobraram de linhas reescritas ou substituídas, dois deles nomeando testes
+  apagados junto com o comportamento, e saíram; quatro eram invariantes perdidas
+  com os testes ainda verdes — três da `learned-memory` que o #175 tirou em vez
+  de subir, e a "turno que não tocou nada não abre coluna" do `client-tui`,
+  perdida na segunda versão da coluna lateral enquanto `ShowRail` mantinha a
+  regra — e voltam. As decisões estão em
+  `202609281513-uma-linha-uma-promessa.md`, em cada uma das seis famílias cuja
+  spec mudou.
 - **O gate compila os contratos de eval.** Pedido: pôr o `make eval-build` no
   CI. Os contratos moram atrás da build tag `eval`, e o `make eval-build` era a
   única coisa que os compilava — rodado à mão, e só em PRs que tocavam
