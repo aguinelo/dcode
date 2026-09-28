@@ -105,6 +105,78 @@ func TestAClaimMatchesTheWholeTestName(t *testing.T) {
 	}
 }
 
+// The guard used to take the first fragment the line contained, ranging over
+// a map, whose order Go randomises. A line holding two fragments was claimed by
+// either, and only that one's test was looked for — so renaming the other went
+// red on some runs and green on the rest. The provider family had such a line.
+func TestARenamedTestIsReportedOnEveryRunWhenTwoFragmentsShareItsLine(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\nfunc TestOrdered(t *testing.T) {}\n")
+	mapping := map[string]string{
+		"A escrita":  "TestAtomic",
+		"é atômica":  "TestWrittenAtomically", // renamed away
+		"é ordenado": "TestOrdered",
+	}
+
+	// Map order is not a fair coin, so one run proves nothing either way; two
+	// hundred make a pass by luck vanishingly unlikely.
+	const runs = 200
+	caught := 0
+	for range runs {
+		got, err := Check(root, "fam", []string{dir}, mapping)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range got {
+			if strings.Contains(f, "TestWrittenAtomically, which does not exist") {
+				caught++
+				break
+			}
+		}
+	}
+	if caught != runs {
+		t.Fatalf("the renamed test was reported on %d of %d runs", caught, runs)
+	}
+}
+
+// Which test a line means is what the mapping is there to say, so a line two
+// fragments claim is a finding even when both tests exist.
+func TestALineClaimedByTwoFragmentsIsReported(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\n"+
+		"func TestWrittenAtomically(t *testing.T) {}\nfunc TestOrdered(t *testing.T) {}\n")
+
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
+		"A escrita":  "TestAtomic",
+		"é atômica":  "TestWrittenAtomically",
+		"é ordenado": "TestOrdered",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], `"A escrita"`) || !strings.Contains(got[0], `"é atômica"`) {
+		t.Fatalf("findings = %v, want one naming both claims on the atomic line", got)
+	}
+}
+
+// A fragment in no invariant line is what a mapping keeps after the line was
+// reworded or removed: its test reads as asserting a promise the spec no longer
+// makes, and nothing said so.
+func TestAFragmentInNoInvariantIsReported(t *testing.T) {
+	root, dir := fakeRepo(t, spec, "package a\n\nfunc TestAtomic(t *testing.T) {}\n"+
+		"func TestOrdered(t *testing.T) {}\nfunc TestDurable(t *testing.T) {}\n")
+
+	got, err := Check(root, "fam", []string{dir}, map[string]string{
+		"escrita é atômica": "TestAtomic",
+		"é ordenado":        "TestOrdered",
+		"é durável":         "TestDurable", // its invariant was removed
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], `"é durável"`) || !strings.Contains(got[0], "TestDurable") {
+		t.Fatalf("findings = %v, want the fragment that claims nothing", got)
+	}
+}
+
 // Only the invariants section is read. A guard that swallowed the next section
 // would report findings for prose nobody promised.
 func TestOnlyTheInvariantsSectionIsRead(t *testing.T) {
