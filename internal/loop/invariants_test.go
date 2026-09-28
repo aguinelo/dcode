@@ -30,6 +30,7 @@ var loopInvariants = map[string]string{
 	"quando o stream termina `done`":              "TestAnInterruptAsTheStreamEndsRunsNoTool",
 	"chamada de grupo seguinte":                   "TestAnInterruptDuringABatchStartsNoLaterCall",
 	"Aprovação concedida depois da interrupção":   "TestAGrantThatArrivesWithTheInterruptRunsNothing",
+	"resposta sem chamada termina":                "TestAnInterruptAsTheAnswerEndsRunsNoCriterion",
 	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
 	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
