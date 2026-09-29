@@ -69,8 +69,9 @@ jobs:
       # else here looks, and they rot in the pull requests that move the code
       # under them without touching them.
       - run: make eval-build
+      # The Go source is cmd/, internal/ and pkg/; `.` would also walk desktop/.
       - name: gofmt
-        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+        run: test -z "$(gofmt -l cmd internal pkg)" || { gofmt -l cmd internal pkg; exit 1; }
       - run: go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
       # O gate não roda aqui. Cada plataforma mede só o que ela consegue
       # executar, e reprovar por um ramo que a outra cobre é reprovar por

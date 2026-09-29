@@ -242,6 +242,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The core stops at `desktop/`.** Preparing for the desktop app, which gets
+  its own area with its own changelog and its own `desktop-v*` tags.
+  `scripts/version.sh` counted every commit since the last tag, so a
+  desktop-only commit would have raised the core's version for work the core
+  never saw; `scripts/changelog.sh` would have listed it, and — reading any
+  tag, not only `v*` — a desktop tag at HEAD emptied its range. Both now read
+  the core only: a commit that touches just `desktop/` does not count, one that
+  also touches the core does, and only `v*` tags start a range. Pinned by four
+  tests in `internal/update`, two of them red before the change. `gofmt` in
+  `make lint` and CI read `.`, which walks into `desktop/node_modules` and into
+  the session worktrees under `.claude/worktrees/`; it now reads `cmd/`,
+  `internal/` and `pkg/`, where all the Go source is. `AGENTS.md` says where
+  desktop changes are recorded.
+
 ## 0.21.1 — 28 September 2026
 
 - **An interrupt as a final answer ends runs no criterion.** The provider can
