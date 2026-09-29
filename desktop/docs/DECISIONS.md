@@ -178,3 +178,15 @@ mudança de protocolo, com changelog de spec no núcleo antes do código.
 - **L12. Quem usa.** Nome e iniciais do rodapé vêm do sistema, pelo processo
   principal (`id -F` no macOS, GECOS no Linux, senão o login) — não do protocolo.
 - **L13. Status do daemon.** Esta versão não conecta; a conexão é a próxima.
+- **L14. Estados.** O handoff lista `running | loop | awaiting_approval | idle |
+  interrupted`; o fio tem `idle | running | blocked | closed`. "Esperando
+  aprovação" é `blocked`; "interrompida" é um `reason` do `turn.completed`
+  (aparece como nota no fluxo), não um estado; "loop" não existe (A4).
+- **L15. Selo.** O handoff fala em `verified | unverified | not_verified`; o fio
+  traz `Completion.verification = clean | passed | failed | stale | unavailable`.
+  O mapeamento está em D13.
+- **L16. Verbo da atividade.** O handoff pede um rodízio fixo de delegando,
+  lendo, conferindo e pensando, "e depois vem de `tui.activity_verbs`" — essa
+  chave de configuração não existe; o que existe é o catálogo por fase da TUI e o
+  liga-desliga `DCODE_ACTIVITY_VERBS`. Ver D14. Por isso a tela 02 diz
+  "Delegando…" onde o mock diz "Conferindo…".
