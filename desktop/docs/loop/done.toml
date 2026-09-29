@@ -1,0 +1,18 @@
+# When the desktop's main window is done: `/loop desktop/docs/loop`.
+#
+# One criterion per section, each a command run from the workspace root. The
+# seal comes from these, never from a sentence of the model.
+#
+# Protected is what IS the measurement: the reference images, and the states,
+# the limit and the script of the visual check. Changing them is changing the
+# ruler, and the loop surfaces it rather than counting it as progress.
+protected = ["refs/design/**", "desktop/tests/visual/**"]
+
+[typecheck]
+command = "npm --prefix desktop run typecheck"
+
+[test]
+command = "npm --prefix desktop test"
+
+[visual]
+command = "npm --prefix desktop run check:visual"

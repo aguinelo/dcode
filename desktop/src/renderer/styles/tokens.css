@@ -1,0 +1,129 @@
+/*
+ * The handoff's tokens (refs/design/desktop/README.md, "Design Tokens"), both
+ * themes. The window follows the system: light by default, dark when the OS
+ * says so. Amber means working, yellow means it needs you; the rest is neutral.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --dc-font: 'Geist Variable', system-ui, sans-serif;
+  --dc-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --dc-chrome: #f1f0ed;
+  --dc-panel: #ffffff;
+  --dc-raised: #f7f6f4;
+  --dc-sunken: #fafaf9;
+  --dc-line: #e4e2dd;
+  --dc-line-soft: #eceae6;
+  --dc-text: #262626;
+  --dc-emph: #0f0f0f;
+  --dc-dim: #5f5f5f;
+  --dc-faint: #8f8f8f;
+  --dc-hover: rgba(0, 0, 0, 0.04);
+  --dc-sel: rgba(0, 0, 0, 0.06);
+  --dc-accent: #b87d1e;
+  --dc-ok: #2f7a48;
+  --dc-err: #b3434a;
+  --dc-warn: #8a6a0c;
+  --dc-warn-bg: rgba(184, 125, 30, 0.06);
+  --dc-warn-line: rgba(184, 125, 30, 0.35);
+  --dc-btn: #111;
+  --dc-btn-ink: #fff;
+
+  --dc-shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dc-chrome: #161616;
+    --dc-panel: #1c1c1c;
+    --dc-raised: #232323;
+    --dc-sunken: #191919;
+    --dc-line: #2a2a2a;
+    --dc-line-soft: #242424;
+    --dc-text: #e6e6e6;
+    --dc-emph: #fafafa;
+    --dc-dim: #a1a1a1;
+    --dc-faint: #6f6f6f;
+    --dc-hover: rgba(255, 255, 255, 0.045);
+    --dc-sel: rgba(255, 255, 255, 0.07);
+    --dc-accent: #e0a030;
+    --dc-ok: #6fbf87;
+    --dc-err: #e07b7f;
+    --dc-warn: #e3c26b;
+    --dc-warn-bg: rgba(227, 194, 107, 0.06);
+    --dc-warn-line: rgba(227, 194, 107, 0.35);
+    --dc-btn: #fafafa;
+    --dc-btn-ink: #111;
+  }
+}
+
+@keyframes dcBreath {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes dcCaret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.dc-breath {
+  animation: dcBreath 2.4s ease-in-out infinite;
+}
+
+.dc-caret {
+  animation: dcCaret 1.1s step-end infinite;
+}
+
+.dc-bar-fill {
+  transition: width 0.9s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+
+/* Less motion asked for: no pulse, no blink. The state stays legible by the
+   shape of its glyph, which never depended on the animation. */
+@media (prefers-reduced-motion: reduce) {
+  .dc-breath,
+  .dc-caret {
+    animation: none;
+  }
+  .dc-bar-fill {
+    transition: none;
+  }
+}
+
+.tone-ok {
+  color: var(--dc-ok);
+}
+.tone-err {
+  color: var(--dc-err);
+}
+.tone-accent {
+  color: var(--dc-accent);
+}
+.tone-warn {
+  color: var(--dc-warn);
+}
+.tone-dim {
+  color: var(--dc-dim);
+}
+.tone-faint,
+.faint {
+  color: var(--dc-faint);
+}
+.tone-bg-ok {
+  background: var(--dc-ok);
+}
+.tone-bg-err {
+  background: var(--dc-err);
+}
+.tone-bg-accent {
+  background: var(--dc-accent);
+}

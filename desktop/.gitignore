@@ -1,0 +1,11 @@
+# Dependencies and build output. Anchored here, in desktop/, so nothing below
+# can swallow a file the build depends on at some other depth.
+/node_modules/
+/.vite/
+/out/
+/dist/
+/coverage/
+# What `npm run check:visual` writes: the app's screenshot, the diff and the
+# report of each run. The reference images are never here.
+/test-results/
+*.log

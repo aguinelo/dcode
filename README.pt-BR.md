@@ -663,6 +663,8 @@ A sessão é um **log de eventos append-only**. Retomada, múltiplos clientes an
 densidade de sessão caem todos dessa única primitiva — o mesmo princípio do contexto do
 modelo, uma camada acima.
 
+O cliente desktop, um segundo cliente do mesmo daemon, mora em [`desktop/`](desktop/README.pt-BR.md), com versão e changelog próprios.
+
 ### Stack
 
 | Preocupação | Escolha | Por quê |

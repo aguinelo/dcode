@@ -1,0 +1,51 @@
+name: desktop
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'internal/protocol/**'
+      - '.github/workflows/desktop.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'internal/protocol/**'
+      - '.github/workflows/desktop.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: desktop/.nvmrc
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      # The protocol types are generated from internal/protocol by tygo, a Go
+      # program, and the staleness check below regenerates them.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      # Nothing here runs Electron: its binary is not needed to typecheck, test
+      # or bundle, and it is the heaviest thing npm ci would download.
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # Main, preload and renderer as Forge would bundle them. No packaging or
+      # signing yet.
+      - run: npm run build
+      # A change to internal/protocol that was not regenerated here fails this,
+      # which is why the workflow also runs when only the protocol moves.
+      - run: npm run check:protocol
+      # Not here: npm run check:visual. It compares against the design's
+      # reference images, which are not in the repository yet (desktop/AGENTS.md).
