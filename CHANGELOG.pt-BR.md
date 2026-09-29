@@ -254,6 +254,19 @@ existe para impedir exatamente isso.
   uma vez só, no boot, e `↵` nega a aprovação na TUI e permite no design — e o
   que o `SPEC_GAPS.md` pede e já existe. Corrige também três coisas que o brief
   afirmou ao designer e o código não sustenta.
+- **O núcleo para em `desktop/`.** Preparação para o app desktop, que ganha
+  área própria, com changelog e tags `desktop-v*` próprios. O
+  `scripts/version.sh` contava todo commit desde a última tag, então um commit
+  só do desktop subiria a versão do núcleo por trabalho que o núcleo nunca viu;
+  o `scripts/changelog.sh` o listaria e — lendo qualquer tag, não só `v*` — uma
+  tag do desktop no HEAD esvaziava o intervalo dele. Os dois agora leem só o
+  núcleo: commit que mexe apenas em `desktop/` não conta, o que também mexe no
+  núcleo conta, e só tag `v*` inicia intervalo. Preso por quatro testes em
+  `internal/update`, dois deles vermelhos antes da mudança. O `gofmt` do
+  `make lint` e do CI lia `.`, que entra em `desktop/node_modules` e nos
+  worktrees de sessão em `.claude/worktrees/`; agora lê `cmd/`, `internal/` e
+  `pkg/`, onde está todo o Go. O `AGENTS.md` diz onde as mudanças do desktop
+  são registradas.
 
 ## 0.21.1 — 28 de setembro de 2026
 

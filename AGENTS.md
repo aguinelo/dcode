@@ -64,12 +64,18 @@ can be recognised before it repeats rather than after.
   em vez de combinado. Cobertura e versão publicada também ficam de fora, de
   propósito: a primeira sai de uma execução que o teste não faz, e a segunda é
   afirmação sobre uma tag que um teste sem rede não enxerga.
+- **O que muda em `desktop/` entra no changelog do desktop** —
+  `desktop/CHANGELOG.md` e a edição pt-BR —, não neste. O app desktop tem
+  versão e tags próprias (`desktop-v*`). Uma mudança que atravessa os dois, como
+  um pedido de protocolo que o desktop consome, entra nos dois.
 
 ### A versão é derivada, não decidida
 
 - `./scripts/version.sh` diz qual é a próxima, a partir dos commits desde a
   última tag. `./scripts/changelog.sh` gera o esqueleto da seção — **o porquê de
   cada linha é escrito à mão**, porque não sai de gerador nenhum.
+- Os dois leem só o núcleo: commit que mexe apenas em `desktop/` não conta, e as
+  tags `desktop-v*` não servem de ponto de partida.
 - Comportamento faz parte do contrato: contrato removido, limiar que desce, ou
   descrição de ferramenta que muda de sentido é **no mínimo MINOR**. O SemVer lê
   assinaturas, e a superfície deste produto é em parte feita de frases.
