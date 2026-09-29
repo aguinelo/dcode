@@ -366,8 +366,9 @@ func TestSecondTurnWhileOneIsRunningConflicts(t *testing.T) {
 
 	// Hold the session busy without an engine by blocking on an approval.
 	go func() {
-		_, _ = sess.Approve(context.Background(),
-			protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash"}, 5*time.Second)
+		_, _ = sess.Approve(context.Background(), protocol.ApprovalRequest{
+			ApprovalID: "a1", Tool: "bash", ExpiresAt: time.Now().Add(5 * time.Second),
+		})
 	}()
 	for sess.State() != protocol.SessionStateBlocked {
 		time.Sleep(time.Millisecond)
@@ -394,9 +395,10 @@ func TestApprovalIsResolvedOverTheWireAndSecondConflicts(t *testing.T) {
 
 	answered := make(chan protocol.ApprovalDecision, 1)
 	go func() {
-		d, _ := sess.Approve(context.Background(),
-			protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash", Command: "curl x"},
-			5*time.Second)
+		d, _ := sess.Approve(context.Background(), protocol.ApprovalRequest{
+			ApprovalID: "a1", Tool: "bash", Command: "curl x",
+			ExpiresAt: time.Now().Add(5 * time.Second),
+		})
 		answered <- d
 	}()
 	for len(sess.Pending()) == 0 {
@@ -783,7 +785,8 @@ func TestALapsedApprovalIsRefusedAsExpiredOverTheWire(t *testing.T) {
 	// Nobody answers, and the deadline denies it.
 	if d, err := sess.Approve(ctx, protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash", Command: "curl x",
-	}, 10*time.Millisecond); err != nil || d != protocol.ApprovalDeny {
+		ExpiresAt: time.Now().Add(10 * time.Millisecond),
+	}); err != nil || d != protocol.ApprovalDeny {
 		t.Fatalf("the lapse resolved to %v, %v", d, err)
 	}
 
