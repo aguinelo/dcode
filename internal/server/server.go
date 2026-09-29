@@ -238,10 +238,15 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 
 // renameSession names a conversation, live or not.
 //
-// It writes to the record rather than to the live session, and that is
-// deliberate: the record is the one thing every conversation has. Routing it
-// through the session would mean a name only worked while the conversation was
-// loaded, which is the case a rail full of past conversations does not have.
+// A loaded conversation is named through its own log, like every other fact
+// about it: the clients attached see the name arrive, and the record takes it
+// in sequence. One that is not loaded — nearly every row of a rail listing
+// what a workspace recorded — has no log, and the name is appended to its
+// record, which is the one thing every conversation has.
+//
+// It used to go to the file for both. A live conversation's record then got
+// the name behind its log's back: no client heard of it, and it took the
+// number the log was about to hand the next event.
 func (s *Server) renameSession(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.RecordDir == "" {
 		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput,
@@ -253,7 +258,18 @@ func (s *Server) renameSession(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
 		return
 	}
-	switch err := session.Rename(s.cfg.RecordDir, r.PathValue("id"), req.Name, nil); {
+	id := r.PathValue("id")
+	var err error
+	if sess, lerr := s.cfg.Manager.Get(id); lerr == nil {
+		err = sess.Rename(req.Name)
+	} else {
+		err = session.Rename(s.cfg.RecordDir, id, req.Name, nil)
+	}
+	if pe, ok := protocol.AsError(err); ok {
+		writeErr(w, pe)
+		return
+	}
+	switch {
 	case errors.Is(err, session.ErrNoSuchSession):
 		writeErr(w, protocol.Errorf(protocol.CodeSessionNotFound,
 			"no recorded conversation with that id"))

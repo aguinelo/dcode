@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 func recordWith(t *testing.T, dir, id string, lines ...string) string {
@@ -154,6 +156,36 @@ func TestANameTooLongIsRefusedAndNotTrimmed(t *testing.T) {
 	found, _ := Browse(dir, "/w")
 	if found[0].Name != "" {
 		t.Errorf("a refused name reached the record: %q", found[0].Name)
+	}
+}
+
+// A loaded conversation takes a name by the same rules as one on disk. The
+// rules are about what a record can hold, and a live session's record is still
+// one: two paths that each cleaned a name their own way would drift apart.
+func TestALiveSessionIsNamedByTheSameRules(t *testing.T) {
+	log := NewEventLog("s1", 0, nil)
+	s := New("s1", "/w", "m", "workspace-write", nil, log, nil)
+
+	if err := s.Rename(strings.Repeat("a", NameLimit+1)); err == nil {
+		t.Error("an over-long name was accepted")
+	}
+	if err := s.Rename("one\ntwo\ttab"); err != nil {
+		t.Fatal(err)
+	}
+	events, err := log.Replay(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Only the name that was accepted: the refused one left nothing behind.
+	if len(events) != 1 || events[0].Type != protocol.EventSessionRenamed {
+		t.Fatalf("the log holds %+v, want one session.renamed", events)
+	}
+	var d protocol.SessionRenamed
+	if err := json.Unmarshal(events[0].Payload, &d); err != nil {
+		t.Fatal(err)
+	}
+	if d.Name != "onetwotab" {
+		t.Errorf("got %q", d.Name)
 	}
 }
 
