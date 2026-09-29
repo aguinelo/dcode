@@ -101,11 +101,24 @@ func (f *fakeTransport) ListSessions(context.Context) ([]protocol.Session, error
 	return f.sessions, f.listErr
 }
 
+// GetSession answers only for the sessions the daemon holds right now — the
+// ones ListSessions returns — the way Manager.Get does behind the real server.
+//
+// It answered for any id, and that is how choosing a recorded conversation
+// from the list passed here while failing against every real daemon: a
+// conversation from an earlier run is on disk, not in the manager.
 func (f *fakeTransport) GetSession(_ context.Context, id string) (protocol.Session, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.getErr != nil {
 		return protocol.Session{}, f.getErr
 	}
-	return protocol.Session{ID: id, Workspace: "/w", Model: "m", SandboxMode: "read-only"}, nil
+	for _, s := range f.sessions {
+		if s.ID == id {
+			return s, nil
+		}
+	}
+	return protocol.Session{}, protocol.Errorf(protocol.CodeSessionNotFound, "no session %s", id)
 }
 
 func (f *fakeTransport) Submit(_ context.Context, _, text string, imgs ...protocol.TurnImage) error {
@@ -203,6 +216,7 @@ func newProgram(t *testing.T, opts ...func(*Options)) (*program, *fakeTransport)
 		SessionID: "s1", Workspace: "/w", Model: "m", Sandbox: "read-only",
 		Transport: tr, Geometry: DefaultGeometry(100, 24), QueueMax: 2,
 		Commands: config.CommandSet{Commands: map[string]config.Command{}},
+		Lang:     En,
 	}
 	for _, mut := range opts {
 		mut(&o)
@@ -210,8 +224,12 @@ func newProgram(t *testing.T, opts ...func(*Options)) (*program, *fakeTransport)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
+	// The model speaks the options' language, as Run builds it. The two
+	// disagreed here — the model in English, the options at zero, which falls
+	// back to Portuguese — so a test that switched sessions watched the
+	// interface change language, which Run never does.
 	p := &program{
-		opts: o, model: NewModel(o.SessionID, o.Workspace, o.Model, o.Sandbox, En),
+		opts: o, model: NewModel(o.SessionID, o.Workspace, o.Model, o.Sandbox, o.Lang),
 		geo: o.Geometry, ctx: ctx, cancel: cancel,
 	}
 	p.attach(o.SessionID)
