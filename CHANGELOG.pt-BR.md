@@ -241,6 +241,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O handoff de design do desktop está no repositório, conferido contra o
+  código.** O Claude Design entregou a v2 do app desktop — a janela principal,
+  a navegação entre sessões e o loop — como referência em HTML, quatro
+  screenshots, um README de handoff, `SPEC_GAPS.md` e `LOOP.md`, a partir do
+  brief escrito para ele. Ficam em `refs/design/desktop/`, verbatim, ao lado do
+  brief, como os handoffs da TUI em `refs/design/`; as screenshots também são a
+  régua da checagem visual do desktop. O handoff foi escrito sem o
+  repositório, então foi conferido contra ele, como o da TUI. O `CONFERIDO.md`
+  registra o que confere, vinte divergências — compartilhar sessões exige um
+  `dcode serve` rodando, um daemon para vários projetos resolve a configuração
+  uma vez só, no boot, e `↵` nega a aprovação na TUI e permite no design — e o
+  que o `SPEC_GAPS.md` pede e já existe. Corrige também três coisas que o brief
+  afirmou ao designer e o código não sustenta.
 - **O núcleo para em `desktop/`.** Preparação para o app desktop, que ganha
   área própria, com changelog e tags `desktop-v*` próprios. O
   `scripts/version.sh` contava todo commit desde a última tag, então um commit

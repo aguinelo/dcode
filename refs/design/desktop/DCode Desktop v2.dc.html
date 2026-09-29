@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;}
+a{color:var(--dc-accent);text-decoration:none}a:hover{text-decoration:underline}
+:root,[data-theme="dark"]{--dc-canvas:#0a0a0a;--dc-chrome:#161616;--dc-panel:#1c1c1c;--dc-raised:#232323;--dc-sunken:#191919;--dc-line:#2a2a2a;--dc-line-soft:#242424;--dc-text:#e6e6e6;--dc-emph:#fafafa;--dc-dim:#a1a1a1;--dc-faint:#6f6f6f;--dc-hover:rgba(255,255,255,.045);--dc-sel:rgba(255,255,255,.07);--dc-accent:#e0a030;--dc-accent-ink:#1a1a1a;--dc-ok:#6fbf87;--dc-err:#e07b7f;--dc-warn:#e3c26b;--dc-warn-bg:rgba(227,194,107,.06);--dc-warn-line:rgba(227,194,107,.35);--dc-btn:#fafafa;--dc-btn-ink:#111;--dc-eye:#A8452A;}
+[data-theme="light"]{--dc-canvas:#d9d7d2;--dc-chrome:#f1f0ed;--dc-panel:#ffffff;--dc-raised:#f7f6f4;--dc-sunken:#fafaf9;--dc-line:#e4e2dd;--dc-line-soft:#eceae6;--dc-text:#262626;--dc-emph:#0f0f0f;--dc-dim:#5f5f5f;--dc-faint:#8f8f8f;--dc-hover:rgba(0,0,0,.04);--dc-sel:rgba(0,0,0,.06);--dc-accent:#b87d1e;--dc-accent-ink:#1a1a1a;--dc-ok:#2f7a48;--dc-err:#b3434a;--dc-warn:#8a6a0c;--dc-warn-bg:rgba(184,125,30,.06);--dc-warn-line:rgba(184,125,30,.35);--dc-btn:#111;--dc-btn-ink:#fff;--dc-eye:#A8452A;}
+@keyframes dcBreath{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes dcCaret{50%{opacity:0}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:100vh;min-width:max-content;display:flex;flex-direction:column;gap:48px;align-items:safe center;justify-content:safe center;padding:40px;box-sizing:border-box;background:var(--dc-canvas);font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;">
+<div data-screen-label="Loop de execução" style="width:1600px;height:960px;flex:none;display:flex;flex-direction:column;background:var(--dc-chrome);border:1px solid var(--dc-line);border-radius:12px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.4);color:var(--dc-text);">
+  <div style="flex:1;min-height:0;display:flex;">
+    <div style="width:264px;flex:none;display:flex;flex-direction:column;">
+      <div style="height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;">
+        <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;"></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:#febc2e;"></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:#28c840;"></span>
+        <span style="flex:1;"></span>
+        <span style="width:16px;height:13px;border:1.5px solid var(--dc-faint);border-radius:3px;box-sizing:border-box;"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1px;padding:4px 8px 10px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;font-size:13.5px;color:var(--dc-text);" style-hover="background:var(--dc-hover);">
+            <span style="width:16px;text-align:center;color:var(--dc-dim);font-size:13px;">{{ n.icon }}</span>
+            <span style="flex:1;">{{ n.label }}</span>
+            <span style="font-size:11px;color:var(--dc-faint);">{{ n.key }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 8px;">
+        <div style="padding:14px 10px 6px;font-size:12px;color:var(--dc-faint);">Projetos</div>
+        <sc-for list="{{ projectsL }}" as="p" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:1px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;">
+              <span style="width:16px;text-align:center;font-size:10px;color:var(--dc-faint);">{{ p.chev }}</span>
+              <span style="flex:1;font-size:13.5px;font-weight:500;color:var(--dc-text);">{{ p.name }}</span>
+              <span style="font-size:11px;color:{{ p.metaC }};">{{ p.meta }}</span>
+            </div>
+            <sc-if value="{{ p.open }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 16px;border-radius:7px;background:{{ r.bg }};">
+                  <span style="width:16px;display:flex;justify-content:center;"><span style="width:6px;height:6px;border-radius:{{ r.mr }};transform:{{ r.mt }};background:{{ r.mc }};animation:{{ r.ma }};"></span></span>
+                  <span style="flex:1;min-width:0;font-size:13px;color:{{ r.tc }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.title }}</span>
+                  <span style="font-size:11px;color:{{ r.sc }};white-space:nowrap;">{{ r.side }}</span>
+                </div>
+              </sc-for>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;display:flex;padding:8px 8px 0 0;">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--dc-panel);border:1px solid var(--dc-line);border-radius:10px;overflow:hidden;">
+        <div style="height:48px;flex:none;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid var(--dc-line-soft);">
+          <span style="font-size:13px;color:var(--dc-accent);">↻</span>
+          <span style="font-size:14px;font-weight:500;color:var(--dc-emph);">Fazer a suíte de integração passar</span>
+          <span style="font-size:12px;color:var(--dc-dim);">loop · iteração {{ curN }} de 100</span>
+          <span style="flex:1;"></span>
+          <span style="display:flex;align-items:center;gap:8px;padding:4px 9px;border:1px solid var(--dc-line);border-radius:6px;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--dc-dim);">fix/integration <span style="color:var(--dc-ok);">+214</span><span style="color:var(--dc-err);">−61</span></span>
+        </div>
+
+        <div style="flex:1;min-height:0;display:flex;">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;">
+
+            <div style="flex:none;display:flex;flex-direction:column;gap:14px;padding:20px 28px 18px;border-bottom:1px solid var(--dc-line-soft);">
+              <div style="display:flex;align-items:baseline;gap:14px;">
+                <span style="font-size:12px;color:var(--dc-faint);width:58px;">objetivo</span>
+                <span style="flex:1;font-size:14px;line-height:1.55;color:var(--dc-emph);text-wrap:pretty;">Fazer os 12 testes de internal/integration passarem sem mexer nos fixtures.</span>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:flex-end;gap:6px;height:128px;padding-left:72px;position:relative;">
+                  <span style="position:absolute;left:0;top:20px;width:58px;font-size:11px;color:var(--dc-faint);">12 testes</span>
+                  <span style="position:absolute;left:72px;right:0;top:28px;border-top:1px dashed var(--dc-line);"></span>
+                  <sc-for list="{{ iters }}" as="it" hint-placeholder-count="8">
+                    <div onClick="{{ it.pick }}" style="flex:1;max-width:84px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;gap:5px;padding:0 4px;border-radius:6px;cursor:pointer;background:{{ it.bg }};" style-hover="background:var(--dc-hover);">
+                      <span style="text-align:center;font-size:11px;color:{{ it.valC }};">{{ it.val }}</span>
+                      <span style="height:{{ it.h }};border-radius:3px 3px 0 0;background:{{ it.barC }};opacity:{{ it.barOp }};animation:{{ it.anim }};transition:height .9s cubic-bezier(.3,.8,.3,1);"></span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:6px;padding-left:72px;position:relative;">
+                  <span style="position:absolute;left:0;font-size:11px;color:var(--dc-faint);line-height:18px;">go vet</span>
+                  <sc-for list="{{ iters }}" as="it" hint-placeholder-count="8">
+                    <span style="flex:1;max-width:84px;padding:0 4px;display:flex;justify-content:center;align-items:center;height:18px;font-size:11px;color:{{ it.vetC }};">{{ it.vet }}</span>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:6px;padding-left:72px;position:relative;">
+                  <span style="position:absolute;left:0;font-size:11px;color:var(--dc-faint);line-height:18px;">specguard</span>
+                  <sc-for list="{{ iters }}" as="it" hint-placeholder-count="8">
+                    <span style="flex:1;max-width:84px;padding:0 4px;display:flex;justify-content:center;align-items:center;height:18px;font-size:11px;color:{{ it.sgC }};">{{ it.sg }}</span>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:6px;padding-left:72px;padding-top:4px;border-top:1px solid var(--dc-line-soft);position:relative;">
+                  <span style="position:absolute;left:0;top:4px;font-size:11px;color:var(--dc-faint);line-height:18px;">iteração</span>
+                  <sc-for list="{{ iters }}" as="it" hint-placeholder-count="8">
+                    <span style="flex:1;max-width:84px;padding:0 4px;display:flex;justify-content:center;align-items:center;gap:4px;height:18px;font-size:11.5px;font-weight:{{ it.nW }};color:{{ it.nC }};">{{ it.n }}<span style="font-size:10px;color:var(--dc-warn);">{{ it.flag }}</span></span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="flex:1;min-height:0;overflow:auto;padding:18px 28px;display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;align-items:baseline;gap:12px;">
+                <span style="font-size:15px;font-weight:500;color:var(--dc-emph);">Iteração {{ lsel.n }}</span>
+                <span style="font-size:12.5px;color:{{ lsel.deltaC }};">{{ lsel.delta }}</span>
+                <span style="flex:1;"></span>
+                <span style="font-size:12px;color:var(--dc-faint);">{{ lsel.meta }}</span>
+              </div>
+              <div style="font-size:14px;line-height:1.65;color:var(--dc-text);text-wrap:pretty;">{{ lsel.summary }}</div>
+              <div style="display:flex;flex-direction:column;border:1px solid var(--dc-line);border-radius:10px;overflow:hidden;">
+                <sc-for list="{{ lsel.steps }}" as="st" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:baseline;gap:10px;padding:8px 14px;border-top:1px solid var(--dc-line-soft);font-size:13px;color:var(--dc-dim);">
+                    <span style="width:14px;color:{{ st.gc }};animation:{{ st.anim }};">{{ st.g }}</span>
+                    <span style="width:44px;font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--dc-text);">{{ st.tool }}</span>
+                    <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ st.target }}</span>
+                    <span style="color:{{ st.mc }};white-space:nowrap;">{{ st.meta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="flex:none;padding:0 20px 14px;">
+              <div style="display:flex;flex-direction:column;gap:14px;padding:13px 14px 10px;border:1px solid var(--dc-line);border-radius:14px;background:var(--dc-sunken);">
+                <div style="font-size:14px;color:var(--dc-faint);">Orientar a próxima iteração — entra no início da {{ nextN }}</div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--dc-dim);">
+                  <span style="font-size:16px;color:var(--dc-faint);">+</span>
+                  <span style="padding:3px 8px;border:1px solid var(--dc-line);border-radius:6px;">workspace-write · on-request</span>
+                  <span style="flex:1;"></span>
+                  <span>MiniMax-M3 <span style="color:var(--dc-faint);">⌄</span></span>
+                  <span style="width:28px;height:28px;border-radius:50%;background:var(--dc-raised);border:1px solid var(--dc-line);display:flex;align-items:center;justify-content:center;color:var(--dc-dim);font-size:14px;">↑</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="width:340px;flex:none;display:flex;flex-direction:column;gap:22px;padding:20px 20px;border-left:1px solid var(--dc-line-soft);background:var(--dc-sunken);overflow:auto;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:baseline;"><span style="flex:1;font-size:12px;font-weight:500;color:var(--dc-dim);">Pronto quando</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--dc-faint);">done.toml</span></div>
+              <sc-for list="{{ checks }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;align-items:baseline;gap:10px;font-size:13px;">
+                  <span style="width:14px;color:{{ c.gc }};">{{ c.g }}</span>
+                  <span style="flex:1;min-width:0;font-family:'Geist Mono',monospace;font-size:12px;color:var(--dc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.cmd }}</span>
+                  <span style="font-size:12px;color:{{ c.mc }};">{{ c.meta }}</span>
+                </div>
+              </sc-for>
+              <span style="font-size:12px;line-height:1.5;color:var(--dc-faint);text-wrap:pretty;">Roda no fim de cada iteração, na árvore inteira. O selo vem daqui, nunca de uma frase do modelo.</span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <span style="font-size:12px;font-weight:500;color:var(--dc-dim);">Limites</span>
+              <sc-for list="{{ limits }}" as="l" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                  <div style="display:flex;font-size:12.5px;"><span style="flex:1;color:var(--dc-text);">{{ l.label }}</span><span style="color:var(--dc-dim);">{{ l.val }}</span></div>
+                  <span style="height:3px;border-radius:2px;background:var(--dc-line);overflow:hidden;"><span style="display:block;height:100%;width:{{ l.pct }};background:var(--dc-dim);"></span></span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <span style="font-size:12px;font-weight:500;color:var(--dc-dim);">Para quando</span>
+              <sc-for list="{{ stops }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex;align-items:baseline;gap:10px;font-size:13px;line-height:1.45;">
+                  <span style="width:14px;color:{{ s.gc }};">{{ s.g }}</span>
+                  <span style="flex:1;color:var(--dc-text);text-wrap:pretty;">{{ s.label }}</span>
+                  <span style="font-size:11.5px;color:{{ s.mc }};white-space:nowrap;">{{ s.meta }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <span style="flex:1;"></span>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="display:flex;justify-content:center;padding:8px 12px;border-radius:8px;border:1px solid var(--dc-line);background:var(--dc-panel);font-size:13px;color:var(--dc-text);cursor:pointer;" style-hover="background:var(--dc-hover);">Parar depois desta iteração</span>
+              <span style="display:flex;justify-content:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:var(--dc-dim);cursor:pointer;" style-hover="background:var(--dc-hover);">Interromper agora <span style="color:var(--dc-faint);">esc</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="height:30px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;font-size:12px;color:var(--dc-dim);">
+    <span style="display:flex;align-items:center;gap:7px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--dc-ok);"></span>daemon</span>
+    <span style="color:var(--dc-faint);">v0.21.1</span>
+    <span style="flex:1;"></span>
+    <span>{{ verbCap }}… iteração {{ curN }} · {{ elapsed }}</span>
+  </div>
+</div>
+
+<div data-screen-label="Janela principal" style="width:1600px;height:960px;flex:none;display:flex;flex-direction:column;background:var(--dc-chrome);border:1px solid var(--dc-line);border-radius:12px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.4);color:var(--dc-text);">
+  <div style="flex:1;min-height:0;display:flex;">
+
+    <div style="width:264px;flex:none;display:flex;flex-direction:column;">
+      <div style="height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;">
+        <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;"></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:#febc2e;"></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:#28c840;"></span>
+        <span style="flex:1;"></span>
+        <span style="width:16px;height:13px;border:1.5px solid var(--dc-faint);border-radius:3px;box-sizing:border-box;"></span>
+        <span style="color:var(--dc-faint);font-size:15px;margin-left:8px;">←</span>
+        <span style="color:var(--dc-faint);font-size:15px;opacity:.5;">→</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:1px;padding:4px 8px 10px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;font-size:13.5px;color:var(--dc-text);" style-hover="background:var(--dc-hover);">
+            <span style="width:16px;text-align:center;color:var(--dc-dim);font-size:13px;">{{ n.icon }}</span>
+            <span style="flex:1;">{{ n.label }}</span>
+            <span style="font-size:11px;color:var(--dc-faint);">{{ n.key }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:0 8px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 10px 6px;font-size:12px;color:var(--dc-faint);">
+          <span style="flex:1;">Projetos</span>
+          <span onClick="{{ toggleAll }}" title="{{ toggleAllLabel }}" style="cursor:pointer;font-size:11.5px;" style-hover="color:var(--dc-text);">{{ toggleAllLabel }}</span>
+          <span style="font-size:14px;cursor:pointer;" style-hover="color:var(--dc-text);">+</span>
+        </div>
+        <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+          <div draggable="{{ p.draggable }}" onDragStart="{{ p.dragStart }}" onDragOver="{{ p.dragOver }}" onDrop="{{ p.drop }}" onDragEnd="{{ p.dragEnd }}" onMouseEnter="{{ p.enter }}" onMouseLeave="{{ p.leave }}" style="position:relative;display:flex;flex-direction:column;gap:1px;margin-bottom:6px;border-top:2px solid {{ p.dropLine }};opacity:{{ p.op }};">
+            <sc-if value="{{ p.editing }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:8px;padding:4px 6px 4px 10px;">
+                <span style="width:16px;text-align:center;font-size:10px;color:var(--dc-faint);">{{ p.chev }}</span>
+                <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" onBlur="{{ commitRename }}" autofocus="{{ true }}" style="flex:1;min-width:0;padding:4px 7px;border:1px solid var(--dc-accent);border-radius:6px;outline:none;background:var(--dc-panel);font-family:'Geist',sans-serif;font-size:13.5px;font-weight:500;color:var(--dc-emph);">
+              </div>
+            </sc-if>
+            <sc-if value="{{ p.notEditing }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ p.toggle }}" onDoubleClick="{{ p.rename }}" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;background:{{ p.hbg }};">
+                <span style="width:16px;text-align:center;font-size:10px;color:var(--dc-faint);">{{ p.chev }}</span>
+                <span style="flex:1;min-width:0;font-size:13.5px;font-weight:500;color:var(--dc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</span>
+                <span style="font-size:11px;color:{{ p.metaC }};">{{ p.meta }}</span>
+                <span onClick="{{ p.openMenu }}" style="width:18px;text-align:center;font-size:13px;line-height:1;color:var(--dc-dim);opacity:{{ p.dotsOp }};border-radius:4px;" style-hover="background:var(--dc-sel);">⋯</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ p.menuOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:34px;right:6px;z-index:5;width:196px;display:flex;flex-direction:column;padding:5px;background:var(--dc-panel);border:1px solid var(--dc-line);border-radius:9px;box-shadow:0 12px 32px rgba(0,0,0,.28);">
+                <sc-for list="{{ p.menu }}" as="m" hint-placeholder-count="4">
+                  <div onClick="{{ m.run }}" style="display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:6px;font-size:13px;cursor:pointer;color:{{ m.c }};" style-hover="background:var(--dc-hover);">
+                    <span style="flex:1;">{{ m.label }}</span>
+                    <span style="font-size:11px;color:var(--dc-faint);">{{ m.hint }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ p.open }}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{ p.rows }}" as="r" hint-placeholder-count="4">
+                <div onClick="{{ r.pick }}" style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 16px;border-radius:7px;cursor:pointer;background:{{ r.bg }};" style-hover="background:var(--dc-hover);">
+                  <span style="width:16px;display:flex;justify-content:center;"><span style="width:6px;height:6px;border-radius:{{ r.mr }};transform:{{ r.mt }};background:{{ r.mc }};animation:{{ r.ma }};"></span></span>
+                  <span style="flex:1;min-width:0;font-size:13px;color:{{ r.tc }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.title }}</span>
+                  <span style="font-size:11px;color:{{ r.sc }};white-space:nowrap;">{{ r.side }}</span>
+                </div>
+              </sc-for>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex:none;display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--dc-line-soft);">
+        <span style="width:26px;height:26px;border-radius:50%;background:var(--dc-raised);border:1px solid var(--dc-line);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;color:var(--dc-dim);">AK</span>
+        <span style="flex:1;font-size:13px;color:var(--dc-text);">Aguinelo</span>
+        <span style="font-size:14px;color:var(--dc-faint);">⚙</span>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;display:flex;gap:8px;padding:8px 8px 0 0;">
+
+      <sc-if value="{{ showA }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Sessão rodando" style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--dc-panel);border:1px solid var(--dc-line);border-radius:10px;overflow:hidden;">
+        <div style="height:48px;flex:none;display:flex;align-items:center;gap:10px;padding:0 18px;">
+          <span style="font-size:14px;font-weight:500;color:var(--dc-emph);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Catalogar chamadas de .Save</span>
+          <span style="color:var(--dc-faint);font-size:11px;">⌄</span>
+          <span style="flex:1;"></span>
+          <span style="display:flex;align-items:center;gap:8px;padding:4px 9px;border:1px solid var(--dc-line);border-radius:6px;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--dc-dim);">feat/catalogo <span style="color:var(--dc-ok);">+38</span><span style="color:var(--dc-faint);">−0</span></span>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="width:100%;max-width:720px;align-self:center;box-sizing:border-box;padding:0 24px 16px;display:flex;flex-direction:column;gap:16px;">
+            <div style="align-self:flex-end;max-width:85%;padding:10px 14px;border-radius:14px;background:var(--dc-raised);font-size:14px;line-height:1.55;color:var(--dc-emph);text-wrap:pretty;">Cataloga toda chamada de .Save em internal/ e escreve um ARCH.md por pacote.</div>
+
+            <div style="display:flex;align-items:baseline;gap:10px;font-size:13px;color:var(--dc-dim);">
+              <span style="color:var(--dc-ok);width:14px;">✓</span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--dc-text);">grep</span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12.5px;">\.Save\(</span>
+              <span style="flex:1;"></span>
+              <span>11 matches · 4 arquivos</span>
+            </div>
+
+            <div style="font-size:14px;line-height:1.65;color:var(--dc-text);text-wrap:pretty;">São quatro pacotes independentes. Vou repartir: cada filho fica dono de um pacote e escreve só o ARCH.md dele.</div>
+
+            <div style="border:1px solid var(--dc-line);border-radius:10px;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:13px;">
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--dc-accent);animation:dcBreath 2.4s ease-in-out infinite;margin:0 3px;"></span>
+                <span style="font-weight:500;color:var(--dc-emph);">Delegou a 4 filhos</span>
+                <span style="color:var(--dc-faint);">propriedade disjunta</span>
+                <span style="flex:1;"></span>
+                <span style="color:var(--dc-dim);">2 de 4</span>
+              </div>
+              <div style="display:flex;flex-direction:column;border-top:1px solid var(--dc-line-soft);">
+                <sc-for list="{{ kids }}" as="k" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:14px 64px minmax(0,1fr) 56px 118px;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--dc-line-soft);font-size:12.5px;">
+                    <span style="color:{{ k.gc }};text-align:center;">{{ k.glyph }}</span>
+                    <span style="color:var(--dc-text);font-weight:500;">{{ k.name }}</span>
+                    <span style="font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--dc-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ k.owns }}</span>
+                    <span style="height:3px;border-radius:2px;background:var(--dc-line);overflow:hidden;"><span style="display:block;height:100%;width:{{ k.pct }};background:{{ k.gc }};transition:width .9s cubic-bezier(.3,.8,.3,1);"></span></span>
+                    <span style="color:{{ k.mc }};text-align:right;white-space:nowrap;">{{ k.meta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:baseline;gap:8px;font-size:13px;">
+              <span style="color:var(--dc-accent);animation:dcBreath 2.4s ease-in-out infinite;">●</span>
+              <span style="color:var(--dc-emph);font-weight:500;">{{ verbCap }}…</span>
+              <span style="flex:1;min-width:0;color:var(--dc-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">charlie lendo <span style="font-family:'Geist Mono',monospace;font-size:12px;">internal/store/sqlite.go</span></span>
+              <span style="color:var(--dc-faint);font-size:12px;">1m42s · 18.4k</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:none;padding:0 16px 14px;display:flex;justify-content:center;">
+          <div style="width:100%;max-width:720px;display:flex;flex-direction:column;gap:14px;padding:13px 14px 10px;border:1px solid var(--dc-line);border-radius:14px;background:var(--dc-sunken);">
+            <div style="font-size:14px;color:var(--dc-faint);">Mensagem entra na fila depois deste turno</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--dc-dim);">
+              <span style="font-size:16px;color:var(--dc-faint);">+</span>
+              <span style="padding:3px 8px;border:1px solid var(--dc-line);border-radius:6px;">workspace-write · on-request</span>
+              <span style="flex:1;"></span>
+              <span>MiniMax-M3 <span style="color:var(--dc-faint);">⌄</span></span>
+              <span style="color:var(--dc-faint);">41%</span>
+              <span style="width:28px;height:28px;border-radius:50%;background:var(--dc-raised);border:1px solid var(--dc-line);display:flex;align-items:center;justify-content:center;"><span style="width:9px;height:9px;border-radius:2px;background:var(--dc-text);"></span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </sc-if>
+      <sc-if value="{{ showB }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Sessão esperando aprovação" style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--dc-panel);border:1px solid var(--dc-line);border-radius:10px;overflow:hidden;">
+        <div style="height:48px;flex:none;display:flex;align-items:center;gap:10px;padding:0 18px;">
+          <span style="font-size:14px;font-weight:500;color:var(--dc-emph);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Extrair tokens de cor</span>
+          <span style="color:var(--dc-faint);font-size:11px;">⌄</span>
+          <span style="flex:1;"></span>
+          <span style="display:flex;align-items:center;gap:8px;padding:4px 9px;border:1px solid var(--dc-line);border-radius:6px;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--dc-dim);">feat/tokens <span style="color:var(--dc-ok);">+54</span><span style="color:var(--dc-faint);">−0</span></span>
+        </div>
+
+        <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;">
+          <div style="width:100%;max-width:720px;align-self:center;box-sizing:border-box;padding:0 24px 16px;display:flex;flex-direction:column;gap:16px;">
+            <div style="align-self:flex-end;max-width:85%;padding:10px 14px;border-radius:14px;background:var(--dc-raised);font-size:14px;line-height:1.55;color:var(--dc-emph);text-wrap:pretty;">Gera as variáveis CSS a partir de docs/brand/, claro e escuro.</div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:baseline;gap:10px;font-size:13px;color:var(--dc-dim);">
+                <span style="color:var(--dc-ok);width:14px;">✓</span>
+                <span style="font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--dc-text);">read</span>
+                <span style="font-family:'Geist Mono',monospace;font-size:12.5px;">docs/brand/PALETTE.md</span>
+                <span style="flex:1;"></span><span>96 linhas</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:10px;font-size:13px;color:var(--dc-dim);">
+                <span style="color:var(--dc-ok);width:14px;">✓</span>
+                <span style="font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--dc-text);">write</span>
+                <span style="font-family:'Geist Mono',monospace;font-size:12.5px;">desktop/src/tokens.json</span>
+                <span style="flex:1;"></span><span>criado, 54 linhas</span>
+              </div>
+            </div>
+
+            <div style="font-size:14px;line-height:1.65;color:var(--dc-text);text-wrap:pretty;">Para virar variáveis CSS preciso de uma dependência de build — isso usa rede e escreve fora de <span style="font-family:'Geist Mono',monospace;font-size:12.5px;padding:1px 5px;border-radius:4px;background:var(--dc-raised);">src/</span>.</div>
+
+            <div style="border:1px solid var(--dc-warn-line);border-radius:12px;background:var(--dc-warn-bg);overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:10px;padding:13px 16px 10px;">
+                <span style="width:7px;height:7px;border-radius:2px;transform:rotate(45deg);background:var(--dc-warn);margin:0 3px;"></span>
+                <span style="font-size:14px;font-weight:500;color:var(--dc-emph);">Rodar este comando?</span>
+                <span style="flex:1;"></span>
+                <span style="font-size:12px;color:var(--dc-warn);">esperando · {{ waited }}</span>
+              </div>
+              <div style="margin:0 16px;padding:10px 12px;border-radius:8px;background:var(--dc-panel);border:1px solid var(--dc-line);font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--dc-emph);">
+                <span style="color:var(--dc-faint);">$</span> npm i -D style-dictionary
+              </div>
+              <div style="padding:10px 16px 12px;font-size:12.5px;line-height:1.55;color:var(--dc-dim);text-wrap:pretty;">Pede <span style="color:var(--dc-text);">rede</span> e escrita em <span style="font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--dc-text);">package.json</span>, <span style="font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--dc-text);">node_modules/</span> — fora da política on-request.</div>
+              <div style="display:flex;flex-direction:column;padding:4px 8px 8px;border-top:1px solid var(--dc-warn-line);">
+                <sc-for list="{{ choices }}" as="c" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:7px;background:{{ c.bg }};font-size:13.5px;color:var(--dc-text);" style-hover="background:var(--dc-hover);">
+                    <span style="width:18px;height:18px;border-radius:5px;border:1px solid var(--dc-line);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--dc-dim);">{{ c.n }}</span>
+                    <span style="flex:1;">{{ c.label }}</span>
+                    <span style="font-size:11.5px;color:var(--dc-faint);">{{ c.key }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:none;padding:0 16px 14px;display:flex;justify-content:center;">
+          <div style="width:100%;max-width:720px;display:flex;flex-direction:column;gap:14px;padding:13px 14px 10px;border:1px solid var(--dc-line);border-radius:14px;background:var(--dc-sunken);">
+            <div style="display:flex;align-items:center;font-size:14px;color:var(--dc-faint);">Ou diga o que fazer em vez disso<span style="width:1.5px;height:16px;margin-left:1px;background:var(--dc-accent);animation:dcCaret 1.1s step-end infinite;"></span></div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--dc-dim);">
+              <span style="font-size:16px;color:var(--dc-faint);">+</span>
+              <span style="padding:3px 8px;border:1px solid var(--dc-line);border-radius:6px;">workspace-write · on-request</span>
+              <span style="flex:1;"></span>
+              <span>MiniMax-M3 <span style="color:var(--dc-faint);">⌄</span></span>
+              <span style="color:var(--dc-faint);">12%</span>
+              <span style="width:28px;height:28px;border-radius:50%;background:var(--dc-btn);display:flex;align-items:center;justify-content:center;color:var(--dc-btn-ink);font-size:14px;">↑</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <div style="height:30px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;font-size:12px;color:var(--dc-dim);">
+    <span style="display:flex;align-items:center;gap:7px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--dc-ok);"></span>daemon</span>
+    <span style="color:var(--dc-faint);">v0.21.1</span>
+    <span style="flex:1;"></span>
+    <span>1 rodando</span>
+    <span style="color:var(--dc-warn);">1 esperando você</span>
+  </div>
+</div>
+
+<div data-screen-label="Navegar entre sessões" style="position:relative;width:1600px;height:960px;flex:none;display:flex;flex-direction:column;background:var(--dc-chrome);border:1px solid var(--dc-line);border-radius:12px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.4);color:var(--dc-text);">
+  <div style="flex:1;min-height:0;display:flex;filter:blur(3px);opacity:.55;">
+    <div style="width:264px;flex:none;display:flex;flex-direction:column;">
+      <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 16px;">
+        <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;"></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:#febc2e;"></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:#28c840;"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1px;padding:4px 8px;">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="3">
+          <div style="display:flex;gap:10px;padding:7px 10px;font-size:13.5px;"><span style="width:16px;text-align:center;color:var(--dc-dim);">{{ n.icon }}</span><span>{{ n.label }}</span></div>
+        </sc-for>
+        <div style="padding:14px 10px 6px;font-size:12px;color:var(--dc-faint);">dcode</div>
+        <sc-for list="{{ past }}" as="s" hint-placeholder-count="5">
+          <div style="padding:7px 10px 7px 36px;font-size:13.5px;color:var(--dc-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.title }}</div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:1;padding:8px 8px 0 0;display:flex;">
+      <div style="flex:1;background:var(--dc-panel);border:1px solid var(--dc-line);border-radius:10px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding-bottom:14px;">
+        <div style="width:600px;height:88px;border:1px solid var(--dc-line);border-radius:14px;background:var(--dc-sunken);"></div>
+      </div>
+    </div>
+  </div>
+  <div style="height:30px;flex:none;"></div>
+
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.28);display:flex;justify-content:center;align-items:flex-start;padding-top:120px;">
+    <div style="width:920px;height:560px;display:flex;flex-direction:column;background:var(--dc-panel);border:1px solid var(--dc-line);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.45);overflow:hidden;">
+      <div style="flex:none;display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--dc-line-soft);">
+        <span style="color:var(--dc-faint);font-size:15px;">⌕</span>
+        <input value="{{ q }}" onChange="{{ onQ }}" onKeyDown="{{ onKey }}" placeholder="Ir para sessão…" autofocus="{{ true }}" style="flex:1;border:none;outline:none;background:transparent;font-family:'Geist',sans-serif;font-size:15px;color:var(--dc-emph);">
+        <sc-for list="{{ scopes }}" as="f" hint-placeholder-count="3">
+          <span onClick="{{ f.pick }}" style="padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;background:{{ f.bg }};color:{{ f.c }};border:1px solid {{ f.b }};">{{ f.label }}</span>
+        </sc-for>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;">
+        <div style="width:520px;flex:none;overflow:auto;padding:6px 8px 10px;border-right:1px solid var(--dc-line-soft);">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+            <div style="padding:12px 10px 6px;font-size:12px;color:var(--dc-faint);display:flex;"><span style="flex:1;">{{ g.label }}</span><span>{{ g.count }}</span></div>
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+              <div onClick="{{ r.pick }}" onMouseEnter="{{ r.hover }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:{{ r.bg }};">
+                <span style="width:16px;display:flex;justify-content:center;"><span style="width:7px;height:7px;border-radius:{{ r.mr }};transform:{{ r.mt }};background:{{ r.mc }};animation:{{ r.ma }};"></span></span>
+                <span style="flex:1;min-width:0;font-size:13.5px;color:{{ r.tc }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.title }}</span>
+                <span style="font-size:12px;color:{{ r.sc }};white-space:nowrap;">{{ r.state }}</span>
+                <span style="width:34px;text-align:right;font-size:11px;color:var(--dc-faint);">{{ r.key }}</span>
+              </div>
+            </sc-for>
+          </sc-for>
+          <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px 10px;text-align:center;font-size:13px;color:var(--dc-faint);">Nenhuma sessão com “{{ q }}”. ↵ cria uma nova com esse pedido.</div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;padding:20px 22px;background:var(--dc-sunken);">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:15px;font-weight:500;line-height:1.4;color:var(--dc-emph);text-wrap:pretty;">{{ sel.title }}</span>
+            <span style="font-size:12.5px;color:{{ sel.sc }};">{{ sel.stateLong }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:84px minmax(0,1fr);row-gap:7px;font-size:12.5px;">
+            <span style="color:var(--dc-faint);">workspace</span><span style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--dc-text);">{{ sel.ws }}</span>
+            <span style="color:var(--dc-faint);">branch</span><span style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--dc-text);">{{ sel.branch }}</span>
+            <span style="color:var(--dc-faint);">modelo</span><span style="color:var(--dc-text);">{{ sel.model }}</span>
+            <span style="color:var(--dc-faint);">turnos</span><span style="color:var(--dc-text);">{{ sel.turns }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;padding-top:14px;border-top:1px solid var(--dc-line-soft);">
+            <span style="font-size:12px;color:var(--dc-faint);">último evento</span>
+            <span style="font-size:13px;line-height:1.55;color:var(--dc-text);text-wrap:pretty;">{{ sel.last }}</span>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:none;display:flex;align-items:center;gap:18px;padding:10px 18px;border-top:1px solid var(--dc-line-soft);font-size:12px;color:var(--dc-faint);">
+        <span><span style="color:var(--dc-dim);">↑↓</span> navegar</span>
+        <span><span style="color:var(--dc-dim);">↵</span> abrir</span>
+        <span><span style="color:var(--dc-dim);">tab</span> escopo</span>
+        <span style="flex:1;"></span>
+        <span><span style="color:var(--dc-dim);">esc</span> fechar</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark'|'light'&quot;}}">
+class Component extends DCLogic {
+  state = { vi: 0, sec: 48 };
+  verbs = ['delegando', 'lendo', 'conferindo', 'pensando'];
+  componentDidMount() {
+    this.t1 = setInterval(() => this.setState(s => ({ vi: (s.vi + 1) % this.verbs.length })), 2400);
+    this.t2 = setInterval(() => this.setState(s => ({ sec: s.sec + 1 })), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.t1); clearInterval(this.t2); }
+  sessions = [
+    { id: 'a', title: 'Catalogar chamadas de .Save', ws: '~/work/dcode', open: true, kind: 'run', state: 'rodando', stateLong: 'Rodando · explore com 4 filhos · 1m42s', key: '⌘1', branch: 'feat/catalogo', model: 'MiniMax-M3', turns: '2', last: 'bravo não respondeu (tempo esgotado). charlie lendo internal/store/sqlite.go.' },
+    { id: 'b', title: 'Extrair tokens de cor', ws: '~/work/dcode', open: true, kind: 'wait', state: 'aprovar', stateLong: 'Esperando aprovação · bash', key: '⌘2', branch: 'feat/tokens', model: 'MiniMax-M3', turns: '1', last: 'Pede para rodar npm i -D style-dictionary — rede e escrita fora de src/.' },
+    { id: 'L', title: 'Fazer a suíte de integração passar', ws: '~/work/dcode', open: true, kind: 'loop', state: 'loop 8/100', stateLong: 'Loop · iteração 8 de 100 · 11/12 testes', key: '⌘3', branch: 'fix/integration', model: 'MiniMax-M3', turns: '8', last: 'Iteração 7 fechou com 11/12 testes. Iteração 8 rodando.' },
+    { id: 'c', title: 'Stop the done check after an interrupt', ws: '~/work/dcode', kind: 'ok', state: '2h', stateLong: '✓ verified · 2 checks', branch: 'fix/done-interrupt', model: 'MiniMax-M3', turns: '6', last: 'Selo do done.toml depois da última edição: verified, 2 checks.' },
+    { id: 'd', title: 'Fix Rebuild orphaning multi-call batch', ws: '~/work/dcode', kind: 'idle', state: 'ontem', stateLong: '⚠ unverified', branch: 'fix/rebuild-batch', model: 'Opus 5.5', turns: '4', last: 'Edição em internal/log/rebuild.go depois do último check.' },
+    { id: 'e', title: 'Make specguard reject ambiguous invariants', ws: '~/work/dcode', kind: 'idle', state: 'ontem', stateLong: 'Concluída', branch: 'feat/specguard', model: 'MiniMax-M3', turns: '9', last: 'Resposta final entregue; 3 invariantes reescritas.' },
+    { id: 'f', title: 'Revisar fluxo de checkout', ws: '~/work/bizpack', kind: 'idle', state: '1sem', stateLong: 'Concluída', branch: 'main', model: 'MiniMax-M3', turns: '3', last: 'Resumo do fluxo entregue sem edições.' },
+    { id: 'g', title: 'Migrar webhooks para fila', ws: '~/work/bizpack', kind: 'idle', state: '2sem', stateLong: 'Interrompida', branch: 'feat/webhook-queue', model: 'Opus 5.5', turns: '5', last: 'Interrompida por você com Esc durante bash (go test).' },
+    { id: 'h', title: 'Compartilhar cache do system prompt', ws: '~/work/eva', kind: 'idle', state: '3sem', stateLong: 'Concluída', branch: 'feat/prompt-cache', model: 'MiniMax-M3', turns: '7', last: 'Resposta final entregue.' },
+    { id: 'i', title: 'Consertar a CI: testes de integração', ws: '~/work/eva', kind: 'idle', state: '1mês', stateLong: '✓ verified · 1 check', branch: 'fix/ci-integration', model: 'MiniMax-M3', turns: '3', last: 'Selo verified depois da última edição.' }
+  ];
+  projOpen = { dcode: true, bizpack: true, eva: false };
+  moveProj(id, to) {
+    this.setState(st => {
+      const o = (st.order || ['dcode', 'bizpack', 'eva']).filter(x => x !== id);
+      o.splice(Math.max(0, Math.min(to, o.length)), 0, id);
+      return { order: o, menu: null };
+    });
+  }
+  buildProjects(active) {
+    const st = this.state;
+    const po = st.projOpen || this.projOpen;
+    const order = st.order || ['dcode', 'bizpack', 'eva'];
+    const labels = st.labels || {};
+    return order.map((n, idx) => {
+      const list = this.sessions.filter(s => s.ws.endsWith('/' + n));
+      const run = list.filter(s => s.kind === 'run').length, wait = list.filter(s => s.kind === 'wait').length;
+      const open = !!po[n];
+      const editing = st.editing === n, hov = st.hov === n, menuOpen = st.menu === n;
+      const setOpen = v => this.setState(s2 => ({ projOpen: { ...(s2.projOpen || this.projOpen), [n]: v }, menu: null }));
+      const startRename = () => this.setState({ editing: n, draft: labels[n] || n, menu: null });
+      const menu = [
+        { label: 'Renomear', hint: '2× clique', run: e => { e.stopPropagation(); startRename(); } },
+        { label: open ? 'Recolher sessões' : 'Expandir sessões', hint: '', run: e => { e.stopPropagation(); setOpen(!open); } }
+      ];
+      if (idx > 0) menu.push({ label: 'Mover para cima', hint: '', run: e => { e.stopPropagation(); this.moveProj(n, idx - 1); } });
+      if (idx < order.length - 1) menu.push({ label: 'Mover para baixo', hint: '', run: e => { e.stopPropagation(); this.moveProj(n, idx + 1); } });
+      menu.forEach(m => { m.c = 'var(--dc-text)'; });
+      return {
+        name: labels[n] || n, open, chev: open ? '▾' : '▸',
+        editing, notEditing: !editing, menuOpen, menu,
+        hbg: hov || menuOpen ? 'var(--dc-hover)' : 'transparent',
+        dotsOp: hov || menuOpen ? 1 : 0,
+        draggable: !editing,
+        dropLine: st.dropOn === n && st.drag !== n ? 'var(--dc-accent)' : 'transparent',
+        op: st.drag === n ? 0.4 : 1,
+        enter: () => this.setState({ hov: n }),
+        leave: () => this.setState(s2 => (s2.hov === n ? { hov: null } : null)),
+        rename: e => { e.stopPropagation(); startRename(); },
+        openMenu: e => { e.stopPropagation(); this.setState({ menu: menuOpen ? null : n }); },
+        dragStart: e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n); this.setState({ drag: n, menu: null }); },
+        dragOver: e => { e.preventDefault(); if (st.dropOn !== n) this.setState({ dropOn: n }); },
+        drop: e => { e.preventDefault(); const from = this.state.drag; if (from && from !== n) { const o = order.filter(x => x !== from); o.splice(o.indexOf(n), 0, from); this.setState({ order: o }); } this.setState({ drag: null, dropOn: null }); },
+        dragEnd: () => this.setState({ drag: null, dropOn: null }),
+        meta: !open && (run || wait) ? (wait ? wait + ' espera' : run + ' rodando') : (!open ? String(list.length) : ''),
+        metaC: wait ? 'var(--dc-warn)' : 'var(--dc-faint)',
+        toggle: () => setOpen(!open),
+        rows: list.map(s => {
+          const on = s.id === active;
+          const m = (s.kind === 'run' || s.kind === 'loop') ? { mc: 'var(--dc-accent)', mr: '50%', mt: 'none', ma: 'dcBreath 2.4s ease-in-out infinite' }
+            : s.kind === 'wait' ? { mc: 'var(--dc-warn)', mr: '1.5px', mt: 'rotate(45deg)', ma: 'none' }
+            : { mc: 'transparent', mr: '50%', mt: 'none', ma: 'none' };
+          return { ...m, title: s.title,
+            side: s.kind === 'wait' ? 'aprovar' : s.kind === 'run' ? '' : s.kind === 'loop' ? '↻ 8/100' : s.state,
+            sc: s.kind === 'wait' ? 'var(--dc-warn)' : 'var(--dc-faint)',
+            tc: on ? 'var(--dc-emph)' : (s.kind === 'idle' || s.kind === 'ok') ? 'var(--dc-dim)' : 'var(--dc-text)',
+            bg: on ? 'var(--dc-sel)' : 'transparent',
+            pick: () => { if (s.id === 'a' || s.id === 'b') this.setState({ active: s.id }); } };
+        })
+      };
+    });
+  }
+  navState = { q: '', cur: 0, scope: 'todas' };
+  visible() {
+    const { q, scope } = this.state.nav || this.navState;
+    const ql = q.trim().toLowerCase();
+    return this.sessions.filter(s =>
+      (scope === 'todas' || (scope === 'ativas' && s.open) || (scope === 'dcode' && s.ws.endsWith('dcode'))) &&
+      (!ql || s.title.toLowerCase().includes(ql)));
+  }
+  setNav(p) { this.setState(st => ({ nav: { ...(st.nav || this.navState), ...p } })); }
+  renderVals() {
+    const nav = this.state.nav || this.navState;
+    const vis = this.visible();
+    const cur = Math.min(nav.cur, Math.max(0, vis.length - 1));
+    const sel = vis[cur];
+    const cOk = 'var(--dc-ok)', cWarn = 'var(--dc-warn)', cAcc = 'var(--dc-accent)';
+    const mk = s => {
+      const i = vis.indexOf(s);
+      const m = s.kind === 'run' ? { mc: cAcc, mr: '50%', mt: 'none', ma: 'dcBreath 2.4s ease-in-out infinite' }
+        : s.kind === 'wait' ? { mc: cWarn, mr: '2px', mt: 'rotate(45deg)', ma: 'none' }
+        : { mc: 'transparent', mr: '50%', mt: 'none', ma: 'none' };
+      return { ...m, title: s.title, key: s.key || '', state: s.state,
+        sc: s.kind === 'wait' ? cWarn : s.kind === 'run' ? 'var(--dc-dim)' : 'var(--dc-faint)',
+        tc: s.open ? 'var(--dc-emph)' : 'var(--dc-text)',
+        bg: i === cur ? 'var(--dc-sel)' : 'transparent',
+        pick: () => this.setNav({ cur: i }), hover: () => this.setNav({ cur: i }) };
+    };
+    const open = vis.filter(s => s.open), rest = vis.filter(s => !s.open);
+    const byWs = {};
+    rest.forEach(s => { (byWs[s.ws] = byWs[s.ws] || []).push(s); });
+    const groups = [];
+    if (open.length) groups.push({ label: 'Ativas', count: open.length, rows: open.map(mk) });
+    Object.keys(byWs).forEach(w => groups.push({ label: w.replace('~/work/', ''), count: byWs[w].length, rows: byWs[w].map(mk) }));
+    const scopes = ['todas', 'ativas', 'dcode'].map(k => ({
+      label: k, pick: () => this.setNav({ scope: k, cur: 0 }),
+      bg: nav.scope === k ? 'var(--dc-sel)' : 'transparent',
+      c: nav.scope === k ? 'var(--dc-emph)' : 'var(--dc-dim)',
+      b: nav.scope === k ? 'var(--dc-line)' : 'transparent' }));
+    const selV = sel ? { ...sel, sc: sel.kind === 'wait' ? cWarn : sel.kind === 'ok' ? cOk : sel.kind === 'run' ? cAcc : 'var(--dc-dim)' } : {};
+    const nv = {
+      q: nav.q, groups, scopes, sel: selV, hasSel: !!sel, empty: vis.length === 0,
+      onQ: e => this.setNav({ q: e.target.value, cur: 0 }),
+      onKey: e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); this.setNav({ cur: Math.min(cur + 1, vis.length - 1) }); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); this.setNav({ cur: Math.max(cur - 1, 0) }); }
+        if (e.key === 'Tab') { e.preventDefault(); const o = ['todas', 'ativas', 'dcode']; this.setNav({ scope: o[(o.indexOf(nav.scope) + 1) % 3], cur: 0 }); }
+        if (e.key === 'Escape') this.setNav({ q: '', cur: 0 });
+      }
+    };
+    const active = this.state.active || 'a';
+    const po = this.state.projOpen || this.projOpen;
+    const anyOpen = Object.values(po).some(Boolean);
+    const commitRename = () => this.setState(st => {
+      if (!st.editing) return null;
+      const v = (st.draft || '').trim();
+      return { editing: null, labels: v ? { ...(st.labels || {}), [st.editing]: v } : (st.labels || {}) };
+    });
+    return { ...this.baseVals(), ...nv, ...this.loopVals(), projectsL: this.buildProjects('L'), projects: this.buildProjects(active), showA: active === 'a', showB: active === 'b',
+      toggleAllLabel: anyOpen ? 'recolher tudo' : 'expandir tudo',
+      toggleAll: () => this.setState({ projOpen: { dcode: !anyOpen, bizpack: !anyOpen, eva: !anyOpen } }),
+      draft: this.state.draft || '',
+      onDraft: e => this.setState({ draft: e.target.value }),
+      onDraftKey: e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') this.setState({ editing: null }); },
+      commitRename };
+  }
+  loopData = [
+    { n: 1, t: 3, vet: false, sg: false, dur: '1m48s', tok: '21k', diff: '+42 −6', summary: 'Rodou a suíte para ver o ponto de partida: 9 falhas, quase todas no mesmo timeout de conexão com o banco de teste.', steps: [['✓', 'bash', 'go test ./internal/integration/...', '3/12 · 38s'], ['✓', 'read', 'internal/integration/db_test.go', '184 linhas'], ['✓', 'edit', 'internal/integration/db_test.go', '+42 −6']] },
+    { n: 2, t: 5, vet: true, sg: false, dur: '2m02s', tok: '26k', diff: '+31 −12', summary: 'Trocou o sleep fixo por espera ativa no healthcheck do banco. Dois testes voltaram.', steps: [['✓', 'edit', 'internal/integration/harness.go', '+31 −12'], ['✓', 'bash', 'go test ./internal/integration/...', '5/12 · 41s']] },
+    { n: 3, t: 8, vet: true, sg: false, dur: '1m37s', tok: '19k', diff: '+18 −4', summary: 'Isolou o schema por teste. Três falhas restantes são de ordenação em store.List.', steps: [['✓', 'edit', 'internal/integration/harness.go', '+18 −4'], ['✓', 'bash', 'go test ./internal/integration/...', '8/12 · 36s']] },
+    { n: 4, t: 8, vet: true, sg: false, dur: '2m20s', tok: '31k', diff: '+22 −22', summary: 'Tentou ordenar em memória depois da consulta. Nenhum teste novo passou.', stall: true, steps: [['✓', 'edit', 'internal/store/list.go', '+22 −22'], ['✓', 'bash', 'go test ./internal/integration/...', '8/12 · 40s']] },
+    { n: 5, t: 8, vet: true, sg: true, dur: '2m41s', tok: '34k', diff: '+9 −3', summary: 'Ajustou a invariante do specguard, mas os mesmos 4 testes continuam falhando. Segunda iteração sem progresso.', stall: true, steps: [['✓', 'edit', 'docs/specs/store.p', '+9 −3'], ['✓', 'bash', 'go test ./internal/integration/...', '8/12 · 39s']] },
+    { n: 6, t: 10, vet: true, sg: true, dur: '1m55s', tok: '24k', diff: '+27 −9', summary: 'Mudou de abordagem: ORDER BY no SQL em vez de ordenar em Go. Dois testes voltaram.', steps: [['✓', 'read', 'internal/store/sqlite.go', '412 linhas'], ['✓', 'edit', 'internal/store/sqlite.go', '+27 −9'], ['✓', 'bash', 'go test ./internal/integration/...', '10/12 · 37s']] },
+    { n: 7, t: 11, vet: true, sg: true, dur: '1m49s', tok: '22k', diff: '+65 −5', summary: 'Corrigiu o fuso nas datas do fixture comparado. Falta TestReplayAfterCrash, que depende de fsync.', steps: [['✓', 'edit', 'internal/store/time.go', '+14 −5'], ['✓', 'write', 'internal/store/time_test.go', 'criado, 51 linhas'], ['✓', 'bash', 'go test ./internal/integration/...', '11/12 · 38s']] },
+    { n: 8, t: null, cur: true, dur: '', tok: '', summary: 'Investigando por que o log não sobrevive ao kill -9 no teste de replay.', steps: [['✓', 'read', 'internal/log/writer.go', '233 linhas'], ['●', 'grep', 'Sync\\(\\) internal/log/', '…']] }
+  ];
+  loopVals() {
+    const selN = this.state.loopSel || 7;
+    const ok = 'var(--dc-ok)', err = 'var(--dc-err)', acc = 'var(--dc-accent)', faint = 'var(--dc-faint)', ghost = 'var(--dc-line)';
+    const breath = 'dcBreath 2.4s ease-in-out infinite';
+    const iters = this.loopData.map((d, i) => {
+      const prev = i > 0 ? this.loopData[i - 1].t : 0;
+      const on = d.n === selN;
+      const val = d.cur ? '…' : d.t;
+      const h = d.cur ? '8px' : Math.round((d.t / 12) * 100) + 'px';
+      return {
+        n: d.n, val, h, pick: () => this.setState({ loopSel: d.n }),
+        bg: on ? 'var(--dc-sel)' : 'transparent',
+        barC: d.cur ? acc : d.stall ? 'var(--dc-warn)' : d.t === 12 ? ok : 'var(--dc-dim)',
+        barOp: d.cur ? 1 : on ? 1 : 0.55, anim: d.cur ? breath : 'none',
+        valC: on ? 'var(--dc-emph)' : 'var(--dc-dim)',
+        vet: d.cur ? '·' : d.vet ? '✓' : '✗', vetC: d.cur ? faint : d.vet ? ok : err,
+        sg: d.cur ? '·' : d.sg ? '✓' : '✗', sgC: d.cur ? faint : d.sg ? ok : err,
+        nW: on ? 600 : 400, nC: on ? 'var(--dc-emph)' : 'var(--dc-faint)',
+        flag: d.stall ? '=' : ''
+      };
+    });
+    const d = this.loopData.find(x => x.n === selN);
+    const i = this.loopData.indexOf(d);
+    const prev = i > 0 ? this.loopData[i - 1].t : 0;
+    const delta = d.cur ? 'em andamento' : d.t > prev ? '+' + (d.t - prev) + ' passando · ' + d.t + '/12' : 'sem progresso · ' + d.t + '/12';
+    const sel = {
+      n: d.n, summary: d.summary, delta,
+      deltaC: d.cur ? acc : d.t > prev ? ok : 'var(--dc-warn)',
+      meta: d.cur ? this.elapsedStr() + ' até agora' : d.dur + ' · ' + d.tok + ' tok · ' + d.diff,
+      steps: d.steps.map(s => ({ g: s[0], tool: s[1], target: s[2], meta: s[3],
+        gc: s[0] === '●' ? acc : ok, anim: s[0] === '●' ? breath : 'none', mc: 'var(--dc-dim)' }))
+    };
+    if (!d.cur) sel.steps.push({ g: '✓', tool: 'done', target: 'go test · go vet · specguard', meta: (d.t === 12 && d.vet && d.sg) ? 'pronto' : 'não pronto → próxima', gc: faint, anim: 'none', mc: 'var(--dc-faint)' });
+    return {
+      iters, lsel: sel, curN: 8, nextN: 'iteração 9', elapsed: this.elapsedStr(),
+      checks: [
+        { g: '●', gc: 'var(--dc-warn)', cmd: 'go test ./internal/integration/...', meta: '11/12', mc: 'var(--dc-dim)' },
+        { g: '✓', gc: ok, cmd: 'go vet ./...', meta: 'passa', mc: 'var(--dc-dim)' },
+        { g: '✓', gc: ok, cmd: 'specguard check', meta: 'passa', mc: 'var(--dc-dim)' }
+      ],
+      limits: [
+        { label: 'Iterações', val: '8 de 100', pct: '8%' },
+        { label: 'Tokens', val: '203k de 1M', pct: '20%' },
+        { label: 'Tempo', val: '15m de 2h', pct: '12%' }
+      ],
+      stops: [
+        { g: '✓', gc: ok, label: 'Todos os checks passam', meta: 'conclui', mc: 'var(--dc-faint)' },
+        { g: '=', gc: 'var(--dc-warn)', label: '3 iterações seguidas sem progresso', meta: 'pausa e pergunta', mc: 'var(--dc-faint)' },
+        { g: '■', gc: 'var(--dc-dim)', label: 'Algum limite acaba', meta: 'para', mc: 'var(--dc-faint)' }
+      ]
+    };
+  }
+  elapsedStr() { const s = 22 + this.state.sec; return Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0') + 's'; }
+  baseVals() {
+    const v = this.verbs[this.state.vi];
+    const m = Math.floor(this.state.sec / 60), s = this.state.sec % 60;
+    const ok = 'var(--dc-ok)', err = 'var(--dc-err)', amb = 'var(--dc-accent)', dim = 'var(--dc-dim)';
+    return {
+      theme: this.props.theme ?? 'dark',
+      verbCap: v[0].toUpperCase() + v.slice(1),
+      waited: m + ':' + String(s).padStart(2, '0'),
+      nav: [
+        { icon: '+', label: 'Nova sessão', key: '⌘N' },
+        { icon: '⌕', label: 'Procurar', key: '⌘K' },
+        { icon: '◷', label: 'Rotinas', key: '' }
+      ],
+      kids: [
+        { glyph: '✓', gc: ok, name: 'alpha', owns: 'internal/alpha/', pct: '100%', meta: 'leu 9 · escreveu 1', mc: dim },
+        { glyph: '⊘', gc: err, name: 'bravo', owns: 'internal/bravo/', pct: '40%', meta: 'não respondeu', mc: err },
+        { glyph: '●', gc: amb, name: 'charlie', owns: 'internal/store/', pct: '62%', meta: 'leu 5', mc: dim },
+        { glyph: '●', gc: amb, name: 'delta', owns: 'internal/tui/', pct: '28%', meta: 'leu 2', mc: dim }
+      ],
+      choices: [
+        { n: '1', label: 'Permitir uma vez', key: '↵', bg: 'var(--dc-sel)' },
+        { n: '2', label: 'Permitir nesta sessão', key: '', bg: 'transparent' },
+        { n: '3', label: 'Negar', key: 'esc', bg: 'transparent' }
+      ],
+      past: [
+        { title: 'Stop the done check after an interrupt', age: '2h' },
+        { title: 'Fix Rebuild orphaning multi-call batch', age: 'ontem' },
+        { title: 'Make specguard reject ambiguous invariants', age: 'ontem' },
+        { title: 'Keep the update test out of nested worktrees', age: '3d' },
+        { title: 'Fix the flaky provider cancellation race', age: '5d' }
+      ],
+      past2: [
+        { title: 'Revisar fluxo de checkout', age: '1sem' },
+        { title: 'Migrar webhooks para fila', age: '2sem' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
