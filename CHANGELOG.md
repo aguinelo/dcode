@@ -242,6 +242,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The desktop's design handoff is in the repository, checked against the
+  code.** Claude Design delivered v2 of the desktop app — the main window,
+  navigating between sessions, the loop — as an HTML reference, four
+  screenshots, a handoff README, `SPEC_GAPS.md` and `LOOP.md`, from the brief
+  written for it. They live in `refs/design/desktop/`, verbatim, beside the
+  brief, as the TUI's handoffs do in `refs/design/`; the screenshots are also
+  the ruler for the desktop's visual check. The handoff was written without the
+  repository, so it was checked against it, as the TUI's was. `CONFERIDO.md`
+  records what holds, twenty divergences — sharing sessions needs a running
+  `dcode serve`, one daemon for many projects resolves configuration once at
+  boot, `↵` denies an approval in the TUI and allows it in the design — and
+  what `SPEC_GAPS.md` asks for that already exists. It also corrects three
+  things the brief told the designer that the code does not support.
+
 ## 0.21.1 — 28 September 2026
 
 - **An interrupt as a final answer ends runs no criterion.** The provider can
