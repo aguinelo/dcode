@@ -48,9 +48,14 @@ cover:
 	$(GO) test -race -coverprofile=$(COVER) -covermode=atomic -coverpkg=./... $(PKGS)
 	@./scripts/coverage.sh $(COVER)
 
+# gofmt reads files, not packages, so `.` walked into anything under the root —
+# desktop/node_modules, and the session worktrees under .claude/worktrees/. The
+# Go source lives in these three directories and nowhere else.
+GOFMT_DIRS := cmd internal pkg
+
 lint:
 	$(GO) vet $(PKGS)
-	@gofmt -l . | grep -v '^$$' && { echo "gofmt: arquivos não formatados acima"; exit 1; } || true
+	@gofmt -l $(GOFMT_DIRS) | grep -v '^$$' && { echo "gofmt: arquivos não formatados acima"; exit 1; } || true
 
 build:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/dcode ./cmd/dcode
