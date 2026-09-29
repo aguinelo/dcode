@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 func navProgram(open string, titles ...string) *program {
@@ -261,5 +264,165 @@ func TestAGivenNameIsMarkedAsGiven(t *testing.T) {
 		if strings.Contains(l, "derived one") && strings.Contains(l, "·") {
 			t.Errorf("a derived title was marked as given: %q", l)
 		}
+	}
+}
+
+// -- opening -----------------------------------------------------------------
+
+// listProgram is a program whose list holds these recorded conversations, the
+// way the edge hands them over at start.
+func listProgram(t *testing.T, choices ...SessionChoice) (*program, *fakeTransport) {
+	t.Helper()
+	p, tr := newProgram(t, func(o *Options) { o.Sessions = choices })
+	p.model.Sessions = p.opts.Sessions
+	return p, tr
+}
+
+// A conversation from an earlier run opens, as a continuation.
+//
+// The list is what this workspace RECORDED, read from disk when the interface
+// started, and enter asked GetSession for the choice — which answers only for
+// the sessions the daemon holds right now. A conversation from an earlier run
+// is on disk and not in the daemon, so choosing one, which is what the list is
+// for, came back as "could not resume …: no session …". Nothing caught it: the
+// fake transport answered GetSession for any id, so a test here could not
+// have failed.
+//
+// Opening it is what `dcode -r` does: a new session, with an id of its own,
+// carrying the conversation. The marker at the top of that session's log is
+// what says so on the screen.
+func TestChoosingARecordedConversationContinuesIt(t *testing.T) {
+	p, tr := listProgram(t,
+		SessionChoice{ID: "1a02c3d", Title: "rename the flags", Turns: 1},
+		SessionChoice{ID: "1a015fb", Title: "fix the parser", Turns: 3})
+
+	p.onKey(ctrl('r'))
+	p.onKey(special(tea.KeyDown))
+	_, cmd := p.onKey(special(tea.KeyEnter))
+	msg := run(t, p, cmd)
+	sw, ok := msg.(switchedMsg)
+	if !ok {
+		t.Fatalf("choosing a recorded conversation did not open it: %#v", msg)
+	}
+	if len(tr.created) != 1 {
+		t.Fatalf("want one session opened to carry it, got %+v", tr.created)
+	}
+	if req := tr.created[0]; req.Resume != "1a015fb" || req.Workspace != "/w" {
+		t.Errorf("the session opened does not continue the one chosen, here: %+v", req)
+	}
+
+	p.Update(sw)
+	if p.opts.SessionID != sw.session.ID || p.opts.SessionID == "1a015fb" {
+		t.Errorf("attached to %q; a continuation is a session of its own", p.opts.SessionID)
+	}
+
+	// What the daemon opens a continuation with. Without the line it draws, the
+	// replayed conversation reads as work this session did.
+	for _, e := range []protocol.Event{
+		ev(t, 1, protocol.EventSessionCreated, protocol.Session{ID: sw.session.ID, Workspace: "/w"}),
+		ev(t, 2, protocol.EventSessionResumed, protocol.SessionResumed{SourceID: "1a015fb", Turns: 3}),
+		ev(t, 3, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1", Text: "fix the parser"}),
+	} {
+		p.Update(eventMsg{ev: e, gen: p.generation})
+	}
+	if screen := p.View().Content; !strings.Contains(screen, "continuing 1a015fb") {
+		t.Errorf("the screen does not say it is a continuation:\n%s", screen)
+	}
+}
+
+// A conversation still open somewhere is joined, not continued.
+//
+// A daemon can be shared by two terminals, and then a recorded conversation may
+// also be live. Continuing it would put the same conversation in two sessions
+// that go on separately, and the one on this screen would not be the one being
+// worked in over there.
+func TestChoosingALiveConversationAttachesToIt(t *testing.T) {
+	p, tr := listProgram(t, SessionChoice{ID: "1a02c3d", Title: "rename the flags", Turns: 1})
+	tr.sessions = []protocol.Session{{ID: "1a02c3d", Workspace: "/w", LastSeq: 40, FirstSeq: 1}}
+
+	p.onKey(ctrl('r'))
+	_, cmd := p.onKey(special(tea.KeyEnter))
+	msg := run(t, p, cmd)
+	if sw, ok := msg.(switchedMsg); !ok || sw.session.ID != "1a02c3d" {
+		t.Fatalf("the live conversation was not attached: %#v", msg)
+	}
+	if len(tr.created) != 0 {
+		t.Errorf("a live conversation was continued into a second session: %+v", tr.created)
+	}
+}
+
+// Only the daemon saying it holds no such session makes a choice a
+// continuation. Any other failure is said, and nothing is opened on a guess:
+// continuing a session that was live after all would split it in two.
+func TestAChoiceTheDaemonCouldNotAnswerOpensNothing(t *testing.T) {
+	p, tr := listProgram(t, SessionChoice{ID: "1a015fb", Title: "fix the parser", Turns: 3})
+	tr.getErr = errors.New("connection refused")
+
+	p.onKey(ctrl('r'))
+	_, cmd := p.onKey(special(tea.KeyEnter))
+	msg := run(t, p, cmd)
+	if note, ok := msg.(noteMsg); !ok || !strings.Contains(string(note), "connection refused") {
+		t.Fatalf("the failure was not said: %#v", msg)
+	}
+	if len(tr.created) != 0 {
+		t.Errorf("a session was opened on a guess: %+v", tr.created)
+	}
+}
+
+// A continuation asks for what `dcode -r` would, under this session's boundary.
+//
+// The model is the one the edge resolved for continuing — empty when nothing
+// this run named one, so the daemon brings the conversation back on the bundle
+// it was built with — and never this session's own. That is a model NAME, and
+// a name that is no profile would put the conversation on it with whatever
+// family and endpoint the daemon defaults to.
+//
+// The boundary is this session's, as /clear and /model carry it: opening a
+// conversation from inside the interface does not hand the person back the
+// configured sandbox halfway through their work.
+func TestAContinuationCarriesTheEdgesModelAndThisSessionsBoundary(t *testing.T) {
+	for _, model := range []string{"", "claude-5"} {
+		p, tr := listProgram(t, SessionChoice{ID: "1a015fb", Title: "fix the parser", Turns: 3})
+		p.opts.ContinueModel = model
+		p.model.Sandbox = "full-access"
+
+		p.onKey(ctrl('r'))
+		_, cmd := p.onKey(special(tea.KeyEnter))
+		run(t, p, cmd)
+		if len(tr.created) != 1 {
+			t.Fatalf("edge resolved %q: want one continuation, got %+v", model, tr.created)
+		}
+		if got := tr.created[0].Model; got != model {
+			t.Errorf("edge resolved %q, and the continuation asked for %q", model, got)
+		}
+		if got := tr.created[0].SandboxMode; got != "full-access" {
+			t.Errorf("the continuation left this session's boundary for %q", got)
+		}
+	}
+}
+
+// A continuation the daemon refuses — the record pruned since the list was
+// read, say — is said, in the interface's language, and the conversation on
+// the screen stays where it was.
+func TestAContinuationTheDaemonRefusesIsSaidAndNothingMoves(t *testing.T) {
+	p, tr := listProgram(t, SessionChoice{ID: "1a015fb", Title: "conserta o parser", Turns: 3})
+	p.model.Lang = PtBR
+	tr.createErr = protocol.Errorf(protocol.CodeSessionNotFound,
+		"session 1a015fb cannot be continued: no such file or directory")
+
+	p.onKey(ctrl('r'))
+	_, cmd := p.onKey(special(tea.KeyEnter))
+	msg := run(t, p, cmd)
+	note, ok := msg.(noteMsg)
+	if !ok {
+		t.Fatalf("the refusal was not said: %#v", msg)
+	}
+	if !strings.HasPrefix(string(note), "não foi possível abrir 1a015fb:") ||
+		!strings.Contains(string(note), "cannot be continued") {
+		t.Errorf("the note does not say what failed, in the interface's language: %q", note)
+	}
+	p.Update(note)
+	if p.opts.SessionID != "s1" {
+		t.Errorf("a refused continuation moved the screen to %q", p.opts.SessionID)
 	}
 }
