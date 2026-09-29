@@ -220,7 +220,11 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 
 - `progress` é o único evento que não é fato: ele entra no log e no registro como `message.delta`, com `Seq`, em vez de abrir buraco na sequência.
 - Nomear escreve no registro da própria conversa, e o nome morre com a transcrição que ele nomeia.
-- A sequência é lida antes de acrescentar, nunca presumida.
+- Conversa que não está carregada é nomeada no arquivo: a sequência é lida antes de acrescentar, nunca presumida.
+- Conversa **carregada** é nomeada pelo log dela, como todo fato observável: quem está anexado recebe o `session.renamed` ao vivo.
+- No registro de conversa carregada, o nome entra no lugar dele na sequência do log, e nenhum `seq` se repete.
+- Sessão que fecha entre ser encontrada e ser nomeada recusa o nome com `session_not_found`, em vez de responder sucesso por um log que ninguém mais lê.
+- Conversa carregada e conversa gravada são nomeadas pelas mesmas regras.
 - Renomear duas vezes é mudar de ideia: o último nome vence.
 - Nome vazio devolve o título derivado; não é erro.
 - Caractere de controle não chega ao registro.
@@ -288,3 +292,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609172000 — `Session` carrega a branch](changelog/202609172000-session-carrega-a-branch.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
 - [202609281750 — Um lote volta inteiro, na ordem em que foi feito](changelog/202609281750-um-lote-volta-inteiro.md)
+- [202609291356 — Conversa viva é nomeada pelo log](changelog/202609291356-conversa-viva-e-nomeada-pelo-log.md)

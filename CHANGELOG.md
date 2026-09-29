@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 198 decision changelogs |
+| spec families | 18, with 199 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -242,6 +242,25 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Naming a live conversation goes through its log.** Found while checking
+  the desktop design handoff against the code (divergence 12 of
+  `refs/design/desktop/CONFERIDO.md`, #400). `POST /sessions/{id}/name` wrote
+  `session.renamed` straight to the record file even when the conversation was
+  loaded, behind its event log: no attached client ever received it, and it
+  took the number after the file's last sequence — the number the log hands
+  the next live event, so a conversation that went on after being named held
+  that sequence twice. A loaded conversation is now named through its own log,
+  as `session.mode_changed` already is: the log writes the record under the
+  lock that assigns the number, then hands the event to every subscriber. One
+  that is not loaded — nearly every row of the rail — keeps the file path,
+  which is what the original decision chose the record for. A session that
+  closes between the route finding it and the name landing answers
+  `session_not_found` rather than `204` for a name that went nowhere. A
+  conversation loaded in another daemon process — two terminals, each with an
+  embedded daemon over one record directory — still takes the file path; that
+  needs coordination between processes and is left out. Four new invariants in
+  the protocol spec, each claimed by its test; the decision is in
+  `202609291356-conversa-viva-e-nomeada-pelo-log.md`.
 - **The activity line no longer shows the last turn's tokens.** Found checking
   the desktop design handoff against the code. The count beside the elapsed
   time was `OutputTokens`, written only when a turn completes — `Usage` travels
