@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 197 changelogs de decisão |
+| famílias de spec | 18, com 198 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -241,6 +241,22 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A linha de atividade não mostra mais os tokens do turno anterior.** Achado
+  ao conferir o handoff de design do desktop contra o código. A contagem ao lado
+  do tempo decorrido era `OutputTokens`, escrito só quando um turno termina —
+  `Usage` viaja em `turn.completed` e em nenhum outro evento —, e o
+  `turn.started` zerava as rodadas mas deixava a contagem de pé: todo turno
+  depois do primeiro rodava sob o número em que o anterior tinha terminado,
+  `12.0s  4.3k tok` num trabalho que ainda não tinha produzido nada. O
+  `turn.started` agora zera o uso do turno junto com as rodadas, e até o turno
+  relatar o seu a linha diz há quanto tempo, nunca quanto. Com o protocolo de
+  hoje esse relato chega quando a linha sai, então na prática ela mostra só o
+  tempo: contagem ao vivo pede um evento que o protocolo não tem, e estimada
+  pelo texto que chega seria número que o daemon nunca mandou. A §7.2 da spec
+  `client-tui` prometia "custo até aqui" e agora diz o que o protocolo entrega.
+  Preso por `TestANewTurnDoesNotShowTheLastTurnsTokens`, commitado vermelho
+  antes do conserto e escrito como invariante; a decisão está em
+  `docs/specs/architecture/client-tui/changelog/202609291352-a-contagem-e-do-turno-que-roda.md`.
 - **O handoff de design do desktop está no repositório, conferido contra o
   código.** O Claude Design entregou a v2 do app desktop — a janela principal,
   a navegação entre sessões e o loop — como referência em HTML, quatro
