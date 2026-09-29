@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 197 changelogs de decisão |
+| famílias de spec | 18, com 198 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -240,6 +240,26 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **Nomear uma conversa viva passa pelo log dela.** Encontrado conferindo o
+  handoff do design do desktop contra o código (divergência 12 de
+  `refs/design/desktop/CONFERIDO.md`, #400). O `POST /sessions/{id}/name`
+  escrevia o `session.renamed` direto no arquivo do registro mesmo com a
+  conversa carregada, pelas costas do log: nenhum cliente anexado o recebia, e
+  ele pegava o número seguinte ao último `seq` do arquivo — o número que o log
+  entrega ao próximo evento ao vivo, então uma conversa que seguia depois de
+  nomeada guardava essa sequência duas vezes. Conversa carregada agora é
+  nomeada pelo próprio log, como `session.mode_changed` já é: o log grava o
+  registro sob a trava que dá o número e depois entrega o evento a cada
+  inscrito. A que não está carregada — quase toda linha da trilha — fica no
+  caminho do arquivo, que é para o que a decisão original escolheu o registro.
+  Sessão que fecha entre a rota encontrá-la e o nome chegar responde
+  `session_not_found`, em vez de `204` por um nome que não foi a lugar nenhum.
+  Conversa carregada em outro processo de daemon — dois terminais, cada um com
+  um daemon embutido sobre o mesmo diretório de registros — continua indo pelo
+  arquivo; isso pede coordenação entre processos e ficou de fora. Quatro
+  invariantes novas na spec do protocolo, cada uma reivindicada pelo seu teste;
+  a decisão está em `202609291356-conversa-viva-e-nomeada-pelo-log.md`.
 
 ## 0.21.1 — 28 de setembro de 2026
 

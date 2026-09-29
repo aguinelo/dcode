@@ -167,6 +167,28 @@ func TestNamingALiveConversationKeepsItsRecordInSequence(t *testing.T) {
 	}
 }
 
+// A session can close between being found and being named: a DELETE from
+// another client lands in between. Named through a log that has closed, the
+// name went to memory nobody reads and to a record already shut, and the
+// answer still said it worked.
+func TestNamingASessionThatHasClosedSaysSo(t *testing.T) {
+	srv, mgr := newServer(t, 4)
+	sess := liveAndRecorded(t, srv, mgr, "s1")
+	// Closed and still held: the moment after the handler found it.
+	sess.Close()
+
+	if rec := postName(t, srv, "s1", "reformulação visual"); rec.Code != http.StatusNotFound {
+		t.Fatalf("got %d (%s), want 404: the name went nowhere", rec.Code, rec.Body)
+	}
+	found, err := session.Browse(srv.cfg.RecordDir, "/w")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 1 || found[0].Name != "" {
+		t.Errorf("a name reached the record of a session that had closed: %+v", found)
+	}
+}
+
 // Naming something that was never recorded says so, and creates nothing.
 func TestNamingAnUnknownConversationIsNotFound(t *testing.T) {
 	srv, _ := newServer(t, 4)
