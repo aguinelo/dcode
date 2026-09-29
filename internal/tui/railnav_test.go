@@ -368,3 +368,61 @@ func TestAChoiceTheDaemonCouldNotAnswerOpensNothing(t *testing.T) {
 		t.Errorf("a session was opened on a guess: %+v", tr.created)
 	}
 }
+
+// A continuation asks for what `dcode -r` would, under this session's boundary.
+//
+// The model is the one the edge resolved for continuing — empty when nothing
+// this run named one, so the daemon brings the conversation back on the bundle
+// it was built with — and never this session's own. That is a model NAME, and
+// a name that is no profile would put the conversation on it with whatever
+// family and endpoint the daemon defaults to.
+//
+// The boundary is this session's, as /clear and /model carry it: opening a
+// conversation from inside the interface does not hand the person back the
+// configured sandbox halfway through their work.
+func TestAContinuationCarriesTheEdgesModelAndThisSessionsBoundary(t *testing.T) {
+	for _, model := range []string{"", "claude-5"} {
+		p, tr := listProgram(t, SessionChoice{ID: "1a015fb", Title: "fix the parser", Turns: 3})
+		p.opts.ContinueModel = model
+		p.model.Sandbox = "full-access"
+
+		p.onKey(ctrl('r'))
+		_, cmd := p.onKey(special(tea.KeyEnter))
+		run(t, p, cmd)
+		if len(tr.created) != 1 {
+			t.Fatalf("edge resolved %q: want one continuation, got %+v", model, tr.created)
+		}
+		if got := tr.created[0].Model; got != model {
+			t.Errorf("edge resolved %q, and the continuation asked for %q", model, got)
+		}
+		if got := tr.created[0].SandboxMode; got != "full-access" {
+			t.Errorf("the continuation left this session's boundary for %q", got)
+		}
+	}
+}
+
+// A continuation the daemon refuses — the record pruned since the list was
+// read, say — is said, in the interface's language, and the conversation on
+// the screen stays where it was.
+func TestAContinuationTheDaemonRefusesIsSaidAndNothingMoves(t *testing.T) {
+	p, tr := listProgram(t, SessionChoice{ID: "1a015fb", Title: "conserta o parser", Turns: 3})
+	p.model.Lang = PtBR
+	tr.createErr = protocol.Errorf(protocol.CodeSessionNotFound,
+		"session 1a015fb cannot be continued: no such file or directory")
+
+	p.onKey(ctrl('r'))
+	_, cmd := p.onKey(special(tea.KeyEnter))
+	msg := run(t, p, cmd)
+	note, ok := msg.(noteMsg)
+	if !ok {
+		t.Fatalf("the refusal was not said: %#v", msg)
+	}
+	if !strings.HasPrefix(string(note), "não foi possível abrir 1a015fb:") ||
+		!strings.Contains(string(note), "cannot be continued") {
+		t.Errorf("the note does not say what failed, in the interface's language: %q", note)
+	}
+	p.Update(note)
+	if p.opts.SessionID != "s1" {
+		t.Errorf("a refused continuation moved the screen to %q", p.opts.SessionID)
+	}
+}

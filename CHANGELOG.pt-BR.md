@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 28 de setembro de 2026
+## Estado atual — 29 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 197 changelogs de decisão |
+| famílias de spec | 18, com 198 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -85,7 +85,8 @@ nunca foi feita.
 
 **A interface.** A conversa fica com o terminal. A coluna de arquivos nasce
 escondida e `^B` a invoca; a lista de conversas é sobreposição em `^R`, que é o
-que essa tecla significa no shell de onde ela veio; o painel abre no seu piso e
+que essa tecla significa no shell de onde ela veio, e escolher uma conversa ali a
+continua, ou a anexa se ela ainda estiver aberta; o painel abre no seu piso e
 cresce do que sobra. Toda pergunta abre com uma régua, então uma tela de rolagem
 tem um limite dentro dela. Delegação é um card com os filhos dentro, e o filho
 que não respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no
@@ -240,6 +241,26 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **Escolher uma conversa gravada na lista do `^R` a continua.** A lista é o
+  que este workspace gravou, lida do disco na abertura, e o `enter` perguntava
+  ao `GetSession` pela escolha — que só responde pelas sessões que o daemon tem
+  agora. Com o daemon embutido, que nasce vazio a cada execução, isso é a
+  lista inteira: toda escolha voltava como `could not resume …: no session …`.
+  Nada pegou isso, porque o transporte falso respondia `GetSession` para
+  qualquer id; agora responde só pelas sessões vivas, como o servidor, e o
+  teste que reproduz o defeito entrou vermelho. Escolher agora pergunta
+  primeiro ao daemon: conversa viva é anexada, e a que só está gravada é
+  continuada com `CreateSession{Resume}`, como o `dcode -r` a continua —
+  sessão nova, com id próprio, cuja marca `session.resumed` diz na tela de
+  onde a conversa veio. Só "não existe essa sessão" faz uma continuação;
+  qualquer outra falha é dita, e nada abre por palpite. A continuação pede o
+  modelo que o `dcode -r` pediria (a borda o resolve uma vez, pela mesma
+  regra) sob a fronteira desta sessão, como o `/clear` faz. O `/resume <id>`
+  continua só reanexando. Achado conferindo o handoff de desenho do desktop
+  contra o código (aguinelo/dcode#400, divergência 12). Três invariantes na
+  spec do client-tui, cada uma reivindicada pelo seu teste; a decisão está em
+  `docs/specs/architecture/client-tui/changelog/202609291356-a-lista-abre-a-conversa-gravada.md`.
 
 ## 0.21.1 — 28 de setembro de 2026
 

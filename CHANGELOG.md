@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 28 September 2026
+## Current state — 29 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 197 decision changelogs |
+| spec families | 18, with 198 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -84,13 +84,14 @@ no question was asked.
 
 **The interface.** The conversation gets the terminal. The file column starts
 hidden and `^B` summons it; the conversation list is an overlay on `^R`, which
-is what that key means in the shell it was borrowed from; the panel opens at its
-floor and grows out of the surplus. Every question opens with a rule, so a
-screen of scrollback has a boundary in it. Delegation is one card with its
-children inside, and the child that did not answer is named there with its
-reason. A tool call appears the moment it begins arriving from the model, and a
-boundary crossing is asked in the stream, in its own lane, keeping its place
-with the answer once it has one.
+is what that key means in the shell it was borrowed from, and choosing a
+conversation there continues it, or joins it if it is still open; the panel
+opens at its floor and grows out of the surplus. Every question opens with a
+rule, so a screen of scrollback has a boundary in it. Delegation is one card
+with its children inside, and the child that did not answer is named there with
+its reason. A tool call appears the moment it begins arriving from the model,
+and a boundary crossing is asked in the stream, in its own lane, keeping its
+place with the answer once it has one.
 
 That shape came from a measurement rather than a preference. Replaying a real
 recorded session at four widths, the column and the panel took 61 of 132 columns
@@ -241,6 +242,26 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **Choosing a recorded conversation from the `^R` list continues it.** The
+  list is what this workspace recorded, read from disk at start, and `enter`
+  asked `GetSession` for the choice — which answers only for the sessions the
+  daemon holds right now. With the embedded daemon, which starts empty every
+  run, that is the whole list: every choice came back as `could not resume …:
+  no session …`. Nothing caught it, because the fake transport answered
+  `GetSession` for any id; it now answers only for live sessions, as the
+  server does, and the reproducing test was committed red. Choosing now asks
+  the daemon first: a live conversation is attached, and one that is only
+  recorded is continued with `CreateSession{Resume}`, as `dcode -r` continues
+  it — a new session with its own id, whose `session.resumed` marker says on
+  the screen where the conversation came from. Only "no such session" makes a
+  continuation; any other failure is said, and nothing opens on a guess. The
+  continuation asks for the model `dcode -r` would (the edge resolves it once,
+  through the same rule) under this session's boundary, as `/clear` does.
+  `/resume <id>` still only reattaches. Found while checking the desktop
+  design handoff against the code (aguinelo/dcode#400, divergence 12). Three
+  invariants in the client-tui spec, each claimed by its test; the decision is
+  in `docs/specs/architecture/client-tui/changelog/202609291356-a-lista-abre-a-conversa-gravada.md`.
 
 ## 0.21.1 — 28 September 2026
 

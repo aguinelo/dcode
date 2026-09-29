@@ -100,6 +100,13 @@ type Options struct {
 	// a record directory mostly holds, and burying four real ones under thirty
 	// empty ones is what the picker already refuses to do.
 	Sessions []SessionChoice
+	// ContinueModel is what continuing one of those asks for, resolved once at
+	// the edge by the rule `dcode -r` follows: empty when nothing this run
+	// named a model, so the daemon reconnects the bundle the conversation was
+	// built with, and the explicit choice when something did. Resolved out
+	// there because the rule reads where model.name came from, and this package
+	// never reads configuration.
+	ContinueModel string
 
 	// Commands is the user's discovered command set. Frozen at start, like the
 	// instruction chain, so behaviour cannot change mid-session.
@@ -585,9 +592,11 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// a backlog that session can never produce, because it is a different
 		// event log with its own numbering starting at 1. The screen was stuck
 		// reading forever: not a slow catch-up, a catch-up that had nothing
-		// left to reach. /resume is the one path where a real backlog belongs
-		// here, and it already arrives on msg.session — GetSession answers
-		// with the session actually being attached to, backlog and all.
+		// left to reach. Attaching to a live session and continuing a
+		// recorded one are the paths where a real backlog belongs here, and
+		// it arrives on msg.session either way — GetSession and CreateSession
+		// both answer with the session actually being attached to, backlog
+		// and all.
 		p.opts.Backlog = msg.session.LastSeq
 		p.opts.From = msg.session.FirstSeq
 		// The recorded conversations do not belong to the session that was
@@ -870,7 +879,7 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				// nothing beats reloading the conversation somebody is in.
 				return p, nil
 			}
-			return p, p.resume(id)
+			return p, p.open(id)
 		case "esc", "ctrl+r":
 			p.model.Nav = p.model.Nav.Escape()
 			return p, nil
@@ -1707,11 +1716,52 @@ func (p *program) rename(id, name string) tea.Cmd {
 	}
 }
 
+// resume reattaches to a session the daemon holds, which is what `/resume`
+// lists. A conversation that is only recorded is opened from the ^R list, by
+// open.
 func (p *program) resume(id string) tea.Cmd {
 	return func() tea.Msg {
 		s, err := p.opts.Transport.GetSession(p.ctx, id)
 		if err != nil {
 			return noteMsg("could not resume " + id + ": " + err.Error())
+		}
+		return switchedMsg{session: s}
+	}
+}
+
+// open brings a conversation chosen from the list onto the screen.
+//
+// The list is what this workspace RECORDED, read from disk at start, and
+// GetSession answers only for the sessions the daemon holds right now. Asking
+// it alone turned every conversation from an earlier run — with the embedded
+// daemon, the whole list — into "could not resume", the one thing the list is
+// for.
+//
+// A live one is attached: continuing it would put one conversation in two
+// sessions that go on separately. One that is only recorded is continued, as
+// `dcode -r` continues it — a new session, with its own id, carrying the
+// conversation — and the session.resumed marker at the top of its log is what
+// says so on the screen. Only the daemon saying it holds no such session makes
+// a continuation. Any other failure is said instead, because continuing a
+// session that was live after all would split it in two.
+//
+// What the command needs is read here, in Update, and not inside it: the
+// command runs on another goroutine while Update goes on writing the model.
+func (p *program) open(id string) tea.Cmd {
+	ws, sandbox, model := p.model.Workspace, p.model.Sandbox, p.opts.ContinueModel
+	t := Text(p.model.Lang)
+	return func() tea.Msg {
+		s, err := p.opts.Transport.GetSession(p.ctx, id)
+		if pe, ok := protocol.AsError(err); ok && pe.Code == protocol.CodeSessionNotFound {
+			s, err = p.opts.Transport.CreateSession(p.ctx, protocol.CreateSessionRequest{
+				Workspace:   ws,
+				Model:       model,
+				SandboxMode: sandbox,
+				Resume:      id,
+			})
+		}
+		if err != nil {
+			return noteMsg(fmt.Sprintf(t.SessionsOpenFailed, id, err))
 		}
 		return switchedMsg{session: s}
 	}

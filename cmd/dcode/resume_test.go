@@ -180,6 +180,22 @@ func TestModelOverrideStillWinsWhenExplicitlySetDuringAResume(t *testing.T) {
 	}
 }
 
+// The list ^R opens continues a conversation on the model `dcode -r` would ask
+// for, whatever said model.name. Two ways of continuing one conversation that
+// read the rule separately would end up disagreeing about which model it comes
+// back on.
+func TestTheListContinuesOnTheModelTheFlagsWould(t *testing.T) {
+	for _, src := range []config.Source{config.SourceDefault, config.SourceEnv, config.SourceProject} {
+		r := config.Resolve([]config.Layer{{
+			Source: src, Origin: string(src),
+			Values: map[string]string{"model.name": "claude-5"},
+		}})
+		if list, flags := continuedModel("claude-5", r), modelOverride("claude-5", r, "old-session-id"); list != flags {
+			t.Errorf("model.name from %s: the list asks for %q and `dcode -r` for %q", src, list, flags)
+		}
+	}
+}
+
 // An ordinary shutdown — ctx cancelled, serve honours it and returns nil, its
 // own contract for "this is the exit you asked for" — reports nothing. A
 // silently discarded error here is exactly the failure AGENTS.md's "every
