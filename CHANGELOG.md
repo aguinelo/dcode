@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 28 September 2026
+## Current state — 29 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 197 decision changelogs |
+| spec families | 18, with 201 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -84,13 +84,14 @@ no question was asked.
 
 **The interface.** The conversation gets the terminal. The file column starts
 hidden and `^B` summons it; the conversation list is an overlay on `^R`, which
-is what that key means in the shell it was borrowed from; the panel opens at its
-floor and grows out of the surplus. Every question opens with a rule, so a
-screen of scrollback has a boundary in it. Delegation is one card with its
-children inside, and the child that did not answer is named there with its
-reason. A tool call appears the moment it begins arriving from the model, and a
-boundary crossing is asked in the stream, in its own lane, keeping its place
-with the answer once it has one.
+is what that key means in the shell it was borrowed from, and choosing a
+conversation there continues it, or joins it if it is still open; the panel
+opens at its floor and grows out of the surplus. Every question opens with a
+rule, so a screen of scrollback has a boundary in it. Delegation is one card
+with its children inside, and the child that did not answer is named there with
+its reason. A tool call appears the moment it begins arriving from the model,
+and a boundary crossing is asked in the stream, in its own lane, keeping its
+place with the answer once it has one.
 
 That shape came from a measurement rather than a preference. Replaying a real
 recorded session at four widths, the column and the panel took 61 of 132 columns
@@ -259,6 +260,103 @@ exists to stop exactly that.
   README points to the area. The dependency runs one way: the desktop reads the
   core, the core never reads the desktop, and nothing was added to the root
   `go.mod`.
+- **Choosing a recorded conversation from the `^R` list continues it.** The
+  list is what this workspace recorded, read from disk at start, and `enter`
+  asked `GetSession` for the choice — which answers only for the sessions the
+  daemon holds right now. With the embedded daemon, which starts empty every
+  run, that is the whole list: every choice came back as `could not resume …:
+  no session …`. Nothing caught it, because the fake transport answered
+  `GetSession` for any id; it now answers only for live sessions, as the
+  server does, and the reproducing test was committed red. Choosing now asks
+  the daemon first: a live conversation is attached, and one that is only
+  recorded is continued with `CreateSession{Resume}`, as `dcode -r` continues
+  it — a new session with its own id, whose `session.resumed` marker says on
+  the screen where the conversation came from. Only "no such session" makes a
+  continuation; any other failure is said, and nothing opens on a guess. The
+  continuation asks for the model `dcode -r` would (the edge resolves it once,
+  through the same rule) under this session's boundary, as `/clear` does.
+  `/resume <id>` still only reattaches. Found while checking the desktop
+  design handoff against the code (aguinelo/dcode#400, divergence 12). Three
+  invariants in the client-tui spec, each claimed by its test; the decision is
+  in `docs/specs/architecture/client-tui/changelog/202609291356-a-lista-abre-a-conversa-gravada.md`.
+- **An approval is announced with the deadline it lapses at.**
+  `tool.approval_required` always went out with `expires_at` as the zero
+  time: the loop announced the question before handing it to the approver,
+  and the session set the deadline only then, on a copy of its own that no
+  route exposes. A client could not show how long an approval had left, and
+  a session in the background was denied when the daemon's two minutes ran
+  out without anyone seeing it coming. The approver now names its deadline
+  before the question goes out (`loop.Deadliner`, optional), the loop stamps
+  it on the question, and the session holds the question to the deadline it
+  carries instead of setting one of its own — one value, shown and enforced.
+  An approver with no deadline announces none, which is the truth about it:
+  the terminal in `dcode once` waits as long as the person takes, and a
+  deadline stamped by the loop would have been a countdown nobody keeps.
+  Found checking the desktop design handoff against the code. The decision
+  is in
+  `docs/specs/architecture/client-server-protocol/changelog/202609291401-a-pergunta-carrega-o-prazo.md`,
+  and a new invariant in the protocol spec is claimed by its test.
+- **Naming a live conversation goes through its log.** Found while checking
+  the desktop design handoff against the code (divergence 12 of
+  `refs/design/desktop/CONFERIDO.md`, #400). `POST /sessions/{id}/name` wrote
+  `session.renamed` straight to the record file even when the conversation was
+  loaded, behind its event log: no attached client ever received it, and it
+  took the number after the file's last sequence — the number the log hands
+  the next live event, so a conversation that went on after being named held
+  that sequence twice. A loaded conversation is now named through its own log,
+  as `session.mode_changed` already is: the log writes the record under the
+  lock that assigns the number, then hands the event to every subscriber. One
+  that is not loaded — nearly every row of the rail — keeps the file path,
+  which is what the original decision chose the record for. A session that
+  closes between the route finding it and the name landing answers
+  `session_not_found` rather than `204` for a name that went nowhere. A
+  conversation loaded in another daemon process — two terminals, each with an
+  embedded daemon over one record directory — still takes the file path; that
+  needs coordination between processes and is left out. Four new invariants in
+  the protocol spec, each claimed by its test; the decision is in
+  `202609291356-conversa-viva-e-nomeada-pelo-log.md`.
+- **The activity line no longer shows the last turn's tokens.** Found checking
+  the desktop design handoff against the code. The count beside the elapsed
+  time was `OutputTokens`, written only when a turn completes — `Usage` travels
+  in `turn.completed` and in no other event — and `turn.started` zeroed the
+  round counters but left it standing, so every turn after the first ran under
+  the number its predecessor had ended on: `12.0s  4.3k tok` for work that had
+  produced nothing yet. `turn.started` now zeroes the turn's usage with its
+  rounds, and until the turn reports its own the line says how long and not how
+  much. With today's protocol that report arrives as the line goes away, so in
+  practice the line shows the time only: a live count needs an event the
+  protocol does not have, and one estimated from the streamed text would be a
+  number the daemon never sent. §7.2 of the client-tui spec promised "cost so
+  far" and now says what the protocol supplies. Pinned by
+  `TestANewTurnDoesNotShowTheLastTurnsTokens`, committed red before the fix and
+  written as an invariant; the decision is in
+  `docs/specs/architecture/client-tui/changelog/202609291352-a-contagem-e-do-turno-que-roda.md`.
+- **The desktop's design handoff is in the repository, checked against the
+  code.** Claude Design delivered v2 of the desktop app — the main window,
+  navigating between sessions, the loop — as an HTML reference, four
+  screenshots, a handoff README, `SPEC_GAPS.md` and `LOOP.md`, from the brief
+  written for it. They live in `refs/design/desktop/`, verbatim, beside the
+  brief, as the TUI's handoffs do in `refs/design/`; the screenshots are also
+  the ruler for the desktop's visual check. The handoff was written without the
+  repository, so it was checked against it, as the TUI's was. `CONFERIDO.md`
+  records what holds, twenty divergences — sharing sessions needs a running
+  `dcode serve`, one daemon for many projects resolves configuration once at
+  boot, `↵` denies an approval in the TUI and allows it in the design — and
+  what `SPEC_GAPS.md` asks for that already exists. It also corrects three
+  things the brief told the designer that the code does not support.
+- **The core stops at `desktop/`.** Preparing for the desktop app, which gets
+  its own area with its own changelog and its own `desktop-v*` tags.
+  `scripts/version.sh` counted every commit since the last tag, so a
+  desktop-only commit would have raised the core's version for work the core
+  never saw; `scripts/changelog.sh` would have listed it, and — reading any
+  tag, not only `v*` — a desktop tag at HEAD emptied its range. Both now read
+  the core only: a commit that touches just `desktop/` does not count, one that
+  also touches the core does, and only `v*` tags start a range. Pinned by four
+  tests in `internal/update`, two of them red before the change. `gofmt` in
+  `make lint` and CI read `.`, which walks into `desktop/node_modules` and into
+  the session worktrees under `.claude/worktrees/`; it now reads `cmd/`,
+  `internal/` and `pkg/`, where all the Go source is. `AGENTS.md` says where
+  desktop changes are recorded.
 
 ## 0.21.1 — 28 September 2026
 

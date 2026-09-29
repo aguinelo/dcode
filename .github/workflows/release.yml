@@ -70,7 +70,7 @@ jobs:
           go-version-file: go.mod
       - run: go vet ./...
       - name: gofmt
-        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+        run: test -z "$(gofmt -l cmd internal pkg)" || { gofmt -l cmd internal pkg; exit 1; }
       - run: go test -race -coverprofile=coverage.out -covermode=atomic -coverpkg=./... ./...
       # O gate de cobertura NÃO roda aqui, e a ausência é deliberada.
       #

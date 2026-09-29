@@ -163,8 +163,11 @@ type Strings struct {
 	SessionsMoreOne  string
 	SessionsMoreMany string
 	SessionsKeys     string
-	RailTouchedOne   string
-	RailTouchedMany  string
+	// SessionsOpenFailed says a conversation chosen from the list did not
+	// open. It takes the id and what the daemon said, in that order.
+	SessionsOpenFailed string
+	RailTouchedOne     string
+	RailTouchedMany    string
 
 	// LineOne and LineMany count hidden lines in a collapsed body, and
 	// ExpandHint says how to see them. All three because the hint said
@@ -416,6 +419,7 @@ var catalogue = map[Lang]Strings{
 		SessionsMoreOne:        "more below",
 		SessionsMoreMany:       "more below",
 		SessionsKeys:           "up/down choose, enter opens, r renames, esc closes",
+		SessionsOpenFailed:     "could not open %s: %s",
 		RailTouchedOne:         "touched",
 		RailTouchedMany:        "touched",
 
@@ -646,6 +650,7 @@ Environment:
 		SessionsMoreOne:        "abaixo",
 		SessionsMoreMany:       "abaixo",
 		SessionsKeys:           "cima/baixo escolhe, enter abre, r renomeia, esc fecha",
+		SessionsOpenFailed:     "não foi possível abrir %s: %s",
 		RailTouchedOne:         "tocado",
 		RailTouchedMany:        "tocados",
 

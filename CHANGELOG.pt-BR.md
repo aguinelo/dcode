@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 28 de setembro de 2026
+## Estado atual — 29 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 197 changelogs de decisão |
+| famílias de spec | 18, com 201 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -85,7 +85,8 @@ nunca foi feita.
 
 **A interface.** A conversa fica com o terminal. A coluna de arquivos nasce
 escondida e `^B` a invoca; a lista de conversas é sobreposição em `^R`, que é o
-que essa tecla significa no shell de onde ela veio; o painel abre no seu piso e
+que essa tecla significa no shell de onde ela veio, e escolher uma conversa ali a
+continua, ou a anexa se ela ainda estiver aberta; o painel abre no seu piso e
 cresce do que sobra. Toda pergunta abre com uma régua, então uma tela de rolagem
 tem um limite dentro dela. Delegação é um card com os filhos dentro, e o filho
 que não respondeu é nomeado ali, com o motivo. Chamada de ferramenta aparece no
@@ -258,6 +259,101 @@ existe para impedir exatamente isso.
   repositório. E uma linha em cada README aponta para a área. A dependência corre
   num sentido só: o desktop lê o núcleo, o núcleo nunca lê o desktop, e nada
   entrou no `go.mod` da raiz.
+- **Escolher uma conversa gravada na lista do `^R` a continua.** A lista é o
+  que este workspace gravou, lida do disco na abertura, e o `enter` perguntava
+  ao `GetSession` pela escolha — que só responde pelas sessões que o daemon tem
+  agora. Com o daemon embutido, que nasce vazio a cada execução, isso é a
+  lista inteira: toda escolha voltava como `could not resume …: no session …`.
+  Nada pegou isso, porque o transporte falso respondia `GetSession` para
+  qualquer id; agora responde só pelas sessões vivas, como o servidor, e o
+  teste que reproduz o defeito entrou vermelho. Escolher agora pergunta
+  primeiro ao daemon: conversa viva é anexada, e a que só está gravada é
+  continuada com `CreateSession{Resume}`, como o `dcode -r` a continua —
+  sessão nova, com id próprio, cuja marca `session.resumed` diz na tela de
+  onde a conversa veio. Só "não existe essa sessão" faz uma continuação;
+  qualquer outra falha é dita, e nada abre por palpite. A continuação pede o
+  modelo que o `dcode -r` pediria (a borda o resolve uma vez, pela mesma
+  regra) sob a fronteira desta sessão, como o `/clear` faz. O `/resume <id>`
+  continua só reanexando. Achado conferindo o handoff de desenho do desktop
+  contra o código (aguinelo/dcode#400, divergência 12). Três invariantes na
+  spec do client-tui, cada uma reivindicada pelo seu teste; a decisão está em
+  `docs/specs/architecture/client-tui/changelog/202609291356-a-lista-abre-a-conversa-gravada.md`.
+- **Uma aprovação é anunciada com o prazo em que expira.**
+  `tool.approval_required` saía sempre com `expires_at` zerado: o laço
+  anunciava a pergunta antes de entregá-la a quem responde, e a sessão só
+  punha o prazo depois, numa cópia só dela que nenhuma rota expõe. Um cliente
+  não tinha como mostrar quanto tempo a aprovação ainda tinha, e uma sessão de
+  fundo era negada quando os dois minutos do daemon acabavam, sem que ninguém
+  visse isso chegando. Quem responde agora diz o prazo antes de a pergunta sair
+  (`loop.Deadliner`, opcional), o laço o carimba na pergunta, e a sessão segura
+  a pergunta até o prazo que ela carrega, em vez de pôr um seu — um valor só,
+  mostrado e aplicado. Quem responde sem prazo anuncia sem prazo, que é a
+  verdade sobre ele: o terminal do `dcode once` espera o quanto a pessoa levar,
+  e um prazo carimbado pelo laço seria uma contagem que ninguém cumpre. Achado
+  conferindo o handoff de design do desktop contra o código. A decisão está em
+  `docs/specs/architecture/client-server-protocol/changelog/202609291401-a-pergunta-carrega-o-prazo.md`,
+  e uma invariante nova na spec do protocolo é reivindicada pelo seu teste.
+- **Nomear uma conversa viva passa pelo log dela.** Encontrado conferindo o
+  handoff do design do desktop contra o código (divergência 12 de
+  `refs/design/desktop/CONFERIDO.md`, #400). O `POST /sessions/{id}/name`
+  escrevia o `session.renamed` direto no arquivo do registro mesmo com a
+  conversa carregada, pelas costas do log: nenhum cliente anexado o recebia, e
+  ele pegava o número seguinte ao último `seq` do arquivo — o número que o log
+  entrega ao próximo evento ao vivo, então uma conversa que seguia depois de
+  nomeada guardava essa sequência duas vezes. Conversa carregada agora é
+  nomeada pelo próprio log, como `session.mode_changed` já é: o log grava o
+  registro sob a trava que dá o número e depois entrega o evento a cada
+  inscrito. A que não está carregada — quase toda linha da trilha — fica no
+  caminho do arquivo, que é para o que a decisão original escolheu o registro.
+  Sessão que fecha entre a rota encontrá-la e o nome chegar responde
+  `session_not_found`, em vez de `204` por um nome que não foi a lugar nenhum.
+  Conversa carregada em outro processo de daemon — dois terminais, cada um com
+  um daemon embutido sobre o mesmo diretório de registros — continua indo pelo
+  arquivo; isso pede coordenação entre processos e ficou de fora. Quatro
+  invariantes novas na spec do protocolo, cada uma reivindicada pelo seu teste;
+  a decisão está em `202609291356-conversa-viva-e-nomeada-pelo-log.md`.
+- **A linha de atividade não mostra mais os tokens do turno anterior.** Achado
+  ao conferir o handoff de design do desktop contra o código. A contagem ao lado
+  do tempo decorrido era `OutputTokens`, escrito só quando um turno termina —
+  `Usage` viaja em `turn.completed` e em nenhum outro evento —, e o
+  `turn.started` zerava as rodadas mas deixava a contagem de pé: todo turno
+  depois do primeiro rodava sob o número em que o anterior tinha terminado,
+  `12.0s  4.3k tok` num trabalho que ainda não tinha produzido nada. O
+  `turn.started` agora zera o uso do turno junto com as rodadas, e até o turno
+  relatar o seu a linha diz há quanto tempo, nunca quanto. Com o protocolo de
+  hoje esse relato chega quando a linha sai, então na prática ela mostra só o
+  tempo: contagem ao vivo pede um evento que o protocolo não tem, e estimada
+  pelo texto que chega seria número que o daemon nunca mandou. A §7.2 da spec
+  `client-tui` prometia "custo até aqui" e agora diz o que o protocolo entrega.
+  Preso por `TestANewTurnDoesNotShowTheLastTurnsTokens`, commitado vermelho
+  antes do conserto e escrito como invariante; a decisão está em
+  `docs/specs/architecture/client-tui/changelog/202609291352-a-contagem-e-do-turno-que-roda.md`.
+- **O handoff de design do desktop está no repositório, conferido contra o
+  código.** O Claude Design entregou a v2 do app desktop — a janela principal,
+  a navegação entre sessões e o loop — como referência em HTML, quatro
+  screenshots, um README de handoff, `SPEC_GAPS.md` e `LOOP.md`, a partir do
+  brief escrito para ele. Ficam em `refs/design/desktop/`, verbatim, ao lado do
+  brief, como os handoffs da TUI em `refs/design/`; as screenshots também são a
+  régua da checagem visual do desktop. O handoff foi escrito sem o
+  repositório, então foi conferido contra ele, como o da TUI. O `CONFERIDO.md`
+  registra o que confere, vinte divergências — compartilhar sessões exige um
+  `dcode serve` rodando, um daemon para vários projetos resolve a configuração
+  uma vez só, no boot, e `↵` nega a aprovação na TUI e permite no design — e o
+  que o `SPEC_GAPS.md` pede e já existe. Corrige também três coisas que o brief
+  afirmou ao designer e o código não sustenta.
+- **O núcleo para em `desktop/`.** Preparação para o app desktop, que ganha
+  área própria, com changelog e tags `desktop-v*` próprios. O
+  `scripts/version.sh` contava todo commit desde a última tag, então um commit
+  só do desktop subiria a versão do núcleo por trabalho que o núcleo nunca viu;
+  o `scripts/changelog.sh` o listaria e — lendo qualquer tag, não só `v*` — uma
+  tag do desktop no HEAD esvaziava o intervalo dele. Os dois agora leem só o
+  núcleo: commit que mexe apenas em `desktop/` não conta, o que também mexe no
+  núcleo conta, e só tag `v*` inicia intervalo. Preso por quatro testes em
+  `internal/update`, dois deles vermelhos antes da mudança. O `gofmt` do
+  `make lint` e do CI lia `.`, que entra em `desktop/node_modules` e nos
+  worktrees de sessão em `.claude/worktrees/`; agora lê `cmd/`, `internal/` e
+  `pkg/`, onde está todo o Go. O `AGENTS.md` diz onde as mudanças do desktop
+  são registradas.
 
 ## 0.21.1 — 28 de setembro de 2026
 

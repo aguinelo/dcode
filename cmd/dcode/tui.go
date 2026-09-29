@@ -158,6 +158,7 @@ func runTUI(args []string) error {
 		Geometry:      geo,
 		Commands:      commands,
 		Sessions:      recordedSessions(recordDir(resolved), ws),
+		ContinueModel: continuedModel(opts.Model, resolved),
 		AcceptsImages: acceptsImages(opts.Model),
 		Lookup:        lookup(resolved),
 		ProfileNames:  profileNames(opts.Profiles),
@@ -187,6 +188,16 @@ func modelOverride(model string, resolved config.Resolved, carry string) string 
 	if carry == "" {
 		return model
 	}
+	return continuedModel(model, resolved)
+}
+
+// continuedModel is what a continuation asks for: nothing when model.name is
+// only the built-in default, the explicit choice otherwise.
+//
+// One rule for every way this run continues a conversation — the flags above,
+// and the list ^R opens inside the interface — because two readings of it
+// would end up disagreeing about which model a conversation comes back on.
+func continuedModel(model string, resolved config.Resolved) string {
 	if v, ok := resolved.Get("model.name"); ok && v.Source == config.SourceDefault {
 		return ""
 	}

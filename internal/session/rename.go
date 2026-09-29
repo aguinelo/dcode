@@ -61,7 +61,35 @@ func CleanName(name string) (string, error) {
 	return clean, nil
 }
 
-// Rename appends the name to a session's record.
+// Rename names a loaded conversation through its own log.
+//
+// Through the log rather than beside it, because that is how every other fact
+// about a session travels: the clients attached see the name arrive, and the
+// record takes it in its place in the sequence. Written to the file instead, it
+// reached neither — no client heard of it, and it took the number after the
+// file's last, which is the number the log hands the next live event.
+//
+// A conversation that is not loaded has no log, and is named by the Rename
+// below.
+func (s *Session) Rename(name string) error {
+	clean, err := CleanName(name)
+	if err != nil {
+		return err
+	}
+	// Checked and appended under one hold. Close marks the session closed
+	// before it closes the log, so a name that finds it open reaches the
+	// record before the record shuts, and one that finds it closed is refused
+	// rather than answered with success for a log nobody reads any more.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.state == protocol.SessionStateClosed {
+		return protocol.Errorf(protocol.CodeSessionNotFound, "session %s is closed", s.ID)
+	}
+	_, err = s.Log.Append(protocol.EventSessionRenamed, protocol.SessionRenamed{Name: clean})
+	return err
+}
+
+// Rename appends the name to the record of a conversation that is not loaded.
 //
 // An empty name is not an error: it restores the title derived from the first
 // question, which is the way back rather than a second command for undoing.

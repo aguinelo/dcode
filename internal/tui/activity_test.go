@@ -248,3 +248,45 @@ func TestTheWayOutSpeaksTheSameLanguageAsTheLine(t *testing.T) {
 		}
 	}
 }
+
+// -- the count on the line is the running turn's -----------------------------
+
+// The number beside the time is about the turn it sits under, or it is not
+// there.
+//
+// It was the last turn's. The count is written when a turn completes — Usage
+// travels in turn.completed and in no other event — and turn.started left it
+// standing, so every turn after the first ran under the number its predecessor
+// had ended on: `12.0s  4.3k tok` for work that had produced nothing yet. Found
+// checking the desktop design handoff against the code.
+func TestANewTurnDoesNotShowTheLastTurnsTokens(t *testing.T) {
+	m := NewModel("s", "/w", "m", "workspace-write", En)
+	m.Now = time.Unix(1000, 0)
+	m = apply(t, m,
+		ev(t, 1, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1", Text: "first"}),
+		ev(t, 2, protocol.EventTurnCompleted, protocol.TurnCompleted{
+			TurnID: "t1", Reason: protocol.StopDone,
+			Usage: &protocol.Usage{InputTokens: 52_000, OutputTokens: 4_321, CacheReadTokens: 30_000},
+		}),
+		ev(t, 3, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t2", Text: "second"}),
+	)
+	m.Now = time.Unix(1012, 0)
+
+	if !m.workingVisible() {
+		t.Fatal("the second turn is running and its activity line is not on screen")
+	}
+	line := renderWorking(m, plainGeometry())
+	if strings.Contains(line, "4.3k") || strings.Contains(line, "tok") {
+		t.Errorf("the new turn shows the count the last one ended on: %q", line)
+	}
+	// Until the turn reports its own, the line says how long and not how much.
+	if !strings.Contains(line, "12.0s") {
+		t.Errorf("the elapsed time left with the count: %q", line)
+	}
+	// The whole usage was the last turn's, not only the number that is drawn.
+	// Whatever draws the rest of it next would draw the same stale figure.
+	if m.InputTokens != 0 || m.OutputTokens != 0 || m.CacheTokens != 0 {
+		t.Errorf("the new turn carries the last one's usage: in=%d out=%d cache=%d",
+			m.InputTokens, m.OutputTokens, m.CacheTokens)
+	}
+}

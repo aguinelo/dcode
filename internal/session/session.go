@@ -521,8 +521,14 @@ func grantKey(req protocol.ApprovalRequest) string {
 }
 
 // Approve is the loop's side of a boundary crossing: it registers the question
-// and blocks until a client answers or the deadline passes.
-func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, timeout time.Duration) (
+// and blocks until a client answers or req.ExpiresAt passes. A question with no
+// deadline waits for an answer, or for the turn to end.
+//
+// The deadline is the one the question carries, never one set here. It used to
+// be set here, after the loop had already announced the question — so every
+// client was shown the zero time while this copy held the real one, and the
+// question lapsed on a clock nobody could see.
+func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest) (
 	protocol.ApprovalDecision, error,
 ) {
 	// A question the user already answered, in a previous session or a previous
@@ -542,9 +548,6 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, tim
 		s.mu.Unlock()
 		return protocol.ApprovalAllowSession, nil
 	}
-	if timeout > 0 {
-		req.ExpiresAt = time.Now().Add(timeout)
-	}
 	a := &approval{req: req, answer: make(chan protocol.ApprovalDecision, 1)}
 	s.pending[req.ApprovalID] = a
 	s.state = protocol.SessionStateBlocked
@@ -560,8 +563,8 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest, tim
 	}()
 
 	var timer <-chan time.Time
-	if timeout > 0 {
-		t := time.NewTimer(timeout)
+	if !req.ExpiresAt.IsZero() {
+		t := time.NewTimer(time.Until(req.ExpiresAt))
 		defer t.Stop()
 		timer = t.C
 	}
