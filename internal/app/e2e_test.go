@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -209,5 +211,106 @@ func TestARunSurvivesAToolFailure(t *testing.T) {
 	}
 	if len(model.bodies) < 2 || !strings.Contains(model.bodies[1], "does not exist") {
 		t.Error("the model was not shown why the call failed")
+	}
+}
+
+// A question put through the daemon is announced carrying the instant it
+// lapses, and that is the instant the session holds it to.
+//
+// The loop announced the crossing before the session had set a deadline, so
+// tool.approval_required went out with expires_at as the zero time. The
+// deadline existed only on the copy the session kept, which no route exposes:
+// a client could not show how long an approval had left, and a session in the
+// background was denied two minutes later without anyone seeing it coming.
+//
+// Through the daemon's own wiring, because the defect lived between three
+// parts — the loop that announces, the session that enforces, the daemon that
+// holds the timeout — and each of them was right on its own.
+func TestAnApprovalIsAnnouncedWithTheDeadlineTheSessionEnforces(t *testing.T) {
+	outside := filepath.Join(t.TempDir(), "elsewhere.txt")
+	if err := os.WriteFile(outside, []byte("outside the workspace"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	model := &scriptedModel{turns: [][]string{
+		{frameToolCall("c1", "read", `{"path":"`+outside+`"}`)},
+		{frameText("Understood.")},
+	}}
+	srv := httptest.NewServer(http.HandlerFunc(model.serve))
+	defer srv.Close()
+
+	base := baseOpts(t)
+	base.BaseURL = srv.URL
+	requireSandbox(t, base)
+	const timeout = time.Minute
+	d := NewDaemon(DaemonOptions{
+		SocketPath:      filepath.Join(t.TempDir(), "d.sock"),
+		ApprovalTimeout: timeout,
+		Base:            base,
+	})
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: t.TempDir()})
+	if err != nil {
+		t.Fatalf("wiring a session through the daemon failed: %v", err)
+	}
+	defer sess.Close()
+
+	asked := time.Now()
+	if err := sess.Submit("read that file"); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "the crossing was never put to anyone", func() bool { return len(sess.Pending()) > 0 })
+	held := sess.Pending()[0]
+	answered := time.Now()
+
+	events, err := sess.Log.Replay(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var announced []protocol.ApprovalRequest
+	for _, ev := range events {
+		if ev.Type != protocol.EventApprovalRequired {
+			continue
+		}
+		var req protocol.ApprovalRequest
+		if err := json.Unmarshal(ev.Payload, &req); err != nil {
+			t.Fatal(err)
+		}
+		announced = append(announced, req)
+	}
+	if len(announced) != 1 {
+		t.Fatalf("%d announcements for one crossing, want 1", len(announced))
+	}
+	got := announced[0]
+	if got.ExpiresAt.IsZero() {
+		t.Fatal("tool.approval_required went out with expires_at as the zero time; " +
+			"a client has nothing to count down to")
+	}
+	if !got.ExpiresAt.Equal(held.ExpiresAt) {
+		t.Errorf("announced expiring at %v, and the session holds the question to %v",
+			got.ExpiresAt, held.ExpiresAt)
+	}
+	// The daemon's timeout, counted from when the question was put.
+	if got.ExpiresAt.Before(asked.Add(timeout)) || got.ExpiresAt.After(answered.Add(timeout)) {
+		t.Errorf("expires_at %v is not the %v timeout from when the question was put (%v to %v)",
+			got.ExpiresAt, timeout, asked, answered)
+	}
+
+	// Answered, so the turn ends on the denial rather than being cut off.
+	if err := sess.Resolve(held.ApprovalID, protocol.ApprovalDeny); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "the turn did not end after the question was answered", func() bool {
+		return sess.State() == protocol.SessionStateIdle
+	})
+}
+
+// waitUntil polls cond, and fails the test with why if it never holds.
+func waitUntil(t *testing.T, why string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal(why)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }

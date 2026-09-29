@@ -25,6 +25,23 @@ type Approver interface {
 	Approve(ctx context.Context, req protocol.ApprovalRequest) (protocol.ApprovalDecision, error)
 }
 
+// Deadliner is implemented by an Approver that denies on its own once a
+// question has waited too long, and names that instant before the question is
+// put.
+//
+// Asked before the announcement, because the announcement is where a client
+// learns the deadline: it used to go out first, carrying the zero time, while
+// the deadline existed only inside the approver. The question then reaches the
+// approver carrying the instant it named, and that is the one it enforces — so
+// what a client counts down to and what denies are the same value.
+//
+// Optional. An approver reading a terminal waits as long as the person takes,
+// and one that refuses at once never waits; a question put to either is
+// announced with no deadline, because it has none.
+type Deadliner interface {
+	Deadline() time.Time
+}
+
 // Emitter publishes observable facts. The loop never writes to a terminal:
 // every client — TUI, IDE, none at all — sees the same session through this.
 type Emitter interface {
@@ -943,6 +960,9 @@ func (e *Engine) askApproval(ctx context.Context, turnID string, ex ToolExecutio
 		BoundaryCrossed: string(v.Boundary),
 		Reason:          v.Reason,
 		Rule:            v.Rule,
+	}
+	if d, ok := e.cfg.Approver.(Deadliner); ok {
+		req.ExpiresAt = d.Deadline()
 	}
 	e.emit(protocol.EventApprovalRequired, req)
 

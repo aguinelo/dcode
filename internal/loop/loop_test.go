@@ -936,6 +936,73 @@ func (a *funcApprover) Approve(context.Context, protocol.ApprovalRequest) (proto
 	return a.fn(), nil
 }
 
+// A question is announced carrying the deadline its approver will hold it to.
+//
+// The announcement went out before the deadline was set, so expires_at was
+// always the zero time and a client had nothing to count down to. Both halves
+// are asserted, because either alone is satisfied by two different instants:
+// what the event says, and what the approver is handed to enforce.
+func TestAQuestionIsAnnouncedWithTheDeadlineItIsHeldTo(t *testing.T) {
+	at := time.Date(2026, 9, 29, 12, 2, 0, 0, time.UTC)
+	ap := &deadlineApprover{at: at}
+	rec := runCrossing(t, ap)
+
+	announced, ok := rec.last[protocol.EventApprovalRequired].(protocol.ApprovalRequest)
+	if !ok {
+		t.Fatal("the crossing was never announced")
+	}
+	if !announced.ExpiresAt.Equal(at) {
+		t.Errorf("announced expiring at %v, want the approver's deadline %v", announced.ExpiresAt, at)
+	}
+	if !ap.asked.ExpiresAt.Equal(at) {
+		t.Errorf("the approver was handed a question expiring at %v, want %v", ap.asked.ExpiresAt, at)
+	}
+}
+
+// An approver with no deadline gets a question announced without one. A
+// terminal waits as long as the person takes, and a deadline the loop invented
+// for it would be a countdown to nothing.
+func TestAQuestionPutToAnApproverWithNoDeadlineCarriesNone(t *testing.T) {
+	rec := runCrossing(t, &fixedApprover{decision: protocol.ApprovalDeny})
+
+	announced, ok := rec.last[protocol.EventApprovalRequired].(protocol.ApprovalRequest)
+	if !ok {
+		t.Fatal("the crossing was never announced")
+	}
+	if !announced.ExpiresAt.IsZero() {
+		t.Errorf("announced expiring at %v with nobody holding it to that", announced.ExpiresAt)
+	}
+}
+
+// runCrossing runs one turn whose single call crosses the boundary, put to ap.
+func runCrossing(t *testing.T, ap Approver) *recorder {
+	t.Helper()
+	reg := tools.NewRegistry(slowTool{name: "reach", delay: 0, path: "/etc/hosts", write: true})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{call("c1", "reach", `{}`), done()},
+		{text("understood"), done()},
+	}}
+	e, rec := newEngine(t, p, reg, func(c *Config) { c.Approver = ap })
+	if _, err := e.Run(context.Background(), "go"); err != nil {
+		t.Fatal(err)
+	}
+	return rec
+}
+
+// deadlineApprover names a deadline, keeps the question it was handed, and
+// denies it.
+type deadlineApprover struct {
+	at    time.Time
+	asked protocol.ApprovalRequest
+}
+
+func (a *deadlineApprover) Deadline() time.Time { return a.at }
+
+func (a *deadlineApprover) Approve(_ context.Context, req protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
+	a.asked = req
+	return protocol.ApprovalDeny, nil
+}
+
 // StopUnverified and StopIncomplete are STATES, not errors, and the difference
 // decides an incentive. Reported as failure, the easy way out of a red run
 // becomes switching the check off — so the loop would exist to prevent a false

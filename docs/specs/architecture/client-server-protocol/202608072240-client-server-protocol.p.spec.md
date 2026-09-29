@@ -169,7 +169,7 @@ type ApprovalRequest struct {
     Tool            string    `json:"tool"`
     Command         string    `json:"command,omitempty"`          // comando renderizado, quando houver
     BoundaryCrossed string    `json:"boundary_crossed"`           // "network" | "workspace_write" | "filesystem_read"
-    ExpiresAt       time.Time `json:"expires_at"`
+    ExpiresAt       time.Time `json:"expires_at"`                 // quando a pergunta expira negada (RN-5); posto antes de o evento sair. Zero: quem responde não tem prazo
 }
 ```
 
@@ -182,7 +182,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 1. Modelo pede ferramenta → `tool.requested`.
 2. Executor avalia a política contra a fronteira do sandbox.
 3. Dentro da fronteira → executa sem perguntar.
-4. Cruzando a fronteira → sessão vai a `blocked`, emite `tool.approval_required`, **o turno para**.
+4. Cruzando a fronteira → sessão vai a `blocked`, emite `tool.approval_required` com `ExpiresAt` já posto, **o turno para**.
 5. Qualquer cliente anexado envia `POST .../approvals/{approval_id}`.
 6. Primeira resposta vence; as demais recebem `409 approval_already_resolved`.
 7. Emite `tool.approval_resolved`; sessão volta a `running`.
@@ -278,6 +278,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - `POST /sessions/{id}/exec` roda um comando que a **pessoa** digitou, pela mesma ferramenta, sob a mesma fronteira: `!` é atalho por cima do modelo, nunca por cima do sandbox.
 - A resposta de criação descreve a sessão **depois** de a conversa continuada estar nela: `last_seq` conta os eventos carregados e `first_seq` é o mais antigo que sobreviveu à retenção.
 - Aprovação expirada produz exatamente um `tool.approval_resolved` com `deny`.
+- `tool.approval_required` sai com `expires_at` já posto, e é o mesmo instante em que a sessão nega a pergunta que ninguém respondeu.
 - `POST /sessions/{id}/mode` anuncia a troca pelo log como `session.mode_changed`, carregando de onde veio: quem anexa depois lê o modo do log, não de uma chamada que perdeu.
 - Modo desconhecido é recusado com `4xx` que **nomeia o que foi enviado**, antes de chegar ao motor, e deixa o modo em vigor intacto.
 
@@ -293,3 +294,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
 - [202609281750 — Um lote volta inteiro, na ordem em que foi feito](changelog/202609281750-um-lote-volta-inteiro.md)
 - [202609291356 — Conversa viva é nomeada pelo log](changelog/202609291356-conversa-viva-e-nomeada-pelo-log.md)
+- [202609291401 — A pergunta carrega o prazo](changelog/202609291401-a-pergunta-carrega-o-prazo.md)

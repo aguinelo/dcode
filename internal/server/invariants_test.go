@@ -56,6 +56,9 @@ var protocolInvariants = map[string]string{
 	"nenhum `seq` se repete":                   "TestNamingALiveConversationKeepsItsRecordInSequence",
 	"fecha entre ser encontrada e ser nomeada": "TestNamingASessionThatHasClosedSaysSo",
 	"pelas mesmas regras":                      "TestALiveSessionIsNamedByTheSameRules",
+	// The deadline. The loop announces, the session enforces and the daemon
+	// holds the timeout, so the assertion lives where the three are wired.
+	"sai com `expires_at` já posto": "TestAnApprovalIsAnnouncedWithTheDeadlineTheSessionEnforces",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

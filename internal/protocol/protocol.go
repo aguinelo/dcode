@@ -357,6 +357,11 @@ type CompactResult struct {
 
 // ApprovalRequest is emitted when execution crosses the sandbox boundary. The
 // turn blocks until it is resolved or ExpiresAt passes, which denies.
+//
+// ExpiresAt is set before the question is announced, and it is the instant the
+// approver denies at, so a client can count down to it. The zero time means
+// whoever answers has no deadline — a terminal waits as long as the person
+// takes.
 type ApprovalRequest struct {
 	ApprovalID      string    `json:"approval_id"`
 	TurnID          string    `json:"turn_id"`

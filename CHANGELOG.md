@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 199 decision changelogs |
+| spec families | 18, with 200 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -242,6 +242,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An approval is announced with the deadline it lapses at.**
+  `tool.approval_required` always went out with `expires_at` as the zero
+  time: the loop announced the question before handing it to the approver,
+  and the session set the deadline only then, on a copy of its own that no
+  route exposes. A client could not show how long an approval had left, and
+  a session in the background was denied when the daemon's two minutes ran
+  out without anyone seeing it coming. The approver now names its deadline
+  before the question goes out (`loop.Deadliner`, optional), the loop stamps
+  it on the question, and the session holds the question to the deadline it
+  carries instead of setting one of its own — one value, shown and enforced.
+  An approver with no deadline announces none, which is the truth about it:
+  the terminal in `dcode once` waits as long as the person takes, and a
+  deadline stamped by the loop would have been a countdown nobody keeps.
+  Found checking the desktop design handoff against the code. The decision
+  is in
+  `docs/specs/architecture/client-server-protocol/changelog/202609291401-a-pergunta-carrega-o-prazo.md`,
+  and a new invariant in the protocol spec is claimed by its test.
 - **Naming a live conversation goes through its log.** Found while checking
   the desktop design handoff against the code (divergence 12 of
   `refs/design/desktop/CONFERIDO.md`, #400). `POST /sessions/{id}/name` wrote

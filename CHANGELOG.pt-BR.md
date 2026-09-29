@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 199 changelogs de decisão |
+| famílias de spec | 18, com 200 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -241,6 +241,21 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma aprovação é anunciada com o prazo em que expira.**
+  `tool.approval_required` saía sempre com `expires_at` zerado: o laço
+  anunciava a pergunta antes de entregá-la a quem responde, e a sessão só
+  punha o prazo depois, numa cópia só dela que nenhuma rota expõe. Um cliente
+  não tinha como mostrar quanto tempo a aprovação ainda tinha, e uma sessão de
+  fundo era negada quando os dois minutos do daemon acabavam, sem que ninguém
+  visse isso chegando. Quem responde agora diz o prazo antes de a pergunta sair
+  (`loop.Deadliner`, opcional), o laço o carimba na pergunta, e a sessão segura
+  a pergunta até o prazo que ela carrega, em vez de pôr um seu — um valor só,
+  mostrado e aplicado. Quem responde sem prazo anuncia sem prazo, que é a
+  verdade sobre ele: o terminal do `dcode once` espera o quanto a pessoa levar,
+  e um prazo carimbado pelo laço seria uma contagem que ninguém cumpre. Achado
+  conferindo o handoff de design do desktop contra o código. A decisão está em
+  `docs/specs/architecture/client-server-protocol/changelog/202609291401-a-pergunta-carrega-o-prazo.md`,
+  e uma invariante nova na spec do protocolo é reivindicada pelo seu teste.
 - **Nomear uma conversa viva passa pelo log dela.** Encontrado conferindo o
   handoff do design do desktop contra o código (divergência 12 de
   `refs/design/desktop/CONFERIDO.md`, #400). O `POST /sessions/{id}/name`
