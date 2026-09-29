@@ -354,6 +354,12 @@ func (m Model) Apply(ev protocol.Event) Model {
 		// one's forward would show a round number for work that has not begun,
 		// and the first thing anybody would do is trust it.
 		m.Rounds, m.InFlight = 0, 0
+		// So does the usage. It arrives in turn.completed and in no other
+		// event, and left standing it put the last turn's count on this one's
+		// activity line for the whole of it. Until this turn reports its own,
+		// the line says how long and not how much: a count estimated from the
+		// streamed text would be a number the daemon never sent.
+		m.InputTokens, m.OutputTokens, m.CacheTokens = 0, 0, 0
 
 	case protocol.EventMessageReasoning:
 		var d protocol.MessageReasoning

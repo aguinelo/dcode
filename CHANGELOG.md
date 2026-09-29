@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 197 decision changelogs |
+| spec families | 18, with 198 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -241,6 +241,23 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **The activity line no longer shows the last turn's tokens.** Found checking
+  the desktop design handoff against the code. The count beside the elapsed
+  time was `OutputTokens`, written only when a turn completes — `Usage` travels
+  in `turn.completed` and in no other event — and `turn.started` zeroed the
+  round counters but left it standing, so every turn after the first ran under
+  the number its predecessor had ended on: `12.0s  4.3k tok` for work that had
+  produced nothing yet. `turn.started` now zeroes the turn's usage with its
+  rounds, and until the turn reports its own the line says how long and not how
+  much. With today's protocol that report arrives as the line goes away, so in
+  practice the line shows the time only: a live count needs an event the
+  protocol does not have, and one estimated from the streamed text would be a
+  number the daemon never sent. §7.2 of the client-tui spec promised "cost so
+  far" and now says what the protocol supplies. Pinned by
+  `TestANewTurnDoesNotShowTheLastTurnsTokens`, committed red before the fix and
+  written as an invariant; the decision is in
+  `docs/specs/architecture/client-tui/changelog/202609291352-a-contagem-e-do-turno-que-roda.md`.
 
 ## 0.21.1 — 28 September 2026
 
