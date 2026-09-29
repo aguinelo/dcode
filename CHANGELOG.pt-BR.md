@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 198 changelogs de decisão |
+| famílias de spec | 18, com 199 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -260,6 +260,48 @@ existe para impedir exatamente isso.
   arquivo; isso pede coordenação entre processos e ficou de fora. Quatro
   invariantes novas na spec do protocolo, cada uma reivindicada pelo seu teste;
   a decisão está em `202609291356-conversa-viva-e-nomeada-pelo-log.md`.
+- **A linha de atividade não mostra mais os tokens do turno anterior.** Achado
+  ao conferir o handoff de design do desktop contra o código. A contagem ao lado
+  do tempo decorrido era `OutputTokens`, escrito só quando um turno termina —
+  `Usage` viaja em `turn.completed` e em nenhum outro evento —, e o
+  `turn.started` zerava as rodadas mas deixava a contagem de pé: todo turno
+  depois do primeiro rodava sob o número em que o anterior tinha terminado,
+  `12.0s  4.3k tok` num trabalho que ainda não tinha produzido nada. O
+  `turn.started` agora zera o uso do turno junto com as rodadas, e até o turno
+  relatar o seu a linha diz há quanto tempo, nunca quanto. Com o protocolo de
+  hoje esse relato chega quando a linha sai, então na prática ela mostra só o
+  tempo: contagem ao vivo pede um evento que o protocolo não tem, e estimada
+  pelo texto que chega seria número que o daemon nunca mandou. A §7.2 da spec
+  `client-tui` prometia "custo até aqui" e agora diz o que o protocolo entrega.
+  Preso por `TestANewTurnDoesNotShowTheLastTurnsTokens`, commitado vermelho
+  antes do conserto e escrito como invariante; a decisão está em
+  `docs/specs/architecture/client-tui/changelog/202609291352-a-contagem-e-do-turno-que-roda.md`.
+- **O handoff de design do desktop está no repositório, conferido contra o
+  código.** O Claude Design entregou a v2 do app desktop — a janela principal,
+  a navegação entre sessões e o loop — como referência em HTML, quatro
+  screenshots, um README de handoff, `SPEC_GAPS.md` e `LOOP.md`, a partir do
+  brief escrito para ele. Ficam em `refs/design/desktop/`, verbatim, ao lado do
+  brief, como os handoffs da TUI em `refs/design/`; as screenshots também são a
+  régua da checagem visual do desktop. O handoff foi escrito sem o
+  repositório, então foi conferido contra ele, como o da TUI. O `CONFERIDO.md`
+  registra o que confere, vinte divergências — compartilhar sessões exige um
+  `dcode serve` rodando, um daemon para vários projetos resolve a configuração
+  uma vez só, no boot, e `↵` nega a aprovação na TUI e permite no design — e o
+  que o `SPEC_GAPS.md` pede e já existe. Corrige também três coisas que o brief
+  afirmou ao designer e o código não sustenta.
+- **O núcleo para em `desktop/`.** Preparação para o app desktop, que ganha
+  área própria, com changelog e tags `desktop-v*` próprios. O
+  `scripts/version.sh` contava todo commit desde a última tag, então um commit
+  só do desktop subiria a versão do núcleo por trabalho que o núcleo nunca viu;
+  o `scripts/changelog.sh` o listaria e — lendo qualquer tag, não só `v*` — uma
+  tag do desktop no HEAD esvaziava o intervalo dele. Os dois agora leem só o
+  núcleo: commit que mexe apenas em `desktop/` não conta, o que também mexe no
+  núcleo conta, e só tag `v*` inicia intervalo. Preso por quatro testes em
+  `internal/update`, dois deles vermelhos antes da mudança. O `gofmt` do
+  `make lint` e do CI lia `.`, que entra em `desktop/node_modules` e nos
+  worktrees de sessão em `.claude/worktrees/`; agora lê `cmd/`, `internal/` e
+  `pkg/`, onde está todo o Go. O `AGENTS.md` diz onde as mudanças do desktop
+  são registradas.
 
 ## 0.21.1 — 28 de setembro de 2026
 

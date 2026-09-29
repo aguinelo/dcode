@@ -54,7 +54,14 @@ PIN_SUBJECT='^chore\(release\): pin the installer to v[0-9]+\.[0-9]+\.[0-9]+$'
 # as dos pais, que ja estao no intervalo. Contar o assunto do merge fazia a
 # derivacao parar na frase que a ferramenta escreveu sozinha — "Merge branch X
 # into Y" nao segue convencao nenhuma e nunca vai seguir.
-subjects="$(git log --no-merges --format='%s' "$range" | grep -vE "$PIN_SUBJECT" || true)"
+#
+# The desktop app in desktop/ has its own changelog and its own version, tagged
+# desktop-v*. A commit that only touches it is not a change to the core, so the
+# log is limited to everything else — from the top of the tree, so the answer
+# does not depend on the directory this runs from. A commit that touches both
+# still counts: that is a core change the desktop happens to consume.
+CORE_PATHS=(':(top)' ':(top,exclude)desktop')
+subjects="$(git log --no-merges --format='%s' "$range" -- "${CORE_PATHS[@]}" | grep -vE "$PIN_SUBJECT" || true)"
 
 # Um revert carrega, entre aspas, o assunto do que ele desfaz. Ele e classificado
 # pelo que desfez: desfazer um `feat:` REMOVE comportamento, e a convencao deste
@@ -81,7 +88,7 @@ fi
 kind=none
 printf '%s\n' "$subjects" | grep -qE '^feat(\([^)]+\))?: ' && kind=minor
 printf '%s\n' "$subjects" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|build|ci)(\([^)]+\))?!: ' && kind=breaking
-git log --format='%B' "$range" | grep -q '^BREAKING CHANGE:' && kind=breaking
+git log --format='%B' "$range" -- "${CORE_PATHS[@]}" | grep -q '^BREAKING CHANGE:' && kind=breaking
 [ "$kind" = none ] && kind=patch
 
 v="${last#v}"
