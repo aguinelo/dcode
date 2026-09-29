@@ -26,13 +26,17 @@ case "$lang" in
   *) echo "changelog: idioma '$lang' nao existe; use en ou pt" >&2; exit 1 ;;
 esac
 
-last="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+# The core's tags only, and the core's commits only, as in version.sh: the
+# desktop app in desktop/ keeps its own changelog and its own desktop-v* tags. A
+# desktop tag at HEAD used to become the range's start and leave this empty.
+last="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
 range="${last:+$last..}HEAD"
+CORE_PATHS=(':(top)' ':(top,exclude)desktop')
 
 section() {
   local prefix="$1" title="$2"
   local body
-  body="$(git log --format='%s' "$range" \
+  body="$(git log --format='%s' "$range" -- "${CORE_PATHS[@]}" \
     | grep -E "^${prefix}(\([^)]+\))?!?: " \
     | sed -E "s/^${prefix}(\([^)]+\))?!?: //" \
     | sed -E 's/^(.*) \(#([0-9]+)\)$/- **\1** (#\2)/' \

@@ -51,6 +51,13 @@ func newServer(t *testing.T, max int) (*Server, *session.Manager) {
 func newDaemon(t *testing.T) (*client.Client, *session.Manager) {
 	t.Helper()
 	srv, mgr := newServer(t, 10)
+	return serve(t, srv), mgr
+}
+
+// serve puts a server on a real socket and returns a client for it, for a test
+// that has to configure the server before the transport goes up.
+func serve(t *testing.T, srv *Server) *client.Client {
+	t.Helper()
 	// Short path: macOS caps a Unix socket at ~104 bytes, and t.TempDir() is
 	// long enough to blow that on its own.
 	dir, err := os.MkdirTemp("", "dc")
@@ -71,12 +78,12 @@ func newDaemon(t *testing.T) (*client.Client, *session.Manager) {
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		if err := c.Health(context.Background()); err == nil {
-			return c, mgr
+			return c
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("the daemon never became healthy")
-	return nil, nil
+	return nil
 }
 
 // ---------- transport ----------
@@ -366,8 +373,9 @@ func TestSecondTurnWhileOneIsRunningConflicts(t *testing.T) {
 
 	// Hold the session busy without an engine by blocking on an approval.
 	go func() {
-		_, _ = sess.Approve(context.Background(),
-			protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash"}, 5*time.Second)
+		_, _ = sess.Approve(context.Background(), protocol.ApprovalRequest{
+			ApprovalID: "a1", Tool: "bash", ExpiresAt: time.Now().Add(5 * time.Second),
+		})
 	}()
 	for sess.State() != protocol.SessionStateBlocked {
 		time.Sleep(time.Millisecond)
@@ -394,9 +402,10 @@ func TestApprovalIsResolvedOverTheWireAndSecondConflicts(t *testing.T) {
 
 	answered := make(chan protocol.ApprovalDecision, 1)
 	go func() {
-		d, _ := sess.Approve(context.Background(),
-			protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash", Command: "curl x"},
-			5*time.Second)
+		d, _ := sess.Approve(context.Background(), protocol.ApprovalRequest{
+			ApprovalID: "a1", Tool: "bash", Command: "curl x",
+			ExpiresAt: time.Now().Add(5 * time.Second),
+		})
 		answered <- d
 	}()
 	for len(sess.Pending()) == 0 {
@@ -783,7 +792,8 @@ func TestALapsedApprovalIsRefusedAsExpiredOverTheWire(t *testing.T) {
 	// Nobody answers, and the deadline denies it.
 	if d, err := sess.Approve(ctx, protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash", Command: "curl x",
-	}, 10*time.Millisecond); err != nil || d != protocol.ApprovalDeny {
+		ExpiresAt: time.Now().Add(10 * time.Millisecond),
+	}); err != nil || d != protocol.ApprovalDeny {
 		t.Fatalf("the lapse resolved to %v, %v", d, err)
 	}
 

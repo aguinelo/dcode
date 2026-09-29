@@ -18,6 +18,20 @@ A fonte canônica do comportamento continua sendo `docs/specs/architecture/`.
 | `HANDOFF-v2.md` · `dcode TUI v2.dc.html` | histórico, superado pelo `HANDOFF.md` |
 | `support.js` | runtime dos mocks, só para abrir no navegador |
 
+## Desktop — `desktop/`
+
+O app desktop, segundo cliente do mesmo daemon. Mesma regra: **onde o handoff e
+a spec divergirem, a spec vence**, e o handoff fica verbatim.
+
+| Arquivo | O que é |
+|---|---|
+| `desktop/BRIEF.md` | o que o designer recebeu — conferido, tem três afirmações erradas (ver `CONFERIDO.md`) |
+| `desktop/README.md` | **o handoff v2**: janela, navegação entre sessões, loop |
+| `desktop/DCode Desktop v2.dc.html` | as três telas, para abrir no navegador |
+| `desktop/screenshots/` | referência visual em 1600×960 — e a régua da checagem visual do desktop |
+| `desktop/SPEC_GAPS.md` · `desktop/LOOP.md` | o que o design assume e ainda não tem spec |
+| `desktop/CONFERIDO.md` | **a conferência contra o código** — onde o handoff diverge e o que decidir antes de o desktop falar com o daemon |
+
 ## Conferido contra o repositório — 2026-08-20
 
 O `HANDOFF.md` está **verbatim, como entregue**. As divergências abaixo foram

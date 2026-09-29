@@ -49,6 +49,16 @@ var protocolInvariants = map[string]string{
 	"Cliente desanexado durante turno":     "TestDisconnectingDoesNotAffectTheSession",
 	"Duas resoluções concorrentes":         "TestApprovalIsResolvedOverTheWireAndSecondConflicts",
 	"Aprovação expirada produz":            "TestAnApprovalNobodyAnswersResolvesOnceAndDenies",
+	// Naming a loaded conversation. The route decides which path a name
+	// takes, and the rules it shares with the file are asserted on the
+	// session, where both paths get them.
+	"recebe o `session.renamed` ao vivo":       "TestNamingALiveConversationReachesTheClientsWatchingIt",
+	"nenhum `seq` se repete":                   "TestNamingALiveConversationKeepsItsRecordInSequence",
+	"fecha entre ser encontrada e ser nomeada": "TestNamingASessionThatHasClosedSaysSo",
+	"pelas mesmas regras":                      "TestALiveSessionIsNamedByTheSameRules",
+	// The deadline. The loop announces, the session enforces and the daemon
+	// holds the timeout, so the assertion lives where the three are wired.
+	"sai com `expires_at` já posto": "TestAnApprovalIsAnnouncedWithTheDeadlineTheSessionEnforces",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

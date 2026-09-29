@@ -218,8 +218,10 @@ func TestTheWorkingLineSaysWhatHowLongAndHowToStop(t *testing.T) {
 	if !strings.Contains(got, "12.0s") {
 		t.Errorf("elapsed time must be on screen:\n%s", got)
 	}
+	// A count this turn reported. There is none until it reports one — see
+	// TestANewTurnDoesNotShowTheLastTurnsTokens.
 	if !strings.Contains(got, "1.2k tok") {
-		t.Errorf("what it is costing must be on screen:\n%s", got)
+		t.Errorf("a count the turn reported must be on screen:\n%s", got)
 	}
 	if !strings.Contains(got, "^C") {
 		t.Errorf("the way out belongs next to the thing you want out of:\n%s", got)

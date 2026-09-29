@@ -27,6 +27,7 @@ var tuiInvariants = map[string]string{
 	"pousa na chamada que ele nomeia":             "TestACallsProgressLandsOnThatCall",
 	"antes de o daemon ter dito":                  "TestTheTurnSectionSaysNothingBeforeTheDaemonDoes",
 	"zera a contagem e conserva":                  "TestANewTurnStartsItsCountersAtZero",
+	"não herda a contagem de tokens":              "TestANewTurnDoesNotShowTheLastTurnsTokens",
 	"não move os contadores do turno":             "TestProgressForAToolDoesNotMoveTheTurnsCounters",
 	"muda de estilo ao se aproximar":              "TestTheRoundCountWarnsAsItNearsTheCeiling",
 	"toda tecla é do nome":                        "TestNamingTakesEveryKeyWhileItIsOpen",

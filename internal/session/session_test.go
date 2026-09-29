@@ -296,6 +296,13 @@ func newSession(t *testing.T) *Session {
 	return New("s1", "/w", "MiniMax-M3", "workspace-write", nil, log, fixedClock())
 }
 
+// expiring gives a question a deadline d from now, as the daemon's approver
+// names one before the loop announces the question.
+func expiring(req protocol.ApprovalRequest, d time.Duration) protocol.ApprovalRequest {
+	req.ExpiresAt = time.Now().Add(d)
+	return req
+}
+
 // Two clients answering the same approval: exactly one wins, the other is told
 // so. Both believing they decided is the failure to avoid.
 func TestFirstApprovalAnswerWinsAndTheOtherConflicts(t *testing.T) {
@@ -304,7 +311,7 @@ func TestFirstApprovalAnswerWinsAndTheOtherConflicts(t *testing.T) {
 
 	answered := make(chan protocol.ApprovalDecision, 1)
 	go func() {
-		d, _ := s.Approve(context.Background(), req, 2*time.Second)
+		d, _ := s.Approve(context.Background(), expiring(req, 2*time.Second))
 		answered <- d
 	}()
 
@@ -361,8 +368,8 @@ func TestFirstApprovalAnswerWinsAndTheOtherConflicts(t *testing.T) {
 func TestUnansweredApprovalExpiresAsDenied(t *testing.T) {
 	s := newSession(t)
 	start := time.Now()
-	d, err := s.Approve(context.Background(),
-		protocol.ApprovalRequest{ApprovalID: "a1"}, 50*time.Millisecond)
+	req := expiring(protocol.ApprovalRequest{ApprovalID: "a1"}, 50*time.Millisecond)
+	d, err := s.Approve(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,6 +378,11 @@ func TestUnansweredApprovalExpiresAsDenied(t *testing.T) {
 	}
 	if time.Since(start) > 2*time.Second {
 		t.Error("the deadline did not fire")
+	}
+	// At the deadline the question carried, and not before: that is the
+	// instant a client was shown and counting down to.
+	if time.Now().Before(req.ExpiresAt) {
+		t.Errorf("denied before the deadline the question carried, %v", req.ExpiresAt)
 	}
 	if len(s.Pending()) != 0 {
 		t.Error("an expired approval must not stay pending")
@@ -389,14 +401,14 @@ func TestAllowForTheSessionAppliesToTheSameCommandOnly(t *testing.T) {
 		}
 		_ = s.Resolve("a1", protocol.ApprovalAllowSession)
 	}()
-	if d, _ := s.Approve(context.Background(), req, 2*time.Second); d != protocol.ApprovalAllowSession {
+	if d, _ := s.Approve(context.Background(), expiring(req, 2*time.Second)); d != protocol.ApprovalAllowSession {
 		t.Fatalf("got %s", d)
 	}
 
 	// The same command now passes without asking.
 	req2 := protocol.ApprovalRequest{ApprovalID: "a2", Tool: "bash", Command: "go test ./..."}
 	done := make(chan protocol.ApprovalDecision, 1)
-	go func() { d, _ := s.Approve(context.Background(), req2, time.Second); done <- d }()
+	go func() { d, _ := s.Approve(context.Background(), expiring(req2, time.Second)); done <- d }()
 	select {
 	case d := <-done:
 		if d != protocol.ApprovalAllowSession {
@@ -409,7 +421,7 @@ func TestAllowForTheSessionAppliesToTheSameCommandOnly(t *testing.T) {
 	// A different command must still ask.
 	req3 := protocol.ApprovalRequest{ApprovalID: "a3", Tool: "bash", Command: "rm -rf /"}
 	start := time.Now()
-	if d, _ := s.Approve(context.Background(), req3, 60*time.Millisecond); d != protocol.ApprovalDeny {
+	if d, _ := s.Approve(context.Background(), expiring(req3, 60*time.Millisecond)); d != protocol.ApprovalDeny {
 		t.Errorf("a different command must not inherit the decision, got %s", d)
 	}
 	if time.Since(start) < 40*time.Millisecond {
@@ -433,12 +445,13 @@ func TestResolveRejectsAnUnknownDecision(t *testing.T) {
 }
 
 // A turn ending while someone is deciding must not leave the question open.
+//
+// The question carries no deadline, so nothing but the closing can end it.
 func TestClosingDeniesPendingApprovals(t *testing.T) {
 	s := newSession(t)
 	done := make(chan protocol.ApprovalDecision, 1)
 	go func() {
-		d, _ := s.Approve(context.Background(),
-			protocol.ApprovalRequest{ApprovalID: "a1"}, 10*time.Second)
+		d, _ := s.Approve(context.Background(), protocol.ApprovalRequest{ApprovalID: "a1"})
 		done <- d
 	}()
 	for len(s.Pending()) == 0 {
@@ -785,7 +798,7 @@ func TestAllowForTheSessionIsKeyedByTheRuleThatAsked(t *testing.T) {
 		}
 		_ = s.Resolve("a1", protocol.ApprovalAllowSession)
 	}()
-	if d, err := s.Approve(ctx, first, 2*time.Second); err != nil || d != protocol.ApprovalAllowSession {
+	if d, err := s.Approve(ctx, expiring(first, 2*time.Second)); err != nil || d != protocol.ApprovalAllowSession {
 		t.Fatalf("first approval = %v, %v", d, err)
 	}
 
@@ -794,7 +807,7 @@ func TestAllowForTheSessionIsKeyedByTheRuleThatAsked(t *testing.T) {
 		ApprovalID: "a2", Tool: "write", Command: "",
 		Rule: ".git/**", Reason: "writing inside .git",
 	}
-	d, err := s.Approve(ctx, same, 100*time.Millisecond)
+	d, err := s.Approve(ctx, expiring(same, 100*time.Millisecond))
 	if err != nil || d != protocol.ApprovalAllowSession {
 		t.Errorf("the same rule asked again: %v, %v — the user answered this question", d, err)
 	}
@@ -811,7 +824,7 @@ func TestAllowForTheSessionIsKeyedByTheRuleThatAsked(t *testing.T) {
 		}
 		_ = s.Resolve("a3", protocol.ApprovalDeny)
 	}()
-	if d, err := s.Approve(ctx, other, 2*time.Second); err != nil || d != protocol.ApprovalDeny {
+	if d, err := s.Approve(ctx, expiring(other, 2*time.Second)); err != nil || d != protocol.ApprovalDeny {
 		t.Errorf("a different rule was answered by the earlier grant: %v, %v", d, err)
 	}
 }
@@ -830,7 +843,7 @@ func TestAnApprovalThatRanOutOfTimeSaysSoRatherThanClaimingSomeoneAnsweredIt(t *
 	req := protocol.ApprovalRequest{ApprovalID: "a1", Tool: "bash", Command: "curl x"}
 
 	// Nobody answers; the deadline denies it.
-	if d, err := s.Approve(context.Background(), req, 10*time.Millisecond); err != nil || d != protocol.ApprovalDeny {
+	if d, err := s.Approve(context.Background(), expiring(req, 10*time.Millisecond)); err != nil || d != protocol.ApprovalDeny {
 		t.Fatalf("a lapsed approval resolved to %v, %v", d, err)
 	}
 
@@ -857,7 +870,7 @@ func TestAnApprovalSomebodyAnsweredStillReportsAConflict(t *testing.T) {
 		}
 		_ = s.Resolve("a1", protocol.ApprovalAllow)
 	}()
-	if _, err := s.Approve(context.Background(), req, 2*time.Second); err != nil {
+	if _, err := s.Approve(context.Background(), expiring(req, 2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -886,7 +899,7 @@ func TestTheRecordOfLapsedApprovalsIsBounded(t *testing.T) {
 	s := newSession(t)
 	for i := 0; i < 200; i++ {
 		req := protocol.ApprovalRequest{ApprovalID: fmt.Sprintf("a%d", i), Tool: "bash"}
-		if _, err := s.Approve(context.Background(), req, time.Millisecond); err != nil {
+		if _, err := s.Approve(context.Background(), expiring(req, time.Millisecond)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -930,12 +943,12 @@ func TestACrossingAlreadyPermittedIsNotAskedAboutAgain(t *testing.T) {
 	s := newSession(t)
 	s.Standing = &standingStub{granted: protocol.ApprovalAllowProject}
 
-	// Nobody is waiting to answer, and a short timeout would deny. Returning
+	// Nobody is waiting to answer, and a short deadline would deny. Returning
 	// promptly with the standing answer is the assertion.
-	d, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+	d, err := s.Approve(context.Background(), expiring(protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash", Command: "go test ./...",
 		BoundaryCrossed: "network",
-	}, 50*time.Millisecond)
+	}, 50*time.Millisecond))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -972,9 +985,9 @@ func TestEveryGrantingAnswerReachesTheRecordAndRefusalsDoNot(t *testing.T) {
 				}
 				_ = s.Resolve("a1", c.answer)
 			}()
-			if _, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+			if _, err := s.Approve(context.Background(), expiring(protocol.ApprovalRequest{
 				ApprovalID: "a1", Tool: "bash", BoundaryCrossed: "network",
-			}, 2*time.Second); err != nil {
+			}, 2*time.Second)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -998,9 +1011,9 @@ func TestADecisionStandsEvenWhenItCannotBeWrittenDown(t *testing.T) {
 		}
 		_ = s.Resolve("a1", protocol.ApprovalAllowAlways)
 	}()
-	d, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+	d, err := s.Approve(context.Background(), expiring(protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash", BoundaryCrossed: "network",
-	}, 2*time.Second)
+	}, 2*time.Second))
 	if err != nil {
 		t.Fatalf("a failed save refused the user's answer: %v", err)
 	}
@@ -1019,9 +1032,9 @@ func TestWithoutTheRecordNothingChanges(t *testing.T) {
 		}
 		_ = s.Resolve("a1", protocol.ApprovalAllow)
 	}()
-	if d, err := s.Approve(context.Background(), protocol.ApprovalRequest{
+	if d, err := s.Approve(context.Background(), expiring(protocol.ApprovalRequest{
 		ApprovalID: "a1", Tool: "bash",
-	}, 2*time.Second); err != nil || d != protocol.ApprovalAllow {
+	}, 2*time.Second)); err != nil || d != protocol.ApprovalAllow {
 		t.Fatalf("got %v, %v", d, err)
 	}
 }
