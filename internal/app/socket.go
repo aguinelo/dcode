@@ -1,10 +1,7 @@
 package app
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 )
 
@@ -44,32 +41,4 @@ func SecureSocketDir(path string) error {
 		return nil
 	}
 	return secureDir(filepath.Dir(path))
-}
-
-// secureDir refuses a directory another user could have put a socket in.
-//
-// Refused rather than repaired: a directory that was open to others may already
-// hold somebody else's socket, where every client of this user looks, and
-// tightening the mode now would not take it back out.
-func secureDir(dir string) error {
-	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("the daemon's socket directory %s could not be made: %w", dir, err)
-	}
-	fi, err := os.Lstat(dir)
-	if err != nil {
-		return fmt.Errorf("the daemon's socket directory %s could not be read: %w", dir, err)
-	}
-	if fi.Mode()&fs.ModeSymlink != 0 {
-		return fmt.Errorf("the daemon's socket directory %s is a symlink, not a directory of its own; remove it, or set DCODE_SOCKET", dir)
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("the daemon's socket directory %s is not a directory; remove it, or set DCODE_SOCKET", dir)
-	}
-	if uid, known := ownerOf(fi); known && uid != osUID() {
-		return fmt.Errorf("the daemon's socket directory %s belongs to uid %d, not to you (uid %d); remove it, or set DCODE_SOCKET", dir, uid, osUID())
-	}
-	if perm := fi.Mode().Perm(); perm&0o077 != 0 {
-		return fmt.Errorf("the daemon's socket directory %s is open to other users (%v); run chmod 700 %s, or remove it", dir, perm, dir)
-	}
-	return nil
 }
