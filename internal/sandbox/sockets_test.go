@@ -1,6 +1,8 @@
 package sandbox
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -121,6 +123,47 @@ func TestBubblewrapCoversAContainerRuntimeSocket(t *testing.T) {
 	}
 	if strings.Contains(joined, "/run/podman/podman.sock") {
 		t.Errorf("bubblewrap refuses a bind whose target is absent, so an absent socket must be skipped:\n%s", joined)
+	}
+}
+
+// bubblewrap follows a link in a mount's target from its own root, not from the
+// sandbox's, so a target named through one does not exist for it: on Ubuntu,
+// where /var/run links to /run, covering /var/run/docker.sock failed with
+// `Can't create file at /var/run/docker.sock` and took every command down with
+// it. Found by the first test that ran a real command through a session's
+// sandbox on a machine with Docker. The sandbox's root is the host's, so the
+// resolved path names the same file inside.
+func TestASocketNamedThroughALinkIsCoveredWhereItResolves(t *testing.T) {
+	root := t.TempDir()
+	run := filepath.Join(root, "run")
+	if err := os.Mkdir(run, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sock := filepath.Join(run, "docker.sock")
+	if err := os.WriteFile(sock, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	varRun := filepath.Join(root, "var-run")
+	if err := os.Symlink(run, varRun); err != nil {
+		t.Fatal(err)
+	}
+	named := filepath.Join(varRun, "docker.sock")
+
+	b := &bubblewrap{bin: "bwrap", sockets: []string{named, sock}}
+	args, err := b.args(root, policy.ModeWorkspaceWrite, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	resolved := canonical(sock)
+	if !strings.Contains(joined, "--ro-bind /dev/null "+resolved) {
+		t.Errorf("the socket was not covered where it resolves, %s:\n%s", resolved, joined)
+	}
+	if strings.Contains(joined, "/dev/null "+named) {
+		t.Errorf("a mount target was named through a link, which bubblewrap cannot follow:\n%s", joined)
+	}
+	if n := strings.Count(joined, "/dev/null "+resolved); n != 1 {
+		t.Errorf("one socket named two ways was covered %d times:\n%s", n, joined)
 	}
 }
 
