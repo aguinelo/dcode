@@ -39,7 +39,7 @@ export default defineConfig(
   },
   {
     // Node, with callbacks that Playwright runs inside the page.
-    files: ['tests/visual/**'],
+    files: ['tests/visual/**', 'tests/daemon/**'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 );

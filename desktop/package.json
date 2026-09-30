@@ -18,7 +18,8 @@
     "test": "vitest run",
     "gen:protocol": "cd .. && go run github.com/gzuidhof/tygo@v0.2.21 generate --config desktop/tygo.yaml",
     "check:protocol": "npm run gen:protocol && { git diff --exit-code -- src/protocol/generated.ts || { echo 'src/protocol/generated.ts is stale: run npm run gen:protocol and commit the result'; exit 1; }; }",
-    "check:visual": "node tests/visual/check.mjs"
+    "check:visual": "node tests/visual/check.mjs",
+    "check:daemon": "node tests/daemon/check.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",
