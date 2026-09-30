@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 201 changelogs de decisão |
+| famílias de spec | 18, com 202 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -242,6 +242,16 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O socket do daemon é um caminho por usuário, qualquer que seja o ambiente.**
+  Sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock`. Vinha de `XDG_RUNTIME_DIR`
+  ou `TMPDIR`, que um terminal, uma sessão SSH e um app aberto pelo Dock não têm
+  iguais, e dois clientes da mesma pessoa podiam achar daemons diferentes. O
+  `/tmp` é compartilhado, então a pasta só é usada quando é do usuário e só dele:
+  outro dono, symlink ou modo aberto a outros é recusado com o motivo, porque uma
+  pasta assim pode já ter o socket de outra pessoa. `dcode socket` imprime o
+  caminho — é por ele que o cliente desktop vai achar o daemon sem uma segunda
+  cópia da regra. Um `dcode serve` de versão anterior segue escutando no caminho
+  antigo até ser reiniciado.
 - **O cliente desktop começa, em `desktop/`.** Um segundo cliente do daemon, em
   Electron, numa área própria, com README, `AGENTS.md`, versão (tags
   `desktop-vX.Y.Z`, a partir de 0.1.0) e changelog próprios — o que o cliente faz

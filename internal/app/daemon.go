@@ -42,25 +42,6 @@ type DaemonOptions struct {
 	Log func(string)
 }
 
-// DefaultSocketPath resolves where the daemon listens.
-//
-// Kept short deliberately: a Unix socket path is capped near 104 bytes on
-// macOS, and the XDG state directory alone can exhaust that. Falling back to
-// the temp directory with the uid keeps two users on one machine apart.
-func DefaultSocketPath(env func(string) string) string {
-	if v := env("DCODE_SOCKET"); v != "" {
-		return v
-	}
-	if dir := env("XDG_RUNTIME_DIR"); dir != "" {
-		return filepath.Join(dir, "dcode.sock")
-	}
-	tmp := env("TMPDIR")
-	if tmp == "" {
-		tmp = "/tmp"
-	}
-	return filepath.Join(tmp, fmt.Sprintf("dcode-%d.sock", osUID()))
-}
-
 // Daemon owns the server and the session manager.
 type Daemon struct {
 	opts    DaemonOptions

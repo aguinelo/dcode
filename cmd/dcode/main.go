@@ -46,6 +46,8 @@ func dispatch(args []string) error {
 			return runConfig(args[1:])
 		case "sessions":
 			return runSessions(args[1:])
+		case "socket":
+			return runSocket(args[1:])
 		case "help", "--help", "-h":
 			usage()
 			return nil

@@ -13,7 +13,7 @@ import (
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools"), filepath.Join("..", "contextengine"), filepath.Join("..", "provider")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools"), filepath.Join("..", "contextengine"), filepath.Join("..", "provider"), filepath.Join("..", "..", "cmd", "dcode")}
 
 var protocolInvariants = map[string]string{
 	"anuncia a troca pelo log":             "TestSetModeAnnouncesOverTheLog",
@@ -59,6 +59,12 @@ var protocolInvariants = map[string]string{
 	// The deadline. The loop announces, the session enforces and the daemon
 	// holds the timeout, so the assertion lives where the three are wired.
 	"sai com `expires_at` já posto": "TestAnApprovalIsAnnouncedWithTheDeadlineTheSessionEnforces",
+	// The socket. Where a client finds the daemon is decided in the app, and
+	// the command that says it to a client that is not this binary lives in
+	// cmd/dcode — which is why that directory is listed above.
+	"não depende do ambiente":  "TestTheDefaultSocketDoesNotDependOnTheEnvironment",
+	"é do usuário e só dele":   "TestASocketDirectoryNotOwnedAloneIsRefused",
+	"imprime o caminho em uso": "TestSocketPrintsWhereTheDaemonListens",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

@@ -85,6 +85,11 @@ func runTUI(args []string) error {
 	if path == "" {
 		path = app.DefaultSocketPath(os.Getenv)
 	}
+	// Before looking for a daemon there: a directory somebody else could have
+	// put a socket in is where this client would otherwise attach.
+	if err := app.SecureSocketDir(path); err != nil {
+		return err
+	}
 
 	// Nil unless this process starts its own daemon below — an already-running
 	// one outliving this client is the point, so only an embedded daemon dying

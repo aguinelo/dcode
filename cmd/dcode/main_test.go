@@ -156,10 +156,28 @@ func TestUsageListsEverySubcommandDispatchAccepts(t *testing.T) {
 	_, errOut := capture(t, usage)
 	// A subcommand that dispatch handles and usage never mentions is a feature
 	// nobody can find.
-	for _, sub := range []string{"serve", "tui", "update", "login", "config"} {
+	for _, sub := range []string{"serve", "tui", "update", "login", "config", "socket"} {
 		if !strings.Contains(errOut, "dcode "+sub) {
 			t.Errorf("usage does not list %q:\n%s", sub, errOut)
 		}
+	}
+}
+
+// The desktop asks the binary where the daemon is rather than keeping a second
+// copy of the rule, and a copy is what drifts.
+func TestSocketPrintsWhereTheDaemonListens(t *testing.T) {
+	chosen := filepath.Join(t.TempDir(), "d.sock")
+	t.Setenv("DCODE_SOCKET", chosen)
+	var err error
+	out, _ := capture(t, func() { err = runSocket(nil) })
+	if err != nil {
+		t.Fatalf("dcode socket failed: %v", err)
+	}
+	if got := strings.TrimSpace(out); got != chosen {
+		t.Errorf("printed %q, want the path the daemon would take, %q", got, chosen)
+	}
+	if err := runSocket([]string{"extra"}); err == nil {
+		t.Error("an argument nobody reads was accepted")
 	}
 }
 
