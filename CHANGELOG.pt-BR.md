@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 202 changelogs de decisão |
+| famílias de spec | 18, com 203 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -174,7 +174,8 @@ essa separação é o que permite ser permissivo sem ser inseguro.
 
 Hoje o sandbox: esconde os cofres de credencial por default (`~/.aws`,
 `~/.gnupg`, `~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` e a própria
-chave do dcode); mantém o socket de runtime de contêiner fora de alcance;
+chave do dcode); mantém fora de alcance o socket de runtime de contêiner e todo
+daemon do dcode do usuário;
 concede socket e caminho gravável **por nome**; e esconde `~/.ssh` assim que o
 socket do `ssh-agent` é concedido — porque aí o `ssh` assina sem ler a chave e
 esconder sai de graça.
@@ -242,6 +243,26 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **No Linux com Docker, um comando confinado não falha mais antes de rodar.** O
+  sandbox cobre o socket de um runtime de contêiner montando por cima dele, e
+  nomeava o destino como escrito: `/var/run/docker.sock`. No Ubuntu `/var/run` é
+  link para `/run`, e o bubblewrap segue link no destino a partir da raiz dele,
+  então o destino não existia para ele e todo comando falhava com `Can't create
+  file at /var/run/docker.sock`. Agora o destino é resolvido, e cada um é coberto
+  uma vez. Achado pelo primeiro teste que rodou um comando de verdade pelo
+  sandbox de uma sessão numa máquina com Docker.
+- **Um comando confinado não alcança mais um daemon do dcode.** O daemon roda
+  sem confinamento: abre sessões, em acesso total também, e responde aprovações,
+  então um comando que o alcançasse podia pedir uma sessão sem fronteira ou
+  aprovar a si mesmo. No macOS alcançava, no default: o perfil deixa um socket
+  unix alcançável onde se pode escrever, e `/tmp` e `$TMPDIR` — onde os daemons
+  escutam — são graváveis em workspace-write. No Linux, um socket de daemon fora
+  de `/tmp` ficava ao alcance. Os daemons do usuário — o socket da sessão, o que
+  `DCODE_SOCKET` nomeia e a pasta por usuário onde agora escutam o default e todo
+  daemon embutido — são negados por último no macOS e cobertos no Linux, em todo
+  modo menos acesso total, por cima de qualquer concessão; concessão que nomeia
+  um deles é dita no boot. A nota da mudança do socket que dizia que o macOS
+  negava todo socket foi corrigida.
 - **O socket do daemon é um caminho por usuário, qualquer que seja o ambiente.**
   Sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock`. Vinha de `XDG_RUNTIME_DIR`
   ou `TMPDIR`, que um terminal, uma sessão SSH e um app aberto pelo Dock não têm

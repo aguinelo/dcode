@@ -70,7 +70,7 @@ func TestBubblewrapLeavesAGrantedSocketAlone(t *testing.T) {
 	}
 	joined := strings.Join(args, " ")
 
-	if !strings.Contains(joined, "--ro-bind /dev/null /var/run/docker.sock") {
+	if !strings.Contains(joined, "--ro-bind /dev/null "+canonical("/var/run/docker.sock")) {
 		t.Errorf("an ungranted socket must stay covered:\n%s", joined)
 	}
 	if strings.Contains(joined, "/dev/null /run/user/1000/keyring/ssh") {

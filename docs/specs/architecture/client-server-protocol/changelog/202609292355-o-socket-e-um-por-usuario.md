@@ -40,12 +40,17 @@ isto, só acertaria copiando a regra, e cópia é o que diverge.
 - **Curto.** Um caminho de socket Unix tem teto perto de 104 bytes no macOS, e a
   pasta de estado do XDG sozinha pode estourar isso — a razão de o caminho ser
   curto, em `docs/DECISIONS.md`, continua valendo.
-- **Fora do alcance de um comando confinado.** No Linux, todo sandbox fora do
+- **Fora do alcance de um comando confinado, no Linux:** todo sandbox fora do
   acesso total monta um `tmpfs` próprio em `/tmp`, então o `/tmp/dcode-<uid>/` do
-  host não existe lá dentro; no macOS, o perfil nega socket Unix de qualquer
-  jeito. O default anterior, `$XDG_RUNTIME_DIR/dcode.sock`, ficava em
-  `/run/user/<uid>`, que o sandbox do Linux monta só leitura — e, como o próprio
-  `internal/sandbox` registra, conectar num socket não é escrever.
+  host não existe lá dentro. O default anterior, `$XDG_RUNTIME_DIR/dcode.sock`,
+  ficava em `/run/user/<uid>`, que o sandbox do Linux monta só leitura — e, como
+  o próprio `internal/sandbox` registra, conectar num socket não é escrever.
+
+  **Corrigido depois:** esta nota dizia também que no macOS o perfil nega socket
+  Unix de qualquer jeito. Não nega — libera onde se pode escrever, e `/tmp` é
+  gravável em `workspace-write` —, então no macOS o daemon ficava ao alcance.
+  Ver [O daemon fica fora do alcance do
+  sandbox](../../sandbox-policy/changelog/202609301502-o-daemon-fica-fora-do-alcance.md).
 
 Descartados:
 
@@ -89,3 +94,6 @@ Um `DCODE_SOCKET` escolhido fora de `/tmp` continua ao alcance de um comando
 confinado no Linux: o sandbox cobre uma lista de sockets conhecidos, e o do
 próprio daemon não está nela. Cobrir é mudança do `sandbox-policy`, com o seu
 próprio changelog.
+
+Feito, junto com o caso do macOS, em [O daemon fica fora do alcance do
+sandbox](../../sandbox-policy/changelog/202609301502-o-daemon-fica-fora-do-alcance.md).

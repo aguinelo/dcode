@@ -30,9 +30,10 @@ func secureDir(dir string) error {
 		return fmt.Errorf("the daemon's socket directory %s is not a directory; remove it, or set DCODE_SOCKET to a path of your own", dir)
 	}
 	// /tmp keeps each user's files from the others: only their owner, or root,
-	// can remove this one, so the way out is a path of one's own.
+	// can remove this one. The way out is a daemon in a place of one's own,
+	// which every client then attaches to instead of making one here.
 	if st, ok := fi.Sys().(*syscall.Stat_t); ok && int(st.Uid) != osUID() {
-		return fmt.Errorf("the daemon's socket directory %s belongs to uid %d, not to you (uid %d); set DCODE_SOCKET to a path of your own", dir, st.Uid, osUID())
+		return fmt.Errorf("the daemon's socket directory %s belongs to uid %d, not to you (uid %d), and only its owner or root can remove it; run the daemon in a place of your own — dcode serve --socket <path> — with DCODE_SOCKET set to the same path", dir, st.Uid, osUID())
 	}
 	if perm := fi.Mode().Perm(); perm&0o077 != 0 {
 		return fmt.Errorf("the daemon's socket directory %s is open to other users (%v), so something of theirs may already be in it; remove it (rm -r %s) and dcode makes it again", dir, perm, dir)

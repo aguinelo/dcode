@@ -284,6 +284,14 @@ type Sandbox interface {
 - Token de agente sem agente rodando concede nada, nunca a string vazia.
 - Socket unix é alcançável exatamente onde já se pode escrever — e `read-only`, que não escreve em lugar nenhum, não alcança nenhum.
 - Socket de runtime de contêiner é coberto no Linux, e um socket real deixa de ser socket dentro do sandbox.
+- Um comando confinado não alcança o daemon que o confina, nem o de outra sessão: o socket da sessão, o de `DCODE_SOCKET` e a pasta por usuário onde escutam o default e todo daemon embutido ficam fora, em todo modo abaixo de `full-access`.
+- No macOS o daemon é negado por último, depois de toda liberação — o Seatbelt fica com a última regra que casa —, e nenhuma concessão o devolve.
+- Onde se pode escrever, o socket de um daemon continua fora, e o socket comum ao lado continua alcançável.
+- No Linux o daemon é coberto por cima de qualquer concessão; o que está sob `/tmp` já some no `tmpfs` do sandbox e não é montado por cima.
+- Um socket de daemon concedido continua coberto dentro do sandbox real do Linux.
+- Conceder em `sandbox.sockets` um lugar onde um daemon escuta não o abre, e o daemon diz isso ao subir.
+- Daemon embutido escuta na pasta por usuário, ao lado do default.
+- Socket nomeado por um link é coberto onde o link resolve, uma vez só: o bubblewrap segue link no destino de uma montagem a partir da raiz dele, e um destino que atravessa link derruba o comando inteiro.
 - `full-access` mantém a concessão ampla: modo que não promete fronteira não finge estreitá-la.
 
 - `workspace-write` concede os diretórios que uma toolchain precisa para compilar: cache e temporário do usuário.
@@ -303,3 +311,4 @@ type Sandbox interface {
 - [202608252359 — O sandbox segue o modo](changelog/202608252359-o-sandbox-segue-o-modo.md)
 - [202608260100 — Uma parede que diz como se abre](changelog/202608260100-uma-parede-que-diz-como-se-abre.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202609301502 — O daemon fica fora do alcance do sandbox](changelog/202609301502-o-daemon-fica-fora-do-alcance.md)

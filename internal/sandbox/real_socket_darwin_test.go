@@ -68,6 +68,66 @@ func TestAUnixSocketIsReachableWhereWritingIs(t *testing.T) {
 	}
 }
 
+// A dcode daemon is out of reach even where writing is, and even when granted.
+//
+// The rule above makes a socket reachable wherever writing is, and /tmp and
+// $TMPDIR are writable — which is exactly where a dcode daemon listens, so the
+// rule handed every session the unconfined process that confines it. Asked of
+// the kernel: one daemon named by its socket inside the workspace, and granted
+// besides; one named by the directory it sits in, under /tmp.
+func TestADaemonSocketIsOutOfReachEvenWhereWritingIs(t *testing.T) {
+	if _, err := exec.LookPath("nc"); err != nil {
+		t.Skipf("nc is needed to attempt the connection: %v", err)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("a workspace is needed: %v", err)
+	}
+	ws, err := os.MkdirTemp(home, "dcw")
+	if err != nil {
+		t.Skipf("a workspace could not be created: %v", err)
+	}
+	defer os.RemoveAll(ws)
+	daemons, err := os.MkdirTemp("/tmp", "dcd")
+	if err != nil {
+		t.Skipf("a directory under /tmp could not be created: %v", err)
+	}
+	defer os.RemoveAll(daemons)
+
+	own := listen(t, filepath.Join(ws, "d.sock"))
+	other := listen(t, filepath.Join(daemons, "d.sock"))
+	control := listen(t, filepath.Join(ws, "o.sock"))
+
+	s, err := New(Config{
+		AllowNetwork: func() bool { return true },
+		Granted:      []string{own},
+		Daemons:      []string{own, daemons},
+	}, policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Skipf("no sandbox available: %v", err)
+	}
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
+
+	for _, sock := range []string{own, other} {
+		out, code, err := r.Run(context.Background(), ws, "nc -U "+shellQuote(sock)+" < /dev/null")
+		if err != nil {
+			t.Fatalf("running under the sandbox failed outright: %v", err)
+		}
+		if code == 0 {
+			t.Errorf("a command inside the sandbox reached the daemon at %s (output %q)", sock, out)
+		}
+	}
+	// And the denial is the daemon's, not every socket's: the one beside it,
+	// undeclared, stays reachable as the rule above says.
+	out, code, err := r.Run(context.Background(), ws, "nc -U "+shellQuote(control)+" < /dev/null")
+	if err != nil {
+		t.Fatalf("running under the sandbox failed outright: %v", err)
+	}
+	if code != 0 {
+		t.Errorf("an ordinary socket in the workspace became unreachable, exit %d (output %q)", code, out)
+	}
+}
+
 // A suite that cannot listen cannot run.
 //
 // Granting only outbound traffic left httptest.NewServer — and every test that
