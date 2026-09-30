@@ -95,6 +95,7 @@ var sandboxInvariants = map[string]string{
 	"concedido continua coberto":         "TestARealDaemonSocketIsCoveredEvenWhenGranted",
 	"o daemon diz isso ao subir":         "TestAGrantOfADaemonSocketIsSaidAtBoot",
 	"escuta na pasta por usuário":        "TestAnEmbeddedDaemonListensBesideTheOthers",
+	"coberto onde o link resolve":        "TestASocketNamedThroughALinkIsCoveredWhereItResolves",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

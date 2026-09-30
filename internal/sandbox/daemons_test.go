@@ -50,7 +50,7 @@ func TestADaemonIsCoveredInTheArgumentsEvenWhenGranted(t *testing.T) {
 	defer func(orig func(string) bool) { exists = orig }(exists)
 	exists = func(string) bool { return true }
 	defer func(orig func(string) bool) { isDir = orig }(isDir)
-	isDir = func(p string) bool { return p == "/srv/daemons" }
+	isDir = func(p string) bool { return p == canonical("/srv/daemons") }
 
 	b := &bubblewrap{
 		bin:     "x",
@@ -62,10 +62,10 @@ func TestADaemonIsCoveredInTheArgumentsEvenWhenGranted(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "--ro-bind /dev/null /home/u/d.sock") {
+	if !strings.Contains(joined, "--ro-bind /dev/null "+canonical("/home/u/d.sock")) {
 		t.Errorf("a granted daemon socket is left reachable: %s", joined)
 	}
-	if !strings.Contains(joined, "--tmpfs /srv/daemons") {
+	if !strings.Contains(joined, "--tmpfs "+canonical("/srv/daemons")) {
 		t.Errorf("a directory of daemons outside /tmp is left reachable: %s", joined)
 	}
 	if strings.Contains(joined, "/tmp/dcode-1000") {

@@ -243,6 +243,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **No Linux com Docker, um comando confinado não falha mais antes de rodar.** O
+  sandbox cobre o socket de um runtime de contêiner montando por cima dele, e
+  nomeava o destino como escrito: `/var/run/docker.sock`. No Ubuntu `/var/run` é
+  link para `/run`, e o bubblewrap segue link no destino a partir da raiz dele,
+  então o destino não existia para ele e todo comando falhava com `Can't create
+  file at /var/run/docker.sock`. Agora o destino é resolvido, e cada um é coberto
+  uma vez. Achado pelo primeiro teste que rodou um comando de verdade pelo
+  sandbox de uma sessão numa máquina com Docker.
 - **Um comando confinado não alcança mais um daemon do dcode.** O daemon roda
   sem confinamento: abre sessões, em acesso total também, e responde aprovações,
   então um comando que o alcançasse podia pedir uma sessão sem fronteira ou

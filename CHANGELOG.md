@@ -244,6 +244,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **On Linux with Docker, a sandboxed command no longer fails before running.**
+  The sandbox covers a container runtime's socket by mounting over it, and it
+  named the mount target as written: `/var/run/docker.sock`. On Ubuntu `/var/run`
+  links to `/run`, and bubblewrap follows a link in a target from its own root,
+  so the target did not exist for it and every command failed with `Can't create
+  file at /var/run/docker.sock`. Targets are now resolved, and each is covered
+  once. Found by the first test that ran a real command through a session's
+  sandbox on a machine with Docker.
 - **A confined command can no longer reach a dcode daemon.** A daemon is
   unconfined: it opens sessions, in full access too, and answers approvals, so a
   command that reached one could ask for a session with no boundary or approve

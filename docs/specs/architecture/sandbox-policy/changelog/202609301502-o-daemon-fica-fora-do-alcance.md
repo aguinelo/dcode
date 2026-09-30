@@ -1,7 +1,7 @@
 # O daemon fica fora do alcance do sandbox
 
 **Data:** 2026-09-30
-**Specs afetadas:** `202608072336-sandbox-policy` (`.p`: sete linhas novas em §6)
+**Specs afetadas:** `202608072336-sandbox-policy` (`.p`: oito linhas novas em §6)
 **Fonte:** achado ao mudar o socket padrão (N1, PR #407) e reproduzido pela
 montagem do próprio daemon, numa sessão de verdade.
 
@@ -49,6 +49,26 @@ frase foi corrigida lá, apontando para este.
 - **A configuração do sandbox** é montada num lugar só (`sandboxConfig`), para
   a sessão e para a medição dos critérios, que antes repetiam a lista.
 
+## Um defeito que o teste expôs
+
+O primeiro teste que rodou um comando de verdade pelo sandbox de uma sessão, num
+Linux com Docker — o runner do CI —, falhou antes de rodar qualquer coisa:
+
+```
+bwrap: Can't create file at /var/run/docker.sock: No such file or directory
+```
+
+No Ubuntu, `/var/run` é link para `/run`, e o bubblewrap segue link no destino de
+uma montagem a partir da raiz dele, não da do sandbox: o destino não existe para
+ele, e o comando inteiro cai. Todo comando confinado, numa máquina assim, teria
+caído. O comentário no código dizia o contrário — que o destino ia sem resolver
+porque o bubblewrap resolvia sozinho.
+
+Agora cada destino é coberto no caminho resolvido, e uma vez só: a raiz do
+sandbox é a do host, então o caminho resolvido é o mesmo arquivo lá dentro, e
+dois nomes do mesmo socket são uma montagem. Reivindicado por
+`TestASocketNamedThroughALinkIsCoveredWhereItResolves`.
+
 ## Por que todos os daemons, e não só o da sessão
 
 Qualquer daemon do usuário abre sessão em acesso total para quem pedir pelo
@@ -64,7 +84,7 @@ de ser socket, e conectar falha no kernel.
 
 ## As invariantes
 
-As sete linhas novas em §6 são reivindicadas por:
+As oito linhas novas em §6 são reivindicadas por:
 
 - `TestAConfinedCommandCannotReachItsDaemon` (`internal/app`), pela montagem do
   próprio daemon;
@@ -74,7 +94,8 @@ As sete linhas novas em §6 são reivindicadas por:
 - `TestADaemonSocketIsOutOfReachEvenWhereWritingIs` (macOS) e
   `TestARealDaemonSocketIsCoveredEvenWhenGranted` (Linux), no kernel;
 - `TestAGrantOfADaemonSocketIsSaidAtBoot` e
-  `TestAnEmbeddedDaemonListensBesideTheOthers` (`internal/app`).
+  `TestAnEmbeddedDaemonListensBesideTheOthers` (`internal/app`);
+- `TestASocketNamedThroughALinkIsCoveredWhereItResolves` (`internal/sandbox`).
 
 É correção de fronteira: PATCH.
 

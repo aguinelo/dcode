@@ -291,6 +291,7 @@ type Sandbox interface {
 - Um socket de daemon concedido continua coberto dentro do sandbox real do Linux.
 - Conceder em `sandbox.sockets` um lugar onde um daemon escuta não o abre, e o daemon diz isso ao subir.
 - Daemon embutido escuta na pasta por usuário, ao lado do default.
+- Socket nomeado por um link é coberto onde o link resolve, uma vez só: o bubblewrap segue link no destino de uma montagem a partir da raiz dele, e um destino que atravessa link derruba o comando inteiro.
 - `full-access` mantém a concessão ampla: modo que não promete fronteira não finge estreitá-la.
 
 - `workspace-write` concede os diretórios que uma toolchain precisa para compilar: cache e temporário do usuário.

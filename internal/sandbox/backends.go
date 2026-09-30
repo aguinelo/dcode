@@ -369,6 +369,18 @@ var isDir = func(p string) bool {
 	return err == nil && fi.IsDir()
 }
 
+// grants reports whether a socket is named as reachable, under any spelling of
+// its path.
+func grants(granted []string, p string) bool {
+	c := canonical(p)
+	for _, g := range granted {
+		if g == p || canonical(g) == c {
+			return true
+		}
+	}
+	return false
+}
+
 // hiddenByTmp reports whether a path is under /tmp and nothing put it back:
 // not the workspace, not a path named writable. Those are the only places the
 // host's /tmp shows through the sandbox's own.
@@ -493,38 +505,50 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 			}
 			args = append(args, "--bind", p, p)
 		}
+		// Each target is covered once, at the path it resolves to.
+		// bubblewrap follows a link in a mount's target from its own root
+		// rather than the sandbox's, so a target named through one does not
+		// exist for it: on Ubuntu, where /var/run links to /run, covering
+		// /var/run/docker.sock failed as `Can't create file at …` and took
+		// every command down with it. The sandbox's root is the host's, so
+		// the resolved path is the same file inside, and two names for one
+		// socket are one mount.
+		//
+		// bubblewrap also refuses a bind whose source or target is absent,
+		// and the refusal takes down the whole command rather than the one
+		// mount. A socket under /tmp that nothing put back is not there to
+		// cover — the command's /tmp is the tmpfs above — and mounting over
+		// it would plant the path it was meant to hide.
+		covered := map[string]bool{}
+		skip := func(c string) bool {
+			return covered[c] || hiddenByTmp(c, workdir, b.writable) || !exists(c)
+		}
 		for _, p := range b.sockets {
 			// Named as reachable, so not covered. Here the covering IS the
 			// rule, so granting is simply not doing it.
-			if contains(b.granted, p) {
+			if grants(b.granted, p) {
 				continue
 			}
-			// bubblewrap refuses a bind whose source or target is absent, and
-			// the refusal takes down the whole command rather than the one
-			// mount.
-			if !exists(p) {
-				continue
+			if c := canonical(p); !skip(c) {
+				covered[c] = true
+				args = append(args, "--ro-bind", "/dev/null", c)
 			}
-			// Not canonicalised: bubblewrap resolves the target itself, and
-			// a path that resolves differently here than inside would cover
-			// the wrong thing.
-			args = append(args, "--ro-bind", "/dev/null", p)
 		}
 		// The daemons of this user, covered the same way and past any grant:
 		// reaching one is reaching the unconfined process that confines this
 		// command. A socket is covered with /dev/null, a directory of them
-		// with a fresh tmpfs. One under /tmp that nothing put back is already
-		// out of reach — the command's /tmp is the tmpfs above — and mounting
-		// over it would plant the path it was meant to hide.
+		// with a fresh tmpfs.
 		for _, p := range b.daemons {
-			if hiddenByTmp(canonical(p), workdir, b.writable) || !exists(p) {
+			c := canonical(p)
+			if skip(c) {
 				continue
 			}
-			if isDir(p) {
-				args = append(args, "--tmpfs", p)
+			covered[c] = true
+			if isDir(c) {
+				args = append(args, "--tmpfs", c)
 				continue
 			}
-			args = append(args, "--ro-bind", "/dev/null", p)
+			args = append(args, "--ro-bind", "/dev/null", c)
 		}
 	}
 

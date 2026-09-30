@@ -106,7 +106,7 @@ func TestSeatbeltFullAccessKeepsTheBlanketGrant(t *testing.T) {
 // a unix socket is not a write — so a read-only bind hands the socket over. The
 // sockets have to be named and covered one by one.
 func TestBubblewrapCoversAContainerRuntimeSocket(t *testing.T) {
-	present := "/var/run/docker.sock"
+	present := canonical("/var/run/docker.sock")
 	restore := exists
 	exists = func(p string) bool { return p == present }
 	defer func() { exists = restore }()
