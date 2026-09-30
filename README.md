@@ -667,6 +667,8 @@ The session is an **append-only event log**. Resume, multi-client attach and ses
 density all fall out of that one primitive — the same principle as the model context, one
 layer up.
 
+The desktop client, a second client of the same daemon, lives in [`desktop/`](desktop/README.md) with its own version and changelog.
+
 ### Stack
 
 | Concern | Choice | Why |

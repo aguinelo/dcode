@@ -1,0 +1,27 @@
+{
+  "about": "The ruler of `npm run check:visual`: which reference states are measured, how, and how far from them still passes. Changing this file changes the measurement, which is why docs/loop/done.toml protects it.",
+  "states": ["02-janela-principal-rodando", "03-janela-principal-aprovacao"],
+  "viewport": { "width": 1600, "height": 960 },
+  "colorScheme": "dark",
+  "reducedMotion": "reduce",
+  "browser": "Playwright's Chromium, headless, device scale factor 1",
+  "clock": "2026-09-28T18:00:00.000Z",
+  "clockNote": "Fixed so the live clocks and ages cannot move between runs. The recording is replayed as of this instant, so the approval reads esperando · 1:35 and the turn 1m42s, as in the references.",
+  "reference": {
+    "dir": "refs/design/desktop/screenshots",
+    "dirNote": "Relative to the repository root. Override with --refs <dir> or DCODE_DESIGN_SCREENSHOTS; the images are not in the repository yet.",
+    "crop": { "x": 1, "y": 1, "width": 1600, "height": 960 },
+    "cropNote": "The references are 1602×962: the mock's window element with its 1px border. The window's content is the 1600×960 inside it, which is what the renderer draws. The four corners outside the window's 12px radius differ by construction (about a hundred pixels)."
+  },
+  "windowControls": "drawn: in fixture mode (a plain browser, no native controls) the renderer draws the same three 12px placeholders the mock draws, so the title-bar strip is compared, not masked.",
+  "pixelmatch": { "threshold": 0.1, "includeAA": false },
+  "pixelmatchNote": "threshold is pixelmatch's per-pixel colour distance (0–1); anti-aliased pixels are not counted, so glyph edges do not register as differences.",
+  "maxMismatchRatio": 0.0125,
+  "maxMismatchNote": [
+    "Chosen from the first honest run after the visible differences were fixed, and anchored to the design, not to the window.",
+    "Floor: the handoff's own HTML mock, rendered by this same Chromium with the pointer parked and the clock at 1:35, scores 1.15% (02) and 1.19% (03) under this ruler. The references were rasterised elsewhere: the glyphs are identical, but that renderer does not round Geist's ascent and descent the way Chrome on macOS does, so baselines land a pixel apart row by row. No CSS removes that; setting line-height to Geist's exact 1.3 moved the score by at most 0.12 points and pulled the window 0.9 points away from the mock as this engine draws it.",
+    "The window scores 1.17% (02) and 1.19% (03), identical pixel counts on repeated runs. Against the mock rendered by this Chromium it is 0.20% and 0.12% apart, and every remaining difference is a gap recorded in docs/DECISIONS.md or a deliberate choice there (the bottom bar says gravação, not daemon; no ↵ on the approval).",
+    "1.25% is the smallest round limit the design's own mock passes on both states, leaving about 900 pixels for rasterisation differences between machines. A missing or moved element costs more than that; a shift of a pixel or two does not register — moving the whole flow by 2px changed the score by 0.10 points, the wrong way. For work finer than that, compare with the mock rendered here.",
+    "When the references change (a new Claude Design version), measure the new mock's floor the same way and revise this limit deliberately: it is part of the ruler, and docs/loop/done.toml protects it."
+  ]
+}

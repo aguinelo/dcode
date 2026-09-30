@@ -1,0 +1,23 @@
+{
+  // The renderer, the pure state it draws, the protocol types and the unit
+  // tests: everything that runs in a browser context or in vitest. No Node
+  // types here, on purpose — the renderer never sees Node.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src/renderer", "src/protocol", "src/state", "src/fixtures", "src/shared", "tests/unit"]
+}

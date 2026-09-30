@@ -243,6 +243,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The desktop client starts, in `desktop/`.** A second client of the daemon,
+  in Electron, in an area of its own with its own README, `AGENTS.md`, version
+  (tags `desktop-vX.Y.Z`, from 0.1.0) and changelog — what the client does is
+  recorded in [`desktop/CHANGELOG.md`](desktop/CHANGELOG.md), not here, because
+  it ships on its own clock. Its first version draws the v2 design's main window
+  from recorded protocol events and does not connect to a daemon yet. At the
+  root, three things change. A stub `desktop/go.mod` makes the area a module of
+  its own, so the core's `go vet ./...`, `go test ./...` and `go build ./...`
+  stop at its door instead of walking into `node_modules`. A new workflow,
+  `.github/workflows/desktop.yml`, typechecks, lints, tests and builds the
+  desktop, and regenerates its protocol types from `internal/protocol` to fail
+  when the committed ones are stale — which is why it also runs when only
+  `internal/protocol` changes; the visual check against the design stays out of
+  CI until the reference images are in the repository. And one line in each
+  README points to the area. The dependency runs one way: the desktop reads the
+  core, the core never reads the desktop, and nothing was added to the root
+  `go.mod`.
 - **Choosing a recorded conversation from the `^R` list continues it.** The
   list is what this workspace recorded, read from disk at start, and `enter`
   asked `GetSession` for the choice — which answers only for the sessions the

@@ -242,6 +242,23 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O cliente desktop começa, em `desktop/`.** Um segundo cliente do daemon, em
+  Electron, numa área própria, com README, `AGENTS.md`, versão (tags
+  `desktop-vX.Y.Z`, a partir de 0.1.0) e changelog próprios — o que o cliente faz
+  fica registrado em [`desktop/CHANGELOG.pt-BR.md`](desktop/CHANGELOG.pt-BR.md),
+  não aqui, porque ele sai no próprio ritmo. A primeira versão desenha a janela
+  principal do design v2 a partir de eventos de protocolo gravados e ainda não se
+  conecta a um daemon. Na raiz, mudam três coisas. Um `desktop/go.mod` de
+  fachada faz da área um módulo à parte, e o `go vet ./...`, o `go test ./...` e
+  o `go build ./...` do núcleo param na porta dela em vez de entrar no
+  `node_modules`. Um workflow novo, `.github/workflows/desktop.yml`, faz
+  typecheck, lint, testes e build do desktop, e regenera os tipos do protocolo a
+  partir do `internal/protocol` para reprovar quando os commitados estão velhos —
+  por isso ele roda também quando só o `internal/protocol` muda; a verificação
+  visual contra o design fica fora do CI até as imagens de referência entrarem no
+  repositório. E uma linha em cada README aponta para a área. A dependência corre
+  num sentido só: o desktop lê o núcleo, o núcleo nunca lê o desktop, e nada
+  entrou no `go.mod` da raiz.
 - **Escolher uma conversa gravada na lista do `^R` a continua.** A lista é o
   que este workspace gravou, lida do disco na abertura, e o `enter` perguntava
   ao `GetSession` pela escolha — que só responde pelas sessões que o daemon tem

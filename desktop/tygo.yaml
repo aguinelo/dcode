@@ -1,0 +1,16 @@
+# The protocol types, generated from internal/protocol into the desktop.
+#
+# The dependency runs one way: the desktop reads the core, the core never
+# reads the desktop. Run from the repository root (`npm run gen:protocol` does
+# that), so the package resolves inside the core's own module and nothing is
+# added to the root go.mod. CI regenerates and fails when the committed file
+# differs.
+packages:
+  - path: github.com/aguinelo/dcode/internal/protocol
+    output_path: desktop/src/protocol/generated.ts
+    type_mappings:
+      time.Time: string
+      json.RawMessage: unknown
+    frontmatter: |
+      // From internal/protocol, by `npm run gen:protocol` (tygo). CI fails when
+      // this file is stale; edit the Go types, never this file.
