@@ -28,6 +28,9 @@ isto, só acertaria copiando a regra, e cópia é o que diverge.
   um diz o que está errado e como resolver.
 - `dcode socket` imprime o caminho em uso. É por ele que o desktop pergunta onde
   está o daemon.
+- A checagem da pasta é de Unix. No Windows não há uid nem bits de modo, e ela
+  não roda: lá nenhuma sessão é confinada ainda — não existe backend de sandbox
+  —, então o lugar do socket não guarda fronteira nenhuma.
 
 ## Por que `/tmp/dcode-<uid>/`
 
