@@ -2,11 +2,12 @@
 
 O porquê do que o cliente desktop faz. Decisões de interface moram aqui, e não em
 specs SDD: o comportamento do agente e o protocolo continuam com a disciplina de
-spec do núcleo (`docs/specs/architecture/`), e esta versão **não muda o
-protocolo**. O design de referência é o handoff v2 (`refs/design/desktop/`).
+spec do núcleo (`docs/specs/architecture/`), e o desktop **não muda o
+protocolo** — o que ele precisa do núcleo vira pedido, com spec lá. O design de
+referência é o handoff v2 (`refs/design/desktop/`).
 
-Três partes: o que foi decidido, o que ficou em aberto, e o que o design pede e o
-protocolo não traz.
+Quatro partes: o que foi decidido, o que ficou em aberto, o que o design pede e o
+protocolo não traz, e o que o desktop pede ao núcleo.
 
 ## Decisões
 
@@ -72,7 +73,8 @@ Respondida, o card fica no lugar com a resposta, e a linha da ferramenta aparece
 depois dele — a história se lê na ordem em que aconteceu.
 
 **D11. O relógio "esperando · m:ss" conta do `at` do envelope do
-`tool.approval_required`.** O `expires_at` do pedido não é lido (ver L9).
+`tool.approval_required`.** O `expires_at` chega preenchido desde o #403 e não é
+desenhado: o design conta o tempo esperando, não o prazo.
 
 **D12. A fronteira vem traduzida do `boundary_crossed`** ("Pede **rede**"); a
 regra, quando existe, aparece; o `reason` do daemon (em inglês) fica no título do
@@ -112,29 +114,81 @@ próprio design, desenhado por este Chromium, fica a 1,15% e 1,19% das referênc
 Geist como o Chrome no macOS, e as linhas de texto caem um pixel acima, linha a
 linha. Esse é o piso; a janela mede 1,17% e 1,19%.
 
+**D19. O desktop sobe o daemon quando nenhum responde.** O processo principal
+procura um `dcode serve` no socket e anexa a ele; se nenhum responde, sobe um
+como processo filho, no mesmo socket, e as TUIs abertas depois anexam a ele, como
+já anexam a qualquer daemon que responda ali (`cmd/dcode/tui.go`). O filho morre
+com o app, e as sessões dele junto: nada sobrevive a quem o criou, que é decisão
+do núcleo. Fechar o app com sessão rodando ou esperando aprovação pergunta antes,
+dizendo quantas param. Um daemon que o desktop não subiu não é encerrado por ele.
+
+- **O binário** é o de `DCODE_BIN`, senão `~/.local/bin/dcode` (onde o `install.sh`
+  e o `make install` põem), senão o do `PATH` do app. Não achar é dito, com os
+  lugares procurados.
+- **O socket** é o de `DCODE_SOCKET`, senão o que o binário disser (N1) — nunca uma
+  segunda cópia da regra do núcleo.
+- **O filho herda o ambiente do app.** Aberto do terminal (`npm start`, o único
+  jeito hoje), é o do shell. Um app empacotado, aberto pelo Dock, não teria o
+  `PATH` das ferramentas que o agente roda; ler o ambiente do shell de login é
+  decisão do empacotamento.
+
+Descartados: um serviço sempre de pé (launchd), que reabriria "nada sobrevive a
+quem o criou"; e um daemon privado por app, que não compartilharia nada com a TUI.
+
+**D20. Um daemon atende todos os projetos,** com a configuração resolvida no
+workspace de cada sessão (N2). Hoje o `dcode serve` resolve uma vez, no workspace
+em que subiu, e toda sessão usa essa — e o desktop sobe o daemon fora de qualquer
+projeto. Descartados: um daemon por projeto (mais processos, e cada TUI teria de
+achar o socket do seu); manter como está (a lateral com vários projetos mentiria
+sobre a configuração de cada um).
+
+**D21. A lista de sessões vem do protocolo** (N3): vivas e gravadas, com resumo, e
+um fluxo só de mudanças da lista. Abrir uma gravada continua a conversa numa
+sessão nova (`CreateSession{Resume}`), como a TUI faz. Até o N3, a lateral mostra
+as vivas do daemon (`GET /v1/sessions`), inclusive as que outro cliente abrir, e
+as gravadas ficam de fora. Descartados: ler o disco como a TUI (acopla o desktop
+ao formato do registro e duplica a leitura); só as vivas (a lateral perde o
+histórico).
+
+**D22. `↵` nega a aprovação, como na TUI** (era A1). Permitir é sempre escolha
+explícita: `1` uma vez, `2` nesta sessão; `3`, `esc` e `↵` negam. A opção
+destacada é negar, e só isso muda no design. O campo de mensagem fica desabilitado
+enquanto a aprovação espera, com o texto "Responda à aprovação acima". Medido
+antes de decidir: a tela 03 fica a 1,21% das referências, dentro do limite.
+Descartados: `↵` permite uma vez, como no design (aprovar sem ler vira o gesto mais
+barato, e a invariante da TUI teria de mudar junto); `↵` sem efeito (uma regra
+diferente em cada cliente).
+
+**D23. Mensagem durante o turno redireciona, como na TUI** (era A2). O texto vai ao
+modelo na próxima rodada do mesmo turno (`POST …/steer`) e aparece no fluxo
+quando o daemon o entrega (`turn.steered`); imagem e comando que custa turno,
+quando existirem aqui, entram na fila. O campo diz "Escreva para redirecionar
+este turno" — medido: a tela 02 fica a 1,20%. Descartado: a fila do design — com
+ela, corrigir um turno que foi para o lado errado exigiria interrompê-lo, e a
+mesma sessão teria uma regra em cada cliente.
+
+**D24. O loop é uma tela sobre o mecanismo que existe** (era A4): os critérios do
+`done.toml`, a reentrada por ciclo e um evento por ciclo com o resultado de cada
+critério — passou ou não, sem contagem de testes, porque critério é código de
+saída (`agent-loop`). A sequência do `/loop` sai da TUI para o daemon, para os dois
+clientes verem o mesmo loop (N4). Vem depois da conexão; até lá, a sessão em loop
+aparece como rodando. Descartados: o loop novo de `refs/design/desktop/LOOP.md`
+(iteração como turno inteiro, orçamentos, contagem por teste, `dcode loop` —
+várias specs, e contraria o `agent-loop`); e decidir depois.
+
+**D25. Tokens durante o turno: só o tempo, por enquanto.** A linha de atividade
+mostra o tempo desde o `turn.started`; tokens e contexto mudam quando o turno
+termina, como na TUI desde o #401. Descartado por ora: um evento de uso por
+rodada, que seria mudança de protocolo (MINOR). A lacuna L5 fica, por decisão.
+
 ## Decisões em aberto
 
-**A1. `↵` na aprovação.** O design liga `↵` a "Permitir uma vez", pré-selecionada.
-Na TUI, `↵` **nega**, e isso é invariante da spec (`client-tui.p.spec.md`: "aprovação
-pendente bloqueia a entrada e tem negar como default"). Aqui `↵` não responde:
-`1`, `2`, `3` respondem, `esc` nega, e `↵` avisa que não responde. Nenhuma opção
-aparece pré-selecionada. Decidir entre o default do design e o da spec.
-
-**A2. Mensagem durante o turno.** O placeholder do design diz "Mensagem entra na
-fila depois deste turno". Na TUI, o que se digita durante o turno **dirige** o
-turno (`POST …/steer`, `client-tui.p.spec.md`); só entra na fila mensagem com
-imagem ou comando que custa um turno. O texto do design ficou; nenhuma das duas
-semânticas foi construída (nada é enviado nesta versão). Decidir.
+A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
 
 **A3. Três respostas ou cinco.** O protocolo tem cinco decisões (`allow`,
 `allow_session`, `allow_project`, `allow_always`, `deny`), e a TUI oferece
 `allow_project`/`allow_always` para a rede. O design mostra três; esta versão
 mostra as três.
-
-**A4. O estado "loop".** O fio só tem `idle | running | blocked | closed`; loop
-não tem representação. A sessão em loop do mock aparece como rodando, sem
-`↻ 8/100`, e conta em "n rodando" (por isso a barra diz "2 rodando" onde o mock
-diz 1).
 
 **A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico de sessões
 abertas nesta janela (← fica esmaecido até haver para onde voltar). Recolher a
@@ -157,7 +211,7 @@ mudança de protocolo, com changelog de spec no núcleo antes do código.
 - **L4. Nome curto do filho.** O `explore` recebe `task`, `path` e `owns`; alpha,
   bravo, charlie e delta do mock não viajam. Ver D9.
 - **L5. Tokens durante o turno.** `usage` só chega no `turn.completed`; a linha de
-  atividade mostra só o tempo.
+  atividade mostra só o tempo. Fica assim por decisão (D25).
 - **L6. Contexto antes do fim do primeiro turno.** Ver D15. `context.band` mede
   outra coisa (fração até o resumo) e vira nota, não medidor.
 - **L7. Diff das escritas de filhos.** O `explore` não reporta `added`/`removed`,
@@ -167,21 +221,25 @@ mudança de protocolo, com changelog de spec no núcleo antes do código.
   nome da política ("on-request") não viajam. O chip do composer mostra
   `sandbox_mode · mode` — o modo é o nome que a pessoa escolhe, e derivar a
   política dele seria uma segunda cópia da tabela do daemon.
-- **L9. `expires_at` sempre zero.** O núcleo emite o pedido antes de fixar o
-  prazo (`internal/loop/turn.go`), e uma aprovação pendente é negada sozinha
-  depois de 2 minutos; o cliente só sabe quando chega o `tool.approval_resolved`.
+- **L9. `expires_at` sempre zero.** Resolvida no núcleo (#403): o pedido chega
+  com o prazo. Uma aprovação pendente continua negada sozinha depois de 2
+  minutos, e o card não desenha o prazo (D11).
 - **L10. Estado agregado por sessão.** `GET /v1/sessions` lista só sessões vivas,
   sem título, turnos, selo, diff ou último evento; a lateral precisa do log de
-  cada sessão (SPEC_GAPS C3). As sessões gravadas vêm do disco.
+  cada sessão (SPEC_GAPS C3). As sessões gravadas vêm do disco. Decidido: uma rota
+  no protocolo (D21, N3).
 - **L11. Loop.** Iteração, limites, checks por iteração: nada disso existe no fio
-  (SPEC_GAPS B e C1–C2). Ver A4.
+  (SPEC_GAPS B e C1–C2). A sessão em loop do mock aparece como rodando, sem
+  `↻ 8/100`, e conta em "n rodando" (por isso a barra diz "2 rodando" onde o mock
+  diz 1). Decidido: uma tela sobre o mecanismo que existe (D24, N4).
 - **L12. Quem usa.** Nome e iniciais do rodapé vêm do sistema, pelo processo
   principal (`id -F` no macOS, GECOS no Linux, senão o login) — não do protocolo.
-- **L13. Status do daemon.** Esta versão não conecta; a conexão é a próxima.
+- **L13. Status do daemon.** Esta versão não conecta; a conexão é o loop de
+  `docs/loop/` (D19).
 - **L14. Estados.** O handoff lista `running | loop | awaiting_approval | idle |
   interrupted`; o fio tem `idle | running | blocked | closed`. "Esperando
   aprovação" é `blocked`; "interrompida" é um `reason` do `turn.completed`
-  (aparece como nota no fluxo), não um estado; "loop" não existe (A4).
+  (aparece como nota no fluxo), não um estado; "loop" não existe (L11).
 - **L15. Selo.** O handoff fala em `verified | unverified | not_verified`; o fio
   traz `Completion.verification = clean | passed | failed | stale | unavailable`.
   O mapeamento está em D13.
@@ -190,3 +248,35 @@ mudança de protocolo, com changelog de spec no núcleo antes do código.
   chave de configuração não existe; o que existe é o catálogo por fase da TUI e o
   liga-desliga `DCODE_ACTIVITY_VERBS`. Ver D14. Por isso a tela 02 diz
   "Delegando…" onde o mock diz "Conferindo…".
+
+## Pedidos ao núcleo
+
+O que as decisões acima pedem ao núcleo. Cada um é um PR do núcleo, com a spec
+antes do código (`docs/conventions/SDD-HARNESS.md`) e changelog na família; o
+desktop não os implementa, espera por eles.
+
+- **N1. O socket fixo por usuário** — `client-server-protocol`. `DefaultSocketPath`
+  (`internal/app/daemon.go`) lê `XDG_RUNTIME_DIR` e `TMPDIR`, que um app aberto
+  pelo Dock, uma sessão SSH e um terminal podem ter diferentes. O caminho padrão
+  passa a ser um por usuário, sem depender do ambiente — `DCODE_SOCKET` continua
+  sendo a escolha explícita —, e o binário diz qual é, para o desktop perguntar em
+  vez de copiar a regra. Pedido por D19.
+- **N2. Configuração por sessão** — `configuration`. O `dcode serve` resolve a
+  cadeia uma vez (`cmd/dcode/serve.go`), e o `build` usa esse `Base` para toda
+  sessão (`internal/app/daemon.go`). Passa a resolver no workspace de cada
+  `CreateSession`, e configuração de projeto ilegível recusa a sessão dizendo por
+  quê. Conserta também o caso de hoje: uma TUI anexada a um `dcode serve` que
+  subiu em outro projeto. Pedido por D20.
+- **N3. A lista de sessões** — `client-server-protocol`, MINOR. Uma rota com as
+  sessões vivas e as gravadas, cada uma com nome, projeto, estado, branch, modelo,
+  turnos, selo, diff, última atividade e último evento, e um fluxo único de
+  mudanças da lista. A TUI passa a usá-la no seletor (`-r`) em vez de ler o disco
+  (`pickSession`, `cmd/dcode/tui.go`). Pedido por D21; fecha L10.
+- **N4. O `/loop` no daemon** — `loop-command` e `client-server-protocol`, MINOR. A
+  sequência sai do processo da TUI (`internal/tui/program.go`) para o daemon, e um
+  evento por ciclo traz o resultado de cada critério. Pedido por D24; fecha L11.
+
+A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
+sem ele, uma sessão que o desktop abre num projeto ignora o `.dcode/config.toml`
+desse projeto —; o N3 antes da lateral com as gravadas, do ⌘K e da troca de
+modelo; o N4 antes da tela do loop.

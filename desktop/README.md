@@ -66,6 +66,19 @@ one line per state and fails when any is past the limit. The states, the limit
 and the reasoning behind it live in `tests/visual/states.json`. Chromium for
 Playwright is installed once with `npx playwright install chromium`.
 
+Whether the window talks to a daemon is measured the same way:
+
+```bash
+npm run check:daemon
+npm run check:daemon -- steers
+```
+
+It builds the app and `dcode` from this checkout and runs each scenario in
+`tests/daemon/` against a fresh `dcode serve` with a scripted model, launching
+the app as Electron and driving it by clicks and keys. Each scenario is checked
+against what the daemon logged, not only against what the window drew. Failures
+leave a screenshot and the logs in `test-results/daemon/`.
+
 To let dcode iterate on it, run from the repository root:
 
 ```
@@ -73,9 +86,12 @@ dcode
 /loop desktop/docs/loop
 ```
 
-The loop works until `desktop/docs/loop/done.toml` is met — typecheck, tests and
-the visual check — and treats the reference images and `tests/visual/` as
-protected: they are the ruler, and changing them is not progress.
+The loop works until `desktop/docs/loop/done.toml` is met — typecheck, lint,
+tests, the protocol types, the visual check and the daemon check. It treats as
+protected the reference images, `tests/visual/`, `tests/daemon/` and the loop
+folder: they are the ruler, and changing them is not progress. What the loop is
+building now, and why it needs a session with full access, is in
+`docs/loop/tasks.md`.
 
 **A new Claude Design version** is new reference PNGs in
 `refs/design/desktop/screenshots/`. The loop then shows the distance to them.

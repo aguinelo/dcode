@@ -65,6 +65,19 @@ por estado e reprova quando algum passa do limite. Os estados, o limite e o
 raciocínio por trás dele moram em `tests/visual/states.json`. O Chromium do
 Playwright se instala uma vez com `npx playwright install chromium`.
 
+Se a janela fala com um daemon é medido do mesmo jeito:
+
+```bash
+npm run check:daemon
+npm run check:daemon -- steers
+```
+
+Ele compila o app e o `dcode` deste checkout e roda cada cenário de
+`tests/daemon/` contra um `dcode serve` novo com um modelo roteirizado, abrindo o
+app como Electron e dirigindo-o por cliques e teclas. Cada cenário é conferido
+contra o que o daemon registrou, não só contra o que a janela desenhou. As falhas
+deixam uma captura e os logs em `test-results/daemon/`.
+
 Para o dcode iterar sobre ele, a partir da raiz do repositório:
 
 ```
@@ -73,8 +86,11 @@ dcode
 ```
 
 O loop trabalha até o `desktop/docs/loop/done.toml` ser cumprido — typecheck,
-testes e a verificação visual — e trata as imagens de referência e o
-`tests/visual/` como protegidos: são a régua, e mudá-los não é progresso.
+lint, testes, os tipos do protocolo, a verificação visual e a do daemon. Trata
+como protegidos as imagens de referência, o `tests/visual/`, o `tests/daemon/` e
+a própria pasta do loop: são a régua, e mudá-los não é progresso. O que o loop
+está construindo agora, e por que ele precisa de uma sessão com acesso total,
+está em `docs/loop/tasks.md`.
 
 **Uma versão nova do Claude Design** é PNG de referência novo em
 `refs/design/desktop/screenshots/`. O loop então mostra a distância até ele.
