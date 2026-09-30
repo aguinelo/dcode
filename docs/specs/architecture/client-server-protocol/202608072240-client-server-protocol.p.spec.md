@@ -281,6 +281,9 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - `tool.approval_required` sai com `expires_at` já posto, e é o mesmo instante em que a sessão nega a pergunta que ninguém respondeu.
 - `POST /sessions/{id}/mode` anuncia a troca pelo log como `session.mode_changed`, carregando de onde veio: quem anexa depois lê o modo do log, não de uma chamada que perdeu.
 - Modo desconhecido é recusado com `4xx` que **nomeia o que foi enviado**, antes de chegar ao motor, e deixa o modo em vigor intacto.
+- O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
+- A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
+- `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
 
 ## 10. Changelog
 
@@ -295,3 +298,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609281750 — Um lote volta inteiro, na ordem em que foi feito](changelog/202609281750-um-lote-volta-inteiro.md)
 - [202609291356 — Conversa viva é nomeada pelo log](changelog/202609291356-conversa-viva-e-nomeada-pelo-log.md)
 - [202609291401 — A pergunta carrega o prazo](changelog/202609291401-a-pergunta-carrega-o-prazo.md)
+- [202609292355 — O socket é um por usuário](changelog/202609292355-o-socket-e-um-por-usuario.md)

@@ -25,7 +25,7 @@ import (
 func runServe(args []string) error {
 	fs := flag.NewFlagSet("dcode serve", flag.ContinueOnError)
 	var (
-		socket      = fs.String("socket", "", "socket path (default: $DCODE_SOCKET, else a per-user path)")
+		socket      = fs.String("socket", "", "socket path (default: $DCODE_SOCKET, else /tmp/dcode-<uid>/dcode.sock)")
 		workspace   = fs.String("workspace", "", "default workspace for sessions that do not name one")
 		maxSessions = fs.Int("max-sessions", 64, "refuse to create more than this many sessions")
 		retention   = fs.Int("event-retention", 10000, "events kept per session for replay")
@@ -52,6 +52,9 @@ func runServe(args []string) error {
 	if path == "" {
 		path = app.DefaultSocketPath(os.Getenv)
 	}
+	if err := app.SecureSocketDir(path); err != nil {
+		return err
+	}
 
 	d := app.NewDaemon(app.DaemonOptions{
 		Log:             func(msg string) { fmt.Fprintln(os.Stderr, msg) },
@@ -77,6 +80,31 @@ func runServe(args []string) error {
 	if err := d.Serve(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
+	return nil
+}
+
+// runSocket prints the socket the daemon listens on and a client looks for.
+//
+// For a client that is not this binary: the desktop asks here rather than
+// keeping a second copy of DefaultSocketPath, and a copy is what drifts. The
+// directory is checked as serve checks it, so a path that could not be used is
+// an error here too, not a line printed as if it could.
+func runSocket(args []string) error {
+	fs := flag.NewFlagSet("dcode socket", flag.ContinueOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "dcode socket — print the daemon's socket path ($DCODE_SOCKET, else /tmp/dcode-<uid>/dcode.sock)\n")
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("dcode socket takes no arguments, got %q", fs.Arg(0))
+	}
+	path := app.DefaultSocketPath(os.Getenv)
+	if err := app.SecureSocketDir(path); err != nil {
+		return err
+	}
+	fmt.Println(path)
 	return nil
 }
 

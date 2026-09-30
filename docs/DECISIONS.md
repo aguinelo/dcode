@@ -288,11 +288,21 @@ The embedded daemon binds a private socket rather than the default one. Two
 terminals opened without a shared daemon would otherwise race to bind the same
 address, and the loser would fail to start for a reason the user cannot act on.
 
-### The socket path is deliberately short
+### The socket path is one per user, and short
 
 A Unix socket is capped near 104 bytes on macOS, and the XDG state directory
-alone can exhaust that. `$XDG_RUNTIME_DIR/dcode.sock` when it exists, otherwise
-`$TMPDIR/dcode-<uid>.sock` — the uid keeps two users on one machine apart.
+alone can exhaust that. The default is `/tmp/dcode-<uid>/dcode.sock`, as tmux
+does it — the uid keeps two users on one machine apart — and it reads nothing
+from the environment but `DCODE_SOCKET`. It used to be
+`$XDG_RUNTIME_DIR/dcode.sock` or `$TMPDIR/dcode-<uid>.sock`, and a terminal, an
+SSH session and an app opened from the Dock do not agree on those, so two
+clients of one person could each find a different daemon.
+
+`/tmp` is shared by every user, so the directory is used only when it is this
+user's alone, and refused rather than repaired otherwise: one that was open may
+already hold somebody else's socket, where every client of this user looks.
+`dcode socket` prints the path, so a client that is not this binary asks instead
+of copying the rule.
 
 ### The workspace is validated where it enters
 

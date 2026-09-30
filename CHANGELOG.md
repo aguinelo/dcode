@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 201 decision changelogs |
+| spec families | 18, with 202 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -243,6 +243,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The daemon's socket is one path per user, whatever the environment.**
+  Without `DCODE_SOCKET` it is `/tmp/dcode-<uid>/dcode.sock`. It came from
+  `XDG_RUNTIME_DIR` or `TMPDIR`, which a terminal, an SSH session and an app
+  opened from the Dock do not agree on, so two clients of the same person could
+  each find a different daemon. `/tmp` is shared, so its directory is used only
+  when it is this user's alone: another owner, a symlink or a mode open to others
+  is refused with the reason, because such a directory may already hold somebody
+  else's socket. `dcode socket` prints the path — how the desktop client will
+  find the daemon without a second copy of the rule. A `dcode serve` of an older
+  version keeps listening on the old path until it is restarted.
 - **The desktop client starts, in `desktop/`.** A second client of the daemon,
   in Electron, in an area of its own with its own README, `AGENTS.md`, version
   (tags `desktop-vX.Y.Z`, from 0.1.0) and changelog — what the client does is
