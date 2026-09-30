@@ -174,7 +174,8 @@ essa separação é o que permite ser permissivo sem ser inseguro.
 
 Hoje o sandbox: esconde os cofres de credencial por default (`~/.aws`,
 `~/.gnupg`, `~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` e a própria
-chave do dcode); mantém o socket de runtime de contêiner fora de alcance;
+chave do dcode); mantém fora de alcance o socket de runtime de contêiner e todo
+daemon do dcode do usuário;
 concede socket e caminho gravável **por nome**; e esconde `~/.ssh` assim que o
 socket do `ssh-agent` é concedido — porque aí o `ssh` assina sem ler a chave e
 esconder sai de graça.

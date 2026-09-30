@@ -175,7 +175,8 @@ without being unsafe.
 
 The sandbox today: hides the credential stores by default (`~/.aws`, `~/.gnupg`,
 `~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` and dcode's own key);
-keeps a container runtime's socket out of reach; grants a socket or a writable
+keeps a container runtime's socket, and every dcode daemon of the user, out of
+reach; grants a socket or a writable
 path **by name**; and hides `~/.ssh` as soon as the `ssh-agent` socket is
 granted — because then ssh signs without reading the key and hiding costs
 nothing.
