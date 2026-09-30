@@ -256,7 +256,8 @@ exists to stop exactly that.
   desktop, and regenerates its protocol types from `internal/protocol` to fail
   when the committed ones are stale — which is why it also runs when only
   `internal/protocol` changes; the visual check against the design stays out of
-  CI until the reference images are in the repository. And one line in each
+  CI, because its limit was measured on macOS, and Linux runners draw text
+  differently (`desktop/AGENTS.md` has the numbers). And one line in each
   README points to the area. The dependency runs one way: the desktop reads the
   core, the core never reads the desktop, and nothing was added to the root
   `go.mod`.

@@ -10,6 +10,18 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The visual check stays out of CI for the reason that holds.** The documents
+  kept it local because the reference images were not in the repository; they
+  have been since the design handoff landed. Run once on the workflow's
+  `ubuntu-latest`, it scores 1.76% and 1.79% against the 1.25% limit, identical
+  on four runners: Linux's Chromium hints glyphs and antialiases them in LCD
+  subpixels, where macOS — on which the limit was measured — and the references
+  do neither. The limit stays: loosened to fit Linux, it would leave macOS more
+  than 9,000 pixels of slack, room for a missing element to pass. `AGENTS.md`,
+  the workflow, the ruler's note and the root changelog stop saying the
+  references are missing, and `AGENTS.md` gives the reason that holds, with the
+  launch flags that brought Linux to 1.19% and 1.20% — a ruler change, left for
+  a decision of its own.
 - **The next loop connects the window to a real daemon, and its ruler is written
   before the code.** `npm run check:daemon` builds the app and `dcode` from the
   checkout and runs eight scenarios, each against a fresh `dcode serve` with a
@@ -76,4 +88,4 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   the design's own mock, rendered by the same Chromium, is 1.15% and 1.19% from
   the references, and the window measures 1.17% and 1.19%. `desktop/docs/loop/`
   lets dcode's own `/loop` iterate against it, with the references and the ruler
-  protected. Local only for now: the references are not in the repository yet.
+  protected. Local only: the limit was measured on macOS and holds there.

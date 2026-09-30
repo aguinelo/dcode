@@ -9,7 +9,7 @@
   "clockNote": "Fixed so the live clocks and ages cannot move between runs. The recording is replayed as of this instant, so the approval reads esperando · 1:35 and the turn 1m42s, as in the references.",
   "reference": {
     "dir": "refs/design/desktop/screenshots",
-    "dirNote": "Relative to the repository root. Override with --refs <dir> or DCODE_DESIGN_SCREENSHOTS; the images are not in the repository yet.",
+    "dirNote": "Relative to the repository root, where the images are committed. Override with --refs <dir> or DCODE_DESIGN_SCREENSHOTS.",
     "crop": { "x": 1, "y": 1, "width": 1600, "height": 960 },
     "cropNote": "The references are 1602×962: the mock's window element with its 1px border. The window's content is the 1600×960 inside it, which is what the renderer draws. The four corners outside the window's 12px radius differ by construction (about a hundred pixels)."
   },
