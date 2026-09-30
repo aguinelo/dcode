@@ -10,6 +10,29 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O próximo loop liga a janela a um daemon de verdade, e a régua dele foi escrita
+  antes do código.** O `npm run check:daemon` compila o app e o `dcode` do
+  checkout e roda oito cenários, cada um contra um `dcode serve` novo com um
+  modelo roteirizado: anexar, subir o próprio, dizer por que não subiu, uma
+  sessão nova com conversa, `↵` negando uma aprovação, `1` permitindo, redirecionar
+  um turno em andamento, e um daemon que morre. Cada um é conferido contra o que o
+  daemon registrou, não só contra o que a janela desenhou. O `docs/loop/` agora
+  aponta o `/loop` para ela, com a régua protegida. Reprova de propósito: a janela
+  ainda não conecta, e cada cenário diz onde para. Escrita antes porque um loop
+  que escreve a própria régua mede o que construiu, não o que foi decidido.
+- **Sete decisões para falar com o daemon, no `docs/DECISIONS.md` (D19–D25).**
+  - O desktop sobe o daemon quando nenhum responde, e esse daemon para quando o
+    app fecha.
+  - Um daemon atende todos os projetos, com a configuração resolvida por sessão.
+  - A lista de sessões vem do protocolo.
+  - `↵` nega a aprovação e a mensagem digitada durante o turno o redireciona, como
+    na TUI.
+  - O loop é uma tela sobre o mecanismo que existe.
+  - Tokens ao vivo ficam para depois.
+
+  Tomadas antes de ligar qualquer coisa, porque cada uma muda o que é ligar. O que
+  elas pedem ao núcleo está listado como N1–N4, cada um um PR do núcleo com a spec
+  antes.
 - **A área do desktop existe, à parte do núcleo.** Electron Forge com Vite,
   TypeScript e React, em `desktop/`, com README, changelog, versão e `AGENTS.md`
   próprios, e um `go.mod` de fachada para o `go … ./...` do núcleo parar na porta

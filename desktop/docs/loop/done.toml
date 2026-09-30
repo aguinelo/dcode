@@ -1,18 +1,29 @@
-# When the desktop's main window is done: `/loop desktop/docs/loop`.
+# When the desktop talks to a real daemon: `/loop desktop/docs/loop`, in a
+# session with full access (tasks.md, "Antes de rodar" says why).
 #
 # One criterion per section, each a command run from the workspace root. The
 # seal comes from these, never from a sentence of the model.
 #
-# Protected is what IS the measurement: the reference images, and the states,
-# the limit and the script of the visual check. Changing them is changing the
+# Protected is what IS the measurement: the design's references and the visual
+# check; the daemon check — its scenarios, its scripted model, the attributes it
+# reads; and this folder, which says what done is. Changing them is changing the
 # ruler, and the loop surfaces it rather than counting it as progress.
-protected = ["refs/design/**", "desktop/tests/visual/**"]
+protected = ["refs/design/**", "desktop/tests/visual/**", "desktop/tests/daemon/**", "desktop/docs/loop/**"]
 
 [typecheck]
 command = "npm --prefix desktop run typecheck"
 
+[lint]
+command = "npm --prefix desktop run lint"
+
 [test]
 command = "npm --prefix desktop test"
 
+[protocol]
+command = "npm --prefix desktop run check:protocol"
+
 [visual]
 command = "npm --prefix desktop run check:visual"
+
+[daemon]
+command = "npm --prefix desktop run check:daemon"

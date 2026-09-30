@@ -10,6 +10,30 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The next loop connects the window to a real daemon, and its ruler is written
+  before the code.** `npm run check:daemon` builds the app and `dcode` from the
+  checkout and runs eight scenarios, each against a fresh `dcode serve` with a
+  scripted model: attaching, starting its own, saying why it could not, a new
+  session with a conversation, `↵` denying an approval, `1` allowing one,
+  steering a running turn, and a daemon that dies. Each is checked against what
+  the daemon logged, not only against what the window drew. `docs/loop/` now
+  points `/loop` at it, with the ruler protected. It fails on purpose: the window
+  does not connect yet, and each scenario says where it stops. Written first
+  because a loop that writes its own ruler measures what it built, not what was
+  decided.
+- **Seven decisions for talking to the daemon, in `docs/DECISIONS.md` (D19–D25).**
+  - The desktop starts the daemon when none answers, and that daemon stops when
+    the app quits.
+  - One daemon serves every project, with configuration resolved per session.
+  - The session list comes from the protocol.
+  - `↵` denies an approval and a message typed during a turn steers it, as in the
+    TUI.
+  - The loop is a screen over the mechanism that exists.
+  - Live tokens wait.
+
+  Taken before any wiring, because each one changes what the wiring is. What they
+  need from the core is listed as N1–N4, each a core pull request with its spec
+  first.
 - **The desktop area exists, apart from the core.** Electron Forge with Vite,
   TypeScript and React, in `desktop/`, with its own README, changelog, version
   and `AGENTS.md`, and a stub `go.mod` so the core's `go … ./...` stops at the

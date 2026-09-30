@@ -21,6 +21,7 @@ npm test                # vitest: the pure state, fed protocol events
 npm run gen:protocol    # regenerate src/protocol/generated.ts from internal/protocol (needs Go)
 npm run check:protocol  # regenerate, and fail if the committed file was stale
 npm run check:visual    # the window against the design's screenshots (see below)
+npm run check:daemon    # the window against a real dcode serve and a scripted model (see below)
 ```
 
 `npm run build` does not package or sign; there are no makers yet.
@@ -37,6 +38,11 @@ locally, pointing at them with `--refs <dir>` or `DCODE_DESIGN_SCREENSHOTS` when
 they are not at the repo-relative default. It needs Chromium for Playwright once:
 `npx playwright install chromium`. A missing reference or browser fails it with
 the reason; it never skips.
+
+**`check:daemon` is not in CI** either: it launches the app as Electron, which
+needs a display, and builds `dcode` from the checkout with Go (`DCODE_BIN` names
+a binary instead). Run it locally; a missing Go, git or display fails it with the
+reason.
 
 ## Conventions
 
@@ -64,11 +70,19 @@ the reason; it never skips.
   tags `desktop-vX.Y.Z` from 0.1.0. The root changelog only records root-level
   changes (this area existing, its workflow).
 
-## The visual loop
+## The loop
 
-`tests/visual/states.json` is the ruler: which states are measured, how, and the
-limit with the reasoning that chose it. `docs/loop/done.toml` protects it and the
-reference images — a change there changes the measurement and has to be made
-deliberately, never to make a run pass. When new references arrive, measure the
-new design's own floor (its mock rendered by the same Chromium) before trusting
-the old limit.
+`docs/loop/` is what `/loop` works toward now: `tasks.md` says what to build and
+`done.toml` says when it is done. It has two rulers, and `done.toml` protects
+both, with the reference images and the loop folder itself — a change there
+changes the measurement and has to be made deliberately, never to make a run
+pass.
+
+- `tests/visual/states.json` is the visual ruler: which states are measured, how,
+  and the limit with the reasoning that chose it. When new references arrive,
+  measure the new design's own floor (its mock rendered by the same Chromium)
+  before trusting the old limit.
+- `tests/daemon/` is the daemon ruler: the scenarios, the scripted model, and the
+  attributes the window exposes for them (`docs/loop/tasks.md`, "O que a régua
+  lê"). A scenario checks the window against what the daemon logged, so a window
+  that only looks right does not pass.
