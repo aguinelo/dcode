@@ -77,3 +77,44 @@ func TestARealRuntimeSocketIsCoveredInside(t *testing.T) {
 		t.Errorf("the socket is still a socket inside the sandbox (output %q)", out)
 	}
 }
+
+// A dcode daemon's socket is covered like a container runtime's, and naming it
+// as reachable does not uncover it: a command that reaches the daemon can open
+// a session in full access or answer its own approval. Outside /tmp, for the
+// reason the test above gives.
+func TestARealDaemonSocketIsCoveredEvenWhenGranted(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("a workspace outside /tmp is needed and the home directory is unknown: %v", err)
+	}
+	ws, err := os.MkdirTemp(home, "dcd")
+	if err != nil {
+		t.Skipf("a workspace outside /tmp could not be created: %v", err)
+	}
+	defer os.RemoveAll(ws)
+
+	sock := filepath.Join(ws, "d.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatalf("the probe socket could not be created: %v", err)
+	}
+	defer ln.Close()
+
+	s, err := New(Config{
+		AllowNetwork: func() bool { return true },
+		Granted:      []string{sock},
+		Daemons:      []string{sock},
+	}, policy.ModeWorkspaceWrite)
+	if err != nil {
+		t.Skipf("no sandbox available: %v", err)
+	}
+
+	r := Runner{Sandbox: s, Mode: Fixed(policy.ModeWorkspaceWrite)}
+	out, code, err := r.Run(context.Background(), ws, "test -S "+shellQuote(sock))
+	if err != nil {
+		t.Fatalf("running under the sandbox failed outright: %v", err)
+	}
+	if code == 0 {
+		t.Errorf("the daemon's socket is still a socket inside the sandbox (output %q)", out)
+	}
+}
