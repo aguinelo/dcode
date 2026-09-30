@@ -32,12 +32,22 @@ npm run check:daemon    # the window against a real dcode serve and a scripted m
 `desktop/**`, `internal/protocol/**` or the workflow: `npm ci`, typecheck, lint,
 tests, the production build, and the protocol-types staleness check.
 
-**`check:visual` is not in CI**, on purpose: the reference PNGs live in
-`refs/design/desktop/screenshots/`, which is not in the repository yet. Run it
-locally, pointing at them with `--refs <dir>` or `DCODE_DESIGN_SCREENSHOTS` when
-they are not at the repo-relative default. It needs Chromium for Playwright once:
-`npx playwright install chromium`. A missing reference or browser fails it with
-the reason; it never skips.
+**`check:visual` is not in CI**, on purpose: its limit holds only on macOS. The
+references are committed, in `refs/design/desktop/screenshots/`, but the 1.25%
+in `tests/visual/states.json` was measured with Playwright's Chromium on macOS,
+which draws text unhinted and antialiased in grey, as the references are. On the
+workflow's `ubuntu-latest` (Ubuntu 24.04) the same Chromium hints the glyphs and
+antialiases them in LCD subpixels, and the window scores 1.76% and 1.79% where
+macOS gives 1.17% and 1.19% — identical on four runners, with the layout the
+same and the difference in the text. Raising the limit to fit Linux would leave
+macOS more than 9,000 pixels of slack, room for a missing element to pass.
+Launching Chromium with `--disable-lcd-text --font-render-hinting=none` brought
+Linux to 1.19% and 1.20% and left macOS unchanged, but that changes the ruler
+`docs/loop/done.toml` protects, so it is a decision of its own. Until then, run
+it on macOS. Chromium for Playwright is installed once with
+`npx playwright install chromium`; `--refs <dir>` or `DCODE_DESIGN_SCREENSHOTS`
+point it at other references. A missing reference or browser fails it with the
+reason; it never skips.
 
 **`check:daemon` is not in CI** either: it launches the app as Electron, which
 needs a display, and builds `dcode` from the checkout with Go (`DCODE_BIN` names

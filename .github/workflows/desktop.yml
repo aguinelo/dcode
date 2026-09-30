@@ -47,5 +47,6 @@ jobs:
       # A change to internal/protocol that was not regenerated here fails this,
       # which is why the workflow also runs when only the protocol moves.
       - run: npm run check:protocol
-      # Not here: npm run check:visual. It compares against the design's
-      # reference images, which are not in the repository yet (desktop/AGENTS.md).
+      # Not here: npm run check:visual. Its limit was measured on macOS, and on
+      # this runner Chromium hints and LCD-antialiases text: the window scores
+      # 1.76% and 1.79% here against 1.25% (desktop/AGENTS.md says why).

@@ -10,6 +10,18 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A verificação visual fica fora do CI pelo motivo que vale.** Os documentos a
+  deixavam local porque as imagens de referência não estavam no repositório;
+  estão desde que o handoff do design entrou. Rodada uma vez no `ubuntu-latest`
+  do workflow, ela mede 1,76% e 1,79% contra o limite de 1,25%, igual em quatro
+  runners: o Chromium do Linux aplica hinting nos glifos e os suaviza em
+  subpixels LCD, e nem o macOS — onde o limite foi medido — nem as referências
+  fazem isso. O limite fica: afrouxado para caber o Linux, deixaria ao macOS
+  mais de 9 mil pixels de folga, espaço para passar um elemento faltando. O
+  `AGENTS.md`, o workflow, a nota da régua e o changelog da raiz param de dizer
+  que as referências faltam, e o `AGENTS.md` dá o motivo que vale, com as flags
+  de inicialização que levaram o Linux a 1,19% e 1,20% — uma mudança de régua,
+  deixada para uma decisão própria.
 - **O núcleo agora diz onde está o daemon (N1).** `dcode socket` imprime o
   caminho do socket do daemon — um por usuário, qualquer que seja o ambiente —
   ou falha dizendo por quê, e o loop da conexão pergunta a ele em vez de guardar
@@ -80,5 +92,5 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   lado dele: o próprio mock do design, desenhado pelo mesmo Chromium, fica a
   1,15% e 1,19% das referências, e a janela mede 1,17% e 1,19%. O
   `desktop/docs/loop/` deixa o `/loop` do próprio dcode iterar contra ele, com as
-  referências e a régua protegidas. Só local por enquanto: as referências ainda
-  não estão no repositório.
+  referências e a régua protegidas. Só local: o limite foi medido no macOS e
+  vale lá.

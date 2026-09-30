@@ -265,10 +265,11 @@ existe para impedir exatamente isso.
   typecheck, lint, testes e build do desktop, e regenera os tipos do protocolo a
   partir do `internal/protocol` para reprovar quando os commitados estão velhos —
   por isso ele roda também quando só o `internal/protocol` muda; a verificação
-  visual contra o design fica fora do CI até as imagens de referência entrarem no
-  repositório. E uma linha em cada README aponta para a área. A dependência corre
-  num sentido só: o desktop lê o núcleo, o núcleo nunca lê o desktop, e nada
-  entrou no `go.mod` da raiz.
+  visual contra o design fica fora do CI, porque o limite dela foi medido no
+  macOS, e os runners Linux desenham texto de outro jeito (os números estão no
+  `desktop/AGENTS.md`). E uma linha em cada README aponta para a área. A
+  dependência corre num sentido só: o desktop lê o núcleo, o núcleo nunca lê o
+  desktop, e nada entrou no `go.mod` da raiz.
 - **Escolher uma conversa gravada na lista do `^R` a continua.** A lista é o
   que este workspace gravou, lida do disco na abertura, e o `enter` perguntava
   ao `GetSession` pela escolha — que só responde pelas sessões que o daemon tem
