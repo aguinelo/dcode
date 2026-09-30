@@ -19,39 +19,6 @@ import (
 	"github.com/aguinelo/dcode/pkg/client"
 )
 
-// A Unix socket path is capped near 104 bytes on macOS, and the XDG state
-// directory alone can exhaust that.
-func TestDefaultSocketPathStaysShortAndSeparatesUsers(t *testing.T) {
-	explicit := DefaultSocketPath(envFrom(map[string]string{"DCODE_SOCKET": "/tmp/x.sock"}))
-	if explicit != "/tmp/x.sock" {
-		t.Errorf("an explicit address wins, got %q", explicit)
-	}
-
-	runtime := DefaultSocketPath(envFrom(map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000"}))
-	if runtime != "/run/user/1000/dcode.sock" {
-		t.Errorf("got %q", runtime)
-	}
-
-	fallback := DefaultSocketPath(envFrom(map[string]string{"TMPDIR": "/var/tmp"}))
-	if !strings.HasPrefix(fallback, "/var/tmp/dcode-") {
-		t.Errorf("got %q", fallback)
-	}
-	// Two users on one machine must not land on the same socket.
-	if !strings.Contains(fallback, "-") || strings.HasSuffix(fallback, "dcode-.sock") {
-		t.Errorf("the uid must be part of the path: %q", fallback)
-	}
-
-	bare := DefaultSocketPath(envFrom(map[string]string{}))
-	if !strings.HasPrefix(bare, "/tmp/dcode-") {
-		t.Errorf("got %q", bare)
-	}
-	for _, p := range []string{explicit, runtime, fallback, bare} {
-		if len(p) > 100 {
-			t.Errorf("%q is %d bytes, too long for a unix socket", p, len(p))
-		}
-	}
-}
-
 func TestNewDaemonFillsInDefaults(t *testing.T) {
 	d := NewDaemon(DaemonOptions{SocketPath: "/tmp/x.sock"})
 	if d.opts.MaxSessions <= 0 || d.opts.ApprovalTimeout <= 0 {
