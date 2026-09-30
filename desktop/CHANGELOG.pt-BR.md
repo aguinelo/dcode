@@ -22,6 +22,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   que as referências faltam, e o `AGENTS.md` dá o motivo que vale, com as flags
   de inicialização que levaram o Linux a 1,19% e 1,20% — uma mudança de régua,
   deixada para uma decisão própria.
+- **O núcleo agora diz onde está o daemon (N1).** `dcode socket` imprime o
+  caminho do socket do daemon — um por usuário, qualquer que seja o ambiente —
+  ou falha dizendo por quê, e o loop da conexão pergunta a ele em vez de guardar
+  uma cópia da regra do núcleo. O `docs/DECISIONS.md` e o `docs/loop/tasks.md`
+  nomeiam o comando.
 - **O próximo loop liga a janela a um daemon de verdade, e a régua dele foi escrita
   antes do código.** O `npm run check:daemon` compila o app e o `dcode` do
   checkout e roda oito cenários, cada um contra um `dcode serve` novo com um

@@ -22,6 +22,10 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   references are missing, and `AGENTS.md` gives the reason that holds, with the
   launch flags that brought Linux to 1.19% and 1.20% — a ruler change, left for
   a decision of its own.
+- **The core now says where the daemon is (N1).** `dcode socket` prints the
+  daemon's socket path — one per user, whatever the environment — or fails with
+  the reason, and the connection loop asks it instead of keeping a copy of the
+  core's rule. `docs/DECISIONS.md` and `docs/loop/tasks.md` name the command.
 - **The next loop connects the window to a real daemon, and its ruler is written
   before the code.** `npm run check:daemon` builds the app and `dcode` from the
   checkout and runs eight scenarios, each against a fresh `dcode serve` with a

@@ -125,8 +125,8 @@ dizendo quantas param. Um daemon que o desktop não subiu não é encerrado por 
 - **O binário** é o de `DCODE_BIN`, senão `~/.local/bin/dcode` (onde o `install.sh`
   e o `make install` põem), senão o do `PATH` do app. Não achar é dito, com os
   lugares procurados.
-- **O socket** é o de `DCODE_SOCKET`, senão o que o binário disser (N1) — nunca uma
-  segunda cópia da regra do núcleo.
+- **O socket** é o de `DCODE_SOCKET`, senão o que `dcode socket` imprimir (N1) —
+  nunca uma segunda cópia da regra do núcleo.
 - **O filho herda o ambiente do app.** Aberto do terminal (`npm start`, o único
   jeito hoje), é o do shell. Um app empacotado, aberto pelo Dock, não teria o
   `PATH` das ferramentas que o agente roda; ler o ambiente do shell de login é
@@ -255,12 +255,13 @@ O que as decisões acima pedem ao núcleo. Cada um é um PR do núcleo, com a sp
 antes do código (`docs/conventions/SDD-HARNESS.md`) e changelog na família; o
 desktop não os implementa, espera por eles.
 
-- **N1. O socket fixo por usuário** — `client-server-protocol`. `DefaultSocketPath`
-  (`internal/app/daemon.go`) lê `XDG_RUNTIME_DIR` e `TMPDIR`, que um app aberto
-  pelo Dock, uma sessão SSH e um terminal podem ter diferentes. O caminho padrão
-  passa a ser um por usuário, sem depender do ambiente — `DCODE_SOCKET` continua
-  sendo a escolha explícita —, e o binário diz qual é, para o desktop perguntar em
-  vez de copiar a regra. Pedido por D19.
+- **N1. O socket fixo por usuário** — `client-server-protocol`. **Feito.** O
+  caminho padrão lia `XDG_RUNTIME_DIR` e `TMPDIR`, que um app aberto pelo Dock,
+  uma sessão SSH e um terminal podem ter diferentes. Agora é
+  `/tmp/dcode-<uid>/dcode.sock`, sem ler o ambiente — `DCODE_SOCKET` continua
+  sendo a escolha explícita —, numa pasta que só vale se for do usuário e só dele.
+  `dcode socket` imprime o caminho, ou falha dizendo por quê, e é a ele que o
+  desktop pergunta. Pedido por D19.
 - **N2. Configuração por sessão** — `configuration`. O `dcode serve` resolve a
   cadeia uma vez (`cmd/dcode/serve.go`), e o `build` usa esse `Base` para toda
   sessão (`internal/app/daemon.go`). Passa a resolver no workspace de cada

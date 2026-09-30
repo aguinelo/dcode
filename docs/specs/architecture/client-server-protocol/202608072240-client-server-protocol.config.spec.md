@@ -7,7 +7,7 @@
 
 | Variável | Tipo | Default | Uso |
 |---|---|---|---|
-| `DCODE_SOCKET` | caminho | `$XDG_RUNTIME_DIR/dcode.sock`, ou `$TMPDIR/dcode-$UID.sock` se ausente | Caminho do socket de domínio Unix. Criado com `0700`. Removido no encerramento limpo; socket órfão é detectado por tentativa de conexão e removido. |
+| `DCODE_SOCKET` | caminho | `/tmp/dcode-$UID/dcode.sock` | Caminho do socket de domínio Unix. O default não lê nenhuma outra variável: é o mesmo para um terminal, uma sessão SSH e um app aberto pelo Dock. A pasta do default é criada com `0700` e, se já existe, tem de ser do usuário e só dele — senão nada escuta nem conecta nela, e o motivo é dito. Caminho escolhido aqui ou em `--socket` fica como foi escolhido. `dcode socket` imprime o caminho em uso. O socket é criado com `0700`. Removido no encerramento limpo; socket órfão é detectado por tentativa de conexão e removido. |
 | `DCODE_STATE_DIR` | caminho | `$XDG_STATE_HOME/dcode`, ou `~/.local/state/dcode` | Raiz de logs de sessão e dados persistentes. |
 
 ## 2. Retenção de eventos

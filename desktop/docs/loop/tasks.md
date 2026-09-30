@@ -12,8 +12,8 @@ continuam aqui como regressão.
 
 ## Antes de rodar
 
-- **O N1 no `main`** (`DECISIONS.md`, "Pedidos ao núcleo"): sem ele o app não tem
-  a quem perguntar o caminho do socket. A régua não depende dele, porque passa
+- **O N1 no `main`** (`DECISIONS.md`, "Pedidos ao núcleo"): é o `dcode socket` que
+  diz ao app o caminho do socket. A régua não depende dele, porque passa
   `DCODE_SOCKET`, mas o app de verdade depende.
 - **Acesso total.** Os critérios rodam dentro do sandbox da sessão do loop. O
   `check:daemon` sobe um `dcode serve`, que abre o próprio sandbox, e o macOS não
@@ -30,7 +30,8 @@ continuam aqui como regressão.
    eventos por IPC e pede cada ação por uma função com nome no `DcodeApi` —
    nenhum canal genérico.
 2. **Achar ou subir o daemon** (D19).
-   - O socket é o de `DCODE_SOCKET`, senão o que o binário disser (N1).
+   - O socket é o de `DCODE_SOCKET`, senão o que `dcode socket` imprimir (N1). Se
+     ele falhar, o motivo que ele deu é o que a barra diz.
    - O binário é o de `DCODE_BIN`, senão `~/.local/bin/dcode`, senão o do `PATH`.
    - Sobe `dcode serve --socket <caminho>` como filho e espera o `/health` com
      prazo.
