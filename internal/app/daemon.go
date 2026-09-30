@@ -63,6 +63,14 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 	if opts.ApprovalTimeout <= 0 {
 		opts.ApprovalTimeout = 120 * time.Second
 	}
+	// Every session this daemon builds carries its socket, so every sandbox
+	// keeps it out of reach. Set on the base once: each session copies it.
+	opts.Base.DaemonSocket = opts.SocketPath
+	if opts.Log != nil {
+		for _, g := range grantedDaemons(opts.Base) {
+			opts.Log(fmt.Sprintf("sandbox.sockets names %s, where a dcode daemon listens; it stays out of every sandbox's reach, since a command that reached it could approve itself", g))
+		}
+	}
 	d := &Daemon{opts: opts, manager: session.NewManager(opts.MaxSessions)}
 	d.server = server.New(server.Config{
 		SocketPath:  opts.SocketPath,
@@ -513,13 +521,5 @@ func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.Com
 // qualifyingSandbox builds the boundary a proposal is measured under: the
 // project's own, not the read-only one the proposing turn ran in.
 func qualifyingSandbox(opts Options) (sandbox.Sandbox, error) {
-	return sandbox.New(sandbox.Config{
-		Backend:      opts.Backend,
-		AllowNetwork: func() bool { return opts.AllowNetwork },
-		Scratch:      sandbox.Scratch(opts.Env),
-		Sockets:      sandbox.LocalSockets(opts.Env),
-		Unreadable:   opts.Unreadable,
-		Granted:      opts.Granted,
-		Writable:     opts.Writable,
-	}, opts.SandboxMode)
+	return sandbox.New(sandboxConfig(opts, func() bool { return opts.AllowNetwork }), opts.SandboxMode)
 }

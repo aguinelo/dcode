@@ -323,7 +323,9 @@ func watchServe(ctx context.Context, serve func(context.Context) error) (failed 
 // daemon would otherwise race to bind the same socket, and the loser would fail
 // to start for a reason the user cannot act on.
 func startEmbedded(ctx context.Context, base app.Options, recordDir string, budget session.PruneBudget) (*client.Client, <-chan error, func(), error) {
-	dir, err := os.MkdirTemp("", "dcode")
+	// In the per-user directory rather than the temp directory: that is the
+	// place every session's sandbox keeps out of reach.
+	dir, err := app.EmbeddedSocketDir()
 	if err != nil {
 		return nil, nil, nil, err
 	}

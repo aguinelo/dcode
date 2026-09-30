@@ -92,6 +92,12 @@ type Config struct {
 	// Writable are paths named as writable outside the workspace, so a first
 	// ssh connection is not a failure.
 	Writable []string
+	// Daemons are where this user's dcode daemons listen: a socket, or the
+	// directory they are made in. A daemon is unconfined, and a command that
+	// can talk to one can ask it for a session in full access or answer its
+	// own approval. So these are out of reach in every mode but full access,
+	// whatever else is writable or granted. Resolved by the caller.
+	Daemons []string
 }
 
 // New returns the sandbox for cfg.
@@ -125,9 +131,9 @@ func New(cfg Config, mode policy.SandboxMode) (Sandbox, error) {
 	var s Sandbox
 	switch backend {
 	case BackendSeatbelt:
-		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch, unreadable: cfg.Unreadable, granted: cfg.Granted, writable: cfg.Writable}
+		s = &seatbelt{bin: orDefault(cfg.Binary, "sandbox-exec"), allowNetwork: allow, scratch: cfg.Scratch, unreadable: cfg.Unreadable, granted: cfg.Granted, writable: cfg.Writable, daemons: cfg.Daemons}
 	case BackendBubblewrap:
-		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets, unreadable: cfg.Unreadable, granted: cfg.Granted, writable: cfg.Writable}
+		s = &bubblewrap{bin: orDefault(cfg.Binary, "bwrap"), allowNetwork: allow, scratch: cfg.Scratch, sockets: cfg.Sockets, unreadable: cfg.Unreadable, granted: cfg.Granted, writable: cfg.Writable, daemons: cfg.Daemons}
 	default:
 		return nil, fmt.Errorf("sandbox: unknown backend %q; valid: %s, %s, %s, %s",
 			backend, BackendAuto, BackendSeatbelt, BackendBubblewrap, BackendNone)

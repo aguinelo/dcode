@@ -85,6 +85,16 @@ var sandboxInvariants = map[string]string{
 	"sem agente rodando concede nada":                      "TestTheAgentTokenGrantsNothingWhenNoAgentIsRunning",
 	"deixa de ser socket dentro":                           "TestARealRuntimeSocketIsCoveredInside",
 	"mantém a concessão ampla":                             "TestSeatbeltFullAccessKeepsTheBlanketGrant",
+
+	// The daemons of the user. Proven through the daemon's own wiring in the
+	// app, and at the kernel and in the profile text in the sandbox.
+	"não alcança o daemon que o confina": "TestAConfinedCommandCannotReachItsDaemon",
+	"é negado por último":                "TestADaemonIsDeniedAfterEveryAllowInTheProfile",
+	"o socket comum ao lado":             "TestADaemonSocketIsOutOfReachEvenWhereWritingIs",
+	"por cima de qualquer concessão":     "TestADaemonIsCoveredInTheArgumentsEvenWhenGranted",
+	"concedido continua coberto":         "TestARealDaemonSocketIsCoveredEvenWhenGranted",
+	"o daemon diz isso ao subir":         "TestAGrantOfADaemonSocketIsSaidAtBoot",
+	"escuta na pasta por usuário":        "TestAnEmbeddedDaemonListensBesideTheOthers",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

@@ -87,6 +87,8 @@ type seatbelt struct {
 	granted []string
 	// writable are paths named as writable outside the workspace.
 	writable []string
+	// daemons are where this user's dcode daemons listen — see Config.
+	daemons []string
 }
 
 func (s *seatbelt) Name() string { return BackendSeatbelt }
@@ -275,7 +277,30 @@ func (s *seatbelt) profile(workdir string, mode policy.SandboxMode, scratch []st
 			fmt.Fprintf(&b, "(allow network-outbound (literal %q))\n", p)
 		}
 	}
+
+	// Last, after every allow, because Seatbelt takes the last matching rule:
+	// the daemons of this user. The rule above makes a socket reachable
+	// wherever writing is, and /tmp and $TMPDIR — where a daemon listens — are
+	// writable, so it handed every session the unconfined process confining
+	// it: one that opens sessions in full access and answers approvals. No
+	// grant brings one back. Both spellings, since /tmp is a link on macOS.
+	if mode != policy.ModeFullAccess {
+		for _, p := range s.daemons {
+			for _, spelling := range spellings(p) {
+				fmt.Fprintf(&b, "(deny network-outbound (subpath %q))\n", spelling)
+			}
+		}
+	}
 	return b.String(), nil
+}
+
+// spellings are the ways a path can be named to the kernel: as given, and
+// with its links resolved, when that differs.
+func spellings(p string) []string {
+	if c := canonical(p); c != p {
+		return []string{p, c}
+	}
+	return []string{p}
 }
 
 // permits asks a boundary decision, treating an absent one as no.
@@ -304,6 +329,8 @@ type bubblewrap struct {
 	granted []string
 	// writable are paths named as writable outside the workspace.
 	writable []string
+	// daemons are where this user's dcode daemons listen — see Config.
+	daemons []string
 }
 
 func (b *bubblewrap) Name() string { return BackendBubblewrap }
@@ -333,6 +360,28 @@ func (b *bubblewrap) Available() error {
 var exists = func(p string) bool {
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// isDir reports whether a path is a directory, injectable for the reason
+// exists is.
+var isDir = func(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
+}
+
+// hiddenByTmp reports whether a path is under /tmp and nothing put it back:
+// not the workspace, not a path named writable. Those are the only places the
+// host's /tmp shows through the sandbox's own.
+func hiddenByTmp(path, workdir string, writable []string) bool {
+	if !under(path, tmpRoot()) || under(path, workdir) {
+		return false
+	}
+	for _, w := range writable {
+		if under(path, canonical(w)) {
+			return false
+		}
+	}
+	return true
 }
 
 // under reports whether path sits inside dir.
@@ -459,6 +508,22 @@ func (b *bubblewrap) args(workdir string, mode policy.SandboxMode, scratch []str
 			// Not canonicalised: bubblewrap resolves the target itself, and
 			// a path that resolves differently here than inside would cover
 			// the wrong thing.
+			args = append(args, "--ro-bind", "/dev/null", p)
+		}
+		// The daemons of this user, covered the same way and past any grant:
+		// reaching one is reaching the unconfined process that confines this
+		// command. A socket is covered with /dev/null, a directory of them
+		// with a fresh tmpfs. One under /tmp that nothing put back is already
+		// out of reach — the command's /tmp is the tmpfs above — and mounting
+		// over it would plant the path it was meant to hide.
+		for _, p := range b.daemons {
+			if hiddenByTmp(canonical(p), workdir, b.writable) || !exists(p) {
+				continue
+			}
+			if isDir(p) {
+				args = append(args, "--tmpfs", p)
+				continue
+			}
 			args = append(args, "--ro-bind", "/dev/null", p)
 		}
 	}

@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 202 decision changelogs |
+| spec families | 18, with 203 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -243,6 +243,18 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A confined command can no longer reach a dcode daemon.** A daemon is
+  unconfined: it opens sessions, in full access too, and answers approvals, so a
+  command that reached one could ask for a session with no boundary or approve
+  itself. On macOS one did, by default: the profile makes a unix socket
+  reachable wherever writing is, and `/tmp` and `$TMPDIR` — where the daemons
+  listen — are writable in workspace-write. On Linux a daemon socket outside
+  `/tmp` was reachable. The user's daemons — the session's own socket, the one
+  `DCODE_SOCKET` names, and the per-user directory where the default and every
+  embedded daemon now listen — are denied last on macOS and covered on Linux, in
+  every mode but full access, past any grant; a grant that names one is said at
+  boot. The note on the socket change that claimed macOS denied every socket is
+  corrected.
 - **The daemon's socket is one path per user, whatever the environment.**
   Without `DCODE_SOCKET` it is `/tmp/dcode-<uid>/dcode.sock`. It came from
   `XDG_RUNTIME_DIR` or `TMPDIR`, which a terminal, an SSH session and an app

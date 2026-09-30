@@ -111,6 +111,10 @@ type Options struct {
 	// named as writable outside the workspace. Both resolved at the edge.
 	Granted  []string
 	Writable []string
+	// DaemonSocket is where the daemon this session answers to listens, set by
+	// that daemon. Every sandbox keeps it out of reach, with the other places a
+	// daemon of this user may be listening (sandboxConfig).
+	DaemonSocket string
 	// DelegateMaxIterations caps a child turn.
 	DelegateMaxIterations int
 	// DelegateMaxResultBytes caps the child's report.
@@ -504,19 +508,10 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// The sandbox is established before anything can run. Failing here is
 	// deliberate: a session that cannot confine its own commands should not
 	// start at all.
-	sb, err := sandbox.New(sandbox.Config{
-		Backend: opts.Backend,
-		// Configuration says yes, or the user did — and the second can happen
-		// while the session is running.
-		AllowNetwork: func() bool { return opts.AllowNetwork || standing.NetworkNow() },
-		// Without these a compiled language cannot build inside the sandbox,
-		// so the agent can change files and never check them.
-		Scratch:    sandbox.Scratch(opts.Env),
-		Sockets:    sandbox.LocalSockets(opts.Env),
-		Unreadable: opts.Unreadable,
-		Granted:    opts.Granted,
-		Writable:   opts.Writable,
-	}, opts.SandboxMode)
+	//
+	// Configuration says yes to the network, or the user did — and the second
+	// can happen while the session is running.
+	sb, err := sandbox.New(sandboxConfig(opts, func() bool { return opts.AllowNetwork || standing.NetworkNow() }), opts.SandboxMode)
 	if err != nil {
 		return nil, err
 	}
