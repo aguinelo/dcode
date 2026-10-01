@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 29 September 2026
+## Current state — 30 September 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -31,9 +31,9 @@ isolated package.
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
 | of those, **against a prompt they cannot name** | **17** |
-| coverage | 93.7%, gate at 90% aggregate **and per package** |
+| coverage | 93.9%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.21.1** |
+| published version | **0.22.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -123,6 +123,13 @@ not started starts, an approval granted after the stop runs nothing, and an
 answer with no call runs no criterion — so nothing a person simply stopped is
 reported as work that could not be verified.
 
+**A second client, in its own area.** `desktop/` holds an Electron client of the
+same daemon, with its own changelog and its own version (`desktop-v*`, none
+published yet). It draws the design's main window from recorded protocol events,
+and the loop that connects it to a real daemon has its ruler written first:
+eight scenarios against a real `dcode serve`, failing on purpose until the
+window connects.
+
 **What the guards could not see.** Eight of the defects fixed on 24 August had
 guards written for exactly them, and every guard was asking about a set it
 already knew. The box-drawing guard derived its forbidden glyphs from the two
@@ -176,10 +183,17 @@ without being unsafe.
 The sandbox today: hides the credential stores by default (`~/.aws`, `~/.gnupg`,
 `~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` and dcode's own key);
 keeps a container runtime's socket, and every dcode daemon of the user, out of
-reach; grants a socket or a writable
-path **by name**; and hides `~/.ssh` as soon as the `ssh-agent` socket is
-granted — because then ssh signs without reading the key and hiding costs
-nothing.
+reach; grants a socket or a writable path **by name**; and hides `~/.ssh` as
+soon as the `ssh-agent` socket is granted — because then ssh signs without
+reading the key and hiding costs nothing.
+
+**Where the daemon listens.** One socket per user, `/tmp/dcode-<uid>/dcode.sock`,
+read from nothing in the environment but `DCODE_SOCKET` — a terminal, an SSH
+session and an app opened from the Dock never agreed on the variables it used to
+come from — and `dcode socket` says which. The directory is used only when it is
+this user's alone, and an embedded daemon listens there too. A daemon is
+unconfined, so every sandbox keeps that directory out of reach: on macOS the
+default configuration had handed it to every confined command.
 
 The network gets the treatment writing inside the workspace gets: allowed by
 default (`sandbox.allow_network`), with no per-crossing approval in
@@ -243,6 +257,8 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+## 0.22.0 — 30 September 2026
 
 - **On Linux with Docker, a sandboxed command no longer fails before running.**
   The sandbox covers a container runtime's socket by mounting over it, and it
