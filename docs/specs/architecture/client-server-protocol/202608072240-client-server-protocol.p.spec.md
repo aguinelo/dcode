@@ -55,6 +55,8 @@ Todos sob `/v1`. Estabilidade individual declarada.
 |---|---|---|---|
 | `POST` | `/sessions` | `experimental` | Cria sessão. Devolve `Session`. |
 | `GET` | `/sessions` | `experimental` | Lista sessões vivas. |
+| `GET` | `/conversations` | `experimental` | Lista as conversas, vivas e gravadas, da atividade mais recente para a mais antiga. Query `workspace` (absoluto) guarda um projeto. Devolve `ListConversationsResponse`. |
+| `GET` | `/conversations/events` | `experimental` | **SSE.** A lista inteira primeiro (`snapshot`), depois cada conversa que mudou (`changed`) ou saiu (`removed`). Sem `from`: reconectar recebe outro `snapshot`. |
 | `GET` | `/sessions/{id}` | `experimental` | Detalhe de uma sessão. |
 | `DELETE` | `/sessions/{id}` | `experimental` | Encerra e libera a sessão. |
 | `GET` | `/sessions/{id}/events` | `experimental` | **SSE.** Query `from` (uint64, default `1`). |
@@ -175,6 +177,43 @@ type ApprovalRequest struct {
 
 > **Idioma de `Error.Message`: inglês.** É string voltada ao usuário final de um projeto internacional, e a política de idioma (`docs/conventions/LANGUAGE.pt-BR.md`) trata as specs como documento interno — não como fonte do texto de produto. `Code` é o identificador estável para máquina; `Message` é o texto para humano. Localização, se um dia existir, se pendura em `Code`, nunca em `Message`.
 
+### 5.2 A lista de conversas
+
+Uma conversa é uma sessão como uma lista a mostra: viva neste daemon, ou gravada
+em disco (`internal/protocol/conversations.go`). O resumo é dobrado dos eventos
+que vão para o registro, pelo mesmo código venham eles ao vivo ou lidos do
+arquivo.
+
+```go
+type Conversation struct {
+    ID            string       `json:"id"`
+    Title         string       `json:"title"`           // o nome dado, senão a primeira pergunta, senão o da conversa que esta continua
+    Named         bool         `json:"named,omitempty"` // Title é um nome escolhido
+    Workspace     string       `json:"workspace"`
+    Branch        string       `json:"branch,omitempty"`
+    Model         string       `json:"model,omitempty"`
+    State         SessionState `json:"state"`           // o da sessão viva agora, ou "recorded"
+    Live          bool         `json:"live"`
+    Turns         int          `json:"turns"`           // turnos concluídos
+    Verification  string       `json:"verification,omitempty"` // o selo do último turno concluído
+    Added, Removed, Files int                            // o que as ferramentas mudaram, somado como a barra da TUI soma
+    Started       time.Time    `json:"started"`
+    LastActivity  time.Time    `json:"last_activity"`
+    LastEvent     EventType    `json:"last_event,omitempty"` // o último que moveu a conversa, nunca um fragmento de texto
+    ContinuedFrom string       `json:"continued_from,omitempty"`
+}
+
+type ConversationChange struct {
+    Kind          string         `json:"kind"` // "snapshot" | "changed" | "removed"
+    Conversations []Conversation `json:"conversations,omitempty"` // snapshot
+    Conversation  *Conversation  `json:"conversation,omitempty"`  // changed
+    ID            string         `json:"id,omitempty"`            // removed
+}
+```
+
+Abrir uma conversa gravada é continuá-la numa sessão nova
+(`CreateSessionRequest.Resume`): nada sobrevive a quem o criou.
+
 ## 6. Fluxo de aprovação
 
 Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
@@ -197,6 +236,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Servidor envia comentário `: ping` a cada 20s para manter proxies e conexões ociosas vivas.
 - Desconexão não afeta a sessão (RN-1). Reconectar com `from = último Seq recebido + 1`.
 - Sem `Last-Event-ID`: a reposição é sempre explícita via `from`, para que o comportamento seja idêntico entre reconexão e primeira conexão.
+- O fluxo da lista (`/conversations/events`) não tem `Seq` nem `from`: abre com o `snapshot` e manda só mudanças. Quem fica para trás é desligado e reconecta para outro `snapshot`, que se aplica como o primeiro.
 
 ## 8. Códigos de erro
 
@@ -281,6 +321,11 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - `tool.approval_required` sai com `expires_at` já posto, e é o mesmo instante em que a sessão nega a pergunta que ninguém respondeu.
 - `POST /sessions/{id}/mode` anuncia a troca pelo log como `session.mode_changed`, carregando de onde veio: quem anexa depois lê o modo do log, não de uma chamada que perdeu.
 - Modo desconhecido é recusado com `4xx` que **nomeia o que foi enviado**, antes de chegar ao motor, e deixa o modo em vigor intacto.
+- A lista de conversas junta as vivas e as gravadas, cada uma uma vez: a viva com o estado de agora, a gravada como `recorded`.
+- O fluxo da lista abre com o retrato inteiro e depois manda só o que mudou no que uma lista mostra; texto chegando em fragmentos não é mudança.
+- Conversa que termina continua na lista, como gravada, e o fluxo diz.
+- Registro é relido para a lista só quando o arquivo mudou, e só ele.
+- A linha viva e a linha gravada de uma conversa são dobradas pelo mesmo código: terminar não muda o que a lista diz dela além de que terminou.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
@@ -299,3 +344,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609291356 — Conversa viva é nomeada pelo log](changelog/202609291356-conversa-viva-e-nomeada-pelo-log.md)
 - [202609291401 — A pergunta carrega o prazo](changelog/202609291401-a-pergunta-carrega-o-prazo.md)
 - [202609292355 — O socket é um por usuário](changelog/202609292355-o-socket-e-um-por-usuario.md)
+- [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)

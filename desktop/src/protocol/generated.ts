@@ -3,6 +3,100 @@
 // this file is stale; edit the Go types, never this file.
 
 //////////
+// source: conversations.go
+
+/**
+ * ConversationRecorded is the state of a conversation that is not live in this
+ * daemon: it ended, and its record is what remains. Continuing one opens a new
+ * session (CreateSessionRequest.Resume).
+ */
+export const ConversationRecorded: SessionState = "recorded";
+/**
+ * Conversation is one session as a list of them shows it: live in this daemon,
+ * or recorded on disk.
+ * A summary, folded from the session's events by the same code whether they
+ * arrive live or are read from its record — so a conversation that ends
+ * changes in the list only by having ended.
+ */
+export interface Conversation {
+  id: string;
+  /**
+   * Title is the name a person gave the conversation, else the first thing
+   * asked in it, else — for one that continues another and has not asked
+   * anything yet — the title of the one it continues. Empty when there is
+   * none of those; Named says when it is a chosen name.
+   */
+  title: string;
+  named?: boolean;
+  workspace: string;
+  branch?: string;
+  model?: string;
+  /**
+   * State is a live session's state now, or ConversationRecorded.
+   */
+  state: SessionState;
+  live: boolean;
+  /**
+   * Turns is how many completed.
+   */
+  turns: number /* int */;
+  /**
+   * Verification is the seal of the last completed turn: clean, passed,
+   * failed, stale or unavailable. Empty when no turn has completed.
+   */
+  verification?: string;
+  /**
+   * Added, Removed and Files sum what the tools reported changing, the way
+   * the TUI's bar sums them: a call that changed nothing is not a file.
+   */
+  added?: number /* int */;
+  removed?: number /* int */;
+  files?: number /* int */;
+  started: string;
+  last_activity: string;
+  /**
+   * LastEvent is the last event that moved the conversation along — a turn
+   * started or completed, a tool completed, an approval asked or answered, a
+   * rename — never a fragment of text arriving.
+   */
+  last_event?: EventType;
+  /**
+   * ContinuedFrom is the conversation this one continues, when it does.
+   */
+  continued_from?: string;
+}
+/**
+ * ListConversationsResponse answers GET /conversations: newest activity first.
+ */
+export interface ListConversationsResponse {
+  conversations: Conversation[];
+}
+/**
+ * ConversationSnapshot opens the stream with the whole list, so a client
+ * never has to stitch a listing to a stream it opened after it.
+ */
+export const ConversationSnapshot = "snapshot";
+/**
+ * ConversationChanged carries one conversation that changed in something
+ * a list shows.
+ */
+export const ConversationChanged = "changed";
+/**
+ * ConversationRemoved names a conversation that left the list: one that
+ * ended with nothing recording it.
+ */
+export const ConversationRemoved = "removed";
+/**
+ * ConversationChange is one frame of the list's stream.
+ */
+export interface ConversationChange {
+  kind: string;
+  conversations?: Conversation[];
+  conversation?: Conversation;
+  id?: string;
+}
+
+//////////
 // source: errors.go
 
 /**

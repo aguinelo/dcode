@@ -40,7 +40,9 @@ var exportedWithoutUser = map[string]string{
 
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.
-	"DeleteSession": "pkg/client is the public API; a consumer deletes sessions",
+	"DeleteSession":      "pkg/client is the public API; a consumer deletes sessions",
+	"ListConversations":  "pkg/client is the public API; a consumer lists conversations, and the TUI's picker moves to it in its own pull request",
+	"WatchConversations": "pkg/client is the public API; a consumer watches the list, as the desktop does over HTTP",
 
 	// The zero value of an enum, named so a reader knows what zero means. The
 	// name is unused precisely because the value is the default — deleting it
