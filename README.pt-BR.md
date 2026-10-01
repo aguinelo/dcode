@@ -1,4 +1,4 @@
-# dcode
+# DBox Code
 
 🇬🇧 [English version](README.md)
 
@@ -14,7 +14,10 @@
 **O agente de código que mede o próprio comportamento — e publica a nota que ainda
 não conquistou.**
 
-Todo agente de terminal entrega comportamento como texto de prompt e torce. O dcode
+O DBox Code é o kit — um daemon, um cliente de terminal e um app desktop. O comando
+é `dcode`.
+
+Todo agente de terminal entrega comportamento como texto de prompt e torce. O DBox Code
 entrega como **contrato com limiar**, roda contra um modelo de verdade, e anota o que
 voltou — o 98% e o 35% do mesmo jeito.
 

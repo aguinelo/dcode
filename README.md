@@ -1,4 +1,4 @@
-# dcode
+# DBox Code
 
 🇧🇷 [Versão em português](README.pt-BR.md)
 
@@ -14,7 +14,10 @@
 **The coding agent that measures its own behaviour — and publishes the score it
 has not earned yet.**
 
-Every terminal agent ships behaviour as prompt text and hopes. dcode ships it as
+DBox Code is the kit — a daemon, a terminal client and a desktop app. The
+command is `dcode`.
+
+Every terminal agent ships behaviour as prompt text and hopes. DBox Code ships it as
 **contracts with thresholds**, runs them against a real model, and writes down what
 came back — the 98% and the 35% alike.
 

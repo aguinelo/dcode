@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# dcode installer.
+# DBox Code installer.
 #
 # Verifies the artifact checksum always, and the release signature when cosign
 # is here. A check that fails aborts and removes everything that was downloaded.
