@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The core lists every conversation for the sidebar (N3).** One route with the
+  live and the recorded conversations, each with title, project, state, branch,
+  model, turns, seal, diff and last activity, and one stream of what changes —
+  what the sidebar and the search will read instead of one stream per session.
+  The protocol types are regenerated, and `docs/DECISIONS.md` marks N3 done.
 - **A session the window opens reads its project's configuration (N2).** The
   daemon now resolves the configuration chain in each session's workspace, so a
   session opened in a project runs under that project's `.dcode/config.toml`,

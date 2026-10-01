@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 204 decision changelogs |
+| spec families | 18, with 205 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -260,6 +260,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **One list of conversations, live and recorded, with one stream.**
+  `GET /v1/conversations` lists every conversation once — the ones live in the
+  daemon with their state now, the ones that ended as recorded — with title,
+  project, branch, model, turns, the last turn's seal, the diff, and when it
+  last moved. `GET /v1/conversations/events` opens with the whole list and then
+  sends only what changed, so a sidebar watching twenty conversations holds one
+  connection instead of twenty, and a turn's text arriving in fragments is not a
+  change. Before, the protocol listed only live sessions with none of that, and
+  the recorded ones existed only to a client reading the record directory
+  itself. A row is folded from the recorded events by the same code live or
+  from disk, and a session's state comes from the session, because idle returns
+  after `turn.completed` has gone out. This is what the desktop's sidebar and
+  search read (its N3).
 ## 0.22.1 — 30 September 2026
 
 - **Each session reads the configuration of its own workspace.** The daemon

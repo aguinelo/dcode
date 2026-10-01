@@ -144,9 +144,8 @@ sobre a configuração de cada um).
 
 **D21. A lista de sessões vem do protocolo** (N3): vivas e gravadas, com resumo, e
 um fluxo só de mudanças da lista. Abrir uma gravada continua a conversa numa
-sessão nova (`CreateSession{Resume}`), como a TUI faz. Até o N3, a lateral mostra
-as vivas do daemon (`GET /v1/sessions`), inclusive as que outro cliente abrir, e
-as gravadas ficam de fora. Descartados: ler o disco como a TUI (acopla o desktop
+sessão nova (`CreateSession{Resume}`), como a TUI faz. Com o N3 feito, a lateral
+lê `GET /v1/conversations` e acompanha `/v1/conversations/events`. Descartados: ler o disco como a TUI (acopla o desktop
 ao formato do registro e duplica a leitura); só as vivas (a lateral perde o
 histórico).
 
@@ -267,11 +266,12 @@ desktop não os implementa, espera por eles.
   workspace de cada sessão, o `.dcode/config.toml` do projeto incluso, e
   configuração de projeto ilegível recusa a sessão dizendo por quê. Conserta também
   uma TUI anexada a um `dcode serve` que subiu em outro projeto. Pedido por D20.
-- **N3. A lista de sessões** — `client-server-protocol`, MINOR. Uma rota com as
-  sessões vivas e as gravadas, cada uma com nome, projeto, estado, branch, modelo,
-  turnos, selo, diff, última atividade e último evento, e um fluxo único de
-  mudanças da lista. A TUI passa a usá-la no seletor (`-r`) em vez de ler o disco
-  (`pickSession`, `cmd/dcode/tui.go`). Pedido por D21; fecha L10.
+- **N3. A lista de sessões** — `client-server-protocol`, MINOR. **Feito.**
+  `GET /v1/conversations` lista as vivas e as gravadas, cada uma com título,
+  projeto, estado, branch, modelo, turnos, selo, diff, última atividade e último
+  evento; `GET /v1/conversations/events` abre com a lista inteira e manda só o
+  que muda. A TUI passar a usá-la no seletor (`-r`), em vez de ler o disco, fica
+  para um PR dela. Pedido por D21; fecha L10.
 - **N4. O `/loop` no daemon** — `loop-command` e `client-server-protocol`, MINOR. A
   sequência sai do processo da TUI (`internal/tui/program.go`) para o daemon, e um
   evento por ciclo traz o resultado de cada critério. Pedido por D24; fecha L11.
@@ -279,4 +279,4 @@ desktop não os implementa, espera por eles.
 A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
 sem ele, uma sessão que o desktop abre num projeto ignoraria o `.dcode/config.toml`
 desse projeto —; o N3 antes da lateral com as gravadas, do ⌘K e da troca de
-modelo; o N4 antes da tela do loop. O N1 e o N2 estão feitos.
+modelo; o N4 antes da tela do loop. O N1, o N2 e o N3 estão feitos.

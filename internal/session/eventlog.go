@@ -45,6 +45,8 @@ type EventLog struct {
 	// recordErr is the first failure to write the record, kept so a session
 	// whose transcript is incomplete can say so rather than look complete.
 	recordErr error
+	// onRecorded is told each recorded event — see OnRecorded.
+	onRecorded func(protocol.Event)
 }
 
 type subscriber struct {
@@ -120,6 +122,13 @@ func (l *EventLog) append(t protocol.EventType, payload any, record bool) (proto
 		if err := l.record.Append([]protocol.Event{ev}); err != nil && l.recordErr == nil {
 			l.recordErr = err
 		}
+		// The list of conversations folds what the record holds, and only
+		// that: a continued conversation's carried events are in the log and
+		// not in the record, and folding them would make the live row disagree
+		// with the row its record gives once it ends.
+		if l.onRecorded != nil {
+			l.onRecorded(ev)
+		}
 	}
 	l.trim()
 
@@ -163,6 +172,15 @@ func (l *EventLog) trim() {
 	}
 	l.firstSeq = l.events[drop].Seq
 	l.events = append([]protocol.Event(nil), l.events[drop:]...)
+}
+
+// OnRecorded names who is told each event that goes to the record, under the
+// log's lock and in order: the list of conversations. Set before anything is
+// appended. It must not call back into the log.
+func (l *EventLog) OnRecorded(f func(protocol.Event)) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.onRecorded = f
 }
 
 // SetRecord attaches the file this session is written to. Called at session

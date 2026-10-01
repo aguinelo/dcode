@@ -65,6 +65,13 @@ var protocolInvariants = map[string]string{
 	"não depende do ambiente":  "TestTheDefaultSocketDoesNotDependOnTheEnvironment",
 	"é do usuário e só dele":   "TestASocketDirectoryNotOwnedAloneIsRefused",
 	"imprime o caminho em uso": "TestSocketPrintsWhereTheDaemonListens",
+	// The list of conversations. Folded in the session package, served by the
+	// daemon, asserted through both.
+	"junta as vivas e as gravadas":           "TestTheListJoinsLiveAndRecordedConversationsOnce",
+	"abre com o retrato inteiro":             "TestTheListStreamOpensWithASnapshotThenSendsChanges",
+	"Conversa que termina continua na lista": "TestAConversationThatEndsStaysAsRecorded",
+	"relido para a lista só quando":          "TestARecordIsReadAgainOnlyWhenItChanged",
+	"dobradas pelo mesmo código":             "TestALiveSummaryMatchesItsRecord",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

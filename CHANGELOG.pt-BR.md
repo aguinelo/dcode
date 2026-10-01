@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 204 changelogs de decisão |
+| famílias de spec | 18, com 205 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -258,6 +258,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma lista de conversas, vivas e gravadas, com um fluxo só.**
+  `GET /v1/conversations` lista cada conversa uma vez — as vivas no daemon com o
+  estado de agora, as que terminaram como gravadas — com título, projeto, branch,
+  modelo, turnos, o selo do último turno, o diff e quando se mexeu por último.
+  `GET /v1/conversations/events` abre com a lista inteira e depois manda só o que
+  mudou, então uma lateral acompanhando vinte conversas segura uma conexão em vez
+  de vinte, e o texto de um turno chegando em fragmentos não é mudança. Antes, o
+  protocolo listava só as sessões vivas, sem nada disso, e as gravadas existiam
+  só para um cliente que lesse a pasta de registros por conta própria. Uma linha é
+  dobrada dos eventos gravados pelo mesmo código, ao vivo ou do disco, e o estado
+  de uma sessão vem da própria sessão, porque ela volta a ociosa depois de o
+  `turn.completed` já ter saído. É o que a lateral e a busca do desktop leem (o N3
+  dele).
 ## 0.22.1 — 30 de setembro de 2026
 
 - **Cada sessão lê a configuração do seu workspace.** O daemon resolvia a cadeia

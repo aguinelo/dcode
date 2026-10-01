@@ -65,6 +65,9 @@ type Config struct {
 	// than an error: a client asking a daemon that cannot look should get "I
 	// know of none", not a failure it has to interpret.
 	Specs func(ctx context.Context, workspace string, measure bool) ([]protocol.SpecFolder, error)
+	// Conversations is the list of conversations, live and recorded, with its
+	// stream. Nil answers an empty list and refuses the stream.
+	Conversations ConversationIndex
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -170,6 +173,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST "+p+"/sessions", s.createSession)
 	s.mux.HandleFunc("GET "+p+"/sessions", s.listSessions)
 	s.mux.HandleFunc("GET "+p+"/specs", s.listSpecs)
+	s.mux.HandleFunc("GET "+p+"/conversations", s.listConversations)
+	s.mux.HandleFunc("GET "+p+"/conversations/events", s.conversationEvents)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)

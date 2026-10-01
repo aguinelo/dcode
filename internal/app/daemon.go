@@ -47,6 +47,9 @@ type Daemon struct {
 	opts    DaemonOptions
 	manager *session.Manager
 	server  *server.Server
+	// conversations is the list a client shows: live sessions folded as they
+	// record, and the ones that ended, read from RecordDir.
+	conversations *session.Conversations
 
 	// proposalBy holds what each qualifying session proposed, until the loop
 	// takes it. Beside the session rather than inside it: a proposal is the
@@ -71,14 +74,18 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 			opts.Log(fmt.Sprintf("sandbox.sockets names %s, where a dcode daemon listens; it stays out of every sandbox's reach, since a command that reached it could approve itself", g))
 		}
 	}
-	d := &Daemon{opts: opts, manager: session.NewManager(opts.MaxSessions)}
+	d := &Daemon{opts: opts, manager: session.NewManager(opts.MaxSessions),
+		conversations: session.NewConversations(opts.RecordDir)}
 	d.server = server.New(server.Config{
-		SocketPath:  opts.SocketPath,
-		Manager:     d.manager,
-		Build:       d.build,
-		Specs:       d.specs,
-		CommitDone:  d.commitDone,
-		MaxSessions: opts.MaxSessions,
+		SocketPath: opts.SocketPath,
+		Manager:    d.manager,
+		Build:      d.build,
+		Specs:      d.specs,
+		// One list and one stream for every conversation, so a client watching
+		// twenty does not open twenty streams.
+		Conversations: d.conversations,
+		CommitDone:    d.commitDone,
+		MaxSessions:   opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without
 		// being loaded. The daemon already knows it; the server did not.
 		RecordDir: opts.RecordDir,
@@ -247,6 +254,8 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 
 	id := session.NewID(time.Now, randomUint32)
 	log := session.NewEventLog(id, d.opts.EventRetention, time.Now)
+	// Before anything is appended: the list folds what the record holds.
+	log.OnRecorded(d.conversations.Observe)
 	// Opening a session is when history is tidied. The live set is what the
 	// manager holds, because a session being written is not garbage however
 	// old its first line is.
@@ -306,6 +315,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 
 	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
 		appSession.Engine, log, time.Now)
+	sess.OnState(d.conversations.StateChanged)
 	sess.ContextWindow = appSession.ContextWindow
 	sess.Family, sess.Transport, sess.BaseURL = opts.Family, opts.Transport, opts.BaseURL
 	sess.Branch = appSession.Branch

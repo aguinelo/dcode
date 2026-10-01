@@ -71,8 +71,11 @@ type Session struct {
 	CarriedFrom  string
 	CarriedTurns int
 
-	mu      sync.Mutex
-	state   protocol.SessionState
+	mu    sync.Mutex
+	state protocol.SessionState
+	// onState is told every change of state, under mu, for the list of
+	// conversations. Nil tells nobody.
+	onState func(id string, st protocol.SessionState)
 	cancel  context.CancelFunc
 	pending map[string]*approval
 	// lapsed remembers approvals the deadline denied, so a client that comes
@@ -102,6 +105,28 @@ func New(id, workspace, model, mode string, engine *loop.Engine, log *EventLog, 
 		CreatedAt:     clock(), Log: log, engine: engine,
 		state: protocol.SessionStateIdle, pending: map[string]*approval{},
 		allowAll: map[string]bool{},
+	}
+}
+
+// OnState names who is told when the session's state changes: the list of
+// conversations, which shows a live session's state as it moves. Set once,
+// before the session is used.
+//
+// From here rather than inferred from the events: the state moves at moments
+// no event marks — idle comes back after turn.completed has gone out — and a
+// list that guessed would show a finished turn as still running.
+func (s *Session) OnState(f func(id string, st protocol.SessionState)) {
+	s.mu.Lock()
+	s.onState = f
+	s.mu.Unlock()
+}
+
+// setState moves the session and tells whoever watches. Caller holds mu, so
+// the changes reach the list in the order they happened.
+func (s *Session) setState(st protocol.SessionState) {
+	s.state = st
+	if s.onState != nil {
+		s.onState(s.ID, st)
 	}
 }
 
@@ -301,7 +326,7 @@ func (s *Session) Submit(text string, images ...ce.Image) error {
 	// The turn's context is detached from any request: a client disconnecting
 	// must not cancel work the user asked for.
 	ctx, cancel := context.WithCancel(context.Background())
-	s.state = protocol.SessionStateRunning
+	s.setState(protocol.SessionStateRunning)
 	s.cancel = cancel
 	s.mu.Unlock()
 
@@ -320,7 +345,7 @@ func (s *Session) Submit(text string, images ...ce.Image) error {
 			}
 			s.mu.Lock()
 			if s.state != protocol.SessionStateClosed {
-				s.state = protocol.SessionStateIdle
+				s.setState(protocol.SessionStateIdle)
 			}
 			s.cancel = nil
 			s.failPending()
@@ -354,7 +379,7 @@ func (s *Session) Exec(ctx context.Context, command string) error {
 		s.mu.Unlock()
 		return protocol.Errorf(protocol.CodeInternal, "session %s has no engine", s.ID)
 	}
-	s.state = protocol.SessionStateRunning
+	s.setState(protocol.SessionStateRunning)
 	engine := s.engine
 	s.mu.Unlock()
 
@@ -362,7 +387,7 @@ func (s *Session) Exec(ctx context.Context, command string) error {
 
 	s.mu.Lock()
 	if s.state != protocol.SessionStateClosed {
-		s.state = protocol.SessionStateIdle
+		s.setState(protocol.SessionStateIdle)
 	}
 	s.mu.Unlock()
 	return err
@@ -389,7 +414,7 @@ func (s *Session) Compact(ctx context.Context) (bool, error) {
 		s.mu.Unlock()
 		return false, protocol.Errorf(protocol.CodeInternal, "session %s has no engine", s.ID)
 	}
-	s.state = protocol.SessionStateRunning
+	s.setState(protocol.SessionStateRunning)
 	engine := s.engine
 	s.mu.Unlock()
 
@@ -397,7 +422,7 @@ func (s *Session) Compact(ctx context.Context) (bool, error) {
 
 	s.mu.Lock()
 	if s.state != protocol.SessionStateClosed {
-		s.state = protocol.SessionStateIdle
+		s.setState(protocol.SessionStateIdle)
 	}
 	s.mu.Unlock()
 	return compacted, err
@@ -440,7 +465,7 @@ func (s *Session) Undo() (protocol.UndoResult, error) {
 // Close ends the session.
 func (s *Session) Close() {
 	s.mu.Lock()
-	s.state = protocol.SessionStateClosed
+	s.setState(protocol.SessionStateClosed)
 	cancel := s.cancel
 	s.failPending()
 	s.mu.Unlock()
@@ -550,14 +575,14 @@ func (s *Session) Approve(ctx context.Context, req protocol.ApprovalRequest) (
 	}
 	a := &approval{req: req, answer: make(chan protocol.ApprovalDecision, 1)}
 	s.pending[req.ApprovalID] = a
-	s.state = protocol.SessionStateBlocked
+	s.setState(protocol.SessionStateBlocked)
 	s.mu.Unlock()
 
 	defer func() {
 		s.mu.Lock()
 		delete(s.pending, req.ApprovalID)
 		if s.state == protocol.SessionStateBlocked {
-			s.state = protocol.SessionStateRunning
+			s.setState(protocol.SessionStateRunning)
 		}
 		s.mu.Unlock()
 	}()
