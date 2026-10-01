@@ -1101,6 +1101,23 @@ func TestExecOnAnUnknownSession(t *testing.T) {
 	}
 }
 
+// A workspace whose specs cannot be listed — its configuration cannot be read,
+// say — answers why, rather than an empty list that reads as "no specs".
+func TestListSpecsSaysWhyItCannotAnswer(t *testing.T) {
+	srv, _ := newServer(t, 4)
+	srv.cfg.Specs = func(context.Context, string, bool) ([]protocol.SpecFolder, error) {
+		return nil, protocol.Errorf(protocol.CodeWorkspaceInvalid, "the configuration of /w cannot be read: unknown key moed")
+	}
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs?workspace=/w", nil))
+	if rec.Code == http.StatusOK {
+		t.Fatalf("a failure was answered as a list: %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "moed") {
+		t.Errorf("the answer does not say why: %s", rec.Body.String())
+	}
+}
+
 // The daemon answers what specs a workspace has and which are pending.
 //
 // The daemon, not the client: deciding "pending" means running each folder's
@@ -1108,11 +1125,11 @@ func TestExecOnAnUnknownSession(t *testing.T) {
 // worse than either answer.
 func TestListSpecsAnswersWhatIsPending(t *testing.T) {
 	srv, _ := newServer(t, 4)
-	srv.cfg.Specs = func(context.Context, string, bool) []protocol.SpecFolder {
+	srv.cfg.Specs = func(context.Context, string, bool) ([]protocol.SpecFolder, error) {
 		return []protocol.SpecFolder{
 			{Path: "specs/a", Criteria: 2, Unmet: 1, Pending: true},
 			{Path: "specs/b", Criteria: 2},
-		}
+		}, nil
 	}
 	rec := httptest.NewRecorder()
 	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs?workspace=/w", nil))
@@ -1132,7 +1149,7 @@ func TestListSpecsAnswersWhatIsPending(t *testing.T) {
 // something where it was typed.
 func TestListSpecsRefusesARelativeWorkspace(t *testing.T) {
 	srv, _ := newServer(t, 4)
-	srv.cfg.Specs = func(context.Context, string, bool) []protocol.SpecFolder { return nil }
+	srv.cfg.Specs = func(context.Context, string, bool) ([]protocol.SpecFolder, error) { return nil, nil }
 	for _, q := range []string{"?workspace=relative", ""} {
 		rec := httptest.NewRecorder()
 		srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/"+protocol.Version+"/specs"+q, nil))

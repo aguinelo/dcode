@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma sessão aberta pela janela lê a configuração do seu projeto (N2).** O
+  daemon agora resolve a cadeia de configuração no workspace de cada sessão, então
+  uma sessão aberta num projeto roda sob o `.dcode/config.toml` daquele projeto,
+  mesmo com o daemon subindo fora de todos eles, como o desktop o sobe.
+  Configuração de projeto que não se lê recusa a sessão com o motivo. O
+  `docs/DECISIONS.md` marca o N2 como feito.
 - **A verificação visual fica fora do CI pelo motivo que vale.** Os documentos a
   deixavam local porque as imagens de referência não estavam no repositório;
   estão desde que o handoff do design entrou. Rodada uma vez no `ubuntu-latest`

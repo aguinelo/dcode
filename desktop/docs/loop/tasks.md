@@ -91,7 +91,6 @@ falha deixa uma captura da janela e os logs em `desktop/test-results/daemon/`.
 ## Fora deste loop
 
 - As sessões gravadas, o ⌘K e a troca de modelo, que esperam o N3.
-- A configuração de cada projeto, que espera o N2.
 - A tela do loop, que espera o N4.
 - Imagens e comandos no campo de mensagem.
 - Empacotar, assinar, e o ambiente do shell de login para o app aberto pelo Dock.

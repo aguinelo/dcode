@@ -10,6 +10,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A session the window opens reads its project's configuration (N2).** The
+  daemon now resolves the configuration chain in each session's workspace, so a
+  session opened in a project runs under that project's `.dcode/config.toml`,
+  even with the daemon started outside every project, as the desktop starts it.
+  A project configuration that cannot be read refuses the session with the
+  reason. `docs/DECISIONS.md` marks N2 done.
 - **The visual check stays out of CI for the reason that holds.** The documents
   kept it local because the reference images were not in the repository; they
   have been since the design handoff landed. Run once on the workflow's

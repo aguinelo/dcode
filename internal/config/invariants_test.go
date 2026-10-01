@@ -55,6 +55,10 @@ var configInvariants = map[string]string{
 	"em diretório tocado e fora":  "TestOutOfChainFindsAnInstructionTheSessionNeverLoaded",
 	"não realiza I/O nem executa": "TestExpansionCannotReachForExecutionOrTheDisk",
 	"vence comando de usuário":    "TestDiscoverCommandsLetsTheProjectWinAndRecordsIt",
+
+	// One daemon, many projects. Asserted through the daemon's own wiring.
+	"no workspace de cada sessão":               "TestEachSessionReadsTheConfigurationOfItsOwnWorkspace",
+	"recusa a sessão dizendo o que está errado": "TestAProjectConfigurationThatCannotBeReadRefusesTheSession",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

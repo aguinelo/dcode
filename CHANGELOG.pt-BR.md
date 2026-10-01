@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 203 changelogs de decisão |
+| famílias de spec | 18, com 204 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -256,6 +256,16 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **Cada sessão lê a configuração do seu workspace.** O daemon resolvia a cadeia
+  de configuração uma vez, onde subia, e toda sessão usava essa: uma sessão do
+  desktop, que sobe o daemon fora de qualquer projeto, nunca lia o
+  `.dcode/config.toml` do projeto, e uma TUI anexada a um `dcode serve` de outro
+  projeto rodava com o modo, a política e o modelo daquele projeto. A cadeia agora
+  é resolvida no workspace de cada sessão — para a sessão, a qualificação, a
+  medição dos critérios e a lista de specs —, e configuração de projeto que não se
+  lê recusa a sessão dizendo o que está errado, em vez de abri-la com a do daemon.
+  A lista de specs diz por que não respondeu, em vez de voltar vazia.
 
 ## 0.22.0 — 30 de setembro de 2026
 
