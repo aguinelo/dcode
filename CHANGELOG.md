@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 203 decision changelogs |
+| spec families | 18, with 204 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -257,6 +257,17 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **Each session reads the configuration of its own workspace.** The daemon
+  resolved the configuration chain once, where it started, and every session
+  used that: a session of the desktop, which starts the daemon outside any
+  project, never read the project's `.dcode/config.toml`, and a TUI attached to
+  a `dcode serve` from another project ran under that project's mode, policy and
+  model. The chain is now resolved in each session's workspace — for the
+  session, the qualification, the measurement of criteria and the list of specs
+  — and a project configuration that cannot be read refuses the session saying
+  what is wrong, instead of opening it with the daemon's. The list of specs says
+  why it could not answer instead of returning an empty one.
 
 ## 0.22.0 — 30 September 2026
 

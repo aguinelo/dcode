@@ -290,21 +290,22 @@ func TestDaemonBuildHonoursTheRequestedModel(t *testing.T) {
 // which is what makes it a profile rather than a friendlier model name.
 func TestDaemonBuildResolvesAConfiguredProfileAsOneBundle(t *testing.T) {
 	ws := t.TempDir()
-	base, _, err := FromEnv(envFrom(map[string]string{}), ws)
+	// Configured the way a person configures it, in models.toml: the daemon
+	// resolves each session's chain in its workspace, so a profile set by
+	// hand on the boot options would not reach it — and should not.
+	home := t.TempDir()
+	profile := "[profile.qwen-local]\nmodel = \"qwen3.5-9b\"\nfamily = \"generic\"\ntransport = \"openai\"\nbase_url = \"http://127.0.0.1:1234/v1\"\nwindow = 32000\n"
+	if err := os.WriteFile(filepath.Join(home, config.ModelsFile), []byte(profile), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	base, _, err := FromEnv(envFrom(map[string]string{"DCODE_HOME": home}), ws)
 	if err != nil {
 		t.Fatal(err)
 	}
-	base.SandboxMode = policy.ModeReadOnly
 	requireSandbox(t, base)
-	base.Profiles = map[string]config.Profile{
-		"qwen-local": {
-			Name: "qwen-local", Model: "qwen3.5-9b", Family: "generic",
-			Transport: "openai", BaseURL: "http://127.0.0.1:1234/v1", Window: 32000,
-		},
-	}
 
 	d := NewDaemon(DaemonOptions{SocketPath: "/tmp/unused.sock", Base: base})
-	sess, err := d.build(protocol.CreateSessionRequest{Workspace: ws, Model: "qwen-local"})
+	sess, err := d.build(protocol.CreateSessionRequest{Workspace: ws, Model: "qwen-local", SandboxMode: "read-only"})
 	if err != nil {
 		t.Fatal(err)
 	}

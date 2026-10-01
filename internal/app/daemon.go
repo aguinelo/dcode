@@ -118,6 +118,40 @@ func applyModelRequest(opts Options, name string) Options {
 	return opts
 }
 
+// optionsFor is the configuration a session in ws runs under: the chain
+// resolved in that workspace, its project file included, and this daemon's
+// socket for the sandbox to keep out of reach.
+//
+// Not Base. Base is the chain where the daemon started, and one daemon serves
+// every project — the desktop starts it outside any of them, and a TUI attaches
+// to whichever is running — so a session used to run under the rules of a
+// project it was not in. A configuration that cannot be read refuses the
+// session and names what is wrong, rather than falling back to the daemon's.
+//
+// Options built by hand, with no environment to resolve them from, are used
+// as given: that is a test assembling its own, and there is no chain to read.
+func (d *Daemon) optionsFor(ws string) (Options, error) {
+	opts := d.opts.Base
+	if opts.Env != nil {
+		resolved, chain, err := FromEnv(opts.Env, ws)
+		if err != nil {
+			return Options{}, protocol.Errorf(protocol.CodeWorkspaceInvalid,
+				"the configuration of %s cannot be read: %v", ws, err)
+		}
+		// A locked value someone tried to override is said, as the command
+		// line says it, here where the session is opened.
+		if d.opts.Log != nil {
+			for _, w := range chain.Warnings {
+				d.opts.Log(fmt.Sprintf("%s: %s", ws, w))
+			}
+		}
+		opts = resolved
+	}
+	opts.Workspace = ws
+	opts.DaemonSocket = d.opts.SocketPath
+	return opts, nil
+}
+
 // build creates a session for a request.
 //
 // Each session gets its own sandbox, resolver and provider: a session is the
@@ -129,8 +163,10 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		return nil, err
 	}
 
-	opts := d.opts.Base
-	opts.Workspace = ws
+	opts, err := d.optionsFor(ws)
+	if err != nil {
+		return nil, err
+	}
 	var (
 		carried      []protocol.Event
 		carriedFrom  string
@@ -391,13 +427,19 @@ func specUnderWorkspace(workspace, spec string) (string, error) {
 // is why it is the daemon's job and not the client's. There is no cheaper
 // honest answer to "which specs are left": the criteria are the definition of
 // done, and a checkbox in a tasks.md is marked by whoever felt like marking it.
-func (d *Daemon) specs(ctx context.Context, workspace string, measure bool) []protocol.SpecFolder {
+func (d *Daemon) specs(ctx context.Context, workspace string, measure bool) ([]protocol.SpecFolder, error) {
+	// A path that is not a workspace answers nothing: the client asked what
+	// is there, and "nothing I can see" is an answer it can act on. A
+	// workspace whose configuration cannot be read, or whose criteria cannot
+	// be confined, is a failure, and says so — "no specs" would be a lie.
 	ws, err := validWorkspace(workspace)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	opts := d.opts.Base
-	opts.Workspace = ws
+	opts, err := d.optionsFor(ws)
+	if err != nil {
+		return nil, err
+	}
 	// The same sandbox a criterion runs under during a turn. Discovery runs
 	// real commands from the project, and running them outside the boundary
 	// the session would use is running something else.
@@ -405,7 +447,7 @@ func (d *Daemon) specs(ctx context.Context, workspace string, measure bool) []pr
 	if measure {
 		sb, err := qualifyingSandbox(opts)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		run = criterionRunner(sb, opts)
 	}
@@ -418,7 +460,7 @@ func (d *Daemon) specs(ctx context.Context, workspace string, measure bool) []pr
 			Measured: measure, Error: f.Err,
 		})
 	}
-	return out
+	return out, nil
 }
 
 // QualifyMode forces plan mode on a qualifying session.
@@ -451,8 +493,10 @@ func (d *Daemon) qualifyOptions(workspace string, req protocol.CreateSessionRequ
 	if err != nil {
 		return Options{}, err
 	}
-	opts := d.opts.Base
-	opts.Workspace = ws
+	opts, err := d.optionsFor(ws)
+	if err != nil {
+		return Options{}, err
+	}
 	specPath, serr := specUnderWorkspace(ws, req.LoopSpec)
 	if serr != nil {
 		return Options{}, serr
@@ -501,8 +545,10 @@ func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.Com
 			"nothing was proposed for %s", sessionID)
 	}
 
-	opts := d.opts.Base
-	opts.Workspace = sess.Workspace
+	opts, oerr := d.optionsFor(sess.Workspace)
+	if oerr != nil {
+		return protocol.CommitDoneResponse{}, oerr
+	}
 	sb, serr := qualifyingSandbox(opts)
 	if serr != nil {
 		return protocol.CommitDoneResponse{}, serr

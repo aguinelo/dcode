@@ -19,7 +19,7 @@ Segue XDG Base Directory. Cada raiz tem ciclo de vida próprio (RN-1).
 |---|---|---|---|
 | **config** | `$XDG_CONFIG_HOME/dcode`, ou `~/.config/dcode` | `~/Library/Application Support/dcode` | `config.toml`, `models.toml`, `AGENTS.md`, `DCODE.md`, `skills/`, `commands/` |
 | **dados** | `$XDG_DATA_HOME/dcode`, ou `~/.local/share/dcode` | `~/Library/Application Support/dcode` | artefatos de longa vida |
-| **estado** | `$XDG_STATE_HOME/dcode`, ou `~/.local/state/dcode` | `~/Library/Application Support/dcode` | log de sessão, `profiles/`, socket |
+| **estado** | `$XDG_STATE_HOME/dcode`, ou `~/.local/state/dcode` | `~/Library/Application Support/dcode` | log de sessão, `profiles/` |
 | **cache** | `$XDG_CACHE_HOME/dcode`, ou `~/.cache/dcode` | `~/Library/Caches/dcode` | consulta de versão, temporários |
 
 **Escape hatch (RN-1):** `DCODE_HOME` definido colapsa as quatro sob uma raiz:
@@ -227,6 +227,8 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 - `OutOfChain` detecta instrução em diretório tocado e fora da cadeia, e o resultado vira lembrete anexado, nunca prefixo (RN-6).
 - `Expand` é determinística e não realiza I/O nem executa processo (RN-10).
 - Comando de projeto vence comando de usuário de mesmo nome, com registro da colisão.
+- Um daemon resolve a cadeia no workspace de cada sessão, o arquivo do projeto incluso, e não no workspace em que subiu — para a sessão, para a medição dos critérios e para a lista de specs.
+- Configuração de projeto que não se lê recusa a sessão dizendo o que está errado, em vez de abri-la com a configuração do daemon.
 
 
 ## Contratos comportamentais
@@ -246,3 +248,4 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 
 - [202608091500 — Armazenamento de credencial](changelog/202608091500-armazenamento-de-credencial.md)
 - [202608101700 — Atravessamento de camadas de configuração](changelog/202608101700-atravessamento-de-camadas-de-configuracao.md)
+- [202609302227 — Cada sessão lê a configuração do seu workspace](changelog/202609302227-cada-sessao-le-a-configuracao-do-seu-workspace.md)

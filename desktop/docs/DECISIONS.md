@@ -136,9 +136,9 @@ Descartados: um serviço sempre de pé (launchd), que reabriria "nada sobrevive 
 quem o criou"; e um daemon privado por app, que não compartilharia nada com a TUI.
 
 **D20. Um daemon atende todos os projetos,** com a configuração resolvida no
-workspace de cada sessão (N2). Hoje o `dcode serve` resolve uma vez, no workspace
-em que subiu, e toda sessão usa essa — e o desktop sobe o daemon fora de qualquer
-projeto. Descartados: um daemon por projeto (mais processos, e cada TUI teria de
+workspace de cada sessão (N2, feito). Antes, o `dcode serve` resolvia uma vez, no
+workspace em que subia, e toda sessão usava essa — e o desktop sobe o daemon fora
+de qualquer projeto. Descartados: um daemon por projeto (mais processos, e cada TUI teria de
 achar o socket do seu); manter como está (a lateral com vários projetos mentiria
 sobre a configuração de cada um).
 
@@ -262,12 +262,11 @@ desktop não os implementa, espera por eles.
   sendo a escolha explícita —, numa pasta que só vale se for do usuário e só dele.
   `dcode socket` imprime o caminho, ou falha dizendo por quê, e é a ele que o
   desktop pergunta. Pedido por D19.
-- **N2. Configuração por sessão** — `configuration`. O `dcode serve` resolve a
-  cadeia uma vez (`cmd/dcode/serve.go`), e o `build` usa esse `Base` para toda
-  sessão (`internal/app/daemon.go`). Passa a resolver no workspace de cada
-  `CreateSession`, e configuração de projeto ilegível recusa a sessão dizendo por
-  quê. Conserta também o caso de hoje: uma TUI anexada a um `dcode serve` que
-  subiu em outro projeto. Pedido por D20.
+- **N2. Configuração por sessão** — `configuration`. **Feito.** O daemon resolvia
+  a cadeia uma vez, onde subia, e toda sessão usava essa. Agora resolve no
+  workspace de cada sessão, o `.dcode/config.toml` do projeto incluso, e
+  configuração de projeto ilegível recusa a sessão dizendo por quê. Conserta também
+  uma TUI anexada a um `dcode serve` que subiu em outro projeto. Pedido por D20.
 - **N3. A lista de sessões** — `client-server-protocol`, MINOR. Uma rota com as
   sessões vivas e as gravadas, cada uma com nome, projeto, estado, branch, modelo,
   turnos, selo, diff, última atividade e último evento, e um fluxo único de
@@ -278,6 +277,6 @@ desktop não os implementa, espera por eles.
   evento por ciclo traz o resultado de cada critério. Pedido por D24; fecha L11.
 
 A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
-sem ele, uma sessão que o desktop abre num projeto ignora o `.dcode/config.toml`
+sem ele, uma sessão que o desktop abre num projeto ignoraria o `.dcode/config.toml`
 desse projeto —; o N3 antes da lateral com as gravadas, do ⌘K e da troca de
-modelo; o N4 antes da tela do loop.
+modelo; o N4 antes da tela do loop. O N1 e o N2 estão feitos.
