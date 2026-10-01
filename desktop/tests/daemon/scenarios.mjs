@@ -39,6 +39,21 @@ async function attached(ctx, script) {
   return { t, model, env, daemon, session, wire, ui };
 }
 
+/** A daemon of the check with one conversation that asked something and ended. */
+async function endedConversation(ctx, ask) {
+  const t = await ctx.fresh();
+  const model = await ctx.model();
+  model.reply(text('Feito.'));
+  const env = ctx.env(t, model);
+  await ctx.daemon(env, t.ws);
+  const session = await must(t.socket, 'POST', '/v1/sessions', { workspace: t.ws });
+  const wire = ctx.follow(t.socket, session.id);
+  await must(t.socket, 'POST', `/v1/sessions/${session.id}/turns`, { text: ask });
+  await wire.until((e) => e.type === 'turn.completed', 15_000, `turn.completed of “${ask}”`);
+  await must(t.socket, 'DELETE', `/v1/sessions/${session.id}`);
+  return { t, env, session };
+}
+
 export const scenarios = [
   {
     name: 'attaches',
@@ -212,6 +227,66 @@ export const scenarios = [
         if ((await box.inputValue()) !== 'ainda aí?') fail('a message sent to a dead daemon was cleared as if accepted');
       }
       if ((await ui.page.locator('[data-daemon="connected"]').count()) > 0) fail('a dead daemon still reads as connected');
+    },
+  },
+  {
+    name: 'lists-recorded',
+    about: 'a conversation that ended before the window opened is in the sidebar, recorded, with its title',
+    async run(ctx) {
+      const { t, env, session } = await endedConversation(ctx, 'conserte o parser');
+      const ui = await ctx.launch(env, t);
+      await daemonState(ui.page, 'connected', 15_000);
+      const r = await visible(row(ui.page, session.id), 10_000, `the row of the ended conversation ${session.id}`);
+      const state = await r.getAttribute('data-state');
+      if (state !== 'recorded') fail(`the ended conversation reads data-state="${state}", want recorded`);
+      if (!((await r.textContent()) ?? '').includes('conserte o parser')) fail('the ended conversation is listed without its title');
+    },
+  },
+  {
+    name: 'continues-recorded',
+    about: 'opening an ended conversation continues it in a new session, which the window opens',
+    async run(ctx) {
+      const { t, env, session } = await endedConversation(ctx, 'conserte o parser');
+      const ui = await ctx.launch(env, t);
+      await daemonState(ui.page, 'connected', 15_000);
+      await (await visible(row(ui.page, session.id), 10_000, `the row of the ended conversation ${session.id}`)).click();
+      const continued = await eventually(
+        async () => ((await must(t.socket, 'GET', '/v1/conversations'))?.conversations ?? []).find((c) => c.continued_from === session.id && c.live),
+        10_000,
+        `no live conversation continues ${session.id}`,
+      );
+      await eventually(async () => (await row(ui.page, continued.id).first().getAttribute('aria-current')) === 'true', 10_000,
+        `the window did not open the continuation ${continued.id}`);
+      const wire = ctx.follow(t.socket, continued.id);
+      await wire.until((e) => e.type === 'session.resumed', 10_000, 'session.resumed');
+    },
+  },
+  {
+    name: 'searches',
+    about: '⌘K finds a conversation by its title, and ↵ opens it',
+    async run(ctx) {
+      const t = await ctx.fresh();
+      const model = await ctx.model();
+      model.reply(text('Feito.'));
+      model.reply(text('Feito.'));
+      const env = ctx.env(t, model);
+      await ctx.daemon(env, t.ws);
+      const ids = [];
+      for (const ask of ['conserte o parser', 'escreva o README']) {
+        const s = await must(t.socket, 'POST', '/v1/sessions', { workspace: t.ws });
+        const wire = ctx.follow(t.socket, s.id);
+        await must(t.socket, 'POST', `/v1/sessions/${s.id}/turns`, { text: ask });
+        await wire.until((e) => e.type === 'turn.completed', 15_000, `turn.completed of “${ask}”`);
+        ids.push(s.id);
+      }
+      const ui = await ctx.launch(env, t);
+      await daemonState(ui.page, 'connected', 15_000);
+      await visible(row(ui.page, ids[1]), 10_000, 'the row of the conversation to find');
+      await ui.page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+      await ui.page.keyboard.type('README');
+      await ui.page.keyboard.press('Enter');
+      await eventually(async () => (await row(ui.page, ids[1]).first().getAttribute('aria-current')) === 'true', 10_000,
+        '⌘K and ↵ did not open the conversation titled “escreva o README”');
     },
   },
 ];

@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The loop now takes the window all the way to usable.** With N1–N3 in the
+  core, `docs/loop/tasks.md` adds what day-to-day work needs on top of the
+  connection: the sidebar listing every conversation, live and ended, from the
+  core's list and its one stream; opening an ended one by continuing it in a new
+  session; and ⌘K finding any conversation by its title. The ruler gains a
+  scenario for each — `lists-recorded`, `continues-recorded`, `searches` — so
+  `check:daemon` has eleven. Their daemon side was proven against a real
+  `dcode serve` before they were committed; they fail on purpose, at the window,
+  until it connects.
 - **The core lists every conversation for the sidebar (N3).** One route with the
   live and the recorded conversations, each with title, project, state, branch,
   model, turns, seal, diff and last activity, and one stream of what changes —
