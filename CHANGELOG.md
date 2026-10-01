@@ -33,7 +33,7 @@ isolated package.
 | of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.9%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.22.0** |
+| published version | **0.22.1** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -193,7 +193,9 @@ session and an app opened from the Dock never agreed on the variables it used to
 come from — and `dcode socket` says which. The directory is used only when it is
 this user's alone, and an embedded daemon listens there too. A daemon is
 unconfined, so every sandbox keeps that directory out of reach: on macOS the
-default configuration had handed it to every confined command.
+default configuration had handed it to every confined command. One daemon serves
+every project, and each session reads the configuration of its own workspace,
+its project's file included.
 
 The network gets the treatment writing inside the workspace gets: allowed by
 default (`sandbox.allow_network`), with no per-crossing approval in
@@ -257,6 +259,8 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+## 0.22.1 — 30 September 2026
 
 - **Each session reads the configuration of its own workspace.** The daemon
   resolved the configuration chain once, where it started, and every session
