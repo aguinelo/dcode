@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 29 de setembro de 2026
+## Estado atual — 30 de setembro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -31,9 +31,9 @@ fora do pacote isolado.
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
-| cobertura | 93,7%, com gate em 90% agregado **e por pacote** |
+| cobertura | 93,9%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.21.1** |
+| versão publicada | **0.22.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -122,6 +122,13 @@ depois da interrupção não roda nada, e resposta sem chamada não roda critér
 nenhum — então nada que a pessoa só interrompeu é reportado como trabalho que
 não pôde ser conferido.
 
+**Um segundo cliente, numa área própria.** `desktop/` guarda um cliente Electron
+do mesmo daemon, com changelog próprio e versão própria (`desktop-v*`, nenhuma
+publicada ainda). Ele desenha a janela principal do design a partir de eventos
+de protocolo gravados, e o loop que o liga a um daemon de verdade teve a régua
+escrita antes: oito cenários contra um `dcode serve` de verdade, reprovando de
+propósito até a janela conectar.
+
 **O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
 agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
 sobre um conjunto que já conhecia. A guarda de desenho de caixa derivava os
@@ -175,10 +182,17 @@ essa separação é o que permite ser permissivo sem ser inseguro.
 Hoje o sandbox: esconde os cofres de credencial por default (`~/.aws`,
 `~/.gnupg`, `~/.kube`, `gcloud`, `~/.netrc`, `~/.docker/config.json` e a própria
 chave do dcode); mantém fora de alcance o socket de runtime de contêiner e todo
-daemon do dcode do usuário;
-concede socket e caminho gravável **por nome**; e esconde `~/.ssh` assim que o
-socket do `ssh-agent` é concedido — porque aí o `ssh` assina sem ler a chave e
-esconder sai de graça.
+daemon do dcode do usuário; concede socket e caminho gravável **por nome**; e
+esconde `~/.ssh` assim que o socket do `ssh-agent` é concedido — porque aí o
+`ssh` assina sem ler a chave e esconder sai de graça.
+
+**Onde o daemon escuta.** Um socket por usuário, `/tmp/dcode-<uid>/dcode.sock`,
+lido de nada no ambiente além de `DCODE_SOCKET` — um terminal, uma sessão SSH e
+um app aberto pelo Dock nunca concordaram nas variáveis de onde ele vinha —, e
+`dcode socket` diz qual é. A pasta só é usada quando é do usuário e só dele, e um
+daemon embutido escuta lá também. O daemon roda sem confinamento, então todo
+sandbox mantém essa pasta fora de alcance: no macOS a configuração padrão a
+entregava a todo comando confinado.
 
 A rede recebe o tratamento que escrever dentro do workspace recebe: liberada por
 default (`sandbox.allow_network`), sem aprovação a cada travessia em
@@ -242,6 +256,8 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+## 0.22.0 — 30 de setembro de 2026
 
 - **No Linux com Docker, um comando confinado não falha mais antes de rodar.** O
   sandbox cobre o socket de um runtime de contêiner montando por cima dele, e
