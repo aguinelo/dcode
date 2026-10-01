@@ -10,6 +10,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O loop agora leva a janela até ficar usável.** Com N1–N3 no núcleo, o
+  `docs/loop/tasks.md` acrescenta o que o trabalho do dia a dia pede além da
+  conexão: a lateral listando todas as conversas, vivas e terminadas, a partir da
+  lista do núcleo e do fluxo único dela; abrir uma terminada continuando-a numa
+  sessão nova; e o ⌘K achando qualquer conversa pelo título. A régua ganha um
+  cenário para cada — `lists-recorded`, `continues-recorded`, `searches` —, e o
+  `check:daemon` passa a ter onze. O lado do daemon deles foi provado contra um
+  `dcode serve` de verdade antes do commit; reprovam de propósito, na janela, até
+  ela conectar.
 - **O núcleo lista todas as conversas para a lateral (N3).** Uma rota com as
   conversas vivas e as gravadas, cada uma com título, projeto, estado, branch,
   modelo, turnos, selo, diff e última atividade, e um fluxo só do que muda — o que
