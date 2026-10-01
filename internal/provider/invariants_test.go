@@ -18,6 +18,7 @@ var providerInvariants = map[string]string{
 	"nada que o transporte ainda":    "TestACancelledStreamEndsCanceledWhateverTheSelectPicks",
 	"cruza a fronteira do pacote":    "TestNoProviderSpecificTypeCrossesTheBoundary",
 	"Nenhuma credencial aparece":     "TestCredentialsNeverAppearInErrorMessages",
+	"o motivo que o provedor deu":    "TestARejectionCarriesTheProvidersReason",
 	"nunca chega ao consumidor":      "TestUndeclaredToolNeverReachesTheLoop",
 	"uso e conteúdo juntos":          "TestAFrameCarryingUsageStillYieldsItsToolCall",
 	"sem reemitir a chamada":         "TestUsageOnItsOwnFrameTerminatesWithoutRepeatingTheCall",
