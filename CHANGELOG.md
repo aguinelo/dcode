@@ -258,6 +258,15 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The product is called DBox Code; the command stays `dcode`.** "dcode" was
+  doing two jobs, the name of the kit and the name of the binary, and the kit is
+  more than the binary — a daemon, a terminal client and a desktop app. The
+  README, the `--help` header and the installer now say DBox Code where they name
+  the product; the command, the module path, the `DCODE_*` variables, the socket
+  path and the release artifacts keep their names, because the desktop, `dcode
+  update` and the pinned installer digests all find the binary by them. The
+  desktop app's own name is left for its own change, with its own changelog.
+
 - **Each session reads the configuration of its own workspace.** The daemon
   resolved the configuration chain once, where it started, and every session
   used that: a session of the desktop, which starts the daemon outside any

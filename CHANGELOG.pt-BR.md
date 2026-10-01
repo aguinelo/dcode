@@ -257,6 +257,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O produto se chama DBox Code; o comando continua `dcode`.** "dcode" fazia dois
+  papéis, o nome do kit e o nome do binário, e o kit é mais que o binário — um
+  daemon, um cliente de terminal e um app desktop. O README, o cabeçalho do
+  `--help` e o instalador agora dizem DBox Code onde nomeiam o produto; o comando,
+  o caminho do módulo, as variáveis `DCODE_*`, o caminho do socket e os artefatos
+  de release mantêm o nome, porque o desktop, o `dcode update` e os digests
+  fixados no instalador encontram o binário por eles. O nome do próprio app
+  desktop fica para uma mudança sua, com o changelog dele.
+
 - **Cada sessão lê a configuração do seu workspace.** O daemon resolvia a cadeia
   de configuração uma vez, onde subia, e toda sessão usava essa: uma sessão do
   desktop, que sobe o daemon fora de qualquer projeto, nunca lia o

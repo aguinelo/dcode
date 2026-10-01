@@ -521,7 +521,7 @@ var catalogue = map[Lang]Strings{
 		CmdLoopOpened:      "loop: %s, %d criteria",
 		CmdLoopEmpty:       "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
-		Usage: `dcode %s — an agentic coding harness
+		Usage: `DBox Code %s — an agentic coding harness
 
 Usage:
   dcode                      open the terminal interface
@@ -753,7 +753,7 @@ Environment:
 		CmdLangUnknown:     "%s não é um idioma declarado — use en ou pt-BR",
 		CmdLangSwitched:    "idioma da interface: %s",
 
-		Usage: `dcode %s — um harness de programação agêntica
+		Usage: `DBox Code %s — um harness de programação agêntica
 
 Uso:
   dcode                      abre a interface de terminal
