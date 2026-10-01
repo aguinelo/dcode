@@ -33,7 +33,7 @@ fora do pacote isolado.
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,9%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.22.0** |
+| versão publicada | **0.22.1** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -192,7 +192,8 @@ um app aberto pelo Dock nunca concordaram nas variáveis de onde ele vinha —, 
 `dcode socket` diz qual é. A pasta só é usada quando é do usuário e só dele, e um
 daemon embutido escuta lá também. O daemon roda sem confinamento, então todo
 sandbox mantém essa pasta fora de alcance: no macOS a configuração padrão a
-entregava a todo comando confinado.
+entregava a todo comando confinado. Um daemon atende todos os projetos, e cada
+sessão lê a configuração do seu workspace, o arquivo do projeto incluso.
 
 A rede recebe o tratamento que escrever dentro do workspace recebe: liberada por
 default (`sandbox.allow_network`), sem aprovação a cada travessia em
@@ -265,6 +266,8 @@ existe para impedir exatamente isso.
   de release mantêm o nome, porque o desktop, o `dcode update` e os digests
   fixados no instalador encontram o binário por eles. O nome do próprio app
   desktop fica para uma mudança sua, com o changelog dele.
+
+## 0.22.1 — 30 de setembro de 2026
 
 - **Cada sessão lê a configuração do seu workspace.** O daemon resolvia a cadeia
   de configuração uma vez, onde subia, e toda sessão usava essa: uma sessão do
