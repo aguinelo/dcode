@@ -293,6 +293,34 @@ func TestHTTPTransportClassifiesAnErrorStatus(t *testing.T) {
 	}
 }
 
+// The reported failure, where it was reported: a 401 whose body said why, read
+// up to the limit and then answered with only the fact of the 401. This body
+// quotes the key back too, because a provider rejecting a key is the one likely
+// to.
+func TestHTTPTransportSaysWhyAKeyWasRejected(t *testing.T) {
+	const key = "eyJhbGciOiJSUzI1NiJ9.eyJHcm91cE5hbWUiOiJkY29kZSJ9.dHJhbnNwb3J0"
+	provider.RegisterSecret(key)
+	t.Cleanup(provider.ClearSecrets)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sent := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"type":"error","error":{"type":"authorized_error","message":"login fail: ` +
+			sent + ` is not a valid key (2049)","http_code":"401"}}`))
+	}))
+	defer srv.Close()
+
+	_, err := NewHTTPTransport(provider.TransportOpenAI, srv.URL, key).
+		Do(context.Background(), provider.WireRequest{Body: []byte(`{}`)})
+	var pe *provider.ProviderError
+	if !asProviderErr(err, &pe) || pe.Class != provider.ErrClassAuth {
+		t.Fatalf("got %v, want an auth error", err)
+	}
+	if want := "authentication rejected: login fail: [redacted] is not a valid key (2049)"; pe.Message != want {
+		t.Errorf("message:\n got %q\nwant %q", pe.Message, want)
+	}
+}
+
 // A transport error can echo the URL, and a URL can carry a key.
 func TestHTTPTransportSanitisesConnectionErrors(t *testing.T) {
 	const key = "sk-LEAKME-abcdefghijklmnop"
