@@ -16,7 +16,7 @@ and why, one line each.
 
 ---
 
-## Current state — 30 September 2026
+## Current state — 1 October 2026
 
 **What it is.** An agentic coding harness in Go: a daemon, a terminal client and
 the agent loop between them, as a single static binary, with no cgo outside the
@@ -33,7 +33,7 @@ isolated package.
 | of those, **against a prompt they cannot name** | **17** |
 | coverage | 93.9%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
-| published version | **0.22.1** |
+| published version | **0.23.0** |
 
 **Getting it.** `curl … install.sh | sh`, or `go install`. Nothing else has to be
 installed first — of rustup, bun, deno, nvm, k3s and uv, not one requires an
@@ -125,10 +125,11 @@ reported as work that could not be verified.
 
 **A second client, in its own area.** `desktop/` holds an Electron client of the
 same daemon, with its own changelog and its own version (`desktop-v*`, none
-published yet). It draws the design's main window from recorded protocol events,
-and the loop that connects it to a real daemon has its ruler written first:
-eight scenarios against a real `dcode serve`, failing on purpose until the
-window connects.
+published yet). It runs on a real `dcode serve` — the one answering on the
+socket, or one it starts — with the daemon's list of conversations in its
+sidebar, sessions driven from the window, and ⌘K; the ruler of its loop, eleven
+scenarios against a real daemon and a scripted model, passes whole. It needs
+this version or a later one installed: the list it reads is new in it.
 
 **What the guards could not see.** Eight of the defects fixed on 24 August had
 guards written for exactly them, and every guard was asking about a set it
@@ -195,7 +196,9 @@ this user's alone, and an embedded daemon listens there too. A daemon is
 unconfined, so every sandbox keeps that directory out of reach: on macOS the
 default configuration had handed it to every confined command. One daemon serves
 every project, and each session reads the configuration of its own workspace,
-its project's file included.
+its project's file included. A client lists every conversation, live or
+recorded, through one route, and follows the list through one stream of what
+changes.
 
 The network gets the treatment writing inside the workspace gets: allowed by
 default (`sandbox.allow_network`), with no per-crossing approval in
@@ -259,6 +262,8 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+## 0.23.0 — 1 October 2026
 
 - **One list of conversations, live and recorded, with one stream.**
   `GET /v1/conversations` lists every conversation once — the ones live in the
