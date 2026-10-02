@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { SessionView } from '../state/session';
 
 /**
@@ -40,7 +40,7 @@ export function Composer({
   const input = useRef<HTMLTextAreaElement>(null);
   // A field that stops taking text gives the keys back to the window, where
   // the approval's answers are (↵ among them).
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (blocked && document.activeElement === input.current) input.current?.blur();
   }, [blocked]);
   const contextWindow = session.info?.context_window ?? 0;

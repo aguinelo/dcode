@@ -195,12 +195,12 @@ export function App({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === 'n') {
+      if (mod && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         void newSession();
         return;
       }
-      if (mod && e.key === 'k') {
+      if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         say(notYet('Procurar'));
         return;
