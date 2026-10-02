@@ -24,6 +24,7 @@
     "vite.main.config.ts",
     "vite.preload.config.ts",
     "vite.renderer.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "tests/main"
   ]
 }
