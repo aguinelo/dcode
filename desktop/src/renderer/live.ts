@@ -1,0 +1,136 @@
+// The window connected: the daemon's status, its list of conversations and the
+// events of the sessions this window opened, kept as one snapshot the window
+// draws. Everything arrives from the main process through the preload's API;
+// nothing here touches a socket (D2).
+
+import { decodeChange } from '../protocol/conversations';
+import { decodeEvent } from '../protocol/events';
+import type { Answer, DaemonStatus, DcodeApi } from '../shared/api';
+import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
+import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
+import { rowOfConversation, type Row } from '../state/sidebar';
+import type { Outcome, WindowActions } from './window';
+
+export interface LiveSnapshot {
+  daemon: DaemonStatus;
+  conversations: ConversationsState;
+  /** The sidebar's rows, derived from the list. */
+  rows: Row[];
+  /** The sessions this window follows, folded from their events. */
+  sessions: SessionsState;
+}
+
+/** A refusal said as the window says it: what did not happen, then the daemon's reason. */
+function outcome<T>(answer: Answer<T>, what: string): Outcome<T> {
+  return answer.ok ? { ok: true, value: answer.value } : { ok: false, why: `${what}: ${answer.refusal.message}` };
+}
+
+export class LiveStore {
+  private snap: LiveSnapshot = {
+    daemon: { state: 'connecting' },
+    conversations: emptyConversations,
+    rows: [],
+    sessions: emptySessions,
+  };
+  private readonly listeners = new Set<() => void>();
+  private readonly noticed = new Set<(text: string) => void>();
+  /** Continuations on their way, so a second open of the same ended conversation waits for the first. */
+  private readonly continuing = new Map<string, Promise<Outcome<string>>>();
+
+  constructor(private readonly api: DcodeApi) {}
+
+  /** Starts listening to the main process; returns what stops it. */
+  start(): () => void {
+    const offs = [
+      this.api.onDaemon((daemon) => this.set({ daemon })),
+      this.api.onConversations((raw) => this.onList(raw)),
+      this.api.onSessionEvents((batch) => this.onEvents(batch.events)),
+      this.api.onStreamEnd((end) => {
+        const row = this.snap.rows.find((r) => r.id === end.sessionId);
+        this.notice(`Os eventos de “${row?.title ?? end.sessionId}” pararam de chegar: ${end.reason}`);
+      }),
+    ];
+    return () => offs.forEach((off) => off());
+  }
+
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  readonly getSnapshot = (): LiveSnapshot => this.snap;
+
+  /** Registers what to call with each notice; returns what stops it. */
+  readonly onNotice = (say: (text: string) => void): (() => void) => {
+    this.noticed.add(say);
+    return () => this.noticed.delete(say);
+  };
+
+  readonly actions: WindowActions = {
+    open: (row) => (row.state === 'recorded' ? this.continueRow(row) : this.follow(row.id)),
+    send: async (id, text, steer) =>
+      steer
+        ? outcome(await this.api.steer(id, text), 'A correção não foi enviada')
+        : outcome(await this.api.submitTurn(id, text), 'A mensagem não foi enviada'),
+    stop: async (id) => outcome(await this.api.interrupt(id), 'O turno não foi interrompido'),
+    answer: async (id, approvalId, decision) =>
+      outcome(await this.api.resolveApproval(id, approvalId, decision), 'A resposta não foi enviada'),
+    newSession: async () => {
+      const folder = await this.api.pickFolder();
+      if (!folder) return null;
+      const created = outcome(await this.api.createSession(folder), `A sessão não abriu em ${folder}`);
+      return created.ok ? this.follow(created.value.id) : created;
+    },
+  };
+
+  private set(part: Partial<LiveSnapshot>): void {
+    this.snap = { ...this.snap, ...part };
+    for (const l of this.listeners) l();
+  }
+
+  private notice(text: string): void {
+    for (const say of this.noticed) say(text);
+  }
+
+  private onList(raw: unknown): void {
+    const decoded = decodeChange(raw);
+    if (!decoded.ok) {
+      this.notice(`Mudança ilegível na lista de conversas: ${decoded.reason}`);
+      return;
+    }
+    const conversations = applyListChange(this.snap.conversations, decoded.change);
+    this.set({ conversations, rows: Object.values(conversations.byId).map(rowOfConversation) });
+  }
+
+  private onEvents(raw: readonly unknown[]): void {
+    let sessions = this.snap.sessions;
+    const before = sessions.problems.length;
+    for (const r of raw) sessions = applyDecoded(sessions, decodeEvent(r));
+    for (const p of sessions.problems.slice(before)) this.notice(`Evento ilegível, sem sessão para mostrá-lo: ${p.reason}`);
+    this.set({ sessions });
+  }
+
+  private async follow(id: string): Promise<Outcome<string>> {
+    const followed = outcome(await this.api.follow(id), 'A conversa não abriu');
+    return followed.ok ? { ok: true, value: id } : followed;
+  }
+
+  /**
+   * An ended conversation is continued in a new session, which the window
+   * opens (D21). One already continued opens its live continuation instead of
+   * starting a second.
+   */
+  private continueRow(row: Row): Promise<Outcome<string>> {
+    const live = liveContinuationOf(this.snap.conversations, row.id);
+    if (live) return this.follow(live.id);
+    const already = this.continuing.get(row.id);
+    if (already) return already;
+    const workspace = this.snap.conversations.byId[row.id]?.workspace ?? row.workspace;
+    const started = (async (): Promise<Outcome<string>> => {
+      const made = outcome(await this.api.continueConversation({ id: row.id, workspace }), 'A conversa não continuou');
+      return made.ok ? this.follow(made.value.id) : made;
+    })().finally(() => this.continuing.delete(row.id));
+    this.continuing.set(row.id, started);
+    return started;
+  }
+}

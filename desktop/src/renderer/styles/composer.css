@@ -32,18 +32,8 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.composer-field.empty.blocked .composer-sizer {
-  display: flex;
-  align-items: center;
-}
 .composer-field:not(.empty) .composer-sizer {
   visibility: hidden;
-}
-.composer-caret {
-  width: 1.5px;
-  height: 16px;
-  margin-left: 1px;
-  background: var(--dc-accent);
 }
 .composer-input {
   position: absolute;
@@ -60,10 +50,6 @@
   caret-color: var(--dc-accent);
   overflow: hidden;
 }
-.composer-field.empty.blocked .composer-input {
-  caret-color: transparent;
-}
-
 .composer-bar {
   display: flex;
   align-items: center;
@@ -133,6 +119,26 @@
 /* A recording is neither a live daemon nor a failure: neutral, and named. */
 .status-dot.replay {
   background: var(--dc-faint);
+}
+.status-dot.connecting {
+  background: var(--dc-faint);
+}
+.status-dot.failed {
+  background: var(--dc-err);
+}
+/* The daemon's status and, when it is not connected, why. The reason can be
+   long and the bar is one line: it is cut, and whole in the title. */
+.daemon {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.daemon-reason {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toasts {

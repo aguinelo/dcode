@@ -2,8 +2,10 @@ import type { ProjectView } from '../state/sidebar';
 import { nameParts } from './host';
 import { ProjectList, type ProjectActions } from './ProjectList';
 
+const NEW_SESSION = 'Nova sessão';
+
 const NAV = [
-  { icon: '+', label: 'Nova sessão', key: '⌘N' },
+  { icon: '+', label: NEW_SESSION, key: '⌘N' },
   { icon: '⌕', label: 'Procurar', key: '⌘K' },
   { icon: '◷', label: 'Rotinas', key: '' },
 ];
@@ -20,6 +22,7 @@ export function Sidebar({
   onBack,
   onForward,
   onToggleAll,
+  onNewSession,
   onMissing,
 }: {
   drawsWindowControls: boolean;
@@ -33,6 +36,7 @@ export function Sidebar({
   onBack: () => void;
   onForward: () => void;
   onToggleAll: () => void;
+  onNewSession: () => void;
   onMissing: (what: string) => void;
 }) {
   const anyOpen = projects.some((p) => !p.collapsed);
@@ -60,7 +64,7 @@ export function Sidebar({
       </div>
       <nav className="sidebar-nav">
         {NAV.map((n) => (
-          <button key={n.label} type="button" className="nav-item" onClick={() => onMissing(n.label)}>
+          <button key={n.label} type="button" className="nav-item" onClick={() => (n.label === NEW_SESSION ? onNewSession() : onMissing(n.label))}>
             <span className="nav-icon">{n.icon}</span>
             <span className="nav-label">{n.label}</span>
             <span className="nav-key">{n.key}</span>

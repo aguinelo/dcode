@@ -69,18 +69,8 @@
   }
 }
 
-@keyframes dcCaret {
-  50% {
-    opacity: 0;
-  }
-}
-
 .dc-breath {
   animation: dcBreath 2.4s ease-in-out infinite;
-}
-
-.dc-caret {
-  animation: dcCaret 1.1s step-end infinite;
 }
 
 .dc-bar-fill {
@@ -90,8 +80,7 @@
 /* Less motion asked for: no pulse, no blink. The state stays legible by the
    shape of its glyph, which never depended on the animation. */
 @media (prefers-reduced-motion: reduce) {
-  .dc-breath,
-  .dc-caret {
+  .dc-breath {
     animation: none;
   }
   .dc-bar-fill {

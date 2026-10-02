@@ -342,6 +342,11 @@
 .approval-option:hover {
   background: var(--dc-hover);
 }
+/* The answer ↵ gives, shown selected as the design shows its pre-selected one:
+   deny (D22). */
+.approval-option.preselected {
+  background: var(--dc-sel);
+}
 .approval-key {
   width: 18px;
   height: 18px;

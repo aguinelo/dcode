@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { sessionMark, sessionSide, sessionTitle, type ProjectView } from '../state/sidebar';
+import { rowMark, rowSide, type ProjectView } from '../state/sidebar';
 
 export interface ProjectActions {
   toggle(id: string): void;
@@ -154,26 +154,28 @@ function Project({
         </div>
       )}
       {!p.collapsed &&
-        p.sessions.map((s) => {
-          const mark = sessionMark(s);
-          const side = sessionSide(s, now);
-          const selected = s.id === selectedId;
+        p.rows.map((r) => {
+          const mark = rowMark(r);
+          const side = rowSide(r, now);
+          const selected = r.id === selectedId;
           return (
             <div
-              key={s.id}
+              key={r.id}
               className={`session-row${selected ? ' selected' : ''}${mark === 'none' ? ' idle' : ''}`}
               role="button"
               tabIndex={0}
+              data-session-id={r.id}
+              data-state={r.state}
               aria-current={selected ? 'true' : undefined}
-              onClick={() => actions.select(s.id)}
+              onClick={() => actions.select(r.id)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') actions.select(s.id);
+                if (e.key === 'Enter') actions.select(r.id);
               }}
             >
               <span className="mark-col">
                 <span className={`mark mark-${mark}${mark === 'running' ? ' dc-breath' : ''}`} />
               </span>
-              <span className="session-title">{sessionTitle(s)}</span>
+              <span className="session-title">{r.title}</span>
               {side && <span className={`session-side tone-${side.tone}`}>{side.text}</span>}
             </div>
           );

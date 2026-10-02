@@ -4,7 +4,7 @@
 // and the window draws placeholders where the controls would be.
 
 import { recordedClient } from '../fixtures/recording';
-import type { Prefs } from '../state/prefs';
+import { emptyPrefs, type Prefs } from '../state/prefs';
 import type { UserInfo } from '../shared/api';
 
 export interface Host {
@@ -25,9 +25,9 @@ export function currentHost(): Host {
       platform: api.platform,
       drawsWindowControls: false,
       user: () => api.user(),
-      // The sessions this version shows are the recording's, so the recording's
-      // arrangement of them is where the sidebar starts.
-      initialPrefs: recordedClient.prefs,
+      // The projects are the daemon's: nothing arranged until the person
+      // arranges them.
+      initialPrefs: emptyPrefs,
     };
   }
   return {
