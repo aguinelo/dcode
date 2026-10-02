@@ -180,6 +180,17 @@ mostra o tempo desde o `turn.started`; tokens e contexto mudam quando o turno
 termina, como na TUI desde o #401. Descartado por ora: um evento de uso por
 rodada, que seria mudança de protocolo (MINOR). A lacuna L5 fica, por decisão.
 
+**D26. Os dados do app ficam numa pasta só dele.** O Chromium guarda na pasta de
+dados do app o `localStorage` das preferências (D7), caches e cookies. O padrão do
+Electron é o nome do produto dentro da pasta de dados do sistema — no macOS,
+`~/Library/Application Support/DCode` —, e o sistema de arquivos ali não distingue
+`DCode` de `dcode`, a pasta em que o próprio dcode guarda configuração, registros e
+estado, o `models.toml` incluso. O app usa `dcode-desktop` nessa pasta, e
+`DCODE_DESKTOP_USER_DATA` escolhe outra, absoluta — a régua dá uma a cada cenário.
+Apagar os dados do app nunca leva a configuração do dcode junto. Descartado: trocar
+o nome do produto, que é o nome da janela e do menu — decisão de design, não de
+onde os arquivos ficam.
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.

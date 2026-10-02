@@ -10,6 +10,17 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The app keeps its data in a folder of its own.** Electron's default is the
+  product name in the system's data folder, `~/Library/Application Support/DCode`
+  on macOS — and the file system there does not tell `DCode` from `dcode`, the
+  folder dcode keeps its configuration, records and state in. Every `npm start`
+  wrote Chromium's storage, caches and cookies beside `models.toml`, and deleting
+  the app's data would have taken dcode's configuration with it. The app now uses
+  `dcode-desktop` there, and `DCODE_DESKTOP_USER_DATA` names another, absolute
+  folder — which the check already passed and the app ignored. What earlier runs
+  left in dcode's folder is Chromium's and can be deleted by hand; dcode's own
+  entries there are `doctrine`, `models.toml`, `sessions` and
+  `update-check.json`. `docs/DECISIONS.md` D26.
 - **The loop now takes the window all the way to usable.** With N1–N3 in the
   core, `docs/loop/tasks.md` adds what day-to-day work needs on top of the
   connection: the sidebar listing every conversation, live and ended, from the

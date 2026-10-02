@@ -1,12 +1,23 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron';
 import path from 'node:path';
 import { USER_CHANNEL } from '../shared/api';
+import { userDataDir } from './paths';
 import { currentUser } from './user';
 
 // The renderer is a second client of the daemon, like the TUI, and it is kept
 // away from everything that is not drawing: no Node, no filesystem, no socket.
 // The main process will be the one that talks to the daemon (next version);
 // the preload hands the renderer a narrow API and nothing else.
+
+// Set before anything reads it, which is before `ready`.
+const userData = userDataDir(process.env, app.getPath('appData'));
+if (userData.ok) {
+  app.setPath('userData', userData.dir);
+} else {
+  console.error(`dcode: ${userData.reason}`);
+  dialog.showErrorBox('O DCode não abriu', userData.reason);
+  app.exit(1);
+}
 
 function rendererURL(): { url: string } | { file: string } {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) return { url: MAIN_WINDOW_VITE_DEV_SERVER_URL };

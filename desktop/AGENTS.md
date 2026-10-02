@@ -17,7 +17,7 @@ npm run dev:renderer    # the renderer alone in a browser, in fixture mode
 npm run build           # production build of main, preload and renderer into .vite/
 npm run typecheck       # tsc on the renderer project and on the Node project
 npm run lint            # ESLint, flat config
-npm test                # vitest: the pure state, fed protocol events
+npm test                # vitest: the pure state fed protocol events, and the main process's logic
 npm run gen:protocol    # regenerate src/protocol/generated.ts from internal/protocol (needs Go)
 npm run check:protocol  # regenerate, and fail if the committed file was stale
 npm run check:visual    # the window against the design's screenshots (see below)

@@ -10,6 +10,17 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O app guarda os dados numa pasta só dele.** O padrão do Electron é o nome do
+  produto na pasta de dados do sistema, `~/Library/Application Support/DCode` no
+  macOS — e o sistema de arquivos ali não distingue `DCode` de `dcode`, a pasta em
+  que o dcode guarda configuração, registros e estado. Cada `npm start` escrevia o
+  armazenamento, os caches e os cookies do Chromium ao lado do `models.toml`, e
+  apagar os dados do app levaria a configuração do dcode junto. O app agora usa
+  `dcode-desktop` ali, e `DCODE_DESKTOP_USER_DATA` escolhe outra pasta, absoluta —
+  que a régua já passava e o app ignorava. O que as execuções anteriores deixaram
+  na pasta do dcode é do Chromium e pode ser apagado à mão; o que é do dcode ali é
+  `doctrine`, `models.toml`, `sessions` e `update-check.json`. `docs/DECISIONS.md`
+  D26.
 - **O loop agora leva a janela até ficar usável.** Com N1–N3 no núcleo, o
   `docs/loop/tasks.md` acrescenta o que o trabalho do dia a dia pede além da
   conexão: a lateral listando todas as conversas, vivas e terminadas, a partir da
