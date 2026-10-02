@@ -10,7 +10,7 @@ import { useNow, useReducedMotion, useTick } from './hooks';
 import { SessionPanel } from './SessionPanel';
 import { Sidebar } from './Sidebar';
 import { notYet } from './text';
-import type { DaemonView, WindowActions } from './window';
+import type { DaemonView, Outcome, WindowActions } from './window';
 
 interface Toast {
   id: number;
@@ -115,18 +115,19 @@ export function App({
   // as its stream arrives.
   const selected = selectedId ? (sessions.byId[selectedId] ?? emptySession(selectedId)) : null;
 
-  /** Runs one request at a time per key, saying why when it is not done. */
+  /**
+   * Runs one request at a time per key, saying why when it is not done.
+   * Answers its outcome, or null when one with the same key was still on its
+   * way — never the bare value, since a done request's value can be null too.
+   */
   const once = useCallback(
-    async <T,>(key: string, run: () => Promise<{ ok: true; value: T } | { ok: false; why: string }>): Promise<T | null> => {
+    async <T,>(key: string, run: () => Promise<Outcome<T>>): Promise<Outcome<T> | null> => {
       if (pending.current.has(key)) return null;
       pending.current.add(key);
       try {
         const out = await run();
-        if (!out.ok) {
-          say(out.why);
-          return null;
-        }
-        return out.value;
+        if (!out.ok) say(out.why);
+        return out;
       } finally {
         pending.current.delete(key);
       }
@@ -149,7 +150,7 @@ export function App({
       const row = rows.find((r) => r.id === id);
       if (!row) return;
       const opened = await once(`open:${id}`, () => actions.open(row));
-      if (opened) show(opened);
+      if (opened?.ok) show(opened.value);
     },
     [actions, once, rows, selectedId, show],
   );
@@ -174,7 +175,7 @@ export function App({
       const done = await once(`send:${id}`, () => actions.send(id, text, selected.state === 'running'));
       // Emptied only once the daemon took it, and only if what is in the field
       // is still what was sent: a refusal keeps the text, said why.
-      if (done !== null) setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
+      if (done?.ok) setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
     },
     [actions, once, selected],
   );
