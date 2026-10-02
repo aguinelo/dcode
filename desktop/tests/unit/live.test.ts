@@ -14,10 +14,12 @@ function fakeApi() {
   };
   const ok = <T,>(value: T): Answer<T> => ({ ok: true, value });
   const session = (id: string) => ({ id, workspace: '/w' }) as P.Session;
-  let refuse: string | null = null;
+  // What the daemon refuses, by the first word of what was asked.
+  const refusals: Record<string, { code: string; message: string }> = {};
   const answer = (what: string): Promise<Answer<null>> => {
     asked.push(what);
-    return Promise.resolve(refuse ? { ok: false, refusal: { code: 'turn_already_active', message: refuse } } : ok(null));
+    const refusal = refusals[what.split(' ')[0] ?? ''];
+    return Promise.resolve(refusal ? { ok: false, refusal } : ok(null));
   };
   let resolveContinue: (a: Answer<P.Session>) => void = () => {};
   const api: DcodeApi = {
@@ -44,7 +46,7 @@ function fakeApi() {
     api,
     asked,
     listeners,
-    refuseWith: (m: string) => (refuse = m),
+    refuse: (what: string, code: string, message: string) => (refusals[what] = { code, message }),
     continued: (id: string) => resolveContinue(ok(session(id))),
   };
 }
@@ -87,9 +89,24 @@ describe('the window connected', () => {
     const f = fakeApi();
     const store = new LiveStore(f.api);
     expect(await store.actions.send('s1', 'na verdade, resuma', true)).toEqual({ ok: true, value: null });
-    f.refuseWith('turn already active');
-    expect(await store.actions.send('s1', 'oi', false)).toEqual({ ok: false, why: 'A mensagem não foi enviada: turn already active' });
+    f.refuse('turn', 'session_not_found', 'session s1 not found');
+    expect(await store.actions.send('s1', 'oi', false)).toEqual({ ok: false, why: 'A mensagem não foi enviada: session s1 not found' });
     expect(f.asked).toEqual(['steer s1: na verdade, resuma', 'turn s1: oi']);
+  });
+
+  it('sends the other way when the daemon knows better what the session is doing', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    // The turn started, and its event has not reached the window yet.
+    f.refuse('turn', 'turn_already_active', 'a turn is already running');
+    expect(await store.actions.send('s1', 'na verdade, resuma', false)).toEqual({ ok: true, value: null });
+    // The turn ended, and the window still shows it running.
+    f.refuse('steer', 'no_active_turn', 'no turn is running');
+    expect(await store.actions.send('s2', 'e agora?', true)).toEqual({
+      ok: false,
+      why: 'A mensagem não foi enviada: a turn is already running',
+    });
+    expect(f.asked).toEqual(['turn s1: na verdade, resuma', 'steer s1: na verdade, resuma', 'steer s2: e agora?', 'turn s2: e agora?']);
   });
 
   it('opens a new session in the folder chosen, and follows it', async () => {

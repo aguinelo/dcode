@@ -5,6 +5,7 @@
 
 import { decodeChange } from '../protocol/conversations';
 import { decodeEvent } from '../protocol/events';
+import { CodeNoActiveTurn, CodeTurnAlreadyActive } from '../protocol/generated';
 import type { Answer, DaemonStatus, DcodeApi } from '../shared/api';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
 import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
@@ -68,10 +69,7 @@ export class LiveStore {
 
   readonly actions: WindowActions = {
     open: (row) => (row.state === 'recorded' ? this.continueRow(row) : this.follow(row.id)),
-    send: async (id, text, steer) =>
-      steer
-        ? outcome(await this.api.steer(id, text), 'A correção não foi enviada')
-        : outcome(await this.api.submitTurn(id, text), 'A mensagem não foi enviada'),
+    send: (id, text, steer) => this.send(id, text, steer),
     stop: async (id) => outcome(await this.api.interrupt(id), 'O turno não foi interrompido'),
     answer: async (id, approvalId, decision) =>
       outcome(await this.api.resolveApproval(id, approvalId, decision), 'A resposta não foi enviada'),
@@ -108,6 +106,21 @@ export class LiveStore {
     for (const r of raw) sessions = applyDecoded(sessions, decodeEvent(r));
     for (const p of sessions.problems.slice(before)) this.notice(`Evento ilegível, sem sessão para mostrá-lo: ${p.reason}`);
     this.set({ sessions });
+  }
+
+  /**
+   * A message is a turn for an idle session and a correction for a running one
+   * (D23). Which one the window thinks it is comes from events that may still
+   * be on their way; when the daemon answers that the session is the other
+   * way, it is the daemon that knows, and the message goes the other way.
+   */
+  private async send(id: string, text: string, steer: boolean): Promise<Outcome<null>> {
+    const first = steer ? await this.api.steer(id, text) : await this.api.submitTurn(id, text);
+    const crossed = !first.ok && first.refusal.code === (steer ? CodeNoActiveTurn : CodeTurnAlreadyActive);
+    if (!crossed) return outcome(first, steer ? 'A correção não foi enviada' : 'A mensagem não foi enviada');
+    return steer
+      ? outcome(await this.api.submitTurn(id, text), 'A mensagem não foi enviada')
+      : outcome(await this.api.steer(id, text), 'A correção não foi enviada');
   }
 
   private async follow(id: string): Promise<Outcome<string>> {
