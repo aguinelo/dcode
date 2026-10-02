@@ -39,6 +39,14 @@ export interface Row {
   started: number;
   /** The instant anything last happened in it, for the project order and the age shown. */
   lastAt: string | null;
+  /** What the search's preview shows, where the source says it. */
+  branch?: string;
+  model?: string;
+  turns?: number;
+  /** The seal of the last completed turn (D13). */
+  verification?: string;
+  /** The last event that moved it along. */
+  lastEvent?: string;
 }
 
 function instant(s: string | null | undefined): number {
@@ -54,6 +62,9 @@ export function rowOfSession(v: SessionView): Row {
     state: v.state,
     started: instant(v.info?.created_at ?? v.lastAt),
     lastAt: v.lastAt,
+    branch: v.info?.branch,
+    model: v.info?.model,
+    turns: v.turns,
   };
 }
 
@@ -73,6 +84,11 @@ export function rowOfConversation(c: Conversation): Row {
     state: c.live ? c.state : 'recorded',
     started: instant(c.started),
     lastAt: c.last_activity || null,
+    branch: c.branch,
+    model: c.model,
+    turns: c.turns,
+    verification: c.verification,
+    lastEvent: c.last_event,
   };
 }
 
