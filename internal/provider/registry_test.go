@@ -337,12 +337,16 @@ func TestCredentialsNeverAppearInErrorMessages(t *testing.T) {
 		{"json body", `{"error":{"message":"bad key ` + sentinel + `"}}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			pe := ClassifyStatus(400, tc.body, "")
-			if strings.Contains(pe.Error(), sentinel) {
-				t.Errorf("credential leaked: %s", pe.Error())
-			}
-			if !strings.Contains(pe.Error(), "redacted") {
-				t.Errorf("redaction should be visible, got %q", pe.Error())
+			// Every status whose message carries the body, and since a
+			// rejection says why, that is more than the bad request.
+			for _, status := range []int{400, 401, 402, 403, 500} {
+				pe := ClassifyStatus(status, tc.body, "")
+				if strings.Contains(pe.Error(), sentinel) {
+					t.Errorf("%d: credential leaked: %s", status, pe.Error())
+				}
+				if !strings.Contains(pe.Error(), "redacted") {
+					t.Errorf("%d: redaction should be visible, got %q", status, pe.Error())
+				}
 			}
 		})
 	}

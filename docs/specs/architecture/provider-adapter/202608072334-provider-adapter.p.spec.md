@@ -228,6 +228,19 @@ func (e *ProviderError) Error() string
 | `provider` | sim | repete com recuo exponencial, até o teto |
 | `canceled` | não | encerra silenciosamente |
 
+**O motivo do provedor viaja na mensagem.** Num 401 ou 403 (`auth`) e num 402
+(`quota`), `Message` é o texto fixo da classe seguido do motivo que o provedor
+deu — `authentication rejected: <motivo>`, `quota or billing limit reached:
+<motivo>`. O motivo é o
+`error.message` do envelope que os dois dialetos compartilham, e que o MiniMax
+usa nos seus dois endpoints; fora desse envelope, é o corpo como veio. Corpo
+vazio deixa o texto fixo sozinho, e o motivo sempre passa por `sanitize` (RN-6).
+
+A classe continua sendo o que o laço lê (RN-5): para ele, chave inválida,
+revogada, de outra região ou conta sem saldo são uma decisão só, parar. Para a
+pessoa são consertos diferentes (US-5), e só o texto do provedor distingue um do
+outro.
+
 ## 5. Registro e resolução
 
 ```go
@@ -273,6 +286,7 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Depois de cancelado o `ctx`, nada que o transporte ainda tinha é decodificado — nem frame à espera, nem o fechamento: o `select` não decide como um stream cancelado termina.
 - Nenhum tipo específico de provedor cruza a fronteira do pacote (RN-2), verificado por teste de importação.
 - Nenhuma credencial aparece em `ProviderError.Message`, em log ou em evento (RN-6) — teste injeta chave sentinela e varre toda a saída.
+- Erro `auth` ou `quota` traz o motivo que o provedor deu, quando o corpo traz um, sem mudar de classe.
 - Tool call que não valida contra o schema nunca chega ao consumidor como `EventToolCall` (RN-8).
 - Frame que traz **uso e conteúdo juntos** entrega o conteúdo: o uso é lido depois das escolhas, nunca antes.
 - Uso em frame separado continua terminando sem reemitir a chamada.
@@ -299,3 +313,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
 - [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610010042 — A recusa diz por quê](changelog/202610010042-a-recusa-diz-por-que.md)

@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 205 changelogs de decisão |
+| famílias de spec | 18, com 206 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -257,6 +257,18 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **A recusa do provedor diz por quê.** Um HTTP 401 ou 403 de provedor chegava à
+  pessoa como o texto seco "authentication rejected", e um 402 como "quota or
+  billing limit reached": o transporte lia o corpo e a classificação o jogava
+  fora. Um `/loop` que o MiniMax recusou parou no primeiro segundo sem nada
+  dizendo se a chave era inválida, revogada, de outra região, ou se a conta
+  estava sem saldo. Os dois mantêm a classe e agora acrescentam o motivo do
+  provedor: o `error.message` do envelope que os dois dialetos compartilham, e
+  que o MiniMax usa nos dois endpoints, ou o corpo como veio. O motivo passa pelo
+  mesmo `sanitize` de todo outro corpo, então uma chave que o provedor cite de
+  volta continua sem chegar à tela, e a varredura com sentinela que sustenta essa
+  promessa agora cobre todo status cuja mensagem leva o corpo, não só o 400.
 
 - **Uma lista de conversas, vivas e gravadas, com um fluxo só.**
   `GET /v1/conversations` lista cada conversa uma vez — as vivas no daemon com o

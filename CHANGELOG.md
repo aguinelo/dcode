@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 205 decision changelogs |
+| spec families | 18, with 206 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -259,6 +259,18 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **A provider's refusal says why.** An HTTP 401 or 403 from a provider reached
+  the user as the bare text "authentication rejected", and a 402 as "quota or
+  billing limit reached": the transport read the body and the classification
+  threw it away. A `/loop` that MiniMax refused stopped in its first second with
+  nothing saying whether the key was invalid, revoked, for the other region, or
+  the account was out of balance. Both keep their class and now add the
+  provider's reason: the `error.message` of the envelope both dialects share,
+  which MiniMax uses on both its endpoints, or the body as it came. It goes
+  through the same sanitising as every other body, so a key the provider quotes
+  back still never reaches the screen, and the sentinel sweep behind that
+  promise now covers every status whose message carries the body, not only 400.
 
 - **One list of conversations, live and recorded, with one stream.**
   `GET /v1/conversations` lists every conversation once — the ones live in the

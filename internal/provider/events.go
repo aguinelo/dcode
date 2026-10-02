@@ -2,8 +2,10 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -183,9 +185,9 @@ func classify(ctx context.Context, err error) *ProviderError {
 func ClassifyStatus(status int, body, retryAfter string) *ProviderError {
 	switch {
 	case status == 401 || status == 403:
-		return &ProviderError{Class: ErrClassAuth, Message: "authentication rejected"}
+		return &ProviderError{Class: ErrClassAuth, Message: withReason("authentication rejected", body)}
 	case status == 402:
-		return &ProviderError{Class: ErrClassQuota, Message: "quota or billing limit reached"}
+		return &ProviderError{Class: ErrClassQuota, Message: withReason("quota or billing limit reached", body)}
 	case status == 429:
 		return &ProviderError{
 			Class: ErrClassRateLimit, Message: "rate limited", Retryable: true,
@@ -199,4 +201,46 @@ func ClassifyStatus(status int, body, retryAfter string) *ProviderError {
 		return &ProviderError{Class: ErrClassProvider, Message: sanitize(body), Retryable: true}
 	}
 	return nil
+}
+
+// withReason appends what the provider said to what the status says.
+//
+// For auth and quota the class is one decision, stop, and that is all the loop
+// needs. The person needs to know what to fix, and only the provider's half can
+// tell an invalid key from a revoked one, a key for the other region, or an
+// account with no balance left. Without it a /loop died in its first second
+// with nothing on the screen to act on.
+//
+// Through sanitize, like every body that reaches a message: a provider
+// rejecting a key is the one most likely to quote it back.
+func withReason(what, body string) string {
+	reason := sanitize(reasonOf(body))
+	if reason == "" {
+		return what
+	}
+	return what + ": " + reason
+}
+
+// reasonOf is the provider's explanation in an error body.
+//
+// Both dialects wrap it the same way, {"error": {"message": ...}}, and so does
+// MiniMax on both of its endpoints. The message is taken alone because the rest
+// of the envelope is envelope: the TUI shows an error on one line, clipped to
+// the terminal, and the JSON around the reason is what would fill it.
+//
+// Any other body is the reason as it came, trimmed. Guessing at other fields
+// would be inventing a format nobody declared, and the body loses nothing.
+func reasonOf(body string) string {
+	body = strings.TrimSpace(body)
+	var envelope struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.Unmarshal([]byte(body), &envelope) == nil {
+		if m := strings.TrimSpace(envelope.Error.Message); m != "" {
+			return m
+		}
+	}
+	return body
 }

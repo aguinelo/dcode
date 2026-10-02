@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -325,5 +326,92 @@ func TestClassifyPreservesAnAlreadyClassifiedError(t *testing.T) {
 	}
 	if got := classify(context.Background(), errors.New("connection reset")); got.Class != ErrClassTransport || !got.Retryable {
 		t.Errorf("an unknown error should be a retryable transport failure, got %+v", got)
+	}
+}
+
+// A rejected key, a forbidden model and an empty balance are one decision for
+// the loop, which stops, and different things for the person to fix. The class
+// carries the decision. Only what the provider wrote says what to fix.
+//
+// Reported: a /loop stopped in its first second with "authentication rejected"
+// from MiniMax, and nothing said whether the key was invalid, revoked, for the
+// other region, or the account was out of balance. The two MiniMax bodies were
+// recorded from api.minimax.io on 2026-10-01, with a key that does not exist.
+func TestARejectionCarriesTheProvidersReason(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		body   string
+		class  ErrorClass
+		want   string
+	}{
+		{"minimax, openai dialect", 401,
+			`{"type":"error","error":{"type":"authorized_error","message":"login fail: Please carry the API secret key in the 'Authorization' field of the request header (1004)","http_code":"401"},"request_id":"070d080f3510a2fbc0080775926e1f51"}`,
+			ErrClassAuth,
+			"authentication rejected: login fail: Please carry the API secret key in the 'Authorization' field of the request header (1004)"},
+		{"minimax, anthropic dialect", 401,
+			`{"type":"error","error":{"type":"authentication_error","message":"login fail: Please carry the API secret key in the 'X-Api-Key' field of the request header"},"request_id":"070d080f953d363f713439edff359c1b"}`,
+			ErrClassAuth,
+			"authentication rejected: login fail: Please carry the API secret key in the 'X-Api-Key' field of the request header"},
+		{"forbidden", 403,
+			`{"type":"error","error":{"type":"permission_error","message":"Your API key does not have permission to use the specified resource."}}`,
+			ErrClassAuth,
+			"authentication rejected: Your API key does not have permission to use the specified resource."},
+		{"out of balance", 402,
+			`{"error":{"message":"insufficient balance","type":"insufficient_balance"}}`,
+			ErrClassQuota,
+			"quota or billing limit reached: insufficient balance"},
+		// Outside the envelope the body is the reason, as it came.
+		{"plain text", 401, "invalid api key\n", ErrClassAuth,
+			"authentication rejected: invalid api key"},
+		{"an envelope with no message", 402, `{"error":{"code":1008}}`, ErrClassQuota,
+			`quota or billing limit reached: {"error":{"code":1008}}`},
+		// Nothing to add adds nothing, not a colon with nothing after it.
+		{"empty", 401, "", ErrClassAuth, "authentication rejected"},
+		{"blank", 402, " \n", ErrClassQuota, "quota or billing limit reached"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pe := ClassifyStatus(tc.status, tc.body, "")
+			if pe == nil || pe.Class != tc.class {
+				t.Fatalf("got %+v, want class %s", pe, tc.class)
+			}
+			if pe.Message != tc.want {
+				t.Errorf("message:\n got %q\nwant %q", pe.Message, tc.want)
+			}
+		})
+	}
+}
+
+// A provider that rejects a key is the one most likely to quote it back, and
+// the reason now reaches the screen. Whatever key it carries is gone by then,
+// registered or not.
+func TestAKeyQuotedInARejectionIsRedacted(t *testing.T) {
+	// Shaped like a MiniMax key: no "sk-", no "Bearer", nothing the pattern
+	// could know it by. Only having been registered gives it away.
+	const registered = "eyJhbGciOiJSUzI1NiJ9.eyJHcm91cE5hbWUiOiJkY29kZSJ9.c2lnbmF0dXJlLXByb2Jl"
+	RegisterSecret(registered)
+	t.Cleanup(ClearSecrets)
+	// Never registered, so caught by its shape alone.
+	const stray = "abcdefghijklmnop0123456789"
+
+	for _, status := range []int{401, 402, 403} {
+		for _, tc := range []struct{ name, body, key string }{
+			{"the registered key", `{"error":{"message":"key ` + registered + ` is not valid"}}`, registered},
+			{"an Authorization header", `{"error":{"message":"rejected Authorization: Bearer ` + stray + `"}}`, stray},
+			{"an x-api-key header", `{"error":{"message":"rejected x-api-key: ` + stray + `"}}`, stray},
+			{"a key by its prefix", `{"error":{"message":"no such key sk-` + stray + `"}}`, stray},
+			{"outside the envelope", "Authorization: Bearer " + stray + "\n", stray},
+		} {
+			t.Run(fmt.Sprint(status, " ", tc.name), func(t *testing.T) {
+				msg := ClassifyStatus(status, tc.body, "").Message
+				if strings.Contains(msg, tc.key) {
+					t.Fatalf("the key reached the message: %q", msg)
+				}
+				// Visible, so a reason with a hole in it does not read as whole.
+				if !strings.Contains(msg, "[redacted]") {
+					t.Errorf("want the reason with the key redacted, got %q", msg)
+				}
+			})
+		}
 	}
 }
