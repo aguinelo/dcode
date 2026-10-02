@@ -10,6 +10,23 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A janela roda sobre um daemon de verdade.** Dentro do Electron, o processo
+  principal anexa ao `dcode serve` que responde no socket — `DCODE_SOCKET`, senão
+  o que o `dcode socket` imprimir — ou sobe um ali como filho, de `DCODE_BIN`,
+  `~/.local/bin/dcode` ou do `PATH`; encerra só o que subiu, e pergunta antes
+  quando fechar pararia uma sessão rodando ou esperando você (D19). A barra
+  inferior diz conectando, conectado com a versão do daemon, caiu ou não subiu,
+  com o porquê. A lateral é a lista de conversas do daemon (N3), vivas e
+  terminadas, por projeto: uma viva abre o fluxo dela desde o primeiro evento e o
+  retoma do último quando ele cai; uma terminada é continuada numa sessão nova,
+  que a janela abre (D21). O campo envia um turno, corrige um que roda (D23) e o
+  para; uma aprovação se responde com `1`, `2`, `3`, `esc` e `↵`, que nega (D22);
+  Nova sessão e ⌘N pedem uma pasta e abrem uma sessão nela. Toda recusa mostra a
+  mensagem do daemon, e nada enviado a um daemon que morreu parece aceito. O
+  renderer continua sem ver Node nem o socket: o preload lhe entrega um canal com
+  nome por pedido e por notícia (`src/shared/api.ts`). Um navegador, ou o
+  `?fixture=`, continua mostrando a gravação, e a régua visual lê 1,20% e 1,21% —
+  os números em que D22 e D23 foram medidas.
 - **O app guarda os dados numa pasta só dele.** O padrão do Electron é o nome do
   produto na pasta de dados do sistema, `~/Library/Application Support/DCode` no
   macOS — e o sistema de arquivos ali não distingue `DCode` de `dcode`, a pasta em

@@ -6,12 +6,13 @@ The desktop client of dcode: a second client of the same daemon the terminal
 client talks to, in Electron, so it looks the same on macOS, Linux and Windows.
 macOS first.
 
-> **Status.** 0.1.0, unreleased. This version draws the main window of the v2
-> design — the sidebar of projects and sessions, one session at a time, the
-> approval card, the composer and the bottom bar — from **recorded** protocol
-> events. It does not connect to a daemon yet; the bottom bar says `gravação`
-> (recording) so nobody mistakes it for a live one. Wiring the main process to
-> the daemon's socket is the next version.
+> **Status.** 0.1.0, unreleased. The main window of the v2 design — the sidebar
+> of projects and conversations, one session at a time, the approval card, the
+> composer and the bottom bar — runs on a real `dcode serve`: it attaches to the
+> one answering on the socket, or starts one. Its sidebar is the daemon's list of
+> conversations, live and ended; a session is driven from the window — a new one
+> in a chosen folder, a turn, a correction, a stop, an answer to an approval. In a
+> browser it shows a recording instead, and the bottom bar says `gravação`.
 
 ## Running it
 
@@ -23,18 +24,24 @@ npm run dev:renderer  # the renderer alone, in a browser, in fixture mode
 npm run build         # a production build of main, preload and renderer into .vite/
 ```
 
-`npm start` downloads Electron's binary on first use. The window opens on the
-recording. In a browser, `?fixture=02-janela-principal-rodando` or
-`?fixture=03-janela-principal-aprovacao` opens one of the design's reference
-states, with the window controls drawn where macOS would put them.
+`npm start` downloads Electron's binary on first use. The window looks for the
+daemon on `DCODE_SOCKET`, else where `dcode socket` says, and attaches to it; with
+nothing answering there it starts `dcode serve` — from `DCODE_BIN`, else
+`~/.local/bin/dcode`, else the `PATH` — and stops it when the app quits. A daemon
+it did not start keeps running. The installed `dcode` must be 0.23.0 or later,
+which serves the list of conversations. In a browser,
+`?fixture=02-janela-principal-rodando` or `?fixture=03-janela-principal-aprovacao`
+opens one of the design's reference states, with the window controls drawn where
+macOS would put them.
 
 ## How it is built
 
-- **Main process** (`src/main/`) owns the window and, next version, the daemon's
-  Unix socket. The window keeps the native macOS controls inside the sidebar's
-  title strip.
-- **Preload** (`src/preload/`) hands the renderer a narrow API — the platform and
-  who the user is — and nothing else.
+- **Main process** (`src/main/`) owns the window and is the daemon's client: HTTP
+  and the event streams over its Unix socket, the daemon it started, and the
+  question before quitting while a session works. The window keeps the native
+  macOS controls inside the sidebar's title strip.
+- **Preload** (`src/preload/`) hands the renderer a narrow API — one named
+  channel per request and per notice, in `src/shared/api.ts` — and nothing else.
 - **Renderer** (`src/renderer/`, React) never sees Node, the filesystem or the
   socket: context isolation, sandbox, and a content security policy that lets it
   connect nowhere. Geist and Geist Mono are bundled; nothing loads from the

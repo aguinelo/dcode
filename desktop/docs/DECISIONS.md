@@ -14,10 +14,13 @@ protocolo não traz, e o que o desktop pede ao núcleo.
 **D1. Electron, com Electron Forge (Vite + TypeScript), React e npm.** O Chromium
 embutido faz o app ter a mesma cara no macOS, no Linux e no Windows. Mac primeiro.
 
-**D2. Segundo cliente do daemon, como a TUI.** O processo principal é quem vai
-falar com o socket Unix (próxima versão). O renderer não vê Node nem o socket
-(`contextIsolation` ligado, `nodeIntegration` desligado, `sandbox` ligado); o
-preload expõe só `platform` e `user()`. Nenhuma porta local é aberta. O renderer
+**D2. Segundo cliente do daemon, como a TUI.** O processo principal fala com o
+socket Unix — os pedidos HTTP e os fluxos SSE —, e o renderer não vê Node nem o
+socket (`contextIsolation` ligado, `nodeIntegration` desligado, `sandbox` ligado).
+O preload expõe a API de `src/shared/api.ts`: um canal com nome para cada pedido e
+para cada notícia — o estado do daemon, a lista de conversas, os eventos das
+sessões abertas —, nenhum genérico, e o processo principal confere cada argumento
+antes de usá-lo. Nenhuma porta local é aberta. O renderer
 construído roda sob uma CSP que não deixa conectar a lugar nenhum (`connect-src
 'none'`) e carrega fontes só do próprio pacote.
 
@@ -35,7 +38,9 @@ uma nota visível no fluxo da sessão ("Evento ilegível: …"), nunca é descar
 Seq repetido é sobreposição de replay e não muda nada; seq que pula é o log com
 buraco, e a lacuna é dita no fluxo.
 
-**D5. Nesta versão os dados vêm de uma gravação.** Eventos no formato exato do
+**D5. No modo fixture os dados vêm de uma gravação.** Dentro do Electron a janela
+é cliente do daemon (D2, D19). No navegador — `npm run dev:renderer` e a régua
+visual, com `?fixture=` — ela mostra eventos no formato exato do
 fio (`src/fixtures/recording.ts`), com só os campos e valores que um daemon
 mandaria. A gravação é reproduzida como se tivesse acabado de acontecer: ao abrir,
 todos os instantes andam o mesmo tanto até agora, e os relógios seguem dali. A
@@ -154,7 +159,10 @@ explícita: `1` uma vez, `2` nesta sessão; `3`, `esc` e `↵` negam. A opção
 destacada é negar, e só isso muda no design. O campo de mensagem fica desabilitado
 enquanto a aprovação espera, com o texto "Responda à aprovação acima". Medido
 antes de decidir: a tela 03 fica a 1,21% das referências, dentro do limite.
-Descartados: `↵` permite uma vez, como no design (aprovar sem ler vira o gesto mais
+O `↵` da janela só responde com o foco em lugar nenhum: num botão de resposta ou
+numa linha da lateral, o `↵` é daquele controle — senão `↵` sobre "Permitir uma
+vez" negaria. O campo, ao ser desabilitado, devolve o foco à janela, e com ele as
+teclas da resposta. Descartados: `↵` permite uma vez, como no design (aprovar sem ler vira o gesto mais
 barato, e a invariante da TUI teria de mudar junto); `↵` sem efeito (uma regra
 diferente em cada cliente).
 
@@ -201,9 +209,10 @@ A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
 mostra as três.
 
 **A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico de sessões
-abertas nesta janela (← fica esmaecido até haver para onde voltar). Recolher a
-lateral, nova sessão, procurar (⌘K), rotinas, anexar, trocar modelo, o menu da
-sessão e configurações avisam que ainda não existem.
+abertas nesta janela (← fica esmaecido até haver para onde voltar). Nova sessão,
+pelo botão e pelo ⌘N, pede a pasta e abre a sessão nela. Recolher a lateral,
+procurar (⌘K), rotinas, anexar, trocar modelo, o menu da sessão e configurações
+avisam que ainda não existem.
 
 ## Lacunas — o que o design pede e o protocolo não traz
 
@@ -244,8 +253,9 @@ mudança de protocolo, com changelog de spec no núcleo antes do código.
   diz 1). Decidido: uma tela sobre o mecanismo que existe (D24, N4).
 - **L12. Quem usa.** Nome e iniciais do rodapé vêm do sistema, pelo processo
   principal (`id -F` no macOS, GECOS no Linux, senão o login) — não do protocolo.
-- **L13. Status do daemon.** Esta versão não conecta; a conexão é o loop de
-  `docs/loop/` (D19).
+- **L13. Status do daemon.** Fechada: a barra diz conectando, conectado — com a
+  versão que o `GET /version` deu —, caiu ou não subiu, e os dois últimos dizem o
+  porquê (D19).
 - **L14. Estados.** O handoff lista `running | loop | awaiting_approval | idle |
   interrupted`; o fio tem `idle | running | blocked | closed`. "Esperando
   aprovação" é `blocked`; "interrompida" é um `reason` do `turn.completed`

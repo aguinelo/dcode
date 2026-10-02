@@ -1,13 +1,13 @@
+import { useLayoutEffect, useRef } from 'react';
 import type { SessionView } from '../state/session';
 
 /**
- * The placeholder by state. While a turn runs the design says the message
- * queues; the TUI's spec says a word typed during a turn steers it. The
- * design's text stays and neither behaviour is built here (docs/DECISIONS.md).
+ * The placeholder by state. During a turn, a message corrects it (D23); while
+ * an approval waits, the answer comes first and the field takes nothing (D22).
  */
 function placeholderOf(state: string): string {
-  if (state === 'running') return 'Mensagem entra na fila depois deste turno';
-  if (state === 'blocked') return 'Ou diga o que fazer em vez disso';
+  if (state === 'running') return 'Escreva para redirecionar este turno';
+  if (state === 'blocked') return 'Responda à aprovação acima';
   return 'Escreva uma mensagem';
 }
 
@@ -37,6 +37,12 @@ export function Composer({
   const running = session.state === 'running';
   const blocked = session.state === 'blocked';
   const empty = text.length === 0;
+  const input = useRef<HTMLTextAreaElement>(null);
+  // A field that stops taking text gives the keys back to the window, where
+  // the approval's answers are (↵ among them).
+  useLayoutEffect(() => {
+    if (blocked && document.activeElement === input.current) input.current?.blur();
+  }, [blocked]);
   const contextWindow = session.info?.context_window ?? 0;
   // Known only once a turn has ended: the daemon measures the context in
   // turn.completed, and a number derived here would be a second meter.
@@ -46,27 +52,22 @@ export function Composer({
       : null;
   const chip = [session.sandbox, session.mode].filter(Boolean).join(' · ');
   const send = () => {
-    if (text.trim()) onSend(text);
+    if (!blocked && text.trim()) onSend(text);
   };
   return (
     <div className="composer-wrap">
       <div className="composer">
         <div className={`composer-field${empty ? ' empty' : ''}${blocked ? ' blocked' : ''}`}>
           <div className="composer-sizer" aria-hidden="true">
-            {empty ? (
-              <>
-                {placeholderOf(session.state)}
-                {blocked && <span className="composer-caret dc-caret" />}
-              </>
-            ) : (
-              `${text}\n`
-            )}
+            {empty ? placeholderOf(session.state) : `${text}\n`}
           </div>
           <textarea
+            ref={input}
             className="composer-input"
             aria-label={placeholderOf(session.state)}
             rows={1}
             value={text}
+            disabled={blocked}
             onChange={(e) => onText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -93,7 +94,7 @@ export function Composer({
               <span className="stop-square" />
             </button>
           ) : (
-            <button type="button" className="composer-button send" aria-label="Enviar" onClick={send}>
+            <button type="button" className="composer-button send" aria-label="Enviar" disabled={blocked} onClick={send}>
               ↑
             </button>
           )}

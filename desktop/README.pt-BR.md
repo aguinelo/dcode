@@ -6,12 +6,13 @@ O cliente desktop do dcode: um segundo cliente do mesmo daemon com que o cliente
 de terminal fala, em Electron, para ter a mesma cara no macOS, no Linux e no
 Windows. macOS primeiro.
 
-> **Estado.** 0.1.0, não publicado. Esta versão desenha a janela principal do
-> design v2 — a lateral de projetos e sessões, uma sessão por vez, o card de
-> aprovação, o composer e a barra inferior — a partir de eventos de protocolo
-> **gravados**. Ainda não se conecta a um daemon; a barra inferior diz
-> `gravação` para ninguém confundir com um ao vivo. Ligar o processo principal ao
-> socket do daemon é a próxima versão.
+> **Estado.** 0.1.0, não publicado. A janela principal do design v2 — a lateral
+> de projetos e conversas, uma sessão por vez, o card de aprovação, o composer e a
+> barra inferior — roda sobre um `dcode serve` de verdade: anexa ao que responde
+> no socket, ou sobe um. A lateral é a lista de conversas do daemon, vivas e
+> terminadas; a sessão é conduzida pela janela — uma nova numa pasta escolhida, um
+> turno, uma correção, parar, responder a uma aprovação. No navegador ela mostra
+> uma gravação, e a barra inferior diz `gravação`.
 
 ## Rodando
 
@@ -23,18 +24,24 @@ npm run dev:renderer  # só o renderer, num navegador, em modo fixture
 npm run build         # build de produção de main, preload e renderer em .vite/
 ```
 
-O `npm start` baixa o binário do Electron no primeiro uso. A janela abre na
-gravação. No navegador, `?fixture=02-janela-principal-rodando` ou
-`?fixture=03-janela-principal-aprovacao` abre um dos estados de referência do
-design, com os controles de janela desenhados onde o macOS os poria.
+O `npm start` baixa o binário do Electron no primeiro uso. A janela procura o
+daemon em `DCODE_SOCKET`, senão onde o `dcode socket` disser, e anexa a ele; sem
+nada respondendo ali, sobe o `dcode serve` — de `DCODE_BIN`, senão
+`~/.local/bin/dcode`, senão do `PATH` — e o encerra quando o app fecha. Um daemon
+que ela não subiu continua rodando. O `dcode` instalado precisa ser 0.23.0 ou
+mais novo, que serve a lista de conversas. No navegador,
+`?fixture=02-janela-principal-rodando` ou `?fixture=03-janela-principal-aprovacao`
+abre um dos estados de referência do design, com os controles de janela
+desenhados onde o macOS os poria.
 
 ## Como é feito
 
-- **Processo principal** (`src/main/`) é dono da janela e, na próxima versão, do
-  socket Unix do daemon. A janela mantém os controles nativos do macOS dentro da
-  faixa de título da lateral.
-- **Preload** (`src/preload/`) entrega ao renderer uma API estreita — a
-  plataforma e quem usa — e nada mais.
+- **Processo principal** (`src/main/`) é dono da janela e é o cliente do daemon:
+  HTTP e os fluxos de eventos pelo socket Unix, o daemon que subiu, e a pergunta
+  antes de fechar com sessão trabalhando. A janela mantém os controles nativos do
+  macOS dentro da faixa de título da lateral.
+- **Preload** (`src/preload/`) entrega ao renderer uma API estreita — um canal com
+  nome por pedido e por notícia, em `src/shared/api.ts` — e nada mais.
 - **Renderer** (`src/renderer/`, React) nunca vê Node, o sistema de arquivos ou o
   socket: isolamento de contexto, sandbox e uma CSP que não o deixa conectar a
   lugar nenhum. Geist e Geist Mono vêm empacotadas; nada vem da rede.
