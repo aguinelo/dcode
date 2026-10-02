@@ -10,6 +10,24 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The window runs on a real daemon.** Inside Electron, the main process
+  attaches to the `dcode serve` answering on the socket — `DCODE_SOCKET`, else
+  what `dcode socket` prints — or starts one there as its child, from
+  `DCODE_BIN`, `~/.local/bin/dcode` or the `PATH`; it stops only the one it
+  started, and asks first when quitting would stop a session that is running or
+  waiting for you (D19). The bottom bar says connecting, connected with the
+  daemon's version, lost or failed, with the reason. The sidebar is the daemon's
+  list of conversations (N3), live and ended, by project: a live one opens its
+  stream from the first event and resumes from the last when it drops; an ended
+  one is continued in a new session the window opens (D21). The field sends a
+  turn, corrects a running one (D23) and stops it; an approval is answered with
+  `1`, `2`, `3`, `esc` and `↵`, which denies (D22); Nova sessão and ⌘N ask for a
+  folder and open a session there. Every refusal shows the daemon's message, and
+  nothing sent to a daemon that died looks accepted. The renderer still sees
+  neither Node nor the socket: the preload hands it one named channel per request
+  and per notice (`src/shared/api.ts`). A browser, or `?fixture=`, still shows
+  the recording, and the visual check reads 1.20% and 1.21% — the numbers D22 and
+  D23 were measured at.
 - **The app keeps its data in a folder of its own.** Electron's default is the
   product name in the system's data folder, `~/Library/Application Support/DCode`
   on macOS — and the file system there does not tell `DCode` from `dcode`, the
