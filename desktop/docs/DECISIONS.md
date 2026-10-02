@@ -199,6 +199,16 @@ Apagar os dados do app nunca leva a configuração do dcode junto. Descartado: t
 o nome do produto, que é o nome da janela e do menu — decisão de design, não de
 onde os arquivos ficam.
 
+**D27. O ⌘K procura na lista de conversas, pelo título e pelo projeto.** Cada
+palavra digitada precisa estar no título ou no projeto (o rótulo ou o caminho),
+sem distinguir maiúsculas nem acentos. Os grupos são os do design: "Ativas"
+primeiro — rodando ou esperando você —, depois um por projeto, na ordem da
+lateral; uma conversa ativa aparece só em "Ativas". `↵` abre a do cursor pelas
+regras de um clique na linha — uma terminada é continuada numa sessão nova (D21).
+O vazio diz que nada foi achado e não promete o que não existe: o "↵ cria uma nova
+com esse pedido" do design fica de fora até haver onde criá-la. O escopo do
+projeto é o da sessão aberta, e some sem sessão aberta.
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
@@ -210,9 +220,9 @@ mostra as três.
 
 **A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico de sessões
 abertas nesta janela (← fica esmaecido até haver para onde voltar). Nova sessão,
-pelo botão e pelo ⌘N, pede a pasta e abre a sessão nela. Recolher a lateral,
-procurar (⌘K), rotinas, anexar, trocar modelo, o menu da sessão e configurações
-avisam que ainda não existem.
+pelo botão e pelo ⌘N, pede a pasta e abre a sessão nela; procurar, pelo botão e
+pelo ⌘K, abre a busca (D27). Recolher a lateral, rotinas, anexar, trocar modelo, o
+menu da sessão e configurações avisam que ainda não existem.
 
 ## Lacunas — o que o design pede e o protocolo não traz
 
@@ -268,6 +278,10 @@ mudança de protocolo, com changelog de spec no núcleo antes do código.
   chave de configuração não existe; o que existe é o catálogo por fase da TUI e o
   liga-desliga `DCODE_ACTIVITY_VERBS`. Ver D14. Por isso a tela 02 diz
   "Delegando…" onde o mock diz "Conferindo…".
+- **L17. A prévia do ⌘K.** O design mostra a ferramenta que espera aprovação
+  ("Esperando aprovação · bash") e quantos checks o selo conferiu ("✓ verified ·
+  2 checks"). A lista de conversas traz o estado, o selo e o último evento, sem a
+  ferramenta nem a contagem: a prévia diz "Esperando aprovação" e "✓ verified".
 
 ## Pedidos ao núcleo
 

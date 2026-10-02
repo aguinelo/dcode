@@ -11,8 +11,9 @@ macOS first.
 > composer and the bottom bar — runs on a real `dcode serve`: it attaches to the
 > one answering on the socket, or starts one. Its sidebar is the daemon's list of
 > conversations, live and ended; a session is driven from the window — a new one
-> in a chosen folder, a turn, a correction, a stop, an answer to an approval. In a
-> browser it shows a recording instead, and the bottom bar says `gravação`.
+> in a chosen folder, a turn, a correction, a stop, an answer to an approval — and
+> ⌘K finds any conversation by its title or project. In a browser it shows a
+> recording instead, and the bottom bar says `gravação`.
 
 ## Running it
 

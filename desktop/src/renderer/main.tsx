@@ -5,6 +5,7 @@ import './styles/base.css';
 import './styles/sidebar.css';
 import './styles/session.css';
 import './styles/composer.css';
+import './styles/search.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';

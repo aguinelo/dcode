@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **⌘K finds any conversation.** The search the design draws, over the daemon's
+  list: every word typed must be in the title or the project, without case or
+  accents; the conversations running or waiting for you first, then one group per
+  project; `tab` for the scope, the arrows for the cursor, `esc` to clear and then
+  to close. `↵` opens the one under the cursor as a click on its row would, so an
+  ended conversation is continued. The preview shows what the list carries — the
+  state, the seal, the workspace, branch, model, turns and last event — and
+  `docs/DECISIONS.md` records what the design asks for and the list does not
+  (D27, L17).
 - **The window runs on a real daemon.** Inside Electron, the main process
   attaches to the `dcode serve` answering on the socket — `DCODE_SOCKET`, else
   what `dcode socket` prints — or starts one there as its child, from

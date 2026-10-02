@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
@@ -7,6 +8,7 @@ import { answerForKey } from './ApprovalCard';
 import { DaemonBar } from './DaemonBar';
 import type { Host } from './host';
 import { useNow, useReducedMotion, useTick } from './hooks';
+import { Search } from './Search';
 import { SessionPanel } from './SessionPanel';
 import { Sidebar } from './Sidebar';
 import { notYet } from './text';
@@ -73,6 +75,7 @@ export function App({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [toasts, setToasts] = useState<Toast[]>(() => boot.notes.map((text, i) => ({ id: i + 1, text })));
   const [userName, setUserName] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
   // Requests still on their way, so a second ↵ or click does not repeat one.
   const pending = useRef(new Set<string>());
 
@@ -196,14 +199,18 @@ export function App({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Drawn and focused before this key's handling ends, so what is typed
+        // right after ⌘K lands in the search, not in the window behind it.
+        flushSync(() => setSearching((s) => !s));
+        return;
+      }
+      // While the search is open, its keys are its own.
+      if (searching) return;
       if (mod && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         void newSession();
-        return;
-      }
-      if (mod && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        say(notYet('Procurar'));
         return;
       }
       if (mod && /^[1-9]$/.test(e.key)) {
@@ -228,10 +235,13 @@ export function App({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [projects, open, newSession, selected, answer, say]);
+  }, [projects, open, newSession, selected, answer, searching]);
+
+  // The project the search's `projeto` scope keeps to: the open session's.
+  const openProject = selected ? (selected.info?.workspace ?? rows.find((r) => r.id === selected.id)?.workspace ?? null) : null;
 
   return (
-    <div className="window">
+    <div className={`window${searching ? ' searching' : ''}`}>
       <div className="window-main">
         <Sidebar
           drawsWindowControls={host.drawsWindowControls}
@@ -255,6 +265,7 @@ export function App({
           }}
           onToggleAll={() => updatePrefs((p) => setAllCollapsed(p, shown, projects.some((x) => !x.collapsed)))}
           onNewSession={() => void newSession()}
+          onSearch={() => setSearching(true)}
           onMissing={(what) => say(notYet(what))}
           actions={{
             toggle: (id) => updatePrefs((p) => setCollapsed(p, id, !p.collapsed[id])),
@@ -291,6 +302,18 @@ export function App({
         {counts.running > 0 && <span>{counts.running} rodando</span>}
         {counts.blocked > 0 && <span className="tone-warn">{counts.blocked} esperando você</span>}
       </footer>
+      {searching && (
+        <Search
+          projects={projects}
+          project={openProject}
+          now={now}
+          onOpen={(id) => {
+            setSearching(false);
+            void open(id);
+          }}
+          onClose={() => setSearching(false)}
+        />
+      )}
       {toasts.length > 0 && (
         <div className="toasts" role="status" aria-live="polite">
           {toasts.map((t) => (
