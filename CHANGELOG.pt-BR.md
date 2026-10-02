@@ -16,7 +16,7 @@ em uma linha cada.
 
 ---
 
-## Estado atual — 30 de setembro de 2026
+## Estado atual — 1 de outubro de 2026
 
 **O que é.** Harness de codificação agêntica em Go: um daemon, um cliente de
 terminal e o laço do agente entre os dois, num binário estático único, sem cgo
@@ -33,7 +33,7 @@ fora do pacote isolado.
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,9%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
-| versão publicada | **0.22.1** |
+| versão publicada | **0.23.0** |
 
 **Como se instala.** `curl … install.sh | sh`, ou `go install`. Nada mais precisa
 ser instalado antes — de rustup, bun, deno, nvm, k3s e uv, nenhum exige ferramenta
@@ -124,10 +124,11 @@ não pôde ser conferido.
 
 **Um segundo cliente, numa área própria.** `desktop/` guarda um cliente Electron
 do mesmo daemon, com changelog próprio e versão própria (`desktop-v*`, nenhuma
-publicada ainda). Ele desenha a janela principal do design a partir de eventos
-de protocolo gravados, e o loop que o liga a um daemon de verdade teve a régua
-escrita antes: oito cenários contra um `dcode serve` de verdade, reprovando de
-propósito até a janela conectar.
+publicada ainda). Ele roda sobre um `dcode serve` de verdade — o que responde no
+socket, ou um que ele sobe —, com a lista de conversas do daemon na lateral,
+sessões conduzidas pela janela e o ⌘K; a régua do loop dele, onze cenários contra
+um daemon de verdade e um modelo roteirizado, passa inteira. Ele precisa desta
+versão ou de uma mais nova instalada: a lista que ele lê é nova nela.
 
 **O que as guardas não conseguiam ver.** Oito dos defeitos corrigidos em 24 de
 agosto tinham guarda escrita exatamente para eles, e toda guarda perguntava
@@ -193,7 +194,9 @@ um app aberto pelo Dock nunca concordaram nas variáveis de onde ele vinha —, 
 daemon embutido escuta lá também. O daemon roda sem confinamento, então todo
 sandbox mantém essa pasta fora de alcance: no macOS a configuração padrão a
 entregava a todo comando confinado. Um daemon atende todos os projetos, e cada
-sessão lê a configuração do seu workspace, o arquivo do projeto incluso.
+sessão lê a configuração do seu workspace, o arquivo do projeto incluso. Um
+cliente lista todas as conversas, vivas ou gravadas, por uma rota só, e acompanha
+a lista por um fluxo só do que muda.
 
 A rede recebe o tratamento que escrever dentro do workspace recebe: liberada por
 default (`sandbox.allow_network`), sem aprovação a cada travessia em
@@ -257,6 +260,8 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+## 0.23.0 — 1 de outubro de 2026
 
 - **Uma lista de conversas, vivas e gravadas, com um fluxo só.**
   `GET /v1/conversations` lista cada conversa uma vez — as vivas no daemon com o
