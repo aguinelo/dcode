@@ -11,8 +11,9 @@ Windows. macOS primeiro.
 > barra inferior — roda sobre um `dcode serve` de verdade: anexa ao que responde
 > no socket, ou sobe um. A lateral é a lista de conversas do daemon, vivas e
 > terminadas; a sessão é conduzida pela janela — uma nova numa pasta escolhida, um
-> turno, uma correção, parar, responder a uma aprovação. No navegador ela mostra
-> uma gravação, e a barra inferior diz `gravação`.
+> turno, uma correção, parar, responder a uma aprovação —, e o ⌘K acha qualquer
+> conversa pelo título ou pelo projeto. No navegador ela mostra uma gravação, e a
+> barra inferior diz `gravação`.
 
 ## Rodando
 
