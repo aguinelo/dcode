@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { lastEventText, longState, SCOPES, searchGroups, searchSide, type Scope } from '../state/search';
 import { activeRows, rowMark, type ProjectView, type Row } from '../state/sidebar';
 
@@ -54,7 +54,7 @@ export function Search({
   const [scope, setScope] = useState<Scope>('todas');
   const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => input.current?.focus(), []);
+  useLayoutEffect(() => input.current?.focus(), []);
 
   const scopes = useMemo(() => SCOPES.filter((s) => s !== 'projeto' || project !== null), [project]);
   const groups = useMemo(() => searchGroups(projects, query, scope, project), [projects, query, scope, project]);

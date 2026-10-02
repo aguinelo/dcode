@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
@@ -200,7 +201,9 @@ export function App({
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setSearching((s) => !s);
+        // Drawn and focused before this key's handling ends, so what is typed
+        // right after ⌘K lands in the search, not in the window behind it.
+        flushSync(() => setSearching((s) => !s));
         return;
       }
       // While the search is open, its keys are its own.
