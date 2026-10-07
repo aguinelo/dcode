@@ -16,6 +16,10 @@ export function noteText(n: Note): { text: string; tone: Tone } {
   switch (n.kind) {
     case 'resumed':
       return { text: `Continua a sessão ${n.sourceId} · ${plural(n.turns, 'turno', 'turnos')}`, tone: 'dim' };
+    case 'notice':
+      // The daemon's sentence, in English, as session.error's is: it carries
+      // counts and names this side cannot rebuild from the code.
+      return { text: n.message, tone: 'warn' };
     case 'mode':
       return { text: `Modo ${n.previous} → ${n.mode} · ${n.sandbox}`, tone: 'dim' };
     case 'compacted':

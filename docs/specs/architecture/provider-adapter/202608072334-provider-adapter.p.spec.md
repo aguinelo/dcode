@@ -283,7 +283,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - A mesma família codificando para dois transportes distintos produz corpos distintos e ambos válidos — o teste que prova que os dois eixos são de fato ortogonais.
 - `Limits()` devolve o default da família quando a configuração não sobrescreve.
 - Família cujo `Transports()` nomeia um dialeto **recusa** os outros no `Encode`; herdar a codificação não herda a declaração.
-- Família **sem nenhuma medição** registrada avisa isso na sessão, e a lista de quem avisa é conferida contra as medições que existem, nos dois sentidos.
+- Família **sem nenhuma medição** registrada avisa isso na sessão: quem anexa recebe a admissão dela num `session.notice`.
+- A lista de quem avisa é conferida contra as medições que existem, nos dois sentidos.
 - Tool call cujos argumentos chegam partidos entre frames é montada inteira antes de ser emitida.
 - Duas tool calls paralelas no mesmo stream saem como duas calls, cada uma com seus argumentos.
 - `finish_reason` repetido não emite a mesma call duas vezes.
@@ -299,3 +300,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
 - [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610071242 — O aviso de abertura chega a quem anexa](../client-server-protocol/changelog/202610071242-o-aviso-de-abertura-chega-a-quem-anexa.md)

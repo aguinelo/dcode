@@ -16,6 +16,7 @@ export interface PayloadByType {
   'session.mode_changed': P.SessionModeChanged;
   'session.compacted': P.SessionCompacted;
   'session.error': P.Error;
+  'session.notice': P.Notice;
   'skill.loaded': P.SkillLoaded;
   'context.band': P.ContextBand;
   'turn.started': P.TurnStarted;
@@ -122,6 +123,7 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
     kept: opt('number'),
   } satisfies Shape<P.SessionCompacted>,
   'session.error': { code: req('string'), message: req('string') } satisfies Shape<P.Error>,
+  'session.notice': { code: req('string'), message: req('string') } satisfies Shape<P.Notice>,
   'skill.loaded': { name: req('string'), when_to_use: opt('string') } satisfies Shape<P.SkillLoaded>,
   'context.band': { band: req('number'), fraction: req('number') } satisfies Shape<P.ContextBand>,
   'turn.started': { turn_id: req('string'), text: opt('string') } satisfies Shape<P.TurnStarted>,

@@ -9,6 +9,8 @@ import (
 
 	"github.com/aguinelo/dcode/internal/app"
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/policy"
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // capture runs f with stdout and stderr redirected, and returns what they got.
@@ -306,5 +308,25 @@ func TestDashHStillPrintsTheUsage(t *testing.T) {
 	})
 	if !strings.Contains(out+errOut, "dcode serve") {
 		t.Errorf("-h printed %q / %q", out, errOut)
+	}
+}
+
+// The one-shot path says what the session has to say, under the line naming
+// the model. The session built the notices, and this path printed none of them:
+// `dcode "task"` on an unmeasured family ran without a word about it.
+func TestTheOneShotHeaderSaysWhatTheSessionHasToSay(t *testing.T) {
+	s := &app.Session{
+		Options: app.Options{Model: "claude-sonnet-4-5", SandboxMode: policy.ModeWorkspaceWrite},
+		Notices: []protocol.Notice{
+			{Code: protocol.NoticeFamilyUnmeasured, Message: "using the claude family: nobody measured it"},
+			{Code: protocol.NoticeInstructionsUntranslated, Message: "AGENTS.md carries 19 bytes of instructions"},
+		},
+	}
+	out, _ := capture(t, func() { printHeader(s, "/w") })
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 3 || !strings.Contains(lines[0], "claude-sonnet-4-5") ||
+		!strings.HasSuffix(lines[1], s.Notices[0].Message) ||
+		!strings.HasSuffix(lines[2], s.Notices[1].Message) {
+		t.Errorf("the header does not say the notices under it, in order:\n%s", out)
 	}
 }

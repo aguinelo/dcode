@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O que a sessão diz ao abrir aparece no fluxo dela.** Quando o núcleo diz, ao
+  abrir uma sessão, que a família não tem medição por trás ou que os arquivos de
+  instrução do projeto foram escritos para outra ferramenta (`session.notice`),
+  a janela mostra isso como nota de aviso na conversa, com as palavras do
+  daemon, como já mostra um erro de sessão. Sem isto, o evento novo chegaria à
+  janela como um que ela não sabe ler.
 - **Uma conversa continua em outro modelo.** O botão do modelo, no composer, abre
   o que o daemon diz que uma sessão daquele projeto pode pedir (`GET
   /v1/models`): o padrão do projeto e cada perfil do `models.toml`, cada um

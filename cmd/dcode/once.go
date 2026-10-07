@@ -114,6 +114,12 @@ func printHeader(s *app.Session, ws string) {
 		// quiet.
 		mode = "⚠ FULL-ACCESS"
 	}
-	fmt.Printf("dcode %s · %s · %s · %s\n\n",
+	fmt.Printf("dcode %s · %s · %s · %s\n",
 		version.Short(), s.Options.Model, mode, ws)
+	// Under the line naming the model, which is what the first of them is
+	// about. The session built them and this path printed none.
+	for _, n := range s.Notices {
+		fmt.Printf("⚠ %s\n", n.Message)
+	}
+	fmt.Println()
 }

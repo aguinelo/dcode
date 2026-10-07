@@ -190,6 +190,20 @@ func TestCompactionAndErrorsBecomeEntries(t *testing.T) {
 	}
 }
 
+// What the session says as it opens is a line in the stream, in the daemon's
+// words. Built and never sent, it reached nobody; sent and dropped here, it
+// would be the same silence one hop later.
+func TestAnOpeningNoticeIsALineInTheStream(t *testing.T) {
+	const said = "using the claude family: nobody measured it"
+	m := apply(t, NewModel("", "", "", "", En),
+		ev(t, 1, protocol.EventSessionNotice, protocol.Notice{
+			Code: protocol.NoticeFamilyUnmeasured, Message: said,
+		}))
+	if len(m.Entries) != 1 || m.Entries[0].Kind != KindNote || m.Entries[0].Summary != said {
+		t.Fatalf("the notice did not become a note saying %q: %+v", said, m.Entries)
+	}
+}
+
 // A malformed payload must not take the client down: the daemon and the client
 // version independently.
 func TestApplyIgnoresUnreadablePayloads(t *testing.T) {
@@ -198,7 +212,7 @@ func TestApplyIgnoresUnreadablePayloads(t *testing.T) {
 		protocol.EventSessionCreated, protocol.EventMessageDelta,
 		protocol.EventToolRequested, protocol.EventToolCompleted,
 		protocol.EventApprovalRequired, protocol.EventPlanUpdated,
-		protocol.EventSessionError,
+		protocol.EventSessionError, protocol.EventSessionNotice,
 	} {
 		m = m.Apply(protocol.Event{Seq: 1, Type: typ, Payload: json.RawMessage(`"nope"`)})
 	}

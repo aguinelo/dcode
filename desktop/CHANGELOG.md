@@ -10,6 +10,13 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **What a session says as it opens shows in its flow.** When the core says, as
+  a session opens, that its family has no measurements behind it or that the
+  project's instruction files were written for another tool
+  (`session.notice`), the window shows it as a warning note in the
+  conversation, in the daemon's words, as it already shows a session error.
+  Without this, the new event would have reached the window as one it cannot
+  read.
 - **A conversation continues on another model.** The model button in the
   composer opens what the daemon says a session in that project can ask for
   (`GET /v1/models`): the project's default and each profile in `models.toml`,

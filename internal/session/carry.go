@@ -71,6 +71,12 @@ func carry(path string, seen map[string]bool) ([]protocol.Event, int, error) {
 			// A crossing already decided. Replaying it would put a modal in
 			// front of somebody for a question answered yesterday.
 			continue
+		case protocol.EventSessionNotice:
+			// What that session said as it opened is about that session — its
+			// family, the instructions it read — and the session being built
+			// says its own. Replayed, a conversation switched to a measured
+			// model would go on warning that it is not.
+			continue
 		case protocol.EventSessionResumed:
 			// The marker names the conversation this one continues. Read it
 			// first, and drop the marker itself: the session being built will

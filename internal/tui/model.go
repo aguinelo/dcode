@@ -635,6 +635,14 @@ func (m Model) Apply(ev protocol.Event) Model {
 			})
 		}
 
+	case protocol.EventSessionNotice:
+		// In the daemon's words. The code is for a client that acts on it;
+		// this one says it, as it says every other fact about the session.
+		var d protocol.Notice
+		if err := json.Unmarshal(ev.Payload, &d); err == nil && d.Message != "" {
+			m.Entries = append(m.Entries, Entry{Kind: KindNote, Summary: d.Message, Seq: ev.Seq})
+		}
+
 	case protocol.EventTurnCompleted:
 		m = m.closeThought()
 		var d protocol.TurnCompleted
