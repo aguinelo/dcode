@@ -10,6 +10,23 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A janela abre numa grade de atenção, em grafite.** Uma conversa por vez lia
+  como clone de app de chat, e quem roda vários agentes quer ver todos. Agora a
+  janela abre na grade das conversas que pedem lugar — esperando você, fixadas,
+  rodando, ou terminadas e ainda não vistas —, em lugares que não pulam enquanto o
+  trabalho anda, até 6 painéis, ou 9 numa janela grande. Cada painel traz o selo
+  do último turno e cada critério de pronto, o fim do trabalho e a aprovação
+  respondida ali mesmo; ↵ abre a conversa, com os outros painéis como pares no
+  topo, e Esc ou ⌘0 voltam. Grafite é escuro, com um acento lima, a fonte do
+  sistema e mono no que é código, e cantos de 4px; os selos e as palavras deles
+  estão em português. As referências visuais do handoff deixam de descrever a
+  janela, então o `check:visual` reprova contra elas até referências novas serem
+  aprovadas (D18, D29, D30).
+- **Um painel diz quando a família do modelo nunca foi medida.** O selo diz o que
+  os critérios de pronto conferiram, não se alguém mediu o modelo que fez o
+  trabalho. Ao lado dos critérios, um painel e a conversa aberta dizem "sem
+  medição" quando a lista de modelos do daemon diz que a família não tem medição
+  por trás; lista que não veio não marca nada (D30).
 - **Uma conversa continua em outro modelo.** O botão do modelo, no composer, abre
   o que o daemon diz que uma sessão daquele projeto pode pedir (`GET
   /v1/models`): o padrão do projeto e cada perfil do `models.toml`, cada um
