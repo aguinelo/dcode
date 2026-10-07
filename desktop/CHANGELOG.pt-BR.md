@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Um turno que dá outra volta fala numa mensagem nova.** Quando a checagem de
+  pronto manda um turno de volta ao trabalho, as palavras seguintes do modelo
+  saíam coladas às últimas — "…o parser.O teste…" —, porque o texto que chega em
+  partes se juntava a qualquer mensagem aberta do mesmo turno. O daemon avisa cada
+  rodada nova com um evento de progresso; agora o texto só se junta à mensagem do
+  mesmo turno e da mesma rodada.
 - **O ⌘K acha qualquer conversa.** A busca que o design desenha, sobre a lista
   do daemon: cada palavra digitada precisa estar no título ou no projeto, sem
   distinguir maiúsculas nem acentos; as conversas rodando ou esperando você
