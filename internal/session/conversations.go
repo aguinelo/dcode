@@ -19,15 +19,19 @@ import (
 // ended and stayed on disk, read from its record. One list and one stream, so
 // a sidebar watching twenty conversations holds one connection, not twenty.
 //
-// Two locks, and the order matters. mu guards the live rows and the
+// Two locks, and neither is taken under the other. mu guards the rows and the
 // subscribers, and is taken from inside a session — its log's lock, its own —
-// so nothing under it may block or call back. cacheMu guards the rows read
-// from disk, and is held while files are read; mu is never taken under it.
+// so nothing under it may block or call back. cacheMu guards the records read
+// from disk, and is held while files are read.
 type Conversations struct {
 	dir string
 
-	mu      sync.Mutex
-	live    map[string]*row
+	mu   sync.Mutex
+	live map[string]*row
+	// ended holds every recorded conversation as its record was last read,
+	// and each that ended here since as it ended: where a continuation finds
+	// the conversation it continues once that one is no longer live.
+	ended   map[string]*row
 	subs    map[int]chan protocol.ConversationChange
 	nextSub int
 
@@ -35,18 +39,22 @@ type Conversations struct {
 	cache   map[string]cachedRecord
 }
 
-// row is a conversation as it is folded. The first question is kept apart
-// from the name, because clearing a name gives the derived title back.
+// row is a conversation as one session's events fold it. What its title is
+// made of is kept, not the title: the title is the whole conversation's (see
+// title), and clearing a name gives the derived one back.
 type row struct {
 	c     protocol.Conversation
 	asked string
 	name  string
+	// renamed says a name was given or cleared in this session: either way,
+	// a name from the sessions it continues no longer stands.
+	renamed bool
 }
 
 type cachedRecord struct {
 	size int64
 	mod  time.Time
-	conv protocol.Conversation
+	row  row
 }
 
 // subscriberBuffer is how far a list stream may fall behind before it is
@@ -60,6 +68,7 @@ func NewConversations(dir string) *Conversations {
 	return &Conversations{
 		dir:   dir,
 		live:  map[string]*row{},
+		ended: map[string]*row{},
 		subs:  map[int]chan protocol.ConversationChange{},
 		cache: map[string]cachedRecord{},
 	}
@@ -109,8 +118,11 @@ func (x *Conversations) StateChanged(id string, st protocol.SessionState) {
 		x.send(protocol.ConversationChange{Kind: protocol.ConversationRemoved, ID: id})
 		return
 	}
+	// Kept as it ended: a conversation that continues this one takes its
+	// title from here, and no listing may have read the record since.
+	r.c.Live, r.c.State = false, protocol.ConversationRecorded
+	x.ended[id] = r
 	ended := x.view(r)
-	ended.Live, ended.State = false, protocol.ConversationRecorded
 	x.send(protocol.ConversationChange{Kind: protocol.ConversationChanged, Conversation: &ended})
 }
 
@@ -132,18 +144,23 @@ func (x *Conversations) List(workspace string) ([]protocol.Conversation, error) 
 		return nil, err
 	}
 	x.mu.Lock()
+	// The records as read now. One that ended here while it was being read is
+	// read whole by the next listing: what the read missed made the file grow.
+	x.ended = make(map[string]*row, len(recorded))
+	for i := range recorded {
+		x.ended[recorded[i].c.ID] = &recorded[i]
+	}
 	out := make([]protocol.Conversation, 0, len(x.live)+len(recorded))
 	for _, r := range x.live {
 		out = append(out, x.view(r))
 	}
-	for _, c := range recorded {
-		if _, live := x.live[c.ID]; !live {
-			out = append(out, c)
+	for i := range recorded {
+		if _, live := x.live[recorded[i].c.ID]; !live {
+			out = append(out, x.view(&recorded[i]))
 		}
 	}
 	x.mu.Unlock()
 
-	inheritTitles(out)
 	if workspace != "" {
 		kept := out[:0]
 		for _, c := range out {
@@ -208,29 +225,55 @@ func (x *Conversations) send(ch protocol.ConversationChange) {
 	}
 }
 
-// view is the row as a list shows it, with the title a continued conversation
-// takes from the one it continues while it has none of its own. Caller holds
-// mu; the source is looked up among the live rows and the records already
-// read, never on disk.
+// view is the row as a list shows it: this session's summary, called what its
+// whole conversation is called. Caller holds mu.
 func (x *Conversations) view(r *row) protocol.Conversation {
 	c := r.c
-	if c.Title == "" && c.ContinuedFrom != "" {
-		if src, ok := x.live[c.ContinuedFrom]; ok {
-			c.Title = src.c.Title
-		} else {
-			x.cacheMu.Lock()
-			if cached, ok := x.cache[c.ContinuedFrom+".jsonl"]; ok {
-				c.Title = cached.conv.Title
-			}
-			x.cacheMu.Unlock()
-		}
-	}
+	c.Title, c.Named = x.title(r)
 	return c
+}
+
+// title is what a conversation is called, and whether that is a chosen name.
+//
+// The conversation's, not the session's. A session that continues another is
+// the same conversation — opened again after it ended, or moved to another
+// model — and a window showing it reads the carried history from its start.
+// So the derived title is the first thing asked in the conversation, by
+// whichever of its sessions asked first, not the first asked in this one; and
+// the name is the last one given in any of them: this session's when it gave
+// or cleared one, else that of the nearest before it that did.
+//
+// The chain is followed as Carry follows it: to its start, once at most round
+// a cycle, and only through conversations live or recorded — a pruned record
+// is a shorter conversation. Caller holds mu; nothing is read from disk.
+func (x *Conversations) title(r *row) (string, bool) {
+	asked, name, renamed := r.asked, r.name, r.renamed
+	seen := map[string]bool{r.c.ID: true}
+	for from := r.c.ContinuedFrom; from != "" && !seen[from]; {
+		seen[from] = true
+		src, ok := x.live[from]
+		if !ok {
+			if src, ok = x.ended[from]; !ok {
+				break
+			}
+		}
+		if src.asked != "" {
+			asked = src.asked
+		}
+		if !renamed {
+			name, renamed = src.name, src.renamed
+		}
+		from = src.c.ContinuedFrom
+	}
+	if name != "" {
+		return name, true
+	}
+	return asked, false
 }
 
 // readRecords summarises every record in dir, reading again only the files
 // whose size or time changed since the last read.
-func (x *Conversations) readRecords() ([]protocol.Conversation, error) {
+func (x *Conversations) readRecords() ([]row, error) {
 	if x.dir == "" {
 		return nil, nil
 	}
@@ -244,7 +287,7 @@ func (x *Conversations) readRecords() ([]protocol.Conversation, error) {
 	x.cacheMu.Lock()
 	defer x.cacheMu.Unlock()
 	seen := map[string]bool{}
-	var out []protocol.Conversation
+	var out []row
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".jsonl") {
 			continue
@@ -256,17 +299,17 @@ func (x *Conversations) readRecords() ([]protocol.Conversation, error) {
 		name := e.Name()
 		seen[name] = true
 		if c, ok := x.cache[name]; ok && c.size == info.Size() && c.mod.Equal(info.ModTime()) {
-			out = append(out, c.conv)
+			out = append(out, c.row)
 			continue
 		}
-		conv, err := summarizeRecord(filepath.Join(x.dir, name))
+		r, err := summarizeRecord(filepath.Join(x.dir, name))
 		if err != nil {
 			// Not a record, or not one yet. One unreadable file must not make
 			// the other forty unlistable — the same rule Browse keeps.
 			continue
 		}
-		x.cache[name] = cachedRecord{size: info.Size(), mod: info.ModTime(), conv: conv}
-		out = append(out, conv)
+		x.cache[name] = cachedRecord{size: info.Size(), mod: info.ModTime(), row: r}
+		out = append(out, r)
 	}
 	for name := range x.cache {
 		if !seen[name] {
@@ -279,14 +322,14 @@ func (x *Conversations) readRecords() ([]protocol.Conversation, error) {
 // summarizeRecord reads one record into the row a list shows, folding its
 // events with the same code that folds a live session's. A variable so a test
 // can count the reads.
-var summarizeRecord = func(path string) (protocol.Conversation, error) {
+var summarizeRecord = func(path string) (row, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return protocol.Conversation{}, err
+		return row{}, err
 	}
 	defer f.Close()
 
-	r := &row{c: protocol.Conversation{ID: strings.TrimSuffix(filepath.Base(path), ".jsonl")}}
+	r := row{c: protocol.Conversation{ID: strings.TrimSuffix(filepath.Base(path), ".jsonl")}}
 	opened := false
 	sc := bufio.NewScanner(f)
 	// A payload can be a diff, larger than the scanner's default line.
@@ -302,17 +345,18 @@ var summarizeRecord = func(path string) (protocol.Conversation, error) {
 		r.fold(ev)
 	}
 	if err := sc.Err(); err != nil {
-		return protocol.Conversation{}, err
+		return row{}, err
 	}
 	if !opened {
-		return protocol.Conversation{}, errNotARecord
+		return row{}, errNotARecord
 	}
 	r.c.Live, r.c.State = false, protocol.ConversationRecorded
-	return r.c, nil
+	return r, nil
 }
 
-// fold applies one event to a row: the one place a conversation's summary is
-// computed, live or from a record.
+// fold applies one event to a row: the one place a session's events are
+// summarised, live or from a record. What the conversation is called is
+// decided from this and from the sessions it continues, by title.
 func (r *row) fold(ev protocol.Event) {
 	c := &r.c
 	c.LastActivity = ev.At
@@ -354,7 +398,7 @@ func (r *row) fold(ev protocol.Event) {
 		var d protocol.SessionRenamed
 		if json.Unmarshal(ev.Payload, &d) == nil {
 			// The last name wins, and an empty one gives the derived title back.
-			r.name = d.Name
+			r.name, r.renamed = d.Name, true
 		}
 	case protocol.EventApprovalRequired, protocol.EventApprovalResolved, protocol.EventSessionError:
 	default:
@@ -363,29 +407,6 @@ func (r *row) fold(ev protocol.Event) {
 		return
 	}
 	c.LastEvent = ev.Type
-	c.Title, c.Named = r.asked, false
-	if r.name != "" {
-		c.Title, c.Named = r.name, true
-	}
-}
-
-// inheritTitles gives a continued conversation with no title of its own the
-// title of the one it continues, following the chain a few steps.
-func inheritTitles(list []protocol.Conversation) {
-	byID := make(map[string]int, len(list))
-	for i, c := range list {
-		byID[c.ID] = i
-	}
-	for i := range list {
-		c := &list[i]
-		for hops, from := 0, c.ContinuedFrom; c.Title == "" && from != "" && hops < 8; hops++ {
-			j, ok := byID[from]
-			if !ok {
-				break
-			}
-			c.Title, from = list[j].Title, list[j].ContinuedFrom
-		}
-	}
 }
 
 // sameRow compares what a list shows, leaving out when the row last moved: a

@@ -188,7 +188,7 @@ arquivo.
 ```go
 type Conversation struct {
     ID            string       `json:"id"`
-    Title         string       `json:"title"`           // o nome dado, senão a primeira pergunta, senão o da conversa que esta continua
+    Title         string       `json:"title"`           // o da conversa, não o da sessão: o último nome dado, senão a primeira pergunta
     Named         bool         `json:"named,omitempty"` // Title é um nome escolhido
     Workspace     string       `json:"workspace"`
     Branch        string       `json:"branch,omitempty"`
@@ -214,6 +214,15 @@ type ConversationChange struct {
 
 Abrir uma conversa gravada é continuá-la numa sessão nova
 (`CreateSessionRequest.Resume`): nada sobrevive a quem o criou.
+
+O título é da conversa, não da sessão. A sessão que continua outra
+(`continued_from`) é a mesma conversa — reaberta depois de terminar, ou levada a
+outro modelo —, e a janela que a mostra lê o histórico carregado desde o começo.
+Então o título derivado é a primeira pergunta feita em qualquer das sessões dela,
+e o nome em vigor é o último dado em qualquer delas: o da própria sessão quando
+ela deu ou apagou um, senão o da mais próxima antes dela que deu. A cadeia é
+seguida como o `Carry` a segue: até o começo, uma volta no máximo num ciclo, e
+um registro podado é uma conversa mais curta.
 
 ### 5.3 Os modelos que uma sessão pode pedir
 
@@ -356,6 +365,8 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Conversa que termina continua na lista, como gravada, e o fluxo diz.
 - Registro é relido para a lista só quando o arquivo mudou, e só ele.
 - A linha viva e a linha gravada de uma conversa são dobradas pelo mesmo código: terminar não muda o que a lista diz dela além de que terminou.
+- Continuar não renomeia a conversa: perguntar na sessão nova deixa o título que ela tinha, no retrato e no fluxo.
+- O título de uma conversa continuada é o que o histórico inteiro dela diz, lido como o `Carry` lê: o último nome dado em qualquer das sessões — e apagar um devolve a primeira pergunta, não um nome de antes —, senão a primeira pergunta feita em qualquer delas.
 - `GET /models` lista o modelo que uma sessão do workspace recebe sem pedir nenhum e os perfis do `models.toml` dela — o do usuário e o do projeto, por nome; sem `workspace`, vale a configuração com que o daemon subiu.
 - Escolha do menu é a sessão que ela abre: pedir o nome monta a sessão com o modelo e a janela que o menu prometeu.
 - Modelo de família sem medição diz isso antes de ser escolhido: `measured` falso e, em `notice`, a admissão da própria família (`provider.Unmeasured`).
@@ -382,3 +393,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609292355 — O socket é um por usuário](changelog/202609292355-o-socket-e-um-por-usuario.md)
 - [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)
 - [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)
+- [202610070926 — Continuar não renomeia a conversa](changelog/202610070926-continuar-nao-renomeia-a-conversa.md)

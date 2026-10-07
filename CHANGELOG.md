@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 206 decision changelogs |
+| spec families | 18, with 207 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -262,6 +262,15 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **A continued conversation keeps its title.** Opening an ended conversation,
+  or switching its model, continues it in a new session, and the list of
+  conversations then called it by the first question asked in the new session —
+  while the open window, which reads the carried history from its start, kept
+  the conversation's first question. The list's title is now the
+  conversation's: the last name given in any of its sessions, else the first
+  thing asked in any of them, the same in the snapshot and in the stream, and
+  still once the session it continues has closed.
 
 - **The daemon lists the models a session can ask for.** `GET /v1/models`
   answers, for a workspace, the model a session there gets when it asks for

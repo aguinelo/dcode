@@ -22,9 +22,10 @@ export interface Conversation {
   id: string;
   /**
    * Title is the name a person gave the conversation, else the first thing
-   * asked in it, else — for one that continues another and has not asked
-   * anything yet — the title of the one it continues. Empty when there is
-   * none of those; Named says when it is a chosen name.
+   * asked in it — the conversation's, not the session's: one continued in a
+   * new session keeps the title it had, so the name is the last given in any
+   * of its sessions and the question is the first asked in any of them.
+   * Empty when there is none of those; Named says when it is a chosen name.
    */
   title: string;
   named?: boolean;

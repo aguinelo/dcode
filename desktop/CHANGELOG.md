@@ -10,6 +10,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A continued conversation keeps its title in the sidebar.** After switching
+  model, or reopening an ended conversation, the sidebar row took the first
+  question asked in the new session, while the open conversation kept the
+  conversation's first question. The core's list now titles the conversation
+  rather than the session, so the row and the window agree (D21, D28). The
+  protocol types are regenerated.
 - **A conversation continues on another model.** The model button in the
   composer opens what the daemon says a session in that project can ask for
   (`GET /v1/models`): the project's default and each profile in `models.toml`,

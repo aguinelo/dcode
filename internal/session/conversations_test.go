@@ -42,7 +42,7 @@ func TestARecordIsReadAgainOnlyWhenItChanged(t *testing.T) {
 
 	reads := map[string]int{}
 	restore := summarizeRecord
-	summarizeRecord = func(path string) (protocol.Conversation, error) {
+	summarizeRecord = func(path string) (row, error) {
 		reads[filepath.Base(path)]++
 		return restore(path)
 	}
