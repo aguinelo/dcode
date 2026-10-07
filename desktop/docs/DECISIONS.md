@@ -93,7 +93,10 @@ que é só do acesso total); `stale` → "⚠ não conferido · mudou depois do 
 `unavailable` → "⚠ não conferido · nada pôde ser conferido" (esmaecido); `clean` ou
 ausente → nada. Era em inglês, como o handoff; em português desde a grade (D30),
 como o resto da janela (D17). Num painel, o selo vem antes de cada critério, com
-✓, ✗ ou ? por critério quando o turno os nomeia.
+✓, ✗ ou ? por critério quando o turno os nomeia. Um turno que escreveu onde o
+trabalho é medido (`touched_protected`) nunca omite isso: o selo ganha "· tocou a
+régua: …" e deixa de ser verde — um "verificado" medido com a régua que o próprio
+turno mudou não é um verificado comum.
 
 **D14. Verbo da atividade:** o catálogo por fase da TUI (`internal/tui/activity.go`),
 em português — sinônimos da fase da ferramenta que roda, trocando a cada 2,4 s.
@@ -278,6 +281,8 @@ prova de cada conversa; o chat é o detalhe, aberto com ↵ ou dois cliques.
   1700×1000; o formato vai de 1×1 a 3×3.
 - **Teclado.** As setas movem o foco, ↵ abre, ⌘1–9 abre o painel n, ⌘0 e Esc
   voltam à grade. Aberta, a conversa mostra os outros painéis no topo, como pares.
+- **"Tocou a régua"** aparece ao lado dos critérios quando o último turno
+  escreveu num caminho protegido, com os caminhos no título (D13).
 - **"Sem medição"** aparece ao lado dos critérios quando a família do modelo
   nunca foi medida pelos contratos de comportamento do dcode, como a lista do
   daemon diz (N5): o selo diz o que os critérios conferiram, e quem mediu o modelo

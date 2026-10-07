@@ -142,4 +142,17 @@ describe('the seal', () => {
     expect(sealOf({ verification: 'unavailable' })?.text).toMatch(/não conferido/);
     expect(sealOf({ verification: 'clean' })).toBeNull();
   });
+
+  it('says when the turn wrote where the work is measured, and a pass no longer reads as a plain one', () => {
+    expect(sealOf({ verification: 'passed', met: ['go test'], touched_protected: ['internal/x_test.go'] })).toEqual({
+      text: '✓ verificado · 1 critério · tocou a régua: internal/x_test.go',
+      tone: 'warn',
+    });
+    expect(sealOf({ verification: 'failed', unmet: ['go test'], touched_protected: ['a', 'b'] })).toEqual({
+      text: '✗ não verificado · go test · tocou a régua: a, b',
+      tone: 'err',
+    });
+    // Never left out when present, even where the seal itself says nothing.
+    expect(sealOf({ verification: 'clean', touched_protected: ['done.toml'] })).toEqual({ text: '⚠ tocou a régua: done.toml', tone: 'warn' });
+  });
 });
