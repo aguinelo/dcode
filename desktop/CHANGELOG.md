@@ -10,6 +10,16 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A conversation continues on another model.** The model button in the
+  composer opens what the daemon says a session in that project can ask for
+  (`GET /v1/models`): the project's default and each profile in `models.toml`,
+  each marked measured — dcode's behavioural contracts were run against its
+  family — or not, with the daemon's own warning. Picking one continues the
+  conversation in a new session on it, with all of its history, and closes the
+  one it left, whose record stays; left open, every switch would keep one more
+  until the daemon refused new ones. While a turn runs or waits for an answer,
+  the menu says to stop or wait. A daemon without the route says so in the menu,
+  and no model is guessed in its place (D28).
 - **The core lists the models a session can ask for.** One route answers, for a
   session's workspace, the model it gets by default and each profile it can
   switch to, each with its family and whether that family has measurements

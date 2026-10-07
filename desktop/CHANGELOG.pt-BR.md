@@ -10,6 +10,16 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma conversa continua em outro modelo.** O botão do modelo, no composer, abre
+  o que o daemon diz que uma sessão daquele projeto pode pedir (`GET
+  /v1/models`): o padrão do projeto e cada perfil do `models.toml`, cada um
+  marcado como medido — os contratos de comportamento do dcode já rodaram contra
+  a família — ou não, com o aviso do próprio daemon. Escolher um continua a
+  conversa numa sessão nova nele, com todo o histórico, e encerra a que ficou para
+  trás, cujo registro permanece; aberta, cada troca deixaria mais uma, até o
+  daemon recusar novas. Com um turno rodando ou esperando resposta, o menu diz
+  para parar ou esperar. Daemon sem a rota diz isso no menu, e nenhum modelo é
+  adivinhado no lugar (D28).
 - **O núcleo lista os modelos que uma sessão pode pedir.** Uma rota responde, para
   o workspace de uma sessão, o modelo que ela recebe por padrão e cada perfil para
   o qual pode trocar, cada um com a família e se essa família tem medição por trás

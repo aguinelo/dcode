@@ -209,6 +209,34 @@ O vazio diz que nada foi achado e não promete o que não existe: o "↵ cria um
 com esse pedido" do design fica de fora até haver onde criá-la. O escopo do
 projeto é o da sessão aberta, e some sem sessão aberta.
 
+**D28. Trocar de modelo é continuar a conversa numa sessão nova.** O prefixo de
+uma sessão não se reescreve (ADR-03), então nada troca de modelo no lugar: o
+botão do modelo, no composer, abre um menu, e escolher continua a conversa numa
+sessão nova no perfil ou modelo escolhido (`CreateSession{Resume, Model}`), com
+todo o histórico, e a janela abre a nova. A sessão deixada é encerrada depois que
+a nova abre — aberta, cada troca deixaria mais uma, até o daemon recusar abrir
+outras (`max_sessions_reached`) —; o registro dela fica, e a lista a mostra
+terminada. Só troca quem está parado: com um turno rodando ou esperando
+resposta, o menu diz para parar ou esperar.
+
+- **O menu lista o que o daemon diz que existe** (`GET /v1/models`, N5): o
+  padrão do projeto e cada perfil do `models.toml`, resolvidos como a sessão os
+  resolveria. Cada um diz "medido" — os contratos de comportamento do dcode já
+  rodaram contra a família — ou "sem medição", com o aviso do daemon no título;
+  o atual é marcado pelo modelo e pelo endpoint.
+- **Daemon sem a rota, ou que não responde, é dito no próprio menu,** e nada é
+  adivinhado: montar a lista com os modelos vistos nas conversas ofereceria
+  nomes que não são perfil, e pedir um modelo local pelo nome perde o endpoint de
+  que ele precisa.
+- **A TUI faz diferente:** `/model` abre uma sessão nova sem o histórico. São
+  gestos diferentes — recomeçar noutro modelo, continuar noutro modelo —, e o
+  menu diz qual é o dele.
+
+Descartados: manter a sessão anterior aberta (acumula sessões até a recusa);
+ler o `models.toml` no desktop (uma segunda cópia da regra de quem vence entre o
+do usuário e o do projeto, e da lista de famílias medidas); trocar só para o
+próximo turno (o prefixo não muda no meio da sessão).
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
@@ -221,8 +249,9 @@ mostra as três.
 **A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico de sessões
 abertas nesta janela (← fica esmaecido até haver para onde voltar). Nova sessão,
 pelo botão e pelo ⌘N, pede a pasta e abre a sessão nela; procurar, pelo botão e
-pelo ⌘K, abre a busca (D27). Recolher a lateral, rotinas, anexar, trocar modelo, o
-menu da sessão e configurações avisam que ainda não existem.
+pelo ⌘K, abre a busca (D27); o botão do modelo, o menu da troca (D28). Recolher
+a lateral, rotinas, anexar, o menu da sessão e configurações avisam que ainda não
+existem.
 
 ## Lacunas — o que o design pede e o protocolo não traz
 
@@ -310,8 +339,14 @@ desktop não os implementa, espera por eles.
 - **N4. O `/loop` no daemon** — `loop-command` e `client-server-protocol`, MINOR. A
   sequência sai do processo da TUI (`internal/tui/program.go`) para o daemon, e um
   evento por ciclo traz o resultado de cada critério. Pedido por D24; fecha L11.
+- **N5. Os modelos que uma sessão pode pedir** — `client-server-protocol`, MINOR.
+  **Feito** (#422). `GET /v1/models?workspace=` responde o padrão do projeto e
+  cada perfil do `models.toml`, o do usuário com o do projeto por cima, cada um
+  resolvido pelo caminho que monta a sessão e dizendo se a família tem medição;
+  nunca a chave, nem a máscara, nem a impressão digital dela. Pedido por D28.
 
 A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
 sem ele, uma sessão que o desktop abre num projeto ignoraria o `.dcode/config.toml`
 desse projeto —; o N3 antes da lateral com as gravadas, do ⌘K e da troca de
-modelo; o N4 antes da tela do loop. O N1, o N2 e o N3 estão feitos.
+modelo; o N5 antes do menu de modelo; o N4 antes da tela do loop. O N1, o N2, o
+N3 e o N5 estão feitos.
