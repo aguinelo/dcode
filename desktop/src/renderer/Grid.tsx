@@ -1,4 +1,5 @@
 import type { Attention } from '../state/attention';
+import type { Measure } from '../state/models';
 import { gridShape, type GridPlan } from '../state/grid';
 import { paneView } from '../state/pane';
 import type { SessionsState } from '../state/sessions';
@@ -22,6 +23,7 @@ export function Grid({
   onSeen,
   onAnswer,
   onModel,
+  measureFor,
   onNew,
   onSearch,
 }: {
@@ -37,6 +39,7 @@ export function Grid({
   onSeen: (id: string) => void;
   onAnswer: (sessionId: string, approvalId: string, decision: string) => void;
   onModel: (row: Row, anchor: HTMLElement) => void;
+  measureFor: (row: Row) => Measure | null;
   onNew: () => void;
   onSearch: () => void;
 }) {
@@ -79,6 +82,7 @@ export function Grid({
             onSeen={() => onSeen(id)}
             onAnswer={(approvalId, decision) => onAnswer(id, approvalId, decision)}
             onModel={(anchor) => onModel(row, anchor)}
+            measure={measureFor(row)}
           />
         );
       })}

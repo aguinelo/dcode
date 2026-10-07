@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { forgetMissing, markSeen, togglePin } from '../state/attention';
 import { capacityFor, gridShape, planGrid } from '../state/grid';
+import { measureOf } from '../state/models';
 import { paneView } from '../state/pane';
 import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
 import { emptySession } from '../state/session';
@@ -18,6 +19,7 @@ import { Sidebar } from './Sidebar';
 import { notYet } from './text';
 import { TopBar } from './TopBar';
 import { useAttention } from './useAttention';
+import { useModelLists } from './useModelLists';
 import { useModelMenu } from './useModelMenu';
 import type { DaemonView, Outcome, WindowActions } from './window';
 
@@ -268,6 +270,21 @@ export function App({
 
   const models = useModelMenu(actions, sessions, once, show);
 
+  // Whether each conversation on the stage runs on a measured family, as the daemon's list says.
+  const stage = useMemo(
+    () => [...new Set([...plan.ids, ...(selectedId ? [selectedId] : [])].map((id) => sessions.byId[id]?.info?.workspace ?? rowById.get(id)?.workspace ?? ''))],
+    [plan.ids, selectedId, sessions, rowById],
+  );
+  const lists = useModelLists(actions, stage);
+  const measureFor = useCallback(
+    (row: Row) => {
+      const info = sessions.byId[row.id]?.info;
+      const running = info ? { model: info.model, family: info.family ?? null } : row.model ? { model: row.model, family: null } : null;
+      return measureOf(lists.get(info?.workspace ?? row.workspace), running);
+    },
+    [lists, sessions],
+  );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -410,6 +427,7 @@ export function App({
               onGrid={() => show(null)}
               onOpenPeer={(id) => void open(id)}
               onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
+              measure={measureFor(selectedRow ?? rowOfSession(selected))}
             />
           ) : (
             <Grid
@@ -425,6 +443,7 @@ export function App({
               onSeen={seeNow}
               onAnswer={answerIn}
               onModel={models.open}
+              measureFor={measureFor}
               onNew={() => void newSession()}
               onSearch={() => setSearching(true)}
             />
