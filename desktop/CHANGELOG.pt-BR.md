@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma segunda versão da tela, Crew, ao lado da grade.** Depois do Kiro Crew, e
+  sem desmanchar a grade: um seletor na barra do topo alterna Grade e Crew, e a
+  grade continua sendo o padrão. A Crew tem três painéis — a lista, a conversa em
+  foco inteira e, à direita, o selo e os critérios, os arquivos que mudou, onde
+  roda e o resto da tripulação —, em alto contraste (o cinza mais apagado em cerca
+  de 6:1), com Geist e Fragment Mono; a Diatype do Kiro é licenciada e não pode vir
+  no app. As fontes agora são sempre arquivos próprios no build, para a CSP nunca
+  recusar uma em silêncio (D32).
 - **Cada janela da grade é uma conversa em que se trabalha.** Pedido depois de ver
   a grade: cada quadrante uma janela isolada, como uma conversa própria. A janela
   agora traz a conversa inteira — selo e critérios, o fluxo com rolagem própria, a

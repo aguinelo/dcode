@@ -10,6 +10,14 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A second version of the screen, Crew, beside the grid.** After Kiro Crew, and
+  without taking the grid apart: a switch in the top bar alternates Grade and Crew,
+  and the grid stays the default. Crew has three panels — the list, the
+  conversation in focus whole, and on the right its seal and criteria, the files
+  it changed, where it runs, and the rest of the crew — in high contrast (the
+  faintest grey at about 6:1), with Geist and Fragment Mono; Kiro's Diatype is
+  licensed and cannot ship. Fonts are now always their own files in the build, so
+  the CSP never refuses one silently (D32).
 - **Each window of the grid is a conversation you work in.** Asked for after
   seeing the grid: every quadrant an isolated window, like a conversation of its
   own. A window now holds its conversation whole — seal and criteria, the flow

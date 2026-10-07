@@ -326,6 +326,29 @@ Descartados: abrir sempre maximizada (de novo uma por vez); a janela sair sozinh
 quando a conversa para (o lugar sumiria debaixo de quem escreve); um campo só,
 para a janela em foco (escrever exigiria escolher antes).
 
+**D32. Uma segunda versão da tela, Crew, ao lado da grade.** Pedida depois de
+ver o Kiro Crew, sem desmanchar a grade: um seletor na barra do topo alterna
+"Grade" e "Crew", lembrado por janela no `localStorage` (como D7), e a grade
+continua sendo o padrão — as duas réguas medem a grade. Na Crew, três painéis: a
+lista de conversas à esquerda, a conversa em foco no meio, inteira (D31), e à
+direita o que ela estabeleceu — o selo e os critérios, os arquivos que mudou
+(lidos das chamadas de escrita e das linhas que as ferramentas reportaram, D8),
+onde roda e com que modelo —, com o resto da tripulação a um clique.
+
+- **Contraste antes de tudo:** fundo quase preto e texto quase branco, e os
+  cinzas quietos legíveis — o mais apagado em cerca de 6:1, onde o do grafite
+  ficava perto de 3,6:1. Os tokens moram só em `.look-crew`: a grade fica como
+  estava.
+- **A fonte do Kiro é a AWS Diatype, comercial, e não pode vir no app.** A Crew usa
+  a Geist no texto e a Fragment Mono no código — as duas livres (OFL), a segunda a
+  mesma que o Kiro usa para código.
+- **Fonte é sempre arquivo próprio no build:** embutida como `data:`, a CSP
+  (`font-src 'self'`, D2) a recusa e a face cai em outra sem aviso — foi o que a
+  régua visual mostrou com a Fragment Mono.
+
+Descartados: substituir a grade (o pedido foi não desmanchar); copiar a Diatype
+(licença); afrouxar a CSP para `data:`.
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
