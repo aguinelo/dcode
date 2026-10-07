@@ -36,6 +36,8 @@ export interface PaneView {
   seal: { text: string; tone: Tone } | null;
   /** Each criterion, when the last measured turn names them. */
   lights: Light[];
+  /** Where the work is measured, written in the last measured turn: never left out. */
+  touched: string[];
   /** What is known about done when nothing was measured yet. */
   doneNote: string | null;
   lines: PaneLine[];
@@ -134,7 +136,10 @@ export function paneView(r: Row, v: SessionView | undefined, now: number): PaneV
   const completion = v ? lastCompletion(v.entries) : null;
   const verification = completion?.verification ?? r.verification;
   const state = v?.state ?? r.state;
-  const { glyph, tone } = glyphOf(state, verification);
+  const touched = completion?.touched_protected ?? [];
+  const mark = glyphOf(state, verification);
+  // A pass measured with a ruler the turn changed is not a plain one.
+  const { glyph, tone } = touched.length > 0 && mark.tone === 'ok' ? { ...mark, tone: 'warn' as const } : mark;
   const lights: Light[] = completion
     ? [
         ...(completion.met ?? []).map((name) => ({ name, state: 'met' as const })),
@@ -162,6 +167,7 @@ export function paneView(r: Row, v: SessionView | undefined, now: number): PaneV
     live: state === 'running',
     seal: lights.length > 0 ? null : sealWord(verification),
     lights,
+    touched,
     doneNote,
     lines: linesOf(r, v),
     approval: v ? pendingApproval(v) : null,

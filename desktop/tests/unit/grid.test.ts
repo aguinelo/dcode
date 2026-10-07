@@ -121,6 +121,21 @@ describe('a panel', () => {
     ]);
   });
 
+  it('says when the turn wrote where the work is measured, and a pass is no longer a plain one', () => {
+    const v = log('s1', '2026-10-01T10:00:00Z')
+      .add('turn.started', { turn_id: 't1', text: 'conserte o teste' })
+      .add('turn.completed', {
+        turn_id: 't1',
+        reason: 'done',
+        completion: { verification: 'passed', met: ['test'], touched_protected: ['parser_test.go'] },
+      })
+      .fold();
+    const p = paneView(row('s1'), v, now);
+    expect(p.touched).toEqual(['parser_test.go']);
+    expect([p.glyph, p.tone]).toEqual(['✓', 'warn']);
+    expect(paneView(row('s2'), log('s2', '2026-10-01T10:00:00Z').fold(), now).touched).toEqual([]);
+  });
+
   it('says what runs while it runs, and holds the question when one waits', () => {
     const running = log('s2', '2026-10-01T10:00:00Z')
       .add('turn.started', { turn_id: 't1', text: 'leia o README' })

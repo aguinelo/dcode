@@ -22,6 +22,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   estão em português. As referências visuais do handoff deixam de descrever a
   janela, então o `check:visual` reprova contra elas até referências novas serem
   aprovadas (D18, D29, D30).
+- **Um turno que escreveu onde o trabalho é medido diz isso.** O daemon já
+  mandava os caminhos protegidos que um turno escreveu (`touched_protected`), e a
+  janela nunca os lia. Agora o selo diz "· tocou a régua: …" e deixa de ser verde,
+  e um painel diz "⚠ tocou a régua" ao lado dos critérios, com os caminhos no
+  título: um "verificado" medido com a régua que o próprio turno mudou não é um
+  verificado comum (D13, D30).
 - **Um painel diz quando a família do modelo nunca foi medida.** O selo diz o que
   os critérios de pronto conferiram, não se alguém mediu o modelo que fez o
   trabalho. Ao lado dos critérios, um painel e a conversa aberta dizem "sem

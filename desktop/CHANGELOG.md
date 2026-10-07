@@ -22,6 +22,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   corners; the seals and their words are in Portuguese. The handoff's visual
   references no longer describe the window, so `check:visual` fails against them
   until new ones are approved (D18, D29, D30).
+- **A turn that wrote where the work is measured says so.** The daemon has long
+  sent the protected paths a turn wrote (`touched_protected`), and the window
+  never read them. The seal now says "· tocou a régua: …" and stops being green,
+  and a panel says "⚠ tocou a régua" beside its criteria, with the paths in its
+  title: a pass measured with a ruler the turn itself changed is not a plain
+  pass (D13, D30).
 - **A panel says when its model's family was never measured.** The seal says
   what the done criteria checked, not whether anyone measured the model doing
   the work. Beside the criteria, a panel and the open conversation say "sem

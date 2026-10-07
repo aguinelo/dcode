@@ -10,7 +10,7 @@ import { CHOICES } from './ApprovalCard';
  * about done — and, when the daemon says so, that nobody measured the family
  * of the model doing the work.
  */
-export function DoneRow({ view, measure }: { view: Pick<PaneView, 'lights' | 'seal' | 'doneNote'>; measure?: Measure | null }) {
+export function DoneRow({ view, measure }: { view: Pick<PaneView, 'lights' | 'seal' | 'doneNote' | 'touched'>; measure?: Measure | null }) {
   return (
     <div className="done-row">
       {view.lights.map((l) => (
@@ -20,6 +20,11 @@ export function DoneRow({ view, measure }: { view: Pick<PaneView, 'lights' | 'se
       ))}
       {view.seal && <span className={`tone-${view.seal.tone}`}>{view.seal.text}</span>}
       {view.doneNote && <span>{view.doneNote}</span>}
+      {view.touched.length > 0 && (
+        <span className="crit touched" title={`Escreveu, neste turno, onde o trabalho é medido:\n${view.touched.join('\n')}`}>
+          ⚠ tocou a régua
+        </span>
+      )}
       {measure && !measure.measured && (
         <span
           className="crit unmeasured"

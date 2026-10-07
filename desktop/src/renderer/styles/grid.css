@@ -112,7 +112,8 @@ button.chip:hover {
 .crit.unavailable {
   color: var(--dc-dim);
 }
-.crit.unmeasured {
+.crit.unmeasured,
+.crit.touched {
   color: var(--dc-warn);
 }
 
