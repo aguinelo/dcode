@@ -10,6 +10,16 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **Each window of the grid is a conversation you work in.** Asked for after
+  seeing the grid: every quadrant an isolated window, like a conversation of its
+  own. A window now holds its conversation whole — seal and criteria, the flow
+  scrolling on its own, the approval and its own field — so several are worked on
+  at once without opening any. One opened, clicked into or written in stays until
+  its window is closed; what runs or waits keeps its place. Nova sessão asks where
+  in a window of its own, offering the projects already known, and becomes the
+  session there; with none known, the folder picker comes at once. Writing to an
+  ended conversation continues it in the same window. ⌘1–9 puts the caret in
+  window n, ⌘↵ maximizes and restores, Esc leaves a field (D31).
 - **The window opens on an attention grid, in grafite.** One conversation at a
   time read as a chat app's clone, and a person running several agents wants to
   see them all. The window now opens on a grid of the conversations that claim a
