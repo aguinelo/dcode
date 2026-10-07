@@ -263,6 +263,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Roadmap §18 reads Kiro against what this repository decided.** Most of what
+  it has, dcode has in a stronger form; what it has that dcode does not is
+  written down with the decision each one touches. Project hooks stay refused
+  until §18a decides whether a narrower shape — a command on a logged event,
+  its output never in the model's context — survives the reason they were
+  refused. Pattern-loaded instructions go first, because the channel they need
+  already exists and is the one that does not touch the prefix.
 - **The daemon lists the models a session can ask for.** `GET /v1/models`
   answers, for a workspace, the model a session there gets when it asks for
   none and every profile in `models.toml` — the user's, with the project's

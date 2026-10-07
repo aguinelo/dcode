@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O §18 do roadmap lê o Kiro contra o que este repositório decidiu.** Quase
+  tudo o que ele tem, o dcode tem numa forma mais forte; o que ele tem e o dcode
+  não tem ficou escrito junto com a decisão que cada item toca. Hooks de projeto
+  continuam recusados até o §18a decidir se uma forma mais estreita — um comando
+  num evento que o log já registra, com a saída nunca no contexto do modelo —
+  sobrevive ao motivo da recusa. Instrução carregada por padrão de caminho vem
+  primeiro, porque o canal de que ela precisa já existe e é o que não toca o
+  prefixo.
 - **O daemon lista os modelos que uma sessão pode pedir.** `GET /v1/models`
   responde, para um workspace, o modelo que uma sessão ali recebe sem pedir
   nenhum e cada perfil do `models.toml` — o do usuário, com o do projeto por cima
