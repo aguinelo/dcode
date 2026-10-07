@@ -119,6 +119,15 @@ export function basename(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
+/**
+ * A path as a person reads it in little room: the home folder as ~, and when
+ * it is still long, its end — the part that tells two projects apart.
+ */
+export function shortPath(path: string, room = 34): string {
+  const home = path.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, '~');
+  return home.length <= room ? home : `…${home.slice(home.length - room + 1)}`;
+}
+
 export interface ProjectView {
   /** The workspace path. Labels, order and collapsing are keyed by it. */
   id: string;

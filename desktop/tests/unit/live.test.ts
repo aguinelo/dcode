@@ -189,6 +189,16 @@ describe('the window connected', () => {
     expect(f.asked).toEqual(['create in /w/novo', 'follow new']);
   });
 
+  it('opens a new session in a project it already knows, without asking for a folder', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.newSessionIn('/w/dcode')).toEqual({ ok: true, value: 'new' });
+    expect(f.asked).toEqual(['create in /w/dcode', 'follow new']);
+    expect(await store.actions.closeSession('new')).toEqual({ ok: true, value: null });
+    f.refuse('close', 'session_not_found', 'no session new');
+    expect(await store.actions.closeSession('new')).toEqual({ ok: false, why: 'A sessão não fechou: no session new' });
+  });
+
   it('folds the events it follows, and says what it cannot read or what stopped', () => {
     const f = fakeApi();
     const store = new LiveStore(f.api);
