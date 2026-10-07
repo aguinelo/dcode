@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as P from '../../src/protocol/generated';
 import { LiveStore } from '../../src/renderer/live';
 import type { Answer, DaemonStatus, DcodeApi, SessionEvents, StreamEnd } from '../../src/shared/api';
@@ -130,10 +130,31 @@ describe('the window connected', () => {
       ],
     });
     expect(store.getSnapshot().sessions.byId.s1?.state).toBe('running');
+    vi.useFakeTimers();
     f.listeners.end[0]?.({ sessionId: 's1', reason: 'a sessão não existe mais' });
+    vi.runAllTimers();
     expect(said).toEqual([
       'Evento ilegível, sem sessão para mostrá-lo: o evento não é um objeto',
       'Os eventos de “s1” pararam de chegar: a sessão não existe mais',
     ]);
   });
+
+  it('says nothing when the stream that ended belongs to a conversation that ended', () => {
+    vi.useFakeTimers();
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const said: string[] = [];
+    store.onNotice((t) => said.push(t));
+    store.start();
+    f.listeners.list[0]?.({ kind: 'snapshot', conversations: [{ ...ended, id: 'live', live: true, state: 'idle' }] });
+    f.listeners.end[0]?.({ sessionId: 'live', reason: 'no session live' });
+    // The list says it ended a moment after the stream did.
+    f.listeners.list[0]?.({ kind: 'changed', conversation: { ...ended, id: 'live' } });
+    vi.runAllTimers();
+    expect(said).toEqual([]);
+  });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
