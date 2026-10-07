@@ -18,8 +18,10 @@ const TITLE_LIMIT = 72;
 export const UNTITLED = '(nada perguntado ainda)';
 
 /**
- * A session's title: the name a person gave, else the first thing asked.
- * The same rule as the daemon's own listing (internal/session/browse.go).
+ * A session's title: the name a person gave, else the first thing asked. Its
+ * events include the conversation it continues, so this is the conversation's
+ * title — the one the daemon's list of conversations gives its row
+ * (internal/session/conversations.go).
  */
 export function sessionTitle(v: SessionView): string {
   if (v.name.trim()) return v.name.trim();

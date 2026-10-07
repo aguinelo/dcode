@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 206 changelogs de decisão |
+| famílias de spec | 18, com 207 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -260,6 +260,15 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **Uma conversa continuada mantém o título.** Abrir uma conversa terminada, ou
+  trocar o modelo dela, a continua numa sessão nova, e a lista de conversas
+  passava a chamá-la pela primeira pergunta feita na sessão nova — enquanto a
+  janela aberta, que lê o histórico carregado desde o começo, mantinha a
+  primeira pergunta da conversa. O título da lista agora é o da conversa: o
+  último nome dado em qualquer das sessões dela, senão a primeira pergunta feita
+  em qualquer delas, igual no retrato e no fluxo, e ainda depois de a sessão que
+  ela continua fechar.
 
 - **O daemon lista os modelos que uma sessão pode pedir.** `GET /v1/models`
   responde, para um workspace, o modelo que uma sessão ali recebe sem pedir

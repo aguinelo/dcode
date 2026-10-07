@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -187,6 +188,146 @@ func TestAConversationThatEndsStaysAsRecorded(t *testing.T) {
 				t.Fatalf("the ended conversation was sent as %+v, want recorded", *ch.Conversation)
 			}
 			return
+		}
+	}
+}
+
+// A conversation continued in a new session is the same conversation, and the
+// list calls it what the window showing it does. Reported: after a model
+// switch, the sidebar row took the question asked after the switch — "e no
+// qwen, onde fica?" — while the open conversation, which reads the carried
+// history from its start, went on saying "onde fica a fila de webhooks?".
+func TestAContinuedConversationKeepsItsTitle(t *testing.T) {
+	const asked = "onde fica a fila de webhooks?"
+	for _, gesture := range []struct {
+		name string
+		// open continues the conversation from, the way the desktop does.
+		open func(ctx context.Context, cd conversationDaemon, from string) (protocol.Session, error)
+	}{
+		{"reopened after it ended", func(ctx context.Context, cd conversationDaemon, from string) (protocol.Session, error) {
+			if err := cd.c.DeleteSession(ctx, from); err != nil {
+				return protocol.Session{}, err
+			}
+			return cd.c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: cd.ws, Resume: from})
+		}},
+		{"switched to another model", func(ctx context.Context, cd conversationDaemon, from string) (protocol.Session, error) {
+			// The new session opens first, and the one left is closed once it
+			// has (D28).
+			s, err := cd.c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: cd.ws, Resume: from, Model: "MiniMax-M3"})
+			if err != nil {
+				return protocol.Session{}, err
+			}
+			return s, cd.c.DeleteSession(ctx, from)
+		}},
+	} {
+		t.Run(gesture.name, func(t *testing.T) {
+			cd := newConversationDaemon(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			// Watched from before the conversation exists, as the sidebar
+			// watches: nothing has listed its record when it is continued.
+			changes, _ := cd.c.WatchConversations(ctx)
+			next(t, changes)
+
+			cd.model.turns = [][]string{{frameText("Em internal/queue.")}, {frameText("No mesmo lugar.")}}
+			first, err := cd.c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: cd.ws})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := cd.c.Submit(ctx, first.ID, asked); err != nil {
+				t.Fatal(err)
+			}
+			finished(t, changes, first.ID)
+
+			continued, err := gesture.open(ctx, cd, first.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := cd.c.Submit(ctx, continued.ID, "e no qwen, onde fica?"); err != nil {
+				t.Fatal(err)
+			}
+			streamed := finished(t, changes, continued.ID)
+
+			window := windowTitle(t, cd.c, continued.ID)
+			if window != asked {
+				t.Fatalf("the window calls the continued conversation %q, want %q: it reads the carried history from its start", window, asked)
+			}
+			listed, err := cd.c.ListConversations(ctx, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, c := range listed {
+				if c.ID == continued.ID && (c.Title != window || c.Named) {
+					t.Errorf("the list calls the continued conversation %q (named %v), the window %q", c.Title, c.Named, window)
+				}
+			}
+			if streamed.Title != window || streamed.Named {
+				t.Errorf("the list's stream calls the continued conversation %q (named %v), the window %q", streamed.Title, streamed.Named, window)
+			}
+		})
+	}
+}
+
+// finished waits for the list to show a conversation idle once a turn has
+// completed in it, and returns that row.
+func finished(t *testing.T, changes <-chan protocol.ConversationChange, id string) protocol.Conversation {
+	t.Helper()
+	for {
+		ch := next(t, changes)
+		if ch.Kind != protocol.ConversationChanged || ch.Conversation == nil || ch.Conversation.ID != id {
+			continue
+		}
+		if c := *ch.Conversation; c.State == protocol.SessionStateIdle && c.LastEvent == protocol.EventTurnCompleted {
+			return c
+		}
+	}
+}
+
+// windowTitle is what a window showing the session calls it: it reads the
+// session's events from the first one held, the carried history included, and
+// takes the last name given, else the first thing asked
+// (desktop/src/state/sidebar.ts, sessionTitle).
+func windowTitle(t *testing.T, c *client.Client, id string) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	s, err := c.GetSession(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, errs := c.Subscribe(ctx, id, s.FirstSeq)
+	var asked, name string
+	for {
+		select {
+		case ev, ok := <-events:
+			if !ok {
+				t.Fatalf("the events of %s ended before seq %d", id, s.LastSeq)
+			}
+			switch ev.Type {
+			case protocol.EventTurnStarted:
+				var d protocol.TurnStarted
+				if json.Unmarshal(ev.Payload, &d) == nil && asked == "" {
+					asked = d.Text
+				}
+			case protocol.EventSessionRenamed:
+				var d protocol.SessionRenamed
+				if json.Unmarshal(ev.Payload, &d) == nil {
+					name = d.Name
+				}
+			}
+			if ev.Seq < s.LastSeq {
+				continue
+			}
+			if name != "" {
+				return name
+			}
+			return asked
+		case err, ok := <-errs:
+			if ok {
+				t.Fatalf("reading the events of %s: %v", id, err)
+			}
+			// Closed with the events, which say how far they got.
+			errs = nil
 		}
 	}
 }

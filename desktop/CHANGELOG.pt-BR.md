@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma conversa continuada mantém o título na lateral.** Depois de trocar de
+  modelo, ou de reabrir uma conversa terminada, a linha da lateral tomava a
+  primeira pergunta feita na sessão nova, enquanto a conversa aberta mantinha a
+  primeira pergunta da conversa. A lista do núcleo agora dá o título da conversa,
+  não o da sessão, e a linha e a janela concordam (D21, D28). Os tipos do
+  protocolo foram regenerados.
 - **Uma conversa continua em outro modelo.** O botão do modelo, no composer, abre
   o que o daemon diz que uma sessão daquele projeto pode pedir (`GET
   /v1/models`): o padrão do projeto e cada perfil do `models.toml`, cada um

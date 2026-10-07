@@ -72,6 +72,8 @@ var protocolInvariants = map[string]string{
 	"Conversa que termina continua na lista": "TestAConversationThatEndsStaysAsRecorded",
 	"relido para a lista só quando":          "TestARecordIsReadAgainOnlyWhenItChanged",
 	"dobradas pelo mesmo código":             "TestALiveSummaryMatchesItsRecord",
+	"Continuar não renomeia a conversa":      "TestAContinuedConversationKeepsItsTitle",
+	"o que o histórico inteiro dela diz":     "TestAContinuationIsTitledByItsWholeConversation",
 	// The models a session can ask for. Resolved where the daemon builds
 	// sessions, so the assertions run through the daemon's own routes.
 	"recebe sem pedir nenhum":         "TestTheMenuListsTheDefaultAndTheProfilesOfTheWorkspace",
