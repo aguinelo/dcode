@@ -21,6 +21,9 @@ export interface LiveSnapshot {
   sessions: SessionsState;
 }
 
+/** How long the list has to show a conversation ended before its stream's end is called a failure. */
+const ENDED_GRACE_MS = 1500;
+
 /** A refusal said as the window says it: what did not happen, then the daemon's reason. */
 function outcome<T>(answer: Answer<T>, what: string): Outcome<T> {
   return answer.ok ? { ok: true, value: answer.value } : { ok: false, why: `${what}: ${answer.refusal.message}` };
@@ -42,16 +45,30 @@ export class LiveStore {
 
   /** Starts listening to the main process; returns what stops it. */
   start(): () => void {
+    const pending = new Set<ReturnType<typeof setTimeout>>();
     const offs = [
       this.api.onDaemon((daemon) => this.set({ daemon })),
       this.api.onConversations((raw) => this.onList(raw)),
       this.api.onSessionEvents((batch) => this.onEvents(batch.events)),
       this.api.onStreamEnd((end) => {
-        const row = this.snap.rows.find((r) => r.id === end.sessionId);
-        this.notice(`Os eventos de “${row?.title ?? end.sessionId}” pararam de chegar: ${end.reason}`);
+        // A conversation that ends closes its stream: that is the end the list
+        // shows, not a failure. The list may say so a moment after the stream
+        // does, over a connection of its own, so it is asked after that moment.
+        // Gone from a list that has loaded is ended too.
+        const timer = setTimeout(() => {
+          pending.delete(timer);
+          const c = this.snap.conversations.byId[end.sessionId];
+          if (c ? !c.live : this.snap.conversations.loaded) return;
+          const row = this.snap.rows.find((r) => r.id === end.sessionId);
+          this.notice(`Os eventos de “${row?.title ?? end.sessionId}” pararam de chegar: ${end.reason}`);
+        }, ENDED_GRACE_MS);
+        pending.add(timer);
       }),
     ];
-    return () => offs.forEach((off) => off());
+    return () => {
+      offs.forEach((off) => off());
+      pending.forEach((timer) => clearTimeout(timer));
+    };
   }
 
   readonly subscribe = (listener: () => void): (() => void) => {

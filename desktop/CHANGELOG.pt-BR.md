@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma conversa que termina não é mais dada como falha.** Quando uma sessão
+  fecha, o daemon encerra o fluxo dela e a lista a mostra terminada; a janela
+  tomava o fim do fluxo por defeito e dizia que os eventos tinham parado de chegar.
+  Agora espera um instante pela lista, que chega por uma conexão própria, e só
+  avisa quando a conversa continua viva nela.
 - **O ⌘K acha qualquer conversa.** A busca que o design desenha, sobre a lista
   do daemon: cada palavra digitada precisa estar no título ou no projeto, sem
   distinguir maiúsculas nem acentos; as conversas rodando ou esperando você
