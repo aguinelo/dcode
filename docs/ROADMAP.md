@@ -720,6 +720,91 @@ a harness change rather than a contract — which is why it is here and not in t
 multi-turn fixture belongs in this suite at all, given what it costs per run,
 and the answer may be that decay is measured some other way entirely.
 
+## 18. What Kiro has, read against what this one decided
+
+Kiro (kiro.dev) is the closest thing to dcode's own bet: spec-driven work, an
+agent that executes a plan, and instructions a project keeps in files. Read on
+2026-10-07, from its documentation and its site. Most of what it has, dcode
+has in a stronger form — a spec whose invariants a guard ties to tests, a
+memory with provenance, a sandbox that is a boundary rather than a dialog. What
+follows is what it has that dcode does not, each against what this repository
+already decided, because two of them touch a "Not doing".
+
+### 18a. Project hooks, revisited — decide before building
+
+Kiro's hooks are files in `.kiro/hooks/`: a trigger (session start and stop,
+prompt submitted, before and after a tool, a file created, saved or deleted, a
+spec task starting or finishing), a matcher, and an action that is either a
+shell command fed the event as JSON or a prompt injected into the conversation.
+A before-tool hook can block the call.
+
+"Not doing" refuses project hooks because of the second kind of action: a hook
+that speaks into the conversation is configuration turning into undergrowth,
+and the session that wrote this roadmap suffered exactly that. Kiro does not
+answer that objection; it has the same failure available.
+
+**What would survive the objection is narrower:** a command run on an event
+the daemon already logs, whose output goes to the log and never into the
+model's context, under the session's own sandbox. Blocking a tool is already
+what `policy` rules do, so a before-tool hook is a rule, not a hook. If that
+shape is still worth having, it is a consumer of the event log — and the first
+question is whether anyone would write one, since `make check` after a turn is
+already a done criterion.
+
+### 18b. Instructions that load by what is touched
+
+Kiro's steering files carry an inclusion mode: always, when a file matching a
+pattern is in play, by name on request, or when the request matches the file's
+own description. dcode loads the whole chain at creation, always.
+
+The mechanism to do better already exists. `behavior.Reminder` is the channel
+that is appended and never prefixed, so the cache survives, and
+`OutOfChainInstruction` already delivers a directory's instructions when the
+session first touches it. An instruction file declaring a path pattern would be
+a third source on that channel: said once, the first time a matching path is
+read or written.
+
+What would break: the prefix, if anyone put it there. A pattern-loaded
+instruction in the prefix changes the prefix mid-session, which invalidates the
+cache and breaks the reproducibility `context-engine` guarantees — the reason
+learned memory is frozen at creation. The description-matched mode is the one to leave
+out: whether a request "matches" is a model's judgement, and an instruction
+that loads on a judgement is one nobody can predict from the files.
+
+### 18c. A task list a person can watch
+
+Kiro's `tasks.md` is a checkbox list, each item naming the requirements it
+serves. The IDE starts tasks one at a time or in dependency waves, and shows
+each one's status, diff and history.
+
+`task-ledger` is designed and not built, and its principle is stronger than
+Kiro's checkboxes: **whoever executes does not sign the acceptance**. In Kiro
+the agent ticks its own box. What Kiro shows is the surface the ledger has
+never had a design for: a list in the desktop, each task's state live from the
+log, each linked to the invariants it claims. Building the ledger is the work;
+this only says its first client should be a list somebody watches, not a file
+somebody reads afterwards.
+
+### 18d. Review by hunk, and going back further than one turn
+
+In supervised mode Kiro stops after each turn that edits and offers each hunk
+to accept, reject or discuss. In autopilot it keeps checkpoints that rewind
+files and context together. dcode undoes the last turn, whole (#162). Hunk
+review is a desktop feature over what undo already records; rewinding past the
+last turn needs the undo set to outlive the turn that made it, which is the
+part to design first.
+
+### 18e. Smaller
+
+- **`#` in the composer** — `#file`, `#git diff`, `#terminal`, `#spec`: naming
+  context instead of pasting it. A desktop change over tools that exist.
+- **EARS in the `.r`** — "WHEN condition THE SYSTEM SHALL behaviour" as an
+  optional convention for a requirement. It reads one step from an invariant,
+  and costs a paragraph in `SDD-HARNESS.md`.
+- **Property tests for invariants** — Kiro sells property-based testing tied to
+  a requirement. Some invariants here are claims over every input asserted by a
+  handful of examples; those are where it would earn its place, one at a time.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -727,7 +812,8 @@ Staying out was right and still is.
 
 **Project hooks.** Commands run on tool events. Powerful, and exactly how
 configuration becomes undergrowth: the session that produced this roadmap ran
-under another product's hooks injecting noise into every turn.
+under another product's hooks injecting noise into every turn. §18a asks
+whether a narrower shape survives that; until it is decided, this stands.
 
 **Sub-agents that write.** Three of the four known problems with delegation
 exist *because* the child writes — conflict between children, inherited
@@ -754,6 +840,7 @@ has not weakened.
 | **14** — the measurement's loose ends | The path in the reason is small and user-visible; the `Rounds` evidence is a documentation move that costs nothing and stops the fourth repetition. |
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
 | **17** — measuring decay across turns | The fact and the contract shipped in #372; what is left needs a multi-turn fixture, which is a harness change. Decide whether that belongs here at all before writing one. |
+| **18** — what Kiro has | 18b first: the channel exists and the change is a source on it. 18a is a decision before it is code, and 18c waits on the ledger it would show. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
