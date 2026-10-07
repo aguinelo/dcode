@@ -84,8 +84,10 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		// One list and one stream for every conversation, so a client watching
 		// twenty does not open twenty streams.
 		Conversations: d.conversations,
-		CommitDone:    d.commitDone,
-		MaxSessions:   opts.MaxSessions,
+		// What a session can ask for, resolved where sessions are built.
+		Models:      d.models,
+		CommitDone:  d.commitDone,
+		MaxSessions: opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without
 		// being loaded. The daemon already knows it; the server did not.
 		RecordDir: opts.RecordDir,

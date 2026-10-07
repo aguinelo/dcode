@@ -43,6 +43,7 @@ var exportedWithoutUser = map[string]string{
 	"DeleteSession":      "pkg/client is the public API; a consumer deletes sessions",
 	"ListConversations":  "pkg/client is the public API; a consumer lists conversations, and the TUI's picker moves to it in its own pull request",
 	"WatchConversations": "pkg/client is the public API; a consumer watches the list, as the desktop does over HTTP",
+	"ListModels":         "pkg/client is the public API; a consumer asks which models a session can ask for, as the desktop's model menu does over HTTP",
 
 	// The zero value of an enum, named so a reader knows what zero means. The
 	// name is unused precisely because the value is the default — deleting it

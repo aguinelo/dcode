@@ -40,6 +40,30 @@ describe('a turn', () => {
     expect(v.entries[1]).toMatchObject({ text: 'São quatro pacotes.' });
     expect(v.entries[2]).toMatchObject({ text: 'só o alpha', steer: true });
   });
+
+  it('opens a new message each time the turn goes round again', () => {
+    const said = log()
+      .add('turn.started', { turn_id: 't-1' })
+      .add('message.delta', { turn_id: 't-1', text: 'Corrigi o parser.' })
+      .add('progress', { turn_id: 't-1', kind: 'rounds', done: 1, total: 100 })
+      .add('message.delta', { turn_id: 't-1', text: 'O teste ainda falha.' })
+      .fold();
+    expect(said.entries.flatMap((e) => (e.kind === 'model' ? [e.text] : []))).toEqual([
+      'Corrigi o parser.',
+      'O teste ainda falha.',
+    ]);
+
+    const thought = log()
+      .add('turn.started', { turn_id: 't-1' })
+      .add('message.reasoning', { turn_id: 't-1', text: 'falta o parser' })
+      .add('progress', { turn_id: 't-1', kind: 'rounds', done: 1, total: 100 })
+      .add('message.reasoning', { turn_id: 't-1', text: 'o teste falhou' })
+      .fold();
+    expect(thought.entries.flatMap((e) => (e.kind === 'reasoning' ? [e.text] : []))).toEqual([
+      'falta o parser',
+      'o teste falhou',
+    ]);
+  });
 });
 
 describe('tool calls', () => {

@@ -44,8 +44,8 @@ interface Stamp {
 
 export type Entry =
   | (Stamp & { kind: 'user'; text: string; steer: boolean })
-  | (Stamp & { kind: 'model'; turnId: string; text: string })
-  | (Stamp & { kind: 'reasoning'; turnId: string; text: string })
+  | (Stamp & { kind: 'model'; turnId: string; round: number; text: string })
+  | (Stamp & { kind: 'reasoning'; turnId: string; round: number; text: string })
   | (Stamp & { kind: 'tool'; call: ToolCall })
   | (Stamp & { kind: 'approval'; request: P.ApprovalRequest; decision: string | null })
   | (Stamp & { kind: 'plan'; items: P.PlanItem[] })
@@ -131,15 +131,18 @@ function updateCall(entries: Entry[], callId: string, update: (c: ToolCall) => T
 function appendText(
   entries: Entry[],
   kind: 'model' | 'reasoning',
+  round: number,
   ev: { seq: number; at: string; payload: { turn_id: string; text: string } },
 ): Entry[] {
   const last = entries[entries.length - 1];
   // Text streams in fragments; it reads as one message only while it flows
-  // into the entry already open for the same turn.
-  if (last && last.kind === kind && last.turnId === ev.payload.turn_id) {
+  // into the entry already open for the same turn and the same round. A turn
+  // the done check sends round again speaks anew, with nothing between the
+  // two messages but the daemon's report that the round moved.
+  if (last && last.kind === kind && last.turnId === ev.payload.turn_id && last.round === round) {
     return [...entries.slice(0, -1), { ...last, text: last.text + ev.payload.text }];
   }
-  return [...entries, { kind, seq: ev.seq, at: ev.at, turnId: ev.payload.turn_id, text: ev.payload.text }];
+  return [...entries, { kind, seq: ev.seq, at: ev.at, turnId: ev.payload.turn_id, round, text: ev.payload.text }];
 }
 
 function onProgress(view: SessionView, ev: EventOf<'progress'>): SessionView {
@@ -341,9 +344,9 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
     case 'turn.completed':
       return onTurnCompleted(view, ev);
     case 'message.delta':
-      return { ...view, entries: appendText(view.entries, 'model', ev) };
+      return { ...view, entries: appendText(view.entries, 'model', view.rounds?.done ?? 0, ev) };
     case 'message.reasoning':
-      return { ...view, entries: appendText(view.entries, 'reasoning', ev) };
+      return { ...view, entries: appendText(view.entries, 'reasoning', view.rounds?.done ?? 0, ev) };
     case 'tool.requested':
       return onToolRequested(view, ev);
     case 'tool.completed':

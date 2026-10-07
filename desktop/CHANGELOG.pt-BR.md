@@ -15,6 +15,18 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   tomava o fim do fluxo por defeito e dizia que os eventos tinham parado de chegar.
   Agora espera um instante pela lista, que chega por uma conexão própria, e só
   avisa quando a conversa continua viva nela.
+- **O núcleo lista os modelos que uma sessão pode pedir.** Uma rota responde, para
+  o workspace de uma sessão, o modelo que ela recebe por padrão e cada perfil para
+  o qual pode trocar, cada um com a família e se essa família tem medição por trás
+  — o que o menu de modelo por sessão vai ler, em vez de ler o `models.toml` e
+  guardar uma cópia da lista de famílias medidas do núcleo. Os tipos do protocolo
+  foram regenerados.
+- **Um turno que dá outra volta fala numa mensagem nova.** Quando a checagem de
+  pronto manda um turno de volta ao trabalho, as palavras seguintes do modelo
+  saíam coladas às últimas — "…o parser.O teste…" —, porque o texto que chega em
+  partes se juntava a qualquer mensagem aberta do mesmo turno. O daemon avisa cada
+  rodada nova com um evento de progresso; agora o texto só se junta à mensagem do
+  mesmo turno e da mesma rodada.
 - **O ⌘K acha qualquer conversa.** A busca que o design desenha, sobre a lista
   do daemon: cada palavra digitada precisa estar no título ou no projeto, sem
   distinguir maiúsculas nem acentos; as conversas rodando ou esperando você

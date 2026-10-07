@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 205 changelogs de decisão |
+| famílias de spec | 18, com 206 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -260,6 +260,18 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **O daemon lista os modelos que uma sessão pode pedir.** `GET /v1/models`
+  responde, para um workspace, o modelo que uma sessão ali recebe sem pedir
+  nenhum e cada perfil do `models.toml` — o do usuário, com o do projeto por cima
+  pelo nome —, cada um resolvido como a sessão que o pedir o resolve: modelo,
+  família, transporte, endpoint, janela e se a família tem medição por trás, com
+  o aviso da própria família quando não tem. Um perfil com que nenhuma sessão
+  pode ser montada continua na lista e diz por quê. Nenhuma resposta carrega a
+  chave, a máscara ou a impressão digital dela. Antes, um cliente só sabia quais
+  modelos existiam lendo o `models.toml` por conta própria, e não distinguia uma
+  família medida de uma que ninguém mediu. É o que a troca de modelo por sessão
+  do desktop lê.
 
 ## 0.23.0 — 1 de outubro de 2026
 

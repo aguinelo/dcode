@@ -15,6 +15,17 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   window took the stream's end for a fault and said the events had stopped
   coming. It now waits a moment for the list, which arrives over a connection of
   its own, and says so only when the conversation is still live there.
+- **The core lists the models a session can ask for.** One route answers, for a
+  session's workspace, the model it gets by default and each profile it can
+  switch to, each with its family and whether that family has measurements
+  behind it — what the per-session model menu will read, instead of reading
+  `models.toml` and keeping a copy of the core's list of measured families. The
+  protocol types are regenerated.
+- **A turn that goes round again speaks in a new message.** When the done check
+  sends a turn back to work, the model's next words came out glued to its last
+  ones — "…o parser.O teste…" — because streamed text joined any open message of
+  the same turn. The daemon reports each new round with a progress event; text
+  now joins only the message of the same turn and the same round.
 - **⌘K finds any conversation.** The search the design draws, over the daemon's
   list: every word typed must be in the title or the project, without case or
   accents; the conversations running or waiting for you first, then one group per
