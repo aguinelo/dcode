@@ -20,6 +20,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   daemon recusar novas. Com um turno rodando ou esperando resposta, o menu diz
   para parar ou esperar. Daemon sem a rota diz isso no menu, e nenhum modelo é
   adivinhado no lugar (D28).
+- **Uma conversa que termina não é mais dada como falha.** Quando uma sessão
+  fecha, o daemon encerra o fluxo dela e a lista a mostra terminada; a janela
+  tomava o fim do fluxo por defeito e dizia que os eventos tinham parado de chegar.
+  Agora espera um instante pela lista, que chega por uma conexão própria, e só
+  avisa quando a conversa continua viva nela.
 - **O núcleo lista os modelos que uma sessão pode pedir.** Uma rota responde, para
   o workspace de uma sessão, o modelo que ela recebe por padrão e cada perfil para
   o qual pode trocar, cada um com a família e se essa família tem medição por trás
