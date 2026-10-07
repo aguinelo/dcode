@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DECISIONS, conversation, decision, id, text, workspace } from '../../src/main/inputs';
+import { DECISIONS, conversation, decision, id, model, text, workspace } from '../../src/main/inputs';
 
 // What the renderer hands the main process, checked before it reaches the
 // daemon: a bad argument is a refusal with the reason, never a throw.
@@ -47,6 +47,13 @@ describe('an argument from the window', () => {
     refused(conversation('c-1'));
     expect(refused(conversation({ id: 'c-1', workspace: 'w' }))).toContain('absoluto');
     expect(refused(conversation({ workspace: '/w' }))).toContain('O id da conversa');
+  });
+
+  it('takes a profile or model name, and refuses an empty or spaced one', () => {
+    expect(model('qwen-local')).toEqual({ ok: true, value: 'qwen-local' });
+    expect(refused(model(''))).toContain('modelo');
+    expect(refused(model('qwen local'))).toContain('sem espaços');
+    refused(model(7));
   });
 
   it('cuts a long value short in the reason', () => {

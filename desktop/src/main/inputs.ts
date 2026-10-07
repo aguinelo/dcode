@@ -58,6 +58,12 @@ export function decision(v: unknown): Checked<string> {
   return invalid(`A resposta à aprovação precisa ser uma de ${DECISIONS.join(', ')}, e veio ${shown(v)}.`);
 }
 
+/** A profile or a model, as the daemon resolves it (`CreateSessionRequest.model`). */
+export function model(v: unknown): Checked<string> {
+  if (!filled(v) || /\s/.test(v)) return invalid(`O modelo precisa ser um nome sem espaços, e veio ${shown(v)}.`);
+  return { ok: true, value: v };
+}
+
 /** The conversation to continue: its id and its folder, and nothing else is read. */
 export function conversation(v: unknown): Checked<{ id: string; workspace: string }> {
   if (!isRecord(v)) return invalid(`A conversa a continuar precisa vir com id e pasta, e veio ${shown(v)}.`);

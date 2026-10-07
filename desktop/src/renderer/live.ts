@@ -5,6 +5,7 @@
 
 import { decodeChange } from '../protocol/conversations';
 import { decodeEvent } from '../protocol/events';
+import { decodeModels } from '../protocol/models';
 import { CodeNoActiveTurn, CodeTurnAlreadyActive } from '../protocol/generated';
 import type { Answer, DaemonStatus, DcodeApi } from '../shared/api';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
@@ -79,6 +80,13 @@ export class LiveStore {
       const created = outcome(await this.api.createSession(folder), `A sessão não abriu em ${folder}`);
       return created.ok ? this.follow(created.value.id) : created;
     },
+    listModels: async (workspace) => {
+      const listed = await this.api.listModels(workspace);
+      if (!listed.ok) return { ok: false, why: `O daemon não disse quais modelos existem: ${listed.refusal.message}` };
+      const read = decodeModels(listed.value);
+      return read.ok ? { ok: true, value: read.models } : { ok: false, why: `Resposta ilegível do daemon: ${read.reason}` };
+    },
+    switchModel: (id, workspace, model) => this.switchModel(id, workspace, model),
   };
 
   private set(part: Partial<LiveSnapshot>): void {
@@ -126,6 +134,24 @@ export class LiveStore {
   private async follow(id: string): Promise<Outcome<string>> {
     const followed = outcome(await this.api.follow(id), 'A conversa não abriu');
     return followed.ok ? { ok: true, value: id } : followed;
+  }
+
+  /**
+   * A conversation changes model by continuing in a new session on it (D28).
+   * The session it leaves is closed once the new one opens: left open, every
+   * switch would keep one more, until the daemon refused to open any. Its
+   * record stays, and the list shows it ended.
+   */
+  private async switchModel(id: string, workspace: string, model: string): Promise<Outcome<string>> {
+    const made = outcome(await this.api.continueConversation({ id, workspace }, model), `A conversa não continuou em ${model}`);
+    if (!made.ok) return made;
+    // Live by the list; one the list does not know yet is live if its events are here.
+    const live = this.snap.conversations.byId[id]?.live ?? id in this.snap.sessions.byId;
+    if (live) {
+      const closed = await this.api.closeSession(id);
+      if (!closed.ok) this.notice(`A conversa continuou em ${model}, e a sessão anterior não fechou: ${closed.refusal.message}`);
+    }
+    return this.follow(made.value.id);
   }
 
   /**
