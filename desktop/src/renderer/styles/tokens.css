@@ -1,62 +1,45 @@
 /*
- * The handoff's tokens (refs/design/desktop/README.md, "Design Tokens"), both
- * themes. The window follows the system: light by default, dark when the OS
- * says so. Amber means working, yellow means it needs you; the rest is neutral.
+ * Grafite: the desktop's own identity (docs/DECISIONS.md, D28). Dark, dense,
+ * one accent — lime — for what is working and for the product's mark; amber
+ * only for what waits for you; green and red only for what was measured.
+ *
+ * The face is the system's: SF on macOS, Segoe UI on Windows. Linux has no
+ * single system face, and there the bundled Geist Mono reads well, so it is
+ * the fallback for text as well as for code.
  */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
-  --dc-font: 'Geist Variable', system-ui, sans-serif;
-  --dc-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --dc-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Geist Mono Variable', ui-monospace, monospace;
+  --dc-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, 'Geist Mono Variable', monospace;
 
-  --dc-chrome: #f1f0ed;
-  --dc-panel: #ffffff;
-  --dc-raised: #f7f6f4;
-  --dc-sunken: #fafaf9;
-  --dc-line: #e4e2dd;
-  --dc-line-soft: #eceae6;
-  --dc-text: #262626;
-  --dc-emph: #0f0f0f;
-  --dc-dim: #5f5f5f;
-  --dc-faint: #8f8f8f;
-  --dc-hover: rgba(0, 0, 0, 0.04);
-  --dc-sel: rgba(0, 0, 0, 0.06);
-  --dc-accent: #b87d1e;
-  --dc-ok: #2f7a48;
-  --dc-err: #b3434a;
-  --dc-warn: #8a6a0c;
-  --dc-warn-bg: rgba(184, 125, 30, 0.06);
-  --dc-warn-line: rgba(184, 125, 30, 0.35);
-  --dc-btn: #111;
-  --dc-btn-ink: #fff;
+  --dc-chrome: #0f1114;
+  --dc-panel: #15181c;
+  --dc-raised: #1b1f24;
+  --dc-sunken: #0c0e10;
+  --dc-line: #262a31;
+  --dc-line-soft: #1e2227;
+  --dc-text: #d9dde3;
+  --dc-emph: #f2f4f7;
+  --dc-dim: #9aa0a8;
+  --dc-faint: #6b717a;
+  --dc-hover: rgba(255, 255, 255, 0.04);
+  --dc-sel: rgba(255, 255, 255, 0.07);
+  --dc-accent: #c6f36b;
+  --dc-accent-ink: #0f1114;
+  --dc-accent-soft: rgba(198, 243, 107, 0.1);
+  --dc-ok: #7fd38a;
+  --dc-err: #ff7a6b;
+  --dc-warn: #f2b84b;
+  --dc-warn-bg: rgba(242, 184, 75, 0.07);
+  --dc-warn-line: rgba(242, 184, 75, 0.4);
+  --dc-btn: #c6f36b;
+  --dc-btn-ink: #0f1114;
 
-  --dc-shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.28);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --dc-chrome: #161616;
-    --dc-panel: #1c1c1c;
-    --dc-raised: #232323;
-    --dc-sunken: #191919;
-    --dc-line: #2a2a2a;
-    --dc-line-soft: #242424;
-    --dc-text: #e6e6e6;
-    --dc-emph: #fafafa;
-    --dc-dim: #a1a1a1;
-    --dc-faint: #6f6f6f;
-    --dc-hover: rgba(255, 255, 255, 0.045);
-    --dc-sel: rgba(255, 255, 255, 0.07);
-    --dc-accent: #e0a030;
-    --dc-ok: #6fbf87;
-    --dc-err: #e07b7f;
-    --dc-warn: #e3c26b;
-    --dc-warn-bg: rgba(227, 194, 107, 0.06);
-    --dc-warn-line: rgba(227, 194, 107, 0.35);
-    --dc-btn: #fafafa;
-    --dc-btn-ink: #111;
-  }
+  --dc-radius: 4px;
+  --dc-radius-sm: 3px;
+  --dc-shadow-popover: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes dcBreath {
@@ -77,8 +60,8 @@
   transition: width 0.9s cubic-bezier(0.3, 0.8, 0.3, 1);
 }
 
-/* Less motion asked for: no pulse, no blink. The state stays legible by the
-   shape of its glyph, which never depended on the animation. */
+/* Less motion asked for: no pulse. The state stays legible by the shape of
+   its glyph, which never depended on the animation. */
 @media (prefers-reduced-motion: reduce) {
   .dc-breath {
     animation: none;
@@ -103,6 +86,9 @@
 .tone-dim {
   color: var(--dc-dim);
 }
+.tone-text {
+  color: var(--dc-text);
+}
 .tone-faint,
 .faint {
   color: var(--dc-faint);
@@ -115,4 +101,7 @@
 }
 .tone-bg-accent {
   background: var(--dc-accent);
+}
+.mono {
+  font-family: var(--dc-mono);
 }

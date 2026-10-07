@@ -353,13 +353,13 @@ export function decisionLabel(decision: string): { text: string; tone: Tone } {
 export function sealOf(c: P.Completion): { text: string; tone: Tone } | null {
   switch (c.verification) {
     case 'passed':
-      return { text: `✓ verified · ${plural((c.met ?? []).length, 'check', 'checks')}`, tone: 'ok' };
+      return { text: `✓ verificado · ${plural((c.met ?? []).length, 'critério', 'critérios')}`, tone: 'ok' };
     case 'failed':
-      return { text: `✗ not verified · ${(c.unmet ?? []).join(', ')}`, tone: 'err' };
+      return { text: `✗ não verificado · ${(c.unmet ?? []).join(', ')}`, tone: 'err' };
     case 'stale':
-      return { text: '⚠ unverified · mudou depois do check', tone: 'dim' };
+      return { text: '⚠ não conferido · mudou depois do check', tone: 'dim' };
     case 'unavailable':
-      return { text: '⚠ unverified · nada pôde ser conferido', tone: 'dim' };
+      return { text: '⚠ não conferido · nada pôde ser conferido', tone: 'dim' };
     case 'clean':
       return null;
     default:

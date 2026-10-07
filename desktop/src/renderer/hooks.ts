@@ -27,6 +27,17 @@ export function useReducedMotion(): boolean {
   return reduced;
 }
 
+/** The window's inner size, kept current. */
+export function useWindowSize(): { width: number; height: number } {
+  const [size, setSize] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+  useEffect(() => {
+    const on = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  return size;
+}
+
 /** A counter that advances every `ms`, or never when `paused`. */
 export function useTick(ms: number, paused: boolean): number {
   const [tick, setTick] = useState(0);

@@ -1,10 +1,10 @@
-import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/sidebar.css';
 import './styles/session.css';
 import './styles/composer.css';
+import './styles/grid.css';
 import './styles/search.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
@@ -12,7 +12,7 @@ import { createRoot } from 'react-dom/client';
 import { asOf } from '../fixtures/record';
 import { recording, referenceStates } from '../fixtures/recording';
 import { applyRaw, emptySessions } from '../state/sessions';
-import { activeRows, projectsOf, rowsOfSessions } from '../state/sidebar';
+import { rowsOfSessions } from '../state/sidebar';
 import { App } from './App';
 import { fixtureActions } from './fixture';
 import { currentHost, type Host } from './host';
@@ -62,7 +62,6 @@ if (wanted !== null && fixtureSession === null) {
     // if it had just happened. The bottom bar says so (D5).
     const sessions = applyRaw(emptySessions, asOf(recording, Date.now()));
     const rows = rowsOfSessions(sessions);
-    const first = activeRows(projectsOf(rows, host.initialPrefs))[0]?.id ?? sessions.order[0] ?? null;
     createRoot(root).render(
       <StrictMode>
         <App
@@ -71,7 +70,7 @@ if (wanted !== null && fixtureSession === null) {
           sessions={sessions}
           daemon={{ state: 'recording', version: recording.daemonVersion }}
           actions={fixtureActions}
-          initialSelection={fixtureSession ?? first}
+          initialSelection={fixtureSession}
         />
       </StrictMode>,
     );
@@ -79,7 +78,9 @@ if (wanted !== null && fixtureSession === null) {
   // Ready once the bundled fonts are in: a screenshot before that would
   // measure the fallback font, not the design. A face that does not load is a
   // build defect, and it is said rather than drawn around.
-  const faces = ['400 14px "Geist Variable"', '500 14px "Geist Variable"', '600 10.5px "Geist Variable"', '400 12.5px "Geist Mono Variable"'];
+  // The text face is the system's (D28); the bundled one is the monospace,
+  // which Linux also reads text in.
+  const faces = ['400 12px "Geist Mono Variable"'];
   void Promise.all(faces.map((f) => document.fonts.load(f)))
     .then((loaded) => {
       const missing = faces.filter((_, i) => (loaded[i] ?? []).length === 0);
