@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 207 decision changelogs |
+| spec families | 18, with 208 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A memory that cannot be read is said to whoever attaches.** `app.New` emits
+  `memory_unreadable` while the session is being built, and the daemon's
+  emitter forwarded only once the session existed — so through the daemon,
+  which is how the TUI and the desktop open every session, it was dropped and
+  the session opened as though its memory had been read. The daemon now holds
+  whatever `New` says before the session exists and the session says it right
+  after `session.created`, the carried conversation and the opening notices,
+  counted in `last_seq`.
+  Held at the emitter rather than for this one error, so the next thing `New`
+  has to say cannot fall into the same silence.
 - **A session says what it has to say as it opens, to whoever attaches.** That
   its family has no measurements behind it, and that the instruction files it
   read were written for another tool, now each travel as a `session.notice` —

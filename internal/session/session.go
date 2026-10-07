@@ -74,6 +74,10 @@ type Session struct {
 	// reason as Carried: nothing goes in the log before the session's own
 	// creation.
 	Notices []protocol.Notice
+	// Opening is what was said while the session was being built, before
+	// there was a session to say it: a memory nobody could read. Held for the
+	// same reason as Carried, and said after it.
+	Opening []Held
 
 	mu    sync.Mutex
 	state protocol.SessionState
@@ -177,6 +181,24 @@ func (s *Session) EmitNotices() {
 		s.Emit(protocol.EventSessionNotice, n)
 	}
 	s.Notices = nil
+}
+
+// Held is one event said before the session that will carry it existed.
+type Held struct {
+	Type    protocol.EventType
+	Payload any
+}
+
+// EmitOpening says what was held while the session was built, in the order it
+// was said.
+//
+// Called once, after EmitNotices. Recorded, unlike the carried events: these
+// are this session's own, and the record is where a reader afterwards looks.
+func (s *Session) EmitOpening() {
+	for _, h := range s.Opening {
+		s.Emit(h.Type, h.Payload)
+	}
+	s.Opening = nil
 }
 
 // Describe returns the wire view.

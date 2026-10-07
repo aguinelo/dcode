@@ -295,11 +295,17 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		return sess.TakeSteering()
 	}
 
+	// What New says before the session exists is held, not dropped: the log
+	// has to open with the session's own creation, and until this the one
+	// thing New says — a memory nobody could read — reached nobody.
+	var opening []session.Held
 	appSession, err := New(opts,
 		emitterFunc(func(t protocol.EventType, payload any) {
-			if sess != nil {
-				sess.Emit(t, payload)
+			if sess == nil {
+				opening = append(opening, session.Held{Type: t, Payload: payload})
+				return
 			}
+			sess.Emit(t, payload)
 		}),
 		deadlineApprover{
 			approverFunc: func(ctx context.Context, r protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
@@ -327,6 +333,7 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	// Said by the session once it has announced itself. Built and never handed
 	// over, they reached nobody — an unmeasured family's warning included.
 	sess.Notices = appSession.Notices
+	sess.Opening = opening
 
 	// The same record the sandbox is asking, not a second copy: two would
 	// answer differently the moment one of them is granted.
