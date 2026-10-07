@@ -7,6 +7,7 @@ import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, se
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
 import { countStates, projectsOf, rowOfSession, type Row } from '../state/sidebar';
+import { CrewView } from './CrewView';
 import { Grid } from './Grid';
 import type { Host } from './host';
 import { useNow, useReducedMotion, useTick, useWindowSize } from './hooks';
@@ -15,7 +16,7 @@ import { Search } from './Search';
 import { SessionPanel, type Peer } from './SessionPanel';
 import { Sidebar } from './Sidebar';
 import { notYet } from './text';
-import { TopBar } from './TopBar';
+import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
 import { useModelLists } from './useModelLists';
 import { useModelMenu } from './useModelMenu';
@@ -32,6 +33,17 @@ const TOAST_MS = 6000;
 
 /** In the history of the stage, the grid's place. */
 const GRID = '';
+
+/** Which version of the screen, per window, as a convenience: the grid when unknown (D32). */
+const LOOK_KEY = 'dcode.desktop.look.v1';
+
+function loadLook(): Look {
+  try {
+    return window.localStorage.getItem(LOOK_KEY) === 'crew' ? 'crew' : 'grade';
+  } catch {
+    return 'grade';
+  }
+}
 
 function loadPrefs(host: Host): { prefs: Prefs; problem: string | null } {
   let raw: string | null;
@@ -88,6 +100,7 @@ export function App({
   const [toasts, setToasts] = useState<Toast[]>(() => boot.notes.map((text, i) => ({ id: i + 1, text })));
   const [userName, setUserName] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const [look, setLook] = useState<Look>(loadLook);
   // Requests still on their way, so a second ↵ or click does not repeat one.
   const pending = useRef(new Set<string>());
 
@@ -247,11 +260,23 @@ export function App({
       return r ? [{ row: r, view: paneView(r, sessions.byId[id], now) }] : [];
     });
 
+  const chooseLook = (next: Look) => {
+    setLook(next);
+    try {
+      window.localStorage.setItem(LOOK_KEY, next);
+    } catch (err) {
+      say(`Não foi possível guardar a versão da tela (${(err as Error).message}); vale só até fechar.`);
+    }
+  };
+  // Crew shows one conversation in the middle: the one in focus, else the first that wants attention.
+  const crewId = win.focusId && isConversation(win.focusId) ? win.focusId : (plan.ids[0] ?? null);
+  const crewRow = crewId ? (rowById.get(crewId) ?? (sessions.byId[crewId] ? rowOfSession(sessions.byId[crewId]) : null)) : null;
+
   const missing = (what: string) => say(notYet(what));
   const draftIn = (id: string, text: string) => setDrafts((d) => ({ ...d, [id]: text }));
 
   return (
-    <div className={`window${searching ? ' searching' : ''}`}>
+    <div className={`window look-${look}${searching ? ' searching' : ''}`}>
       <TopBar
         host={host}
         daemon={daemon}
@@ -264,6 +289,8 @@ export function App({
           travel(history.back[history.back.length - 1], (h) => ({ back: h.back.slice(0, -1), forward: [selectedId ?? GRID, ...h.forward] }))
         }
         onForward={() => travel(history.forward[0], (h) => ({ back: [...h.back, selectedId ?? GRID], forward: h.forward.slice(1) }))}
+        look={look}
+        onLook={chooseLook}
       />
       <div className="window-main">
         <Sidebar
@@ -307,6 +334,30 @@ export function App({
               onOpenPeer={(id) => (rowById.get(id)?.state === 'recorded' ? void win.open(id) : show(id))}
               onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
               measure={measureFor(selectedRow ?? rowOfSession(selected))}
+            />
+          ) : look === 'crew' ? (
+            <CrewView
+              row={crewRow}
+              session={crewId ? sessions.byId[crewId] : undefined}
+              crew={plan.ids}
+              rows={rowById}
+              sessions={sessions}
+              now={now}
+              verbTick={verbTick}
+              draft={crewId ? (drafts[crewId] ?? '') : ''}
+              caret={crewId && win.caret?.id === crewId ? win.caret.n : undefined}
+              measure={crewRow ? measureFor(crewRow) : null}
+              on={{
+                focus: win.focus,
+                draft: draftIn,
+                send: (id, text) => void win.sendIn(id, text),
+                stop: win.stopIn,
+                answer: win.answerIn,
+                continueIn: (row, text) => void win.continueIn(row, text),
+                model: models.open,
+                missing,
+                newSession,
+              }}
             />
           ) : (
             <Grid

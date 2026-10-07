@@ -35,4 +35,9 @@ function contentSecurityPolicy(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), contentSecurityPolicy()],
+  build: {
+    // A font is always its own file: inlined as a data: URI, the policy's
+    // font-src 'self' refuses it, and the face falls back without a word.
+    assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
+  },
 });

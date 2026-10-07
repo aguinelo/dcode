@@ -1,0 +1,236 @@
+/*
+ * Crew: the second version of the screen (D32). Its tokens live under
+ * .look-crew only, so the grid's grafite stays exactly as it was.
+ *
+ * Contrast first: near-black ground and near-white text, as Kiro has them, and
+ * the quiet greys kept readable — the faint one at about 6:1 on the ground,
+ * where grafite's sat near 3.6:1. Geist for text, Fragment Mono for code: both
+ * free (OFL), the closest to Kiro's licensed Diatype that can ship with the app.
+ */
+
+.window.look-crew {
+  --dc-font: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --dc-mono: 'Fragment Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --dc-chrome: #09090b;
+  --dc-panel: #111113;
+  --dc-raised: #1a1a1d;
+  --dc-sunken: #0c0c0e;
+  --dc-line: #2a2a2f;
+  --dc-line-soft: #202024;
+  --dc-text: #ececef;
+  --dc-emph: #fafafa;
+  --dc-dim: #b4b4bc;
+  --dc-faint: #8e8e98;
+  --dc-hover: rgba(255, 255, 255, 0.06);
+  --dc-sel: rgba(255, 255, 255, 0.09);
+  --dc-ok: #86e19a;
+  --dc-err: #ff8577;
+  --dc-warn: #f7c35c;
+  --dc-warn-line: rgba(247, 195, 92, 0.5);
+
+  font-family: var(--dc-font);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+/* The look switch in the top bar: both versions, side by side. */
+.look-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  background: var(--dc-sunken);
+  -webkit-app-region: no-drag;
+}
+.look-switch button {
+  padding: 1px 10px;
+  border-radius: var(--dc-radius-sm);
+  font-size: 11.5px;
+  color: var(--dc-faint);
+}
+.look-switch button:hover {
+  color: var(--dc-text);
+}
+.look-switch button.on {
+  background: var(--dc-raised);
+  color: var(--dc-accent);
+}
+
+/* Middle and right: the conversation in focus, and what it established. */
+.crew {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 8px;
+  padding: 8px;
+}
+.crew-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--dc-dim);
+  font-size: 13.5px;
+}
+.crew-empty strong {
+  color: var(--dc-emph);
+  font-weight: 500;
+}
+.crew-thread,
+.crew-context {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--dc-panel);
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  overflow: hidden;
+}
+.crew-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--dc-line-soft);
+}
+.crew-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dc-emph);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crew-ended {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.crew-ended p {
+  margin: 0;
+  padding: 0 20px;
+  color: var(--dc-dim);
+  font-size: 13.5px;
+}
+
+.crew-context {
+  overflow-y: auto;
+}
+.crew-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--dc-line-soft);
+}
+.crew-section:last-child {
+  border-bottom: 0;
+}
+.crew-section-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--dc-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dc-faint);
+}
+.crew-count {
+  color: var(--dc-dim);
+}
+.crew-quiet {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--dc-faint);
+}
+.crew-context .done-row {
+  font-size: 12.5px;
+  gap: 6px 12px;
+}
+
+.crew-files,
+.crew-mates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crew-files li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+}
+.crew-file {
+  flex: 1;
+  min-width: 0;
+  color: var(--dc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crew-diff {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.crew-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 14px;
+  font-size: 12.5px;
+}
+.crew-facts dt {
+  color: var(--dc-faint);
+}
+.crew-facts dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--dc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crew-mates button {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--dc-radius-sm);
+  font-size: 12.5px;
+}
+.crew-mates button:hover {
+  background: var(--dc-hover);
+}
+.crew-mate-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--dc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crew-mate-state {
+  flex: none;
+  font-size: 11px;
+  color: var(--dc-faint);
+}
