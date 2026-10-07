@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A conversation that ends is no longer reported as a failure.** When a
+  session closes, the daemon ends its stream and the list shows it ended; the
+  window took the stream's end for a fault and said the events had stopped
+  coming. It now waits a moment for the list, which arrives over a connection of
+  its own, and says so only when the conversation is still live there.
 - **The core lists the models a session can ask for.** One route answers, for a
   session's workspace, the model it gets by default and each profile it can
   switch to, each with its family and whether that family has measurements
