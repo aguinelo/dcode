@@ -24,6 +24,10 @@ export interface WindowActions {
   answer(sessionId: string, approvalId: string, decision: string): Promise<Outcome<null>>;
   /** Asks for a folder and opens a session there. Null when the person cancelled. */
   newSession(): Promise<Outcome<string> | null>;
+  /** Opens a session in a project already known, and answers it to show. */
+  newSessionIn(workspace: string): Promise<Outcome<string>>;
+  /** Closes a live session; the daemon keeps its record. For one that was never asked anything. */
+  closeSession(sessionId: string): Promise<Outcome<null>>;
   /** Keeps a live conversation's events coming, for its panel on the grid. Once each; again is harmless. */
   watch(row: Row): void;
   /** What a session in the workspace can ask for, as the daemon resolves it (D28). */
