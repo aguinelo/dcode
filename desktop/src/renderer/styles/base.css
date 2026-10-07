@@ -1,7 +1,6 @@
 /*
- * The window, as the handoff measures it: sidebar 264px fixed, the session in
- * an inset panel, a 30px bar at the bottom. Values are the reference's own;
- * boxes are content-box unless a rule says otherwise, as they are there.
+ * The window: a bar across the top, the list of conversations on the left,
+ * and the stage — the grid, or one conversation opened whole.
  */
 
 html,
@@ -15,14 +14,13 @@ body {
   background: var(--dc-chrome);
   color: var(--dc-text);
   font-family: var(--dc-font);
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
-/* Chrome sizes buttons border-box; everything else here, as in the reference,
-   is content-box — a bordered 28px button would come out 2px short. */
 button {
-  box-sizing: content-box;
+  box-sizing: border-box;
   font: inherit;
   color: inherit;
   background: none;
@@ -57,4 +55,131 @@ button {
   flex: 1;
   min-height: 0;
   display: flex;
+}
+
+/* ---- top bar ----------------------------------------------------------- */
+
+.topbar {
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--dc-line);
+  font-size: 12px;
+  color: var(--dc-dim);
+  white-space: nowrap;
+}
+/* Room for the native window controls macOS draws over the bar. */
+.topbar.native-controls {
+  padding-left: 84px;
+}
+.topbar .lights {
+  display: flex;
+  gap: 8px;
+}
+.light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3a3f46;
+}
+.brand {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--dc-accent);
+}
+.nav-arrow {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--dc-radius);
+  color: var(--dc-dim);
+  font-size: 13px;
+  text-align: center;
+}
+.nav-arrow:hover:not(:disabled) {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}
+.nav-arrow:disabled {
+  color: var(--dc-faint);
+  opacity: 0.5;
+  cursor: default;
+}
+.topbar-hints {
+  color: var(--dc-faint);
+}
+.topbar-count.waiting {
+  color: var(--dc-warn);
+}
+
+/* ---- the daemon's status, in the bar ----------------------------------- */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.status-dot.connected {
+  background: var(--dc-ok);
+}
+/* A recording is neither a live daemon nor a failure: neutral, and named. */
+.status-dot.replay,
+.status-dot.connecting {
+  background: var(--dc-faint);
+}
+.status-dot.failed {
+  background: var(--dc-err);
+}
+/* The reason can be long and the bar is one line: it is cut, and whole in the title. */
+.daemon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.daemon-reason {
+  min-width: 0;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- notices ------------------------------------------------------------- */
+
+.toasts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+.toast {
+  padding: 10px 14px;
+  border-radius: var(--dc-radius);
+  background: var(--dc-raised);
+  border: 1px solid var(--dc-line);
+  box-shadow: var(--dc-shadow-popover);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--dc-text);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--dc-line);
+  border-radius: 4px;
 }

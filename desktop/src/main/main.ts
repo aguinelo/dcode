@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, dialog, shell } from 'electron';
 import os from 'node:os';
 import path from 'node:path';
 import { CHANNELS } from '../shared/api';
@@ -60,11 +60,12 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 560,
     title: 'DCode',
-    // Painted before the first frame, so opening does not flash the other theme.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#161616' : '#f1f0ed',
+    // Painted before the first frame: the window is grafite whatever the
+    // system's theme (D28), so opening never flashes a light one.
+    backgroundColor: '#0f1114',
     // The window draws its own title bar and keeps the native controls: on
-    // macOS the traffic lights sit in the sidebar's 48px strip, centred on it.
-    ...(mac ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 18 } } : {}),
+    // macOS the traffic lights sit at the left of the 40px top bar, centred on it.
+    ...(mac ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

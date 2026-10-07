@@ -136,10 +136,10 @@ describe('the activity line', () => {
 
 describe('the seal', () => {
   it('maps the verification on the wire, and says nothing for a clean turn', () => {
-    expect(sealOf({ verification: 'passed', met: ['go test', 'go vet'] })).toEqual({ text: '✓ verified · 2 checks', tone: 'ok' });
+    expect(sealOf({ verification: 'passed', met: ['go test', 'go vet'] })).toEqual({ text: '✓ verificado · 2 critérios', tone: 'ok' });
     expect(sealOf({ verification: 'failed', unmet: ['go test'] })?.tone).toBe('err');
-    expect(sealOf({ verification: 'stale' })?.text).toMatch(/unverified/);
-    expect(sealOf({ verification: 'unavailable' })?.text).toMatch(/unverified/);
+    expect(sealOf({ verification: 'stale' })?.text).toMatch(/não conferido/);
+    expect(sealOf({ verification: 'unavailable' })?.text).toMatch(/não conferido/);
     expect(sealOf({ verification: 'clean' })).toBeNull();
   });
 });
