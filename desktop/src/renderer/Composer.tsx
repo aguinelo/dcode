@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { SessionView } from '../state/session';
 
 /**
@@ -18,9 +18,72 @@ function meterTone(pct: number): string {
   return 'tone-faint';
 }
 
+/**
+ * The text field itself: grows with what is typed, ↵ sends and ⇧↵ breaks the
+ * line. ⌘↵ is the window's, and Esc leaves the field so the window's keys —
+ * the arrows between windows, an approval's answers — apply again.
+ */
+export function Field({
+  text,
+  placeholder,
+  disabled = false,
+  caret,
+  onText,
+  onSubmit,
+}: {
+  text: string;
+  placeholder: string;
+  disabled?: boolean;
+  /** Changes when the caret is asked into this field. */
+  caret?: number;
+  onText: (text: string) => void;
+  onSubmit: () => void;
+}) {
+  const input = useRef<HTMLTextAreaElement>(null);
+  // A field that stops taking text gives the keys back to the window, where
+  // the approval's answers are (↵ among them).
+  useLayoutEffect(() => {
+    if (disabled && document.activeElement === input.current) input.current?.blur();
+  }, [disabled]);
+  useEffect(() => {
+    if (caret) input.current?.focus();
+  }, [caret]);
+  const empty = text.length === 0;
+  return (
+    <div className={`composer-field${empty ? ' empty' : ''}${disabled ? ' blocked' : ''}`}>
+      <div className="composer-sizer" aria-hidden="true">
+        {empty ? placeholder : `${text}\n`}
+      </div>
+      <textarea
+        ref={input}
+        className="composer-input"
+        aria-label={placeholder}
+        rows={1}
+        value={text}
+        disabled={disabled}
+        onChange={(e) => onText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            // Only out of the field: a second Esc is the window's.
+            e.stopPropagation();
+            e.currentTarget.blur();
+            return;
+          }
+          if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 export function Composer({
   session,
   text,
+  compact = false,
+  caret,
   onText,
   onSend,
   onStop,
@@ -29,6 +92,9 @@ export function Composer({
   session: SessionView;
   /** The draft, kept per session by the window so switching away loses nothing. */
   text: string;
+  /** In a grid window: the field and its button, without the bar's extras. */
+  compact?: boolean;
+  caret?: number;
   onText: (text: string) => void;
   onSend: (text: string) => void;
   onStop: () => void;
@@ -36,13 +102,6 @@ export function Composer({
 }) {
   const running = session.state === 'running';
   const blocked = session.state === 'blocked';
-  const empty = text.length === 0;
-  const input = useRef<HTMLTextAreaElement>(null);
-  // A field that stops taking text gives the keys back to the window, where
-  // the approval's answers are (↵ among them).
-  useLayoutEffect(() => {
-    if (blocked && document.activeElement === input.current) input.current?.blur();
-  }, [blocked]);
   const contextWindow = session.info?.context_window ?? 0;
   // Known only once a turn has ended: the daemon measures the context in
   // turn.completed, and a number derived here would be a second meter.
@@ -55,33 +114,16 @@ export function Composer({
     if (!blocked && text.trim()) onSend(text);
   };
   return (
-    <div className="composer-wrap">
+    <div className={`composer-wrap${compact ? ' compact' : ''}`}>
       <div className="composer">
-        <div className={`composer-field${empty ? ' empty' : ''}${blocked ? ' blocked' : ''}`}>
-          <div className="composer-sizer" aria-hidden="true">
-            {empty ? placeholderOf(session.state) : `${text}\n`}
-          </div>
-          <textarea
-            ref={input}
-            className="composer-input"
-            aria-label={placeholderOf(session.state)}
-            rows={1}
-            value={text}
-            disabled={blocked}
-            onChange={(e) => onText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-        </div>
+        <Field text={text} placeholder={placeholderOf(session.state)} disabled={blocked} caret={caret} onText={onText} onSubmit={send} />
         <div className="composer-bar">
-          <button type="button" className="composer-attach" onClick={() => onMissing('Anexar')}>
-            +
-          </button>
-          {chip && <span className="composer-chip">{chip}</span>}
+          {!compact && (
+            <button type="button" className="composer-attach" onClick={() => onMissing('Anexar')}>
+              +
+            </button>
+          )}
+          {!compact && chip && <span className="composer-chip">{chip}</span>}
           <span className="spacer" />
           {pct !== null && <span className={`composer-meter ${meterTone(pct)}`}>{pct}%</span>}
           {running ? (

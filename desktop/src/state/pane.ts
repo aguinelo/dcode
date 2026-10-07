@@ -1,14 +1,13 @@
-// What one panel of the grid says about its conversation, at a glance: what
-// it is doing, how its last turn was measured, and the little it takes to
-// decide whether to look closer. Pure: `now` comes in.
+// What a window of the grid says of its conversation above the flow, and what
+// a maximized one says beside its peers: what it is doing and how its last
+// turn was measured. Pure: `now` comes in.
 //
 // The measurement leads. A turn's seal and its criteria — met, unmet, could
-// not run — are what the harness established; the model's own words come
-// after, and only their first line.
+// not run — are what the harness established, not what the model said.
 
 import type * as P from '../protocol/generated';
-import { activity, toolLine, type Tone } from './flow';
-import { age, elapsed, firstLine, plural, since } from './format';
+import type { Tone } from './flow';
+import { age, elapsed, plural, since } from './format';
 import type { Entry, SessionView } from './session';
 import { basename, type Row } from './sidebar';
 
@@ -16,15 +15,6 @@ import { basename, type Row } from './sidebar';
 export interface Light {
   name: string;
   state: 'met' | 'unmet' | 'unavailable';
-}
-
-/** One line of a panel's tail, in the three voices of the terminal: you, the work, the answer. */
-export interface PaneLine {
-  kind: 'you' | 'work' | 'said' | 'note';
-  text: string;
-  tone: Tone | 'text';
-  /** For the work: the call's state, as the flow draws it. */
-  glyph?: string;
 }
 
 export interface PaneView {
@@ -40,14 +30,9 @@ export interface PaneView {
   touched: string[];
   /** What is known about done when nothing was measured yet. */
   doneNote: string | null;
-  lines: PaneLine[];
-  /** The question waiting for the person, answered from the panel. */
-  approval: P.ApprovalRequest | null;
   where: string;
   when: string;
 }
-
-const LINE_LIMIT = 120;
 
 function lastCompletion(entries: readonly Entry[]): P.Completion | null {
   for (let i = entries.length - 1; i >= 0; i--) {
@@ -80,56 +65,6 @@ function glyphOf(state: string, verification: string | undefined): { glyph: stri
   if (verification === 'failed') return { glyph: '✗', tone: 'err' };
   if (verification === 'stale' || verification === 'unavailable') return { glyph: '⚠', tone: 'dim' };
   return { glyph: '·', tone: 'faint' };
-}
-
-function pendingApproval(v: SessionView): P.ApprovalRequest | null {
-  if (!v.pendingApprovalId) return null;
-  for (let i = v.entries.length - 1; i >= 0; i--) {
-    const e = v.entries[i];
-    if (e?.kind === 'approval' && e.request.approval_id === v.pendingApprovalId) return e.request;
-  }
-  return null;
-}
-
-/** How many of the latest entries a panel reads: more than fit, the oldest cut at the top. */
-const TAIL = 14;
-
-/**
- * The end of the conversation, as a terminal shows it: what you asked, the
- * calls, what was answered — newest at the bottom.
- */
-function tailOf(v: SessionView): PaneLine[] {
-  const out: PaneLine[] = [];
-  for (const e of v.entries.slice(-TAIL)) {
-    switch (e.kind) {
-      case 'user':
-        out.push({ kind: 'you', text: firstLine(e.text, LINE_LIMIT), tone: 'text' });
-        break;
-      case 'tool': {
-        const t = toolLine(e.call);
-        out.push({ kind: 'work', glyph: t.glyph, tone: t.glyphTone, text: `${t.name} ${firstLine(t.target, LINE_LIMIT)}`.trim() });
-        break;
-      }
-      case 'model':
-        out.push({ kind: 'said', text: e.text.trim(), tone: 'text' });
-        break;
-      case 'error':
-        out.push({ kind: 'note', text: firstLine(e.message, LINE_LIMIT), tone: 'err' });
-        break;
-      default:
-    }
-  }
-  if (v.state === 'running' && activity(v.entries).fact.kind === 'none') out.push({ kind: 'note', text: 'Pensando…', tone: 'dim' });
-  if (out.length === 0) out.push({ kind: 'note', text: 'Nada perguntado ainda.', tone: 'dim' });
-  return out;
-}
-
-function linesOf(r: Row, v: SessionView | undefined): PaneLine[] {
-  if (v) return tailOf(v);
-  if (r.state === 'recorded') {
-    return [{ kind: 'note', text: `Terminada · ${plural(r.turns ?? 0, 'turno', 'turnos')}. Abrir continua numa sessão nova.`, tone: 'dim' }];
-  }
-  return [{ kind: 'note', text: 'Parada, esperando mensagem.', tone: 'dim' }];
 }
 
 export function paneView(r: Row, v: SessionView | undefined, now: number): PaneView {
@@ -169,8 +104,6 @@ export function paneView(r: Row, v: SessionView | undefined, now: number): PaneV
     lights,
     touched,
     doneNote,
-    lines: linesOf(r, v),
-    approval: v ? pendingApproval(v) : null,
     where,
     when,
   };
