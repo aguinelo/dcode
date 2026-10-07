@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O núcleo lista os modelos que uma sessão pode pedir.** Uma rota responde, para
+  o workspace de uma sessão, o modelo que ela recebe por padrão e cada perfil para
+  o qual pode trocar, cada um com a família e se essa família tem medição por trás
+  — o que o menu de modelo por sessão vai ler, em vez de ler o `models.toml` e
+  guardar uma cópia da lista de famílias medidas do núcleo. Os tipos do protocolo
+  foram regenerados.
 - **Um turno que dá outra volta fala numa mensagem nova.** Quando a checagem de
   pronto manda um turno de volta ao trabalho, as palavras seguintes do modelo
   saíam coladas às últimas — "…o parser.O teste…" —, porque o texto que chega em

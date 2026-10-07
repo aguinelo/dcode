@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 205 decision changelogs |
+| spec families | 18, with 206 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -262,6 +262,18 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **The daemon lists the models a session can ask for.** `GET /v1/models`
+  answers, for a workspace, the model a session there gets when it asks for
+  none and every profile in `models.toml` — the user's, with the project's
+  layered over them by name — each resolved the way the session asking for it
+  resolves it: model, family, transport, endpoint, window, and whether the
+  family has measurements behind it, with the family's own warning when it has
+  none. A profile no session could be built with stays listed and says why. No
+  answer carries the key, its mask or its fingerprint. Before, a client learned
+  which models existed only by reading `models.toml` itself, and could not tell
+  a measured family from one nobody measured. This is what the desktop's
+  per-session model switch reads.
 
 ## 0.23.0 — 1 October 2026
 
