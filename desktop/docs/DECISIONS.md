@@ -266,21 +266,22 @@ só adicionar a grade (a unidade da tela continuaria a conversa); um tema claro
 junto (o dobro de ajuste visual para uma proposta ainda não aprovada).
 
 **D30. A janela abre numa grade de atenção.** Em vez de uma conversa por vez, a
-janela abre na grade das conversas que pedem você, cada uma num painel com o selo
-do último turno, os critérios de pronto, o fim do trabalho e a aprovação
-respondida ali mesmo (1, 2 e ↵, que nega — D22). A unidade da tela passa a ser a
-prova de cada conversa; o chat é o detalhe, aberto com ↵ ou dois cliques.
+janela abre na grade das conversas que pedem você, cada uma numa janela com o selo
+do último turno e os critérios de pronto acima da própria conversa (D31). A
+unidade da tela passa a ser a prova de cada conversa, com a conversa logo abaixo
+dela.
 
-- **Quem ganha lugar**, nesta ordem: esperando você, fixada (○/◉), rodando, e
-  terminada desde que você olhou — "vista" é abrir ou expandir a conversa, ou
-  "dispensar" no painel. No mesmo grupo, a mais recente primeiro.
+- **Quem ganha lugar**, nesta ordem: esperando você, presa por você (D31),
+  rodando, e terminada desde que você olhou — "vista" é abrir a conversa, clicar
+  ou escrever na janela dela, ou fechá-la. No mesmo grupo, a mais recente
+  primeiro.
 - **Os lugares não pulam.** Quem está na grade fica no lugar enquanto pede
   atenção; quem chega ocupa o fim; quem sai libera. O que não cabe é contado na
   barra ("+n sem lugar na grade"), e entra pela prioridade quando abre vaga.
-- **Quantos cabem** é automático: até 6 painéis, ou 9 numa janela de pelo menos
-  1700×1000; o formato vai de 1×1 a 3×3.
-- **Teclado.** As setas movem o foco, ↵ abre, ⌘1–9 abre o painel n, ⌘0 e Esc
-  voltam à grade. Aberta, a conversa mostra os outros painéis no topo, como pares.
+- **Quantos cabem** é automático: até 6 janelas, ou 9 numa janela de pelo menos
+  1700×1000; o formato vai de 1×1 a 3×3. As que perguntam onde abrir uma sessão
+  contam no mesmo espaço.
+- **O que se faz numa janela, e o teclado:** D31.
 - **"Tocou a régua"** aparece ao lado dos critérios quando o último turno
   escreveu num caminho protegido, com os caminhos no título (D13).
 - **"Sem medição"** aparece ao lado dos critérios quando a família do modelo
@@ -295,6 +296,36 @@ prova de cada conversa; o chat é o detalhe, aberto com ↵ ou dois cliques.
 Descartados: abas (de novo uma por vez); um quadro por estado (move os cartões sob
 o ponteiro a cada mudança); lista com prévia (o design anterior).
 
+**D31. Cada janela da grade é uma conversa em que se trabalha.** Pedido depois de
+ver a grade: cada quadrante uma janela isolada, como uma conversa própria. A
+janela traz a conversa inteira — o selo e os critérios, o fluxo com rolagem
+própria que segue o fim, a aprovação e o seu próprio campo —, e se escreve em
+qualquer uma sem abri-la. Cada uma guarda o seu rascunho e a sua rolagem.
+
+- **Uma janela fica enquanto é sua.** Abrir uma conversa — pela lateral ou pelo
+  ⌘K —, clicar nela ou escrever nela a prende na grade; × a fecha, e o que ela
+  tinha feito conta como visto. O que roda ou espera você não mostra ×: o que
+  trabalha mantém o lugar. O que roda, espera ou termina continua entrando
+  sozinho nos lugares livres (D30).
+- **Nova sessão pergunta onde, numa janela.** Os projetos que a lista já conhece
+  e "Outra pasta…"; escolher abre a sessão ali, e a janela vira essa conversa,
+  com o cursor no campo. Sem projeto conhecido, o seletor de pastas vem direto,
+  como antes. Fechar a janela de uma sessão que nunca recebeu mensagem fecha a
+  sessão, para nada vazio ficar aberto atrás dela.
+- **Uma conversa terminada continua de dentro da janela:** escrever nela a
+  continua numa sessão nova (D21), que toma a janela; a troca de modelo faz o
+  mesmo (D28).
+- **Maximizar** é o ⤢, o duplo clique no topo da janela ou ⌘↵: a conversa ocupa o
+  palco, com as outras janelas como pares no topo; Esc e ⌘↵ voltam.
+- **Teclado.** ⌘N abre uma sessão; ⌘1–9 põe o cursor na janela n; Esc sai do
+  campo. Sem foco num campo, as setas andam entre as janelas, ↵ põe o cursor na
+  janela em foco, e uma janela esperando resposta toma 1, 2, 3, esc e ↵ — que
+  nega (D22).
+
+Descartados: abrir sempre maximizada (de novo uma por vez); a janela sair sozinha
+quando a conversa para (o lugar sumiria debaixo de quem escreve); um campo só,
+para a janela em foco (escrever exigiria escolher antes).
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
@@ -305,11 +336,11 @@ A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
 mostra as três.
 
 **A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico do palco —
-as conversas abertas nesta janela e a grade — (← fica esmaecido até haver para
+as conversas maximizadas nesta janela e a grade — (← fica esmaecido até haver para
 onde voltar). Grade, pelo botão e pelo ⌘0, volta à grade (D30); nova sessão, pelo
-botão e pelo ⌘N, pede a pasta e abre a sessão nela; procurar, pelo botão e pelo
-⌘K, abre a busca (D27); o chip do modelo, num painel ou na conversa aberta, o menu
-da troca (D28). Recolher a lateral e o menu da sessão saíram com a grade, e
+botão e pelo ⌘N, pergunta onde numa janela da grade (D31); procurar, pelo botão e
+pelo ⌘K, abre a busca (D27); o chip do modelo, numa janela ou na conversa
+maximizada, o menu da troca (D28). Recolher a lateral e o menu da sessão saíram com a grade, e
 rotinas saiu da lateral até existir. Anexar, adicionar projeto e configurações
 avisam que ainda não existem.
 

@@ -53,7 +53,7 @@ export function TopBar({
       {counts.blocked > 0 && <span className="topbar-count waiting">{counts.blocked} esperando você</span>}
       {overflow > 0 && <span className="topbar-count">+{overflow} sem lugar na grade</span>}
       <span className="spacer" />
-      <span className="topbar-hints">{onGrid ? '↵ abrir · ⌘K procurar' : 'esc grade · ⌘K procurar'}</span>
+      <span className="topbar-hints">{onGrid ? '⌘N nova · ⌘↵ maximizar · ⌘K procurar' : 'esc grade · ⌘K procurar'}</span>
     </header>
   );
 }

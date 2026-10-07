@@ -47,6 +47,17 @@ export function beginAt(a: Attention, now: string): Attention {
   return a.since === null ? { ...a, since: now } : a;
 }
 
+/** A window the person opened, or wrote in, stays on the grid until they close it. */
+export function hold(a: Attention, id: string): Attention {
+  return a.pinned.includes(id) ? a : { ...a, pinned: [...a.pinned, id] };
+}
+
+/** Closing a window lets it go, and counts what it had done as seen: it does not come straight back. */
+export function release(a: Attention, id: string, lastAt: string | null): Attention {
+  const kept = a.pinned.includes(id) ? { ...a, pinned: a.pinned.filter((x) => x !== id) } : a;
+  return markSeen(kept, id, lastAt);
+}
+
 export function togglePin(a: Attention, id: string): Attention {
   return a.pinned.includes(id) ? { ...a, pinned: a.pinned.filter((x) => x !== id) } : { ...a, pinned: [...a.pinned, id] };
 }
