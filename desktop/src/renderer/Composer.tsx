@@ -24,6 +24,7 @@ export function Composer({
   onText,
   onSend,
   onStop,
+  onModel,
   onMissing,
 }: {
   session: SessionView;
@@ -32,6 +33,8 @@ export function Composer({
   onText: (text: string) => void;
   onSend: (text: string) => void;
   onStop: () => void;
+  /** Opens the model menu from its button (D28). */
+  onModel: (anchor: HTMLElement) => void;
   onMissing: (what: string) => void;
 }) {
   const running = session.state === 'running';
@@ -84,7 +87,7 @@ export function Composer({
           {chip && <span className="composer-chip">{chip}</span>}
           <span className="spacer" />
           {session.info?.model && (
-            <button type="button" className="composer-model" onClick={() => onMissing('Trocar de modelo')}>
+            <button type="button" className="composer-model" aria-haspopup="menu" onClick={(e) => onModel(e.currentTarget)}>
               {session.info.model} <span className="faint">⌄</span>
             </button>
           )}

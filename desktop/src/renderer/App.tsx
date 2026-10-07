@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
+import { menuOf, type ModelOption } from '../state/models';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
 import { activeRows, countStates, projectsOf, type Row } from '../state/sidebar';
@@ -8,6 +9,7 @@ import { answerForKey } from './ApprovalCard';
 import { DaemonBar } from './DaemonBar';
 import type { Host } from './host';
 import { useNow, useReducedMotion, useTick } from './hooks';
+import { ModelMenu } from './ModelMenu';
 import { Search } from './Search';
 import { SessionPanel } from './SessionPanel';
 import { Sidebar } from './Sidebar';
@@ -17,6 +19,14 @@ import type { DaemonView, Outcome, WindowActions } from './window';
 interface Toast {
   id: number;
   text: string;
+}
+
+/** The model menu of one session: its button, and the daemon's list once it answers. */
+interface ModelMenuState {
+  sessionId: string;
+  anchor: HTMLElement;
+  options: ModelOption[] | null;
+  problem: string | null;
 }
 
 const TOAST_MS = 6000;
@@ -76,6 +86,7 @@ export function App({
   const [toasts, setToasts] = useState<Toast[]>(() => boot.notes.map((text, i) => ({ id: i + 1, text })));
   const [userName, setUserName] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const [models, setModels] = useState<ModelMenuState | null>(null);
   // Requests still on their way, so a second ↵ or click does not repeat one.
   const pending = useRef(new Set<string>());
 
@@ -196,6 +207,45 @@ export function App({
     [actions, once, selected],
   );
 
+  // The project a session runs in: its own word, else the list's.
+  const workspaceOf = useCallback(
+    (id: string) => sessions.byId[id]?.info?.workspace ?? rows.find((r) => r.id === id)?.workspace ?? '',
+    [rows, sessions],
+  );
+
+  const openModels = useCallback(
+    (anchor: HTMLElement) => {
+      if (!selected) return;
+      const id = selected.id;
+      if (models?.sessionId === id) {
+        setModels(null);
+        return;
+      }
+      const info = selected.info;
+      // The endpoint is known from the session's own facts; the list only has the model.
+      const running = info ? { model: info.model, baseUrl: info.base_url ?? '' } : null;
+      setModels({ sessionId: id, anchor, options: null, problem: null });
+      void actions.listModels(workspaceOf(id)).then((listed) =>
+        // For the menu still open on this session; a closed or moved one takes nothing.
+        setModels((m) =>
+          m?.sessionId !== id ? m : listed.ok ? { ...m, options: menuOf(listed.value, running) } : { ...m, problem: listed.why },
+        ),
+      );
+    },
+    [actions, models, selected, workspaceOf],
+  );
+
+  const pickModel = useCallback(
+    async (name: string) => {
+      const id = models?.sessionId;
+      setModels(null);
+      if (!id) return;
+      const switched = await once(`model:${id}`, () => actions.switchModel(id, workspaceOf(id), name));
+      if (switched?.ok) show(switched.value);
+    },
+    [actions, models, once, show, workspaceOf],
+  );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -287,6 +337,7 @@ export function App({
               onAnswer={answer}
               onSend={(text) => void send(text)}
               onStop={stop}
+              onModel={openModels}
               onMissing={(what) => say(notYet(what))}
             />
           ) : (
@@ -312,6 +363,16 @@ export function App({
             void open(id);
           }}
           onClose={() => setSearching(false)}
+        />
+      )}
+      {models && selected?.id === models.sessionId && (
+        <ModelMenu
+          anchor={models.anchor}
+          options={models.options}
+          problem={models.problem}
+          busy={selected.state === 'running' || selected.state === 'blocked'}
+          onPick={(name) => void pickModel(name)}
+          onClose={() => setModels(null)}
         />
       )}
       {toasts.length > 0 && (
