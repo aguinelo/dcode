@@ -1,19 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { forgetMissing, markSeen, togglePin } from '../state/attention';
+import { capacityFor, gridShape, planGrid } from '../state/grid';
+import { measureOf } from '../state/models';
+import { paneView } from '../state/pane';
 import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
-import { menuOf, type ModelOption } from '../state/models';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
-import { activeRows, countStates, projectsOf, type Row } from '../state/sidebar';
+import { countStates, projectsOf, rowOfSession, type Row } from '../state/sidebar';
 import { answerForKey } from './ApprovalCard';
-import { DaemonBar } from './DaemonBar';
+import { Grid } from './Grid';
 import type { Host } from './host';
-import { useNow, useReducedMotion, useTick } from './hooks';
+import { useNow, useReducedMotion, useTick, useWindowSize } from './hooks';
 import { ModelMenu } from './ModelMenu';
 import { Search } from './Search';
-import { SessionPanel } from './SessionPanel';
+import { SessionPanel, type Peer } from './SessionPanel';
 import { Sidebar } from './Sidebar';
 import { notYet } from './text';
+import { TopBar } from './TopBar';
+import { useAttention } from './useAttention';
+import { useModelLists } from './useModelLists';
+import { useModelMenu } from './useModelMenu';
 import type { DaemonView, Outcome, WindowActions } from './window';
 
 interface Toast {
@@ -21,15 +28,10 @@ interface Toast {
   text: string;
 }
 
-/** The model menu of one session: its button, and the daemon's list once it answers. */
-interface ModelMenuState {
-  sessionId: string;
-  anchor: HTMLElement;
-  options: ModelOption[] | null;
-  problem: string | null;
-}
-
 const TOAST_MS = 6000;
+
+/** In the history of the stage, the grid's place. */
+const GRID = '';
 
 function loadPrefs(host: Host): { prefs: Prefs; problem: string | null } {
   let raw: string | null;
@@ -49,6 +51,16 @@ function isEditable(el: Element | null): boolean {
   return !!el && (el as HTMLElement).isContentEditable;
 }
 
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** Focus nowhere in particular: the window's own keys apply, not a control's. */
+function focusIsNowhere(): boolean {
+  const el = document.activeElement;
+  return !el || el === document.body || (el instanceof HTMLTextAreaElement && el.disabled);
+}
+
 export function App({
   host,
   rows,
@@ -61,17 +73,19 @@ export function App({
   host: Host;
   /** The sidebar's conversations. */
   rows: Row[];
-  /** The sessions whose events the window holds — the ones it opened. */
+  /** The sessions whose events the window holds: the open one and the grid's. */
   sessions: SessionsState;
   daemon: DaemonView;
   actions: WindowActions;
   /** Registers what to call with each notice that arrives after the first frame. */
   notices?: (say: (text: string) => void) => () => void;
+  /** The conversation open at first; null opens on the grid. */
   initialSelection: string | null;
 }) {
   const now = useNow(1000);
   const reduced = useReducedMotion();
   const verbTick = useTick(2400, reduced);
+  const size = useWindowSize();
   // What went wrong before the first frame is said in it: stored preferences
   // that could not be read, events that name no session to be shown in.
   const [boot] = useState(() => {
@@ -86,13 +100,14 @@ export function App({
   const [toasts, setToasts] = useState<Toast[]>(() => boot.notes.map((text, i) => ({ id: i + 1, text })));
   const [userName, setUserName] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
-  const [models, setModels] = useState<ModelMenuState | null>(null);
+  const [focus, setFocus] = useState(0);
   // Requests still on their way, so a second ↵ or click does not repeat one.
   const pending = useRef(new Set<string>());
 
   const say = useCallback((text: string) => {
     setToasts((t) => [...t.filter((x) => x.text !== text), { id: Date.now() + Math.random(), text }]);
   }, []);
+  const [attention, updateAttention] = useAttention(say);
 
   useEffect(() => {
     host.user().then(
@@ -122,18 +137,39 @@ export function App({
     [prefs, say],
   );
 
+  const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const projects = useMemo(() => projectsOf(rows, prefs), [rows, prefs]);
   const shown = useMemo(() => projects.map((p) => p.id), [projects]);
   const counts = useMemo(() => countStates(rows), [rows]);
+
+  // The grid, in stable places: the plan reads the places as last drawn, and
+  // they are kept the way React keeps a value from the previous render.
+  const [placed, setPlaced] = useState<string[]>([]);
+  const capacity = capacityFor(size.width, size.height);
+  const plan = useMemo(() => planGrid(rows, attention, placed, capacity), [rows, attention, placed, capacity]);
+  if (!sameIds(plan.ids, placed)) setPlaced(plan.ids);
+  const onGridIds = useMemo(() => new Set(plan.ids), [plan.ids]);
+  const focusAt = Math.min(focus, Math.max(plan.ids.length - 1, 0));
+
+  // A panel shows its conversation live: the grid's sessions are followed.
+  useEffect(() => {
+    for (const id of plan.ids) {
+      const r = rowById.get(id);
+      if (r) actions.watch(r);
+    }
+  }, [plan.ids, rowById, actions]);
+
+  // What the daemon no longer has, the grid stops remembering.
+  useEffect(() => {
+    if (rows.length > 0) updateAttention((a) => forgetMissing(a, new Set(rows.map((r) => r.id))));
+  }, [rows, updateAttention]);
+
   // A session just opened has no events yet: it is drawn empty, and fills in
   // as its stream arrives.
   const selected = selectedId ? (sessions.byId[selectedId] ?? emptySession(selectedId)) : null;
+  const selectedRow = selectedId ? (rowById.get(selectedId) ?? null) : null;
 
-  /**
-   * Runs one request at a time per key, saying why when it is not done.
-   * Answers its outcome, or null when one with the same key was still on its
-   * way — never the bare value, since a done request's value can be null too.
-   */
+  /** Runs one request at a time per key, saying why when it is not done; null when one was on its way. */
   const once = useCallback(
     async <T,>(key: string, run: () => Promise<Outcome<T>>): Promise<Outcome<T> | null> => {
       if (pending.current.has(key)) return null;
@@ -149,24 +185,44 @@ export function App({
     [say],
   );
 
+  /** The person looked at a conversation: what it had done by now is seen. */
+  const seeNow = useCallback(
+    (id: string | null) => {
+      const r = id ? rowById.get(id) : undefined;
+      if (r) updateAttention((a) => markSeen(a, r.id, r.lastAt));
+    },
+    [rowById, updateAttention],
+  );
+
+  /** Puts a conversation on the stage, or the grid with null. */
   const show = useCallback(
-    (id: string) => {
+    (id: string | null) => {
       if (id === selectedId) return;
-      setHistory((h) => ({ back: selectedId ? [...h.back, selectedId] : h.back, forward: [] }));
+      // Leaving one counts as having seen what it did while it was open.
+      seeNow(selectedId);
+      seeNow(id);
+      setHistory((h) => ({ back: [...h.back, selectedId ?? GRID], forward: [] }));
       setSelectedId(id);
     },
-    [selectedId],
+    [selectedId, seeNow],
   );
+
+  const travel = (to: string | undefined, push: (h: { back: string[]; forward: string[] }) => { back: string[]; forward: string[] }) => {
+    if (to === undefined) return;
+    seeNow(selectedId);
+    setHistory(push);
+    setSelectedId(to === GRID ? null : to);
+  };
 
   const open = useCallback(
     async (id: string) => {
       if (id === selectedId) return;
-      const row = rows.find((r) => r.id === id);
+      const row = rowById.get(id);
       if (!row) return;
       const opened = await once(`open:${id}`, () => actions.open(row));
       if (opened?.ok) show(opened.value);
     },
-    [actions, once, rows, selectedId, show],
+    [actions, once, rowById, selectedId, show],
   );
 
   const newSession = useCallback(async () => {
@@ -198,122 +254,150 @@ export function App({
     if (selected) void once(`stop:${selected.id}`, () => actions.stop(selected.id));
   }, [actions, once, selected]);
 
+  const answerIn = useCallback(
+    (sessionId: string, approvalId: string, decision: string) => {
+      if (approvalId) void once(`answer:${approvalId}`, () => actions.answer(sessionId, approvalId, decision));
+    },
+    [actions, once],
+  );
+
   const answer = useCallback(
     (decision: string) => {
-      const approval = selected?.pendingApprovalId;
-      if (!selected || !approval) return;
-      void once(`answer:${approval}`, () => actions.answer(selected.id, approval, decision));
+      if (selected?.pendingApprovalId) answerIn(selected.id, selected.pendingApprovalId, decision);
     },
-    [actions, once, selected],
+    [answerIn, selected],
   );
 
-  // The project a session runs in: its own word, else the list's.
-  const workspaceOf = useCallback(
-    (id: string) => sessions.byId[id]?.info?.workspace ?? rows.find((r) => r.id === id)?.workspace ?? '',
-    [rows, sessions],
-  );
+  const models = useModelMenu(actions, sessions, once, show);
 
-  const openModels = useCallback(
-    (anchor: HTMLElement) => {
-      if (!selected) return;
-      const id = selected.id;
-      if (models?.sessionId === id) {
-        setModels(null);
-        return;
-      }
-      const info = selected.info;
-      // The endpoint is known from the session's own facts; the list only has the model.
-      const running = info ? { model: info.model, baseUrl: info.base_url ?? '' } : null;
-      setModels({ sessionId: id, anchor, options: null, problem: null });
-      void actions.listModels(workspaceOf(id)).then((listed) =>
-        // For the menu still open on this session; a closed or moved one takes nothing.
-        setModels((m) =>
-          m?.sessionId !== id ? m : listed.ok ? { ...m, options: menuOf(listed.value, running) } : { ...m, problem: listed.why },
-        ),
-      );
-    },
-    [actions, models, selected, workspaceOf],
+  // Whether each conversation on the stage runs on a measured family, as the daemon's list says.
+  const stage = useMemo(
+    () => [...new Set([...plan.ids, ...(selectedId ? [selectedId] : [])].map((id) => sessions.byId[id]?.info?.workspace ?? rowById.get(id)?.workspace ?? ''))],
+    [plan.ids, selectedId, sessions, rowById],
   );
-
-  const pickModel = useCallback(
-    async (name: string) => {
-      const id = models?.sessionId;
-      setModels(null);
-      if (!id) return;
-      const switched = await once(`model:${id}`, () => actions.switchModel(id, workspaceOf(id), name));
-      if (switched?.ok) show(switched.value);
+  const lists = useModelLists(actions, stage);
+  const measureFor = useCallback(
+    (row: Row) => {
+      const info = sessions.byId[row.id]?.info;
+      const running = info ? { model: info.model, family: info.family ?? null } : row.model ? { model: row.model, family: null } : null;
+      return measureOf(lists.get(info?.workspace ?? row.workspace), running);
     },
-    [actions, models, once, show, workspaceOf],
+    [lists, sessions],
   );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === 'k') {
+      const key = e.key.toLowerCase();
+      if (mod && key === 'k') {
         e.preventDefault();
         // Drawn and focused before this key's handling ends, so what is typed
         // right after ⌘K lands in the search, not in the window behind it.
         flushSync(() => setSearching((s) => !s));
         return;
       }
-      // While the search is open, its keys are its own.
-      if (searching) return;
-      if (mod && e.key.toLowerCase() === 'n') {
+      // While the search or a menu is open, its keys are its own.
+      if (searching || models.menu) return;
+      if (mod && key === 'n') {
         e.preventDefault();
         void newSession();
         return;
       }
+      if (mod && key === '0') {
+        e.preventDefault();
+        show(null);
+        return;
+      }
       if (mod && /^[1-9]$/.test(e.key)) {
-        const target = activeRows(projects)[Number(e.key) - 1];
-        if (target) {
+        const id = plan.ids[Number(e.key) - 1];
+        if (id) {
           e.preventDefault();
-          void open(target.id);
+          void open(id);
         }
         return;
       }
-      if (!selected?.pendingApprovalId || isEditable(document.activeElement) || mod) return;
-      // ↵ denies only from nowhere in particular: on a focused control — an
-      // answer, a row — it is that control's own ↵.
-      const focused = document.activeElement;
-      const nowhere = !focused || focused === document.body || (focused instanceof HTMLTextAreaElement && focused.disabled);
-      if (e.key === 'Enter' && !nowhere) return;
-      const decision = answerForKey(e.key);
-      if (decision) {
+      if (mod || isEditable(document.activeElement)) return;
+      // ↵ answers only from nowhere in particular: on a focused control it is
+      // that control's own ↵ (D22).
+      const nowhere = focusIsNowhere();
+      if (selected) {
+        if (selected.pendingApprovalId) {
+          if (e.key === 'Enter' && !nowhere) return;
+          const decision = answerForKey(e.key);
+          if (decision) {
+            e.preventDefault();
+            answer(decision);
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          show(null);
+        }
+        return;
+      }
+      const n = plan.ids.length;
+      if (n === 0) return;
+      const cols = gridShape(n).cols;
+      const moves: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols };
+      const step = moves[e.key];
+      if (step !== undefined) {
         e.preventDefault();
-        answer(decision);
+        setFocus(Math.max(0, Math.min(n - 1, focusAt + step)));
+        return;
+      }
+      const id = plan.ids[focusAt];
+      if (!id) return;
+      const waiting = sessions.byId[id]?.pendingApprovalId;
+      if (waiting) {
+        if (e.key === 'Enter' && !nowhere) return;
+        const decision = answerForKey(e.key);
+        if (decision) {
+          e.preventDefault();
+          answerIn(id, waiting, decision);
+        }
+        return;
+      }
+      if (e.key === 'Enter' && nowhere) {
+        e.preventDefault();
+        void open(id);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [projects, open, newSession, selected, answer, searching]);
+  }, [plan.ids, focusAt, sessions, open, newSession, selected, answer, answerIn, searching, models.menu, show]);
 
-  // The project the search's `projeto` scope keeps to: the open session's.
-  const openProject = selected ? (selected.info?.workspace ?? rows.find((r) => r.id === selected.id)?.workspace ?? null) : null;
+  const peers: Peer[] = plan.ids
+    .filter((id) => id !== selectedId)
+    .flatMap((id) => {
+      const r = rowById.get(id);
+      return r ? [{ row: r, view: paneView(r, sessions.byId[id], now) }] : [];
+    });
 
   return (
     <div className={`window${searching ? ' searching' : ''}`}>
+      <TopBar
+        host={host}
+        daemon={daemon}
+        counts={counts}
+        overflow={plan.overflow.length}
+        onGrid={!selected}
+        canGoBack={history.back.length > 0}
+        canGoForward={history.forward.length > 0}
+        onBack={() =>
+          travel(history.back[history.back.length - 1], (h) => ({ back: h.back.slice(0, -1), forward: [selectedId ?? GRID, ...h.forward] }))
+        }
+        onForward={() => travel(history.forward[0], (h) => ({ back: [...h.back, selectedId ?? GRID], forward: h.forward.slice(1) }))}
+      />
       <div className="window-main">
         <Sidebar
-          drawsWindowControls={host.drawsWindowControls}
           projects={projects}
           selectedId={selectedId}
+          onGridIds={onGridIds}
+          gridShown={!selected}
+          gridCount={plan.ids.length}
           now={now}
           userName={userName}
-          canGoBack={history.back.length > 0}
-          canGoForward={history.forward.length > 0}
-          onBack={() => {
-            const prev = history.back[history.back.length - 1];
-            if (!prev) return;
-            setHistory((h) => ({ back: h.back.slice(0, -1), forward: selectedId ? [selectedId, ...h.forward] : h.forward }));
-            setSelectedId(prev);
-          }}
-          onForward={() => {
-            const next = history.forward[0];
-            if (!next) return;
-            setHistory((h) => ({ back: selectedId ? [...h.back, selectedId] : h.back, forward: h.forward.slice(1) }));
-            setSelectedId(next);
-          }}
           onToggleAll={() => updatePrefs((p) => setAllCollapsed(p, shown, projects.some((x) => !x.collapsed)))}
+          onShowGrid={() => show(null)}
           onNewSession={() => void newSession()}
           onSearch={() => setSearching(true)}
           onMissing={(what) => say(notYet(what))}
@@ -330,6 +414,8 @@ export function App({
             <SessionPanel
               key={selected.id}
               session={selected}
+              row={selectedRow}
+              peers={peers}
               now={now}
               verbTick={verbTick}
               draft={drafts[selected.id] ?? ''}
@@ -337,42 +423,41 @@ export function App({
               onAnswer={answer}
               onSend={(text) => void send(text)}
               onStop={stop}
-              onModel={openModels}
               onMissing={(what) => say(notYet(what))}
+              onGrid={() => show(null)}
+              onOpenPeer={(id) => void open(id)}
+              onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
+              measure={measureFor(selectedRow ?? rowOfSession(selected))}
             />
           ) : (
-            <section className="panel empty-panel">
-              <p>Nenhuma sessão aberta.</p>
-            </section>
+            <Grid
+              plan={plan}
+              rows={rowById}
+              sessions={sessions}
+              attention={attention}
+              focus={focusAt}
+              now={now}
+              onFocus={setFocus}
+              onOpen={(id) => void open(id)}
+              onPin={(id) => updateAttention((a) => togglePin(a, id))}
+              onSeen={seeNow}
+              onAnswer={answerIn}
+              onModel={models.open}
+              measureFor={measureFor}
+              onNew={() => void newSession()}
+              onSearch={() => setSearching(true)}
+            />
           )}
         </main>
       </div>
-      <footer className="bottombar">
-        <DaemonBar daemon={daemon} />
-        <span className="spacer" />
-        {counts.running > 0 && <span>{counts.running} rodando</span>}
-        {counts.blocked > 0 && <span className="tone-warn">{counts.blocked} esperando você</span>}
-      </footer>
-      {searching && (
-        <Search
-          projects={projects}
-          project={openProject}
-          now={now}
-          onOpen={(id) => {
-            setSearching(false);
-            void open(id);
-          }}
-          onClose={() => setSearching(false)}
-        />
-      )}
-      {models && selected?.id === models.sessionId && (
+      {models.menu && (
         <ModelMenu
-          anchor={models.anchor}
-          options={models.options}
-          problem={models.problem}
-          busy={selected.state === 'running' || selected.state === 'blocked'}
-          onPick={(name) => void pickModel(name)}
-          onClose={() => setModels(null)}
+          anchor={models.menu.anchor}
+          options={models.menu.options}
+          problem={models.menu.problem}
+          busy={models.busy}
+          onPick={(name) => void models.pick(name)}
+          onClose={models.close}
         />
       )}
       {toasts.length > 0 && (
@@ -383,6 +468,18 @@ export function App({
             </button>
           ))}
         </div>
+      )}
+      {searching && (
+        <Search
+          projects={projects}
+          project={selected ? (selected.info?.workspace ?? selectedRow?.workspace ?? null) : null}
+          now={now}
+          onOpen={(id) => {
+            setSearching(false);
+            void open(id);
+          }}
+          onClose={() => setSearching(false)}
+        />
       )}
     </div>
   );

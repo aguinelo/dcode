@@ -54,7 +54,7 @@ describe('⌘K', () => {
     const [readme, sessao] = [rows[1]!, rows[2]!];
     expect(searchSide(sessao, now)).toEqual({ text: 'rodando', tone: 'dim' });
     expect(searchSide(readme, now)).toEqual({ text: '2h', tone: 'faint' });
-    expect(longState(rowOfConversation(conversation({ verification: 'passed' })))).toEqual({ text: '✓ verified', tone: 'ok' });
+    expect(longState(rowOfConversation(conversation({ verification: 'passed' })))).toEqual({ text: '✓ verificado', tone: 'ok' });
     expect(longState(rows[3]!).text).toMatch(/^Terminada/);
     expect(lastEventText(rowOfConversation(conversation({ last_event: 'turn.completed' })), now)).toBe('turno terminou · 2h');
     expect(lastEventText(rowOfConversation(conversation({ last_event: 'plan.updated' })), now)).toBe('plan.updated · 2h');

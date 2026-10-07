@@ -37,6 +37,7 @@ function Project({
   index,
   total,
   selectedId,
+  onGridIds,
   now,
   dragging,
   dropTarget,
@@ -48,6 +49,7 @@ function Project({
   index: number;
   total: number;
   selectedId: string | null;
+  onGridIds: ReadonlySet<string>;
   now: number;
   dragging: string | null;
   dropTarget: string | null;
@@ -176,6 +178,7 @@ function Project({
                 <span className={`mark mark-${mark}${mark === 'running' ? ' dc-breath' : ''}`} />
               </span>
               <span className="session-title">{r.title}</span>
+              {onGridIds.has(r.id) && <span className="mark-grid" title="Na grade" />}
               {side && <span className={`session-side tone-${side.tone}`}>{side.text}</span>}
             </div>
           );
@@ -187,11 +190,13 @@ function Project({
 export function ProjectList({
   projects,
   selectedId,
+  onGridIds,
   now,
   actions,
 }: {
   projects: ProjectView[];
   selectedId: string | null;
+  onGridIds: ReadonlySet<string>;
   now: number;
   actions: ProjectActions;
 }) {
@@ -206,6 +211,7 @@ export function ProjectList({
           index={i}
           total={projects.length}
           selectedId={selectedId}
+          onGridIds={onGridIds}
           now={now}
           dragging={dragging}
           dropTarget={dropTarget}

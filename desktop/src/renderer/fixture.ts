@@ -13,6 +13,7 @@ export const fixtureActions: WindowActions = {
   stop: unsent,
   answer: unsent,
   newSession: async () => ({ ok: false, why: NOT_CONNECTED }),
+  watch: () => {},
   listModels: async () => ({ ok: false, why: NOT_CONNECTED }),
   switchModel: async () => ({ ok: false, why: NOT_CONNECTED }),
 };

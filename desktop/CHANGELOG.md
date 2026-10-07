@@ -10,6 +10,29 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The window opens on an attention grid, in grafite.** One conversation at a
+  time read as a chat app's clone, and a person running several agents wants to
+  see them all. The window now opens on a grid of the conversations that claim a
+  place — waiting for you, pinned, running, or finished and not yet seen — in
+  places that do not move while the work does, up to 6 panels, or 9 in a large
+  window. Each panel carries the seal of its last turn and each done criterion,
+  the tail of its work, and an approval answered in place; ↵ opens it, with the
+  other panels as peers in its head, and Esc or ⌘0 comes back. Grafite is dark,
+  with one lime accent, the system's font and mono where it is code, and 4px
+  corners; the seals and their words are in Portuguese. The handoff's visual
+  references no longer describe the window, so `check:visual` fails against them
+  until new ones are approved (D18, D29, D30).
+- **A turn that wrote where the work is measured says so.** The daemon has long
+  sent the protected paths a turn wrote (`touched_protected`), and the window
+  never read them. The seal now says "· tocou a régua: …" and stops being green,
+  and a panel says "⚠ tocou a régua" beside its criteria, with the paths in its
+  title: a pass measured with a ruler the turn itself changed is not a plain
+  pass (D13, D30).
+- **A panel says when its model's family was never measured.** The seal says
+  what the done criteria checked, not whether anyone measured the model doing
+  the work. Beside the criteria, a panel and the open conversation say "sem
+  medição" when the daemon's list of models says the family has no measurements
+  behind it; a list that did not come marks nothing (D30).
 - **A conversation continues on another model.** The model button in the
   composer opens what the daemon says a session in that project can ask for
   (`GET /v1/models`): the project's default and each profile in `models.toml`,

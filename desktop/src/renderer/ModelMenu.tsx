@@ -63,12 +63,13 @@ export function ModelMenu({
     box.current?.querySelector<HTMLButtonElement>('.model-option:not(:disabled)')?.focus();
   }, [options]);
 
-  // Above the button, right-aligned to it: the composer is at the bottom.
+  // Right-aligned to the button: below one in the upper half of the window — a
+  // panel's chip —, above one in the lower half.
   const r = anchor.getBoundingClientRect();
   const left = Math.max(8, Math.min(r.right - WIDTH, window.innerWidth - WIDTH - 8));
-  const bottom = Math.max(8, window.innerHeight - r.top + 6);
+  const place = r.top < window.innerHeight / 2 ? { top: r.bottom + 6 } : { bottom: Math.max(8, window.innerHeight - r.top + 6) };
   return (
-    <div ref={box} className="model-menu" style={{ left, bottom, width: WIDTH }} role="menu" aria-label="Continuar em outro modelo">
+    <div ref={box} className="model-menu" style={{ left, width: WIDTH, ...place }} role="menu" aria-label="Continuar em outro modelo">
       <div className="model-menu-head">Continuar em outro modelo</div>
       {busy ? (
         <div className="model-menu-note">Pare o turno ou espere ele terminar para trocar de modelo.</div>

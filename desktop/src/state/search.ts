@@ -4,6 +4,7 @@
 
 import { age, since } from './format';
 import type { Tone } from './flow';
+import { sealWord } from './pane';
 import type { ProjectView, Row } from './sidebar';
 
 /** Where the search looks: everything, what is running or waiting, or the open session's project. */
@@ -61,15 +62,8 @@ export function searchSide(r: Row, now: number): { text: string; tone: Tone } {
 export function longState(r: Row): { text: string; tone: Tone } {
   if (r.state === 'blocked') return { text: 'Esperando aprovação', tone: 'warn' };
   if (r.state === 'running') return { text: 'Rodando', tone: 'dim' };
-  switch (r.verification) {
-    case 'passed':
-      return { text: '✓ verified', tone: 'ok' };
-    case 'failed':
-      return { text: '✗ not verified', tone: 'err' };
-    case 'stale':
-    case 'unavailable':
-      return { text: '⚠ unverified', tone: 'dim' };
-  }
+  const seal = sealWord(r.verification);
+  if (seal) return seal;
   if (r.state === 'recorded') return { text: 'Terminada — abrir continua numa sessão nova', tone: 'faint' };
   return { text: 'Parada, esperando mensagem', tone: 'faint' };
 }

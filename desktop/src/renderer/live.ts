@@ -41,6 +41,8 @@ export class LiveStore {
   private readonly noticed = new Set<(text: string) => void>();
   /** Continuations on their way, so a second open of the same ended conversation waits for the first. */
   private readonly continuing = new Map<string, Promise<Outcome<string>>>();
+  /** The sessions whose stream the main process holds open: asked for once each. */
+  private readonly followed = new Set<string>();
 
   constructor(private readonly api: DcodeApi) {}
 
@@ -52,6 +54,8 @@ export class LiveStore {
       this.api.onConversations((raw) => this.onList(raw)),
       this.api.onSessionEvents((batch) => this.onEvents(batch.events)),
       this.api.onStreamEnd((end) => {
+        // Ended for good: the next panel or open that wants it asks again.
+        this.followed.delete(end.sessionId);
         // A conversation that ends closes its stream: that is the end the list
         // shows, not a failure. The list may say so a moment after the stream
         // does, over a connection of its own, so it is asked after that moment.
@@ -96,6 +100,14 @@ export class LiveStore {
       if (!folder) return null;
       const created = outcome(await this.api.createSession(folder), `A sessão não abriu em ${folder}`);
       return created.ok ? this.follow(created.value.id) : created;
+    },
+    watch: (row) => {
+      // An ended conversation has no stream: its panel reads the list.
+      if (row.state === 'recorded' || this.followed.has(row.id)) return;
+      void this.follow(row.id).then((out) => {
+        // With the daemon down the bar already says so; one notice per panel would bury it.
+        if (!out.ok && this.snap.daemon.state === 'connected') this.notice(out.why);
+      });
     },
     listModels: async (workspace) => {
       const listed = await this.api.listModels(workspace);
@@ -149,7 +161,10 @@ export class LiveStore {
   }
 
   private async follow(id: string): Promise<Outcome<string>> {
+    if (this.followed.has(id)) return { ok: true, value: id };
+    this.followed.add(id);
     const followed = outcome(await this.api.follow(id), 'A conversa não abriu');
+    if (!followed.ok) this.followed.delete(id);
     return followed.ok ? { ok: true, value: id } : followed;
   }
 
