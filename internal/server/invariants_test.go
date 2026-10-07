@@ -72,6 +72,14 @@ var protocolInvariants = map[string]string{
 	"Conversa que termina continua na lista": "TestAConversationThatEndsStaysAsRecorded",
 	"relido para a lista só quando":          "TestARecordIsReadAgainOnlyWhenItChanged",
 	"dobradas pelo mesmo código":             "TestALiveSummaryMatchesItsRecord",
+	// The models a session can ask for. Resolved where the daemon builds
+	// sessions, so the assertions run through the daemon's own routes.
+	"recebe sem pedir nenhum":         "TestTheMenuListsTheDefaultAndTheProfilesOfTheWorkspace",
+	"é a sessão que ela abre":         "TestAChoiceDescribesTheSessionItOpens",
+	"família sem medição diz isso":    "TestAModelWithNoMeasurementSaysSo",
+	"nenhuma sessão pode ser montada": "TestAProfileNoSessionCanBuildIsListedWithTheReason",
+	"nunca carrega a chave":           "TestTheListOfModelsNeverCarriesACredential",
+	"configuração do daemon no lugar": "TestAWorkspaceThatCannotBeReadIsRefusedWithTheReason",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

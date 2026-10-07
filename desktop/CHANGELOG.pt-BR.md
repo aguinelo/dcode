@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O núcleo lista os modelos que uma sessão pode pedir.** Uma rota responde, para
+  o workspace de uma sessão, o modelo que ela recebe por padrão e cada perfil para
+  o qual pode trocar, cada um com a família e se essa família tem medição por trás
+  — o que o menu de modelo por sessão vai ler, em vez de ler o `models.toml` e
+  guardar uma cópia da lista de famílias medidas do núcleo. Os tipos do protocolo
+  foram regenerados.
 - **O ⌘K acha qualquer conversa.** A busca que o design desenha, sobre a lista
   do daemon: cada palavra digitada precisa estar no título ou no projeto, sem
   distinguir maiúsculas nem acentos; as conversas rodando ou esperando você

@@ -68,6 +68,13 @@ type Config struct {
 	// Conversations is the list of conversations, live and recorded, with its
 	// stream. Nil answers an empty list and refuses the stream.
 	Conversations ConversationIndex
+	// Models answers which models a session in a workspace can ask for, and
+	// whether each has measurements behind it. An empty workspace asks about
+	// the configuration the daemon started with.
+	//
+	// Injected for the same reason Specs is: resolving a workspace's
+	// configuration is the app's business. Nil refuses, saying why.
+	Models func(workspace string) (protocol.ModelsResponse, error)
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -175,6 +182,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/specs", s.listSpecs)
 	s.mux.HandleFunc("GET "+p+"/conversations", s.listConversations)
 	s.mux.HandleFunc("GET "+p+"/conversations/events", s.conversationEvents)
+	s.mux.HandleFunc("GET "+p+"/models", s.listModels)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)

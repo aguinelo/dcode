@@ -57,6 +57,7 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/sessions` | `experimental` | Lista sessões vivas. |
 | `GET` | `/conversations` | `experimental` | Lista as conversas, vivas e gravadas, da atividade mais recente para a mais antiga. Query `workspace` (absoluto) guarda um projeto. Devolve `ListConversationsResponse`. |
 | `GET` | `/conversations/events` | `experimental` | **SSE.** A lista inteira primeiro (`snapshot`), depois cada conversa que mudou (`changed`) ou saiu (`removed`). Sem `from`: reconectar recebe outro `snapshot`. |
+| `GET` | `/models` | `experimental` | Os modelos que uma sessão pode pedir: o que ela recebe sem pedir nenhum e cada perfil do `models.toml` (o do usuário e o do projeto), cada um dizendo se a família tem medição. Query `workspace` (absoluto, opcional) escolhe o projeto; sem ela, vale a configuração com que o daemon subiu. Devolve `ModelsResponse`. |
 | `GET` | `/sessions/{id}` | `experimental` | Detalhe de uma sessão. |
 | `DELETE` | `/sessions/{id}` | `experimental` | Encerra e libera a sessão. |
 | `GET` | `/sessions/{id}/events` | `experimental` | **SSE.** Query `from` (uint64, default `1`). |
@@ -214,6 +215,35 @@ type ConversationChange struct {
 Abrir uma conversa gravada é continuá-la numa sessão nova
 (`CreateSessionRequest.Resume`): nada sobrevive a quem o criou.
 
+### 5.3 Os modelos que uma sessão pode pedir
+
+O menu de modelo de uma sessão (`internal/protocol/models.go`). Cada escolha é
+resolvida pelo caminho que monta a sessão — a cadeia de configuração do
+workspace (`optionsFor`), o nome aplicado como num `CreateSessionRequest.Model`
+(`applyModelRequest`) e o provider que a sessão comporia (`buildProvider`) —,
+então o que o menu oferece é o que a sessão abre.
+
+```go
+type ModelChoice struct {
+    Name      string `json:"name"`               // o que pedir: o nome do perfil; no padrão, o modelo
+    Model     string `json:"model"`
+    Family    string `json:"family"`             // resolvida: a configurada, senão a que reivindica o prefixo do modelo; vazia só quando nenhuma reivindica
+    Transport string `json:"transport"`          // resolvido: o configurado, senão o preferido da família
+    BaseURL   string `json:"base_url,omitempty"` // o endpoint configurado; vazio é o do transporte
+    Window    int    `json:"window,omitempty"`   // a janela da sessão que pedir este nome: a configurada, senão a da família
+    Measured  bool   `json:"measured"`           // provider.Unmeasured(family) == "", para uma escolha com que a sessão pode ser montada
+    Notice    string `json:"notice,omitempty"`   // sem medição: o texto de provider.Unmeasured, ou por que nenhuma sessão pode ser montada
+}
+
+type ModelsResponse struct {
+    Default  ModelChoice   `json:"default"`  // o que a sessão recebe quando não pede modelo
+    Profiles []ModelChoice `json:"profiles"` // os perfis, por nome; nenhum é [], nunca null
+}
+```
+
+Nenhuma escolha carrega credencial: nem a chave, nem a máscara, nem a impressão
+digital dela, nem de onde ela veio.
+
 ## 6. Fluxo de aprovação
 
 Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
@@ -326,6 +356,12 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Conversa que termina continua na lista, como gravada, e o fluxo diz.
 - Registro é relido para a lista só quando o arquivo mudou, e só ele.
 - A linha viva e a linha gravada de uma conversa são dobradas pelo mesmo código: terminar não muda o que a lista diz dela além de que terminou.
+- `GET /models` lista o modelo que uma sessão do workspace recebe sem pedir nenhum e os perfis do `models.toml` dela — o do usuário e o do projeto, por nome; sem `workspace`, vale a configuração com que o daemon subiu.
+- Escolha do menu é a sessão que ela abre: pedir o nome monta a sessão com o modelo e a janela que o menu prometeu.
+- Modelo de família sem medição diz isso antes de ser escolhido: `measured` falso e, em `notice`, a admissão da própria família (`provider.Unmeasured`).
+- Perfil com que nenhuma sessão pode ser montada continua no menu, sem medição e com o motivo em `notice` — o mesmo com que a sessão recusaria.
+- A lista de modelos nunca carrega a chave: nem ela, nem a máscara, nem a impressão digital, nem de onde ela veio; e os campos são um conjunto declarado, para campo novo ser decisão e não vazamento.
+- Workspace relativo, inexistente ou com configuração ilegível é recusado com `workspace_invalid` e o motivo, nunca respondido com a configuração do daemon no lugar.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
@@ -345,3 +381,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609291401 — A pergunta carrega o prazo](changelog/202609291401-a-pergunta-carrega-o-prazo.md)
 - [202609292355 — O socket é um por usuário](changelog/202609292355-o-socket-e-um-por-usuario.md)
 - [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)
+- [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)

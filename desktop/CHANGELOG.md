@@ -10,6 +10,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The core lists the models a session can ask for.** One route answers, for a
+  session's workspace, the model it gets by default and each profile it can
+  switch to, each with its family and whether that family has measurements
+  behind it — what the per-session model menu will read, instead of reading
+  `models.toml` and keeping a copy of the core's list of measured families. The
+  protocol types are regenerated.
 - **⌘K finds any conversation.** The search the design draws, over the daemon's
   list: every word typed must be in the title or the project, without case or
   accents; the conversations running or waiting for you first, then one group per
