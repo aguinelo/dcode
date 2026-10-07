@@ -102,3 +102,20 @@ func TestGoldenCreateSessionRequest(t *testing.T) {
 		Workspace: "/w", Model: "MiniMax-M3", SandboxMode: "read-only",
 	})
 }
+
+// A measured choice and one that is not, side by side. `measured` is never
+// omitted — false is the answer a menu exists to show — while an endpoint, a
+// window and a notice are, when there is none.
+func TestGoldenModelsResponse(t *testing.T) {
+	golden(t, "models_response", ModelsResponse{
+		Default: ModelChoice{
+			Name: "MiniMax-M3", Model: "MiniMax-M3", Family: "minimax-m3",
+			Transport: "openai", Window: 1000000, Measured: true,
+		},
+		Profiles: []ModelChoice{{
+			Name: "local", Model: "qwen3.5-9b", Family: "generic", Transport: "openai",
+			BaseURL: "http://127.0.0.1:1234/v1", Window: 32000,
+			Notice: "using --family generic: nobody measured this endpoint",
+		}},
+	})
+}
