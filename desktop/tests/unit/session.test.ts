@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { noteText } from '../../src/renderer/text';
 import { applyEvent, emptySession } from '../../src/state/session';
 import { created, done, log } from './helpers';
 
@@ -175,5 +176,17 @@ describe('the log', () => {
     expect([v.mode, v.sandbox]).toEqual(['plan', 'read-only']);
     // The first announce is where the session starts, not a switch.
     expect(v.entries.filter((e) => e.kind === 'note')).toHaveLength(1);
+  });
+
+  it('says what the session said as it opens, as a warning in the flow and not an error', () => {
+    const said = 'using the claude family: nobody measured it';
+    const v = log()
+      .add('session.created', created)
+      .add('session.notice', { code: 'family_unmeasured', message: said })
+      .fold(emptySession('s-1'));
+    const last = v.entries.at(-1);
+    expect(last).toMatchObject({ kind: 'note', note: { kind: 'notice', code: 'family_unmeasured', message: said } });
+    if (last?.kind !== 'note') throw new Error('the notice is not a note');
+    expect(noteText(last.note)).toEqual({ text: said, tone: 'warn' });
   });
 });

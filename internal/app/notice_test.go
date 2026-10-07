@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -141,5 +142,31 @@ func TestNoOpeningNoticeTakesAnothersPlace(t *testing.T) {
 	}
 	if want := InstructionNotice(ws, ForeignDefault, nil); got[1].Message != want {
 		t.Errorf("the instructions said %q, want %q", got[1].Message, want)
+	}
+}
+
+// instruction.notice turns off what it names and nothing else: a family with no
+// measurements says so whatever the instruction files say, and whether or not
+// anyone wants to hear about them.
+func TestTurningOffTheInstructionNoticeLeavesTheFamilysAlone(t *testing.T) {
+	t.Cleanup(provider.ClearSecrets)
+	opts := baseOpts(t)
+	opts.Model = "claude-sonnet-4-5"
+	opts.InstructionNotice = false
+	if err := os.WriteFile(filepath.Join(opts.Workspace, "AGENTS.md"), []byte("Answer in English.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requireSandbox(t, opts)
+
+	s, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Engine.Close()
+	want := []protocol.Notice{{
+		Code: protocol.NoticeFamilyUnmeasured, Message: provider.Unmeasured(provider.ClaudeName),
+	}}
+	if !slices.Equal(s.Notices, want) {
+		t.Errorf("the session opens saying %+v, want %+v", s.Notices, want)
 	}
 }

@@ -70,6 +70,10 @@ type Session struct {
 	// that opens the replay.
 	CarriedFrom  string
 	CarriedTurns int
+	// Notices is what the session has to say as it opens, held for the same
+	// reason as Carried: nothing goes in the log before the session's own
+	// creation.
+	Notices []protocol.Notice
 
 	mu    sync.Mutex
 	state protocol.SessionState
@@ -161,6 +165,18 @@ func (s *Session) EmitCarried() {
 		_, _ = s.Log.AppendUnrecorded(ev.Type, json.RawMessage(ev.Payload))
 	}
 	s.Carried = nil
+}
+
+// EmitNotices says what the session has to say as it opens, one event each.
+//
+// Called once, after EmitCarried: the end of what was carried is where somebody
+// continuing is looking. Recorded, unlike the carried events — these are this
+// session's own, and the record is where a reader afterwards finds them.
+func (s *Session) EmitNotices() {
+	for _, n := range s.Notices {
+		s.Emit(protocol.EventSessionNotice, n)
+	}
+	s.Notices = nil
 }
 
 // Describe returns the wire view.

@@ -351,6 +351,22 @@ export const EventContextBand: EventType = "context.band";
  */
 export const EventSessionError: EventType = "session.error";
 /**
+ * EventSessionNotice is something the session has to say as it opens: that
+ * its family has no measurements behind it, that the instructions it read
+ * were written for another tool. One event per notice, so none can take
+ * another's place.
+ * An event rather than a field on session.created: a notice is said once,
+ * and the transcript is where it is read. A field would have made it part
+ * of how the session describes itself in every listing, and left each
+ * client to turn a description back into a line. Not session.error either —
+ * nothing failed, and a client that shows errors as failures would be
+ * right to.
+ * It comes after the conversation being continued, not before it: somebody
+ * continuing is looking at the end of what was carried, and a notice above
+ * eighteen thousand events is a notice nobody reads.
+ */
+export const EventSessionNotice: EventType = "session.notice";
+/**
  * EventSessionModeChanged announces a switch between plan, assist and auto.
  * Carried over the event log rather than read from a side channel so a
  * client that attaches after the change still sees what the session is
@@ -1097,3 +1113,25 @@ export interface SessionModeChanged {
    */
   sandbox_mode: string;
 }
+/**
+ * Notice is one thing a session says as it opens, the payload of
+ * EventSessionNotice.
+ * The shape of Error, for the same reasons: Code is what a client acts on —
+ * marking a session unmeasured, pointing at /init — and Message is the sentence
+ * for a person, in English. Another language hangs off Code, never off Message.
+ */
+export interface Notice {
+  code: string;
+  message: string;
+}
+/**
+ * NoticeFamilyUnmeasured says the session's family has no measurements
+ * behind it. The message is the family's own admission.
+ */
+export const NoticeFamilyUnmeasured = "family_unmeasured";
+/**
+ * NoticeInstructionsUntranslated says the workspace's instruction files were
+ * written for another tool and are not translated into a DCODE.md, or have
+ * changed since they were.
+ */
+export const NoticeInstructionsUntranslated = "instructions_untranslated";

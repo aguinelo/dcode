@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 206 changelogs de decisão |
+| famílias de spec | 18, com 207 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A sessão diz o que tem a dizer ao abrir, a quem anexa.** Que a família dela
+  não tem medição por trás, e que os arquivos de instrução que leu foram
+  escritos para outra ferramenta, agora viajam cada um num `session.notice` —
+  código e mensagem, um por aviso — depois da criação e de qualquer conversa
+  continuada, e entram no registro. A TUI mostra como nota, o desktop como
+  aviso, e o `dcode "tarefa"` imprime sob o cabeçalho. Antes, nenhum chegava a
+  ninguém: o aviso das instruções era atribuído por cima do da família, o que,
+  com `instruction.notice` ligado — o padrão —, deixava uma família sem medição
+  sem dizer nada, e nada lia o que sobrava, então o aviso das instruções também
+  nunca chegou. A invariante que prometia o aviso era reivindicada pelo teste da
+  lista de quem avisa, que estava certa; agora são duas linhas, uma promessa
+  cada. Uma conversa continuada deixa para trás os avisos da sessão anterior,
+  como já deixava a criação dela.
 - **O daemon lista os modelos que uma sessão pode pedir.** `GET /v1/models`
   responde, para um workspace, o modelo que uma sessão ali recebe sem pedir
   nenhum e cada perfil do `models.toml` — o do usuário, com o do projeto por cima

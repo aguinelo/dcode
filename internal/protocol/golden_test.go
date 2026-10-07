@@ -97,6 +97,10 @@ func TestGoldenError(t *testing.T) {
 	golden(t, "error", Error{Code: CodeWorkspaceInvalid, Message: "not a directory"})
 }
 
+func TestGoldenNotice(t *testing.T) {
+	golden(t, "notice", Notice{Code: NoticeFamilyUnmeasured, Message: "nobody measured it"})
+}
+
 func TestGoldenCreateSessionRequest(t *testing.T) {
 	golden(t, "create_session_request", CreateSessionRequest{
 		Workspace: "/w", Model: "MiniMax-M3", SandboxMode: "read-only",

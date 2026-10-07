@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 206 decision changelogs |
+| spec families | 18, with 207 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A session says what it has to say as it opens, to whoever attaches.** That
+  its family has no measurements behind it, and that the instruction files it
+  read were written for another tool, now each travel as a `session.notice` —
+  code and message, one per notice — after the creation and after any
+  conversation being continued, and are recorded. The TUI shows them as notes,
+  the desktop as warnings, and `dcode "task"` prints them under its header.
+  Before, neither reached anybody: the instruction notice was assigned over the
+  family's, which with `instruction.notice` on — the default — left an
+  unmeasured family saying nothing, and nothing read what was left, so the
+  instruction notice never arrived either. The invariant that promised the
+  warning was claimed by the test of the list of who warns, which was right;
+  it is two lines now, one promise each. A continued conversation leaves the
+  older session's notices behind, as it already left its creation.
 - **The daemon lists the models a session can ask for.** `GET /v1/models`
   answers, for a workspace, the model a session there gets when it asks for
   none and every profile in `models.toml` — the user's, with the project's

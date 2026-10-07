@@ -24,6 +24,7 @@ var providerInvariants = map[string]string{
 	"roda com a rede desligada":      "TestTheSuiteCannotReachTheNetwork",
 	"herdar a codificação não herda": "TestGeminiEncodesOpenAIAndRefusesTheOther",
 	"conferida contra as medições":   "TestEveryUnmeasuredFamilySaysSo",
+	"quem anexa recebe a admissão":   "TestAnUnmeasuredFamilySaysSoToWhoeverAttaches",
 	"apenas em `ErrClassRateLimit":   "TestOnlyARateLimitCarriesARetryAfter",
 	"não se sobrepõem entre":         "TestOverlappingModelPrefixesAreRejected",
 	"nomeando os compatíveis":        "TestTransportOverrideIsHonouredAndValidated",
@@ -47,8 +48,14 @@ func TestEveryInvariantHasATest(t *testing.T) {
 	// cannot import that one — evals imports provider, so the dependency only
 	// runs the other way. Asserting it here would mean a second copy of the
 	// measurements, which is the thing the rule exists to prevent.
+	//
+	// Its other half — that the session says it — is asserted in internal/app,
+	// where a session is built and attached to. This package says what the
+	// admission is; whether anybody hears it is decided two packages up, and
+	// the line that claimed both halves was green from the day it was written,
+	// while nobody heard it once.
 	findings, err := specguard.Check(root, "provider-adapter",
-		[]string{".", filepath.Join("..", "evals")}, providerInvariants)
+		[]string{".", filepath.Join("..", "evals"), filepath.Join("..", "app")}, providerInvariants)
 	if err != nil {
 		t.Fatal(err)
 	}

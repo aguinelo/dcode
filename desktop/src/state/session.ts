@@ -25,6 +25,7 @@ export interface ToolCall {
 /** Something the flow says that is not a message or a call. */
 export type Note =
   | { kind: 'resumed'; sourceId: string; turns: number }
+  | { kind: 'notice'; code: string; message: string }
   | { kind: 'mode'; previous: string; mode: string; sandbox: string }
   | { kind: 'compacted'; messages: number; kept: number }
   | { kind: 'skill'; name: string; whenToUse: string }
@@ -310,6 +311,10 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
         ...view,
         entries: [...view.entries, { kind: 'error', seq: ev.seq, at: ev.at, code: ev.payload.code, message: ev.payload.message }],
       };
+    case 'session.notice':
+      // What the session says as it opens: a warning, not a failure, so a note
+      // in the flow rather than an error entry.
+      return withNote(view, ev.seq, ev.at, { kind: 'notice', code: ev.payload.code, message: ev.payload.message });
     case 'skill.loaded':
       return withNote(view, ev.seq, ev.at, {
         kind: 'skill',

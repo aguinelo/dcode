@@ -119,3 +119,33 @@ func TestAChainThatLoopsIsReadOnce(t *testing.T) {
 		t.Fatal("reading a looping chain did not terminate")
 	}
 }
+
+// What an earlier session said as it opened stays with it, as its creation
+// does. The session continuing it says its own — switched to a measured model,
+// a replayed warning would go on saying the family is not.
+func TestACarriedConversationLeavesItsOpeningNoticesBehind(t *testing.T) {
+	dir := t.TempDir()
+	notice, _ := json.Marshal(protocol.Notice{Code: protocol.NoticeFamilyUnmeasured, Message: "nobody measured it"})
+	started, _ := json.Marshal(protocol.TurnStarted{TurnID: "t", Text: "a pergunta"})
+	var b strings.Builder
+	for _, e := range []protocol.Event{
+		{Seq: 1, Type: protocol.EventSessionCreated, Payload: json.RawMessage(`{}`)},
+		{Seq: 2, Type: protocol.EventSessionNotice, Payload: notice},
+		{Seq: 3, Type: protocol.EventTurnStarted, Payload: started},
+	} {
+		raw, _ := json.Marshal(e)
+		b.Write(raw)
+		b.WriteByte('\n')
+	}
+	if err := os.WriteFile(filepath.Join(dir, "aaa.jsonl"), []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	evs, _, err := Carry(filepath.Join(dir, "aaa.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 1 || evs[0].Type != protocol.EventTurnStarted {
+		t.Errorf("the conversation carried %v; want its question and nothing it said as it opened", evs)
+	}
+}

@@ -451,13 +451,16 @@ type Session struct {
 	// mode a fact that survives a mode change rather than one frozen at
 	// creation, and it is the only input to the prefix that is allowed to move.
 	Reprompt func(policy.SandboxMode, policy.ApprovalPolicy) (string, error)
-	// Origins is where each doctrine section came from, and Notices is what
-	// the overlay loader refused to do silently. Both exist for the audit:
+	// Notices is what the session has to say as it opens: that its family has
+	// no measurements behind it, then that the instructions it read were
+	// written for another tool. One each, none in another's place. Held rather
+	// than emitted, because what says them is whoever opens the session — the
+	// daemon after its creation event, the one-shot path under its header.
+	Notices []protocol.Notice
+	// Origins is where each doctrine section came from, and DoctrineNotice is
+	// what the overlay loader refused to do silently. Both exist for the audit:
 	// an invisible replacement would be worse than the immutability it
 	// replaces (RN-12).
-	// Notice is what the session has to say at the start about instruction
-	// files written for another tool. Empty when there is nothing to say.
-	Notice         string
 	Origins        behavior.SectionOrigins
 	DoctrineNotice []behavior.Notice
 	// SkillNotice is what was trimmed or skipped while loading skills.
@@ -751,7 +754,11 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	explore.Delegator = engine
 	live.follow(engine)
 
-	notice := ""
+	// One notice per thing to say. There was one string, and the instruction
+	// notice was assigned over the family's: with instruction.notice on — the
+	// default — an unmeasured family said "" whenever there was nothing to
+	// translate.
+	var notices []protocol.Notice
 	// A model nobody measured is usable and must say so. Reading a difference
 	// in behaviour as a defect in dcode is the cost of not saying it.
 	//
@@ -759,10 +766,14 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// second family with no measurements behind it, and a chain of equality
 	// checks is a list that grows silently wrong. provider.Unmeasured is the
 	// list, and a guard checks it against the measurements that exist.
-	notice = provider.Unmeasured(resolvedFamily(opts))
+	if msg := provider.Unmeasured(resolvedFamily(opts)); msg != "" {
+		notices = append(notices, protocol.Notice{Code: protocol.NoticeFamilyUnmeasured, Message: msg})
+	}
 	if opts.InstructionNotice {
-		notice = InstructionNotice(opts.Workspace,
-			foreignFiles(opts.InstructionForeign), registry.Names())
+		if msg := InstructionNotice(opts.Workspace,
+			foreignFiles(opts.InstructionForeign), registry.Names()); msg != "" {
+			notices = append(notices, protocol.Notice{Code: protocol.NoticeInstructionsUntranslated, Message: msg})
+		}
 	}
 
 	var branch string
@@ -775,7 +786,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		Reprompt:       reprompt,
 		Proposals:      proposals,
 		Standing:       standing,
-		Notice:         notice,
+		Notices:        notices,
 		ContextWindow:  window,
 		Origins:        overlay.Origins(),
 		DoctrineNotice: append(overlayNotices, safetyNotices...),

@@ -324,6 +324,9 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 	// What makes `/mode` reach the model rather than only the sandbox.
 	sess.Reprompt = appSession.Reprompt
 	sess.Carried, sess.CarriedFrom, sess.CarriedTurns = carried, carriedFrom, carriedTurns
+	// Said by the session once it has announced itself. Built and never handed
+	// over, they reached nobody — an unmeasured family's warning included.
+	sess.Notices = appSession.Notices
 
 	// The same record the sandbox is asking, not a second copy: two would
 	// answer differently the moment one of them is granted.

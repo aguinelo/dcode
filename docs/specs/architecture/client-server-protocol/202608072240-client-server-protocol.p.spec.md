@@ -143,6 +143,13 @@ type Error struct {
     Code    string         `json:"code"`    // estável, legível por máquina
     Message string         `json:"message"` // inglês, legível por humano — ver nota
 }
+
+// Notice é uma coisa que a sessão tem a dizer ao abrir, na forma do Error:
+// Code é com o que o cliente age; Message é a frase para a pessoa.
+type Notice struct {
+    Code    string `json:"code"`    // "family_unmeasured" | "instructions_untranslated"
+    Message string `json:"message"` // inglês, nunca vazio
+}
 ```
 
 ### 5.1 Tipos de evento
@@ -163,6 +170,7 @@ type Error struct {
 | `session.compacted` | `{"from_seq":uint64,"to_seq":uint64}` | compactação de contexto (ADR-03) |
 | `session.mode_changed` | `{"previous":string?,"mode":string,"sandbox_mode":string}` | modo comportamental trocado; `previous` vazio quando não havia de onde vir. `sandbox_mode` é a metade técnica que a troca instalou — carregada, e não derivada pelo cliente, porque a tabela do §2.1 de `sandbox-policy` tem uma casa só |
 | `session.error` | `Error` | falha não atribuível a um turno |
+| `session.notice` | `Notice` | abertura: o que a sessão tem a dizer ao começar — família sem medição (`family_unmeasured`), instruções escritas para outra ferramenta (`instructions_untranslated`) —, um evento por aviso, depois da conversa continuada. Entra no registro; continuar uma sessão não carrega os dela |
 
 ```go
 type ApprovalRequest struct {
@@ -176,7 +184,7 @@ type ApprovalRequest struct {
 }
 ```
 
-> **Idioma de `Error.Message`: inglês.** É string voltada ao usuário final de um projeto internacional, e a política de idioma (`docs/conventions/LANGUAGE.pt-BR.md`) trata as specs como documento interno — não como fonte do texto de produto. `Code` é o identificador estável para máquina; `Message` é o texto para humano. Localização, se um dia existir, se pendura em `Code`, nunca em `Message`.
+> **Idioma de `Error.Message`: inglês.** É string voltada ao usuário final de um projeto internacional, e a política de idioma (`docs/conventions/LANGUAGE.pt-BR.md`) trata as specs como documento interno — não como fonte do texto de produto. `Code` é o identificador estável para máquina; `Message` é o texto para humano. Localização, se um dia existir, se pendura em `Code`, nunca em `Message`. O mesmo vale para `Notice`.
 
 ### 5.2 A lista de conversas
 
@@ -365,6 +373,9 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
+- Os avisos de abertura saem todos, um `session.notice` cada: o das instruções de outra ferramenta não toma o lugar do da família sem medição.
+- Aviso de abertura entra no log depois do `session.created` e da conversa continuada — no fim do que foi carregado, onde quem continua está olhando — e antes da resposta de criação, cujo `last_seq` já o conta.
+- Continuar não carrega os avisos de abertura da sessão continuada: eles falam de uma sessão que não está mais em vigor.
 
 ## 10. Changelog
 
@@ -382,3 +393,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609292355 — O socket é um por usuário](changelog/202609292355-o-socket-e-um-por-usuario.md)
 - [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)
 - [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)
+- [202610071242 — O aviso de abertura chega a quem anexa](changelog/202610071242-o-aviso-de-abertura-chega-a-quem-anexa.md)

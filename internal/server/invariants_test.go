@@ -107,6 +107,12 @@ var protocolInvariants = map[string]string{
 	"restaura o que o **último** turno": "TestANewTurnReplacesWhatCanBeUndone",
 	"é recusado, nunca sobrescrito":     "TestUndoRefusesAFileChangedSinceTheTurn",
 	"durante um turno em curso":         "TestUndoIsRefusedWhileATurnRuns",
+	// What a session says as it opens. Composed where the session is built,
+	// said by the server after the conversation it continues, and left behind
+	// by Carry — each asserted where it happens.
+	"não toma o lugar do da família":    "TestNoOpeningNoticeTakesAnothersPlace",
+	"no fim do que foi carregado":       "TestOpeningNoticesComeAfterTheContinuedConversation",
+	"não carrega os avisos de abertura": "TestACarriedConversationLeavesItsOpeningNoticesBehind",
 	// Images.
 	"imagem por valor":     "TestAnImageArrivesOnATurn",
 	"recusado na borda":    "TestAMalformedImageIsRefused",

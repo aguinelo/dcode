@@ -246,6 +246,10 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 	// at any point reads them in that order, including one that attaches later
 	// and replays from the file.
 	sess.EmitCarried()
+	// Then what the session has to say as it opens — after the conversation, not
+	// above it, where somebody continuing is looking. Before the response, so
+	// last_seq counts them and a client reading up to it reads them.
+	sess.EmitNotices()
 	writeJSON(w, http.StatusCreated, sess.Describe())
 }
 
