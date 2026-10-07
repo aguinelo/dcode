@@ -250,6 +250,9 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 	// above it, where somebody continuing is looking. Before the response, so
 	// last_seq counts them and a client reading up to it reads them.
 	sess.EmitNotices()
+	// Then what was said while the session was built. Before the response, so
+	// last_seq counts it and a client reading up to it reads it.
+	sess.EmitOpening()
 	writeJSON(w, http.StatusCreated, sess.Describe())
 }
 

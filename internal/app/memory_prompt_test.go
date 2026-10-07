@@ -1,12 +1,17 @@
 package app
 
 import (
+	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 func withMemory(t *testing.T, body string) Options {
@@ -149,5 +154,69 @@ body.
 	}
 	if strings.Count(got, "no longer in this repository") != 1 {
 		t.Errorf("expected exactly the one mark:\n%s", got)
+	}
+}
+
+// A memory nobody can read is said to whoever attaches, and said after the
+// session announces itself.
+//
+// New says it while the session is being built, and through the daemon that is
+// before the session it is building exists: the emitter New is handed forwarded
+// only once there was a session to forward to, so the one thing New had to say
+// went nowhere, and the session opened as though its memory had been read.
+//
+// A directory where the file should be: os.Open succeeds and the read does not,
+// which holds for any user, root included, where a mode bit would not.
+func TestAMemoryThatCannotBeReadIsSaidToWhoeverAttaches(t *testing.T) {
+	ws := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(ws, ".dcode", "memory.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, c, _ := daemonFor(t, ws)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	sess, err := c.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: ws})
+	if err != nil {
+		t.Fatalf("a memory that cannot be read refused the session: %v", err)
+	}
+	events, errs := c.Subscribe(ctx, sess.ID, 1)
+	var types []protocol.EventType
+	var said *protocol.Error
+	for done := false; !done; {
+		select {
+		case ev, ok := <-events:
+			if !ok {
+				t.Fatalf("the stream ended before seq %d", sess.LastSeq)
+			}
+			types = append(types, ev.Type)
+			if ev.Type == protocol.EventSessionError {
+				var e protocol.Error
+				if err := json.Unmarshal(ev.Payload, &e); err != nil {
+					t.Fatalf("a session.error that does not decode: %v", err)
+				}
+				if e.Code == "memory_unreadable" {
+					said = &e
+				}
+			}
+			done = ev.Seq >= sess.LastSeq
+		case err, ok := <-errs:
+			if ok && err != nil {
+				t.Fatal(err)
+			}
+			errs = nil
+		case <-ctx.Done():
+			t.Fatalf("the events up to seq %d never arrived", sess.LastSeq)
+		}
+	}
+	if said == nil {
+		t.Fatalf("the session opened without saying its memory could not be read; "+
+			"an attached client read %v", types)
+	}
+	if said.Message == "" {
+		t.Error("memory_unreadable said nothing about why")
+	}
+	if types[0] != protocol.EventSessionCreated {
+		t.Errorf("the log opens with %s, want %s: %v", types[0], protocol.EventSessionCreated, types)
 	}
 }

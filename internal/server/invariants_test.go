@@ -80,6 +80,9 @@ var protocolInvariants = map[string]string{
 	"nenhuma sessão pode ser montada": "TestAProfileNoSessionCanBuildIsListedWithTheReason",
 	"nunca carrega a chave":           "TestTheListOfModelsNeverCarriesACredential",
 	"configuração do daemon no lugar": "TestAWorkspaceThatCannotBeReadIsRefusedWithTheReason",
+	// What a session says while it is built. Held by the daemon, said by the
+	// server after the creation event, and observed through a real socket.
+	"diz antes de a sessão existir": "TestAMemoryThatCannotBeReadIsSaidToWhoeverAttaches",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

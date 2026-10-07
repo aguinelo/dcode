@@ -370,6 +370,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Perfil com que nenhuma sessão pode ser montada continua no menu, sem medição e com o motivo em `notice` — o mesmo com que a sessão recusaria.
 - A lista de modelos nunca carrega a chave: nem ela, nem a máscara, nem a impressão digital, nem de onde ela veio; e os campos são um conjunto declarado, para campo novo ser decisão e não vazamento.
 - Workspace relativo, inexistente ou com configuração ilegível é recusado com `workspace_invalid` e o motivo, nunca respondido com a configuração do daemon no lugar.
+- O que a montagem da sessão diz antes de a sessão existir chega a quem anexa, depois de `session.created` e da conversa continuada; nada dito na montagem se perde.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
@@ -394,3 +395,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)
 - [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)
 - [202610071242 — O aviso de abertura chega a quem anexa](changelog/202610071242-o-aviso-de-abertura-chega-a-quem-anexa.md)
+- [202610071600 — O que a montagem diz chega a quem anexa](changelog/202610071600-o-que-a-montagem-diz-chega-a-quem-anexa.md)

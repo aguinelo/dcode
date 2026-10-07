@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Memória que não pode ser lida é dita a quem anexa.** `app.New` emite
+  `memory_unreadable` enquanto monta a sessão, e o emissor do daemon só
+  repassava depois que a sessão existia — então pelo daemon, que é por onde o
+  TUI e o desktop abrem toda sessão, ela caía, e a sessão abria como se a
+  memória tivesse sido lida. Agora o daemon segura o que `New` diz antes de a
+  sessão existir, e a sessão diz logo depois de `session.created`, da conversa
+  carregada e dos avisos de abertura, contado em `last_seq`. Segurado no emissor e não só para este
+  erro, para que a próxima coisa que `New` tiver de dizer não caia no mesmo
+  silêncio.
 - **A sessão diz o que tem a dizer ao abrir, a quem anexa.** Que a família dela
   não tem medição por trás, e que os arquivos de instrução que leu foram
   escritos para outra ferramenta, agora viajam cada um num `session.notice` —
