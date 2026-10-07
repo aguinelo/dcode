@@ -15,11 +15,12 @@ export interface ModelMenuState {
 type Once = <T>(key: string, run: () => Promise<Outcome<T>>) => Promise<Outcome<T> | null>;
 
 /**
- * The model menu (D28): opened from a conversation's model — a panel's chip or
- * the open conversation's — filled with what the daemon says it can continue
- * on, and the pick that continues it and shows the new session.
+ * The model menu (D28): opened from a conversation's model — a window's chip or
+ * the maximized conversation's — filled with what the daemon says it can
+ * continue on, and the pick that continues it. `switched` hands the new session
+ * the place of the one it continues, which the daemon has closed.
  */
-export function useModelMenu(actions: WindowActions, sessions: SessionsState, once: Once, show: (id: string) => void) {
+export function useModelMenu(actions: WindowActions, sessions: SessionsState, once: Once, switched: (from: Row, to: string) => void) {
   const [menu, setMenu] = useState<ModelMenuState | null>(null);
   const workspaceOf = useCallback((row: Row) => sessions.byId[row.id]?.info?.workspace ?? row.workspace, [sessions]);
 
@@ -49,9 +50,9 @@ export function useModelMenu(actions: WindowActions, sessions: SessionsState, on
       setMenu(null);
       if (!row) return;
       const out = await once(`model:${row.id}`, () => actions.switchModel(row.id, workspaceOf(row), name));
-      if (out?.ok) show(out.value);
+      if (out?.ok) switched(row, out.value);
     },
-    [actions, menu, once, show, workspaceOf],
+    [actions, menu, once, switched, workspaceOf],
   );
 
   const close = useCallback(() => setMenu(null), []);

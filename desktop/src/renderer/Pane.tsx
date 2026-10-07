@@ -1,9 +1,9 @@
-import type * as P from '../protocol/generated';
-import { boundaryLabel } from '../state/flow';
 import type { Measure } from '../state/models';
 import type { PaneView } from '../state/pane';
+import { emptySession, type SessionView } from '../state/session';
 import type { Row } from '../state/sidebar';
-import { CHOICES } from './ApprovalCard';
+import { Field } from './Composer';
+import { ConversationBody } from './ConversationBody';
 
 /**
  * What the harness measured: each criterion, else the seal, else what is known
@@ -37,157 +37,109 @@ export function DoneRow({ view, measure }: { view: Pick<PaneView, 'lights' | 'se
   );
 }
 
-/** The question a session waits on, answered from its panel: 1 and 2 allow, ↵ denies (D22). */
-function Ask({ request, onAnswer }: { request: P.ApprovalRequest; onAnswer: (decision: string) => void }) {
-  return (
-    <div className="ask" onClick={(e) => e.stopPropagation()}>
-      <div className="ask-title">
-        {request.command ? 'Rodar este comando?' : `Permitir ${request.tool}?`}{' '}
-        <span className="tone-faint">pede {boundaryLabel(request.boundary_crossed)}</span>
-      </div>
-      {request.command && <div className="ask-what">{request.command}</div>}
-      <div className="ask-actions">
-        {CHOICES.map((c) => (
-          <button key={c.key} type="button" className={`ask-btn${c.decision === 'deny' ? ' deny' : ''}`} onClick={() => onAnswer(c.decision)}>
-            <span className="ask-key">{c.decision === 'deny' ? '↵' : c.key}</span>
-            {c.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+/** What a window keeps of its conversation, and what it does with it. */
+export interface PaneProps {
+  row: Row;
+  /** Its events, once followed; an ended conversation has none here. */
+  session: SessionView | undefined;
+  view: PaneView;
+  focused: boolean;
+  now: number;
+  verbTick: number;
+  draft: string;
+  caret?: number;
+  measure: Measure | null;
+  /** Clicked into: the window is the person's now, and what it did is seen. */
+  onFocus: () => void;
+  onMaximize: () => void;
+  /** Null while it runs or waits: what works keeps its place. */
+  onClose: (() => void) | null;
+  onDraft: (text: string) => void;
+  onSend: (text: string) => void;
+  onStop: () => void;
+  onAnswer: (approvalId: string, decision: string) => void;
+  /** An ended conversation, written to: it continues in a new session. */
+  onContinue: (text: string) => void;
+  onModel: (anchor: HTMLElement) => void;
+  onMissing: (what: string) => void;
 }
 
-export function Pane({
-  row,
-  view,
-  focused,
-  pinned,
-  unseen,
-  onFocus,
-  onOpen,
-  onPin,
-  onSeen,
-  onAnswer,
-  onModel,
-  measure,
-}: {
-  row: Row;
-  view: PaneView;
-  /** What the daemon's list says of the family it runs on. */
-  measure: Measure | null;
-  focused: boolean;
-  pinned: boolean;
-  /** Finished since the person last looked: it can be dismissed without opening. */
-  unseen: boolean;
-  onFocus: () => void;
-  onOpen: () => void;
-  onPin: () => void;
-  onSeen: () => void;
-  onAnswer: (approvalId: string, decision: string) => void;
-  onModel: (anchor: HTMLElement) => void;
-}) {
-  const v = view;
+/**
+ * One conversation, whole, in its window on the grid: its seal and criteria,
+ * its flow and its own field. Each window scrolls, drafts and answers on its
+ * own — the person works in any of them without opening it.
+ */
+export function Pane(p: PaneProps) {
+  const { row, session, view: v } = p;
+  const ended = row.state === 'recorded' && !session;
+  const waiting = session?.state === 'blocked' || row.state === 'blocked';
   return (
-    <div
-      className={`pane${focused ? ' focused' : ''}${v.approval ? ' waiting' : ''}`}
+    <section
+      className={`pane${p.focused ? ' focused' : ''}${waiting ? ' waiting' : ''}`}
       data-pane-id={row.id}
-      onClick={onFocus}
-      onDoubleClick={onOpen}
+      aria-label={row.title}
+      onMouseDown={p.onFocus}
     >
-      <div className="pane-head">
+      <div className="pane-head" onDoubleClick={p.onMaximize}>
         <span className={`pane-glyph tone-${v.tone}${v.live ? ' dc-breath' : ''}`}>{v.glyph}</span>
         <span className="pane-title" title={row.title}>
           {row.title}
         </span>
         {row.model && (
-          <button
-            type="button"
-            className="chip"
-            title="Continuar em outro modelo"
-            onClick={(e) => {
-              e.stopPropagation();
-              onModel(e.currentTarget);
-            }}
-          >
-            {row.model} ⌄
+          <button type="button" className="chip" title="Continuar em outro modelo" onClick={(e) => p.onModel(e.currentTarget)}>
+            {session?.info?.model ?? row.model} ⌄
           </button>
         )}
-        <button
-          type="button"
-          className={`icon-btn${pinned ? ' on' : ''}`}
-          aria-label={pinned ? 'Soltar da grade' : 'Fixar na grade'}
-          title={pinned ? 'Fixada: fica na grade mesmo parada' : 'Fixar na grade'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPin();
-          }}
-        >
-          {pinned ? '◉' : '○'}
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label={`Abrir ${row.title}`}
-          title="Abrir a conversa (↵)"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen();
-          }}
-        >
+        <button type="button" className="icon-btn" aria-label={`Maximizar ${row.title}`} title="Maximizar (⌘↵)" onClick={p.onMaximize}>
           ⤢
         </button>
+        {p.onClose && (
+          <button type="button" className="icon-btn" aria-label={`Fechar ${row.title}`} title="Fechar a janela" onClick={p.onClose}>
+            ×
+          </button>
+        )}
       </div>
-      <DoneRow view={v} measure={measure} />
+      <DoneRow view={v} measure={p.measure} />
       <div className="pane-body">
-        {v.lines.map((l, i) => {
-          switch (l.kind) {
-            case 'you':
-              return (
-                <div key={i} className="tail-you">
-                  {l.text}
-                </div>
-              );
-            case 'work':
-              return (
-                <div key={i} className="tail-work">
-                  <span className={`tone-${l.tone}`}>{l.glyph}</span> {l.text}
-                </div>
-              );
-            case 'said':
-              return (
-                <div key={i} className="tail-said">
-                  {l.text}
-                </div>
-              );
-            default:
-              return (
-                <div key={i} className={`tail-note tone-${l.tone}`}>
-                  {l.text}
-                </div>
-              );
-          }
-        })}
-        {v.approval && <Ask request={v.approval} onAnswer={(d) => onAnswer(v.approval?.approval_id ?? '', d)} />}
+        {ended ? (
+          <>
+            <div className="pane-ended">
+              Terminada · {row.turns ?? 0} {row.turns === 1 ? 'turno' : 'turnos'}. Escrever continua a conversa numa sessão nova, com o
+              histórico.
+            </div>
+            <div className="composer-wrap compact">
+              <div className="composer">
+                <Field
+                  text={p.draft}
+                  placeholder="Escreva para continuar esta conversa"
+                  caret={p.caret}
+                  onText={p.onDraft}
+                  onSubmit={() => p.draft.trim() && p.onContinue(p.draft)}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <ConversationBody
+            session={session ?? emptySession(row.id)}
+            now={p.now}
+            verbTick={p.verbTick}
+            draft={p.draft}
+            compact
+            caret={p.caret}
+            onDraft={p.onDraft}
+            onAnswer={(decision) => session?.pendingApprovalId && p.onAnswer(session.pendingApprovalId, decision)}
+            onSend={p.onSend}
+            onStop={p.onStop}
+            onMissing={p.onMissing}
+          />
+        )}
       </div>
       <div className="pane-foot">
         <span className="pane-where">{v.where}</span>
         <span className="spacer" />
-        {unseen && (
-          <button
-            type="button"
-            className="seen-btn"
-            title="Tirar da grade sem abrir"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSeen();
-            }}
-          >
-            dispensar
-          </button>
-        )}
         <span>{v.when}</span>
       </div>
-    </div>
+    </section>
   );
 }
