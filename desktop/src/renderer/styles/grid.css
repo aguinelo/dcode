@@ -112,6 +112,9 @@ button.chip:hover {
 .crit.unavailable {
   color: var(--dc-dim);
 }
+.crit.unmeasured {
+  color: var(--dc-warn);
+}
 
 /* The end of the conversation, newest at the bottom; what does not fit is
    cut at the top, as a terminal scrolls. */

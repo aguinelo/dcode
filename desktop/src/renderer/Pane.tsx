@@ -1,11 +1,16 @@
 import type * as P from '../protocol/generated';
 import { boundaryLabel } from '../state/flow';
+import type { Measure } from '../state/models';
 import type { PaneView } from '../state/pane';
 import type { Row } from '../state/sidebar';
 import { CHOICES } from './ApprovalCard';
 
-/** What the harness measured: each criterion, else the seal, else what is known about done. */
-export function DoneRow({ view }: { view: Pick<PaneView, 'lights' | 'seal' | 'doneNote'> }) {
+/**
+ * What the harness measured: each criterion, else the seal, else what is known
+ * about done — and, when the daemon says so, that nobody measured the family
+ * of the model doing the work.
+ */
+export function DoneRow({ view, measure }: { view: Pick<PaneView, 'lights' | 'seal' | 'doneNote'>; measure?: Measure | null }) {
   return (
     <div className="done-row">
       {view.lights.map((l) => (
@@ -15,6 +20,14 @@ export function DoneRow({ view }: { view: Pick<PaneView, 'lights' | 'seal' | 'do
       ))}
       {view.seal && <span className={`tone-${view.seal.tone}`}>{view.seal.text}</span>}
       {view.doneNote && <span>{view.doneNote}</span>}
+      {measure && !measure.measured && (
+        <span
+          className="crit unmeasured"
+          title={`Os contratos de comportamento do dcode nunca rodaram contra a família ${measure.family || 'deste modelo'}: os critérios conferem o trabalho, e o modelo ninguém mediu.`}
+        >
+          ◌ sem medição
+        </span>
+      )}
     </div>
   );
 }
@@ -52,9 +65,12 @@ export function Pane({
   onSeen,
   onAnswer,
   onModel,
+  measure,
 }: {
   row: Row;
   view: PaneView;
+  /** What the daemon's list says of the family it runs on. */
+  measure: Measure | null;
   focused: boolean;
   pinned: boolean;
   /** Finished since the person last looked: it can be dismissed without opening. */
@@ -117,7 +133,7 @@ export function Pane({
           ⤢
         </button>
       </div>
-      <DoneRow view={v} />
+      <DoneRow view={v} measure={measure} />
       <div className="pane-body">
         {v.lines.map((l, i) => {
           switch (l.kind) {

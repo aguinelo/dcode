@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type * as P from '../../src/protocol/generated';
 import { decodeModels } from '../../src/protocol/models';
-import { menuOf } from '../../src/state/models';
+import { measureOf, menuOf } from '../../src/state/models';
 
 const minimax: P.ModelChoice = { name: 'MiniMax-M3', model: 'MiniMax-M3', family: 'minimax-m3', transport: 'openai', window: 1000000, measured: true };
 const local: P.ModelChoice = {
@@ -65,5 +65,26 @@ describe('the model menu', () => {
     // Only the model known: it is enough to say.
     expect(current({ model: 'MiniMax-M3', baseUrl: null })).toEqual(['MiniMax-M3']);
     expect(current(null)).toEqual([]);
+  });
+});
+
+describe('the measure of a conversation', () => {
+  const models: P.ModelsResponse = { default: minimax, profiles: [gemini, local] };
+
+  it('reads the family the session announced, else the model the list carries', () => {
+    expect(measureOf(models, { model: 'qwen3.5-9b', family: 'generic' })).toEqual({ measured: false, family: 'generic' });
+    expect(measureOf(models, { model: 'anything', family: 'gemini' })).toEqual({ measured: true, family: 'gemini' });
+    expect(measureOf(models, { model: 'qwen3.5-9b', family: null })).toEqual({ measured: false, family: 'generic' });
+  });
+
+  it('says nothing when the list does not say: not known is never measured', () => {
+    expect(measureOf(undefined, { model: 'qwen3.5-9b', family: 'generic' })).toBeNull();
+    expect(measureOf(models, { model: 'llama3', family: 'ollama' })).toBeNull();
+    expect(measureOf(models, null)).toBeNull();
+  });
+
+  it('takes a family as measured when any choice of it builds a measured session', () => {
+    const broken: P.ModelChoice = { ...gemini, name: 'typo', transport: 'nope', measured: false, notice: 'no transport named "nope"' };
+    expect(measureOf({ default: minimax, profiles: [broken, gemini] }, { model: 'x', family: 'gemini' })).toEqual({ measured: true, family: 'gemini' });
   });
 });

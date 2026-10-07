@@ -5,6 +5,7 @@ import type { SessionView } from '../state/session';
 import { rowOfSession, sessionTitle, type Row } from '../state/sidebar';
 import { Composer } from './Composer';
 import { ActivityLine, FlowBlocks } from './Flow';
+import type { Measure } from '../state/models';
 import { DoneRow } from './Pane';
 
 /** How close to the end counts as "at the end" for auto-follow, in pixels. */
@@ -49,6 +50,7 @@ export function SessionPanel({
   onGrid,
   onOpenPeer,
   onModel,
+  measure,
 }: {
   session: SessionView;
   /** The conversation as the list has it, when the list has it yet. */
@@ -65,6 +67,8 @@ export function SessionPanel({
   onGrid: () => void;
   onOpenPeer: (id: string) => void;
   onModel: (anchor: HTMLElement) => void;
+  /** What the daemon's list says of the family it runs on. */
+  measure: Measure | null;
 }) {
   const blocks = useMemo(() => flowBlocks(session.entries), [session.entries]);
   const act = useMemo(() => activity(session.entries), [session.entries]);
@@ -114,7 +118,7 @@ export function SessionPanel({
         <BranchChip session={session} />
       </div>
       <div className="proof">
-        <DoneRow view={proof} />
+        <DoneRow view={proof} measure={measure} />
       </div>
       <div
         className="flow-scroll"

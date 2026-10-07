@@ -51,6 +51,28 @@ function optionOf(c: P.ModelChoice, isDefault: boolean, running: Running | null)
   };
 }
 
+/** What the daemon's list says of the family a conversation runs on. */
+export interface Measure {
+  measured: boolean;
+  family: string;
+}
+
+/**
+ * Whether the family a conversation runs on was measured, as the daemon's list
+ * says; null when the list says nothing of it. Measurement belongs to the
+ * family, so it is matched by the family the session announced, else by the
+ * model the list of conversations carries.
+ */
+export function measureOf(models: P.ModelsResponse | undefined, running: { model: string; family: string | null } | null): Measure | null {
+  if (!models || !running) return null;
+  const all = [models.default, ...models.profiles];
+  const same = running.family ? all.filter((c) => c.family === running.family) : all.filter((c) => c.model === running.model);
+  const first = same[0];
+  if (!first) return null;
+  // A choice that cannot build a session reads as not measured; another of the same family may.
+  return { measured: same.some((c) => c.measured), family: first.family };
+}
+
 /** The default first, then each profile in the daemon's order (by name). */
 export function menuOf(models: P.ModelsResponse, running: Running | null): ModelOption[] {
   return [optionOf(models.default, true, running), ...models.profiles.map((p) => optionOf(p, false, running))];
