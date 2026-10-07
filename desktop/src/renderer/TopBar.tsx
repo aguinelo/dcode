@@ -2,6 +2,9 @@ import { DaemonBar } from './DaemonBar';
 import type { Host } from './host';
 import type { DaemonView } from './window';
 
+/** The two versions of the screen: the grid of windows, and Crew's three panels (D32). */
+export type Look = 'grade' | 'crew';
+
 /**
  * The bar across the top: where the window stands with the daemon, and how
  * much is asking for the person — the two things worth reading from anywhere.
@@ -16,6 +19,8 @@ export function TopBar({
   canGoForward,
   onBack,
   onForward,
+  look,
+  onLook,
 }: {
   host: Host;
   daemon: DaemonView;
@@ -28,6 +33,8 @@ export function TopBar({
   canGoForward: boolean;
   onBack: () => void;
   onForward: () => void;
+  look: Look;
+  onLook: (look: Look) => void;
 }) {
   // macOS draws its window controls over the bar's left end (main.ts).
   const native = host.kind === 'electron' && host.platform === 'darwin';
@@ -53,6 +60,13 @@ export function TopBar({
       {counts.blocked > 0 && <span className="topbar-count waiting">{counts.blocked} esperando você</span>}
       {overflow > 0 && <span className="topbar-count">+{overflow} sem lugar na grade</span>}
       <span className="spacer" />
+      <span className="look-switch" role="group" aria-label="Versão da tela">
+        {(['grade', 'crew'] as const).map((l) => (
+          <button key={l} type="button" className={l === look ? 'on' : ''} aria-pressed={l === look} onClick={() => onLook(l)}>
+            {l === 'grade' ? 'Grade' : 'Crew'}
+          </button>
+        ))}
+      </span>
       <span className="topbar-hints">{onGrid ? '⌘N nova · ⌘↵ maximizar · ⌘K procurar' : 'esc grade · ⌘K procurar'}</span>
     </header>
   );

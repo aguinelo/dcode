@@ -1,4 +1,6 @@
 import '@fontsource-variable/geist-mono';
+import '@fontsource-variable/geist';
+import '@fontsource/fragment-mono';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/sidebar.css';
@@ -6,6 +8,7 @@ import './styles/session.css';
 import './styles/composer.css';
 import './styles/grid.css';
 import './styles/search.css';
+import './styles/crew.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
