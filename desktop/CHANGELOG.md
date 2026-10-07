@@ -10,6 +10,16 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A conversation continues on another model.** The model button in the
+  composer opens what the daemon says a session in that project can ask for
+  (`GET /v1/models`): the project's default and each profile in `models.toml`,
+  each marked measured — dcode's behavioural contracts were run against its
+  family — or not, with the daemon's own warning. Picking one continues the
+  conversation in a new session on it, with all of its history, and closes the
+  one it left, whose record stays; left open, every switch would keep one more
+  until the daemon refused new ones. While a turn runs or waits for an answer,
+  the menu says to stop or wait. A daemon without the route says so in the menu,
+  and no model is guessed in its place (D28).
 - **A conversation that ends is no longer reported as a failure.** When a
   session closes, the daemon ends its stream and the list shows it ended; the
   window took the stream's end for a fault and said the events had stopped

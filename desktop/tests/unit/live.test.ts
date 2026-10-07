@@ -22,6 +22,7 @@ function fakeApi() {
     return Promise.resolve(refusal ? { ok: false, refusal } : ok(null));
   };
   let resolveContinue: (a: Answer<P.Session>) => void = () => {};
+  let models: Answer<P.ModelsResponse> = { ok: false, refusal: { code: 'unexpected_answer', message: 'O daemon respondeu 404 a GET /v1/models: 404 page not found.' } };
   const api: DcodeApi = {
     platform: 'test',
     user: () => Promise.resolve({ name: 'Ana' }),
@@ -31,10 +32,12 @@ function fakeApi() {
     onStreamEnd: (l) => (listeners.end.push(l), () => {}),
     follow: (id) => answer(`follow ${id}`),
     unfollow: () => Promise.resolve(),
-    continueConversation: (c) => {
-      asked.push(`continue ${c.id} in ${c.workspace}`);
+    continueConversation: (c, model) => {
+      asked.push(`continue ${c.id} in ${c.workspace}${model ? ` on ${model}` : ''}`);
       return new Promise((r) => (resolveContinue = r));
     },
+    closeSession: (id) => answer(`close ${id}`),
+    listModels: (ws) => (asked.push(`models of ${ws}`), Promise.resolve(models)),
     pickFolder: () => Promise.resolve('/w/novo'),
     createSession: (ws) => (asked.push(`create in ${ws}`), Promise.resolve(ok(session('new')))),
     submitTurn: (id, text) => answer(`turn ${id}: ${text}`),
@@ -48,6 +51,7 @@ function fakeApi() {
     listeners,
     refuse: (what: string, code: string, message: string) => (refusals[what] = { code, message }),
     continued: (id: string) => resolveContinue(ok(session(id))),
+    listing: (a: Answer<P.ModelsResponse>) => (models = a),
   };
 }
 
@@ -83,6 +87,57 @@ describe('the window connected', () => {
     f.listeners.list[0]?.({ kind: 'changed', conversation: { ...ended, id: 'new', state: 'idle', live: true, continued_from: 'old' } });
     expect(await store.actions.open(row)).toEqual({ ok: true, value: 'new' });
     expect(f.asked.slice(2)).toEqual(['follow new']);
+  });
+
+  it('continues a live conversation on the model chosen, closes the one it left, and follows the new one', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    store.start();
+    f.listeners.list[0]?.({ kind: 'snapshot', conversations: [{ ...ended, id: 'live', state: 'idle', live: true }] });
+    const switched = store.actions.switchModel('live', '/w/dcode', 'qwen-local');
+    f.continued('on-qwen');
+    expect(await switched).toEqual({ ok: true, value: 'on-qwen' });
+    expect(f.asked).toEqual(['continue live in /w/dcode on qwen-local', 'close live', 'follow on-qwen']);
+  });
+
+  it('closes nothing when the conversation had already ended, and says so when the old one stays open', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const said: string[] = [];
+    store.onNotice((t) => said.push(t));
+    store.start();
+    f.listeners.list[0]?.({ kind: 'snapshot', conversations: [ended, { ...ended, id: 'live', state: 'idle', live: true }] });
+    const fromEnded = store.actions.switchModel('old', '/w/dcode', 'gemini');
+    f.continued('on-gemini');
+    expect(await fromEnded).toEqual({ ok: true, value: 'on-gemini' });
+    expect(f.asked).toEqual(['continue old in /w/dcode on gemini', 'follow on-gemini']);
+
+    // The continuation opened: that it is shown matters more than the old one closing.
+    f.refuse('close', 'session_not_found', 'no session live');
+    const fromLive = store.actions.switchModel('live', '/w/dcode', 'gemini');
+    f.continued('on-gemini-2');
+    expect(await fromLive).toEqual({ ok: true, value: 'on-gemini-2' });
+    expect(said).toEqual(['A conversa continuou em gemini, e a sessão anterior não fechou: no session live']);
+  });
+
+  it('reads the daemon’s list of models, and says why when there is none or it cannot be read', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.listModels('/w/dcode')).toEqual({
+      ok: false,
+      why: 'O daemon não disse quais modelos existem: O daemon respondeu 404 a GET /v1/models: 404 page not found.',
+    });
+    const menu = {
+      default: { name: 'MiniMax-M3', model: 'MiniMax-M3', family: 'minimax-m3', transport: 'openai', measured: true },
+      profiles: [{ name: 'local', model: 'qwen3.5-9b', family: 'generic', transport: 'openai', measured: false, notice: 'nobody measured this endpoint' }],
+    };
+    f.listing({ ok: true, value: menu });
+    expect(await store.actions.listModels('/w/dcode')).toEqual({ ok: true, value: menu });
+    f.listing({ ok: true, value: { default: { name: 'x' } } as unknown as P.ModelsResponse });
+    const unreadable = await store.actions.listModels('/w/dcode');
+    expect(unreadable.ok).toBe(false);
+    expect(!unreadable.ok && unreadable.why).toContain('Resposta ilegível do daemon: lista de modelos: default.model');
+    expect(f.asked).toEqual(['models of /w/dcode', 'models of /w/dcode', 'models of /w/dcode']);
   });
 
   it('steers a running turn, and says the daemon’s reason when it refuses', async () => {

@@ -2,6 +2,7 @@
 // answers come from the daemon through the main process (live.ts); in fixture
 // mode, from a recording that sends nothing anywhere (fixture.ts).
 
+import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus } from '../shared/api';
 import type { Row } from '../state/sidebar';
 
@@ -23,4 +24,11 @@ export interface WindowActions {
   answer(sessionId: string, approvalId: string, decision: string): Promise<Outcome<null>>;
   /** Asks for a folder and opens a session there. Null when the person cancelled. */
   newSession(): Promise<Outcome<string> | null>;
+  /** What a session in the workspace can ask for, as the daemon resolves it (D28). */
+  listModels(workspace: string): Promise<Outcome<ModelsResponse>>;
+  /**
+   * Continues a conversation on another profile or model, and answers the
+   * session to show. A live one is closed once its continuation opens (D28).
+   */
+  switchModel(sessionId: string, workspace: string, model: string): Promise<Outcome<string>>;
 }

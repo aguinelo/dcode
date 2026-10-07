@@ -1,4 +1,4 @@
-import { Version, type CreateSessionRequest, type Session } from '../protocol/generated';
+import { Version, type CreateSessionRequest, type ModelsResponse, type Session } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import { UNREACHABLE, type Answer, type DaemonStatus, type Refusal } from '../shared/api';
 import { UNEXPECTED, request, shown } from './wire';
@@ -34,9 +34,27 @@ export class Requests {
     return this.open({ workspace });
   }
 
-  /** Continues a recorded conversation in a new session (D21). */
-  continueConversation(id: string, workspace: string): Promise<Answer<Session>> {
-    return this.open({ workspace, resume: id });
+  /**
+   * Continues a conversation in a new session (D21) — on another model or
+   * profile when one is named, which is how a conversation changes model (D28).
+   */
+  continueConversation(id: string, workspace: string, model?: string): Promise<Answer<Session>> {
+    return this.open(model ? { workspace, resume: id, model } : { workspace, resume: id });
+  }
+
+  /** Closes a live session; its record stays. */
+  async closeSession(sessionId: string): Promise<Answer<null>> {
+    const a = await this.call('DELETE', sessionPath(sessionId));
+    return a.ok ? { ok: true, value: null } : a;
+  }
+
+  /**
+   * What a session in the workspace can ask for. Passed on as it came: the
+   * renderer reads it at its boundary, as it reads the list and every event.
+   */
+  async listModels(workspace: string): Promise<Answer<ModelsResponse>> {
+    const a = await this.call('GET', `/${Version}/models?workspace=${encodeURIComponent(workspace)}`);
+    return a.ok ? { ok: true, value: a.value as ModelsResponse } : a;
   }
 
   submitTurn(sessionId: string, text: string): Promise<Answer<null>> {

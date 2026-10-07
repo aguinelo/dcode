@@ -52,9 +52,20 @@ export function serveTheWindows(daemon: Connection): void {
     const where = input.workspace(workspace);
     return where.ok ? ask.createSession(where.value) : where;
   });
-  handle(CHANNELS.continueConversation, (_event, conversation) => {
+  handle(CHANNELS.continueConversation, (_event, conversation, model) => {
     const which = input.conversation(conversation);
-    return which.ok ? ask.continueConversation(which.value.id, which.value.workspace) : which;
+    if (!which.ok) return which;
+    if (model === undefined) return ask.continueConversation(which.value.id, which.value.workspace);
+    const named = input.model(model);
+    return named.ok ? ask.continueConversation(which.value.id, which.value.workspace, named.value) : named;
+  });
+  handle(CHANNELS.closeSession, (_event, id) => {
+    const session = input.id(id, SESSION);
+    return session.ok ? ask.closeSession(session.value) : session;
+  });
+  handle(CHANNELS.listModels, (_event, workspace) => {
+    const where = input.workspace(workspace);
+    return where.ok ? ask.listModels(where.value) : where;
   });
   handle(CHANNELS.submitTurn, (_event, id, text) => {
     const session = input.id(id, SESSION);

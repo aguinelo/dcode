@@ -32,6 +32,7 @@ export function SessionPanel({
   onAnswer,
   onSend,
   onStop,
+  onModel,
   onMissing,
 }: {
   session: SessionView;
@@ -42,6 +43,7 @@ export function SessionPanel({
   onAnswer: (decision: string) => void;
   onSend: (text: string) => void;
   onStop: () => void;
+  onModel: (anchor: HTMLElement) => void;
   onMissing: (what: string) => void;
 }) {
   const blocks = useMemo(() => flowBlocks(session.entries), [session.entries]);
@@ -85,7 +87,7 @@ export function SessionPanel({
           )}
         </div>
       </div>
-      <Composer session={session} text={draft} onText={onDraft} onSend={onSend} onStop={onStop} onMissing={onMissing} />
+      <Composer session={session} text={draft} onText={onDraft} onSend={onSend} onStop={onStop} onModel={onModel} onMissing={onMissing} />
     </section>
   );
 }

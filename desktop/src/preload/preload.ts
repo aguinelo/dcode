@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { ConversationChange, Session } from '../protocol/generated';
+import type { ConversationChange, ModelsResponse, Session } from '../protocol/generated';
 import {
   CHANNELS,
   type Answer,
@@ -58,7 +58,12 @@ const api: DcodeApi = {
 
   follow: (sessionId) => invoke<Answer<null>>(CHANNELS.follow, sessionId),
   unfollow: (sessionId) => invoke<void>(CHANNELS.unfollow, sessionId),
-  continueConversation: (conversation) => invoke<Answer<Session>>(CHANNELS.continueConversation, conversation),
+  continueConversation: (conversation, model) =>
+    model === undefined
+      ? invoke<Answer<Session>>(CHANNELS.continueConversation, conversation)
+      : invoke<Answer<Session>>(CHANNELS.continueConversation, conversation, model),
+  closeSession: (sessionId) => invoke<Answer<null>>(CHANNELS.closeSession, sessionId),
+  listModels: (workspace) => invoke<Answer<ModelsResponse>>(CHANNELS.listModels, workspace),
   pickFolder: () => invoke<string | null>(CHANNELS.pickFolder),
   createSession: (workspace) => invoke<Answer<Session>>(CHANNELS.createSession, workspace),
   submitTurn: (sessionId, text) => invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text),

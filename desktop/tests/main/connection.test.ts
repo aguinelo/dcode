@@ -230,7 +230,37 @@ describe('requests', () => {
     expect(opened.ok && opened.value.id).toBe('s-new-1');
     const continued = await conn.requests.continueConversation('c-old', '/w');
     expect(continued.ok && continued.value.workspace).toBe('/w');
-    expect(daemon.bodies).toEqual([{ workspace: '/w' }, { workspace: '/w', resume: 'c-old' }]);
+    await conn.requests.continueConversation('c-old', '/w', 'qwen-local');
+    expect(daemon.bodies).toEqual([
+      { workspace: '/w' },
+      { workspace: '/w', resume: 'c-old' },
+      { workspace: '/w', resume: 'c-old', model: 'qwen-local' },
+    ]);
+  });
+
+  it('closes a session, and asks which models a workspace can use', async () => {
+    const menu = { default: { name: 'MiniMax-M3', model: 'MiniMax-M3', family: 'minimax-m3', transport: 'openai', measured: true }, profiles: [] };
+    const { daemon, conn, r } = await setUp({ sessions: { 's 1': 1 }, models: menu });
+    conn.start();
+    await until(() => connected(r), 'connected');
+    expect(await conn.requests.closeSession('s 1')).toEqual({ ok: true, value: null });
+    expect(await conn.requests.closeSession('s 1')).toEqual({ ok: false, refusal: { code: 'session_not_found', message: 'no session s 1' } });
+    expect(await conn.requests.listModels('/w a')).toEqual({ ok: true, value: menu });
+    expect(daemon.requests.filter((q) => !q.includes('/health') && !q.includes('/version') && !q.includes('/conversations'))).toEqual([
+      'DELETE /v1/sessions/s%201',
+      'DELETE /v1/sessions/s%201',
+      'GET /v1/models?workspace=%2Fw%20a',
+    ]);
+  });
+
+  it('says so when the daemon is from before the list of models', async () => {
+    const { conn, r } = await setUp();
+    conn.start();
+    await until(() => connected(r), 'connected');
+    expect(await conn.requests.listModels('/w')).toEqual({
+      ok: false,
+      refusal: { code: 'unexpected_answer', message: 'O daemon respondeu 404 a GET /v1/models?workspace=%2Fw: 404 page not found.' },
+    });
   });
 
   it('sends each command to its route, and answers null', async () => {

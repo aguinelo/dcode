@@ -23,6 +23,8 @@ export interface FakeOptions {
   sessions?: Record<string, number>;
   /** Refuses the list's stream with this status and body, as an older daemon does. */
   refuseList?: { status: number; contentType: string; body: string };
+  /** What GET /v1/models answers; without it, the route is not there, as on a daemon before it. */
+  models?: unknown;
 }
 
 export interface FakeDaemon {
@@ -85,7 +87,13 @@ export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<F
       const ws = (body as { workspace?: string } | undefined)?.workspace ?? '';
       return json(res, 201, { id: sid, state: 'idle', workspace: ws, model: 'fake', sandbox_mode: 'workspace-write', mode: 'assist', created_at: '2026-10-01T10:00:00Z', last_seq: 1, done_criteria: 0 });
     }
+    if (method === 'GET' && u.pathname === '/v1/models' && o.models !== undefined) return json(res, 200, o.models);
     if (session && !seqs.has(id)) return json(res, 404, { code: 'session_not_found', message: `no session ${id}` });
+    if (method === 'DELETE' && rest === '') {
+      seqs.delete(id);
+      for (const s of streams.get(id) ?? []) s.end();
+      return void res.writeHead(204).end();
+    }
     if (method === 'GET' && rest === '/events') {
       const from = Number(u.searchParams.get('from') ?? '1');
       sse(res);

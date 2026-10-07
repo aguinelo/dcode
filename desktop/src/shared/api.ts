@@ -6,7 +6,7 @@
 // nobody here chose. The main process is the daemon's client (D2, D19); the
 // renderer asks it for one thing at a time and is told what changed.
 
-import type { Conversation, ConversationChange, Session } from '../protocol/generated';
+import type { Conversation, ConversationChange, ModelsResponse, Session } from '../protocol/generated';
 
 export interface UserInfo {
   /** The person's name as the system knows it, or their login when it has none. */
@@ -85,8 +85,16 @@ export interface DcodeApi {
    */
   follow(sessionId: string): Promise<Answer<null>>;
   unfollow(sessionId: string): Promise<void>;
-  /** Continues a recorded conversation in a new session (`CreateSessionRequest.resume`). */
-  continueConversation(conversation: Pick<Conversation, 'id' | 'workspace'>): Promise<Answer<Session>>;
+  /**
+   * Continues a conversation in a new session (`CreateSessionRequest.resume`).
+   * With `model` — a profile or a model, as the daemon resolves it — the
+   * continuation runs on it: that is how a conversation changes model (D28).
+   */
+  continueConversation(conversation: Pick<Conversation, 'id' | 'workspace'>, model?: string): Promise<Answer<Session>>;
+  /** Closes a live session. The daemon keeps its record, and the list shows it ended. */
+  closeSession(sessionId: string): Promise<Answer<null>>;
+  /** What a session in the workspace can ask for (`GET /models`), as it came. Decoded by the renderer. */
+  listModels(workspace: string): Promise<Answer<ModelsResponse>>;
   /** Asks for a folder through the system's picker; null when the person cancels. */
   pickFolder(): Promise<string | null>;
   /** Opens a session in a workspace, with the daemon's defaults. */
@@ -111,6 +119,8 @@ export const CHANNELS = {
   follow: 'dcode:follow',
   unfollow: 'dcode:unfollow',
   continueConversation: 'dcode:continue-conversation',
+  closeSession: 'dcode:close-session',
+  listModels: 'dcode:list-models',
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',
