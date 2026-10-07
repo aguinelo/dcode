@@ -83,10 +83,28 @@ describe('the window connected', () => {
     expect(await second).toEqual({ ok: true, value: 'new' });
     expect(f.asked).toEqual(['continue old in /w/dcode', 'follow new']);
 
-    // Once the list shows the continuation live, opening the ended one opens it.
+    // Once the list shows the continuation live, opening the ended one opens
+    // it — already followed, so its stream is not asked for a second time.
     f.listeners.list[0]?.({ kind: 'changed', conversation: { ...ended, id: 'new', state: 'idle', live: true, continued_from: 'old' } });
     expect(await store.actions.open(row)).toEqual({ ok: true, value: 'new' });
-    expect(f.asked.slice(2)).toEqual(['follow new']);
+    expect(f.asked.slice(2)).toEqual([]);
+  });
+
+  it('follows a panel’s conversation once, and an ended one not at all', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    store.start();
+    f.listeners.list[0]?.({ kind: 'snapshot', conversations: [ended, { ...ended, id: 'live', state: 'running', live: true }] });
+    const byId = new Map(store.getSnapshot().rows.map((r) => [r.id, r]));
+    store.actions.watch(byId.get('old')!);
+    store.actions.watch(byId.get('live')!);
+    store.actions.watch(byId.get('live')!);
+    await Promise.resolve();
+    expect(f.asked).toEqual(['follow live']);
+    // A stream that ended for good is asked for again the next time.
+    f.listeners.end[0]?.({ sessionId: 'live', reason: 'a sessão não existe mais' });
+    store.actions.watch(byId.get('live')!);
+    expect(f.asked).toEqual(['follow live', 'follow live']);
   });
 
   it('continues a live conversation on the model chosen, closes the one it left, and follows the new one', async () => {
