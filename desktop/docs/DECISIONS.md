@@ -4,7 +4,8 @@ O porquê do que o cliente desktop faz. Decisões de interface moram aqui, e nã
 specs SDD: o comportamento do agente e o protocolo continuam com a disciplina de
 spec do núcleo (`docs/specs/architecture/`), e o desktop **não muda o
 protocolo** — o que ele precisa do núcleo vira pedido, com spec lá. O design de
-referência é o handoff v2 (`refs/design/desktop/`).
+referência foi o handoff v2 (`refs/design/desktop/`) até a grade de atenção (D29,
+D30); a régua visual ainda mede contra ele (D18).
 
 Quatro partes: o que foi decidido, o que ficou em aberto, o que o design pede e o
 protocolo não traz, e o que o desktop pede ao núcleo.
@@ -44,13 +45,14 @@ visual, com `?fixture=` — ela mostra eventos no formato exato do
 fio (`src/fixtures/recording.ts`), com só os campos e valores que um daemon
 mandaria. A gravação é reproduzida como se tivesse acabado de acontecer: ao abrir,
 todos os instantes andam o mesmo tanto até agora, e os relógios seguem dali. A
-barra inferior diz **gravação**, nunca "daemon" — um ponto verde sem conexão
+barra do daemon diz **gravação**, nunca "daemon" — um ponto verde sem conexão
 seria um estado que parece sucesso. Enviar, parar e responder aprovação avisam
-que nada foi enviado.
+que nada foi enviado. Sem estado no endereço, a gravação abre na grade (D30).
 
-**D6. Tema segue o sistema.** Tokens do handoff nos dois temas, como variáveis
-CSS; `prefers-color-scheme` decide. Geist e Geist Mono vêm do `@fontsource-variable`
-(OFL), empacotadas; nada vem da rede em tempo de execução. Com
+**D6. O tema é o de D29** (era: os tokens do handoff nos dois temas, seguindo o
+sistema). Os tokens são variáveis CSS, num bloco só (`styles/tokens.css`). A Geist
+Mono vem do `@fontsource-variable` (OFL), empacotada, e é a reserva da mono onde o
+sistema não tem uma; nada vem da rede em tempo de execução. Com
 `prefers-reduced-motion`, nada pulsa nem pisca e o verbo da atividade não roda: o
 estado continua legível pela forma do glifo.
 
@@ -85,9 +87,13 @@ desenhado: o design conta o tempo esperando, não o prazo.
 regra, quando existe, aparece; o `reason` do daemon (em inglês) fica no título do
 elemento. Código de fronteira desconhecido aparece como veio.
 
-**D13. Selo do turno:** `passed` → "✓ verified · n checks" (ok); `failed` → "✗ not
-verified · …" (erro, nunca a cor de perigo, que é só do acesso total); `stale` e
-`unavailable` → "⚠ unverified" (esmaecido); `clean` ou ausente → nada.
+**D13. Selo do turno:** `passed` → "✓ verificado · n critérios" (ok); `failed` →
+"✗ não verificado · …", com os critérios que falharam (erro, nunca a cor de perigo,
+que é só do acesso total); `stale` → "⚠ não conferido · mudou depois do check" e
+`unavailable` → "⚠ não conferido · nada pôde ser conferido" (esmaecido); `clean` ou
+ausente → nada. Era em inglês, como o handoff; em português desde a grade (D30),
+como o resto da janela (D17). Num painel, o selo vem antes de cada critério, com
+✓, ✗ ou ? por critério quando o turno os nomeia.
 
 **D14. Verbo da atividade:** o catálogo por fase da TUI (`internal/tui/activity.go`),
 em português — sinônimos da fase da ferramenta que roda, trocando a cada 2,4 s.
@@ -104,7 +110,8 @@ segmento sem dado não desenha.
 somando `added`/`removed`, como a barra da TUI. "+0 −0" afirmaria que nada mudou
 onde só não houve relato (ver L7).
 
-**D17. Os textos da interface são em português**, os do design, literais; um
+**D17. Os textos da interface são em português**, os do design, literais — os da
+grade (D30) são deste app, não do handoff; um
 segundo idioma é um arquivo (`src/renderer/text.ts`), não uma caça.
 
 **D18. Verificação visual.** `npm run check:visual` compara, com pixelmatch, a
@@ -118,6 +125,13 @@ próprio design, desenhado por este Chromium, fica a 1,15% e 1,19% das referênc
 — elas foram rasterizadas por um motor que não arredonda a altura de linha da
 Geist como o Chrome no macOS, e as linhas de texto caem um pixel acima, linha a
 linha. Esse é o piso; a janela mede 1,17% e 1,19%.
+
+Com a grade (D29, D30), as referências do handoff deixam de ser o alvo e a régua
+reprova: mede a janela nova contra o desenho antigo. A régua é caminho protegido
+do loop (`tests/visual/**`, `refs/design/**`), e trocar as referências é decisão de
+quem aprova o visual, não do código que o implementa: o PR da grade a propõe, e as
+referências novas — capturas da própria grade em modo fixture — entram num PR
+próprio depois do visto.
 
 **D19. O desktop sobe o daemon quando nenhum responde.** O processo principal
 procura um `dcode serve` no socket e anexa a ele; se nenhum responde, sobe um
@@ -237,6 +251,45 @@ ler o `models.toml` no desktop (uma segunda cópia da regra de quem vence entre 
 do usuário e o do projeto, e da lista de famílias medidas); trocar só para o
 próximo turno (o prefixo não muda no meio da sessão).
 
+**D29. Grafite: escuro, um acento, a fonte do sistema.** A janela deixa o visual
+do handoff v2 — claro e escuro, Geist, cantos de 10 a 14px, uma conversa por vez —,
+que lia como um clone de app de chat, por um próprio: sempre escuro; um acento
+lima (`#c6f36b`) para o foco e o que é seu; âmbar só para o que espera você; verde
+e vermelho só para o que os critérios disseram. A fonte do sistema (SF no macOS)
+no texto, mono no que é código ou nome de máquina — modelo, branch, comando,
+caminho —, com a Geist Mono como reserva; cantos de 4px. Escuro só, por ora: um
+segundo tema é um bloco de tokens (D6), não uma caça. Descartados: manter o v2 e
+só adicionar a grade (a unidade da tela continuaria a conversa); um tema claro
+junto (o dobro de ajuste visual para uma proposta ainda não aprovada).
+
+**D30. A janela abre numa grade de atenção.** Em vez de uma conversa por vez, a
+janela abre na grade das conversas que pedem você, cada uma num painel com o selo
+do último turno, os critérios de pronto, o fim do trabalho e a aprovação
+respondida ali mesmo (1, 2 e ↵, que nega — D22). A unidade da tela passa a ser a
+prova de cada conversa; o chat é o detalhe, aberto com ↵ ou dois cliques.
+
+- **Quem ganha lugar**, nesta ordem: esperando você, fixada (○/◉), rodando, e
+  terminada desde que você olhou — "vista" é abrir ou expandir a conversa, ou
+  "dispensar" no painel. No mesmo grupo, a mais recente primeiro.
+- **Os lugares não pulam.** Quem está na grade fica no lugar enquanto pede
+  atenção; quem chega ocupa o fim; quem sai libera. O que não cabe é contado na
+  barra ("+n sem lugar na grade"), e entra pela prioridade quando abre vaga.
+- **Quantos cabem** é automático: até 6 painéis, ou 9 numa janela de pelo menos
+  1700×1000; o formato vai de 1×1 a 3×3.
+- **Teclado.** As setas movem o foco, ↵ abre, ⌘1–9 abre o painel n, ⌘0 e Esc
+  voltam à grade. Aberta, a conversa mostra os outros painéis no topo, como pares.
+- **"Sem medição"** aparece ao lado dos critérios quando a família do modelo
+  nunca foi medida pelos contratos de comportamento do dcode, como a lista do
+  daemon diz (N5): o selo diz o que os critérios conferiram, e quem mediu o modelo
+  é outra pergunta. Lista que não veio não marca nada — não saber nunca vira
+  "medido".
+- **A memória da grade** — fixadas, vistas e desde quando — fica no
+  `localStorage`, como as preferências (D7); ilegível, é dita num aviso e a grade
+  recomeça.
+
+Descartados: abas (de novo uma por vez); um quadro por estado (move os cartões sob
+o ponteiro a cada mudança); lista com prévia (o design anterior).
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
@@ -246,12 +299,14 @@ A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
 `allow_project`/`allow_always` para a rede. O design mostra três; esta versão
 mostra as três.
 
-**A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico de sessões
-abertas nesta janela (← fica esmaecido até haver para onde voltar). Nova sessão,
-pelo botão e pelo ⌘N, pede a pasta e abre a sessão nela; procurar, pelo botão e
-pelo ⌘K, abre a busca (D27); o botão do modelo, o menu da troca (D28). Recolher
-a lateral, rotinas, anexar, o menu da sessão e configurações avisam que ainda não
-existem.
+**A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico do palco —
+as conversas abertas nesta janela e a grade — (← fica esmaecido até haver para
+onde voltar). Grade, pelo botão e pelo ⌘0, volta à grade (D30); nova sessão, pelo
+botão e pelo ⌘N, pede a pasta e abre a sessão nela; procurar, pelo botão e pelo
+⌘K, abre a busca (D27); o chip do modelo, num painel ou na conversa aberta, o menu
+da troca (D28). Recolher a lateral e o menu da sessão saíram com a grade, e
+rotinas saiu da lateral até existir. Anexar, adicionar projeto e configurações
+avisam que ainda não existem.
 
 ## Lacunas — o que o design pede e o protocolo não traz
 
