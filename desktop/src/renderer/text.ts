@@ -56,3 +56,11 @@ export const NOT_CONNECTED = 'Sem daemon: esta janela mostra eventos gravados, e
 export function notYet(what: string): string {
   return `${what} ainda não existe nesta versão.`;
 }
+
+// What the Crew sections say where the daemon does not expose the data yet
+// (D33): said, never an empty list that reads as "none".
+export const SKILLS_NOT_YET = 'O daemon ainda não lista as skills de um projeto — vem com a rota GET /v1/skills no núcleo (N6).';
+export const MEMORY_NOT_YET = 'O daemon ainda não lista a memória de um projeto — vem com a rota GET /v1/memory no núcleo (N6).';
+export const ROUTINES_NOT_YET = 'O daemon ainda não lista as rotinas — a agenda vem com as rotinas no núcleo.';
+export const APPS_NOT_YET = 'O dcode ainda não conecta apps externos — esta seção fica vazia até o núcleo ter conectores.';
+export const KNOWLEDGE_NOT_YET = 'O dcode ainda não tem base de conhecimento além da memória do projeto — esta seção fica vazia até o núcleo ter uma.';

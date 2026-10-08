@@ -1,11 +1,11 @@
 /*
- * Crew: the second version of the screen (D32). Its tokens live under
+ * Crew: the second version of the screen (D32, D33). Its tokens live under
  * .look-crew only, so the grid's grafite stays exactly as it was.
  *
- * Contrast first: near-black ground and near-white text, as Kiro has them, and
- * the quiet greys kept readable — the faint one at about 6:1 on the ground,
- * where grafite's sat near 3.6:1. Geist for text, Fragment Mono for code: both
- * free (OFL), the closest to Kiro's licensed Diatype that can ship with the app.
+ * Contrast first: near-black ground and near-white text, and the quiet greys
+ * kept readable — the faint one at about 6:1 on the ground, where grafite's
+ * sat near 3.6:1. Geist for text, Fragment Mono for code: both free (OFL).
+ * The accent is dcode's lime, as in the grid.
  */
 
 .window.look-crew {
@@ -28,6 +28,7 @@
   --dc-err: #ff8577;
   --dc-warn: #f7c35c;
   --dc-warn-line: rgba(247, 195, 92, 0.5);
+  --dc-radius-lg: 8px;
 
   font-family: var(--dc-font);
   -webkit-font-smoothing: antialiased;
@@ -57,143 +58,136 @@
   color: var(--dc-accent);
 }
 
-/* Middle and right: the conversation in focus, and what it established. */
-.crew {
+/* ---- the shell: the rail and the stage ---------------------------------- */
+
+.crew-shell {
   flex: 1;
+  min-width: 0;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 8px;
-  padding: 8px;
-}
-.crew-empty {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--dc-dim);
-  font-size: 13.5px;
 }
-.crew-empty strong {
-  color: var(--dc-emph);
-  font-weight: 500;
-}
-.crew-thread,
-.crew-context {
+.crew-stage {
+  flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--dc-panel);
-  border: 1px solid var(--dc-line);
-  border-radius: var(--dc-radius);
-  overflow: hidden;
-}
-.crew-head {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--dc-line-soft);
-}
-.crew-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--dc-emph);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.crew-ended {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 12px;
-}
-.crew-ended p {
-  margin: 0;
-  padding: 0 20px;
-  color: var(--dc-dim);
-  font-size: 13.5px;
 }
 
-.crew-context {
-  overflow-y: auto;
-}
-.crew-section {
+.crew-rail {
+  flex: none;
+  width: 56px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--dc-line-soft);
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0;
+  border-right: 1px solid var(--dc-line);
+  background: var(--dc-chrome);
 }
-.crew-section:last-child {
-  border-bottom: 0;
-}
-.crew-section-title {
-  margin: 0;
+.rail-mark {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  border-radius: var(--dc-radius-lg);
+  background: var(--dc-accent-soft);
+  color: var(--dc-accent);
   font-family: var(--dc-mono);
-  font-size: 10.5px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 600;
+}
+.rail-items {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.rail-item {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--dc-radius-lg);
   color: var(--dc-faint);
 }
+.rail-item:hover {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}
+.rail-item.on {
+  background: var(--dc-raised);
+  color: var(--dc-emph);
+}
+.rail-item.on::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 2px;
+  height: 18px;
+  transform: translateY(-50%);
+  border-radius: 0 2px 2px 0;
+  background: var(--dc-accent);
+}
+.rail-badge {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--dc-warn);
+  color: var(--dc-chrome);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+/* ---- shared bits ------------------------------------------------------- */
+
+.crew-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--dc-radius);
+  background: var(--dc-btn);
+  color: var(--dc-btn-ink);
+  font-size: 12px;
+  font-weight: 500;
+}
+.crew-primary:hover {
+  filter: brightness(1.08);
+}
 .crew-count {
-  color: var(--dc-dim);
+  color: var(--dc-faint);
+  font-variant-numeric: tabular-nums;
 }
 .crew-quiet {
   margin: 0;
   font-size: 12.5px;
   color: var(--dc-faint);
 }
-.crew-context .done-row {
-  font-size: 12.5px;
-  gap: 6px 12px;
+.crew-pad {
+  padding: 8px 16px;
 }
-
-.crew-files,
-.crew-mates {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.crew-files li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  font-size: 12px;
-}
-.crew-file {
-  flex: 1;
-  min-width: 0;
-  color: var(--dc-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.crew-diff {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-}
-
 .crew-facts {
   margin: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 5px 14px;
+  gap: 8px 16px;
+  align-items: center;
   font-size: 12.5px;
 }
 .crew-facts dt {
@@ -207,30 +201,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.crew-mates button {
-  box-sizing: border-box;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--dc-radius-sm);
-  font-size: 12.5px;
+.crew-facts dd.tone-ok {
+  color: var(--dc-ok);
 }
-.crew-mates button:hover {
-  background: var(--dc-hover);
+.crew-facts dd.tone-err {
+  color: var(--dc-err);
 }
-.crew-mate-title {
-  flex: 1;
-  min-width: 0;
-  color: var(--dc-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.crew-facts dd.wrap {
+  white-space: normal;
 }
-.crew-mate-state {
-  flex: none;
-  font-size: 11px;
-  color: var(--dc-faint);
+.crew-facts svg {
+  vertical-align: -1px;
 }

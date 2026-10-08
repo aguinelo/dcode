@@ -67,7 +67,7 @@ export function TopBar({
           </button>
         ))}
       </span>
-      <span className="topbar-hints">{onGrid ? '⌘N nova · ⌘↵ maximizar · ⌘K procurar' : 'esc grade · ⌘K procurar'}</span>
+      <span className="topbar-hints">{look === 'crew' ? '⌘N nova · ⌘K procurar' : onGrid ? '⌘N nova · ⌘↵ maximizar · ⌘K procurar' : 'esc grade · ⌘K procurar'}</span>
     </header>
   );
 }

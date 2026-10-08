@@ -158,6 +158,16 @@ describe('the window connected', () => {
     expect(f.asked).toEqual(['models of /w/dcode', 'models of /w/dcode', 'models of /w/dcode']);
   });
 
+  it('says the daemon does not list skills or memory yet, and asks it nothing', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const skills = await store.actions.listSkills('/w/dcode');
+    const memory = await store.actions.listMemory('/w/dcode');
+    expect(!skills.ok && skills.why).toContain('ainda não lista as skills');
+    expect(!memory.ok && memory.why).toContain('ainda não lista a memória');
+    expect(f.asked).toEqual([]);
+  });
+
   it('steers a running turn, and says the daemon’s reason when it refuses', async () => {
     const f = fakeApi();
     const store = new LiveStore(f.api);
