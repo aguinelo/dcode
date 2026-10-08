@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 207 decision changelogs |
+| spec families | 18, with 208 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,15 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`memory.enabled` and `memory.max_entries` can be set.** `FromEnv` read
+  both, and neither was in `KnownKeys`: a `config.toml` naming them was refused
+  as an unknown key, and the environment layer never consulted
+  `DCODE_MEMORY_ENABLED` or `DCODE_MEMORY_MAX_ENTRIES`, so memory off and the
+  cap existed only as defaults. Both keys are now in the schema, with their
+  defaults in the built-in layer so `dcode config` shows an origin. A new guard
+  fails when `FromEnv` reads a key the schema does not hold, and the spec guard
+  now reads tables whose rows open with the TOML key — the learned-memory table
+  had been invisible to it.
 - **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
   answers what a session in a workspace reads as memory: every entry of
   `.dcode/memory.md` with its kind, subject, body and provenance, marked stale

@@ -97,6 +97,9 @@ var wiringTable = []configOption{
 	{"DoctrineOverlay", "doctrine.enabled", "Bool", ""},
 	{"DoctrineDir", "doctrine.dir", "String", ""},
 	{"DoctrineMaxBytes", "doctrine.max_bytes", "Int", ""},
+
+	{"Memory", "memory.enabled", "Bool", ""},
+	{"MemoryMax", "memory.max_entries", "Int", ""},
 }
 
 // nonSession names the KnownKeys entries that deliberately do not reach

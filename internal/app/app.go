@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -258,6 +259,10 @@ func Resolve(env func(string) string, workspace string) (config.Resolved, error)
 			"budget.notice":      "true",
 			"doctrine.enabled":   "true",
 			"doctrine.max_bytes": "16384",
+			// Learned memory is on, and the cap is the spec's starting
+			// value, stated here so `--config` shows where it came from.
+			"memory.enabled":     "true",
+			"memory.max_entries": strconv.Itoa(memory.DefaultMax),
 		}},
 	}
 
