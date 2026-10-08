@@ -17,11 +17,13 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   Memória, Skills, Apps, Conhecimento, Configurações — and the Painel three
   panes: every conversation the daemon lists, searched and grouped (active, by
   project, older), the one in focus whole, and its context in tabs — Mudanças,
-  Pronto, Sessão. Skills shows the skills that entered the followed turns;
-  Configurações the look, the daemon and each project's models. What the daemon
-  does not expose yet — the skills and memory lists, routines, apps, knowledge —
-  says so instead of showing an empty list, and skills and memory are one
-  function each to wire when their routes land (N6). The grid is untouched and
+  Pronto, Sessão. Skills and Memória read the daemon's new routes (N6, #432):
+  each skill with its source, file, triggers and what makes it ask first, and
+  the files refused; each memory by kind, marking stale and unread ones, with
+  the blocks that are not memories. A daemon older than the routes is said to
+  not expose them, in its own words. Configurações shows the look, the daemon
+  and each project's models. Routines, apps and knowledge have nothing in the
+  core yet and say so instead of showing an empty list. The grid is untouched and
   stays the default. Icons from `lucide-react` (MIT) (D33).
 - **A second version of the screen, Crew, beside the grid.** After Kiro Crew, and
   without taking the grid apart: a switch in the top bar alternates Grade and Crew,
