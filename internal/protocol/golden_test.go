@@ -119,3 +119,36 @@ func TestGoldenModelsResponse(t *testing.T) {
 		}},
 	})
 }
+
+// A memory with its provenance and one written by hand, a stale one, and a
+// block that is not a memory. `stale` and `shown` are never omitted — false is
+// what a list of memories exists to show — while a body and a provenance are,
+// when there is none.
+func TestGoldenMemoryResponse(t *testing.T) {
+	golden(t, "memory_response", MemoryResponse{
+		Path: ".dcode/memory.md", Exists: true, Enabled: true, MaxEntries: 40,
+		Entries: []MemoryEntry{
+			{Kind: "gotcha", Subject: "make test needs go generate first",
+				Body: "the generated files go stale.", Learned: "2026-08-18", Commit: "abc1234", Shown: true},
+			{Kind: "convention", Subject: "errors carry the path", Commit: "0ddba11", Stale: true, Shown: true},
+		},
+		Malformed: []MemoryMalformed{{Line: "## diary: what I did today",
+			Reason: `"diary" is not a kind of memory; the kinds are gotcha, decision and convention`}},
+	})
+}
+
+// A loaded skill and a held one, and a file that did not load. `held` is never
+// omitted; triggers and claims are, when there are none.
+func TestGoldenSkillsResponse(t *testing.T) {
+	golden(t, "skills_response", SkillsResponse{
+		Enabled: true,
+		Skills: []SkillInfo{
+			{Name: "release", WhenToUse: "cutting a release: version, changelog, tag",
+				Triggers: []string{"release"}, Source: SkillSourceProject, Path: "release/SKILL.md"},
+			{Name: "yolo", WhenToUse: "moving fast", Source: SkillSourceUser, Path: "yolo.md",
+				Held: true, Claims: []string{"claims the sandbox is off (sandbox is disabled)"}},
+		},
+		Notices: []SkillNotice{{Source: SkillSourceProject, Path: "draft.md",
+			Reason: "has no `when_to_use` line"}},
+	})
+}

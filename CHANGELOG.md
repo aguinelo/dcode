@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 206 decision changelogs |
+| spec families | 18, with 207 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
+  answers what a session in a workspace reads as memory: every entry of
+  `.dcode/memory.md` with its kind, subject, body and provenance, marked stale
+  and shown as the session's prefix marks and shows it, and every block that is
+  not a memory with what is wrong in it — the reason now comes from the memory
+  package, which only kept the line. `GET /v1/skills` answers the skills a
+  session there has, the user's and the project's, each with what it declares
+  about itself and where it comes from, a held one marked held, and the files
+  that did not load with why. Both read through the calls sessions use, never
+  carry a key or a skill's body, and refuse a missing, relative or unreadable
+  workspace with the reason. Before, a client learned either only by reading
+  the files itself and repeating five rules that live in the daemon. This is
+  what the desktop's crew view reads.
 - **The daemon lists the models a session can ask for.** `GET /v1/models`
   answers, for a workspace, the model a session there gets when it asks for
   none and every profile in `models.toml` — the user's, with the project's

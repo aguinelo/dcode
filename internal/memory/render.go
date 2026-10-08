@@ -32,12 +32,8 @@ func Render(f File, max int, known map[string]bool) string {
 
 	// The most recent first, and the cut falls on the oldest: a memory written
 	// last week is likelier to still be true than one from a year ago.
-	entries := f.Entries
-	cut := 0
-	if len(entries) > max {
-		cut = len(entries) - max
-		entries = entries[cut:]
-	}
+	cut := Hidden(f, max)
+	entries := f.Entries[cut:]
 
 	var b strings.Builder
 	b.WriteString("What earlier sessions in this repository learned. " +
@@ -47,7 +43,7 @@ func Render(f File, max int, known map[string]bool) string {
 	for i := len(entries) - 1; i >= 0; i-- {
 		e := entries[i]
 		fmt.Fprintf(&b, "\n- **%s** — %s", e.Kind, e.Subject)
-		if e.Commit != "" && len(known) > 0 && !known[e.Commit] {
+		if Stale(e, known) {
 			// It was true at a commit this repository no longer has. The model
 			// reads that and weighs it; nothing decides for it.
 			b.WriteString(" _(from a commit no longer in this repository)_")

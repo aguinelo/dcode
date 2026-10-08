@@ -58,6 +58,8 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/conversations` | `experimental` | Lista as conversas, vivas e gravadas, da atividade mais recente para a mais antiga. Query `workspace` (absoluto) guarda um projeto. Devolve `ListConversationsResponse`. |
 | `GET` | `/conversations/events` | `experimental` | **SSE.** A lista inteira primeiro (`snapshot`), depois cada conversa que mudou (`changed`) ou saiu (`removed`). Sem `from`: reconectar recebe outro `snapshot`. |
 | `GET` | `/models` | `experimental` | Os modelos que uma sessão pode pedir: o que ela recebe sem pedir nenhum e cada perfil do `models.toml` (o do usuário e o do projeto), cada um dizendo se a família tem medição. Query `workspace` (absoluto, opcional) escolhe o projeto; sem ela, vale a configuração com que o daemon subiu. Devolve `ModelsResponse`. |
+| `GET` | `/memory` | `experimental` | O que uma sessão do workspace lê como memória: cada entrada do `.dcode/memory.md` com tipo, assunto, corpo e procedência, se está velha e se a sessão a mostra, e os blocos que não são memória, com o motivo. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `MemoryResponse`. |
+| `GET` | `/skills` | `experimental` | As skills que uma sessão do workspace tem: as do usuário e as do projeto, com o que cada uma declara de si e de onde vem, as retidas marcadas, e os arquivos que não carregaram, com o motivo. Query `workspace` (absoluto, obrigatória). Devolve `SkillsResponse`. |
 | `GET` | `/sessions/{id}` | `experimental` | Detalhe de uma sessão. |
 | `DELETE` | `/sessions/{id}` | `experimental` | Encerra e libera a sessão. |
 | `GET` | `/sessions/{id}/events` | `experimental` | **SSE.** Query `from` (uint64, default `1`). |
@@ -244,6 +246,68 @@ type ModelsResponse struct {
 Nenhuma escolha carrega credencial: nem a chave, nem a máscara, nem a impressão
 digital dela, nem de onde ela veio.
 
+### 5.4 A memória e as skills de um workspace
+
+O que a visão de equipe do desktop mostra de um workspace
+(`internal/protocol/memory.go`, `internal/protocol/skills.go`). As duas
+respostas são lidas pelas chamadas que montam a sessão: a memória pelo
+`memory.Read`, com o `knownCommits` para o que está velho e o corte do `Render`
+(`memory.Hidden`); as skills pelas pastas do `skillDirs` — as mesmas que o `New`
+carrega — e pelo `behavior.LoadSkills`, com o mesmo teto de bytes.
+
+```go
+type MemoryEntry struct {
+    Kind    string `json:"kind"`              // gotcha, decision ou convention
+    Subject string `json:"subject"`           // com o tipo, a identidade que a memória tem
+    Body    string `json:"body,omitempty"`
+    Learned string `json:"learned,omitempty"` // procedência; vazia numa memória escrita à mão
+    Commit  string `json:"commit,omitempty"`
+    Stale   bool   `json:"stale"`             // o commit não existe mais no repositório (memory.Stale)
+    Shown   bool   `json:"shown"`             // a sessão lê: memória ligada, arquivo legível, dentro do teto
+}
+
+type MemoryMalformed struct {
+    Line   string `json:"line"`
+    Reason string `json:"reason"` // memory.Diagnose: o que falta ou sobra no cabeçalho
+}
+
+type MemoryResponse struct {
+    Path       string            `json:"path"`        // relativo ao workspace: .dcode/memory.md
+    Exists     bool              `json:"exists"`      // ausente é o caso comum: lista vazia, nunca erro
+    Enabled    bool              `json:"enabled"`     // memory.enabled
+    MaxEntries int               `json:"max_entries"` // memory.max_entries
+    Entries    []MemoryEntry     `json:"entries"`     // na ordem do arquivo, a mais antiga primeiro; nenhuma é []
+    Malformed  []MemoryMalformed `json:"malformed"`   // nenhum é []
+    Unreadable string            `json:"unreadable,omitempty"` // por que o arquivo não pôde ser lido
+}
+
+type SkillInfo struct {
+    Name      string   `json:"name"`
+    WhenToUse string   `json:"when_to_use"`
+    Triggers  []string `json:"triggers,omitempty"`
+    Source    string   `json:"source"` // "user" ou "project"; a do projeto vence pelo nome
+    Path      string   `json:"path"`   // relativo à pasta de skills da origem
+    Held      bool     `json:"held"`   // pede a fronteira: a sessão pergunta a alguém antes de carregar
+    Claims    []string `json:"claims,omitempty"`
+}
+
+type SkillNotice struct {
+    Source string `json:"source"`
+    Path   string `json:"path"`
+    Reason string `json:"reason"`
+}
+
+type SkillsResponse struct {
+    Enabled bool          `json:"enabled"` // behavior.skills_enabled
+    Skills  []SkillInfo   `json:"skills"`  // por nome; nenhuma é []
+    Notices []SkillNotice `json:"notices"` // nenhum é []
+}
+```
+
+Nenhuma das duas carrega nada além do arquivo de memória do workspace e do que
+cada skill declara de si: nem a chave, nem o corpo de uma skill, nem a
+configuração ao lado.
+
 ## 6. Fluxo de aprovação
 
 Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
@@ -362,6 +426,16 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Perfil com que nenhuma sessão pode ser montada continua no menu, sem medição e com o motivo em `notice` — o mesmo com que a sessão recusaria.
 - A lista de modelos nunca carrega a chave: nem ela, nem a máscara, nem a impressão digital, nem de onde ela veio; e os campos são um conjunto declarado, para campo novo ser decisão e não vazamento.
 - Workspace relativo, inexistente ou com configuração ilegível é recusado com `workspace_invalid` e o motivo, nunca respondido com a configuração do daemon no lugar.
+- `GET /memory` lista o que uma sessão do workspace lê como memória: cada entrada com tipo, assunto, corpo e procedência, marcada `stale` e `shown` como o prefixo da sessão a marca e a mostra.
+- Arquivo de memória ausente é lista vazia, `exists` falso, e não é falha.
+- Bloco de memória malformado é listado com o motivo, ao lado das memórias que leram, nunca descartado em silêncio.
+- `GET /skills` lista as skills do usuário e as do projeto, a do projeto vencendo pelo nome, cada uma com o que declara de si e de onde vem.
+- Skill listada e não retida é skill que o índice da sessão do workspace carrega: as duas saem das mesmas pastas.
+- Skill que pede a fronteira é listada como retida, com o que pede; a lista não responde a pergunta que é de uma pessoa.
+- Arquivo de skill que não carrega é listado entre os avisos, com a origem, o caminho e o motivo.
+- Memória e skills nunca carregam a chave, o corpo de uma skill ou a configuração ao lado; os campos são um conjunto declarado.
+- Memória e skills recusam workspace ausente, relativo, inexistente ou com configuração ilegível com `workspace_invalid` e o motivo.
+- Daemon sem o gancho de memória ou de skills recusa dizendo por quê, nunca responde lista vazia.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
@@ -382,3 +456,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609292355 — O socket é um por usuário](changelog/202609292355-o-socket-e-um-por-usuario.md)
 - [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)
 - [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)
+- [202610080001 — A memória e as skills de um workspace](changelog/202610080001-a-memoria-e-as-skills-de-um-workspace.md)

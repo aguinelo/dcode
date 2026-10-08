@@ -85,7 +85,11 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		// twenty does not open twenty streams.
 		Conversations: d.conversations,
 		// What a session can ask for, resolved where sessions are built.
-		Models:      d.models,
+		Models: d.models,
+		// What a workspace remembers and which skills it has, read where
+		// sessions read them.
+		Memory:      d.memory,
+		Skills:      d.skills,
 		CommitDone:  d.commitDone,
 		MaxSessions: opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without

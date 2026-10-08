@@ -10,6 +10,13 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The core lists a workspace's memory and skills.** Two routes answer, for a
+  project, what its sessions read as memory — each entry, whether it is stale
+  and whether a session shows it, and the blocks that are not memories, with
+  why — and which skills they have, the user's and the project's, with where
+  each comes from and whether it waits on a person. What the crew view will
+  read, instead of parsing `.dcode/memory.md` and the skills folders with a
+  copy of the core's rules. The protocol types are regenerated.
 - **A conversation continues on another model.** The model button in the
   composer opens what the daemon says a session in that project can ask for
   (`GET /v1/models`): the project's default and each profile in `models.toml`,

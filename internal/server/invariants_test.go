@@ -80,6 +80,19 @@ var protocolInvariants = map[string]string{
 	"nenhuma sessão pode ser montada": "TestAProfileNoSessionCanBuildIsListedWithTheReason",
 	"nunca carrega a chave":           "TestTheListOfModelsNeverCarriesACredential",
 	"configuração do daemon no lugar": "TestAWorkspaceThatCannotBeReadIsRefusedWithTheReason",
+	// A workspace's memory and skills. Read where the daemon builds sessions,
+	// so the assertions run through the daemon's own routes; the missing hook
+	// is the server's alone.
+	"marcada `stale` e `shown`":       "TestTheMemoryRouteListsWhatASessionReads",
+	"`exists` falso, e não é falha":   "TestAnAbsentMemoryIsAnEmptyListAndNotAFailure",
+	"ao lado das memórias que leram":  "TestAMalformedMemoryIsListedWithTheReason",
+	"a do projeto vencendo pelo nome": "TestTheSkillsRouteListsWhatASessionWouldHave",
+	"as duas saem das mesmas pastas":  "TestTheSkillsListedAreTheOnesASessionIndexes",
+	"é listada como retida":           "TestAHeldSkillIsListedAsHeld",
+	"listado entre os avisos":         "TestASkillThatCannotLoadIsListedWithTheReason",
+	"o corpo de uma skill":            "TestMemoryAndSkillsNeverCarryWhatTheyDoNotDeclare",
+	"recusam workspace ausente":       "TestMemoryAndSkillsRefuseAWorkspaceThatCannotBeRead",
+	"gancho de memória ou de skills":  "TestMemoryAndSkillsWithoutTheHookRefuse",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

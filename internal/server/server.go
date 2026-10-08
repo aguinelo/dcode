@@ -75,6 +75,13 @@ type Config struct {
 	// Injected for the same reason Specs is: resolving a workspace's
 	// configuration is the app's business. Nil refuses, saying why.
 	Models func(workspace string) (protocol.ModelsResponse, error)
+	// Memory answers what a session in a workspace reads as memory, and
+	// Skills which skills it has available. Both need a workspace.
+	//
+	// Injected for the same reason Models is: resolving a workspace's
+	// configuration is the app's business. Nil refuses, saying why.
+	Memory func(workspace string) (protocol.MemoryResponse, error)
+	Skills func(workspace string) (protocol.SkillsResponse, error)
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -183,6 +190,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/conversations", s.listConversations)
 	s.mux.HandleFunc("GET "+p+"/conversations/events", s.conversationEvents)
 	s.mux.HandleFunc("GET "+p+"/models", s.listModels)
+	s.mux.HandleFunc("GET "+p+"/memory", s.readMemory)
+	s.mux.HandleFunc("GET "+p+"/skills", s.listSkills)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)
