@@ -14,7 +14,12 @@ import (
 //
 // Only table rows. A name appearing in prose — typically a note saying a key
 // was removed — is documentation about the past, not a declaration.
-var specRow = regexp.MustCompile("(?m)^\\| `(DCODE_[A-Z_]+)` \\|")
+//
+// A row may open with the TOML key before the variable, the shape the
+// learned-memory spec uses. The pattern once required the variable in the first
+// column, so both guards below read that table as declaring nothing, and the
+// two memory keys it declares stayed out of KnownKeys without a test failing.
+var specRow = regexp.MustCompile("(?m)^\\| (?:`[a-z_]+\\.[a-z_]+` \\| )?`(DCODE_[A-Z_]+)` \\|")
 
 // The guard that closes the loop, and the one that did not exist.
 //
