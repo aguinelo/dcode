@@ -11,7 +11,8 @@ import type { Answer, DaemonStatus, DcodeApi } from '../shared/api';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
 import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
 import { rowOfConversation, type Row } from '../state/sidebar';
-import { MEMORY_NOT_YET, SKILLS_NOT_YET } from './text';
+import { decodeMemory, decodeSkills } from '../protocol/crew';
+import { notExposed } from './text';
 import type { Outcome, WindowActions } from './window';
 
 export interface LiveSnapshot {
@@ -29,6 +30,28 @@ const ENDED_GRACE_MS = 1500;
 /** A refusal said as the window says it: what did not happen, then the daemon's reason. */
 function outcome<T>(answer: Answer<T>, what: string): Outcome<T> {
   return answer.ok ? { ok: true, value: answer.value } : { ok: false, why: `${what}: ${answer.refusal.message}` };
+}
+
+/** The main process's code for an answer it could not read as the daemon's (main/wire.ts). */
+const UNEXPECTED = 'unexpected_answer';
+
+/**
+ * A listing read at the boundary. A 404 is a daemon older than the route,
+ * which is said as such with its own words; any other refusal is a failure,
+ * and an answer that does not match the shape is said, never guessed from.
+ */
+function read<T>(
+  answer: Answer<unknown>,
+  decode: (raw: unknown) => { ok: true; value: T } | { ok: false; reason: string },
+  what: string,
+  failed: string,
+): Outcome<T> {
+  if (!answer.ok) {
+    const older = answer.refusal.code === UNEXPECTED && / 404 /.test(answer.refusal.message);
+    return { ok: false, why: older ? notExposed(what, answer.refusal.message) : `${failed}: ${answer.refusal.message}` };
+  }
+  const got = decode(answer.value);
+  return got.ok ? got : { ok: false, why: `Resposta ilegível do daemon: ${got.reason}` };
 }
 
 export class LiveStore {
@@ -117,10 +140,10 @@ export class LiveStore {
       return read.ok ? { ok: true, value: read.models } : { ok: false, why: `Resposta ilegível do daemon: ${read.reason}` };
     },
     switchModel: (id, workspace, model) => this.switchModel(id, workspace, model),
-    // The daemon does not list either yet (N6). Wiring one is this function:
-    // ask through the preload, decode at the boundary, map to the view.
-    listSkills: async () => ({ ok: false, why: SKILLS_NOT_YET }),
-    listMemory: async () => ({ ok: false, why: MEMORY_NOT_YET }),
+    listSkills: async (workspace) =>
+      read(await this.api.listSkills(workspace), decodeSkills, 'as skills de um projeto (GET /v1/skills)', 'O daemon não disse quais skills existem'),
+    listMemory: async (workspace) =>
+      read(await this.api.listMemory(workspace), decodeMemory, 'a memória de um projeto (GET /v1/memory)', 'O daemon não disse o que a memória tem'),
   };
 
   private set(part: Partial<LiveSnapshot>): void {

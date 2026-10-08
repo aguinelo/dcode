@@ -4,7 +4,7 @@
 
 import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus } from '../shared/api';
-import type { MemoryListView, SkillsView } from '../state/crew';
+import type { MemoryResponse, SkillsResponse } from '../protocol/crew';
 import type { Row } from '../state/sidebar';
 
 /** What the bottom bar says about the daemon: a live status, or that this is a recording. */
@@ -38,8 +38,8 @@ export interface WindowActions {
    * session to show. A live one is closed once its continuation opens (D28).
    */
   switchModel(sessionId: string, workspace: string, model: string): Promise<Outcome<string>>;
-  /** The skills a session in the workspace has (`GET /v1/skills`, N6); until the daemon lists them, why not. */
-  listSkills(workspace: string): Promise<Outcome<SkillsView>>;
-  /** What a session in the workspace reads as memory (`GET /v1/memory`, N6); until the daemon lists it, why not. */
-  listMemory(workspace: string): Promise<Outcome<MemoryListView>>;
+  /** The skills a session in the workspace has (`GET /v1/skills`, N6), or why not — a daemon without the route says so. */
+  listSkills(workspace: string): Promise<Outcome<SkillsResponse>>;
+  /** What a session in the workspace reads as memory (`GET /v1/memory`, N6), or why not. */
+  listMemory(workspace: string): Promise<Outcome<MemoryResponse>>;
 }

@@ -64,6 +64,8 @@ const api: DcodeApi = {
       : invoke<Answer<Session>>(CHANNELS.continueConversation, conversation, model),
   closeSession: (sessionId) => invoke<Answer<null>>(CHANNELS.closeSession, sessionId),
   listModels: (workspace) => invoke<Answer<ModelsResponse>>(CHANNELS.listModels, workspace),
+  listSkills: (workspace) => invoke<Answer<unknown>>(CHANNELS.listSkills, workspace),
+  listMemory: (workspace) => invoke<Answer<unknown>>(CHANNELS.listMemory, workspace),
   pickFolder: () => invoke<string | null>(CHANNELS.pickFolder),
   createSession: (workspace) => invoke<Answer<Session>>(CHANNELS.createSession, workspace),
   submitTurn: (sessionId, text) => invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text),

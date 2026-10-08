@@ -263,6 +263,21 @@ describe('requests', () => {
     });
   });
 
+  it('asks a workspace’s skills and memory at their routes, and passes an older daemon’s 404 on', async () => {
+    const { daemon, conn, r } = await setUp();
+    conn.start();
+    await until(() => connected(r), 'connected');
+    expect(await conn.requests.listSkills('/w a')).toEqual({
+      ok: false,
+      refusal: { code: 'unexpected_answer', message: 'O daemon respondeu 404 a GET /v1/skills?workspace=%2Fw%20a: 404 page not found.' },
+    });
+    expect((await conn.requests.listMemory('/w')).ok).toBe(false);
+    expect(daemon.requests.filter((q) => q.includes('/skills') || q.includes('/memory'))).toEqual([
+      'GET /v1/skills?workspace=%2Fw%20a',
+      'GET /v1/memory?workspace=%2Fw',
+    ]);
+  });
+
   it('sends each command to its route, and answers null', async () => {
     const { daemon, conn, r } = await setUp({ sessions: { 's 1': 1 } });
     conn.start();
