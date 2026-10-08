@@ -2,6 +2,7 @@
 // derived from the conversations the daemon lists and the sessions the window
 // follows. Pure: the query and `now` are arguments.
 
+import type { MemoryEntry } from '../protocol/crew';
 import { fold } from './search';
 import type { SessionView } from './session';
 import type { SessionsState } from './sessions';
@@ -124,44 +125,32 @@ export function skillsSeen(state: SessionsState): SkillSeen[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * A skill a session in the workspace has, as the Skills section draws it —
- * what `GET /v1/skills` carries (N6), and only that: never the skill's body.
- */
-export interface SkillView {
-  name: string;
-  whenToUse: string;
-  /** `user` or `project`: where its file lives. */
-  source: string;
-  /** Asks a person before loading, because it reaches for the boundary. */
-  held: boolean;
-}
+const KINDS: readonly { kind: string; label: string }[] = [
+  { kind: 'gotcha', label: 'Armadilhas' },
+  { kind: 'decision', label: 'Decisões' },
+  { kind: 'convention', label: 'Convenções' },
+];
 
-export interface SkillsView {
-  /** Sessions in the workspace index skills at all. */
-  enabled: boolean;
-  skills: SkillView[];
-  /** Files trimmed or not loaded, with why. */
-  notices: string[];
-}
-
-/** One memory, as the Memória section draws it — what `GET /v1/memory` carries (N6). */
-export interface MemoryView {
+export interface MemoryGroup {
   kind: string;
-  subject: string;
-  body: string;
-  /** The commit it was true at is gone: marked, never dropped. */
-  stale: boolean;
-  /** A session reads it. */
-  shown: boolean;
+  label: string;
+  entries: MemoryEntry[];
 }
 
-export interface MemoryListView {
-  /** The file, relative to the workspace. */
-  path: string;
-  exists: boolean;
-  enabled: boolean;
-  entries: MemoryView[];
-  /** Blocks that looked like a memory and were not, and a file that could not be read. */
-  problems: string[];
+/**
+ * The memories by kind — gotchas, decisions, conventions —, each in the
+ * file's order; a kind the daemon sends and this list does not name comes
+ * after, under its own word, never dropped.
+ */
+export function memoryGroups(entries: readonly MemoryEntry[]): MemoryGroup[] {
+  const byKind = new Map<string, MemoryEntry[]>();
+  for (const e of entries) byKind.set(e.kind, [...(byKind.get(e.kind) ?? []), e]);
+  const known = KINDS.flatMap((k) => {
+    const list = byKind.get(k.kind);
+    return list ? [{ kind: k.kind, label: k.label, entries: list }] : [];
+  });
+  const rest = [...byKind.entries()]
+    .filter(([kind]) => !KINDS.some((k) => k.kind === kind))
+    .map(([kind, list]) => ({ kind, label: kind, entries: list }));
+  return [...known, ...rest];
 }
