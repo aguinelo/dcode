@@ -9,6 +9,8 @@ import './styles/composer.css';
 import './styles/grid.css';
 import './styles/search.css';
 import './styles/crew.css';
+import './styles/crew-board.css';
+import './styles/crew-pages.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';

@@ -18,4 +18,6 @@ export const fixtureActions: WindowActions = {
   watch: () => {},
   listModels: async () => ({ ok: false, why: NOT_CONNECTED }),
   switchModel: async () => ({ ok: false, why: NOT_CONNECTED }),
+  listSkills: async () => ({ ok: false, why: NOT_CONNECTED }),
+  listMemory: async () => ({ ok: false, why: NOT_CONNECTED }),
 };

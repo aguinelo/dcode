@@ -11,6 +11,7 @@ import type { Answer, DaemonStatus, DcodeApi } from '../shared/api';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
 import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
 import { rowOfConversation, type Row } from '../state/sidebar';
+import { MEMORY_NOT_YET, SKILLS_NOT_YET } from './text';
 import type { Outcome, WindowActions } from './window';
 
 export interface LiveSnapshot {
@@ -116,6 +117,10 @@ export class LiveStore {
       return read.ok ? { ok: true, value: read.models } : { ok: false, why: `Resposta ilegível do daemon: ${read.reason}` };
     },
     switchModel: (id, workspace, model) => this.switchModel(id, workspace, model),
+    // The daemon does not list either yet (N6). Wiring one is this function:
+    // ask through the preload, decode at the boundary, map to the view.
+    listSkills: async () => ({ ok: false, why: SKILLS_NOT_YET }),
+    listMemory: async () => ({ ok: false, why: MEMORY_NOT_YET }),
   };
 
   private set(part: Partial<LiveSnapshot>): void {
