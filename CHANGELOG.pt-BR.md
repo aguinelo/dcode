@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`memory.enabled` e `memory.max_entries` passam a ser configuráveis.** O
+  `FromEnv` lia as duas, e nenhuma estava em `KnownKeys`: um `config.toml` que
+  as escrevesse era recusado como chave desconhecida, e a camada de ambiente
+  nunca consultava `DCODE_MEMORY_ENABLED` nem `DCODE_MEMORY_MAX_ENTRIES` — a
+  memória desligada e o teto só existiam como padrão. As duas chaves entram no
+  esquema, com o padrão na camada `built-in` para que `dcode config` mostre a
+  origem. Uma guarda nova falha quando o `FromEnv` lê chave que o esquema não
+  tem, e a guarda das specs passa a ler tabela cuja linha abre com a chave TOML
+  — a tabela da memória era invisível para ela.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e

@@ -4,10 +4,12 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/pkg/client"
 )
@@ -108,4 +110,52 @@ func daemonBootedIn(t *testing.T, env func(string) string, ws string) (*Daemon, 
 		time.Sleep(5 * time.Millisecond)
 	}
 	return d, c
+}
+
+// memory.enabled and memory.max_entries were read by fromResolved and absent
+// from KnownKeys, so neither could be set at all: a config.toml naming them was
+// refused as an unknown key, and the environment layer only looks up the
+// variables KnownKeys maps, so DCODE_MEMORY_ENABLED was never consulted either.
+// The learned-memory spec declared both, with their variables, and the only
+// value a session could ever see was the default.
+func TestTheMemoryKeysReachASession(t *testing.T) {
+	ws := t.TempDir()
+	projectConfig(t, ws, "[memory]\nenabled = false\nmax_entries = 5\n")
+	opts, _, err := FromEnv(envFrom(map[string]string{"DCODE_HOME": t.TempDir()}), ws)
+	if err != nil {
+		t.Fatalf("a config.toml setting the memory keys is refused: %v", err)
+	}
+	if opts.Memory || opts.MemoryMax != 5 {
+		t.Errorf("from config.toml the session has memory=%v max=%d, want false and 5", opts.Memory, opts.MemoryMax)
+	}
+
+	opts, _, err = FromEnv(envFrom(map[string]string{
+		"DCODE_HOME":               t.TempDir(),
+		"DCODE_MEMORY_ENABLED":     "false",
+		"DCODE_MEMORY_MAX_ENTRIES": "7",
+	}), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Memory || opts.MemoryMax != 7 {
+		t.Errorf("from the environment the session has memory=%v max=%d, want false and 7", opts.Memory, opts.MemoryMax)
+	}
+}
+
+// The wiring guard starts from KnownKeys and asks whether each key is read. It
+// never asked the reverse, and the memory keys sat in that gap: read by name in
+// fromResolved, unknown to the schema, so no layer but the default could ever
+// reach them. A key FromEnv reads that KnownKeys does not hold is a setting
+// that looks configurable in the code and is not.
+func TestFromEnvReadsOnlyKnownKeys(t *testing.T) {
+	read := regexp.MustCompile(`r\.(?:Bool|String|Int)\("([^"]+)"`)
+	matches := read.FindAllStringSubmatch(readFromEnvBody(t), -1)
+	if len(matches) == 0 {
+		t.Fatal("no accessor calls found in FromEnv; the guard would pass vacuously")
+	}
+	for _, m := range matches {
+		if _, ok := config.KnownKeys[m[1]]; !ok {
+			t.Errorf("FromEnv reads %q, which KnownKeys does not hold: no file and no variable can set it", m[1])
+		}
+	}
 }

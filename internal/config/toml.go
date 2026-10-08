@@ -81,6 +81,8 @@ var KnownKeys = map[string]string{
 	"loop.source":                   "DCODE_LOOP_SOURCE",
 	"loop.protect":                  "DCODE_LOOP_PROTECT",
 	"loop.session_prefix":           "DCODE_LOOP_SESSION_PREFIX",
+	"memory.enabled":                "DCODE_MEMORY_ENABLED",
+	"memory.max_entries":            "DCODE_MEMORY_MAX_ENTRIES",
 	// The eval keys are read by the measurement harness, never by the product.
 	// They live in the same schema anyway: a key that governs behaviour and
 	// cannot be inspected with `--config` is the gap the audit pair closes,
