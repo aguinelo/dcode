@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 206 changelogs de decisão |
+| famílias de spec | 18, com 207 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
+  responde o que uma sessão num workspace lê como memória: cada entrada do
+  `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e
+  mostrada como o prefixo da sessão a marca e a mostra, e cada bloco que não é
+  memória com o que há de errado nele — o motivo agora sai do pacote de memória,
+  que só guardava a linha. `GET /v1/skills` responde as skills que uma sessão
+  ali tem, as do usuário e as do projeto, cada uma com o que declara de si e de
+  onde vem, a retida marcada como retida, e os arquivos que não carregaram com o
+  motivo. As duas leem pelas chamadas que a sessão usa, nunca carregam a chave
+  nem o corpo de uma skill, e recusam workspace ausente, relativo ou ilegível
+  com o motivo. Antes, um cliente só sabia de uma ou de outra lendo os arquivos
+  por conta própria e repetindo cinco regras que moram no daemon. É o que a
+  visão de equipe do desktop lê.
 - **O daemon lista os modelos que uma sessão pode pedir.** `GET /v1/models`
   responde, para um workspace, o modelo que uma sessão ali recebe sem pedir
   nenhum e cada perfil do `models.toml` — o do usuário, com o do projeto por cima

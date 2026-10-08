@@ -153,6 +153,83 @@ export const CodeMaxSessionsReached = "max_sessions_reached";
 export const CodeInternal = "internal";
 
 //////////
+// source: memory.go
+
+/**
+ * MemoryEntry is one thing an earlier session in the workspace learned, as the
+ * memory file holds it.
+ * The identity is the one the memory package has: a kind from a closed list
+ * and a subject. There is no id, because the file is edited by hand and an id
+ * nobody writes is an id nobody keeps.
+ */
+export interface MemoryEntry {
+  /**
+   * Kind is gotcha, decision or convention.
+   */
+  kind: string;
+  subject: string;
+  body?: string;
+  /**
+   * Learned and Commit are the provenance, either of them empty in a memory
+   * written by hand.
+   */
+  learned?: string;
+  commit?: string;
+  /**
+   * Stale says the commit it was true at is no longer in the repository.
+   * Marked, never dropped: a session reads it with the same mark.
+   */
+  stale: boolean;
+  /**
+   * Shown says a session reads it: memory is on, the file could be read, and
+   * the entry is within the cap, which keeps the most recent.
+   */
+  shown: boolean;
+}
+/**
+ * MemoryMalformed is a block that looked like a memory and was not, with why.
+ */
+export interface MemoryMalformed {
+  line: string;
+  reason: string;
+}
+/**
+ * MemoryResponse answers GET /memory: what a session in the workspace reads as
+ * memory, and what in the file it cannot read.
+ * Never anything but the workspace's memory file. Entries are in file order,
+ * the oldest first, as the file keeps them. No entries is an empty list, never
+ * null, and so is no malformed block.
+ */
+export interface MemoryResponse {
+  /**
+   * Path is the file, relative to the workspace.
+   */
+  path: string;
+  /**
+   * Exists says the file is there. Absent is the ordinary case, and answers
+   * no entries rather than an error.
+   */
+  exists: boolean;
+  /**
+   * Enabled says sessions in the workspace read memory at all
+   * (`memory.enabled`). Off, the file is still listed, and nothing in it is
+   * shown.
+   */
+  enabled: boolean;
+  /**
+   * MaxEntries is how many memories reach a session (`memory.max_entries`).
+   */
+  max_entries: number /* int */;
+  entries: MemoryEntry[];
+  malformed: MemoryMalformed[];
+  /**
+   * Unreadable is why the file could not be read, when it could not. A
+   * session there opens without its memory and says the same.
+   */
+  unreadable?: string;
+}
+
+//////////
 // source: models.go
 
 /**
@@ -1096,4 +1173,68 @@ export interface SessionModeChanged {
    * one place where being wrong is dangerous.
    */
   sandbox_mode: string;
+}
+
+//////////
+// source: skills.go
+
+/**
+ * Where a skill comes from: the user's config root, or the project's .dcode.
+ * A project's skill wins over the user's of the same name, as a session loads
+ * them.
+ */
+export const SkillSourceUser = "user";
+/**
+ * Where a skill comes from: the user's config root, or the project's .dcode.
+ * A project's skill wins over the user's of the same name, as a session loads
+ * them.
+ */
+export const SkillSourceProject = "project";
+/**
+ * SkillInfo is one skill a session in the workspace has available, as its
+ * file declares it.
+ * Only what the skill declares about itself: never its body, which is loaded
+ * into a turn when a trigger fires and is no business of a list.
+ */
+export interface SkillInfo {
+  name: string;
+  when_to_use: string;
+  triggers?: string[];
+  /**
+   * Source is SkillSourceUser or SkillSourceProject.
+   */
+  source: string;
+  /**
+   * Path is the skill's file, relative to its source's skills directory.
+   */
+  path: string;
+  /**
+   * Held says the skill reaches for the boundary, and a session asks a
+   * person before loading it. Claims is what it reaches for, in the words
+   * the question would use.
+   */
+  held: boolean;
+  claims?: string[];
+}
+/**
+ * SkillNotice is a skill file that was trimmed or not loaded, with why.
+ */
+export interface SkillNotice {
+  source: string;
+  path: string;
+  reason: string;
+}
+/**
+ * SkillsResponse answers GET /skills: the skills a session in the workspace
+ * has available, sorted by name, and what was said while loading them. No
+ * skills is an empty list, never null, and so is no notice.
+ */
+export interface SkillsResponse {
+  /**
+   * Enabled says sessions in the workspace index skills at all
+   * (`behavior.skills_enabled`). Off, the skills are still listed.
+   */
+  enabled: boolean;
+  skills: SkillInfo[];
+  notices: SkillNotice[];
 }

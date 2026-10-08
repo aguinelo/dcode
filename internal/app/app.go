@@ -642,10 +642,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	var skills []behavior.Skill
 	var skillNotices []behavior.Notice
 	if opts.Skills {
-		loaded, err := behavior.LoadSkills([]string{
-			filepath.Join(roots.Config, behavior.SkillsDirName),
-			filepath.Join(opts.Workspace, ".dcode", behavior.SkillsDirName),
-		}, 256<<10)
+		loaded, err := behavior.LoadSkills(dirsOf(skillDirs(roots, opts.Workspace)), skillMaxBytes)
 		if err != nil {
 			return nil, err
 		}

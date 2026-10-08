@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O núcleo lista a memória e as skills de um workspace.** Duas rotas
+  respondem, para um projeto, o que as sessões dele leem como memória — cada
+  entrada, se está velha e se a sessão a mostra, e os blocos que não são
+  memória, com o motivo — e quais skills elas têm, as do usuário e as do
+  projeto, com a origem de cada uma e se espera por uma pessoa. O que a visão de
+  equipe vai ler, em vez de interpretar o `.dcode/memory.md` e as pastas de
+  skills com uma cópia das regras do núcleo. Os tipos do protocolo foram
+  regenerados.
 - **Uma conversa continua em outro modelo.** O botão do modelo, no composer, abre
   o que o daemon diz que uma sessão daquele projeto pode pedir (`GET
   /v1/models`): o padrão do projeto e cada perfil do `models.toml`, cada um
