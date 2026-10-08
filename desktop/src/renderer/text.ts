@@ -56,3 +56,16 @@ export const NOT_CONNECTED = 'Sem daemon: esta janela mostra eventos gravados, e
 export function notYet(what: string): string {
   return `${what} ainda não existe nesta versão.`;
 }
+
+// What the Crew sections say where the daemon does not expose the data yet
+// (D33): said, never an empty list that reads as "none".
+/** How every "this daemon does not expose it" starts, so the section can tell it from a failure. */
+export const NOT_EXPOSED = 'Este daemon ainda não expõe';
+
+/** A daemon older than the route (N6): said with the daemon's own answer. */
+export function notExposed(what: string, said: string): string {
+  return `${NOT_EXPOSED} ${what} — atualize o dcode. O daemon disse: ${said}`;
+}
+export const ROUTINES_NOT_YET = 'O daemon ainda não lista as rotinas — a agenda vem com as rotinas no núcleo.';
+export const APPS_NOT_YET = 'O dcode ainda não conecta apps externos — esta seção fica vazia até o núcleo ter conectores.';
+export const KNOWLEDGE_NOT_YET = 'O dcode ainda não tem base de conhecimento além da memória do projeto — esta seção fica vazia até o núcleo ter uma.';

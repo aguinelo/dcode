@@ -235,6 +235,9 @@ export function App({
   );
 
   const newSession = useCallback(() => void win.newSession(places.length), [places.length, win]);
+  // Crew has no grid to ask "where?" in: ⌘N goes to the folder picker, and the
+  // sessions pane's "Nova" lists the known projects (D33).
+  const crewNew = useCallback(() => void win.startIn(null), [win]);
   const isConversation = useCallback((id: string) => rowById.has(id) || id in sessions.byId, [rowById, sessions]);
 
   useWindowKeys({
@@ -247,7 +250,7 @@ export function App({
     maximized: selected,
     busy: searching || !!models.menu,
     setSearching,
-    newSession,
+    newSession: look === 'crew' ? crewNew : newSession,
     show,
     answer: win.answerIn,
     isConversation,
@@ -293,108 +296,119 @@ export function App({
         onLook={chooseLook}
       />
       <div className="window-main">
-        <Sidebar
-          projects={projects}
-          selectedId={selectedId ?? win.focusId}
-          onGridIds={onGridIds}
-          gridShown={!selected}
-          gridCount={plan.ids.length}
-          now={now}
-          userName={userName}
-          onToggleAll={() => updatePrefs((p) => setAllCollapsed(p, shown, projects.some((x) => !x.collapsed)))}
-          onShowGrid={() => show(null)}
-          onNewSession={newSession}
-          onSearch={() => setSearching(true)}
-          onMissing={missing}
-          actions={{
-            toggle: (id) => updatePrefs((p) => setCollapsed(p, id, !p.collapsed[id])),
-            rename: (id, label) => updatePrefs((p) => relabel(p, id, label)),
-            move: (id, to) => updatePrefs((p) => moveProject(p, shown, id, to)),
-            dropBefore: (id, target) => updatePrefs((p) => dropBefore(p, shown, id, target)),
-            select: (id) => void win.open(id),
-          }}
-        />
-        <main className="main">
-          {selected ? (
-            <SessionPanel
-              key={selected.id}
-              session={selected}
-              row={selectedRow}
-              peers={peers}
+        {look === 'crew' ? (
+          <CrewView
+            row={crewRow}
+            session={crewId ? sessions.byId[crewId] : undefined}
+            projects={projects}
+            places={places}
+            sessions={sessions}
+            now={now}
+            verbTick={verbTick}
+            draft={crewId ? (drafts[crewId] ?? '') : ''}
+            caret={crewId && win.caret?.id === crewId ? win.caret.n : undefined}
+            measure={crewRow ? measureFor(crewRow) : null}
+            waiting={counts.blocked}
+            look={look}
+            daemon={daemon}
+            actions={actions}
+            onSectionError={say}
+            on={{
+              pick: (row) => (row.state === 'recorded' ? win.focus(row.id) : void win.open(row.id)),
+              draft: draftIn,
+              send: (id, text) => void win.sendIn(id, text),
+              stop: win.stopIn,
+              answer: win.answerIn,
+              continueIn: (row, text) => void win.continueIn(row, text),
+              model: models.open,
+              missing,
+              newSession: crewNew,
+              startIn: (workspace) => void win.startIn(workspace),
+              look: chooseLook,
+            }}
+          />
+        ) : (
+          <>
+            <Sidebar
+              projects={projects}
+              selectedId={selectedId ?? win.focusId}
+              onGridIds={onGridIds}
+              gridShown={!selected}
+              gridCount={plan.ids.length}
               now={now}
-              verbTick={verbTick}
-              draft={drafts[selected.id] ?? ''}
-              caret={win.caret?.id === selected.id ? win.caret.n : undefined}
-              onDraft={(text) => draftIn(selected.id, text)}
-              onAnswer={(decision) => selected.pendingApprovalId && win.answerIn(selected.id, selected.pendingApprovalId, decision)}
-              onSend={(text) => void win.sendIn(selected.id, text)}
-              onStop={() => win.stopIn(selected.id)}
-              onMissing={missing}
-              onGrid={() => show(null)}
-              onOpenPeer={(id) => (rowById.get(id)?.state === 'recorded' ? void win.open(id) : show(id))}
-              onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
-              measure={measureFor(selectedRow ?? rowOfSession(selected))}
-            />
-          ) : look === 'crew' ? (
-            <CrewView
-              row={crewRow}
-              session={crewId ? sessions.byId[crewId] : undefined}
-              crew={plan.ids}
-              rows={rowById}
-              sessions={sessions}
-              now={now}
-              verbTick={verbTick}
-              draft={crewId ? (drafts[crewId] ?? '') : ''}
-              caret={crewId && win.caret?.id === crewId ? win.caret.n : undefined}
-              measure={crewRow ? measureFor(crewRow) : null}
-              on={{
-                focus: win.focus,
-                draft: draftIn,
-                send: (id, text) => void win.sendIn(id, text),
-                stop: win.stopIn,
-                answer: win.answerIn,
-                continueIn: (row, text) => void win.continueIn(row, text),
-                model: models.open,
-                missing,
-                newSession,
-              }}
-            />
-          ) : (
-            <Grid
-              plan={plan}
-              choosers={win.choosers}
-              opening={win.opening}
-              places={places}
-              rows={rowById}
-              sessions={sessions}
-              focusId={win.focusId}
-              caret={win.caret}
-              drafts={drafts}
-              now={now}
-              verbTick={verbTick}
-              measureFor={measureFor}
-              on={{
-                focus: win.focus,
-                maximize: (id) => show(id),
-                closer: win.closer,
-                draft: draftIn,
-                send: (id, text) => void win.sendIn(id, text),
-                stop: win.stopIn,
-                answer: win.answerIn,
-                continueIn: (row, text) => void win.continueIn(row, text),
-                model: models.open,
-                missing,
-              }}
-              chooser={{
-                place: (key, workspace) => void win.openIn(key, workspace),
-                otherFolder: (key) => void win.openIn(key, null),
-                close: win.dropChooser,
-              }}
-              onNew={newSession}
+              userName={userName}
+              onToggleAll={() => updatePrefs((p) => setAllCollapsed(p, shown, projects.some((x) => !x.collapsed)))}
+              onShowGrid={() => show(null)}
+              onNewSession={newSession}
               onSearch={() => setSearching(true)}
+              onMissing={missing}
+              actions={{
+                toggle: (id) => updatePrefs((p) => setCollapsed(p, id, !p.collapsed[id])),
+                rename: (id, label) => updatePrefs((p) => relabel(p, id, label)),
+                move: (id, to) => updatePrefs((p) => moveProject(p, shown, id, to)),
+                dropBefore: (id, target) => updatePrefs((p) => dropBefore(p, shown, id, target)),
+                select: (id) => void win.open(id),
+              }}
             />
-          )}
-        </main>
+            <main className="main">
+              {selected ? (
+                <SessionPanel
+                  key={selected.id}
+                  session={selected}
+                  row={selectedRow}
+                  peers={peers}
+                  now={now}
+                  verbTick={verbTick}
+                  draft={drafts[selected.id] ?? ''}
+                  caret={win.caret?.id === selected.id ? win.caret.n : undefined}
+                  onDraft={(text) => draftIn(selected.id, text)}
+                  onAnswer={(decision) => selected.pendingApprovalId && win.answerIn(selected.id, selected.pendingApprovalId, decision)}
+                  onSend={(text) => void win.sendIn(selected.id, text)}
+                  onStop={() => win.stopIn(selected.id)}
+                  onMissing={missing}
+                  onGrid={() => show(null)}
+                  onOpenPeer={(id) => (rowById.get(id)?.state === 'recorded' ? void win.open(id) : show(id))}
+                  onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
+                  measure={measureFor(selectedRow ?? rowOfSession(selected))}
+                />
+              ) : (
+                <Grid
+                  plan={plan}
+                  choosers={win.choosers}
+                  opening={win.opening}
+                  places={places}
+                  rows={rowById}
+                  sessions={sessions}
+                  focusId={win.focusId}
+                  caret={win.caret}
+                  drafts={drafts}
+                  now={now}
+                  verbTick={verbTick}
+                  measureFor={measureFor}
+                  on={{
+                    focus: win.focus,
+                    maximize: (id) => show(id),
+                    closer: win.closer,
+                    draft: draftIn,
+                    send: (id, text) => void win.sendIn(id, text),
+                    stop: win.stopIn,
+                    answer: win.answerIn,
+                    continueIn: (row, text) => void win.continueIn(row, text),
+                    model: models.open,
+                    missing,
+                  }}
+                  chooser={{
+                    place: (key, workspace) => void win.openIn(key, workspace),
+                    otherFolder: (key) => void win.openIn(key, null),
+                    close: win.dropChooser,
+                  }}
+                  onNew={newSession}
+                  onSearch={() => setSearching(true)}
+                />
+              )}
+            </main>
+          </>
+        )}
       </div>
       {models.menu && (
         <ModelMenu
