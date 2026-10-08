@@ -349,6 +349,34 @@ onde roda e com que modelo —, com o resto da tripulação a um clique.
 Descartados: substituir a grade (o pedido foi não desmanchar); copiar a Diatype
 (licença); afrouxar a CSP para `data:`.
 
+**D33. A Crew é um painel com trilho de seções, só com o que o daemon tem.** A
+primeira Crew (D32) era a lateral da grade com um terceiro painel; estudada contra
+um painel de agentes — reimplementado, sem marca, imagem, texto ou nome dele —,
+faltavam seções e uma lista de sessões própria. A Crew troca a lateral inteira; a
+grade não muda.
+
+- **Trilho:** Painel (com quantas esperam você), Agenda, Memória, Skills, Apps,
+  Conhecimento e, ao pé, Configurações; lembrado por janela (como D7). Ícones do
+  `lucide-react` (MIT).
+- **Painel:** à esquerda, toda conversa da lista (N3), com a busca do ⌘K (D27), em
+  "Ativas" (esperando você em cima), um grupo por projeto com a última semana e
+  "Mais antigas", recolhido; clicar numa viva a segue, numa terminada a mostra, e
+  escrever a continua (D21). No meio, a conversa inteira (D31). À direita, abas
+  Mudanças (D8), Pronto (selo, critérios, tocou a régua, sem medição) e Sessão
+  (projeto, branch, modelo e a troca, modo, turnos, contexto). Nada de pull
+  request, commits ou revisão: o daemon não sabe deles. "Nova" lista os projetos
+  conhecidos e "Outra pasta…"; o ⌘N vai ao seletor de pastas.
+- **Sem dado, "ainda não" com o porquê:** Agenda, Apps e Conhecimento não têm nada
+  no núcleo. Skills e Memória leem `GET /v1/skills` e `/v1/memory` quando
+  existirem (N6), e ligar cada uma é uma função em `live.ts`; Skills já mostra as
+  que entraram nos turnos acompanhados (`skill.loaded`). Falha aparece como falha.
+- **Configurações:** a versão da tela, o daemon (D19) e os modelos de cada projeto
+  (D28). Nada finge guardar uma configuração que o daemon não tem.
+
+Descartados: o estudo com dados de exemplo (parece funcionar e não lê nada); a
+lateral da grade dentro da Crew (dois jeitos de achar a mesma conversa); esconder
+as seções sem dado (o trilho mentiria sobre o que falta).
+
 ## Decisões em aberto
 
 A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
@@ -458,6 +486,11 @@ desktop não os implementa, espera por eles.
   cada perfil do `models.toml`, o do usuário com o do projeto por cima, cada um
   resolvido pelo caminho que monta a sessão e dizendo se a família tem medição;
   nunca a chave, nem a máscara, nem a impressão digital dela. Pedido por D28.
+- **N6. As skills e a memória de um projeto** — `client-server-protocol`, MINOR.
+  Em andamento no núcleo. `GET /v1/skills?workspace=` e `GET /v1/memory?workspace=`
+  respondem o que uma sessão no projeto tem: as skills, com a origem e se pedem
+  permissão, nunca o corpo; e as memórias do arquivo do projeto, com o que está
+  velho e o que fica fora do que a sessão lê. Pedido por D33.
 
 A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
 sem ele, uma sessão que o desktop abre num projeto ignoraria o `.dcode/config.toml`
