@@ -10,6 +10,20 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A Crew vira um painel com um trilho de seções, sobre os dados do daemon.** A
+  primeira Crew pôs um terceiro painel ao lado da lateral da grade; estudada
+  contra um painel desse tipo, faltava a forma que faz um: seções, e uma lista de
+  sessões própria. A Crew agora tem um trilho estreito de ícones — Painel, Agenda,
+  Memória, Skills, Apps, Conhecimento, Configurações — e o Painel tem três
+  painéis: toda conversa que o daemon lista, com busca e grupos (ativas, por
+  projeto, mais antigas), a em foco inteira, e o contexto dela em abas —
+  Mudanças, Pronto, Sessão. Skills mostra as skills que entraram nos turnos
+  acompanhados; Configurações, a versão da tela, o daemon e os modelos de cada
+  projeto. O que o daemon ainda não expõe — as listas de skills e de memória,
+  rotinas, apps, conhecimento — diz isso em vez de mostrar uma lista vazia, e
+  skills e memória são uma função cada para ligar quando as rotas chegarem (N6).
+  A grade fica intocada e continua sendo o padrão. Ícones do `lucide-react` (MIT)
+  (D33).
 - **Uma segunda versão da tela, Crew, ao lado da grade.** Depois do Kiro Crew, e
   sem desmanchar a grade: um seletor na barra do topo alterna Grade e Crew, e a
   grade continua sendo o padrão. A Crew tem três painéis — a lista, a conversa em
