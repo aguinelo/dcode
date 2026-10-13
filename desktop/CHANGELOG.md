@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A project's memory and skills are reachable from the grid.** Only Crew
+  showed them. "Memória e skills…" in a conversation's ⋯ menu now opens, over
+  the window, Crew's own Memória and Skills sections, a tab each, on that
+  conversation's project (the project picker still switches). The same
+  components, so what Crew says — what did not come, an older daemon — the
+  grid says too. Offered mid-turn, since it only reads; Esc, a click outside
+  or "Fechar" close it. Nothing at rest changes: both visual references
+  measure 0.00%, which is why it lives in the ⋯ menu rather than as an
+  always-visible entry (D53).
 - **A session can be ended from the ⋯ menu.** The window only closed a
   session on its own (one never used, and the one left behind by a model
   switch), so a person could not end one. "Encerrar sessão" now closes it with

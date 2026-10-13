@@ -81,7 +81,7 @@ function Help({ mine }: { mine: UserCommands | null }) {
  * The help or a plan, over the window: Esc, a click outside or "Fechar" closes
  * it, and what was in focus before gets the focus back.
  */
-function SheetView({ title, note, onClose, children }: { title: string; note?: string; onClose: () => void; children: ReactNode }) {
+export function SheetView({ title, note, onClose, children }: { title: string; note?: string; onClose: () => void; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const before = document.activeElement as HTMLElement | null;

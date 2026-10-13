@@ -10,6 +10,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A memória e as skills de um projeto se alcançam da grade.** Só a Crew as
+  mostrava. "Memória e skills…" no menu ⋯ de uma conversa agora abre, por cima
+  da janela, as próprias seções Memória e Skills da Crew, uma aba cada, no
+  projeto daquela conversa (o seletor de projeto continua trocando). Os mesmos
+  componentes, então o que a Crew diz — o que não veio, um daemon antigo — a
+  grade diz igual. Oferecido no meio de um turno, porque só lê; Esc, um clique
+  fora ou "Fechar" fecham. Nada em repouso muda: as duas referências visuais
+  medem 0,00%, e é por isso que fica no menu ⋯ e não numa entrada sempre à
+  vista (D53).
 - **Uma sessão pode ser encerrada pelo menu ⋯.** A janela só fechava uma sessão
   por conta própria (a nunca usada, e a deixada para trás ao trocar de modelo),
   então a pessoa não tinha como encerrar uma. "Encerrar sessão" agora a fecha

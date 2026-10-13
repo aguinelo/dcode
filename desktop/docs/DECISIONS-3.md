@@ -410,3 +410,26 @@ Descartados: um diálogo modal de confirmação (tira o olho da conversa que se
 está encerrando; o próprio menu basta); encerrar sem perguntar no meio de um
 turno (o trabalho em curso se perderia com um clique); esconder o item durante
 um turno (a pessoa que quer parar e fechar teria de parar primeiro e voltar).
+
+**D53. A memória e as skills de um projeto, alcançadas da grade.** Só a Crew
+mostrava o que um projeto lembra e quais skills ele tem (D33, seções Memória e
+Skills); quem trabalha na grade não tinha caminho até elas.
+
+- **Onde:** "Memória e skills…" no menu ⋯ de cada conversa (D40) — o da janela
+  da grade, o da maximizada e o da thread do Crew. Abre por cima da janela, no
+  mesmo painel da ajuda (D48), as duas seções do Crew, uma aba cada, começando
+  na Memória e no projeto da conversa de onde foi pedido; o seletor de projeto
+  da seção continua lá para ver outro.
+- **Os mesmos componentes:** `MemorySection` e `SkillsSection` de
+  `crew/Sections.tsx`, sem cópia; o que a Crew diz — o que não veio, um daemon
+  antigo, o que entrou nas conversas abertas — a grade diz igual.
+- **Leitura:** oferecido no meio de um turno também. Esc, um clique fora ou
+  "Fechar" fecham, e as teclas da janela esperam enquanto ele está aberto.
+- Nada em repouso muda: as referências 02 e 03 medem 0,00%. Uma entrada sempre
+  visível (no pé da lateral ou no cabeçalho da janela) mudaria as duas
+  referências medidas, e o menu ⋯ já é onde estão as ações de uma conversa.
+
+Descartados: um item fixo no pé da lateral (mudaria a régua visual em repouso,
+o que pede um PR de referências próprio); uma página nova na grade no lugar das
+janelas (tira de vista as conversas que se está acompanhando); copiar as
+seções para a grade (duas versões da mesma lista divergiriam).
