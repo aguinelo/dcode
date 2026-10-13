@@ -1,5 +1,6 @@
 import { ChevronDown, FileDiff } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import type * as P from '../../protocol/generated';
 import { filesTouched } from '../../state/context';
 import { contextPercent } from '../../state/crew';
 import type { GitState } from '../../state/git';
@@ -7,6 +8,7 @@ import type { History } from '../../state/history';
 import type { Measure } from '../../state/models';
 import type { PaneView } from '../../state/pane';
 import type { SessionView } from '../../state/session';
+import { tokens, turnTelemetry, usageFact } from '../../state/telemetry';
 import type { Row } from '../../state/sidebar';
 import { GitChanges } from '../context/GitChanges';
 import { GitFacts } from '../context/GitFacts';
@@ -124,7 +126,91 @@ function Facts({
       <dd>{session?.turns ?? row.turns ?? 0}</dd>
       <dt>contexto</dt>
       <dd>{pct !== null ? `${pct}%` : <span className="tone-faint">medido ao fim do primeiro turno</span>}</dd>
+      <TurnFacts session={session} />
     </dl>
+  );
+}
+
+/**
+ * The running turn against its ceilings, and what the last one cost (D44).
+ * The usage arrives only in turn.completed, so a running turn's is said to
+ * come at its end rather than estimated here.
+ */
+function TurnFacts({ session }: { session: SessionView | undefined }) {
+  if (!session) return null;
+  const live = turnTelemetry(session);
+  const tone = (c: { tone: string } | null) => (c ? `tone-${c.tone}` : undefined);
+  return (
+    <>
+      {live && (
+        <>
+          <dt>turno</dt>
+          <dd data-turn-telemetry>
+            {session.rounds || session.inFlight ? (
+              <>
+                {session.rounds && (
+                  <span className={tone(live.rounds)}>
+                    rodada {session.rounds.done}
+                    {session.rounds.total !== null && ` de ${session.rounds.total}`}
+                  </span>
+                )}
+                {session.rounds && session.inFlight && ' · '}
+                {session.inFlight && (
+                  <span className={tone(live.inFlight)}>
+                    {session.inFlight.done}
+                    {session.inFlight.total !== null && `/${session.inFlight.total}`} em voo
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="tone-faint">{live.detail}</span>
+            )}
+          </dd>
+        </>
+      )}
+      {!live && session.usage ? (
+        <Spent usage={session.usage} />
+      ) : (
+        <>
+          <dt>tokens</dt>
+          <dd data-turn-usage>
+            {live ? (
+              <span className="tone-faint">ditos pelo daemon ao fim do turno</span>
+            ) : session.turns > 0 ? (
+              <span className="tone-warn">o provedor não informou o uso do último turno</span>
+            ) : (
+              <span className="tone-faint">ditos ao fim do primeiro turno</span>
+            )}
+          </dd>
+        </>
+      )}
+    </>
+  );
+}
+
+/** The last turn's usage: the output, the input summed by its rounds, the cache. */
+function Spent({ usage }: { usage: P.Usage }) {
+  const fact = usageFact(usage);
+  const cached = !!usage.cache_read_tokens || !!usage.cache_write_tokens;
+  return (
+    <>
+      <dt>saída</dt>
+      <dd data-turn-usage title={`Último turno: ${fact.detail}`}>
+        {tokens(usage.output_tokens)} <span className="tone-faint">no último turno</span>
+      </dd>
+      <dt>entrada</dt>
+      <dd title="Cada rodada reenvia o contexto: é o que o turno custou, não o quanto o contexto está cheio.">
+        {tokens(usage.input_tokens)} <span className="tone-faint">somada pelas rodadas</span>
+      </dd>
+      {cached && (
+        <>
+          <dt>cache</dt>
+          <dd>
+            {tokens(usage.cache_read_tokens ?? 0)} lidos · {tokens(usage.cache_write_tokens ?? 0)} escritos
+          </dd>
+        </>
+      )}
+    </>
   );
 }
 

@@ -149,3 +149,39 @@ o olho do título que se está mudando); um item na lateral (ela não tem menu p
 conversa, e criar um é outra decisão). Pedido ao núcleo, sem pressa: o stream
 da lista anunciar o nome de uma conversa terminada, o que tornaria a releitura
 desnecessária.
+
+**D44. O turno ao vivo: rodadas, chamadas em voo e o que o turno custou.** A
+janela já dobrava os `progress` de `rounds` e `in_flight` e não os mostrava, e
+do `usage` do `turn.completed` guardava só o contexto: saída, entrada e cache
+eram descartados.
+
+- **Rodadas e chamadas em voo, nos termos da TUI** (`ceilingSegment` em
+  `internal/tui/statusbar.go`): "rodada N/M" aparece a partir da metade do teto,
+  em tom de aviso, e em tom de erro a partir de três quartos; "N/M em voo"
+  aparece só quando todas as vagas estão ocupadas. Longe de um teto o número é
+  um que ninguém usa, e uma fileira de números que ninguém usa é uma que se
+  deixa de ler. Onde: na barra do composer, ao lado do medidor — a mesma barra
+  é o rodapé da janela da grade (compacto) e o da conversa maximizada.
+- **A contagem inteira, sempre, onde não pesa:** passar o mouse no botão de
+  parar (e no indicador, quando aparece) diz "rodada 2 de 100 · 2 de 4 chamadas
+  em voo", ou que a primeira rodada ainda não foi contada. No Crew, a aba Sessão
+  ganha a linha "turno" enquanto um turno corre, com as cores dos tetos.
+- **Tokens:** o `usage` é guardado inteiro, do turno que terminou por último, e
+  zerado no `turn.started` — deixado de pé, seria lido como o do turno novo. A
+  aba Sessão mostra saída, entrada (somada pelas rodadas: é o que o turno
+  custou, não o quanto o contexto está cheio) e cache, quando houver; o medidor
+  de contexto do composer diz o mesmo ao passar o mouse. Enquanto um turno
+  corre, a aba diz que os tokens vêm ao fim dele; um turno que terminou sem
+  `usage` diz que o provedor não informou, em tom de aviso — nunca o número do
+  turno anterior.
+- **Tokens durante o turno continuam fora (L5, D25):** o `usage` só viaja no
+  `turn.completed`. Estimar a partir do texto que chega seria um número que o
+  daemon nunca mandou.
+- Nada em repouso muda: o indicador só existe com um turno perto de um teto, e
+  na gravação o turno de 02 está em 2/100 e 2/4. As referências 02 e 03 medem
+  0,00%.
+
+Descartados: mostrar sempre "rodada N/M" (um número parado na tela, que muda a
+referência 02 sem dizer nada que se use); tokens do turno anterior no composer
+(o número ficaria ao lado de um turno que não é o dele); uma estimativa de
+tokens ao vivo (L5).

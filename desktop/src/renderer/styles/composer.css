@@ -109,6 +109,13 @@
 .composer-meter {
   font-variant-numeric: tabular-nums;
 }
+/* A turn near its ceilings (D44): drawn only then, so it never sits at rest. */
+.composer-ceiling {
+  display: inline-flex;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .composer-button {
   width: 26px;
   height: 26px;

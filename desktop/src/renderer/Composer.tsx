@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { SessionView } from '../state/session';
+import { turnTelemetry, usageFact } from '../state/telemetry';
 import { ModeChip } from './ModeMenu';
 
 /**
@@ -117,6 +118,10 @@ export function Composer({
     session.contextTokens !== null && contextWindow > 0
       ? Math.min(100, Math.floor((100 * session.contextTokens) / contextWindow))
       : null;
+  // The turn against its ceilings (D44): drawn only near one, said whole on hover.
+  const live = turnTelemetry(session);
+  const ceilings = live ? [live.rounds, live.inFlight].filter((c) => c !== null) : [];
+  const spent = session.usage ? usageFact(session.usage) : null;
   const send = () => {
     if (!blocked && text.trim()) onSend(text);
   };
@@ -132,9 +137,22 @@ export function Composer({
           )}
           <ModeChip mode={session.mode} sandbox={session.sandbox} onOpen={onMode} />
           <span className="spacer" />
-          {pct !== null && <span className={`composer-meter ${meterTone(pct)}`}>{pct}%</span>}
+          {ceilings.length > 0 && (
+            <span className="composer-ceiling" data-ceiling title={live?.detail}>
+              {ceilings.map((c) => (
+                <span key={c.text} className={`tone-${c.tone}`}>
+                  {c.text}
+                </span>
+              ))}
+            </span>
+          )}
+          {pct !== null && (
+            <span className={`composer-meter ${meterTone(pct)}`} title={spent ? `Último turno: ${spent.detail}` : undefined}>
+              {pct}%
+            </span>
+          )}
           {running ? (
-            <button type="button" className="composer-button stop" aria-label="Parar o turno" onClick={onStop}>
+            <button type="button" className="composer-button stop" aria-label="Parar o turno" title={live?.detail} onClick={onStop}>
               <span className="stop-square" />
             </button>
           ) : (

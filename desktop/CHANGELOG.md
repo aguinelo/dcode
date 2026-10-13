@@ -10,6 +10,18 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The window says where a turn stands against its ceilings, and what the
+  last one cost.** The rounds and in-flight counts arrived and were folded, but
+  nothing showed them, and of `turn.completed`'s `usage` only the context was
+  kept. Now the composer bar — a grid window's foot and the maximized one's —
+  shows "rodada N/M" from half the ceiling (warning, and error from three
+  quarters) and "N/M em voo" when every slot is taken, as the TUI's bar does;
+  far from the ceilings it draws nothing, and the whole count is on the stop
+  button's hover. Crew's Sessão tab shows the running turn and, for the last
+  one that ended, output, input summed across rounds, and cache. Tokens travel
+  only at a turn's end, so nothing is estimated while it runs, and a turn
+  without `usage` says the provider did not report it. Nothing at rest changes:
+  both visual references measure 0.00% (D44).
 - **A conversation can be renamed from the window.** The daemon has named
   conversations, live and ended, since `POST /v1/sessions/{id}/name`, and the
   window never asked: a title was whatever the first question was. Now a
