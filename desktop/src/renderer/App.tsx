@@ -26,6 +26,7 @@ import { useHistories } from './useHistories';
 import { useModelLists } from './useModelLists';
 import { useModeMenu } from './useModeMenu';
 import { useSessionActions } from './SessionActions';
+import { useProjectContext } from './ProjectContext';
 import { useModelMenu } from './useModelMenu';
 import { PromptsProvider, usePrompts } from './usePrompts';
 import { useTheme } from './useTheme';
@@ -190,7 +191,8 @@ export function App({
   // A conversation's name (D43): the field over its title; "Renomear" in the ⋯ menu opens it too.
   const renames = useRenames(actions.rename, say);
   const rename = (id: string) => renames.begin(id, titleNow(sessions.byId[id], rowById.get(id)));
-  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand, rename, end: win.endIn });
+  const ctx = useProjectContext(places, sessions, rowById, actions);
+  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand, rename, context: ctx.open, end: win.endIn });
 
   // The grid, in stable places: the plan reads the places as last drawn, and
   // they are kept the way React keeps a value from the previous render. The
@@ -251,7 +253,7 @@ export function App({
     caretTo: win.caretTo,
     sessions,
     maximized: selected,
-    busy: searching || !!models.menu || !!modes.menu || acts.menu || sheet.open,
+    busy: searching || !!models.menu || !!modes.menu || acts.menu || sheet.open || ctx.isOpen,
     setSearching,
     newSession: look === 'crew' ? crewNew : newSession,
     show,
@@ -442,6 +444,7 @@ export function App({
         />
       )}
       {acts.node}
+      {ctx.node}
       {sheet.node}
       {modes.menu && (
         <ModeMenu

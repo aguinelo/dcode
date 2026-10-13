@@ -147,3 +147,31 @@
   font-size: 12.5px;
   color: var(--dc-dim);
 }
+
+/* A project's memory and skills over the grid (D53): the Crew's pages, inside the sheet. */
+.project-context-tabs {
+  display: flex;
+  gap: 4px;
+  padding-top: 4px;
+}
+.project-context-tab {
+  padding: 3px 10px;
+  border-radius: var(--dc-radius-sm);
+  font-size: 12.5px;
+  color: var(--dc-dim);
+}
+.project-context-tab:hover {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}
+.project-context-tab.on {
+  background: var(--dc-sel);
+  color: var(--dc-emph);
+}
+.project-context .crew-page {
+  overflow: visible;
+  background: transparent;
+}
+.project-context .crew-page-inner {
+  padding: 16px 0 4px;
+}

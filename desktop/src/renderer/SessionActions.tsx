@@ -17,9 +17,10 @@ export function ActionsButton({ title, onOpen }: { title: string; onOpen: (ancho
 /**
  * What acts on a live session besides a message (D40): undo the last turn,
  * compact the context, and run a command — the same as /undo, /compact and !
- * in the field — rename it (D43), and end it (D51). While a turn runs or waits the daemon refuses the first two,
- * and the menu says so instead of offering them; renaming stays offered, and
- * ending asks once more, saying what it would cut short.
+ * in the field — rename it (D43), open its project's memory and skills (D53),
+ * and end it (D51). While a turn runs or waits the daemon refuses the first two,
+ * and the menu says so instead of offering them; renaming and the project's
+ * context stay offered, and ending asks once more, saying what it would cut short.
  */
 function ActionsMenu({
   anchor,
@@ -28,6 +29,7 @@ function ActionsMenu({
   onCompact,
   onCommand,
   onRename,
+  onContext,
   onEnd,
   onClose,
 }: {
@@ -37,6 +39,7 @@ function ActionsMenu({
   onCompact: () => void;
   onCommand: () => void;
   onRename: () => void;
+  onContext: () => void;
   onEnd: () => void;
   onClose: () => void;
 }) {
@@ -51,6 +54,8 @@ function ActionsMenu({
     { label: 'Rodar um comando…', detail: 'no campo, depois de !; a saída aparece aberta', key: '!', run: onCommand, idle: true },
     // Naming works in the middle of a turn too: the daemon takes it at any time (D43).
     { label: 'Renomear', detail: 'o título desta conversa; vazio volta ao automático', key: '2× clique', run: onRename, idle: false },
+    // Reading, so offered during a turn too: the Crew's own sections, over the grid (D53).
+    { label: 'Memória e skills…', detail: 'o que as sessões deste projeto leem', key: 'projeto', run: onContext, idle: false },
     // Offered during a turn too, as the stop button is: asked once more, saying what stops (D51).
     { label: 'Encerrar sessão', detail: 'fecha a sessão; a conversa fica na lista, terminada', key: 'encerrar', run: onEnd, idle: false },
   ];
@@ -110,7 +115,7 @@ function ActionsMenu({
 /** The actions menu of one conversation at a time, and what each item does. */
 export function useSessionActions(
   sessions: SessionsState,
-  run: { undo: (id: string) => unknown; compact: (id: string) => unknown; command: (id: string) => void; rename: (id: string) => void; end: (id: string) => unknown },
+  run: { undo: (id: string) => unknown; compact: (id: string) => unknown; command: (id: string) => void; rename: (id: string) => void; context: (id: string) => void; end: (id: string) => unknown },
 ): { open: (id: string, anchor: HTMLElement) => void; menu: boolean; node: ReactNode } {
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
   const open = useCallback((id: string, anchor: HTMLElement) => setMenu((m) => (m?.id === id ? null : { id, anchor })), []);
@@ -125,6 +130,7 @@ export function useSessionActions(
       onCompact={() => void run.compact(menu.id)}
       onCommand={() => run.command(menu.id)}
       onRename={() => run.rename(menu.id)}
+      onContext={() => run.context(menu.id)}
       onEnd={() => void run.end(menu.id)}
       onClose={close}
     />
