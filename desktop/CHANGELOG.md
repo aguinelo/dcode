@@ -10,6 +10,14 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The visual references are captures of the approved window.** The owner
+  approved the new look — grafite, the grid's windows, Crew — and `check:visual`
+  measured it against the handoff's mock, which it no longer resembles. The two
+  measured states (02, 03) are now captured from the window by the check itself,
+  in its own conditions; the floor is 0 px on both, and the limit stays 1.25%.
+  A future visual change replaces them in its own PR after approval. Decisions
+  D21 onward move to `docs/DECISIONS-2.md`, keeping each file under 500 lines
+  (D18).
 - **Crew's memory and skills types come from the core.** Written by hand while
   #432 was open, they are now the ones tygo generates from `internal/protocol`;
   `src/protocol/crew.ts` keeps only the decoder that checks an answer against
