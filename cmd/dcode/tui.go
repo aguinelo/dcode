@@ -72,7 +72,7 @@ func runTUI(args []string) error {
 	}
 	// Frozen at start, like the instruction chain: a command file written
 	// mid-session must not change what a slash means halfway through.
-	commands, err := config.DiscoverCommands(roots, ws, 64<<10)
+	commands, err := config.DiscoverCommands(roots, ws, config.CommandMaxBytes)
 	if err != nil {
 		return err
 	}

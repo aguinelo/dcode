@@ -82,6 +82,10 @@ type Config struct {
 	// configuration is the app's business. Nil refuses, saying why.
 	Memory func(workspace string) (protocol.MemoryResponse, error)
 	Skills func(workspace string) (protocol.SkillsResponse, error)
+	// Commands answers which user-defined slash commands a client in a
+	// workspace offers, discovered as the TUI discovers them. Nil refuses,
+	// saying why.
+	Commands func(workspace string) (protocol.CommandsResponse, error)
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -193,6 +197,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/models", s.listModels)
 	s.mux.HandleFunc("GET "+p+"/memory", s.readMemory)
 	s.mux.HandleFunc("GET "+p+"/skills", s.listSkills)
+	s.mux.HandleFunc("GET "+p+"/commands", s.listCommands)
 	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
 	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)

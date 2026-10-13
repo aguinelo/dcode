@@ -61,6 +61,7 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/models` | `experimental` | Os modelos que uma sessão pode pedir: o que ela recebe sem pedir nenhum e cada perfil do `models.toml` (o do usuário e o do projeto), cada um dizendo se a família tem medição. Query `workspace` (absoluto, opcional) escolhe o projeto; sem ela, vale a configuração com que o daemon subiu. Devolve `ModelsResponse`. |
 | `GET` | `/memory` | `experimental` | O que uma sessão do workspace lê como memória: cada entrada do `.dcode/memory.md` com tipo, assunto, corpo e procedência, se está velha e se a sessão a mostra, e os blocos que não são memória, com o motivo. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `MemoryResponse`. |
 | `GET` | `/skills` | `experimental` | As skills que uma sessão do workspace tem: as do usuário e as do projeto, com o que cada uma declara de si e de onde vem, as retidas marcadas, e os arquivos que não carregaram, com o motivo. Query `workspace` (absoluto, obrigatória). Devolve `SkillsResponse`. |
+| `GET` | `/commands` | `experimental` | Os comandos de barra que um cliente do workspace oferece: os do usuário e os do projeto, como a TUI os descobre, cada um com de onde vem e o texto que manda, e os do usuário que o projeto tomou pelo nome. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `CommandsResponse`. |
 | `GET` | `/git` | `experimental` | Onde o workspace está no git agora — topo da árvore, branch, commit, se é worktree ligada e de qual checkout — e cada arquivo mudado desde o último commit, com o estado e as linhas. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitResponse`. |
 | `GET` | `/git/diff` | `experimental` | O diff unificado de um arquivo que `/git` lista, com teto. Query `workspace` e `path` (como `/git` o lista). Só leitura. Devolve `GitDiffResponse`. |
 | `GET` | `/sessions/{id}` | `experimental` | Detalhe de uma sessão. |
@@ -367,6 +368,35 @@ sem commit —, com o que está preparado e o que não está juntos: é o que a 
 tem que o commit não tem. Os arquivos são da pasta, não de uma conversa: duas
 conversas na mesma pasta veem a mesma lista.
 
+### 5.6 Os comandos de um workspace
+
+Os comandos de barra definidos pelo usuário (`internal/protocol/commands.go`),
+descobertos pelo `config.DiscoverCommands` — a mesma chamada com que a TUI os
+descobre ao abrir, com o mesmo teto (`config.CommandMaxBytes`) — quando alguém
+pergunta, e nunca guardados.
+
+```go
+type CommandInfo struct {
+    Name        string `json:"name"`
+    Description string `json:"description"` // vazia: o arquivo não disse nada de si
+    Source      string `json:"source"`      // "user" ou "project"; o do projeto vence pelo nome
+    Path        string `json:"path"`        // o arquivo, sob a pasta commands da origem
+    Body        string `json:"body"`        // o texto que invocar o comando manda
+}
+
+type CommandsResponse struct {
+    Commands  []CommandInfo `json:"commands"`  // por nome; nenhum é []
+    Overrides []string      `json:"overrides"` // os nomes que o projeto tomou do usuário; nenhum é []
+}
+```
+
+O corpo viaja, ao contrário do de uma skill: um comando é um texto que a pessoa
+invoca, e invocá-lo é mandar esse texto. O cliente o expande como o
+`config.Expand` — `$ARGUMENTS` trocado pelo que veio depois do nome, ou o que
+veio depois acrescentado após uma linha em branco — e manda o resultado como
+mensagem. Quais nomes o cliente atende sozinho (os embutidos dele) é decisão do
+cliente: um embutido de mesmo nome vence lá, e a lista não adivinha quais são.
+
 ## 6. Fluxo de aprovação
 
 Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
@@ -502,6 +532,12 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Memória e skills nunca carregam a chave, o corpo de uma skill ou a configuração ao lado; os campos são um conjunto declarado.
 - Memória e skills recusam workspace ausente, relativo, inexistente ou com configuração ilegível com `workspace_invalid` e o motivo.
 - Daemon sem o gancho de memória ou de skills recusa dizendo por quê, nunca responde lista vazia.
+- `GET /commands` lista os comandos do usuário e os do projeto, o do projeto vencendo pelo nome e dito em `overrides`, cada um com de onde vem e o texto que manda.
+- Comando listado é o comando que a TUI resolve no mesmo workspace: os dois saem do mesmo `config.DiscoverCommands`, com o mesmo teto.
+- Arquivo de comando que não carrega recusa a lista com o motivo, como recusa a partida da TUI; nunca uma lista sem ele.
+- Comandos nunca carregam a chave, a configuração ao lado nem a pasta de configuração do usuário; os campos são um conjunto declarado.
+- Comandos recusam, com `workspace_invalid` e o motivo, workspace ausente, relativo, inexistente ou com configuração ilegível.
+- Daemon sem o gancho de comandos recusa dizendo por quê, nunca responde lista vazia.
 - `GET /git` lista cada arquivo que o git dá como mudado desde o último commit, preparado ou não, com o estado e as linhas, e a branch de **agora**, não a do início da sessão.
 - Worktree ligada diz que é, e nomeia o checkout principal do repositório.
 - HEAD destacado não vira branch chamada `HEAD`.
@@ -537,3 +573,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610131800 — Ler uma conversa gravada, sem carregá-la](changelog/202610131800-ler-uma-conversa-gravada.md)
 - [202610131900 — O git de um workspace, como está agora](changelog/202610131900-o-git-de-um-workspace-como-esta-agora.md)
 - [202610131930 — O id fica na pasta em toda porta](changelog/202610131930-o-id-fica-na-pasta-em-toda-porta.md)
+- [202610132000 — Os comandos de um workspace](changelog/202610132000-os-comandos-de-um-workspace.md)

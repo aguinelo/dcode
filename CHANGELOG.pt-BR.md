@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 210 changelogs de decisão |
+| famílias de spec | 18, com 211 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,16 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O daemon lista os comandos do usuário num workspace.** `GET /v1/commands`
+  responde os comandos de barra que o usuário e o projeto escreveram em
+  `commands/*.md`, achados pelo mesmo `config.DiscoverCommands` e pelo mesmo
+  teto de 64 KiB da TUI, o do projeto vencendo pelo nome e citado em
+  `overrides`, cada um com a origem, o arquivo e o corpo que manda. Só a TUI
+  conseguia oferecê-los, porque lê os arquivos sozinha; o desktop fala com o
+  daemon por HTTP e não lê a pasta de configuração do usuário. O corpo viaja, ao
+  contrário do de uma skill, porque invocar um comando é mandar o texto dele, e
+  um comando nunca roda nada. Um arquivo que não carrega recusa a lista com o
+  motivo, como recusa a partida da TUI. O cliente Go ganha `ListCommands`.
 - **A folha de referência do mascote fica em `refs/design/brand/mascote.webp`.**
   Seis cores, poses, ícones, usos na interface e a paleta de 23 tons, guardados
   onde ficam as referências de design, para que o desktop e o TUI partam de uma
