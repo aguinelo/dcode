@@ -5,6 +5,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/sidebar.css';
 import './styles/session.css';
+import './styles/markdown.css';
 import './styles/composer.css';
 import './styles/grid.css';
 import './styles/search.css';

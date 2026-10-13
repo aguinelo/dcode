@@ -10,6 +10,18 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The model's text is drawn as the markdown it is.** Replies with bold
+  headings and bullet lists showed literal asterisks and dashes. Model text now
+  draws paragraphs, bold, italic, inline code, fenced code blocks (monospace,
+  scrolling sideways), modest headings, bullet and numbered lists with nesting,
+  quotes, rules, tables and links. `marked` 18.0.14 (MIT, no dependencies) only
+  tokenises, and the tree is mapped to React elements: no HTML string is built,
+  so HTML the model writes shows as text and the CSP is unchanged. Only `https`
+  links are links, opened in the browser through the main process; any other
+  address stays text with the address in its title, and images are their alt
+  text. While a reply streams, an unclosed `**` stays as typed and an unclosed
+  fence is code up to where the text has reached. Styles use only the existing
+  tokens, so the grid, its compact windows and Crew all take them (D34).
 - **The visual references are captures of the approved window.** The owner
   approved the new look — grafite, the grid's windows, Crew — and `check:visual`
   measured it against the handoff's mock, which it no longer resembles. The two
