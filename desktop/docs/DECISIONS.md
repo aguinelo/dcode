@@ -23,7 +23,7 @@ As que estão nos outros arquivos:
 - [D26](DECISIONS-2.md) — Os dados do app ficam numa pasta só dele.
 - [D27](DECISIONS-2.md) — O ⌘K procura na lista de conversas, pelo título e pelo projeto.
 - [D28](DECISIONS-2.md) — Trocar de modelo é continuar a conversa numa sessão nova.
-- [D29](DECISIONS-2.md) — Grafite: escuro, um acento, a fonte do sistema.
+- [D29](DECISIONS-2.md) — Grafite: escuro, um acento, a fonte do sistema (a cor, substituída por D52).
 - [D30](DECISIONS-2.md) — A janela abre numa grade de atenção.
 - [D31](DECISIONS-2.md) — Cada janela da grade é uma conversa em que se trabalha.
 - [D32](DECISIONS-2.md) — Uma segunda versão da tela, Crew, ao lado da grade.
@@ -43,6 +43,7 @@ As que estão nos outros arquivos:
 - [D51](DECISIONS-3.md) — Encerrar uma sessão pelo menu ⋯, perguntando antes quando um turno roda.
 - [D53](DECISIONS-3.md) — A memória e as skills de um projeto, alcançadas da grade.
 - [D49](DECISIONS-4.md) — O mascote entra no app: o ícone e o estado de cada conversa.
+- [D52](DECISIONS-4.md) — Laranja: a cor do dcode é a do mascote.
 
 ## Decisões
 
@@ -83,8 +84,8 @@ barra do daemon diz **gravação**, nunca "daemon" — um ponto verde sem conex�
 seria um estado que parece sucesso. Enviar, parar e responder aprovação avisam
 que nada foi enviado. Sem estado no endereço, a gravação abre na grade (D30).
 
-**D6. O tema é o de D29** (era: os tokens do handoff nos dois temas, seguindo o
-sistema), escuro por padrão e claro à escolha (D35). Os tokens são variáveis CSS,
+**D6. O tema é o de D29, na cor de D52** (era: os tokens do handoff nos dois
+temas, seguindo o sistema), escuro por padrão e claro à escolha (D35). Os tokens são variáveis CSS,
 num bloco só por tema (`styles/tokens.css`, e os da Crew em `crew.css`). A Geist
 Mono vem do `@fontsource-variable` (OFL), empacotada, e é a reserva da mono onde o
 sistema não tem uma; nada vem da rede em tempo de execução. Com
@@ -166,8 +167,10 @@ próprio design, desenhado por este Chromium, ficava a 1,15% e 1,19% delas, e es
 era o piso. Desde 2026-10-13, com o visual novo aprovado pelo dono, as referências
 dos estados medidos (02 e 03) são capturas da janela aprovada — o topo da pilha da
 Crew, `9656919` na `main` (#433) —, feitas pela própria verificação: o miolo é
-o screenshot dela, a borda é a do PNG antigo. O piso medido é 0 px nos dois estados, em execuções
-repetidas; os outros PNGs da pasta continuam os do handoff. Uma mudança visual
+o screenshot dela, a borda é a do PNG antigo. Foram recapturadas do mesmo jeito
+duas vezes, cada uma com autorização do dono no PR: a 03 com as respostas da
+aprovação (D39), e as duas com o mascote e o Laranja (D49, D52). O piso medido
+é 0 px nos dois estados, em execuções repetidas; os outros PNGs da pasta continuam os do handoff. Uma mudança visual
 futura troca as referências num PR próprio, depois do visto de quem aprova o
 visual: a régua é caminho protegido do loop (`tests/visual/**`,
 `refs/design/**`), e trocá-la não é progresso do código que a mede.

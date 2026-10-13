@@ -95,7 +95,7 @@ function createWindow(): void {
     // painted, and neither palette flashes the other on launch. This colour
     // only shows behind a resize; it is the default dark ground.
     show: false,
-    backgroundColor: '#0f1114',
+    backgroundColor: '#0a0a0a',
     // The window draws its own title bar and keeps the native controls: on
     // macOS the traffic lights sit at the left of the 40px top bar, centred on it.
     ...(mac ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
