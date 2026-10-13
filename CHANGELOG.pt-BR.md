@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 211 changelogs de decisão |
+| famílias de spec | 19, com 211 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,17 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma proposta de orquestrador, à espera de aprovação.** Uma família de spec
+  nova, `orchestration`, abre com o documento de pesquisa: uma conversa que
+  reparte o trabalho em sessões filhas que o daemon roda em paralelo, cada uma
+  uma sessão de verdade — visível na própria janela da grade, conduzível,
+  pedindo à pessoa as próprias aprovações —, enquanto o orquestrador fica ocioso
+  e livre para conversar. Cobre a propriedade de caminho arrendada entre
+  sessões, como os relatos voltam e quando o pai integra, falha, prazo e
+  orçamento, as mudanças no protocolo e nos clientes, como se mede, e oito
+  perguntas em aberto, cada uma com uma recomendação. Escrita antes porque muda
+  quem cria sessões e quem responde aprovações, e o dono pediu para aprovar o
+  desenho antes de qualquer código.
 - **O daemon lista os comandos do usuário num workspace.** `GET /v1/commands`
   responde os comandos de barra que o usuário e o projeto escreveram em
   `commands/*.md`, achados pelo mesmo `config.DiscoverCommands` e pelo mesmo

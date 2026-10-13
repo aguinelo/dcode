@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 211 decision changelogs |
+| spec families | 19, with 211 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A proposal for an orchestrator, awaiting approval.** A new spec family,
+  `orchestration`, opens with its research document: a conversation that splits
+  work into child sessions the daemon runs in parallel, each one a real session
+  — visible in its own grid window, steerable, asking the person for its own
+  approvals — while the orchestrator stays idle and free to talk. It covers path
+  ownership leased across sessions, how reports return and when the parent
+  integrates, failure, deadlines and budget, the protocol and client changes,
+  how it is measured, and eight open questions with a recommendation each.
+  Written first because it changes who creates sessions and who answers
+  approvals, and the owner asked to approve the design before any code.
 - **The daemon lists a workspace's user commands.** `GET /v1/commands` answers
   the slash commands the user and the project wrote in `commands/*.md`, found
   by the same `config.DiscoverCommands` and the same 64 KiB cap the TUI uses,

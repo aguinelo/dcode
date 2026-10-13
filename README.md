@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/aguinelo/dcode?label=release&color=success)](https://github.com/aguinelo/dcode/releases)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
 ![Coverage](https://img.shields.io/badge/coverage-93.9%25-success)
-![Specs](https://img.shields.io/badge/specs-18%20families-informational)
+![Specs](https://img.shields.io/badge/specs-19%20families-informational)
 ![Contracts](https://img.shields.io/badge/contracts-21%20measured%20%2F%2060%20declared-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -528,7 +528,7 @@ that moves** — and it was found sitting in the document that exists to prevent
 
 ## Specs
 
-Eighteen families. Each declares its regime, and the regime decides how it is verified.
+Nineteen families. Each declares its regime, and the regime decides how it is verified.
 
 | Spec | Regime | Covers |
 |---|---|---|
@@ -550,6 +550,7 @@ Eighteen families. Each declares its regime, and the regime decides how it is ve
 | [delegated-writing](docs/specs/architecture/delegated-writing/) | mixed | when writing is split between children, and who reports |
 | [task-ledger](docs/specs/architecture/task-ledger/) | mixed | what is in flight, and what it cost |
 | [learned-memory](docs/specs/architecture/learned-memory/) | mixed | what the agent discovers, versioned where people read it — **design only, not built** |
+| [orchestration](docs/specs/architecture/orchestration/) | mixed | a conversation that splits work into child sessions and stays free to talk — **proposal, not approved** |
 
 ---
 
