@@ -29,7 +29,12 @@ function fakeApi() {
     ok: false,
     refusal: { code: 'unexpected_answer', message: `O daemon respondeu 404 a GET ${path}: 404 page not found.` },
   });
-  const crew = { skills: missing('/v1/skills?workspace=%2Fw%2Fdcode'), memory: missing('/v1/memory?workspace=%2Fw%2Fdcode') };
+  const crew = {
+    skills: missing('/v1/skills?workspace=%2Fw%2Fdcode'),
+    memory: missing('/v1/memory?workspace=%2Fw%2Fdcode'),
+    undo: ok<unknown>({ restored: ['a.go'], refused: [] }),
+    compact: ok<unknown>({ compacted: true }),
+  };
   const api: DcodeApi = {
     platform: 'test',
     user: () => Promise.resolve({ name: 'Ana' }),
@@ -65,6 +70,9 @@ function fakeApi() {
     resizeTerminal: () => {},
     killTerminal: () => {},
     onTerminal: () => () => {},
+    exec: (id, c) => answer(`exec ${id}: ${c}`),
+    undo: (id) => (asked.push(`undo ${id}`), Promise.resolve(crew.undo)),
+    compact: (id) => (asked.push(`compact ${id}`), Promise.resolve(crew.compact)),
   };
   return {
     api,
@@ -241,6 +249,23 @@ describe('the window connected', () => {
       why: 'O modo não mudou: unknown mode "yolo" (want plan, assist or auto)',
     });
     expect(f.asked).toEqual(['mode s1 auto', 'mode s1 plan']);
+  });
+
+  it('undoes and compacts, reading the answers, and says an unreadable one or a refusal', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.undo('s1')).toEqual({ ok: true, value: { restored: ['a.go'], refused: [] } });
+    expect(await store.actions.compact('s1')).toEqual({ ok: true, value: { compacted: true } });
+    f.crew.undo = { ok: true, value: { restored: 'a.go' } };
+    expect(await store.actions.undo('s1')).toEqual({ ok: false, why: 'Resposta ilegível do daemon: o desfazer não trouxe as listas restored e refused' });
+    f.crew.compact = { ok: false, refusal: { code: 'turn_already_active', message: 'a turn is running' } };
+    expect(await store.actions.compact('s1')).toEqual({ ok: false, why: 'O contexto não foi resumido: a turn is running' });
+    expect(await store.actions.exec('s1', 'ls')).toEqual({ ok: true, value: null });
+    f.refuse('exec', 'turn_already_active', 'a turn is running; wait for it to finish or interrupt it');
+    expect(await store.actions.exec('s1', 'ls')).toEqual({
+      ok: false,
+      why: 'O comando não rodou: a turn is running; wait for it to finish or interrupt it',
+    });
   });
 
   it('opens a new session in the folder chosen, and follows it', async () => {
