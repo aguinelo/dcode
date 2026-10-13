@@ -228,6 +228,8 @@ func (e *ProviderError) Error() string
 | `provider` | sim | repete com recuo exponencial, até o teto |
 | `canceled` | não | encerra silenciosamente |
 
+**Resposta vazia é `provider`.** Stream que termina limpo sem texto e sem tool call não é erro do fio, mas também não é resposta: `EmptyCompletion(text, calls, outputTokens)` o declara `provider` e `Retryable`, e é a mesma função para o loop e para a suíte de medição. A regra de negócio é a RN-12 de `202608072335-agent-loop`; ver `../agent-loop/changelog/202610131300-resposta-vazia-nao-e-fim-de-turno.md`.
+
 ## 5. Registro e resolução
 
 ```go

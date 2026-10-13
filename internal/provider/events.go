@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -130,6 +131,32 @@ func Decide(e *ProviderError) Decision {
 		return DecisionSilent
 	default: // auth, quota, bad_request
 		return DecisionAbort
+	}
+}
+
+// EmptyCompletion is the failure of a stream that ended cleanly and said
+// nothing: no tool call, and no text beyond whitespace. Nil when the
+// completion carried something.
+//
+// A provider failure, not a model's verdict. Declining to act costs tokens and
+// leaves a sentence; this leaves nothing, and Gemini returned it about half
+// the time. Read as an answer, it ended the turn done with nothing on the
+// screen — a failure in the one shape a failure must not take.
+//
+// One definition for the product and for the eval harness, which drew this
+// line first: a measurement and a session disagreeing about what counts as an
+// answer is the same model treated two ways by one harness.
+//
+// It is NOT "no tool call". Prose without a call is a real answer.
+func EmptyCompletion(text string, calls, outputTokens int) *ProviderError {
+	if calls > 0 || strings.TrimSpace(text) != "" {
+		return nil
+	}
+	return &ProviderError{
+		Class:     ErrClassProvider,
+		Retryable: true,
+		Message: fmt.Sprintf(
+			"empty completion: no tool call and no text (%d output tokens spent)", outputTokens),
 	}
 }
 

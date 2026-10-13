@@ -343,3 +343,89 @@ func TestAnInterruptDuringBackoffEndsTheTurn(t *testing.T) {
 		t.Fatalf("reason = %q, want interrupted", out.Reason)
 	}
 }
+
+// An empty completion — no text, no tool call — is a provider that answered
+// nothing, not a model that decided it was finished.
+//
+// It used to end the turn exactly like an answer: StopDone, a turn that looked
+// complete, with nothing on the screen and nothing said about why. Gemini did
+// it about half the time, and the eval harness already refused to read it as a
+// verdict. The product now reads it the same way: one more try of the same
+// request, within the retry budget every provider failure gets.
+func TestAnEmptyCompletionIsRetriedRatherThanDone(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		empty []provider.StreamEvent
+	}{
+		{"nothing at all", []provider.StreamEvent{done()}},
+		{"tokens spent on nothing", []provider.StreamEvent{spent(10, 3)}},
+		{"only whitespace", []provider.StreamEvent{text("\n  \n"), done()}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &scriptedProvider{turns: [][]provider.StreamEvent{
+				tc.empty,
+				{text("here it is"), done()},
+			}}
+			e, _ := newEngine(t, p, tools.NewRegistry())
+
+			out, err := e.Run(context.Background(), "answer me")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.call != 2 {
+				t.Fatalf("the provider was asked %d times, want 2: an empty completion ended the turn", p.call)
+			}
+			if out.Reason != protocol.StopDone {
+				t.Errorf("reason = %q, want done once the model answered", out.Reason)
+			}
+			// The retry sends the same request again, so the empty answer must
+			// not have joined the history in between.
+			if got, want := len(p.seen[1].Messages), len(p.seen[0].Messages); got != want {
+				t.Errorf("the retry sent %d messages, the first try %d: the empty answer was recorded", got, want)
+			}
+			last := e.Session().History[len(e.Session().History)-1]
+			if last.Role != ce.RoleAssistant || last.Text != "here it is" {
+				t.Errorf("last message = %+v, want the answer that came", last)
+			}
+		})
+	}
+}
+
+// Empty every time is a turn that stops and says why. Never StopDone: a turn
+// that ends done with no answer is the one shape a failure must not take.
+func TestAnEmptyCompletionThatPersistsStopsSayingWhy(t *testing.T) {
+	p := &scriptedProvider{} // past the script, every answer is an empty done
+	waits := 0
+	e, rec := newEngine(t, p, tools.NewRegistry(), func(c *Config) {
+		c.Sleep = func(context.Context, time.Duration) bool {
+			waits++
+			return true
+		}
+	})
+
+	out, err := e.Run(context.Background(), "answer me")
+	if err == nil {
+		t.Fatal("an empty completion that never clears ended the turn without an error")
+	}
+	if out.Reason != protocol.StopError {
+		t.Errorf("reason = %q, want error", out.Reason)
+	}
+	if want := provider.DefaultBackoff().Tries; p.call != want {
+		t.Errorf("the provider was asked %d times, want the %d the retry budget allows", p.call, want)
+	}
+	if waits != provider.DefaultBackoff().Tries-1 {
+		t.Errorf("waited %d times, want one before every retry", waits)
+	}
+	said, ok := rec.last[protocol.EventSessionError].(protocol.Error)
+	if !ok {
+		t.Fatal("nothing told the client why the turn stopped")
+	}
+	if said.Code != string(provider.ErrClassProvider) || !strings.Contains(said.Message, "empty completion") {
+		t.Errorf("the client was told %+v, want a provider failure naming the empty completion", said)
+	}
+	for _, m := range e.Session().History {
+		if m.Role == ce.RoleAssistant {
+			t.Errorf("an assistant message was recorded from nothing: %+v", m)
+		}
+	}
+}

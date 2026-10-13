@@ -51,7 +51,9 @@ func (s *scriptedProvider) Stream(ctx context.Context, req provider.Request) (<-
 		} else {
 			// Running past the script means the loop asked for more turns than
 			// expected; answer with a clean stop so a bug shows up as a wrong
-			// assertion rather than a hang.
+			// assertion rather than a hang. A clean stop with nothing in it is
+			// an empty completion, which the loop retries and then reports as
+			// an error — still an assertion, never a hang.
 			evs = []provider.StreamEvent{{Type: provider.EventDone}}
 		}
 		for _, ev := range evs {
@@ -1181,7 +1183,7 @@ func TestAfterATurnTheCallerIsToldWhatWasWritten(t *testing.T) {
 	}
 
 	// A second turn is a second notification, not a repeat of the first.
-	p.turns = [][]provider.StreamEvent{{text("nothing more"), done()}}
+	p.turns = append(p.turns, []provider.StreamEvent{text("nothing more"), done()})
 	if _, err := e.Run(context.Background(), "again"); err != nil {
 		t.Fatal(err)
 	}

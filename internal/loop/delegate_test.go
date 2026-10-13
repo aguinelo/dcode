@@ -111,6 +111,7 @@ func TestChildTokensAreDebitedFromTheParent(t *testing.T) {
 	e, _ := delegateEngine(t, [][]provider.StreamEvent{
 		{text("the child answer"), spent(500, 40)},
 		{text("the parent answer"), spent(11, 3)},
+		{text("the next answer"), spent(7, 2)},
 	})
 
 	if _, err := e.Delegate(context.Background(), "where is it", "", DelegateLimits{MaxIterations: 3}, nil); err != nil {

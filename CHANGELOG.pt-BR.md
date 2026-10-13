@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,16 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Resposta vazia é falha do provedor, não fim de turno.** Um stream que
+  terminava sem texto e sem tool call seguia pelo caminho de "nenhuma chamada
+  a mais" e encerrava o turno como concluído, com a tela vazia e sem dizer
+  por quê. A Gemini fazia isso cerca de metade das vezes. A suíte de medição
+  já repetia esse caso como falha de medir, então o mesmo modelo era falha na
+  medição e resposta no produto. Agora é um erro `provider` repetível: o loop
+  manda a mesma requisição de novo, dentro do orçamento de repetição que o
+  turno já tem, e, se a resposta continuar vazia, encerra com um erro que diz
+  que ela veio vazia. O loop e a suíte de medição passam a decidir isso pela
+  mesma função, `provider.EmptyCompletion`.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e
