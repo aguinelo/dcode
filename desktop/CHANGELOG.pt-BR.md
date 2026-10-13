@@ -10,6 +10,18 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A janela diz onde um turno está contra os tetos dele, e quanto o último
+  custou.** As rodadas e as chamadas em voo chegavam e eram dobradas, mas nada
+  as mostrava, e do `usage` do `turn.completed` só o contexto ficava. Agora a
+  barra do composer — o rodapé da janela da grade e o da maximizada — mostra
+  "rodada N/M" a partir da metade do teto (aviso, e erro a partir de três
+  quartos) e "N/M em voo" quando todas as vagas estão ocupadas, como a barra da
+  TUI; longe dos tetos não desenha nada, e a contagem inteira fica no
+  passar do mouse do botão de parar. A aba Sessão do Crew mostra o turno
+  corrente e, do último que terminou, saída, entrada somada pelas rodadas e
+  cache. Os tokens só viajam no fim do turno, então nada é estimado enquanto
+  ele corre, e um turno sem `usage` diz que o provedor não informou. Nada em
+  repouso muda: as duas referências visuais medem 0,00% (D44).
 - **Uma conversa pode ser renomeada pela janela.** O daemon nomeia conversas,
   vivas e terminadas, desde `POST /v1/sessions/{id}/name`, e a janela nunca
   pedia: o título era o que a primeira pergunta fosse. Agora um duplo clique no

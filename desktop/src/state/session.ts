@@ -73,6 +73,12 @@ export interface SessionView {
   removed: number;
   /** What the assembled context cost at the end of the last turn. */
   contextTokens: number | null;
+  /**
+   * What the last turn that ended cost, as turn.completed reported it — the
+   * only event that carries it. Null while a turn runs, before the first one
+   * ends, and when the provider did not report it: never the previous turn's.
+   */
+  usage: P.Usage | null;
   /** Turns that completed. */
   turns: number;
   turn: { id: string; startedAt: string } | null;
@@ -96,6 +102,7 @@ export function emptySession(id: string): SessionView {
     added: 0,
     removed: 0,
     contextTokens: null,
+    usage: null,
     turns: 0,
     turn: null,
     rounds: null,
@@ -264,6 +271,7 @@ function onTurnCompleted(view: SessionView, ev: EventOf<'turn.completed'>): Sess
     turn: null,
     turns: view.turns + 1,
     contextTokens: d.usage?.context_tokens ? d.usage.context_tokens : view.contextTokens,
+    usage: d.usage ?? null,
   };
   if (d.completion && d.completion.verification !== 'clean') {
     next = withNote(next, ev.seq, ev.at, { kind: 'completion', completion: d.completion });
@@ -330,9 +338,11 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
         firstQuestion: view.firstQuestion || text,
         state: 'running',
         turn: { id: ev.payload.turn_id, startedAt: ev.at },
-        // The counters belong to the turn that is starting.
+        // The counters belong to the turn that is starting, and so does the
+        // usage: left standing it would read as this turn's.
         rounds: null,
         inFlight: null,
+        usage: null,
       };
     }
     case 'turn.steered':
