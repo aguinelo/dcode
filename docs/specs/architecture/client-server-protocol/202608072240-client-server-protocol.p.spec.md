@@ -484,6 +484,8 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Marcador `session.resumed` que nomeia id fora da pasta não é seguido.
 - Página de conversa gravada tem teto; `limit` acima dele é recusado, não aparado, e página que não chega ao fim diz onde continuar.
 - Ler conversa sem registro diz que ela não existe; daemon sem transcrições recusa dizendo por quê, nunca responde conversa vazia.
+- Nomear conversa que não está carregada segura o id pela mesma regra: id que sairia da pasta é recusado com `invalid_input` e nenhum registro recebe o nome.
+- Continuar uma conversa (`resume`) segura o id pela mesma regra: id que sairia da pasta é recusado com `invalid_input` antes de qualquer registro ser lido.
 - `GET /models` lista o modelo que uma sessão do workspace recebe sem pedir nenhum e os perfis do `models.toml` dela — o do usuário e o do projeto, por nome; sem `workspace`, vale a configuração com que o daemon subiu.
 - Escolha do menu é a sessão que ela abre: pedir o nome monta a sessão com o modelo e a janela que o menu prometeu.
 - Modelo de família sem medição diz isso antes de ser escolhido: `measured` falso e, em `notice`, a admissão da própria família (`provider.Unmeasured`).
@@ -534,3 +536,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610080001 — A memória e as skills de um workspace](changelog/202610080001-a-memoria-e-as-skills-de-um-workspace.md)
 - [202610131800 — Ler uma conversa gravada, sem carregá-la](changelog/202610131800-ler-uma-conversa-gravada.md)
 - [202610131900 — O git de um workspace, como está agora](changelog/202610131900-o-git-de-um-workspace-como-esta-agora.md)
+- [202610131930 — O id fica na pasta em toda porta](changelog/202610131930-o-id-fica-na-pasta-em-toda-porta.md)

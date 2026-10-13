@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 209 changelogs de decisão |
+| famílias de spec | 18, com 210 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um id de sessão vindo de um cliente não nomeia mais arquivo fora da pasta
+  de registros.** Nomear uma conversa que não está carregada e continuar uma
+  (`resume`) passam a seguir a regra que ler uma conversa gravada já seguia —
+  letras, dígitos, `-` e `_` — e recusam o resto com `invalid_input` antes de
+  tocar o disco. Os dois juntavam o id ao caminho sem conferir:
+  `POST /sessions/..%2Fsecret/name` acrescentava uma linha a um registro um
+  nível acima da pasta, e `resume: "../secret"` lia um para o contexto do
+  modelo e o copiava para o registro da sessão nova.
 - **Uma conversa gravada pode ser lida sem ser carregada.**
   `GET /v1/conversations/{id}/events` responde uma página de uma conversa que
   terminou, lida do registro — a cadeia que ela continua primeiro, numerada

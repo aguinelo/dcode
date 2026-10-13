@@ -196,6 +196,13 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		// quietly starting fresh: someone who asked to continue and got an
 		// empty session would not find out until the model had forgotten
 		// everything.
+		//
+		// The id comes from a client and becomes a path, so it is held to
+		// the record directory first: unchecked, `../x` continued a record
+		// outside it, read into the model and copied into this session's.
+		if err := session.ValidID(req.Resume); err != nil {
+			return nil, err
+		}
 		path := filepath.Join(d.opts.RecordDir, req.Resume+".jsonl")
 		history, herr := session.Rebuild(path)
 		if herr != nil {
