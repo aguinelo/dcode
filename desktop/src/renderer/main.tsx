@@ -14,6 +14,7 @@ import './styles/crew-board.css';
 import './styles/crew-pages.css';
 import './styles/start.css';
 import './styles/terminal.css';
+import './styles/actions.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';

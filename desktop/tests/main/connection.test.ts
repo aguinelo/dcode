@@ -291,14 +291,20 @@ describe('requests', () => {
     expect(await conn.requests.interrupt('s 1')).toEqual({ ok: true, value: null });
     expect(await conn.requests.resolveApproval('s 1', 'a/1', 'deny')).toEqual({ ok: true, value: null });
     expect(await conn.requests.setMode('s 1', 'auto')).toEqual({ ok: true, value: null });
+    expect(await conn.requests.exec('s 1', 'go test ./...')).toEqual({ ok: true, value: null });
+    expect(await conn.requests.undo('s 1')).toEqual({ ok: true, value: { restored: ['a.go'], refused: [] } });
+    expect(await conn.requests.compact('s 1')).toEqual({ ok: true, value: { compacted: false } });
     expect(daemon.requests.filter((q) => q.startsWith('POST'))).toEqual([
       'POST /v1/sessions/s%201/turns',
       'POST /v1/sessions/s%201/steer',
       'POST /v1/sessions/s%201/interrupt',
       'POST /v1/sessions/s%201/approvals/a%2F1',
       'POST /v1/sessions/s%201/mode',
+      'POST /v1/sessions/s%201/exec',
+      'POST /v1/sessions/s%201/undo',
+      'POST /v1/sessions/s%201/compact',
     ]);
-    expect(daemon.bodies).toEqual([{ text: 'oi' }, { text: 'na verdade' }, { decision: 'deny' }, { mode: 'auto' }]);
+    expect(daemon.bodies).toEqual([{ text: 'oi' }, { text: 'na verdade' }, { decision: 'deny' }, { mode: 'auto' }, { command: 'go test ./...' }]);
   });
 
   it('answers the daemon’s refusal as it came', async () => {

@@ -1,0 +1,60 @@
+/* ---- what acts on a session: a typed command's output, the ⋯ menu (D40) -- */
+
+.tool-typed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tool-output {
+  margin: 0 0 0 18px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: var(--dc-radius);
+  background: var(--dc-sunken);
+  font-family: var(--dc-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 4;
+  color: var(--dc-text);
+}
+.tool-output.failed {
+  border-color: var(--dc-line);
+}
+
+.actions-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--dc-radius-sm);
+  text-align: left;
+}
+.actions-option:hover:not(:disabled),
+.actions-option:focus-visible {
+  background: var(--dc-hover);
+  outline: none;
+}
+.actions-option:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.actions-label {
+  color: var(--dc-emph);
+}
+.actions-detail {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--dc-faint);
+}
+.actions-key {
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--dc-mono);
+  font-size: 10.5px;
+  color: var(--dc-faint);
+}

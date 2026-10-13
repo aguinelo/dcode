@@ -15,6 +15,8 @@ export interface CrewHandlers {
   model: (row: Row, anchor: HTMLElement) => void;
   /** Opens the mode menu of a live session (D36). */
   mode: (id: string, anchor: HTMLElement) => void;
+  /** Opens a live session's actions — undo, compact, a command (D40). */
+  actions: (id: string, anchor: HTMLElement) => void;
   missing: (what: string) => void;
   /** Opens a session from the folder picker. */
   newSession: () => void;

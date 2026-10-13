@@ -19,14 +19,23 @@ function shellCommand(call: ToolCall): string {
 function ToolLine({ call, onRun }: { call: ToolCall; onRun?: (command: string) => void }) {
   const v = toolLine(call);
   const command = shellCommand(call);
-  return (
-    <div className="tool-line" title={call.result && !call.result.ok ? call.result.output : undefined}>
+  // A command the person typed (`!`, D40) is shown open: they ran it to read what it printed.
+  const output = call.typed && call.result ? call.result.output : '';
+  const line = (
+    <div className="tool-line" title={call.result && !call.result.ok && !output ? call.result.output : undefined}>
       <span className={`tool-glyph tone-${v.glyphTone}${call.result ? '' : ' dc-breath'}`}>{v.glyph}</span>
       <span className="tool-name">{v.name}</span>
       {v.target && <span className="tool-target">{v.target}</span>}
       <span className="spacer" />
       <span className={`tool-summary tone-${v.summaryTone}`}>{v.summary}</span>
       {command && <CommandActions command={command} onRun={onRun} />}
+    </div>
+  );
+  if (!call.typed) return line;
+  return (
+    <div className="tool-typed" data-typed-call={call.id}>
+      {line}
+      {output && <pre className={`tool-output${call.result?.ok ? '' : ' failed'}`}>{output}</pre>}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Version, type CreateSessionRequest, type ModelsResponse, type Session } from '../protocol/generated';
+import { Version, type CompactResult, type CreateSessionRequest, type ModelsResponse, type Session, type UndoResult } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import { UNREACHABLE, type Answer, type DaemonStatus, type NewSessionOptions, type Refusal } from '../shared/api';
 import { UNEXPECTED, request, shown } from './wire';
@@ -90,6 +90,23 @@ export class Requests {
   /** Switches the session's behavioural mode; the session announces it in `session.mode_changed`. */
   setMode(sessionId: string, mode: string): Promise<Answer<null>> {
     return this.command(`${sessionPath(sessionId)}/mode`, { mode });
+  }
+
+  /** Runs a command the person typed; its output arrives as a typed tool call in the session's events. */
+  exec(sessionId: string, command: string): Promise<Answer<null>> {
+    return this.command(`${sessionPath(sessionId)}/exec`, { command });
+  }
+
+  /** Puts back what the last turn changed. Passed on as it came: the renderer reads it at its boundary. */
+  async undo(sessionId: string): Promise<Answer<UndoResult>> {
+    const a = await this.call('POST', `${sessionPath(sessionId)}/undo`);
+    return a.ok ? { ok: true, value: a.value as UndoResult } : a;
+  }
+
+  /** Compacts the context now. The answer says when there was nothing worth compacting, which no event does. */
+  async compact(sessionId: string): Promise<Answer<CompactResult>> {
+    const a = await this.call('POST', `${sessionPath(sessionId)}/compact`);
+    return a.ok ? { ok: true, value: a.value as CompactResult } : a;
   }
 
   private async call(method: string, path: string, body?: unknown): Promise<Answer<unknown>> {

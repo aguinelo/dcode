@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, type Dispatch, type SetStateAction } fro
 import { hold, markSeen, release, type Attention } from '../state/attention';
 import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
+import { compactText, parseInput, undoText } from '../state/commands';
 import type { Outcome, StartOptions, WindowActions } from './window';
 
 type Once = <T>(key: string, run: () => Promise<Outcome<T>>) => Promise<Outcome<T> | null>;
@@ -146,17 +147,64 @@ export function useWindows(o: {
     [actions, dropChooser, fromFolder, place, say],
   );
 
+  /** Desfazer o último turno: what went back and what did not is said (D40). */
+  const undoIn = useCallback(
+    async (id: string): Promise<boolean> => {
+      const out = await once(`undo:${id}`, () => actions.undo(id));
+      if (out?.ok) say(undoText(out.value));
+      return !!out?.ok;
+    },
+    [actions, once, say],
+  );
+
+  /** Resumir o contexto: said even when there was nothing to compact, which no event says (D40). */
+  const compactIn = useCallback(
+    async (id: string): Promise<boolean> => {
+      const out = await once(`compact:${id}`, () => actions.compact(id));
+      if (out?.ok) say(compactText(out.value));
+      return !!out?.ok;
+    },
+    [actions, once, say],
+  );
+
+  /**
+   * What was typed in a conversation's field (D40): a message for the model,
+   * `!` a command run in the session, `/undo`, `/compact` and `/mode <m>` for
+   * the harness. Any other slash is said to be unknown and stays in the field.
+   */
   const sendIn = useCallback(
     async (id: string, text: string) => {
-      const running = sessions.byId[id]?.state === 'running';
-      const done = await once(`send:${id}`, () => actions.send(id, text, running));
+      const input = parseInput(text);
+      let ok: boolean;
+      switch (input.kind) {
+        case 'unknown':
+        case 'bad':
+          say(input.why);
+          return;
+        case 'undo':
+          ok = await undoIn(id);
+          break;
+        case 'compact':
+          ok = await compactIn(id);
+          break;
+        case 'mode':
+          ok = !!(await once(`mode:${id}`, () => actions.setMode(id, input.mode)))?.ok;
+          break;
+        case 'exec':
+          ok = !!(await once(`exec:${id}`, () => actions.exec(id, input.command)))?.ok;
+          break;
+        case 'message': {
+          const running = sessions.byId[id]?.state === 'running';
+          ok = !!(await once(`send:${id}`, () => actions.send(id, text, running)))?.ok;
+        }
+      }
       // Emptied only once the daemon took it, and only if what is in the field
       // is still what was sent: a refusal keeps the text, said why.
-      if (!done?.ok) return;
+      if (!ok) return;
       setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
       updateAttention((a) => hold(a, id));
     },
-    [actions, once, sessions, setDrafts, updateAttention],
+    [actions, compactIn, once, say, sessions, setDrafts, undoIn, updateAttention],
   );
 
   const stopIn = useCallback((id: string) => void once(`stop:${id}`, () => actions.stop(id)), [actions, once]);
@@ -171,6 +219,11 @@ export function useWindows(o: {
   /** An ended conversation written to: it continues in a new session, which takes its window, and the text goes there. */
   const continueIn = useCallback(
     async (row: Row, text: string) => {
+      // A command acts on a live session; this one ended, and continuing it on a command would start one for nothing.
+      if (parseInput(text).kind !== 'message') {
+        say('Esta conversa terminou: comandos valem numa conversa viva. Escreva uma mensagem para continuá-la.');
+        return;
+      }
       const opened = await once(`open:${row.id}`, () => actions.open(row));
       if (!opened?.ok) return;
       const id = opened.value;
@@ -179,7 +232,7 @@ export function useWindows(o: {
       setFocusId(id);
       await sendIn(id, text);
     },
-    [actions, once, sendIn, setDrafts, updateAttention],
+    [actions, once, say, sendIn, setDrafts, updateAttention],
   );
 
   /** A conversation continued elsewhere — on another model — takes over the window of the one it continues. */
@@ -227,6 +280,8 @@ export function useWindows(o: {
     dropChooser,
     openIn,
     sendIn,
+    undoIn,
+    compactIn,
     stopIn,
     answerIn,
     continueIn,

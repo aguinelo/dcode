@@ -149,6 +149,12 @@ export interface DcodeApi {
   killTerminal(id: string): void;
   /** Output and ends of this window's terminals. Returns what stops the listening. */
   onTerminal(listener: (push: TerminalPush) => void): () => void;
+  /** Runs a command the person typed, outside a turn; its output comes as a typed tool call. */
+  exec(sessionId: string, command: string): Promise<Answer<null>>;
+  /** Puts back what the last turn changed, as it came. Decoded by the renderer. */
+  undo(sessionId: string): Promise<Answer<unknown>>;
+  /** Compacts the context now, as it came. Decoded by the renderer. */
+  compact(sessionId: string): Promise<Answer<unknown>>;
 }
 
 /** The channels, one per request and one per push. */
@@ -181,6 +187,9 @@ export const CHANNELS = {
   terminalKill: 'dcode:terminal-kill',
   terminalData: 'dcode:terminal-data',
   terminalExit: 'dcode:terminal-exit',
+  exec: 'dcode:exec',
+  undo: 'dcode:undo',
+  compact: 'dcode:compact',
 } as const;
 
 /** The channel the main process answers `user()` on. */

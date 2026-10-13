@@ -47,7 +47,11 @@ export function Field({
     if (disabled && document.activeElement === input.current) input.current?.blur();
   }, [disabled]);
   useEffect(() => {
-    if (caret) input.current?.focus();
+    const el = input.current;
+    if (!caret || !el) return;
+    el.focus();
+    // After what is already there — a draft, or the ! a command starts with (D40).
+    el.setSelectionRange(el.value.length, el.value.length);
   }, [caret]);
   const empty = text.length === 0;
   return (

@@ -4,6 +4,7 @@ import { emptySession, type SessionView } from '../../state/session';
 import type { Row } from '../../state/sidebar';
 import { Field } from '../Composer';
 import { ConversationBody } from '../ConversationBody';
+import { ActionsButton } from '../SessionActions';
 import type { CrewHandlers } from './handlers';
 
 /**
@@ -56,6 +57,7 @@ export function ThreadPane({
             {model} <ChevronDown size={11} aria-hidden />
           </button>
         )}
+        {session?.info && <ActionsButton title={row.title} onOpen={(anchor) => on.actions(row.id, anchor)} />}
       </header>
       {ended ? (
         <div className="crew-ended">

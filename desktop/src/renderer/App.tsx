@@ -21,6 +21,7 @@ import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
 import { useModelLists } from './useModelLists';
 import { useModeMenu } from './useModeMenu';
+import { useSessionActions } from './SessionActions';
 import { useModelMenu } from './useModelMenu';
 import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
@@ -200,6 +201,12 @@ export function App({
   const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show });
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);
+  // "Rodar um comando…" puts the ! in the field and the caret after it (D40).
+  const typeCommand = (id: string) => {
+    setDrafts((d) => ({ ...d, [id]: '!' }));
+    win.caretTo(id);
+  };
+  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand });
 
   // The grid, in stable places: the plan reads the places as last drawn, and
   // they are kept the way React keeps a value from the previous render. The
@@ -257,7 +264,7 @@ export function App({
     caretTo: win.caretTo,
     sessions,
     maximized: selected,
-    busy: searching || !!models.menu || !!modes.menu,
+    busy: searching || !!models.menu || !!modes.menu || acts.menu,
     setSearching,
     newSession: look === 'crew' ? crewNew : newSession,
     show,
@@ -334,6 +341,7 @@ export function App({
               continueIn: (row, text) => void win.continueIn(row, text),
               model: models.open,
               mode: modes.open,
+              actions: acts.open,
               missing,
               newSession: crewNew,
               startIn: (workspace, options) => void win.startIn(workspace, options),
@@ -413,6 +421,7 @@ export function App({
                     continueIn: (row, text) => void win.continueIn(row, text),
                     model: models.open,
                     mode: modes.open,
+                    actions: acts.open,
                     missing,
                   }}
                   chooser={{
@@ -440,6 +449,7 @@ export function App({
           onClose={models.close}
         />
       )}
+      {acts.node}
       {modes.menu && (
         <ModeMenu
           anchor={modes.menu.anchor}

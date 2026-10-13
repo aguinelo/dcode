@@ -4,6 +4,7 @@ import { emptySession, type SessionView } from '../state/session';
 import type { Row } from '../state/sidebar';
 import { Field } from './Composer';
 import { ConversationBody } from './ConversationBody';
+import { ActionsButton } from './SessionActions';
 
 /**
  * What the harness measured: each criterion, else the seal, else what is known
@@ -63,6 +64,8 @@ export interface PaneProps {
   onModel: (anchor: HTMLElement) => void;
   /** Opens the mode menu (D36). */
   onMode: (anchor: HTMLElement) => void;
+  /** Opens the conversation's actions — undo, compact, a command (D40). */
+  onActions: (anchor: HTMLElement) => void;
   onMissing: (what: string) => void;
 }
 
@@ -92,6 +95,7 @@ export function Pane(p: PaneProps) {
             {session?.info?.model ?? row.model} ⌄
           </button>
         )}
+        {session?.info && <ActionsButton title={row.title} onOpen={p.onActions} />}
         <button type="button" className="icon-btn" aria-label={`Maximizar ${row.title}`} title="Maximizar (⌘↵)" onClick={p.onMaximize}>
           ⤢
         </button>

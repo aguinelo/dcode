@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Desfazer, resumir e rodar um comando pela janela.** `/undo`, `/compact` e
+  `!` eram só da TUI, e um texto começando com `/` ia ao modelo como mensagem. O
+  ⋯ da conversa (janela da grade, conversa na Crew) agora oferece Desfazer o
+  último turno — dizendo o que voltou e o que ficou porque mudou depois do turno
+  —, Resumir o contexto — dizendo quando não havia o que resumir, o que nenhum
+  evento diz — e Rodar um comando…; `!comando` no campo roda na sessão, e a
+  saída aparece aberta. `/undo`, `/compact` e `/mode <m>` funcionam no campo;
+  qualquer outra barra é "comando desconhecido" e fica lá (D40).
 - **Um comando que o agente propôs pode ser rodado pela pessoa, num terminal
   abaixo da conversa, e o resultado volta ao agente.** Pedido depois de uma
   aprovação negada que a pessoa queria rodar ela mesma, talvez com sudo. Todo

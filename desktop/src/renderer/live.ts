@@ -6,7 +6,8 @@
 import { decodeChange } from '../protocol/conversations';
 import { decodeEvent } from '../protocol/events';
 import { decodeModels } from '../protocol/models';
-import { CodeNoActiveTurn, CodeTurnAlreadyActive } from '../protocol/generated';
+import { CodeNoActiveTurn, CodeTurnAlreadyActive, type CompactResult, type UndoResult } from '../protocol/generated';
+import { isRecord } from '../protocol/validate';
 import type { Answer, DaemonStatus, DcodeApi, NewSessionOptions } from '../shared/api';
 import { modeToSwitch, sandboxOf } from '../state/mode';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
@@ -31,6 +32,29 @@ const ENDED_GRACE_MS = 1500;
 /** A refusal said as the window says it: what did not happen, then the daemon's reason. */
 function outcome<T>(answer: Answer<T>, what: string): Outcome<T> {
   return answer.ok ? { ok: true, value: answer.value } : { ok: false, why: `${what}: ${answer.refusal.message}` };
+}
+
+/** An answer the daemon gave, read at the boundary: a shape it does not have is said, never guessed from. */
+function decoded<T>(got: Outcome<unknown>, decode: (raw: unknown) => T | string): Outcome<T> {
+  if (!got.ok) return got;
+  const read = decode(got.value);
+  return typeof read === 'string' ? { ok: false, why: `Resposta ilegível do daemon: ${read}` } : { ok: true, value: read };
+}
+
+function strings(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === 'string');
+}
+
+function decodeUndo(raw: unknown): UndoResult | string {
+  if (!isRecord(raw)) return 'o desfazer não trouxe um objeto';
+  // A Go nil slice arrives as null: nothing restored, nothing refused.
+  const restored = raw.restored ?? [];
+  const refused = raw.refused ?? [];
+  return strings(restored) && strings(refused) ? { restored, refused } : 'o desfazer não trouxe as listas restored e refused';
+}
+
+function decodeCompact(raw: unknown): CompactResult | string {
+  return isRecord(raw) && typeof raw.compacted === 'boolean' ? { compacted: raw.compacted } : 'o resumo não disse se compactou';
 }
 
 /** The main process's code for an answer it could not read as the daemon's (main/wire.ts). */
@@ -143,6 +167,9 @@ export class LiveStore {
     },
     switchModel: (id, workspace, model) => this.switchModel(id, workspace, model),
     setMode: async (id, mode) => outcome(await this.api.setMode(id, mode), 'O modo não mudou'),
+    exec: async (id, command) => outcome(await this.api.exec(id, command), 'O comando não rodou'),
+    undo: async (id) => decoded(outcome(await this.api.undo(id), 'O último turno não foi desfeito'), decodeUndo),
+    compact: async (id) => decoded(outcome(await this.api.compact(id), 'O contexto não foi resumido'), decodeCompact),
     listSkills: async (workspace) =>
       read(await this.api.listSkills(workspace), decodeSkills, 'as skills de um projeto (GET /v1/skills)', 'O daemon não disse quais skills existem'),
     listMemory: async (workspace) =>
