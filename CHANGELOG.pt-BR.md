@@ -261,6 +261,10 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A folha de referência do mascote fica em `refs/design/brand/mascote.webp`.**
+  Seis cores, poses, ícones, usos na interface e a paleta de 23 tons, guardados
+  onde ficam as referências de design, para que o desktop e o TUI partam de uma
+  fonte só e não de uma imagem numa conversa.
 - **Um id de sessão vindo de um cliente não nomeia mais arquivo fora da pasta
   de registros.** Nomear uma conversa que não está carregada e continuar uma
   (`resume`) passam a seguir a regra que ler uma conversa gravada já seguia —
