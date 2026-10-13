@@ -1,0 +1,167 @@
+/*
+ * The command actions and the conversation's terminal (D37).
+ *
+ * Copiar and Rodar no terminal sit over the end of a command's line, invisible
+ * and out of the layout until the line is hovered or one of them has the
+ * focus: the flow reads as it did, and the reference states do not change.
+ */
+
+/* The terminal's own colours, beside the window's: ANSI asks for hues the window never uses. */
+:root {
+  --dc-term-black: #39404a;
+  --dc-term-blue: #7aa7f0;
+  --dc-term-magenta: #d39af0;
+  --dc-term-cyan: #6fd0d6;
+  --dc-term-selection: rgba(198, 243, 107, 0.22);
+}
+:root[data-theme='light'] {
+  --dc-term-black: #4a4c52;
+  --dc-term-blue: #1f56b8;
+  --dc-term-magenta: #8a3aa8;
+  --dc-term-cyan: #0f6f78;
+  --dc-term-selection: rgba(75, 107, 0, 0.2);
+}
+
+.tool-line,
+.approval-command {
+  position: relative;
+}
+.cmd-actions {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: inline-flex;
+  gap: 4px;
+  padding-left: 12px;
+  background: linear-gradient(to right, transparent, var(--dc-panel) 12px);
+  opacity: 0;
+  pointer-events: none;
+}
+.approval-command .cmd-actions {
+  top: 4px;
+  right: 4px;
+  transform: none;
+  background: linear-gradient(to right, transparent, var(--dc-sunken) 12px);
+}
+.tool-line:hover .cmd-actions,
+.approval-command:hover .cmd-actions,
+.cmd-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cmd-action {
+  padding: 1px 7px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-raised);
+  color: var(--dc-dim);
+  font-family: var(--dc-font);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cmd-action:hover {
+  color: var(--dc-text);
+  border-color: var(--dc-line-hover);
+}
+.cmd-action:focus-visible {
+  outline: 1px solid var(--dc-line-focus);
+}
+
+.term-dock {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--dc-line);
+  background: var(--dc-sunken);
+}
+.term-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--dc-line-soft);
+  font-size: 11.5px;
+  color: var(--dc-dim);
+}
+.term-title {
+  color: var(--dc-text);
+}
+.term-where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--dc-mono);
+  font-size: 11px;
+  color: var(--dc-faint);
+}
+.term-state {
+  color: var(--dc-faint);
+}
+.term-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.term-btn:hover {
+  border-color: var(--dc-line-hover);
+  background: var(--dc-hover);
+}
+.term-btn.primary {
+  border-color: transparent;
+  background: var(--dc-btn);
+  color: var(--dc-btn-ink);
+}
+.term-failed {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--dc-err);
+}
+.term-offer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--dc-line-soft);
+  background: var(--dc-panel);
+}
+.term-offer-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
+  font-size: 12px;
+  color: var(--dc-text);
+}
+.term-preview {
+  max-height: 150px;
+  margin: 0 10px 8px;
+  padding: 6px 8px;
+  overflow: auto;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-sunken);
+  font-family: var(--dc-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--dc-dim);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.term-screen {
+  flex: none;
+  height: 220px;
+  padding: 4px 0 0 8px;
+}
+.term-dock.compact .term-screen {
+  height: 150px;
+}
+.term-dock.compact .term-preview {
+  max-height: 90px;
+}

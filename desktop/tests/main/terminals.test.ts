@@ -75,11 +75,24 @@ describe('a terminal for a window', () => {
     pty.emit('loading rc');
     expect(pty.written).toEqual([]);
     pty.emit('\x1b]133;D\x07% ');
+    // The prompt is marked, and the line editor has not started reading: typed now, the tty would echo it.
+    expect(pty.written).toEqual([]);
+    pty.emit('\x1b[?2004h');
     expect(pty.written).toEqual(['\x1b[200~npm test\x1b[201~']);
-    expect(pushed.map((p) => p.owner)).toEqual([7, 7]);
+    expect(pushed.map((p) => p.owner)).toEqual([7, 7, 7]);
     expect(pushed[0]?.push).toEqual({ kind: 'data', id: opened.ok ? opened.value.id : '', data: 'loading rc' });
     vi.advanceTimersByTime(5000);
     expect(pty.written).toHaveLength(1);
+  });
+
+  it('types it a moment after the prompt when no line editor announces itself', async () => {
+    const t = terminals();
+    await t.open(7, '/work/app', 'ls', 80, 24);
+    ptys[0]?.emit('\x1b]133;D\x07$ ');
+    vi.advanceTimersByTime(249);
+    expect(ptys[0]?.written).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(ptys[0]?.written).toEqual(['\x1b[200~ls\x1b[201~']);
   });
 
   it('types it anyway when the shell never marks a prompt', async () => {

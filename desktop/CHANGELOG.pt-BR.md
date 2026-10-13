@@ -10,6 +10,26 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Um comando que o agente propôs pode ser rodado pela pessoa, num terminal
+  abaixo da conversa, e o resultado volta ao agente.** Pedido depois de uma
+  aprovação negada que a pessoa queria rodar ela mesma, talvez com sudo. Todo
+  comando proposto — o do cartão de aprovação e cada linha `bash` do fluxo —
+  ganha Copiar e Rodar no terminal, que aparecem ao passar o ponteiro ou com o
+  foco e ficam fora do layout, e as duas referências visuais seguem a 0,00%.
+  Rodar no terminal abre um shell de verdade (um PTY no processo principal,
+  `node-pty`, desenhado pelo xterm.js) abaixo do fluxo — na janela da grade, na
+  conversa maximizada e na conversa da Crew —, na pasta da sessão como o daemon
+  a lista, com o comando digitado e não rodado: a pessoa edita e aperta Enter,
+  e o sudo pede a senha dentro do terminal. zsh e bash marcam o prompt (OSC
+  133), e quando o comando termina a janela oferece o resultado ao agente,
+  mostrando antes a mensagem — comando, código de saída, as últimas 200 linhas
+  sem ANSI, cortadas e dito que foram, sem as linhas de prompt de senha — e só
+  manda com um clique, como turno ou correção. Canais nomeados conferidos no
+  processo principal; cada terminal responde só à janela que o abriu; nada do
+  que passa por ele vai a log. Dependências, em versões exatas: `node-pty`
+  1.2.0-beta.15 (a 1.1.0 publica o spawn-helper do macOS sem permissão de
+  execução), `@xterm/xterm` 6.0.0, `@xterm/addon-fit` 0.11.0, carregados só
+  quando um terminal abre (D37).
 - **O modelo e o modo de uma sessão nova são escolhidos antes de ela abrir.** A
   Nova sessão abria sempre no padrão do daemon, e trocar depois custava uma
   sessão nova ou um turno no modo errado. A janela que pergunta onde, na grade, e

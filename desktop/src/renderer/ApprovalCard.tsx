@@ -1,6 +1,7 @@
 import { boundaryLabel, decisionLabel } from '../state/flow';
 import { clock, since } from '../state/format';
 import type { Entry } from '../state/session';
+import { CommandActions } from './CommandActions';
 
 type ApprovalEntry = Extract<Entry, { kind: 'approval' }>;
 
@@ -27,10 +28,13 @@ export function ApprovalCard({
   entry,
   now,
   onAnswer,
+  onRun,
 }: {
   entry: ApprovalEntry;
   now: number;
   onAnswer: (decision: string) => void;
+  /** Runs the command in the conversation's terminal instead, by the person's own hand (D37). */
+  onRun?: (command: string) => void;
 }) {
   const r = entry.request;
   const answered = entry.decision !== null ? decisionLabel(entry.decision) : null;
@@ -55,6 +59,7 @@ export function ApprovalCard({
       {r.command && (
         <div className="approval-command">
           <span className="approval-prompt">$</span> {r.command}
+          <CommandActions command={r.command} onRun={onRun} />
         </div>
       )}
       <div className="approval-reason" title={r.reason || undefined}>

@@ -1,6 +1,8 @@
-import { app, BrowserWindow, dialog, shell } from 'electron';
+import { app, BrowserWindow, dialog, shell, webContents } from 'electron';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import * as pty from 'node-pty';
 import { CHANNELS } from '../shared/api';
 import { Connection } from './connection';
 import { broadcast, serveTheWindows } from './ipc';
@@ -8,6 +10,8 @@ import { systemLookup } from './locate';
 import { userDataDir } from './paths';
 import { quitQuestion } from './quit';
 import { startServe } from './serve';
+import { integration } from './shell';
+import { Terminals } from './terminals';
 
 // The renderer is a second client of the daemon, like the TUI, and it is kept
 // away from everything that is not drawing: no Node, no filesystem, no socket.
@@ -45,7 +49,33 @@ const daemon = new Connection(
   },
 );
 
-serveTheWindows(daemon);
+// The terminals the windows open (D37): real PTYs, so sudo can ask for its
+// password inside them. What passes through goes to the window that opened
+// each one and nowhere else — never to a log.
+const terminals = new Terminals({
+  spawn: (file, args, o) => pty.spawn(file, args, { name: 'xterm-256color', cwd: o.cwd, env: o.env, cols: o.cols, rows: o.rows }),
+  prepare: async (kind) => {
+    const dir = path.join(app.getPath('userData'), 'shell');
+    for (const f of integration(kind)) {
+      const file = path.join(dir, f.name);
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, f.content, { mode: 0o644 });
+    }
+    return dir;
+  },
+  env: process.env,
+  platform: process.platform,
+  isDir: async (dir) => (await stat(dir).catch(() => null))?.isDirectory() ?? false,
+  push: (owner, push) => {
+    const to = webContents.fromId(owner);
+    if (!to || to.isDestroyed()) return;
+    to.send(push.kind === 'data' ? CHANNELS.terminalData : CHANNELS.terminalExit, push);
+  },
+  typeAfterMs: 3000,
+  max: 8,
+});
+
+serveTheWindows(daemon, terminals);
 
 function rendererURL(): { url: string } | { file: string } {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) return { url: MAIN_WINDOW_VITE_DEV_SERVER_URL };
@@ -101,6 +131,12 @@ app.on('web-contents-created', (_event, contents) => {
     if (url !== contents.getURL()) event.preventDefault();
   });
   contents.on('will-attach-webview', (event) => event.preventDefault());
+  // A window that reloads or goes away leaves no shell running behind it.
+  const id = contents.id;
+  contents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame && !details.isSameDocument) terminals.closeOwner(id);
+  });
+  contents.once('destroyed', () => terminals.closeOwner(id));
   contents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) void shell.openExternal(url);
     return { action: 'deny' };
@@ -167,5 +203,6 @@ app.on('before-quit', (event) => {
 // Whatever quits the app, its streams close with it. A daemon it attached to
 // keeps running, and one it started was stopped above.
 app.on('will-quit', () => {
+  terminals.closeAll();
   void daemon.close();
 });

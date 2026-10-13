@@ -71,6 +71,18 @@ export interface NewSessionOptions {
   sandboxMode?: string;
 }
 
+/** A terminal the main process opened for this window (D37). */
+export interface TerminalOpened {
+  id: string;
+  /** The session's workspace, where the shell started. */
+  cwd: string;
+  /** The shell's path. */
+  shell: string;
+}
+
+/** What a terminal sends the window that opened it: its output as it comes, then how its shell ended. */
+export type TerminalPush = { kind: 'data'; id: string; data: string } | { kind: 'exit'; id: string; code: number };
+
 export interface DcodeApi {
   /** process.platform of the main process: decides where the native window controls are. */
   readonly platform: string;
@@ -122,6 +134,21 @@ export interface DcodeApi {
   resolveApproval(sessionId: string, approvalId: string, decision: string): Promise<Answer<null>>;
   /** Switches a session's behavioural mode: plan, assist or auto. The session's own event confirms it. */
   setMode(sessionId: string, mode: string): Promise<Answer<null>>;
+
+  /** Puts text on the system's clipboard. */
+  copy(text: string): Promise<Answer<null>>;
+  /**
+   * Opens a shell in a real PTY, in the session's workspace as the daemon
+   * lists it, with `command` typed on its line and not run (D37).
+   */
+  openTerminal(sessionId: string, command: string, cols: number, rows: number): Promise<Answer<TerminalOpened>>;
+  /** Keys the person pressed, as they were pressed. Only to a terminal this window opened. */
+  writeTerminal(id: string, data: string): void;
+  resizeTerminal(id: string, cols: number, rows: number): void;
+  /** Ends the shell and what runs in it. */
+  killTerminal(id: string): void;
+  /** Output and ends of this window's terminals. Returns what stops the listening. */
+  onTerminal(listener: (push: TerminalPush) => void): () => void;
 }
 
 /** The channels, one per request and one per push. */
@@ -147,6 +174,13 @@ export const CHANNELS = {
   interrupt: 'dcode:interrupt',
   resolveApproval: 'dcode:resolve-approval',
   setMode: 'dcode:set-mode',
+  copy: 'dcode:copy',
+  terminalCreate: 'dcode:terminal-create',
+  terminalWrite: 'dcode:terminal-write',
+  terminalResize: 'dcode:terminal-resize',
+  terminalKill: 'dcode:terminal-kill',
+  terminalData: 'dcode:terminal-data',
+  terminalExit: 'dcode:terminal-exit',
 } as const;
 
 /** The channel the main process answers `user()` on. */

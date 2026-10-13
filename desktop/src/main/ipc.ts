@@ -1,7 +1,8 @@
-import { BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent, type OpenDialogOptions } from 'electron';
+import { BrowserWindow, clipboard, dialog, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent, type OpenDialogOptions } from 'electron';
 import { CHANNELS } from '../shared/api';
 import type { Connection } from './connection';
 import * as input from './inputs';
+import type { Terminals } from './terminals';
 import { currentUser } from './user';
 
 // The window's side of the main process: one handler per named request, and
@@ -20,7 +21,24 @@ function handle(channel: string, answer: Handler): void {
   });
 }
 
+/**
+ * Listens on a one-way channel, for the app's own windows only. A bad
+ * argument has no one to answer, so it is said in the main process's log —
+ * by its reason, never by what was typed: a terminal's keys can be a password.
+ */
+function listen(channel: string, act: (event: IpcMainEvent, ...args: unknown[]) => { ok: true } | { ok: false; refusal: { message: string } }): void {
+  ipcMain.on(channel, (event, ...args: unknown[]) => {
+    if (!BrowserWindow.fromWebContents(event.sender)) {
+      console.warn(`dcode: ${channel} sent by an unknown sender, ignored`);
+      return;
+    }
+    const done = act(event, ...args);
+    if (!done.ok) console.warn(`dcode: ${channel} ignored: ${done.refusal.message}`);
+  });
+}
+
 const SESSION = 'O id da sessão';
+const TERMINAL = 'O id do terminal';
 
 /** The system's folder picker. Called on the `dialog` object: the daemon check replaces exactly that method. */
 async function pickFolder(event: IpcMainInvokeEvent): Promise<string | null> {
@@ -31,7 +49,7 @@ async function pickFolder(event: IpcMainInvokeEvent): Promise<string | null> {
   return picked.filePaths[0] ?? null;
 }
 
-export function serveTheWindows(daemon: Connection): void {
+export function serveTheWindows(daemon: Connection, terminals: Terminals): void {
   handle(CHANNELS.user, () => currentUser());
   handle(CHANNELS.daemonNow, () => daemon.status());
   handle(CHANNELS.conversationsNow, () => daemon.conversationsNow());
@@ -106,6 +124,42 @@ export function serveTheWindows(daemon: Connection): void {
     if (!approval.ok) return approval;
     const answer = input.decision(decision);
     return answer.ok ? ask.resolveApproval(session.value, approval.value, answer.value) : answer;
+  });
+
+  handle(CHANNELS.copy, (_event, text) => {
+    const what = input.clip(text);
+    if (!what.ok) return what;
+    clipboard.writeText(what.value);
+    return { ok: true, value: null };
+  });
+  // The terminal (D37): the window names the session, and the folder is the
+  // one the daemon lists for it — never a path the window chose.
+  handle(CHANNELS.terminalCreate, (event, id, command, cols, rows) => {
+    const session = input.id(id, SESSION);
+    if (!session.ok) return session;
+    const line = input.command(command);
+    if (!line.ok) return line;
+    const cells = input.size(cols, rows);
+    if (!cells.ok) return cells;
+    const where = input.workspaceOf(daemon.listed(), session.value);
+    if (!where.ok) return where;
+    return terminals.open(event.sender.id, where.value, line.value, cells.value.cols, cells.value.rows);
+  });
+  listen(CHANNELS.terminalWrite, (event, id, data) => {
+    const which = input.id(id, TERMINAL);
+    if (!which.ok) return which;
+    const typed = input.keys(data);
+    return typed.ok ? terminals.write(event.sender.id, which.value, typed.value) : typed;
+  });
+  listen(CHANNELS.terminalResize, (event, id, cols, rows) => {
+    const which = input.id(id, TERMINAL);
+    if (!which.ok) return which;
+    const cells = input.size(cols, rows);
+    return cells.ok ? terminals.resize(event.sender.id, which.value, cells.value.cols, cells.value.rows) : cells;
+  });
+  listen(CHANNELS.terminalKill, (event, id) => {
+    const which = input.id(id, TERMINAL);
+    return which.ok ? terminals.kill(event.sender.id, which.value) : which;
   });
 }
 

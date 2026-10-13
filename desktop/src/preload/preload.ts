@@ -7,6 +7,8 @@ import {
   type DcodeApi,
   type SessionEvents,
   type StreamEnd,
+  type TerminalOpened,
+  type TerminalPush,
   type UserInfo,
 } from '../shared/api';
 
@@ -77,6 +79,22 @@ const api: DcodeApi = {
   resolveApproval: (sessionId, approvalId, decision) =>
     invoke<Answer<null>>(CHANNELS.resolveApproval, sessionId, approvalId, decision),
   setMode: (sessionId, mode) => invoke<Answer<null>>(CHANNELS.setMode, sessionId, mode),
+
+  copy: (text) => invoke<Answer<null>>(CHANNELS.copy, text),
+  openTerminal: (sessionId, command, cols, rows) =>
+    invoke<Answer<TerminalOpened>>(CHANNELS.terminalCreate, sessionId, command, cols, rows),
+  // Keys and sizes go one way, as they happen: no answer to wait on per keystroke.
+  writeTerminal: (id, data) => ipcRenderer.send(CHANNELS.terminalWrite, id, data),
+  resizeTerminal: (id, cols, rows) => ipcRenderer.send(CHANNELS.terminalResize, id, cols, rows),
+  killTerminal: (id) => ipcRenderer.send(CHANNELS.terminalKill, id),
+  onTerminal: (listener) => {
+    const offData = subscribe<TerminalPush>(CHANNELS.terminalData, listener);
+    const offExit = subscribe<TerminalPush>(CHANNELS.terminalExit, listener);
+    return () => {
+      offData();
+      offExit();
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('dcode', api);

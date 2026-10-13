@@ -337,6 +337,88 @@ a janela afirma uma fronteira que o daemon não aplica); pedir confirmação par
 auto (a TUI decidiu que o aviso é o tom que fica, não uma pergunta que se
 responde uma vez sem ler).
 
+**D37. Um comando que o agente propôs pode ser rodado pela pessoa, num terminal
+logo abaixo da conversa, e o resultado volta ao agente.** Pedido depois de uma
+aprovação negada (`cd /tmp && rm -rf … && npx create-next-app …`, regra
+`*rm -rf*`): a pessoa quer rodar ela mesma — às vezes com `sudo`, que pede a
+senha num terminal de verdade — e que o agente saiba que rodou e o que deu.
+
+- **Copiar e Rodar no terminal** em todo comando proposto: no cartão de
+  aprovação e em cada linha `bash` do fluxo. Aparecem ao passar o ponteiro ou
+  com o foco do teclado, sobre o fim da linha e fora do layout: o fluxo lê como
+  antes, e as duas referências visuais seguem a 0,00%. Copiar passa pelo
+  processo principal (`clipboard`), porque a API do navegador pede uma
+  permissão que a janela não pede.
+- **O terminal abre logo abaixo do fluxo**, acima do campo, na janela da grade,
+  na conversa maximizada e na conversa da Crew — as três desenham a mesma
+  `ConversationBody`. Abre na pasta da sessão com o comando **digitado e não
+  rodado**: a pessoa lê, edita (põe `sudo`) e aperta Enter. Um por conversa;
+  outro comando abre outro shell; fechar encerra o shell. As teclas digitadas
+  nele são do shell — ⌃K e ⌃N inclusive —, não da janela (D31).
+- **Um PTY de verdade no processo principal (`node-pty`), desenhado pelo
+  xterm.js no renderer**, por canais nomeados — criar, escrever, redimensionar,
+  saída, fim, encerrar —, conferidos no processo principal: só as janelas do
+  app; cada terminal pertence à janela que o abriu, e outra janela não escreve,
+  não redimensiona, não encerra nem ouve; tamanho em células; o comando com até
+  16 KB; até 8 terminais no app. **A pasta é a que o daemon lista para a
+  sessão:** a janela diz a sessão, nunca o caminho. O renderer continua sem
+  Node (D2). Janela que recarrega ou fecha leva os seus shells junto; sair do
+  app encerra todos.
+- **O shell é o da pessoa, como login** (`$SHELL -l`), para ter o PATH que um
+  terminal dela teria — app de interface no macOS herda quase nenhum. zsh e
+  bash leem os arquivos da pessoa e depois aprendem a marcar o prompt com as
+  sequências do FinalTerm (OSC 133): `C` quando um comando começa, `D;código`
+  quando o prompt volta, com o comando como o shell o rodou. O zsh entra por um
+  `ZDOTDIR` do app que lê o da pessoa e devolve; o bash, por um `--rcfile` que
+  lê o perfil como um login leria. Outro shell roda como é, sem marcas, e o
+  resultado vai só pelo botão.
+- **Digitado, nunca rodado.** No zsh, como colagem entre colchetes (bracketed
+  paste), então nem um comando de várias linhas roda sem Enter; em outro shell,
+  só uma linha — várias são recusadas, porque ali a quebra rodaria. Nada que
+  rode, interrompa ou feche a colagem é digitado: CR, ESC e os outros
+  controles, menos tab, recusam o comando com o porquê. Digita depois do
+  primeiro prompt marcado, quando o editor de linha liga a colagem
+  (`ESC[?2004h`) — antes disso o terminal ainda ecoa o que chega, e os escapes
+  da colagem apareceriam na tela —, 250 ms depois do prompt quando nenhum
+  editor se anuncia (bash 3.2), e em 3 s quando o shell nunca marca.
+- **Quando o comando termina** (a marca `D` depois de um comando), o terminal
+  oferece mandar o resultado e **mostra o texto antes**: "Rodei no terminal:
+  `<cmd>` — saída (código N):" e a saída num bloco de código. Nada vai sem o
+  clique em Enviar. "Enviar resultado ao agente" faz o mesmo à mão a qualquer
+  momento: o comando rodando e a saída até ali, sem código, ou o último que
+  terminou. Vai pelo mesmo caminho do campo: turno se a conversa está parada,
+  correção se roda (D23); uma recusa do daemon é dita como a do campo.
+- **O que vai:** a saída sem ANSI, com o que um `\r` deixou na linha, as
+  últimas 200 linhas e no máximo 16.000 caracteres, dizendo quando cortou e de
+  quantas. **Sem segredo:** a senha do `sudo` não tem eco, então não está na
+  saída; mesmo assim toda linha de prompt de senha (`[sudo] password for`,
+  `Password:`, `Senha:`, `…'s password:`) sai inteira. O que passa pelo PTY não
+  é registrado em log nem guardado pelo processo principal; uma tecla recusada
+  é dita no log pelo motivo, nunca pelo que foi digitado.
+- **As cores do terminal vêm dos tokens** `--dc-*`, e ele segue o tema da
+  janela (D35) quando muda; azul, magenta e ciano, que a janela não usa, são
+  tokens `--dc-term-*` próprios, nos dois temas.
+- **Dependências, em versões exatas:** `node-pty` 1.2.0-beta.15 — a 1.1.0, a
+  última estável, publica o `spawn-helper` do macOS sem permissão de execução,
+  e todo shell falha com `posix_spawnp failed`; a beta.15 (agosto) corrige.
+  `@xterm/xterm` 6.0.0 e `@xterm/addon-fit` 0.11.0. O xterm carrega só quando o
+  primeiro terminal abre: são uns 340 KB.
+- **O módulo nativo no build:** o `node-pty` é N-API, então um binário serve ao
+  Node e a qualquer Electron, sem recompilar contra os headers dele — macOS e
+  Windows usam o pré-compilado que vem no pacote; Linux compila uma vez no
+  `npm ci`. O Forge não o recompila (`rebuildConfig.ignoreModules`). Fica fora
+  do bundle do Vite (acha o binário ao lado dos próprios arquivos); no
+  empacotamento, um gancho copia o pacote para o `node_modules` do app, fora do
+  asar (`asar.unpack`), porque o `spawn-helper` é executável e o `.node` é
+  biblioteca, e nenhum dos dois roda de dentro de um asar.
+
+Descartados: rodar o comando pelo daemon por fora da regra (é a regra que negou,
+e a senha do `sudo` não teria onde ser digitada); um `child_process` sem PTY (sem
+TTY o `sudo` não pede senha, e nada interativo funciona); mandar o resultado
+sozinho quando o comando termina (a pessoa decide o que o agente vê); adivinhar
+o fim pelo silêncio da saída, sem marca (um comando que pensa calado pareceria
+terminado).
+
 **D38. Modelo e modo escolhidos antes de a sessão abrir.** Nova sessão abria
 sempre no padrão do daemon; trocar depois custava uma sessão nova (D28) ou um
 turno no modo errado. A janela que pergunta onde (D31) e o "Nova ▾" da Crew

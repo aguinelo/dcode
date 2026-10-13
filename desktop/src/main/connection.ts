@@ -145,6 +145,11 @@ export class Connection {
     return this.list === null ? null : { kind: ConversationSnapshot, conversations: this.list };
   }
 
+  /** The conversations as the daemon last listed them, or null before the first list. */
+  listed(): readonly Conversation[] | null {
+    return this.list;
+  }
+
   /** The app started the daemon, and it still runs: quitting stops it (D19). */
   startedByApp(): boolean {
     return this.child !== null && this.child.ended() === null;

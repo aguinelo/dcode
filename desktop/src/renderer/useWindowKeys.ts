@@ -47,6 +47,8 @@ export function useWindowKeys(k: {
   const { ids, cols, focusId, setFocusId, caretTo, sessions, maximized, busy, setSearching, newSession, show, answer, isConversation, cycleMode } = k;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Keys typed in a terminal are the shell's, ⌃K and ⌃N included (D37).
+      if (e.target instanceof Element && e.target.closest('.term-screen')) return;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       if (mod && key === 'k') {

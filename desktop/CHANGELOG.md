@@ -10,6 +10,25 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A command the agent proposed can be run by the person, in a terminal below
+  the conversation, and its result handed back.** Asked for after a denied
+  approval the person wanted to run themselves, possibly with sudo. Every
+  proposed command — the approval card's and each `bash` line in the flow —
+  gets Copiar and Rodar no terminal, shown on hover or focus and out of the
+  layout, so both visual references stay at 0.00%. Rodar no terminal docks a
+  real shell (a PTY in the main process, `node-pty`, drawn by xterm.js) below
+  the flow — in the grid window, the maximized conversation and Crew's thread —
+  in the session's workspace as the daemon lists it, with the command typed and
+  not run: the person edits it and presses Enter, and sudo asks for its
+  password inside the terminal. zsh and bash mark their prompts (OSC 133), so
+  when the command ends the window offers the result to the agent, showing the
+  message first — command, exit code, the last 200 lines without ANSI, cut and
+  said so, password-prompt lines dropped — and sends it only on a click, as a
+  turn or a correction. Named channels checked in the main process; each
+  terminal answers only the window that opened it; nothing of its stream is
+  logged. Dependencies, exact: `node-pty` 1.2.0-beta.15 (1.1.0 ships macOS's
+  spawn-helper without its exec bit), `@xterm/xterm` 6.0.0, `@xterm/addon-fit`
+  0.11.0, loaded only when a terminal opens (D37).
 - **A new session's model and mode are chosen before it opens.** Nova sessão
   always opened on the daemon's defaults, and changing either afterwards cost a
   new session or a turn in the wrong mode. The grid's "where?" window and Crew's

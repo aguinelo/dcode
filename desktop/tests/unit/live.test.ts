@@ -58,6 +58,13 @@ function fakeApi() {
     interrupt: (id) => answer(`interrupt ${id}`),
     resolveApproval: (id, a, d) => answer(`approve ${id} ${a} ${d}`),
     setMode: (id, m) => answer(`mode ${id} ${m}`),
+    // The terminal (D37) talks to its dock, not to the store: none of it is asked here.
+    copy: (text) => answer(`copy ${text}`),
+    openTerminal: () => Promise.resolve({ ok: false, refusal: { code: 'unexpected', message: 'not under test' } }),
+    writeTerminal: () => {},
+    resizeTerminal: () => {},
+    killTerminal: () => {},
+    onTerminal: () => () => {},
   };
   return {
     api,

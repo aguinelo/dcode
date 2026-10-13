@@ -13,6 +13,7 @@ import './styles/crew.css';
 import './styles/crew-board.css';
 import './styles/crew-pages.css';
 import './styles/start.css';
+import './styles/terminal.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
