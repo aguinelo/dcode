@@ -48,6 +48,7 @@ var exportedWithoutUser = map[string]string{
 	"ListSkills":         "pkg/client is the public API; a consumer asks which skills a workspace has, as the desktop's crew view does over HTTP",
 	"ReadGit":            "pkg/client is the public API; a consumer asks where a workspace is in git and what changed, as the desktop's context panel does over HTTP",
 	"ReadGitDiff":        "pkg/client is the public API; a consumer asks for one changed file's diff, as the desktop's context panel does over HTTP",
+	"ListCommands":       "pkg/client is the public API; a consumer asks which user commands a workspace has, as the desktop's / menu does over HTTP",
 
 	// The zero value of an enum, named so a reader knows what zero means. The
 	// name is unused precisely because the value is the default — deleting it

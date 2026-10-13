@@ -153,6 +153,21 @@ func TestGoldenSkillsResponse(t *testing.T) {
 	})
 }
 
+// A user command and a project one that took the name from the user's. The
+// body travels, and `description` is never omitted: an empty one is what a
+// client shows as a command with nothing said about it.
+func TestGoldenCommandsResponse(t *testing.T) {
+	golden(t, "commands_response", CommandsResponse{
+		Commands: []CommandInfo{
+			{Name: "fix-issue", Description: "", Source: CommandSourceUser, Path: "fix-issue.md",
+				Body: "Fix the issue described here: $ARGUMENTS"},
+			{Name: "review", Description: "review the staged change", Source: CommandSourceProject,
+				Path: "review.md", Body: "Review the staged change against AGENTS.md."},
+		},
+		Overrides: []string{"review"},
+	})
+}
+
 // A repository in a linked worktree with two changed files, one of them
 // binary. `repository`, `detached`, `worktree`, `binary` and `truncated` are
 // never omitted — false is what a client reads them for.
