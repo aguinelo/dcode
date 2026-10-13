@@ -106,3 +106,44 @@ export function conversation(v: unknown): Checked<{ id: string; workspace: strin
   if (!where.ok) return where;
   return { ok: true, value: { id: which.value, workspace: where.value } };
 }
+
+/** A command to type into a terminal (D37): what the agent proposed, never run by typing it. */
+export function command(v: unknown): Checked<string> {
+  if (!filled(v)) return invalid(`O comando precisa ser um texto não vazio, e veio ${shown(v)}.`);
+  if (v.length > 16_384) return invalid(`O comando tem ${v.length} caracteres, e o terminal recebe até 16384.`);
+  return { ok: true, value: v };
+}
+
+/** Keys the person pressed in a terminal, as xterm.js gave them: escapes and Enter included. */
+export function keys(v: unknown): Checked<string> {
+  if (typeof v !== 'string' || v === '') return invalid(`O que vai ao terminal precisa ser um texto, e veio ${shown(v)}.`);
+  if (v.length > 65_536) return invalid(`O terminal recebe até 65536 caracteres de uma vez, e vieram ${v.length}.`);
+  return { ok: true, value: v };
+}
+
+/** A terminal's size in cells. */
+export function size(cols: unknown, rows: unknown): Checked<{ cols: number; rows: number }> {
+  const cell = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 2 && n <= 1000;
+  if (!cell(cols) || !cell(rows)) {
+    return invalid(`O tamanho do terminal precisa ser em células, de 2 a 1000, e veio ${shown(cols)} × ${shown(rows)}.`);
+  }
+  return { ok: true, value: { cols, rows } };
+}
+
+/** Text to put on the clipboard. */
+export function clip(v: unknown): Checked<string> {
+  if (typeof v !== 'string' || v === '') return invalid(`Não há o que copiar: veio ${shown(v)}.`);
+  if (v.length > 1_048_576) return invalid(`O texto a copiar tem ${v.length} caracteres, e o app copia até 1048576.`);
+  return { ok: true, value: v };
+}
+
+/**
+ * The folder a session's terminal opens in: the workspace the daemon listed
+ * for it. The window names the session, never the folder — a terminal opens
+ * only where that session works.
+ */
+export function workspaceOf(list: ReadonlyArray<{ id: string; workspace: string }> | null, sessionId: string): Checked<string> {
+  const found = list?.find((c) => c.id === sessionId);
+  if (!found) return invalid(`O daemon não lista a sessão ${shown(sessionId)}: o terminal abre só na pasta de uma sessão que ele conhece.`);
+  return workspace(found.workspace);
+}

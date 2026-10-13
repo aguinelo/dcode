@@ -3,13 +3,22 @@ import { delegation, toolLine, VERBS, WORKING, type Activity, type Block, type T
 import { elapsed, since } from '../state/format';
 import type { Entry, ToolCall } from '../state/session';
 import { ApprovalCard } from './ApprovalCard';
+import { CommandActions } from './CommandActions';
 import { RichText } from './Markdown';
 import { noteText } from './text';
 
 export { RichText };
 
-function ToolLine({ call }: { call: ToolCall }) {
+/** The command of a shell call, as the agent wrote it; empty for any other call. */
+function shellCommand(call: ToolCall): string {
+  if (call.name.toLowerCase() !== 'bash') return '';
+  const c = (call.input as { command?: unknown } | null)?.command;
+  return typeof c === 'string' ? c : '';
+}
+
+function ToolLine({ call, onRun }: { call: ToolCall; onRun?: (command: string) => void }) {
   const v = toolLine(call);
+  const command = shellCommand(call);
   return (
     <div className="tool-line" title={call.result && !call.result.ok ? call.result.output : undefined}>
       <span className={`tool-glyph tone-${v.glyphTone}${call.result ? '' : ' dc-breath'}`}>{v.glyph}</span>
@@ -17,6 +26,7 @@ function ToolLine({ call }: { call: ToolCall }) {
       {v.target && <span className="tool-target">{v.target}</span>}
       <span className="spacer" />
       <span className={`tool-summary tone-${v.summaryTone}`}>{v.summary}</span>
+      {command && <CommandActions command={command} onRun={onRun} />}
     </div>
   );
 }
@@ -101,7 +111,17 @@ export function ActivityLine({
 
 const toneClass = (t: Tone) => `tone-${t}`;
 
-function EntryView({ entry, now, onAnswer }: { entry: Exclude<Entry, { kind: 'tool' }>; now: number; onAnswer: (d: string) => void }) {
+function EntryView({
+  entry,
+  now,
+  onAnswer,
+  onRun,
+}: {
+  entry: Exclude<Entry, { kind: 'tool' }>;
+  now: number;
+  onAnswer: (d: string) => void;
+  onRun?: (command: string) => void;
+}) {
   switch (entry.kind) {
     case 'user':
       return <div className={`bubble${entry.steer ? ' steer' : ''}`}>{entry.text}</div>;
@@ -119,7 +139,7 @@ function EntryView({ entry, now, onAnswer }: { entry: Exclude<Entry, { kind: 'to
         </details>
       );
     case 'approval':
-      return <ApprovalCard entry={entry} now={now} onAnswer={onAnswer} />;
+      return <ApprovalCard entry={entry} now={now} onAnswer={onAnswer} onRun={onRun} />;
     case 'plan':
       return (
         <div className="plan">
@@ -146,7 +166,18 @@ function EntryView({ entry, now, onAnswer }: { entry: Exclude<Entry, { kind: 'to
   }
 }
 
-export function FlowBlocks({ blocks, now, onAnswer }: { blocks: Block[]; now: number; onAnswer: (d: string) => void }) {
+export function FlowBlocks({
+  blocks,
+  now,
+  onAnswer,
+  onRun,
+}: {
+  blocks: Block[];
+  now: number;
+  onAnswer: (d: string) => void;
+  /** Opens the conversation's terminal with a command the agent proposed typed in (D37). */
+  onRun?: (command: string) => void;
+}) {
   return (
     <>
       {blocks.map((b, i) => {
@@ -154,13 +185,13 @@ export function FlowBlocks({ blocks, now, onAnswer }: { blocks: Block[]; now: nu
           return (
             <div key={`t-${b.calls[0]?.id}`} className="tool-group">
               {b.calls.map((c) => (
-                <ToolLine key={c.id} call={c} />
+                <ToolLine key={c.id} call={c} onRun={onRun} />
               ))}
             </div>
           );
         }
         if (b.kind === 'delegation') return <Delegation key={`d-${b.calls[0]?.id}`} calls={b.calls} />;
-        return <EntryView key={`e-${i}-${b.entry.kind}`} entry={b.entry} now={now} onAnswer={onAnswer} />;
+        return <EntryView key={`e-${i}-${b.entry.kind}`} entry={b.entry} now={now} onAnswer={onAnswer} onRun={onRun} />;
       })}
     </>
   );

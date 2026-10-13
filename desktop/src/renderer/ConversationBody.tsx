@@ -1,8 +1,11 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { activity, flowBlocks } from '../state/flow';
 import type { SessionView } from '../state/session';
 import { Composer } from './Composer';
 import { ActivityLine, FlowBlocks } from './Flow';
+
+// xterm.js is most of a megabyte: loaded the first time a terminal opens, not with the window.
+const TerminalDock = lazy(() => import('./TerminalDock').then((m) => ({ default: m.TerminalDock })));
 
 /** How close to the end counts as "at the end" for auto-follow, in pixels. */
 const FOLLOW_SLACK = 4;
@@ -44,6 +47,8 @@ export function ConversationBody({
   const act = useMemo(() => activity(session.entries), [session.entries]);
   const scroller = useRef<HTMLDivElement>(null);
   const following = useRef(true);
+  // The terminal docked below the flow (D37): one at a time, a new command a new shell.
+  const [terminal, setTerminal] = useState<{ command: string; n: number } | null>(null);
 
   // Auto-follow: new content keeps the end in view unless the person scrolled
   // up; coming back to the end turns it on again. Another session opens at
@@ -67,12 +72,24 @@ export function ConversationBody({
         }}
       >
         <div className="flow">
-          <FlowBlocks blocks={blocks} now={now} onAnswer={onAnswer} />
+          <FlowBlocks blocks={blocks} now={now} onAnswer={onAnswer} onRun={(command) => setTerminal((t) => ({ command, n: (t?.n ?? 0) + 1 }))} />
           {session.state === 'running' && session.turn && (
             <ActivityLine activity={act} startedAt={session.turn.startedAt} now={now} tick={verbTick} />
           )}
         </div>
       </div>
+      {terminal && (
+        <Suspense fallback={<div className={`term-dock${compact ? ' compact' : ''}`} />}>
+          <TerminalDock
+          key={terminal.n}
+          sessionId={session.id}
+          command={terminal.command}
+          compact={compact}
+          onSend={onSend}
+          onClose={() => setTerminal(null)}
+          />
+        </Suspense>
+      )}
       <Composer
         session={session}
         text={draft}
