@@ -1,33 +1,33 @@
 /*
  * Crew: the second version of the screen (D32, D33). Its tokens live under
- * .look-crew only, so the grid's grafite stays exactly as it was.
+ * .look-crew only, so the grid's palette stays exactly as it is.
  *
  * Contrast first: near-black ground and near-white text, and the quiet greys
- * kept readable — the faint one at about 6:1 on the ground, where grafite's
- * sat near 3.6:1. Geist for text, Fragment Mono for code: both free (OFL).
- * The accent is dcode's lime, as in the grid.
+ * kept readable — the faint one at about 6:1 or more on every ground. Geist
+ * for text, Fragment Mono for code: both free (OFL). The accent is dcode's
+ * orange, as in the grid (D52); neutrals from the mascot sheet.
  */
 
 .window.look-crew {
   --dc-font: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --dc-mono: 'Fragment Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --dc-chrome: #09090b;
-  --dc-panel: #111113;
-  --dc-raised: #1a1a1d;
-  --dc-sunken: #0c0c0e;
-  --dc-line: #2a2a2f;
-  --dc-line-soft: #202024;
-  --dc-text: #ececef;
-  --dc-emph: #fafafa;
-  --dc-dim: #b4b4bc;
-  --dc-faint: #8e8e98;
+  --dc-chrome: #0a0a0a;
+  --dc-panel: #111111;
+  --dc-raised: #1a1a1a;
+  --dc-sunken: #0d0d0d;
+  --dc-line: #2d2d2d;
+  --dc-line-soft: #1f1f1f;
+  --dc-text: #f5f5f2;
+  --dc-emph: #ffffff;
+  --dc-dim: #d1d5db;
+  --dc-faint: #9ca3af;
   --dc-hover: rgba(255, 255, 255, 0.06);
   --dc-sel: rgba(255, 255, 255, 0.09);
-  --dc-ok: #86e19a;
-  --dc-err: #ff8577;
-  --dc-warn: #f7c35c;
-  --dc-warn-line: rgba(247, 195, 92, 0.5);
+  --dc-ok: #22c55e;
+  --dc-err: #f87171;
+  --dc-warn: #fde68a;
+  --dc-warn-line: rgba(253, 230, 138, 0.5);
   --dc-radius-lg: 8px;
 
   font-family: var(--dc-font);
@@ -35,25 +35,26 @@
   font-feature-settings: 'ss01', 'cv11';
 }
 
-/* Crew in light (D35): the same contrast-first rule — white panels, the
-   faintest grey at about 6.5:1 — with grafite's light accent and semantics. */
+/* Crew in light (D35, recoloured by D52): the same contrast-first rule —
+   white panels, the faintest grey at about 6.5:1 — with the grid's light
+   accent and semantics. */
 :root[data-theme='light'] .window.look-crew {
-  --dc-chrome: #f7f7f8;
+  --dc-chrome: #f5f5f2;
   --dc-panel: #ffffff;
-  --dc-raised: #f2f2f3;
-  --dc-sunken: #f9f9fa;
-  --dc-line: #dedee2;
-  --dc-line-soft: #ebebee;
-  --dc-text: #18181b;
-  --dc-emph: #09090b;
-  --dc-dim: #3d3d44;
-  --dc-faint: #56565f;
+  --dc-raised: #f0f0ed;
+  --dc-sunken: #fafaf8;
+  --dc-line: #d1d5db;
+  --dc-line-soft: #e5e6e3;
+  --dc-text: #0a0a0a;
+  --dc-emph: #000000;
+  --dc-dim: #2d2d2d;
+  --dc-faint: #4b5563;
   --dc-hover: rgba(0, 0, 0, 0.04);
   --dc-sel: rgba(0, 0, 0, 0.07);
-  --dc-ok: #17723a;
-  --dc-err: #b42318;
-  --dc-warn: #855300;
-  --dc-warn-line: rgba(133, 83, 0, 0.5);
+  --dc-ok: #137036;
+  --dc-err: #b91c1c;
+  --dc-warn: #7a5c00;
+  --dc-warn-line: rgba(122, 92, 0, 0.5);
 }
 
 /* The look switch in the top bar: both versions, side by side. */

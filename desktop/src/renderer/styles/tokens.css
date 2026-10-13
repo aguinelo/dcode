@@ -1,7 +1,11 @@
 /*
- * Grafite: the desktop's own identity (docs/DECISIONS.md, D29). Dark, dense,
- * one accent — lime — for what is working and for the product's mark; amber
- * only for what waits for you; green and red only for what was measured.
+ * Laranja: dcode's colour, the mascot's (docs/DECISIONS-4.md, D52, which
+ * supersedes D29's grafite and lime). Dark, dense, one accent — orange
+ * #FF6A00 — for what is working and for the product's mark; amber only for
+ * what waits for you; green and red only for what was measured. Neutrals and
+ * semantics come from the mascot sheet's 23 tones; where a tone cannot be
+ * read as text on a ground, a step of the same hue stands in, and D52 says
+ * which and why.
  *
  * Dark is the default. The light palette (D35) redefines the same tokens
  * under [data-theme='light'] on the document root; no component carries a
@@ -18,83 +22,83 @@
   --dc-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Geist Mono Variable', ui-monospace, monospace;
   --dc-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, 'Geist Mono Variable', monospace;
 
-  --dc-chrome: #0f1114;
-  --dc-panel: #15181c;
-  --dc-raised: #1b1f24;
-  --dc-sunken: #0c0e10;
-  --dc-line: #262a31;
-  --dc-line-soft: #1e2227;
-  --dc-line-hover: #313740;
-  --dc-line-strong: #39404a;
-  --dc-line-focus: #3a414b;
-  --dc-text: #d9dde3;
-  --dc-emph: #f2f4f7;
-  --dc-dim: #9aa0a8;
-  --dc-faint: #6b717a;
+  --dc-chrome: #0a0a0a;
+  --dc-panel: #141414;
+  --dc-raised: #1a1a1a;
+  --dc-sunken: #0f0f0f;
+  --dc-line: #2d2d2d;
+  --dc-line-soft: #212121;
+  --dc-line-hover: #3a3a3a;
+  --dc-line-strong: #4b5563;
+  --dc-line-focus: #6b7280;
+  --dc-text: #d1d5db;
+  --dc-emph: #f5f5f2;
+  --dc-dim: #9ca3af;
+  --dc-faint: #868b95;
   --dc-hover: rgba(255, 255, 255, 0.04);
   --dc-sel: rgba(255, 255, 255, 0.07);
-  --dc-accent: #c6f36b;
-  --dc-accent-ink: #0f1114;
-  --dc-accent-soft: rgba(198, 243, 107, 0.1);
-  --dc-ok: #7fd38a;
-  --dc-ok-line: rgba(127, 211, 138, 0.35);
-  --dc-err: #ff7a6b;
-  --dc-warn: #f2b84b;
-  --dc-warn-bg: rgba(242, 184, 75, 0.07);
-  --dc-warn-line: rgba(242, 184, 75, 0.4);
-  --dc-btn: #c6f36b;
-  --dc-btn-ink: #0f1114;
+  --dc-accent: #ff6a00;
+  --dc-accent-ink: #0a0a0a;
+  --dc-accent-soft: rgba(255, 106, 0, 0.12);
+  --dc-ok: #22c55e;
+  --dc-ok-line: rgba(34, 197, 94, 0.35);
+  --dc-err: #f87171;
+  --dc-warn: #fde68a;
+  --dc-warn-bg: rgba(253, 230, 138, 0.07);
+  --dc-warn-line: rgba(253, 230, 138, 0.4);
+  --dc-btn: #ff6a00;
+  --dc-btn-ink: #0a0a0a;
 
   --dc-radius: 4px;
   --dc-radius-sm: 3px;
   --dc-shadow-popover: 0 16px 40px rgba(0, 0, 0, 0.5);
   --dc-shadow-dialog: 0 24px 70px rgba(0, 0, 0, 0.45);
   --dc-veil: rgba(0, 0, 0, 0.45);
-  --dc-light-dot: #3a3f46;
+  --dc-light-dot: #3a3a3a;
 }
 
 /*
- * Light (D35): sober. A neutral near-white ground — no cream, no blue — and
- * near-black text; the quiet greys stay readable (the faintest at 5:1 or more
- * on every ground). The lime cannot be read on white, so the accent darkens to
- * an olive-lime for text and marks, and the bright lime stays only where it is
- * a fill under dark ink: the send button. Amber, green and red darken to read
- * as text. Ratios in docs/DECISIONS-2.md, D35.
+ * Light (D35, recoloured by D52): sober. A near-white ground around the
+ * sheet's #F5F5F2 and near-black text; the quiet greys stay readable (the
+ * faintest at 6:1 or more on every ground). Orange #FF6A00 reads 2.9:1 on
+ * white, so the accent darkens to #B33D00 for text and marks, and the bright
+ * orange stays only where it is a fill under dark ink: the send button.
+ * Amber, green and red darken to read as text. Ratios in D52.
  */
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --dc-chrome: #eeeff0;
-  --dc-panel: #f9f9fa;
+  --dc-chrome: #ededea;
+  --dc-panel: #f9f9f7;
   --dc-raised: #ffffff;
-  --dc-sunken: #f3f3f4;
-  --dc-line: #d8d9dc;
-  --dc-line-soft: #e4e5e7;
-  --dc-line-hover: #c4c6ca;
-  --dc-line-strong: #b9bbc0;
-  --dc-line-focus: #a9acb2;
-  --dc-text: #1c1d20;
-  --dc-emph: #0a0b0c;
-  --dc-dim: #4a4c52;
-  --dc-faint: #5f6168;
+  --dc-sunken: #f5f5f2;
+  --dc-line: #d1d5db;
+  --dc-line-soft: #e5e6e3;
+  --dc-line-hover: #c4c7cc;
+  --dc-line-strong: #b4b8bf;
+  --dc-line-focus: #9ca3af;
+  --dc-text: #1a1a1a;
+  --dc-emph: #0a0a0a;
+  --dc-dim: #2d2d2d;
+  --dc-faint: #4b5563;
   --dc-hover: rgba(0, 0, 0, 0.04);
   --dc-sel: rgba(0, 0, 0, 0.07);
-  --dc-accent: #4b6b00;
+  --dc-accent: #b33d00;
   --dc-accent-ink: #ffffff;
-  --dc-accent-soft: rgba(75, 107, 0, 0.12);
-  --dc-ok: #1a6e30;
-  --dc-ok-line: rgba(26, 110, 48, 0.4);
-  --dc-err: #b52f1c;
-  --dc-warn: #8a5800;
-  --dc-warn-bg: rgba(138, 88, 0, 0.1);
-  --dc-warn-line: rgba(138, 88, 0, 0.5);
-  --dc-btn: #c6f36b;
-  --dc-btn-ink: #16181b;
+  --dc-accent-soft: rgba(179, 61, 0, 0.1);
+  --dc-ok: #137036;
+  --dc-ok-line: rgba(19, 112, 54, 0.4);
+  --dc-err: #b91c1c;
+  --dc-warn: #7a5c00;
+  --dc-warn-bg: rgba(122, 92, 0, 0.1);
+  --dc-warn-line: rgba(122, 92, 0, 0.5);
+  --dc-btn: #ff6a00;
+  --dc-btn-ink: #0a0a0a;
 
   --dc-shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.14);
   --dc-shadow-dialog: 0 20px 60px rgba(0, 0, 0, 0.18);
   --dc-veil: rgba(0, 0, 0, 0.2);
-  --dc-light-dot: #c9cacd;
+  --dc-light-dot: #d1d5db;
 }
 
 @keyframes dcBreath {

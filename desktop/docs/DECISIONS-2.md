@@ -94,7 +94,9 @@ ler o `models.toml` no desktop (uma segunda cópia da regra de quem vence entre 
 do usuário e o do projeto, e da lista de famílias medidas); trocar só para o
 próximo turno (o prefixo não muda no meio da sessão).
 
-**D29. Grafite: escuro, um acento, a fonte do sistema.** A janela deixa o visual
+**D29. Grafite: escuro, um acento, a fonte do sistema.** (A cor foi substituída
+por D52: o acento é o Laranja `#FF6A00` do mascote, e os neutros e semânticas
+são os da folha dele; o resto vale.) A janela deixa o visual
 do handoff v2 — claro e escuro, Geist, cantos de 10 a 14px, uma conversa por vez —,
 que lia como um clone de app de chat, por um próprio: sempre escuro; um acento
 lima (`#c6f36b`) para o foco e o que é seu; âmbar só para o que espera você; verde
@@ -254,7 +256,7 @@ limpar); fechar sozinho o `**` sem par durante o streaming (adivinha, e erra em
 `2**3`).
 
 **D35. Um tema claro, sóbrio, à escolha; o escuro continua o padrão** (emenda o
-"escuro só" de D29). Sistema (segue o `prefers-color-scheme`), Claro ou Escuro,
+"escuro só" de D29; as cores e a tabela abaixo foram refeitas em D52). Sistema (segue o `prefers-color-scheme`), Claro ou Escuro,
 nas Configurações da Crew e, na grade, no ⚙ do pé da lateral — que antes dizia
 "ainda não" e agora abre as três opções. Lembrado por janela no `localStorage`
 (como D7 e D32); valor ilegível ou armazenamento que recusa é dito num aviso, e
