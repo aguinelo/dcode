@@ -720,6 +720,41 @@ a harness change rather than a contract — which is why it is here and not in t
 multi-turn fixture belongs in this suite at all, given what it costs per run,
 and the answer may be that decay is measured some other way entirely.
 
+## 18. Two places where the dialect still decides what the model gets
+
+These turned up in the same audit that fixed the failed-tool-result mark and
+the empty completion. Its premise was that the same facts have to hold
+whichever model runs. Both are known and neither is fixed yet.
+
+**The output ceiling depends on the dialect.** `encodeAnthropic` writes
+`max_tokens: 8192` whenever the request carries none, because that dialect
+requires the field (`internal/provider/family_openai.go`, the `MaxTokens == 0`
+branch). `encodeOpenAI` leaves the field out, so the provider's own default
+applies. The loop never sets `Request.MaxTokens`, which means Claude, and
+MiniMax over the Anthropic transport, are capped at 8192 output tokens per call,
+while the same MiniMax over OpenAI is not. A `write` whose arguments run past
+that cap is cut mid-JSON on one transport and not on the other. It then comes
+back as a `tool_schema` refusal that looks like a malformed call from the model.
+*Shape:* the family declares its output ceiling next to `Window`, the loop
+sends it, and both encoders put the same number on the wire.
+
+**A schema refusal goes back with no call to answer.** When the decoder refuses
+a call (`ErrClassToolSchema`), `Engine.stream` in `internal/loop/turn.go`
+appends a `RoleTool` message with an empty `ToolCallID`. No assistant message
+carrying that call precedes it, because the refused call never reaches `calls`.
+Both dialects require a tool result to answer a call the conversation contains:
+OpenAI needs `tool_call_id` to match an earlier `tool_calls` entry, and
+Anthropic needs `tool_use_id` to match an earlier `tool_use`. An orphan result is
+a request the provider is entitled to reject on the next round. If the refusal
+was all the stream carried, the turn then takes the no-call path and ends,
+without the model ever reading the refusal. *Shape:* answer the refused call
+under its own id, with the assistant turn that asked for it in the history, so
+the conversation stays well formed on every dialect. *Before starting:* record
+what each provider actually does with the orphan today. The rejection is what
+the formats specify, and it has not been observed.
+
+---
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -754,6 +789,7 @@ has not weakened.
 | **14** — the measurement's loose ends | The path in the reason is small and user-visible; the `Rounds` evidence is a documentation move that costs nothing and stops the fourth repetition. |
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
 | **17** — measuring decay across turns | The fact and the contract shipped in #372; what is left needs a multi-turn fixture, which is a harness change. Decide whether that belongs here at all before writing one. |
+| **18** — what the dialect still decides | Two small fixes in code already read closely. The orphan refusal comes first, because it can turn a recoverable model mistake into a rejected request. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
