@@ -1,6 +1,8 @@
 import { ChevronDown } from 'lucide-react';
 import type { History } from '../../state/history';
+import type { GitState } from '../../state/git';
 import type { PaneView } from '../../state/pane';
+import { ContextLine } from '../context/ContextLine';
 import { emptySession, type SessionView } from '../../state/session';
 import type { Row } from '../../state/sidebar';
 import { ConversationBody } from '../ConversationBody';
@@ -24,6 +26,7 @@ export function ThreadPane({
   history,
   onRetryHistory,
   on,
+  git,
 }: {
   row: Row | null;
   view: PaneView | null;
@@ -36,6 +39,8 @@ export function ThreadPane({
   history: History | undefined;
   onRetryHistory: () => void;
   on: CrewHandlers;
+  /** The folder's git, for the line under the title (D41). */
+  git: GitState;
 }) {
   if (!row || !view) {
     return (
@@ -56,7 +61,9 @@ export function ThreadPane({
         <span className={`pane-glyph tone-${view.tone}${view.live ? ' dc-breath' : ''}`}>{view.glyph}</span>
         <span className="crew-head-text">
           <span className="crew-title">{row.title}</span>
-          {view.where && <span className="crew-where mono">{view.where}</span>}
+          <span className="crew-where">
+            <ContextLine row={row} state={git} />
+          </span>
         </span>
         {model && (
           <button type="button" className="chip" title="Continuar em outro modelo" onClick={(e) => on.model(row, e.currentTarget)}>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { isCrewSection, type CrewSection } from '../state/crew';
 import type { History } from '../state/history';
 import type { Measure } from '../state/models';
+import { movedKey } from '../state/git';
 import { paneView } from '../state/pane';
 import type { SessionView } from '../state/session';
 import type { SessionsState } from '../state/sessions';
@@ -17,6 +18,7 @@ import { ThreadPane } from './crew/ThreadPane';
 import { APPS_NOT_YET, KNOWLEDGE_NOT_YET, ROUTINES_NOT_YET } from './text';
 import type { ThemeChoice } from '../state/theme';
 import type { Look } from './TopBar';
+import { useGit } from './useGit';
 import type { DaemonView, WindowActions } from './window';
 
 export type { CrewHandlers } from './crew/handlers';
@@ -94,6 +96,9 @@ export function CrewView({
     }
   };
   const view = row ? paneView(row, session, now) : null;
+  // The folder's git, once for the thread's header and the right pane (D41).
+  const moved = row ? movedKey(row, session) : null;
+  const git = useGit(row?.id ?? null, moved, section === 'painel');
   const preferred = session?.info?.workspace ?? row?.workspace ?? null;
   let body: React.ReactNode;
   switch (section) {
@@ -116,6 +121,7 @@ export function CrewView({
             history={history}
             onRetryHistory={onRetryHistory}
             on={on}
+            git={git.state}
           />
           <ContextPane
             row={row}
@@ -123,6 +129,8 @@ export function CrewView({
             session={session ?? (history?.state === 'loaded' ? history.view : undefined)}
             history={session ? undefined : history}
             measure={measure}
+            git={git}
+            moved={moved}
             onModel={on.model}
             onMode={on.mode}
           />

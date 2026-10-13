@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
  * clipboard API needs a permission the window never asks for — and through
  * the browser's in fixture mode. Answers why not, when it did not copy.
  */
-async function copyText(text: string): Promise<string | null> {
+export async function copyText(text: string): Promise<string | null> {
   const api = window.dcode;
   if (api) {
     const done = await api.copy(text);

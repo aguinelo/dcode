@@ -1,8 +1,10 @@
 import type { History } from '../state/history';
+import { useState } from 'react';
 import type { Measure } from '../state/models';
 import type { PaneView } from '../state/pane';
 import { emptySession, type SessionView } from '../state/session';
 import type { Row } from '../state/sidebar';
+import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
 import { RecordedBody } from './RecordedBody';
 import { ActionsButton } from './SessionActions';
@@ -82,6 +84,7 @@ export function Pane(p: PaneProps) {
   const { row, session, view: v } = p;
   const ended = row.state === 'recorded' && !session;
   const waiting = session?.state === 'blocked' || row.state === 'blocked';
+  const [where, setWhere] = useState<HTMLElement | null>(null);
   return (
     <section
       className={`pane${p.focused ? ' focused' : ''}${waiting ? ' waiting' : ''}`}
@@ -141,7 +144,20 @@ export function Pane(p: PaneProps) {
         )}
       </div>
       <div className="pane-foot">
-        <span className="pane-where">{v.where}</span>
+        <button
+          type="button"
+          className="pane-where"
+          aria-haspopup="dialog"
+          aria-expanded={where !== null}
+          title="A sessão, a pasta, a branch de agora, a worktree e o diff"
+          onClick={(e) => {
+            const el = e.currentTarget;
+            setWhere((a) => (a ? null : el));
+          }}
+        >
+          {v.where || 'onde trabalha'}
+        </button>
+        {where && <ContextCard row={row} session={session} anchor={where} onClose={() => setWhere(null)} />}
         <span className="spacer" />
         <span>{v.when}</span>
       </div>

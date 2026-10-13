@@ -35,6 +35,7 @@ As que estão nos outros arquivos:
 - [D38](DECISIONS-2.md) — Modelo e modo escolhidos antes de a sessão abrir.
 - [D39](DECISIONS-3.md) — A aprovação oferece as respostas que a TUI oferece.
 - [D40](DECISIONS-2.md) — Desfazer, resumir e rodar um comando, pela janela.
+- [D41](DECISIONS-3.md) — Onde a conversa trabalha: sessão, pasta, branch de agora, worktree e o diff da pasta.
 
 ## Decisões
 

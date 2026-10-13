@@ -155,6 +155,24 @@ export function clip(v: unknown): Checked<string> {
 }
 
 /**
+ * The folder whose git a conversation's panel reads (D41): the workspace the
+ * daemon lists for that conversation, live or ended. The window names the
+ * conversation, never the folder.
+ */
+export function gitWorkspaceOf(list: ReadonlyArray<{ id: string; workspace: string }> | null, conversationId: string): Checked<string> {
+  const found = list?.find((c) => c.id === conversationId);
+  if (!found) return invalid(`O daemon não lista a conversa ${shown(conversationId)}: o git é lido só na pasta de uma conversa que ele conhece.`);
+  return workspace(found.workspace);
+}
+
+/** A changed file, as `GET /v1/git` lists it: relative, with forward slashes. The daemon checks it is listed. */
+export function repoPath(v: unknown): Checked<string> {
+  if (!filled(v)) return invalid(`O arquivo precisa ser um caminho, e veio ${shown(v)}.`);
+  if (v.length > 4096 || v.includes('\0')) return invalid(`O caminho do arquivo não é um caminho que o git lista: ${shown(v)}.`);
+  return { ok: true, value: v };
+}
+
+/**
  * The folder a session's terminal opens in: the workspace the daemon listed
  * for it. The window names the session, never the folder — a terminal opens
  * only where that session works.

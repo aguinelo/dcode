@@ -4,7 +4,7 @@
 
 import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus } from '../shared/api';
-import type { CompactResult, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
+import type { CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
 import type { Row } from '../state/sidebar';
 
@@ -70,4 +70,8 @@ export interface WindowActions {
    * one's events, without continuing it (D42) — or why it could not be read.
    */
   readHistory(id: string): Promise<History>;
+  /** Where a conversation's folder is in git now, and what changed in it (`GET /v1/git`, D41), or why not. */
+  readGit(conversationId: string): Promise<Outcome<GitResponse>>;
+  /** One changed file's diff in a conversation's folder (`GET /v1/git/diff`, D41), or why not. */
+  readGitDiff(conversationId: string, path: string): Promise<Outcome<GitDiffResponse>>;
 }

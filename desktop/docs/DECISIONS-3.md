@@ -32,6 +32,54 @@ Descartados: manter as três para todas (a janela ofereceria "nesta sessão" par
 a rede, que a TUI não oferece, e esconderia as duas respostas permanentes);
 oferecer as cinco sempre (concessão permanente de escrita fora do projeto).
 
+**D41. Onde a conversa trabalha: sessão, pasta, branch de agora, worktree e o
+diff da pasta** (emenda D8, D33). Relato de uso: "não fica claro em que sessão
+estou, pasta de projeto, branch, worktree e diff, tá bem cru". A conversa em
+foco mostrava o título e o nome curto da pasta; a branch era a `Session.branch`,
+lida uma vez no início da sessão; e o único diff era o que as ferramentas
+disseram ter escrito (D8).
+
+- **O git vem do daemon** (`GET /v1/git` e `GET /v1/git/diff`, núcleo,
+  `202610131900`), e não do processo principal rodando `git` com `execFile`. O
+  daemon já lê git com o ambiente fixado e testado contra repositório de
+  verdade, pode estar noutra máquina que não a da janela, e uma segunda leitura
+  aqui seria a segunda cópia das regras de branch destacada, repositório sem
+  commit e worktree. O renderer continua sem tocar em sistema de arquivos.
+- **A janela nomeia a conversa, nunca a pasta.** Como o terminal (D37), o
+  processo principal acha a pasta na lista do daemon pelo id da conversa — viva
+  ou terminada — e só então pergunta. O arquivo de um diff é o que a lista do
+  git deu, e o daemon recusa qualquer outro.
+- **Crew:** debaixo do título, uma linha — `#id · pasta · branch de agora ·
+  worktree de <checkout> · +a −r` —, cada parte inteira ao passar o ponteiro. Na
+  direita, **Mudanças** lista o que a pasta tem desde o último commit, arquivo a
+  arquivo com as linhas; abrir um mostra o diff unificado, cortado onde o daemon
+  cortou e dizendo isso. Os arquivos que esta conversa escreveu levam uma marca,
+  e embaixo continua a lista do que as ferramentas disseram (D8), com o nome que
+  tem: o que *esta sessão* escreveu, não a pasta. **Sessão** abre com o id (com
+  copiar), viva ou terminada, a pasta (com copiar), a branch de agora — e, se a
+  pasta mudou de branch depois, em qual a sessão começou —, worktree sim/não e
+  de qual checkout, o topo do repositório quando não é a pasta, e o commit.
+- **Grade:** o chip da branch da janela maximizada e o rodapé de cada janela da
+  grade abrem um cartão com os mesmos fatos e a mesma lista. Nada muda no que a
+  grade desenha em repouso: as telas de referência medem 0,00% (02 e 03).
+- **Quando relê:** ao mostrar, quando uma chamada de ferramenta termina ou a
+  conversa muda de estado (não a cada fragmento de texto), quando a janela volta
+  para a frente, e no botão de reler. Enquanto relê, a última resposta fica — uma
+  lista que pisca vazia leria "nada mudou".
+- **Toda falha é dita onde se olha.** Pasta fora de repositório diz "sem git" e
+  por que isso importa; git ausente ou falhando mostra o motivo do daemon; um
+  daemon sem a rota diz que é mais antigo que ela (como as skills e a memória);
+  um diff que não veio diz por quê. Nenhum desses é uma lista vazia.
+- **A gravação** (modo fixture) responde o git de cada pasta gravada: dcode numa
+  worktree com trabalho, bizpack limpo, eva fora de repositório.
+
+Descartados: rodar `git` no processo principal (acima); ler por sessão, em
+`/sessions/{id}/git` (a conversa terminada, que é quando se quer ver o que
+ficou na pasta, não tem sessão viva); pôr a linha de contexto na janela
+maximizada da grade (muda a tela de referência; o chip já existe e abre o
+cartão); diff contra a branch principal, como um PR (precisa decidir a base, e
+fica para quando alguém pedir).
+
 **D42. Uma conversa terminada abre no histórico dela** (emenda D21). Abrir uma
 conversa que terminou mostrava a thread vazia e, no painel da direita do Crew,
 "Uma conversa terminada não traz os eventos dela": a pessoa achou que as sessões

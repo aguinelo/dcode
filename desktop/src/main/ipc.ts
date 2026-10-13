@@ -101,6 +101,22 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const at = input.position(from);
     return at.ok ? ask.conversationEvents(which.value, at.value) : at;
   });
+  // A conversation's git (D41): the window names the conversation, and the
+  // folder is the one the daemon lists for it — never a path the window chose.
+  handle(CHANNELS.readGit, (_event, id) => {
+    const which = input.id(id, 'O id da conversa');
+    if (!which.ok) return which;
+    const where = input.gitWorkspaceOf(daemon.listed(), which.value);
+    return where.ok ? ask.readGit(where.value) : where;
+  });
+  handle(CHANNELS.readGitDiff, (_event, id, file) => {
+    const which = input.id(id, 'O id da conversa');
+    if (!which.ok) return which;
+    const path = input.repoPath(file);
+    if (!path.ok) return path;
+    const where = input.gitWorkspaceOf(daemon.listed(), which.value);
+    return where.ok ? ask.readGitDiff(where.value, path.value) : where;
+  });
   handle(CHANNELS.submitTurn, (_event, id, text) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

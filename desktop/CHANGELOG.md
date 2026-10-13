@@ -23,6 +23,18 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   in the thread with the daemon's reason and a retry, and as a notice; it never
   looks like an empty conversation. Past 20 pages the window says how much was
   left unread. Both visual references still measure 0.00% (D42).
+- **Where a conversation works is clear.** The conversation in focus showed its
+  title and the folder's short name, the branch from the session's start, and
+  only what the tools said they wrote. Now, in Crew, under the title: the
+  session's id, the folder, the branch now, whether the folder is a worktree and
+  of which checkout, and the folder's +/−. Mudanças lists each file changed
+  since the last commit with its lines, and opening one shows its diff; Sessão
+  has the id and folder with copy, live or ended, the branch the session
+  started on when the folder moved since, and the commit. In Grade, the branch
+  chip and each window's foot open a card with the same, without changing what
+  the grid draws (02 and 03 at 0.00%). Read from the daemon, by conversation,
+  never by a path the window picks; a folder without git, git missing and an
+  older daemon are said, never an empty list (D41).
 - **The protocol types carry the page of a recorded conversation.**
   `src/protocol/generated.ts` is regenerated for the core's new
   `GET /v1/conversations/{id}/events` (`ConversationEventsResponse`,

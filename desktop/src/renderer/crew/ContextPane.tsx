@@ -1,18 +1,25 @@
-import { ChevronDown, FileDiff, GitBranch } from 'lucide-react';
+import { ChevronDown, FileDiff } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { filesTouched } from '../../state/context';
+import { contextPercent } from '../../state/crew';
+import type { GitState } from '../../state/git';
 import type { History } from '../../state/history';
-import { contextPercent, stateWord } from '../../state/crew';
 import type { Measure } from '../../state/models';
 import type { PaneView } from '../../state/pane';
 import type { SessionView } from '../../state/session';
-import { shortPath, type Row } from '../../state/sidebar';
+import type { Row } from '../../state/sidebar';
+import { GitChanges } from '../context/GitChanges';
+import { GitFacts } from '../context/GitFacts';
 import { ModeChip } from '../ModeMenu';
 import { DoneRow } from '../Pane';
 
 type Tab = 'mudancas' | 'pronto' | 'sessao';
 
-function Changes({ session, row, history }: { session: SessionView | undefined; row: Row; history?: History }) {
+/**
+ * What this conversation's tools said they wrote (D8) — beside the folder's
+ * git, never in place of it (D41). An ended one's come from its history (D42).
+ */
+function Wrote({ session, row, history }: { session: SessionView | undefined; row: Row; history?: History }) {
   const files = useMemo(() => (session ? filesTouched(session.entries) : []), [session]);
   if (!session) {
     // An ended conversation's files come from its history (D42): being read, or why it could not be.
@@ -25,14 +32,14 @@ function Changes({ session, row, history }: { session: SessionView | undefined; 
       </p>
     );
   }
-  if (files.length === 0) return <p className="crew-quiet">Nenhum arquivo escrito ainda nesta sessão.</p>;
+  if (files.length === 0) return <p className="crew-quiet">As ferramentas desta sessão não escreveram nenhum arquivo ainda.</p>;
   const added = files.reduce((n, f) => n + f.added, 0);
   const removed = files.reduce((n, f) => n + f.removed, 0);
   return (
     <>
       <div className="crew-tab-sum">
         <span>
-          {files.length} {files.length === 1 ? 'arquivo mudado' : 'arquivos mudados'}
+          Esta sessão escreveu {files.length} {files.length === 1 ? 'arquivo' : 'arquivos'}
         </span>
         <span className="mono">
           <span className="tone-ok">+{added}</span> <span className="tone-err">−{removed}</span>
@@ -92,24 +99,9 @@ function Facts({
 }) {
   const info = session?.info;
   const pct = contextPercent(session);
-  const branch = info?.branch ?? row.branch;
   const model = info?.model ?? row.model;
   return (
     <dl className="crew-facts">
-      <dt>projeto</dt>
-      <dd className="mono" title={row.workspace}>
-        {shortPath(row.workspace, 30)}
-      </dd>
-      <dt>branch</dt>
-      <dd className="mono">
-        {branch ? (
-          <>
-            <GitBranch size={11} aria-hidden /> {branch}
-          </>
-        ) : (
-          '—'
-        )}
-      </dd>
       <dt>modelo</dt>
       <dd>
         {model ? (
@@ -120,8 +112,6 @@ function Facts({
           '—'
         )}
       </dd>
-      <dt>estado</dt>
-      <dd>{stateWord(session?.state ?? row.state)}</dd>
       {session?.info && (session.sandbox || session.mode) && (
         <>
           <dt>modo</dt>
@@ -140,8 +130,9 @@ function Facts({
 
 /**
  * The right pane of the Painel: what the conversation in focus established,
- * in tabs — the files it changed, its seal and criteria, and where it runs.
- * Only what the daemon carries; nothing here stands in for a pull request.
+ * in tabs — what changed in its folder and what it wrote, its seal and
+ * criteria, and where it runs (D41). Only what the daemon carries; nothing
+ * here stands in for a pull request.
  */
 export function ContextPane({
   row,
@@ -149,6 +140,8 @@ export function ContextPane({
   session,
   history,
   measure,
+  git,
+  moved,
   onModel,
   onMode,
 }: {
@@ -158,13 +151,19 @@ export function ContextPane({
   /** For an ended conversation, its history as it is being read (D42); `session` is its folded view once read. */
   history?: History;
   measure: Measure | null;
+  /** The folder's git, read once for the thread's header and this pane (D41). */
+  git: { state: GitState; refresh: () => void };
+  moved: unknown;
   onModel: (row: Row, anchor: HTMLElement) => void;
   onMode: (id: string, anchor: HTMLElement) => void;
 }) {
   const [tab, setTab] = useState<Tab>('mudancas');
-  const files = useMemo(() => (session ? filesTouched(session.entries).length : null), [session]);
+  const wrote = useMemo(() => (session ? filesTouched(session.entries) : []), [session]);
+  const wrotePaths = useMemo(() => new Set(wrote.map((f) => f.path)), [wrote]);
+  // The folder's count once git answered; what the tools wrote until then.
+  const files = git.state.kind === 'ready' && git.state.git.repository ? git.state.git.files.length : wrote.length;
   const tabs: { id: Tab; label: string; count?: string }[] = [
-    { id: 'mudancas', label: 'Mudanças', count: files !== null && files > 0 ? String(files) : undefined },
+    { id: 'mudancas', label: 'Mudanças', count: files > 0 ? String(files) : undefined },
     { id: 'pronto', label: 'Pronto' },
     { id: 'sessao', label: 'Sessão' },
   ];
@@ -182,11 +181,19 @@ export function ContextPane({
         {!row || !view ? (
           <p className="crew-quiet">Nenhuma conversa em foco.</p>
         ) : tab === 'mudancas' ? (
-          <Changes session={session} row={row} history={history} />
+          <>
+            <GitChanges conversationId={row.id} state={git.state} moved={moved} wrote={wrotePaths} onRefresh={git.refresh} />
+            <div className="ctx-divider" />
+            <Wrote session={session} row={row} history={history} />
+          </>
         ) : tab === 'pronto' ? (
           <Done view={view} measure={measure} />
         ) : (
-          <Facts row={row} session={session} onModel={(anchor) => onModel(row, anchor)} onMode={(anchor) => onMode(row.id, anchor)} />
+          <>
+            <GitFacts row={row} sessionState={history ? 'recorded' : session?.state} startedOn={session?.info?.branch ?? row.branch} state={git.state} />
+            <div className="ctx-divider" />
+            <Facts row={row} session={session} onModel={(anchor) => onModel(row, anchor)} onMode={(anchor) => onMode(row.id, anchor)} />
+          </>
         )}
       </div>
     </aside>

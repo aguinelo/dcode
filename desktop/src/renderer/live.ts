@@ -15,6 +15,7 @@ import { applyDecoded, emptySessions, type SessionsState } from '../state/sessio
 import { readHistory } from '../state/history';
 import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeMemory, decodeSkills } from '../protocol/crew';
+import { decodeGit, decodeGitDiff } from '../protocol/git';
 import { notExposed } from './text';
 import type { Outcome, StartOptions, WindowActions } from './window';
 
@@ -187,6 +188,9 @@ export class LiveStore {
             : `O histórico desta conversa não foi lido: ${page.refusal.message}`,
         };
       }),
+    readGit: async (id) => read(await this.api.readGit(id), decodeGit, 'o git da pasta (GET /v1/git)', 'O daemon não leu o git da pasta'),
+    readGitDiff: async (id, path) =>
+      read(await this.api.readGitDiff(id, path), decodeGitDiff, 'o diff de um arquivo (GET /v1/git/diff)', 'O daemon não deu o diff'),
   };
 
   private set(part: Partial<LiveSnapshot>): void {
