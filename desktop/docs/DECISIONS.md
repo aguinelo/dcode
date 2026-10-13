@@ -9,10 +9,11 @@ D30); desde 2026-10-13 a régua visual mede contra capturas da janela aprovada (
 
 Quatro partes: o que foi decidido, o que ficou em aberto, o que o design pede e o
 protocolo não traz, e o que o desktop pede ao núcleo. As decisões de D21 em
-diante estão em [`DECISIONS-2.md`](DECISIONS-2.md), para que cada arquivo fique abaixo
-de 500 linhas; a numeração é uma só, e uma referência a "D29" vale nos dois.
+diante estão em [`DECISIONS-2.md`](DECISIONS-2.md), e D39 em
+[`DECISIONS-3.md`](DECISIONS-3.md), para que cada arquivo fique abaixo de 500
+linhas; a numeração é uma só, e uma referência a "D29" vale em todos.
 
-As que estão no outro arquivo:
+As que estão nos outros arquivos:
 
 - [D21](DECISIONS-2.md) — A lista de sessões vem do protocolo.
 - [D22](DECISIONS-2.md) — `↵` nega a aprovação, como na TUI.
@@ -29,6 +30,11 @@ As que estão no outro arquivo:
 - [D33](DECISIONS-2.md) — A Crew é um painel com trilho de seções, só com o que o daemon tem.
 - [D34](DECISIONS-2.md) — O texto do modelo é desenhado como o markdown que ele é.
 - [D35](DECISIONS-2.md) — Um tema claro, sóbrio, à escolha; o escuro continua o padrão.
+- [D36](DECISIONS-2.md) — O modo da sessão muda pela janela, como na TUI.
+- [D37](DECISIONS-2.md) — Um comando que o agente propôs pode ser rodado pela pessoa, num terminal logo abaixo da conversa, e o resultado volta ao agente.
+- [D38](DECISIONS-2.md) — Modelo e modo escolhidos antes de a sessão abrir.
+- [D39](DECISIONS-3.md) — A aprovação oferece as respostas que a TUI oferece.
+- [D40](DECISIONS-2.md) — Desfazer, resumir e rodar um comando, pela janela.
 
 ## Decisões
 

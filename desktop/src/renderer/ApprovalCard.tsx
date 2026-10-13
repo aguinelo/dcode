@@ -1,28 +1,10 @@
+import { choicesFor } from '../state/approval';
 import { boundaryLabel, decisionLabel } from '../state/flow';
 import { clock, since } from '../state/format';
 import type { Entry } from '../state/session';
 import { CommandActions } from './CommandActions';
 
 type ApprovalEntry = Extract<Entry, { kind: 'approval' }>;
-
-/**
- * The three answers the design offers, and the keys that give them. Allowing
- * is always an explicit choice; `↵` and `esc` deny, as in the TUI, and deny is
- * the option shown selected (D22).
- */
-export const CHOICES: ReadonlyArray<{ key: string; label: string; decision: string; hint: string }> = [
-  { key: '1', label: 'Permitir uma vez', decision: 'allow', hint: '' },
-  { key: '2', label: 'Permitir nesta sessão', decision: 'allow_session', hint: '' },
-  { key: '3', label: 'Negar', decision: 'deny', hint: '↵ esc' },
-];
-
-const DENY = 'deny';
-
-/** The decision a key gives while an approval waits, or null for a key that gives none. */
-export function answerForKey(key: string): string | null {
-  if (key === 'Enter' || key === 'Escape') return DENY;
-  return CHOICES.find((c) => c.key === key)?.decision ?? null;
-}
 
 export function ApprovalCard({
   entry,
@@ -62,7 +44,7 @@ export function ApprovalCard({
           <CommandActions command={r.command} onRun={onRun} />
         </div>
       )}
-      <div className="approval-reason" title={r.reason || undefined}>
+      <div className="approval-reason">
         Pede <span className="approval-resource">{boundaryLabel(r.boundary_crossed)}</span>
         {r.rule ? (
           <>
@@ -70,15 +52,16 @@ export function ApprovalCard({
             <span className="approval-rule">{r.rule}</span>
           </>
         ) : null}
-        .
+        .{r.reason ? <span className="approval-why">{r.reason}</span> : null}
       </div>
       {!answered && (
         <div className="approval-options" role="group" aria-label="Responder">
-          {CHOICES.map((c) => (
+          {choicesFor(r).map((c) => (
             <button
               key={c.key}
               type="button"
-              className={`approval-option${c.decision === DENY ? ' preselected' : ''}`}
+              className={`approval-option${c.decision === 'deny' ? ' preselected' : ''}${c.standing ? ' standing' : ''}`}
+              title={c.standing ? 'Fica gravado na sua configuração, fora do projeto, e vale para as próximas sessões.' : undefined}
               onClick={() => onAnswer(c.decision)}
             >
               <span className="approval-key">{c.key}</span>

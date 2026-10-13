@@ -359,6 +359,11 @@
   line-height: 1.5;
   color: var(--dc-dim);
 }
+/* The daemon's own reason, said where the question is read (D39). */
+.approval-why {
+  display: block;
+  color: var(--dc-faint);
+}
 .approval-resource,
 .approval-rule {
   color: var(--dc-text);
@@ -388,6 +393,10 @@
 /* The answer ↵ gives, shown selected: deny (D22). */
 .approval-option.preselected {
   background: var(--dc-sel);
+}
+/* Answers that outlive the session carry the warning tone, as in the TUI. */
+.approval-option.standing .approval-label {
+  color: var(--dc-warn);
 }
 .approval-key {
   width: 16px;
