@@ -185,3 +185,33 @@ Descartados: mostrar sempre "rodada N/M" (um número parado na tela, que muda a
 referência 02 sem dizer nada que se use); tokens do turno anterior no composer
 (o número ficaria ao lado de um turno que não é o dele); uma estimativa de
 tokens ao vivo (L5).
+
+**D45. Uma chamada de ferramenta do modelo abre no que ela fez.** O fluxo
+mostrava de cada chamada só a linha de resumo; só a saída de um
+comando digitado com `!` aparecia aberta (D40). O `tool.completed` sempre
+trouxe a saída inteira e, de quem muda arquivo, o `diff` unificado da chamada
+(`internal/tools/diff.go`, cortado em 400 linhas com uma marca dizendo isso),
+e a janela não mostrava nenhum dos dois. A TUI mostra, com Tab.
+
+- **Como abre:** a linha inteira é o botão — clique, ou foco e ↵/espaço. Os
+  botões Copiar e Rodar no terminal que já estão na linha continuam sendo só
+  deles. Fechada por padrão, e fechada ela desenha exatamente o que desenhava:
+  só o ponteiro, o hover e o anel de foco dizem que abre. As referências 02 e
+  03 medem 0,00%.
+- **O que mostra:** de uma mudança, o diff, com + e − nas cores do painel do
+  git (o mesmo desenho, `DiffPre`), e não a saída, que numa edição é o eco do
+  diff para o modelo — a escolha da TUI (`toolBody`). De qualquer outra, a
+  saída em monoespaçado, sem os códigos ANSI e com só o que um `\r` deixou na
+  linha. Uma falha mostra o erro inteiro, ao lado de um diff se houver.
+- **Cortes ditos:** saída de mais de 40 linhas abre nas 40 primeiras, com
+  "mostrar tudo · N linhas"; erro nunca é cortado. Quando a ferramenta cortou
+  o que devolveu (`truncated`), a janela diz. A marca de corte do daemon no
+  diff vira aviso, não uma linha do arquivo.
+- **Onde:** no fluxo vivo e no histórico de uma conversa terminada (D42), que
+  dobram os mesmos eventos. Chamada rodando, sem nada a mostrar ou digitada
+  pela pessoa não abre.
+
+Descartados: abrir o diff sem pedir, como a prévia da TUI (mudaria o fluxo em
+repouso, que as referências medem); ler o diff do git (é o da pasta desde o
+último commit, não o da chamada); uma seta ao lado da linha (mudaria a linha
+fechada).

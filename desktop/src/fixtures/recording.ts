@@ -83,6 +83,23 @@ function catalogar(): SessionWriter {
     .emit('progress', 22, { turn_id: 't-1', kind: 'in_flight', done: 2, total: 4 });
 }
 
+/** The diff the write below reports: a new file of 54 lines, as internal/tools/diff.go writes it. */
+function tokensDiff(): string {
+  // 23 names: 2 + 2 × (23 + 2) + 2 = 54 lines, the count the tool reported.
+  const names = [
+    'bg', 'chrome', 'panel', 'raised', 'sunken', 'hover', 'sel', 'line-soft', 'line', 'line-strong', 'line-focus', 'emph',
+    'text', 'dim', 'faint', 'accent', 'accent-soft', 'accent-ink', 'ok', 'ok-line', 'warn', 'warn-bg', 'err',
+  ];
+  const body = ['{', '  "color": {'];
+  for (const theme of ['light', 'dark']) {
+    body.push(`    "${theme}": {`);
+    names.forEach((n, i) => body.push(`      "${n}": { "value": "{palette.${theme}.${n}}" }${i < names.length - 1 ? ',' : ''}`));
+    body.push(theme === 'light' ? '    },' : '    }');
+  }
+  body.push('  }', '}');
+  return [`@@ -0,0 +1,${body.length} @@ desktop/src/tokens.json`, ...body.map((l) => `+${l}`)].join('\n');
+}
+
 function tokens(): SessionWriter {
   return new SessionWriter('s-tokens', RECORDED_AT)
     .created(5 * MINUTE, { ...minimax, workspace: DCODE, branch: 'feat/tokens' })
@@ -117,6 +134,7 @@ function tokens(): SessionWriter {
       added: 54,
       files: 1,
       duration_ms: 3,
+      diff: tokensDiff(),
     })
     .emit('message.delta', 110, {
       turn_id: 't-1',

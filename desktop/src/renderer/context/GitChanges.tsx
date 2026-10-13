@@ -1,8 +1,22 @@
 import { ChevronDown, ChevronRight, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import type { GitFile } from '../../protocol/generated';
-import { diffLines, statusOf, summarize, summaryText, type GitState } from '../../state/git';
+import { diffLines, statusOf, summarize, summaryText, type DiffLine, type GitState } from '../../state/git';
 import { useGitDiff } from '../useGit';
+
+/** A unified diff's lines, coloured by what each one is; shared by the git panel and a tool call's detail. */
+export function DiffPre({ lines }: { lines: readonly DiffLine[] }) {
+  return (
+    <pre className="mono">
+      {lines.map((l, i) => (
+        <span key={i} className={`ctx-dl ctx-dl-${l.kind}`}>
+          {l.text || ' '}
+          {'\n'}
+        </span>
+      ))}
+    </pre>
+  );
+}
 
 /** One file's unified diff, read when it is opened, cut where the daemon cut it and saying so. */
 function DiffView({ conversationId, file, moved }: { conversationId: string; file: GitFile; moved: unknown }) {
@@ -14,14 +28,7 @@ function DiffView({ conversationId, file, moved }: { conversationId: string; fil
   if (d.diff === '') return <p className="ctx-diff-note tone-dim">O git não mostrou diferença neste arquivo agora.</p>;
   return (
     <div className="ctx-diff" role="region" aria-label={`Diff de ${d.path}`}>
-      <pre className="mono">
-        {diffLines(d.diff).map((l, i) => (
-          <span key={i} className={`ctx-dl ctx-dl-${l.kind}`}>
-            {l.text || ' '}
-            {'\n'}
-          </span>
-        ))}
-      </pre>
+      <DiffPre lines={diffLines(d.diff)} />
       {d.truncated && (
         <p className="ctx-diff-note tone-warn">Cortado em {Math.round(d.limit / 1024)} KiB: o diff inteiro está no git da pasta.</p>
       )}
