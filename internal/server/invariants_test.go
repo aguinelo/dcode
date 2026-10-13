@@ -79,6 +79,10 @@ var protocolInvariants = map[string]string{
 	"nomeia id fora da pasta não é seguido": "TestAMarkerThatLeavesTheRecordDirectoryIsNotFollowed",
 	"`limit` acima dele é recusado":         "TestARecordedConversationIsReadPageByPage",
 	"nunca responde conversa vazia":         "TestADaemonWithoutRecordsRefusesToReadOne",
+	// The same id rule at the two other places a client's id becomes a path:
+	// naming a record on disk, and continuing one.
+	"nenhum registro recebe o nome":       "TestNamingAnIdThatLeavesTheRecordDirectoryIsRefusedByTheDaemon",
+	"antes de qualquer registro ser lido": "TestContinuingAnIdThatLeavesTheRecordDirectoryIsRefused",
 	// The models a session can ask for. Resolved where the daemon builds
 	// sessions, so the assertions run through the daemon's own routes.
 	"recebe sem pedir nenhum":         "TestTheMenuListsTheDefaultAndTheProfilesOfTheWorkspace",

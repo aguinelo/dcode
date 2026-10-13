@@ -93,9 +93,16 @@ func (s *Session) Rename(name string) error {
 //
 // An empty name is not an error: it restores the title derived from the first
 // question, which is the way back rather than a second command for undoing.
+//
+// The id is checked before it becomes a path. It arrives from a client, and
+// joined unchecked `../x` named a record outside the directory — which this
+// then appended to.
 func Rename(dir, id, name string, now func() time.Time) error {
-	if dir == "" || id == "" {
+	if dir == "" {
 		return ErrNoSuchSession
+	}
+	if err := ValidID(id); err != nil {
+		return err
 	}
 	clean, err := CleanName(name)
 	if err != nil {

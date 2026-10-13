@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 209 decision changelogs |
+| spec families | 18, with 210 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A session id from a client can no longer name a file outside the record
+  directory.** Naming a conversation that is not loaded and continuing one
+  (`resume`) now hold the id to the rule reading a recorded conversation
+  already used — letters, digits, `-` and `_` — and refuse anything else with
+  `invalid_input` before touching the disk. Both joined the id into a path
+  unchecked: `POST /sessions/..%2Fsecret/name` appended a line to a record one
+  directory up, and `resume: "../secret"` read one into the model's context
+  and copied it into the new session's record.
 - **A recorded conversation can be read without loading it.**
   `GET /v1/conversations/{id}/events` answers one page of a conversation that
   ended, read from its record — the chain it continues first, numbered as one
