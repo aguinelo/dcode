@@ -373,8 +373,9 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
   topo (Figura 2); a folha "Começar loop" (Figura 1); a revisão (Figura 3).
   Atenção (D30): `awaiting_review` conta como **esperando você**.
 - **Crew**: linha `↻` na lista; seção Loop na aba Pronto (Figura 4).
-- **Decisões**: D44 (o loop é uma janela que segue a sessão corrente, emenda
-  D31), D45 (a revisão da proposta), D46 (parar agora/depois). L11 fecha.
+- **Decisões**: três D-números, os próximos livres quando cada PR entrar (o
+  loop é uma janela que segue a sessão corrente, emenda D31; a revisão da
+  proposta; parar agora/depois). L11 fecha.
 - **Réguas**: um cenário `loop` no `check:daemon`, com o modelo roteirizado
   qualificando, propondo e trabalhando uma pasta. `tests/daemon/**` é caminho
   protegido de `docs/loop/done.toml`: o cenário entra num PR próprio, como
@@ -454,7 +455,7 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
 | 9 | desktop | `test(desktop): the daemon ruler runs a loop` (régua protegida, PR só dela) | 8 |
 
 Cada PR do núcleo leva a linha no `CHANGELOG.md` (as duas edições); cada PR do
-desktop, no `desktop/CHANGELOG.md` (as duas) e o D-número em `DECISIONS-3.md`.
+desktop, no `desktop/CHANGELOG.md` (as duas) e o D-número no arquivo de decisões corrente.
 O 1 e o 4 são MINOR pelo `scripts/version.sh`.
 
 ## 9. Riscos
