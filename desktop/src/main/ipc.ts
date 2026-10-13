@@ -117,6 +117,20 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const named = input.mode(mode);
     return named.ok ? ask.setMode(session.value, named.value) : named;
   });
+  handle(CHANNELS.exec, (_event, id, typed) => {
+    const session = input.id(id, SESSION);
+    if (!session.ok) return session;
+    const run = input.command(typed);
+    return run.ok ? ask.exec(session.value, run.value) : run;
+  });
+  handle(CHANNELS.undo, (_event, id) => {
+    const session = input.id(id, SESSION);
+    return session.ok ? ask.undo(session.value) : session;
+  });
+  handle(CHANNELS.compact, (_event, id) => {
+    const session = input.id(id, SESSION);
+    return session.ok ? ask.compact(session.value) : session;
+  });
   handle(CHANNELS.resolveApproval, (_event, id, approvalId, decision) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

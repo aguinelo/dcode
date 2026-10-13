@@ -107,7 +107,7 @@ export function conversation(v: unknown): Checked<{ id: string; workspace: strin
   return { ok: true, value: { id: which.value, workspace: where.value } };
 }
 
-/** A command to type into a terminal (D37): what the agent proposed, never run by typing it. */
+/** A command to type into a terminal (D37), or to run in the session after `!` (D40). */
 export function command(v: unknown): Checked<string> {
   if (!filled(v)) return invalid(`O comando precisa ser um texto não vazio, e veio ${shown(v)}.`);
   if (v.length > 16_384) return invalid(`O comando tem ${v.length} caracteres, e o terminal recebe até 16384.`);

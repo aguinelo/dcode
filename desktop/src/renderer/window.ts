@@ -4,7 +4,7 @@
 
 import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus } from '../shared/api';
-import type { MemoryResponse, SkillsResponse } from '../protocol/generated';
+import type { CompactResult, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { Row } from '../state/sidebar';
 
 /** What the bottom bar says about the daemon: a live status, or that this is a recording. */
@@ -54,6 +54,12 @@ export interface WindowActions {
    * shows the new mode when the session's `session.mode_changed` arrives.
    */
   setMode(sessionId: string, mode: string): Promise<Outcome<null>>;
+  /** Runs a command the person typed (`!`), outside a turn (D40); the output arrives in the flow. */
+  exec(sessionId: string, command: string): Promise<Outcome<null>>;
+  /** Puts back what the last turn changed, and says what went back and what did not (D40). */
+  undo(sessionId: string): Promise<Outcome<UndoResult>>;
+  /** Compacts the context now, and says whether there was anything to compact (D40). */
+  compact(sessionId: string): Promise<Outcome<CompactResult>>;
   /** The skills a session in the workspace has (`GET /v1/skills`, N6), or why not — a daemon without the route says so. */
   listSkills(workspace: string): Promise<Outcome<SkillsResponse>>;
   /** What a session in the workspace reads as memory (`GET /v1/memory`, N6), or why not. */

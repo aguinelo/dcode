@@ -447,3 +447,32 @@ Descartados: o formulário sempre, antes de qualquer projeto (um passo a mais no
 gesto mais comum, que é abrir com o padrão); a lista de modelos montada fora do
 projeto (ofereceria perfis que aquele projeto não resolve); só o sandbox, sem o
 `POST /mode` (a sessão abriria sem o modo pedido, dizendo outro no chip).
+
+**D40. Desfazer, resumir e rodar um comando, pela janela.** O `/undo`, o
+`/compact` e o `!` eram só da TUI; na janela, um texto começando com `/` ia ao
+modelo como mensagem, em silêncio. Agora:
+
+- **O ⋯ da conversa** — na janela da grade e no topo da conversa na Crew — abre
+  "Desfazer o último turno" (`POST /undo`), "Resumir o contexto"
+  (`POST /compact`) e "Rodar um comando…", que põe o `!` no campo com o cursor
+  depois dele. Com um turno rodando ou esperando, o daemon recusa os três, e o
+  menu diz isso em vez de oferecê-los.
+- **O desfazer diz as duas metades**, como a TUI: o que voltou e o que ficou
+  intocado porque mudou depois do turno — o arquivo que não voltou é o que mais
+  importa saber. Um turno que não mexeu em arquivo diz isso.
+- **O resumir diz quando não havia o que resumir.** O daemon não emite evento
+  nenhum nesse caso, e a resposta é o único lugar que o diz; quando resume, o
+  `session.compacted` também aparece no fluxo, como já aparecia.
+- **`!comando` roda o comando na sessão** (`POST /exec`), fora de um turno, e a
+  chamada chega como as outras, marcada `typed`: a janela a mostra aberta, com a
+  saída inteira, porque quem digitou o comando é quem quer ler o que ele
+  imprimiu.
+- **Texto que começa com `/` não vai mais ao modelo.** `/undo`, `/compact` e
+  `/mode <plan|assist|auto>` fazem o que dizem; qualquer outro é "comando
+  desconhecido", com os que existem, e o texto fica no campo. Uma paleta de
+  comandos é outro PR. Numa conversa terminada, comando não a continua: só uma
+  mensagem.
+
+Descartados: deixar o `/` desconhecido ir ao modelo (a pessoa pediu algo ao
+harness, e o modelo responderia como se fosse com ele); confirmar antes de
+desfazer (a TUI não confirma, e o que não volta é dito, arquivo por arquivo).

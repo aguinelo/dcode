@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **Undo, compact and run a command from the window.** `/undo`, `/compact` and
+  `!` were the TUI's alone, and text starting with `/` went to the model as a
+  message. A conversation's ⋯ (a grid window, Crew's thread) now offers
+  Desfazer o último turno — saying what went back and what stayed because it
+  changed after the turn —, Resumir o contexto — saying when there was nothing
+  worth compacting, which no event says —, and Rodar um comando…; `!comando` in
+  the field runs it in the session and its output is shown open. `/undo`,
+  `/compact` and `/mode <m>` work in the field; any other slash is "comando
+  desconhecido" and stays there (D40).
 - **A command the agent proposed can be run by the person, in a terminal below
   the conversation, and its result handed back.** Asked for after a denied
   approval the person wanted to run themselves, possibly with sudo. Every

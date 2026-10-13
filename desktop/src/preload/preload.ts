@@ -95,6 +95,9 @@ const api: DcodeApi = {
       offExit();
     };
   },
+  exec: (sessionId, command) => invoke<Answer<null>>(CHANNELS.exec, sessionId, command),
+  undo: (sessionId) => invoke<Answer<unknown>>(CHANNELS.undo, sessionId),
+  compact: (sessionId) => invoke<Answer<unknown>>(CHANNELS.compact, sessionId),
 };
 
 contextBridge.exposeInMainWorld('dcode', api);
