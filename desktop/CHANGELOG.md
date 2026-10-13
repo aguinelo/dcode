@@ -10,14 +10,16 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
-- **A proposal for running `/loop` from the desktop, awaiting approval.**
+- **A design for running `/loop` from the desktop, approved by the owner on
+  2026-10-13, with every recommendation taken; it is built before the
+  orchestrator.**
   `docs/proposals/loop.md` designs starting, following, reviewing and stopping
   a loop from the grid and the Crew, the core request it rests on (N4: the
   daemon runs the `/loop` sequence, so both clients see one loop, and an event
   per check inside a turn), and what to do with `done.proposed`,
   `done.signed` and `SignDoneRequest`, which nothing emits. Written before any
   code because the core half changes a versioned protocol and the owner asked
-  to approve the design first; nothing in the app changes.
+  to approve the design first; nothing in the app changes yet.
 - **Run from the sources on macOS, the menu bar and the Dock say DCode Box.**
   `npm start` now first runs `scripts/dev-name.mjs`, which writes the name into
   the development Electron's Info.plist (in node_modules) and signs that bundle

@@ -1,6 +1,7 @@
 # Proposta: o `/loop` com definição de pronto no desktop
 
-> **Estado: proposta, à espera do visto do dono.** Nada aqui foi construído.
+> **Estado: aprovada pelo dono em 2026-10-13** (as decisões estão na §7).
+> Nada aqui foi construído ainda; o `/loop` vem antes do orquestrador.
 > Cada passo da §8 é um PR de um tema só; os que mexem no núcleo levam a
 > mudança de spec (changelog na família) antes do código, como
 > `docs/conventions/SDD-HARNESS.md` pede. Onde esta proposta e uma spec
@@ -318,7 +319,7 @@ DoneChecked struct {
 Nunca entra no contexto do modelo (como `Progress` e `StartedAt`, ADR-03).
 Turno que não escreveu nada não confere e não emite — é o que `checkDone` já faz.
 
-### 4.3 A superfície morta (Q1, recomendação C)
+### 4.3 A superfície morta (Q1, decisão C)
 
 - **Apagar** `done.signed`, `SignDoneRequest`, `qualifier.Sign` e os dois
   `DCODE_QUALIFIER_*_SIGN_*` do `.config`. A assinatura é o arquivo revisado e
@@ -380,7 +381,7 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
   mudança deliberada da régua. As telas 02 e 03 da régua visual não têm loop e
   devem continuar a 0,00%; se mudarem, é outra coisa.
 
-## 7. Perguntas em aberto
+## 7. Decisões — 2026-10-13, aprovado pelo dono
 
 **Q1. A superfície morta: religar ou apagar?**
 - A. Apagar tudo (`done.proposed`, `done.signed`, `SignDoneRequest`, `Sign`, as
@@ -391,14 +392,14 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
   (arquivo revisável, turno qualificador em plan) e reabre RN-6 com prazo.
 - C. Religar só `done.proposed`, como aviso pós-escrita com o `DoneProposal`
   medido; apagar o resto.
-- **Recomendo C**: o desktop precisa da proposta estruturada para a Figura 3, e
+- **Decidido: C** (aprovado pelo dono): o desktop precisa da proposta estruturada para a Figura 3, e
   o resto é a assinatura de um desenho abandonado.
 
 **Q2. Onde mora a sequência?**
 - A. No daemon (N4, D24): um loop, dois clientes.
 - B. Em cada cliente: o desktop reimplementa o que a TUI faz.
 - C. Num pacote compartilhado, rodando em cada cliente.
-- **Recomendo A.** B e C são duas cópias da mesma regra, e a desta família já
+- **Decidido: A** (aprovado pelo dono). B e C são duas cópias da mesma regra, e a desta família já
   derivou uma vez (o fim era silêncio, a proposta chegava cedo).
 
 **Q3. Como a pessoa revisa a proposta no desktop?**
@@ -406,14 +407,14 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
   daemon mede de novo antes de começar.
 - B. Editar os critérios na própria janela (apagar, apertar, trocar comando).
 - C. Só o `Summary` em texto.
-- **Recomendo A** agora; B é uma proposta futura, porque editar critério é
+- **Decidido: A** (aprovado pelo dono) agora; B é uma proposta futura, porque editar critério é
   editar a régua, e isso merece desenho próprio.
 
 **Q4. Granularidade do progresso.**
 - A. Um `done.checked` por conferência dentro do turno.
 - B. Só o `turn.completed` (o que existe).
 - C. Contagem por teste (`go test: 11/12`), como `LOOP.md` pedia.
-- **Recomendo A.** C foi recusada no D24: exigiria ler a saída do comando.
+- **Decidido: A** (aprovado pelo dono). C foi recusada no D24: exigiria ler a saída do comando.
 
 **Q5. O loop na grade.**
 - A. Uma janela por loop, que segue a sessão corrente; as pastas terminadas a um
@@ -421,21 +422,21 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
 - B. Cada pasta é uma janela própria (cada sessão uma conversa, D31 ao pé da
   letra).
 - C. Uma janela por loop, sem acesso às sessões de cada pasta.
-- **Recomendo A**, como emenda ao D31: o que a pessoa acompanha é o loop; B
+- **Decidido: A** (aprovado pelo dono), como emenda ao D31: o que a pessoa acompanha é o loop; B
   enche a grade de janelas terminadas e empurra o resto para fora (D30).
 
 **Q6. Por onde se entra.**
 - A. Só `/loop` no campo.
 - B. Só a folha "Começar loop".
 - C. Os dois, com a mesma gramática.
-- **Recomendo C**: o campo é o caminho de quem já usa a TUI; a folha é onde se
+- **Decidido: C** (aprovado pelo dono): o campo é o caminho de quem já usa a TUI; a folha é onde se
   descobre que pasta tem critério.
 
 **Q7. Dois loops no mesmo workspace.**
 - A. Recusar (`loop_already_running`) enquanto um estiver vivo.
 - B. Permitir.
 - C. Permitir com `owns` disjuntos por loop.
-- **Recomendo A.** Dois loops na mesma árvore medem o trabalho um do outro; C é
+- **Decidido: A** (aprovado pelo dono). Dois loops na mesma árvore medem o trabalho um do outro; C é
   a mesma pergunta que a proposta do orquestrador responde, e espera ela.
 
 ## 8. Entrega em passos (um tema por PR)
@@ -475,3 +476,9 @@ O 1 e o 4 são MINOR pelo `scripts/version.sh`.
 - **Régua visual**: a régua do loop no topo da janela muda a tela só quando há
   loop; se uma referência nova for necessária, ela passa pelo visto do dono
   (D18).
+
+## 10. Changelog
+
+- 2026-10-13 — o dono aprovou as sete recomendações (Q1 C, Q2 A, Q3 A, Q4 A,
+  Q5 A, Q6 C, Q7 A); as perguntas viraram decisões. Este desenho é construído
+  antes do orquestrador.
