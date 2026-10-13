@@ -10,6 +10,21 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Imagens vão com o turno.** O daemon aceita imagens num turno desde
+  `SubmitTurnRequest.images`, e a TUI as manda; a janela mandava só o texto, e o
+  "+" dela dizia que anexar ainda não existia. Agora o "+" abre o seletor do
+  sistema (só imagens), colar com uma imagem na área de transferência a anexa,
+  e arquivos soltos sobre o campo são anexados. O processo principal lê o
+  arquivo escolhido e confere do mesmo jeito os bytes colados ou soltos — o tipo
+  pelos bytes (PNG, JPEG, GIF, WebP), até 10 MiB cada e 20 por turno — e confere
+  de novo quando o turno é enviado; o renderer nunca vê um caminho. As
+  miniaturas ficam acima do campo, cada uma com seu ×, guardadas por conversa
+  como o rascunho. Uma recusa vira um aviso e uma linha abaixo das miniaturas,
+  com o motivo. Uma correção leva só texto, então uma mensagem com imagens
+  durante um turno fica guardada, com o porquê, e nunca vira correção nem entra
+  na fila. A mensagem no fluxo mostra as imagens que foram com ela; os eventos
+  não as carregam, então uma conversa lida do registro mostra só o texto. Nada
+  em repouso muda: as duas referências visuais medem 0,00% (D46).
 - **O campo lembra o que se pediu e guarda o que vem depois.** A TUI traz de
   volta o que foi pedido com ↑/↓ e põe uma mensagem na fila até o turno acabar;
   a janela não fazia nenhum dos dois, então pedir de novo era redigitar, e toda

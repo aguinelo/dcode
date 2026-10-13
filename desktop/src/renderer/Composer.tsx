@@ -1,9 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { imageSource, QUEUE_TAKES_TEXT, sizeOf } from '../state/attachments';
 import type { SessionView } from '../state/session';
 import { turnTelemetry, usageFact } from '../state/telemetry';
 import { ModeChip } from './ModeMenu';
 import { QueueChips } from './QueueChips';
 import { useFieldKeys } from './useFieldKeys';
+import { useAttached, useImages } from './useImages';
 import { usePromptsContext } from './usePrompts';
 
 /**
@@ -23,6 +25,44 @@ function meterTone(pct: number): string {
   return 'tone-faint';
 }
 
+/** The pictures a paste carries: only images, since the text of a paste is the field's to take. */
+function imageFiles(data: DataTransfer): File[] {
+  return [...data.files].filter((f) => f.type.startsWith('image/'));
+}
+
+/**
+ * The pictures attached to the next message (D46), each with its ×, and the
+ * last refusal under them. Nothing is drawn while there are neither.
+ */
+function Attachments({ sessionId }: { sessionId: string }) {
+  const images = useImages();
+  const attached = useAttached();
+  const draft = attached.draft[sessionId] ?? [];
+  const refusal = attached.refusal[sessionId];
+  if (!images || (draft.length === 0 && !refusal)) return null;
+  return (
+    <div className="composer-images">
+      {draft.length > 0 && (
+        <div className="composer-thumbs">
+          {draft.map((img, i) => (
+            <figure key={`${i}-${img.name}`} className="composer-thumb" title={`${img.name} · ${sizeOf(img.bytes)}`}>
+              <img src={imageSource(img)} alt={img.name} />
+              <button type="button" className="composer-thumb-remove" aria-label={`Tirar ${img.name}`} onClick={() => images.remove(sessionId, i)}>
+                ×
+              </button>
+            </figure>
+          ))}
+        </div>
+      )}
+      {refusal && (
+        <div className="composer-refusal tone-err" role="alert">
+          {refusal}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * The text field itself: grows with what is typed, ↵ sends and ⇧↵ breaks the
  * line; ↑/↓, ⌥↵ and ⌃X are the conversation's (D47). ⌘↵ is the window's, and Esc leaves the field so the window's keys —
@@ -36,6 +76,7 @@ export function Field({
   onText,
   onSubmit,
   onKeys,
+  onPasteImages,
 }: {
   text: string;
   placeholder: string;
@@ -46,6 +87,8 @@ export function Field({
   onSubmit: () => void;
   /** The conversation's own keys — history, queue (D47) — before ↵ sends; one that acts prevents the default. */
   onKeys?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** A paste that carries pictures (D46): they attach, and nothing is typed. */
+  onPasteImages?: (files: File[]) => void;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
   // A field that stops taking text gives the keys back to the window, where
@@ -74,6 +117,12 @@ export function Field({
         value={text}
         disabled={disabled}
         onChange={(e) => onText(e.target.value)}
+        onPaste={(e) => {
+          const files = imageFiles(e.clipboardData);
+          if (!onPasteImages || files.length === 0) return;
+          e.preventDefault();
+          onPasteImages(files);
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             // Only out of the field: a second Esc is the window's.
@@ -137,12 +186,46 @@ export function Composer({
     keys.reset();
     onSend(text);
   };
+  // Pictures (D46): "+" opens the picker, a paste or a drop attaches.
+  const images = useImages();
+  const [dropping, setDropping] = useState(false);
+  const attach = images ? (files: File[]) => void images.addFiles(session.id, files) : undefined;
+  const carriesFiles = (e: DragEvent) => !!images && e.dataTransfer.types.includes('Files');
+  // The queue (D47) carries text: a message with pictures does not wait in it, and says why.
+  const withImages = (useAttached().draft[session.id]?.length ?? 0) > 0;
+  const onKeys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    const queueing = e.key === 'Enter' && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey && session.state === 'running';
+    if (queueing && withImages && images) {
+      e.preventDefault();
+      images.refuse(session.id, QUEUE_TAKES_TEXT);
+      return;
+    }
+    keys.onKeys(e);
+  };
   return (
-    <div className={`composer-wrap${compact ? ' compact' : ''}`}>
+    <div
+      className={`composer-wrap${compact ? ' compact' : ''}${dropping ? ' dropping' : ''}`}
+      onDragOver={(e) => {
+        if (!carriesFiles(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setDropping(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+      }}
+      onDrop={(e) => {
+        if (!carriesFiles(e)) return;
+        e.preventDefault();
+        setDropping(false);
+        attach?.([...e.dataTransfer.files]);
+      }}
+    >
       <div className="composer">
         {prompts && (
           <QueueChips queue={prompts.queue(session.id)} onDrop={(i) => prompts.dropAt(session.id, i)} onResume={() => prompts.resume(session.id)} />
         )}
+        <Attachments sessionId={session.id} />
         <Field
           text={text}
           placeholder={placeholderOf(session.state)}
@@ -150,11 +233,17 @@ export function Composer({
           caret={caret}
           onText={onText}
           onSubmit={send}
-          onKeys={keys.onKeys}
+          onKeys={onKeys}
+          onPasteImages={attach}
         />
         <div className="composer-bar">
           {!compact && (
-            <button type="button" className="composer-attach" onClick={() => onMissing('Anexar')}>
+            <button
+              type="button"
+              className="composer-attach"
+              aria-label="Anexar imagens"
+              onClick={() => (images ? void images.pick(session.id) : onMissing('Anexar'))}
+            >
               +
             </button>
           )}

@@ -29,7 +29,7 @@ import { useModelMenu } from './useModelMenu';
 import { PromptsProvider, usePrompts } from './usePrompts';
 import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
-import { useWindows } from './useWindows';
+import { ImagesProvider, useWindows } from './useWindows';
 import type { DaemonView, Outcome, WindowActions } from './window';
 
 interface Toast {
@@ -475,5 +475,11 @@ export function App({
       )}
     </div>
   );
-  return <RenameProvider value={renames}><PromptsProvider value={prompts}>{drawn}</PromptsProvider></RenameProvider>;
+  return (
+    <RenameProvider value={renames}>
+      <PromptsProvider value={prompts}>
+        <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
+      </PromptsProvider>
+    </RenameProvider>
+  );
 }

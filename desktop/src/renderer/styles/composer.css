@@ -213,3 +213,57 @@
   background: var(--dc-hover);
   color: var(--dc-text);
 }
+
+/* Pictures attached to the next message (D46): drawn only while there are some, or a refusal to say. */
+.composer-wrap.dropping .composer {
+  border-color: var(--dc-accent);
+  border-style: dashed;
+}
+.composer-images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.composer-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.composer-thumb {
+  position: relative;
+  margin: 0;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  background: var(--dc-panel);
+  overflow: hidden;
+}
+.composer-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.composer-thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-raised);
+  border: 1px solid var(--dc-line);
+  color: var(--dc-text);
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+}
+.composer-thumb-remove:hover {
+  border-color: var(--dc-line-strong);
+  color: var(--dc-emph);
+}
+.composer-refusal {
+  font-size: 11.5px;
+  line-height: 1.45;
+}

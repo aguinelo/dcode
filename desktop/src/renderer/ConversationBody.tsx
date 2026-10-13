@@ -1,8 +1,10 @@
 import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { imagesOfEntries } from '../state/attachments';
 import { activity, flowBlocks } from '../state/flow';
 import type { SessionView } from '../state/session';
 import { Composer } from './Composer';
 import { ActivityLine, FlowBlocks } from './Flow';
+import { useAttached } from './useImages';
 
 // xterm.js is most of a megabyte: loaded the first time a terminal opens, not with the window.
 const TerminalDock = lazy(() => import('./TerminalDock').then((m) => ({ default: m.TerminalDock })));
@@ -45,6 +47,9 @@ export function ConversationBody({
 }) {
   const blocks = useMemo(() => flowBlocks(session.entries), [session.entries]);
   const act = useMemo(() => activity(session.entries), [session.entries]);
+  // The pictures this window sent, on the messages they went with (D46): the events carry none.
+  const sent = useAttached().sent[session.id];
+  const imagesAt = useMemo(() => imagesOfEntries(session.entries, sent), [session.entries, sent]);
   const scroller = useRef<HTMLDivElement>(null);
   const following = useRef(true);
   // The terminal docked below the flow (D37): one at a time, a new command a new shell.
@@ -72,7 +77,7 @@ export function ConversationBody({
         }}
       >
         <div className="flow">
-          <FlowBlocks blocks={blocks} now={now} onAnswer={onAnswer} onRun={(command) => setTerminal((t) => ({ command, n: (t?.n ?? 0) + 1 }))} />
+          <FlowBlocks blocks={blocks} now={now} onAnswer={onAnswer} imagesAt={imagesAt} onRun={(command) => setTerminal((t) => ({ command, n: (t?.n ?? 0) + 1 }))} />
           {session.state === 'running' && session.turn && (
             <ActivityLine activity={act} startedAt={session.turn.startedAt} now={now} tick={verbTick} />
           )}

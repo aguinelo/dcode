@@ -2,7 +2,12 @@ import { useCallback, useRef, useState, type Dispatch, type SetStateAction } fro
 import { hold, markSeen, release, type Attention } from '../state/attention';
 import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
+import { markSent, moveDraft, refuse, STEER_TAKES_TEXT } from '../state/attachments';
 import { compactText, parseInput, undoText } from '../state/commands';
+import { useImageStore } from './useImages';
+
+// The window's pictures are kept with its windows (D46); App provides them to the fields.
+export { ImagesProvider } from './useImages';
 import type { Outcome, StartOptions, WindowActions } from './window';
 
 type Once = <T>(key: string, run: () => Promise<Outcome<T>>) => Promise<Outcome<T> | null>;
@@ -33,6 +38,9 @@ export function useWindows(o: {
   maximize: (id: string | null) => void;
 }) {
   const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize } = o;
+  // The pictures of the fields (D46): attached per conversation, sent with its next message.
+  const images = useImageStore(actions, say);
+  const attached = images.store;
   const [focusId, setFocusId] = useState<string | null>(null);
   const [caret, setCaret] = useState<{ id: string; n: number } | null>(null);
   const [choosers, setChoosers] = useState<string[]>([]);
@@ -195,7 +203,17 @@ export function useWindows(o: {
           break;
         case 'message': {
           const running = sessions.byId[id]?.state === 'running';
-          ok = !!(await once(`send:${id}`, () => actions.send(id, text, running)))?.ok;
+          // The pictures attached go with it (D46): to a turn, never to a correction.
+          const images = attached.get().draft[id] ?? [];
+          if (running && images.length > 0) {
+            say(STEER_TAKES_TEXT);
+            attached.update((a) => refuse(a, id, STEER_TAKES_TEXT));
+            return;
+          }
+          const after = sessions.byId[id]?.lastSeq ?? 0;
+          const out = await once(`send:${id}`, () => (images.length > 0 ? actions.send(id, text, running, images) : actions.send(id, text, running)));
+          ok = !!out?.ok;
+          if (out && images.length > 0) attached.update((a) => (out.ok ? markSent(a, id, after, images) : refuse(a, id, out.why)));
         }
       }
       // Emptied only once the daemon took it, and only if what is in the field
@@ -204,7 +222,7 @@ export function useWindows(o: {
       setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
       updateAttention((a) => hold(a, id));
     },
-    [actions, compactIn, once, say, sessions, setDrafts, undoIn, updateAttention],
+    [actions, attached, compactIn, once, say, sessions, setDrafts, undoIn, updateAttention],
   );
 
   const stopIn = useCallback((id: string) => void once(`stop:${id}`, () => actions.stop(id)), [actions, once]);
@@ -229,10 +247,12 @@ export function useWindows(o: {
       const id = opened.value;
       updateAttention((a) => hold(release(a, row.id, row.lastAt), id));
       setDrafts((d) => ({ ...d, [row.id]: '', [id]: text }));
+      // The pictures attached go with the text, to the session that continues it (D46).
+      attached.update((a) => moveDraft(a, row.id, id));
       setFocusId(id);
       await sendIn(id, text);
     },
-    [actions, once, say, sendIn, setDrafts, updateAttention],
+    [actions, attached, once, say, sendIn, setDrafts, updateAttention],
   );
 
   /** A conversation continued elsewhere — on another model — takes over the window of the one it continues. */
@@ -267,6 +287,7 @@ export function useWindows(o: {
   );
 
   return {
+    images,
     focusId,
     setFocusId,
     caret,

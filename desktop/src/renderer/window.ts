@@ -3,7 +3,7 @@
 // mode, from a recording that sends nothing anywhere (fixture.ts).
 
 import type { ModelsResponse } from '../protocol/generated';
-import type { DaemonStatus } from '../shared/api';
+import type { DaemonStatus, ImageAttachment, PickedImages } from '../shared/api';
 import type { CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
 import type { Row } from '../state/sidebar';
@@ -26,8 +26,15 @@ export interface WindowActions {
    * live, the new session that continues it when it ended.
    */
   open(row: Row): Promise<Outcome<string>>;
-  /** Sends a message: a turn for an idle session, a correction for a running one (D23). */
-  send(sessionId: string, text: string, steer: boolean): Promise<Outcome<null>>;
+  /**
+   * Sends a message: a turn for an idle session, a correction for a running
+   * one (D23). Pictures go with a turn only (D46): a correction carries text.
+   */
+  send(sessionId: string, text: string, steer: boolean, images?: ImageAttachment[]): Promise<Outcome<null>>;
+  /** Pictures through the system's picker, read and checked by the main process (D46). */
+  pickImages(): Promise<Outcome<PickedImages>>;
+  /** A picture pasted or dropped, checked by the main process as a picked one is (D46). */
+  readImage(name: string, bytes: Uint8Array): Promise<Outcome<ImageAttachment>>;
   stop(sessionId: string): Promise<Outcome<null>>;
   answer(sessionId: string, approvalId: string, decision: string): Promise<Outcome<null>>;
   /** Asks for a folder and opens a session there. Null when the person cancelled. */

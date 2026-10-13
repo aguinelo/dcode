@@ -216,6 +216,67 @@ repouso, que as referências medem); ler o diff do git (é o da pasta desde o
 último commit, não o da chamada); uma seta ao lado da linha (mudaria a linha
 fechada).
 
+**D46. Imagens vão com o turno** (emenda D23 e A5). O daemon aceita imagens num
+turno desde `SubmitTurnRequest.images` — base64 com o tipo, por valor e não por
+caminho, porque o daemon pode estar em outra máquina — e a TUI as manda
+(`/image`, colar); a janela mandava só o texto, e o "+" do campo avisava que
+ainda não existia. Agora:
+
+- **Três jeitos de anexar:** o "+" abre o seletor do sistema (só imagens, várias
+  de uma vez), colar com uma imagem na área de transferência anexa em vez de
+  digitar, e soltar arquivos sobre o campo anexa — o campo ganha a borda
+  tracejada do acento enquanto algo é arrastado sobre ele. Na janela da grade o
+  campo não tem o "+" (não tinha antes), mas colar e soltar valem.
+- **O processo principal lê e confere, o renderer nunca vê um caminho.** Um
+  arquivo escolhido é lido lá, com o tamanho visto antes da leitura; uma imagem
+  colada ou solta chega lá como bytes e passa pela mesma conferência. O tipo vem
+  dos bytes, nunca do nome — como `session.ReadImage` decide no núcleo: PNG,
+  JPEG, GIF e WebP, e nada mais. Até 10 MiB por imagem, o `MaxImageBytes` da
+  TUI. Até 20 por turno: o daemon não limita a contagem, e o limite é do app,
+  para que um turno grande demais para o provedor seja recusado enquanto ainda
+  dá para tirar uma. No envio, o canal confere tudo de novo — contagem, tipo
+  declarado contra os bytes, base64, tamanho — porque o que vem do renderer não
+  é aceito pela palavra dele.
+- **Miniaturas acima do campo**, 56 px, cada uma com seu ×, com o nome e o
+  tamanho no título. São desenhadas de URLs `data:`, que o CSP estrito do
+  renderer já permite (`img-src 'self' data:`); nada no CSP mudou. As imagens
+  ficam por conversa, como o rascunho: trocar de conversa não perde nada, e
+  continuar uma conversa terminada leva as imagens junto com o texto.
+- **Recusa visível duas vezes:** um aviso, e uma linha no tom de erro abaixo das
+  miniaturas, que fica até o próximo anexo ou envio. Um arquivo recusado não
+  impede os outros do mesmo lote; o que passa de 20 é recusado pelo nome, nunca
+  cortado calado. Uma recusa do daemon ao turno vem com o motivo dele, e as
+  imagens continuam anexadas.
+- **Correção leva só texto** (emenda D23). `SteerRequest` tem só `text`, então
+  uma mensagem com imagens durante um turno não vira correção: a janela diz por
+  quê, guarda texto e imagens, e a pessoa manda quando o turno terminar. O mesmo
+  vale quando a janela achava a sessão parada e o daemon responde que um turno
+  roda: com imagens, nada é redirecionado. D23 dizia que imagem entraria numa
+  fila; descartado pelo mesmo motivo que a fila de texto foi: mandaria sozinha,
+  depois, uma mensagem que a pessoa pode já não querer. A fila de D47 guarda
+  só texto, então ⌥↵ com imagens anexadas é recusado do mesmo jeito, com o
+  porquê, e nada sai do campo; uma mensagem da fila nunca leva as imagens que
+  estão no campo.
+- **No fluxo, a mensagem mostra as imagens que foram com ela**, acima do texto,
+  até 160 × 120. Os eventos não carregam imagens — `turn.started` traz só o
+  texto —, então o que se vê é o que esta janela mandou: guardado contra o seq
+  em que a sessão estava no envio, e mostrado na primeira mensagem (não
+  correção) depois dele. Uma conversa relida do registro (D42), ou aberta em
+  outra janela, mostra só o texto.
+- **Modelo que não lê imagens:** o daemon não recusa no envio — a TUI decide
+  isso do lado dela (`acceptsImages`), e a lista de modelos não diz quais leem.
+  O erro do provedor chega como o erro do turno, com o motivo, no fluxo.
+- Nada em repouso muda: as referências 02 e 03 medem 0,00%.
+
+Descartados: o processo principal guardar as imagens e o renderer só um
+identificador (estado no processo principal que a janela teria de limpar, e um
+identificador velho depois de um reload); `blob:` para as miniaturas (afrouxaria
+o CSP); ler o caminho de um arquivo solto pelo preload (o renderer teria
+caminhos). Pedidos ao núcleo, sem pressa: `turn.started` levar as imagens (ou um
+resumo delas) para que o histórico as mostre; o daemon recusar no envio, com
+motivo, imagens para um modelo que não as lê; e `GET /v1/models` dizer quais
+modelos leem imagens.
+
 **D47. O campo lembra o que se pediu e guarda o que vem depois, como na TUI.**
 Na TUI, ↑/↓ trazem de volta o que foi enviado e uma mensagem pode esperar o
 turno acabar; no desktop, ↑ só andava entre janelas e toda mensagem durante o
