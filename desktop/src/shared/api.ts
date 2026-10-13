@@ -71,6 +71,28 @@ export interface NewSessionOptions {
   sandboxMode?: string;
 }
 
+/**
+ * A picture attached to a turn (D46), read and checked by the main process:
+ * its type from its bytes, never from its name. The renderer holds it to show
+ * and to send, and never a path.
+ */
+export interface ImageAttachment {
+  /** The file's name, or what the clipboard called it — only to be shown. */
+  name: string;
+  /** image/png, image/jpeg, image/gif or image/webp. */
+  mediaType: string;
+  /** The bytes, in base64, as `TurnImage.data` carries them. */
+  data: string;
+  /** How many bytes the picture has. */
+  bytes: number;
+}
+
+/** What the picker gave: the pictures read, and why each one refused was refused. */
+export interface PickedImages {
+  images: ImageAttachment[];
+  refused: string[];
+}
+
 /** A terminal the main process opened for this window (D37). */
 export interface TerminalOpened {
   id: string;
@@ -139,8 +161,12 @@ export interface DcodeApi {
   pickFolder(): Promise<string | null>;
   /** Opens a session in a workspace, on what was chosen, else with the daemon's defaults. */
   createSession(workspace: string, options?: NewSessionOptions): Promise<Answer<Session>>;
-  /** A turn, for an idle session. */
-  submitTurn(sessionId: string, text: string): Promise<Answer<null>>;
+  /** A turn, for an idle session, with the pictures attached to it (D46). */
+  submitTurn(sessionId: string, text: string, images?: ImageAttachment[]): Promise<Answer<null>>;
+  /** Asks for pictures through the system's picker, read by the main process (D46). Nothing picked is an empty list. */
+  pickImages(): Promise<PickedImages>;
+  /** A picture pasted or dropped, as bytes: the main process checks it as it checks a picked one (D46). */
+  readImage(name: string, bytes: Uint8Array): Promise<Answer<ImageAttachment>>;
   /** A correction for the turn running (D23). */
   steer(sessionId: string, text: string): Promise<Answer<null>>;
   interrupt(sessionId: string): Promise<Answer<null>>;
@@ -198,6 +224,8 @@ export const CHANNELS = {
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',
+  pickImages: 'dcode:pick-images',
+  readImage: 'dcode:read-image',
   steer: 'dcode:steer',
   interrupt: 'dcode:interrupt',
   resolveApproval: 'dcode:resolve-approval',

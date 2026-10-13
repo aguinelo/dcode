@@ -5,6 +5,8 @@ import {
   type Answer,
   type DaemonStatus,
   type DcodeApi,
+  type ImageAttachment,
+  type PickedImages,
   type SessionEvents,
   type StreamEnd,
   type TerminalOpened,
@@ -76,7 +78,12 @@ const api: DcodeApi = {
     options === undefined
       ? invoke<Answer<Session>>(CHANNELS.createSession, workspace)
       : invoke<Answer<Session>>(CHANNELS.createSession, workspace, options),
-  submitTurn: (sessionId, text) => invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text),
+  submitTurn: (sessionId, text, images) =>
+    images && images.length > 0
+      ? invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text, images)
+      : invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text),
+  pickImages: () => invoke<PickedImages>(CHANNELS.pickImages),
+  readImage: (name, bytes) => invoke<Answer<ImageAttachment>>(CHANNELS.readImage, name, bytes),
   steer: (sessionId, text) => invoke<Answer<null>>(CHANNELS.steer, sessionId, text),
   interrupt: (sessionId) => invoke<Answer<null>>(CHANNELS.interrupt, sessionId),
   resolveApproval: (sessionId, approvalId, decision) =>

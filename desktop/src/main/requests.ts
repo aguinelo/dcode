@@ -1,4 +1,4 @@
-import { Version, type CompactResult, type CreateSessionRequest, type ModelsResponse, type Session, type UndoResult } from '../protocol/generated';
+import { Version, type CompactResult, type CreateSessionRequest, type ModelsResponse, type Session, type SubmitTurnRequest, type TurnImage, type UndoResult } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import { UNREACHABLE, type Answer, type DaemonStatus, type NewSessionOptions, type Refusal } from '../shared/api';
 import { UNEXPECTED, request, shown } from './wire';
@@ -88,8 +88,10 @@ export class Requests {
     return this.call('GET', `/${Version}/git/diff?workspace=${encodeURIComponent(workspace)}&path=${encodeURIComponent(path)}`);
   }
 
-  submitTurn(sessionId: string, text: string): Promise<Answer<null>> {
-    return this.command(`${sessionPath(sessionId)}/turns`, { text });
+  /** A turn, with the pictures shown with it (D46): sent only when there are some, as the daemon reads an absent list. */
+  submitTurn(sessionId: string, text: string, images: TurnImage[] = []): Promise<Answer<null>> {
+    const body: SubmitTurnRequest = images.length > 0 ? { text, images } : { text };
+    return this.command(`${sessionPath(sessionId)}/turns`, body);
   }
 
   /** A correction for the turn running (D23). */

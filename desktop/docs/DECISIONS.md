@@ -210,8 +210,8 @@ onde voltar). Grade, pelo botão e pelo ⌘0, volta à grade (D30); nova sessão
 botão e pelo ⌘N, pergunta onde numa janela da grade (D31); procurar, pelo botão e
 pelo ⌘K, abre a busca (D27); o chip do modelo, numa janela ou na conversa
 maximizada, o menu da troca (D28). Recolher a lateral e o menu da sessão saíram com a grade, e
-rotinas saiu da lateral até existir. Anexar, adicionar projeto e configurações
-avisam que ainda não existem.
+rotinas saiu da lateral até existir. Adicionar projeto e configurações avisam
+que ainda não existem; anexar existe desde D46.
 
 ## Lacunas — o que o design pede e o protocolo não traz
 

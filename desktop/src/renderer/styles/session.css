@@ -473,3 +473,25 @@
 .plan-blocked {
   font-size: 11.5px;
 }
+
+/* The pictures a message went with (D46), above its text. */
+.bubble-with-images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bubble-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 14px;
+}
+.bubble-image {
+  display: block;
+  max-width: 160px;
+  max-height: 120px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  object-fit: contain;
+  background: var(--dc-panel);
+}

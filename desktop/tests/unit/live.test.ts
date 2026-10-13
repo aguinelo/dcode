@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as P from '../../src/protocol/generated';
 import { LiveStore } from '../../src/renderer/live';
-import type { Answer, DaemonStatus, DcodeApi, SessionEvents, StreamEnd } from '../../src/shared/api';
+import type { Answer, DaemonStatus, DcodeApi, ImageAttachment, SessionEvents, StreamEnd } from '../../src/shared/api';
+import { STEER_TAKES_TEXT } from '../../src/state/attachments';
+
+const picture = (name: string): ImageAttachment => ({ name, mediaType: 'image/png', data: 'iVBORw0KGgo=', bytes: 8 });
 
 /** A main process that answers what the test says, and records what was asked. */
 function fakeApi() {
@@ -64,7 +67,14 @@ function fakeApi() {
       asked.push(`create in ${ws}${how ? ` ${how}` : ''}`);
       return Promise.resolve(ok(session('new')));
     },
-    submitTurn: (id, text) => answer(`turn ${id}: ${text}`),
+    submitTurn: (id, text, images) => answer(`turn ${id}: ${text}${images?.length ? ` with ${images.map((i) => i.name).join(', ')}` : ''}`),
+    pickImages: () => (asked.push('pick images'), Promise.resolve({ images: [picture('a.png')], refused: ['b.txt não é uma imagem que o modelo lê.'] })),
+    readImage: (name, bytes) => {
+      asked.push(`read ${name} (${bytes.length} bytes)`);
+      return Promise.resolve(
+        name.endsWith('.png') ? ok(picture(name)) : { ok: false, refusal: { code: 'invalid_input', message: `${name} não é uma imagem que o modelo lê.` } },
+      );
+    },
     steer: (id, text) => answer(`steer ${id}: ${text}`),
     interrupt: (id) => answer(`interrupt ${id}`),
     resolveApproval: (id, a, d) => answer(`approve ${id} ${a} ${d}`),
@@ -303,6 +313,41 @@ describe('the window connected', () => {
       why: 'A mensagem não foi enviada: a turn is already running',
     });
     expect(f.asked).toEqual(['turn s1: na verdade, resuma', 'steer s1: na verdade, resuma', 'steer s2: e agora?', 'turn s2: e agora?']);
+  });
+
+  it('sends pictures with a turn, and says the daemon’s reason when it refuses them (D46)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.send('s1', 'o que é isto?', false, [picture('a.png')])).toEqual({ ok: true, value: null });
+    f.refuse('turn', 'internal', 'an image could not be decoded: illegal base64 data at input byte 4');
+    expect(await store.actions.send('s1', 'e isto?', false, [picture('b.png')])).toEqual({
+      ok: false,
+      why: 'A mensagem não foi enviada: an image could not be decoded: illegal base64 data at input byte 4',
+    });
+    expect(f.asked).toEqual(['turn s1: o que é isto? with a.png', 'turn s1: e isto? with b.png']);
+  });
+
+  it('never turns a message with pictures into a correction, which carries text only (D46)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.send('s1', 'olhe isto', true, [picture('a.png')])).toEqual({ ok: false, why: STEER_TAKES_TEXT });
+    expect(f.asked).toEqual([]);
+    // The window thought the session idle; the daemon says a turn runs: nothing is steered.
+    f.refuse('turn', 'turn_already_active', 'a turn is already running');
+    expect(await store.actions.send('s1', 'olhe isto', false, [picture('a.png')])).toEqual({ ok: false, why: STEER_TAKES_TEXT });
+    expect(f.asked).toEqual(['turn s1: olhe isto with a.png']);
+  });
+
+  it('asks the main process to pick and to read pictures, and says a refusal by its reason (D46)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.pickImages()).toEqual({ ok: true, value: { images: [picture('a.png')], refused: ['b.txt não é uma imagem que o modelo lê.'] } });
+    expect(await store.actions.readImage('colada.png', new Uint8Array(8))).toEqual({ ok: true, value: picture('colada.png') });
+    expect(await store.actions.readImage('notas.txt', new Uint8Array(2))).toEqual({
+      ok: false,
+      why: 'notas.txt não foi anexada: notas.txt não é uma imagem que o modelo lê.',
+    });
+    expect(f.asked).toEqual(['pick images', 'read colada.png (8 bytes)', 'read notas.txt (2 bytes)']);
   });
 
   it('asks the daemon to switch the mode, and says its reason when it refuses', async () => {

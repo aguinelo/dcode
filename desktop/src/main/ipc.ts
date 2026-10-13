@@ -1,6 +1,7 @@
 import { BrowserWindow, clipboard, dialog, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent, type OpenDialogOptions } from 'electron';
-import { CHANNELS } from '../shared/api';
+import { CHANNELS, type PickedImages } from '../shared/api';
 import type { Connection } from './connection';
+import * as images from './images';
 import * as input from './inputs';
 import type { Terminals } from './terminals';
 import { currentUser } from './user';
@@ -47,6 +48,20 @@ async function pickFolder(event: IpcMainInvokeEvent): Promise<string | null> {
   const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
   if (picked.canceled) return null;
   return picked.filePaths[0] ?? null;
+}
+
+/**
+ * The system's file picker, for pictures (D46). Each picked file is read and
+ * checked here; one refused is said by its reason and the rest still attach.
+ */
+async function pickImages(event: IpcMainInvokeEvent): Promise<PickedImages> {
+  const options: OpenDialogOptions = {
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Imagens', extensions: [...images.IMAGE_EXTENSIONS] }],
+  };
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+  return picked.canceled ? { images: [], refused: [] } : images.readImageFiles(picked.filePaths);
 }
 
 export function serveTheWindows(daemon: Connection, terminals: Terminals): void {
@@ -117,12 +132,18 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const where = input.gitWorkspaceOf(daemon.listed(), which.value);
     return where.ok ? ask.readGitDiff(where.value, path.value) : where;
   });
-  handle(CHANNELS.submitTurn, (_event, id, text) => {
+  handle(CHANNELS.submitTurn, (_event, id, text, attached) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;
     const said = input.text(text);
-    return said.ok ? ask.submitTurn(session.value, said.value) : said;
+    if (!said.ok) return said;
+    const shown = images.turnImages(attached);
+    return shown.ok ? ask.submitTurn(session.value, said.value, shown.value) : shown;
   });
+  // Pictures (D46): a picked file is read here, and pasted or dropped bytes are
+  // checked here the same way. The renderer never names a path.
+  handle(CHANNELS.pickImages, (event) => pickImages(event));
+  handle(CHANNELS.readImage, (_event, name, bytes) => images.imageFromBytes(name, bytes));
   handle(CHANNELS.steer, (_event, id, text) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

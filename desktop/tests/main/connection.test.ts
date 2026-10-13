@@ -318,6 +318,16 @@ describe('requests', () => {
     expect(daemon.bodies).toEqual([{ text: 'oi' }, { text: 'na verdade' }, { decision: 'deny' }, { mode: 'auto' }, { command: 'go test ./...' }]);
   });
 
+  it('sends a turn’s pictures in its body, and no list when there are none (D46)', async () => {
+    const { daemon, conn, r } = await setUp({ sessions: { s1: 1 } });
+    conn.start();
+    await until(() => connected(r), 'connected');
+    const images = [{ media_type: 'image/png', data: 'iVBORw0KGgo=' }];
+    expect(await conn.requests.submitTurn('s1', 'o que é isto?', images)).toEqual({ ok: true, value: null });
+    expect(await conn.requests.submitTurn('s1', 'e agora?', [])).toEqual({ ok: true, value: null });
+    expect(daemon.bodies).toEqual([{ text: 'o que é isto?', images }, { text: 'e agora?' }]);
+  });
+
   it('answers the daemon’s refusal as it came', async () => {
     const { conn, r } = await setUp();
     conn.start();
