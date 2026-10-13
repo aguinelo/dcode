@@ -88,8 +88,11 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		Models: d.models,
 		// What a workspace remembers and which skills it has, read where
 		// sessions read them.
-		Memory:      d.memory,
-		Skills:      d.skills,
+		Memory: d.memory,
+		Skills: d.skills,
+		// Which slash commands a client offers there, discovered as the TUI
+		// discovers them.
+		Commands:    d.commands,
 		CommitDone:  d.commitDone,
 		MaxSessions: opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without

@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O núcleo lista os comandos do usuário num workspace.** `GET /v1/commands`
+  responde os comandos de barra que o usuário e o projeto escreveram, como a TUI
+  os acha, cada um com o texto que manda. É o que o menu de `/` do campo vai
+  oferecer ao lado dos comandos dele, e mandar como a TUI manda. Os tipos do
+  protocolo foram regenerados.
 - **Os comandos do campo aparecem, e uma ajuda os lista com as teclas.** O
   campo atendia `/undo`, `/compact`, `/mode` e `!`, e nada dizia isso. Um `/` no
   começo do campo de uma conversa agora abre um menu com todos os comandos,

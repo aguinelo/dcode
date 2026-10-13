@@ -24,6 +24,10 @@ type Command struct {
 // CommandsDirName is the directory searched under each root.
 const CommandsDirName = "commands"
 
+// CommandMaxBytes is the largest command file a client loads. One number for
+// every reader, so a command one client offers is not refused by another.
+const CommandMaxBytes = 64 << 10
+
 // CommandSet is the resolved set of commands, keyed by name.
 type CommandSet struct {
 	Commands map[string]Command
@@ -31,6 +35,9 @@ type CommandSet struct {
 	// override is reportable. Silent shadowing is how a user ends up debugging
 	// the wrong file.
 	Collisions []string
+	// Overridden names the same overrides by command name, sorted, for a
+	// reader that has no business with the paths.
+	Overridden []string
 }
 
 // Names returns the command names in a stable order.
@@ -65,11 +72,13 @@ func DiscoverCommands(roots Roots, workspace string, maxBytes int) (CommandSet, 
 			if prev, ok := set.Commands[c.Name]; ok {
 				set.Collisions = append(set.Collisions,
 					fmt.Sprintf("/%s from %s overrides %s", c.Name, c.Path, prev.Path))
+				set.Overridden = append(set.Overridden, c.Name)
 			}
 			set.Commands[c.Name] = c
 		}
 	}
 	sort.Strings(set.Collisions)
+	sort.Strings(set.Overridden)
 	return set, nil
 }
 

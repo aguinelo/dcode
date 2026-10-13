@@ -148,6 +148,10 @@ func TestDiscoverCommandsLetsTheProjectWinAndRecordsIt(t *testing.T) {
 	if !strings.Contains(set.Collisions[0], "review") {
 		t.Errorf("got %q", set.Collisions[0])
 	}
+	// By name too, for a reader that has no business with the paths.
+	if len(set.Overridden) != 1 || set.Overridden[0] != "review" {
+		t.Errorf("the overridden names are %v, want [review]", set.Overridden)
+	}
 	if got := set.Names(); len(got) != 2 || got[0] != "onlyuser" || got[1] != "review" {
 		t.Errorf("names must be stable and sorted, got %v", got)
 	}

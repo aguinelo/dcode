@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The core lists a workspace's user commands.** `GET /v1/commands` answers
+  the slash commands the user and the project wrote, as the TUI finds them,
+  each with the text it sends. What the field's `/` menu will offer beside its
+  own commands, and send the way the TUI does. The protocol types are
+  regenerated.
 - **The field's commands are offered, and a help lists them with the keys.**
   The field answered `/undo`, `/compact`, `/mode` and `!`, and nothing said so.
   A `/` at the start of a conversation's field now opens a menu of every

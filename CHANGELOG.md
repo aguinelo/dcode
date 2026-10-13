@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 210 decision changelogs |
+| spec families | 18, with 211 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The daemon lists a workspace's user commands.** `GET /v1/commands` answers
+  the slash commands the user and the project wrote in `commands/*.md`, found
+  by the same `config.DiscoverCommands` and the same 64 KiB cap the TUI uses,
+  the project's winning by name and named in `overrides`, each with its source,
+  its file and the body it sends. Only the TUI could offer them, because it
+  reads the files itself; the desktop talks to the daemon over HTTP and cannot
+  read the user's config root. The body travels, unlike a skill's, because
+  invoking a command is sending its text, and a command never runs anything. A
+  file that cannot load refuses the list with the reason, as it refuses the
+  TUI's start. The Go client gains `ListCommands`.
 - **The mascot's reference sheet is kept in `refs/design/brand/mascote.webp`.**
   Six colourways, poses, icons, interface uses and the 23-tone palette, kept
   where design references live so the desktop and the TUI draw from one source

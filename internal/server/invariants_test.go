@@ -104,6 +104,14 @@ var protocolInvariants = map[string]string{
 	"o corpo de uma skill":            "TestMemoryAndSkillsNeverCarryWhatTheyDoNotDeclare",
 	"recusam workspace ausente":       "TestMemoryAndSkillsRefuseAWorkspaceThatCannotBeRead",
 	"gancho de memória ou de skills":  "TestMemoryAndSkillsWithoutTheHookRefuse",
+	// A workspace's user commands. Discovered where the TUI discovers them,
+	// served by the server, and each assertion sits where its half is.
+	"o do projeto vencendo pelo nome e dito":    "TestTheCommandsRouteListsWhatTheTUIOffers",
+	"é o comando que a TUI resolve":             "TestTheCommandsListedAreTheOnesTheTUIResolves",
+	"recusa a lista com o motivo":               "TestACommandThatCannotLoadRefusesWithTheReason",
+	"nem a pasta de configuração do usuário":    "TestCommandsNeverCarryWhatTheyDoNotDeclare",
+	"Comandos recusam, com `workspace_invalid`": "TestCommandsRefuseAWorkspaceThatCannotBeRead",
+	"sem o gancho de comandos":                  "TestCommandsWithoutTheHookRefuse",
 	// A workspace's git, as it is now. Read by vcs, served by the server, and
 	// each assertion sits where its half is.
 	"a branch de **agora**":                "TestTheGitRouteListsTheTreeAsItIsNow",
