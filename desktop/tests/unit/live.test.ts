@@ -35,6 +35,7 @@ function fakeApi() {
   const crew = {
     skills: missing('/v1/skills?workspace=%2Fw%2Fdcode'),
     memory: missing('/v1/memory?workspace=%2Fw%2Fdcode'),
+    commands: missing('/v1/commands?workspace=%2Fw%2Fdcode'),
     undo: ok<unknown>({ restored: ['a.go'], refused: [] }),
     compact: ok<unknown>({ compacted: true }),
     history: missing('/v1/conversations/old/events?from=1'),
@@ -58,6 +59,7 @@ function fakeApi() {
     listModels: (ws) => (asked.push(`models of ${ws}`), Promise.resolve(models)),
     listSkills: (ws) => (asked.push(`skills of ${ws}`), Promise.resolve(crew.skills)),
     listMemory: (ws) => (asked.push(`memory of ${ws}`), Promise.resolve(crew.memory)),
+    listCommands: (ws) => (asked.push(`commands of ${ws}`), Promise.resolve(crew.commands)),
     conversationEvents: (id, from) => (asked.push(`history of ${id} from ${from}`), Promise.resolve(crew.history)),
     readGit: (id) => (asked.push(`git of ${id}`), Promise.resolve(crew.git)),
     readGitDiff: (id, path) => (asked.push(`diff of ${path} in ${id}`), Promise.resolve(crew.gitDiff)),
@@ -237,6 +239,26 @@ describe('the window connected', () => {
     expect(read.state === 'loaded' && read.view.entries).toMatchObject([{ kind: 'user', text: 'conserte o parser' }]);
     // Read, and nothing else: no continuation, no stream.
     expect(f.asked).toEqual(['history of old from 1', 'history of old from 1', 'history of old from 1']);
+  });
+
+  it('reads a workspace’s commands, and says an older daemon, a refusal or an unreadable answer (D50)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.listCommands('/w/dcode')).toEqual({
+      ok: false,
+      why: 'Este daemon ainda não expõe os comandos de um projeto (GET /v1/commands) — atualize o dcode. O daemon disse: O daemon respondeu 404 a GET /v1/commands?workspace=%2Fw%2Fdcode: 404 page not found.',
+    });
+    const list = { commands: [{ name: 'review', description: '', source: 'project', path: 'review.md', body: 'Review it.' }], overrides: [] };
+    f.crew.commands = { ok: true, value: list };
+    expect(await store.actions.listCommands('/w/dcode')).toEqual({ ok: true, value: list });
+    f.crew.commands = { ok: false, refusal: { code: 'internal', message: 'config: review.md has no body, so there is nothing to send' } };
+    expect(await store.actions.listCommands('/w/dcode')).toEqual({
+      ok: false,
+      why: 'O daemon não disse quais comandos existem: config: review.md has no body, so there is nothing to send',
+    });
+    f.crew.commands = { ok: true, value: { commands: 'x' } };
+    const bad = await store.actions.listCommands('/w/dcode');
+    expect(!bad.ok && bad.why).toMatch(/^Resposta ilegível do daemon: lista de comandos/);
   });
 
   it('reads skills and memory, and says a refusal or an unreadable answer as a failure', async () => {

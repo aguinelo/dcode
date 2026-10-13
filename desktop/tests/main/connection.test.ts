@@ -276,9 +276,11 @@ describe('requests', () => {
       refusal: { code: 'unexpected_answer', message: 'O daemon respondeu 404 a GET /v1/skills?workspace=%2Fw%20a: 404 page not found.' },
     });
     expect((await conn.requests.listMemory('/w')).ok).toBe(false);
-    expect(daemon.requests.filter((q) => q.includes('/skills') || q.includes('/memory'))).toEqual([
+    expect((await conn.requests.listCommands('/w')).ok).toBe(false);
+    expect(daemon.requests.filter((q) => q.includes('/skills') || q.includes('/memory') || q.includes('/commands'))).toEqual([
       'GET /v1/skills?workspace=%2Fw%20a',
       'GET /v1/memory?workspace=%2Fw',
+      'GET /v1/commands?workspace=%2Fw',
     ]);
   });
 
