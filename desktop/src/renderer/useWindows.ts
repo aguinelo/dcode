@@ -8,6 +8,7 @@ import { useImageStore } from './useImages';
 
 // The window's pictures are kept with its windows (D46); App provides them to the fields.
 export { ImagesProvider } from './useImages';
+import type { Sheet } from './CommandSheet';
 import type { Outcome, StartOptions, WindowActions } from './window';
 
 type Once = <T>(key: string, run: () => Promise<Outcome<T>>) => Promise<Outcome<T> | null>;
@@ -36,8 +37,10 @@ export function useWindows(o: {
   maximized: string | null;
   /** Maximizes a conversation, or goes back to the grid with null. */
   maximize: (id: string | null) => void;
+  /** Opens the help, or a conversation's plan, over the window (D48). */
+  sheet: (s: Sheet) => void;
 }) {
-  const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize } = o;
+  const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize, sheet } = o;
   // The pictures of the fields (D46): attached per conversation, sent with its next message.
   const images = useImageStore(actions, say);
   const attached = images.store;
@@ -178,17 +181,37 @@ export function useWindows(o: {
   /**
    * What was typed in a conversation's field (D40): a message for the model,
    * `!` a command run in the session, `/undo`, `/compact` and `/mode <m>` for
-   * the harness. Any other slash is said to be unknown and stays in the field.
+   * the harness; `/help` and `/plan` open over the window, and `/init` and
+   * `/plan <text>` send the TUI's turn (D48). Any other slash is said to be
+   * unknown and stays in the field.
    */
   const sendIn = useCallback(
     async (id: string, text: string) => {
       const input = parseInput(text);
+      const state = sessions.byId[id]?.state;
       let ok: boolean;
       switch (input.kind) {
         case 'unknown':
         case 'bad':
           say(input.why);
           return;
+        case 'help':
+          sheet({ kind: 'help' });
+          ok = true;
+          break;
+        case 'plan':
+          sheet({ kind: 'plan', id });
+          ok = true;
+          break;
+        case 'turn':
+          // A new turn, not a correction of this one: sent mid-turn it would
+          // steer the work under way with a whole other request.
+          if (state === 'running' || state === 'blocked') {
+            say(`/${input.name} começa um turno: pare o que está rodando ou espere ele terminar.`);
+            return;
+          }
+          ok = !!(await once(`send:${id}`, () => actions.send(id, input.text, false)))?.ok;
+          break;
         case 'undo':
           ok = await undoIn(id);
           break;
@@ -222,7 +245,7 @@ export function useWindows(o: {
       setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
       updateAttention((a) => hold(a, id));
     },
-    [actions, attached, compactIn, once, say, sessions, setDrafts, undoIn, updateAttention],
+    [actions, attached, compactIn, once, say, sessions, setDrafts, sheet, undoIn, updateAttention],
   );
 
   const stopIn = useCallback((id: string) => void once(`stop:${id}`, () => actions.stop(id)), [actions, once]);
@@ -238,7 +261,10 @@ export function useWindows(o: {
   const continueIn = useCallback(
     async (row: Row, text: string) => {
       // A command acts on a live session; this one ended, and continuing it on a command would start one for nothing.
-      if (parseInput(text).kind !== 'message') {
+      const kind = parseInput(text).kind;
+      // The help is about the window, and opens from any field (D48).
+      if (kind === 'help') return sheet({ kind: 'help' });
+      if (kind !== 'message') {
         say('Esta conversa terminou: comandos valem numa conversa viva. Escreva uma mensagem para continuá-la.');
         return;
       }
@@ -252,7 +278,7 @@ export function useWindows(o: {
       setFocusId(id);
       await sendIn(id, text);
     },
-    [actions, attached, once, say, sendIn, setDrafts, updateAttention],
+    [actions, attached, once, say, sendIn, setDrafts, sheet, updateAttention],
   );
 
   /** A conversation continued elsewhere — on another model — takes over the window of the one it continues. */

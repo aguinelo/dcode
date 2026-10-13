@@ -38,6 +38,7 @@ As que estão nos outros arquivos:
 - [D41](DECISIONS-3.md) — Onde a conversa trabalha: sessão, pasta, branch de agora, worktree e o diff da pasta.
 - [D43](DECISIONS-3.md) — Renomear uma conversa pela janela.
 - [D47](DECISIONS-3.md) — O campo lembra o que se pediu e guarda o que vem depois, como na TUI.
+- [D48](DECISIONS-3.md) — Os comandos do campo num menu, e uma ajuda com eles e com as teclas.
 
 ## Decisões
 

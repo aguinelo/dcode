@@ -317,3 +317,38 @@ turno redirecionava (D23).
 Descartados: ↑ lembrar com qualquer texto no campo (tiraria a edição de várias
 linhas); guardar o histórico no `localStorage` (uma segunda cópia do que o
 registro já tem, que diverge); ⌥↵ redirecionar e ↵ enfileirar (inverteria D23).
+
+**D48. Os comandos do campo num menu, e uma ajuda com eles e com as teclas.**
+O campo já atendia `/undo`, `/compact`, `/mode` e `!` (D40), e nada dizia que
+existiam: quem não lia o changelog só descobria errando um.
+
+- **O menu:** `/` no começo do campo abre a lista dos comandos, filtrada pelo
+  prefixo enquanto se digita, como o `Complete` da TUI
+  (`internal/tui/commands.go`): só enquanto o campo é uma barra e um nome; com o
+  primeiro espaço a escolha está feita e o menu sai do caminho. ↑ ↓ escolhem, ⇥
+  completa, ↵ completa e envia o que não pede mais nada (`/undo`, `/plan`), e
+  só completa o que pede argumento (`/mode `, `!`). Esc fecha o menu para o que
+  está escrito; um segundo Esc sai do campo, como antes. Clicar num item é o ↵
+  dele. Enquanto o menu está aberto as setas são dele: ele previne o padrão da
+  tecla, e o histórico do campo (D47) deixa em paz uma tecla prevenida.
+- **A ajuda:** `/help`, ou `?` no campo vazio, abre por cima da janela os
+  comandos e as teclas — as da janela (as de `useWindowKeys`: ⌘K, ⌘N, ⌘0, ⌘1–9,
+  ⌘↵, ⇧⇥, as setas, esc), as do campo e as da aprovação. As teclas ficam numa
+  lista só (`src/state/help.ts`), com teste dizendo quais têm de estar nela.
+  Esc, um clique fora ou "Fechar" fecham, e o foco volta para onde estava.
+- **`/init`** manda o turno que a TUI manda, palavra por palavra: o teste lê o
+  `InitPrompt` de `internal/tui/commands.go` e compara, então os dois não se
+  separam calados. **`/plan`** sozinho mostra o plano atual — o último
+  `plan.updated` da sessão — com quanto já foi feito; `/plan <texto>` manda o
+  `ReplanPrompt` da TUI com o texto. Os dois começam um turno, e no meio de um a
+  janela recusa dizendo por quê, em vez de redirecionar o turno com outro
+  pedido (a TUI enfileira; o desktop ainda não tem fila).
+- No campo de uma conversa terminada não há menu (comandos valem numa viva),
+  mas `/help` digitado ali abre a ajuda. Nada em repouso muda: as referências 02
+  e 03 medem 0,00%.
+
+Descartados: abrir o menu com `/` em qualquer ponto do texto (um caminho como
+`a/b` abriria o menu no meio de uma frase); `?` com texto no campo (é pontuação);
+a lista de teclas tirada do código de `useWindowKeys` (as teclas são tratadas
+num `switch`, não numa tabela, e reescrevê-lo como tabela para a ajuda era
+mudança maior que a ajuda).

@@ -35,7 +35,7 @@ describe('what was typed in the field', () => {
   it('says any other slash command is unknown, naming it and the ones that exist', () => {
     const got = parseInput('/model qwen');
     expect(got.kind).toBe('unknown');
-    expect(got.kind === 'unknown' && got.why).toBe('Comando desconhecido: /model. Aqui há /undo, /compact, /mode <plan|assist|auto> e !comando.');
+    expect(got.kind === 'unknown' && got.why).toBe('Comando desconhecido: /model. Aqui há /help, /init, /plan, /undo, /compact, /mode <plan|assist|auto> e !comando.');
     expect(parseInput('/')).toMatchObject({ kind: 'unknown' });
   });
 });
