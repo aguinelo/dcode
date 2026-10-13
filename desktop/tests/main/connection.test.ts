@@ -286,13 +286,15 @@ describe('requests', () => {
     expect(await conn.requests.steer('s 1', 'na verdade')).toEqual({ ok: true, value: null });
     expect(await conn.requests.interrupt('s 1')).toEqual({ ok: true, value: null });
     expect(await conn.requests.resolveApproval('s 1', 'a/1', 'deny')).toEqual({ ok: true, value: null });
+    expect(await conn.requests.setMode('s 1', 'auto')).toEqual({ ok: true, value: null });
     expect(daemon.requests.filter((q) => q.startsWith('POST'))).toEqual([
       'POST /v1/sessions/s%201/turns',
       'POST /v1/sessions/s%201/steer',
       'POST /v1/sessions/s%201/interrupt',
       'POST /v1/sessions/s%201/approvals/a%2F1',
+      'POST /v1/sessions/s%201/mode',
     ]);
-    expect(daemon.bodies).toEqual([{ text: 'oi' }, { text: 'na verdade' }, { decision: 'deny' }]);
+    expect(daemon.bodies).toEqual([{ text: 'oi' }, { text: 'na verdade' }, { decision: 'deny' }, { mode: 'auto' }]);
   });
 
   it('answers the daemon’s refusal as it came', async () => {

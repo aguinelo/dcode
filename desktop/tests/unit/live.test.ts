@@ -51,6 +51,7 @@ function fakeApi() {
     steer: (id, text) => answer(`steer ${id}: ${text}`),
     interrupt: (id) => answer(`interrupt ${id}`),
     resolveApproval: (id, a, d) => answer(`approve ${id} ${a} ${d}`),
+    setMode: (id, m) => answer(`mode ${id} ${m}`),
   };
   return {
     api,
@@ -214,6 +215,18 @@ describe('the window connected', () => {
       why: 'A mensagem não foi enviada: a turn is already running',
     });
     expect(f.asked).toEqual(['turn s1: na verdade, resuma', 'steer s1: na verdade, resuma', 'steer s2: e agora?', 'turn s2: e agora?']);
+  });
+
+  it('asks the daemon to switch the mode, and says its reason when it refuses', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.setMode('s1', 'auto')).toEqual({ ok: true, value: null });
+    f.refuse('mode', 'invalid_input', 'unknown mode "yolo" (want plan, assist or auto)');
+    expect(await store.actions.setMode('s1', 'plan')).toEqual({
+      ok: false,
+      why: 'O modo não mudou: unknown mode "yolo" (want plan, assist or auto)',
+    });
+    expect(f.asked).toEqual(['mode s1 auto', 'mode s1 plan']);
   });
 
   it('opens a new session in the folder chosen, and follows it', async () => {

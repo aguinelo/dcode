@@ -105,7 +105,7 @@ export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<F
       return;
     }
     if (method === 'POST' && ['/turns', '/steer'].includes(rest)) return void res.writeHead(202).end();
-    if (method === 'POST' && (rest === '/interrupt' || rest.startsWith('/approvals/'))) return void res.writeHead(204).end();
+    if (method === 'POST' && (rest === '/interrupt' || rest === '/mode' || rest.startsWith('/approvals/'))) return void res.writeHead(204).end();
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
     res.end('404 page not found\n');
   }
