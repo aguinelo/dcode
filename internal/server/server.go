@@ -189,6 +189,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/specs", s.listSpecs)
 	s.mux.HandleFunc("GET "+p+"/conversations", s.listConversations)
 	s.mux.HandleFunc("GET "+p+"/conversations/events", s.conversationEvents)
+	s.mux.HandleFunc("GET "+p+"/conversations/{id}/events", s.conversationHistory)
 	s.mux.HandleFunc("GET "+p+"/models", s.listModels)
 	s.mux.HandleFunc("GET "+p+"/memory", s.readMemory)
 	s.mux.HandleFunc("GET "+p+"/skills", s.listSkills)

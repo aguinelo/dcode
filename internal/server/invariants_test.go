@@ -72,6 +72,13 @@ var protocolInvariants = map[string]string{
 	"Conversa que termina continua na lista": "TestAConversationThatEndsStaysAsRecorded",
 	"relido para a lista só quando":          "TestARecordIsReadAgainOnlyWhenItChanged",
 	"dobradas pelo mesmo código":             "TestALiveSummaryMatchesItsRecord",
+	// Reading a recorded conversation. The reading and the id rule are the
+	// session package's; the page and the refusals are the route's.
+	"lida do registro sem ser carregada":    "TestARecordedConversationIsReadWholeAndInOneSequence",
+	"fora do alfabeto fechado":              "TestAnIdThatLeavesTheRecordDirectoryIsRefused",
+	"nomeia id fora da pasta não é seguido": "TestAMarkerThatLeavesTheRecordDirectoryIsNotFollowed",
+	"`limit` acima dele é recusado":         "TestARecordedConversationIsReadPageByPage",
+	"nunca responde conversa vazia":         "TestADaemonWithoutRecordsRefusesToReadOne",
 	// The models a session can ask for. Resolved where the daemon builds
 	// sessions, so the assertions run through the daemon's own routes.
 	"recebe sem pedir nenhum":         "TestTheMenuListsTheDefaultAndTheProfilesOfTheWorkspace",

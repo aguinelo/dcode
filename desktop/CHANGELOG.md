@@ -10,6 +10,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The protocol types carry the page of a recorded conversation.**
+  `src/protocol/generated.ts` is regenerated for the core's new
+  `GET /v1/conversations/{id}/events` (`ConversationEventsResponse`,
+  `ConversationEventsLimit`). Nothing in the window reads it yet; that is the
+  next change, which opens a finished conversation onto its history instead of
+  an empty thread.
 - **An approval offers the answers the TUI offers.** The card always offered
   once, this session and deny; the protocol has five answers, and the TUI picks
   by the crossing. A network crossing now offers once, this project, always and
