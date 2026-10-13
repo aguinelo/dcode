@@ -10,6 +10,17 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A tool call opens onto what it did.** The flow showed each model call as
+  one summary line, though `tool.completed` always carried the whole output
+  and, for a call that changed a file, its unified diff; only a command typed
+  with `!` was shown open. Now a click on the line, or focus and ↵/space,
+  opens it: a change shows its diff with + and − coloured as in the git panel
+  (the same renderer), anything else its output in monospace with ANSI codes
+  stripped, and a failure its whole error. An output past 40 lines opens on
+  the first 40 with "mostrar tudo"; a cut by the tool and the daemon's 400-line
+  diff cut are said, never silent. Live sessions and recorded histories alike.
+  Closed by default and drawn exactly as before: both visual references
+  measure 0.00% (D45).
 - **The window says where a turn stands against its ceilings, and what the
   last one cost.** The rounds and in-flight counts arrived and were folded, but
   nothing showed them, and of `turn.completed`'s `usage` only the context was

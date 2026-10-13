@@ -10,6 +10,17 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma chamada de ferramenta abre no que ela fez.** O fluxo mostrava cada
+  chamada do modelo numa linha de resumo, embora o `tool.completed` sempre
+  trouxesse a saída inteira e, de quem mudou arquivo, o diff unificado; só um
+  comando digitado com `!` aparecia aberto. Agora um clique na linha, ou foco e
+  ↵/espaço, abre a chamada: uma mudança mostra o diff com + e − nas cores do
+  painel do git (o mesmo desenho), qualquer outra a saída em monoespaçado sem
+  os códigos ANSI, e uma falha o erro inteiro. Saída de mais de 40 linhas abre
+  nas 40 primeiras, com "mostrar tudo"; o corte da ferramenta e o corte de 400
+  linhas do diff no daemon são ditos, nunca calados. Vale para a sessão viva e
+  para o histórico gravado. Fechada por padrão e desenhada como antes: as duas
+  referências visuais medem 0,00% (D45).
 - **A janela diz onde um turno está contra os tetos dele, e quanto o último
   custou.** As rodadas e as chamadas em voo chegavam e eram dobradas, mas nada
   as mostrava, e do `usage` do `turn.completed` só o contexto ficava. Agora a

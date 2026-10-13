@@ -1,11 +1,13 @@
-import type { ReactNode } from 'react';
+import { useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { delegation, toolLine, VERBS, WORKING, type Activity, type Block, type Tone } from '../state/flow';
 import { elapsed, since } from '../state/format';
 import type { Entry, ToolCall } from '../state/session';
+import { toolDetail } from '../state/tooldetail';
 import { ApprovalCard } from './ApprovalCard';
 import { CommandActions } from './CommandActions';
 import { RichText } from './Markdown';
 import { noteText } from './text';
+import { ToolDetail } from './ToolDetail';
 
 export { RichText };
 
@@ -17,12 +19,39 @@ function shellCommand(call: ToolCall): string {
 }
 
 function ToolLine({ call, onRun }: { call: ToolCall; onRun?: (command: string) => void }) {
+  const [open, setOpen] = useState(false);
   const v = toolLine(call);
   const command = shellCommand(call);
   // A command the person typed (`!`, D40) is shown open: they ran it to read what it printed.
   const output = call.typed && call.result ? call.result.output : '';
+  // A model's call opens onto what it did (D45), closed until asked: the line is the summary.
+  const detail = useMemo(() => toolDetail(call), [call]);
+  const detailId = `tool-detail-${call.id}`;
+  const toggle = () => setOpen((o) => !o);
+  const opener = detail
+    ? {
+        role: 'button',
+        tabIndex: 0,
+        'aria-expanded': open,
+        'aria-controls': open ? detailId : undefined,
+        onClick: (e: MouseEvent<HTMLDivElement>) => {
+          // Copiar and Rodar no terminal sit on the line; pressing them is not opening it.
+          if ((e.target as HTMLElement).closest('button')) return;
+          toggle();
+        },
+        onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+          if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+          e.preventDefault();
+          toggle();
+        },
+      }
+    : {};
   const line = (
-    <div className="tool-line" title={call.result && !call.result.ok && !output ? call.result.output : undefined}>
+    <div
+      className={`tool-line${detail ? ' opens' : ''}`}
+      title={call.result && !call.result.ok && !output ? call.result.output : undefined}
+      {...opener}
+    >
       <span className={`tool-glyph tone-${v.glyphTone}${call.result ? '' : ' dc-breath'}`}>{v.glyph}</span>
       <span className="tool-name">{v.name}</span>
       {v.target && <span className="tool-target">{v.target}</span>}
@@ -31,11 +60,18 @@ function ToolLine({ call, onRun }: { call: ToolCall; onRun?: (command: string) =
       {command && <CommandActions command={command} onRun={onRun} />}
     </div>
   );
-  if (!call.typed) return line;
+  if (call.typed) {
+    return (
+      <div className="tool-typed" data-typed-call={call.id}>
+        {line}
+        {output && <pre className={`tool-output${call.result?.ok ? '' : ' failed'}`}>{output}</pre>}
+      </div>
+    );
+  }
   return (
-    <div className="tool-typed" data-typed-call={call.id}>
+    <div className={`tool-call${open ? ' open' : ''}`} data-tool-call={call.id}>
       {line}
-      {output && <pre className={`tool-output${call.result?.ok ? '' : ' failed'}`}>{output}</pre>}
+      {open && detail && <ToolDetail id={detailId} detail={detail} label={`O que ${v.name} fez`} />}
     </div>
   );
 }
