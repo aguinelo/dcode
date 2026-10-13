@@ -13,7 +13,9 @@ function fakeApi() {
     end: [] as ((e: StreamEnd) => void)[],
   };
   const ok = <T,>(value: T): Answer<T> => ({ ok: true, value });
-  const session = (id: string) => ({ id, workspace: '/w' }) as P.Session;
+  // The mode a new session opens in, as the daemon would answer it.
+  let opensIn = 'assist';
+  const session = (id: string) => ({ id, workspace: '/w', mode: opensIn }) as P.Session;
   // What the daemon refuses, by the first word of what was asked.
   const refusals: Record<string, { code: string; message: string }> = {};
   const answer = (what: string): Promise<Answer<null>> => {
@@ -46,7 +48,11 @@ function fakeApi() {
     listSkills: (ws) => (asked.push(`skills of ${ws}`), Promise.resolve(crew.skills)),
     listMemory: (ws) => (asked.push(`memory of ${ws}`), Promise.resolve(crew.memory)),
     pickFolder: () => Promise.resolve('/w/novo'),
-    createSession: (ws) => (asked.push(`create in ${ws}`), Promise.resolve(ok(session('new')))),
+    createSession: (ws, o) => {
+      const how = [o?.model && `on ${o.model}`, o?.sandboxMode && `in ${o.sandboxMode}`].filter(Boolean).join(' ');
+      asked.push(`create in ${ws}${how ? ` ${how}` : ''}`);
+      return Promise.resolve(ok(session('new')));
+    },
     submitTurn: (id, text) => answer(`turn ${id}: ${text}`),
     steer: (id, text) => answer(`steer ${id}: ${text}`),
     interrupt: (id) => answer(`interrupt ${id}`),
@@ -60,6 +66,7 @@ function fakeApi() {
     refuse: (what: string, code: string, message: string) => (refusals[what] = { code, message }),
     continued: (id: string) => resolveContinue(ok(session(id))),
     listing: (a: Answer<P.ModelsResponse>) => (models = a),
+    opensIn: (mode: string) => (opensIn = mode),
     crew,
   };
 }
@@ -244,6 +251,27 @@ describe('the window connected', () => {
     expect(await store.actions.closeSession('new')).toEqual({ ok: true, value: null });
     f.refuse('close', 'session_not_found', 'no session new');
     expect(await store.actions.closeSession('new')).toEqual({ ok: false, why: 'A sessão não fechou: no session new' });
+  });
+
+  it('opens a new session on the model and mode chosen, switching the mode only when the sandbox did not give it', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.newSessionIn('/w/dcode', { model: 'qwen-local', mode: 'auto' })).toEqual({ ok: true, value: 'new' });
+    expect(f.asked).toEqual(['create in /w/dcode on qwen-local in full-access', 'mode new auto', 'follow new']);
+    f.asked.length = 0;
+    f.opensIn('plan');
+    await store.actions.newSessionIn('/w/b', { mode: 'plan' });
+    expect(f.asked).toEqual(['create in /w/b in read-only', 'follow new']);
+  });
+
+  it('opens the session even when the mode is refused after, and says so with the daemon’s reason', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const said: string[] = [];
+    store.onNotice((t) => said.push(t));
+    f.refuse('mode', 'internal', 'session has no engine');
+    expect(await store.actions.newSessionIn('/w/dcode', { mode: 'auto' })).toEqual({ ok: true, value: 'new' });
+    expect(said).toEqual(['A sessão abriu, mas não no modo auto: session has no engine']);
   });
 
   it('folds the events it follows, and says what it cannot read or what stopped', () => {

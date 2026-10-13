@@ -231,10 +231,14 @@ describe('requests', () => {
     const continued = await conn.requests.continueConversation('c-old', '/w');
     expect(continued.ok && continued.value.workspace).toBe('/w');
     await conn.requests.continueConversation('c-old', '/w', 'qwen-local');
+    await conn.requests.createSession('/w', { model: 'qwen-local', sandboxMode: 'full-access' });
+    await conn.requests.createSession('/w', { sandboxMode: 'read-only' });
     expect(daemon.bodies).toEqual([
       { workspace: '/w' },
       { workspace: '/w', resume: 'c-old' },
       { workspace: '/w', resume: 'c-old', model: 'qwen-local' },
+      { workspace: '/w', model: 'qwen-local', sandbox_mode: 'full-access' },
+      { workspace: '/w', sandbox_mode: 'read-only' },
     ]);
   });
 

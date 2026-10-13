@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MODES, modeChip, nextMode } from '../../src/state/mode';
+import { MODES, modeChip, modeToSwitch, nextMode, sandboxOf } from '../../src/state/mode';
 
 // The session's behavioural mode as the window names and switches it (D36):
 // the three the daemon knows, in the TUI's order, and a pair that is none of
@@ -35,5 +35,19 @@ describe('the mode of a session', () => {
 
   it('draws nothing before the session says what it runs under', () => {
     expect(modeChip('', '')).toBeNull();
+  });
+
+  it('opens a session on the sandbox a mode maps to, as the daemon maps it', () => {
+    expect(sandboxOf('plan')).toBe('read-only');
+    expect(sandboxOf('assist')).toBe('workspace-write');
+    expect(sandboxOf('auto')).toBe('full-access');
+  });
+
+  it('switches the mode after opening only when the session did not open in it', () => {
+    expect(modeToSwitch('assist', 'auto')).toBe('auto');
+    expect(modeToSwitch('', 'plan')).toBe('plan');
+    expect(modeToSwitch('auto', 'auto')).toBeNull();
+    // No mode chosen: the daemon's default stands.
+    expect(modeToSwitch('assist', undefined)).toBeNull();
   });
 });
