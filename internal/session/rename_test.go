@@ -200,3 +200,34 @@ func TestNamingAConversationThatDoesNotExistSaysSo(t *testing.T) {
 		t.Errorf("a record was created for a conversation that does not exist")
 	}
 }
+
+// An id is a file name inside the record directory and nothing more. Joined to
+// the path unchecked, `../secret` named a record one directory up, and the name
+// was appended to it: a write outside the directory the daemon keeps.
+func TestNamingAnIdThatLeavesTheRecordDirectoryIsRefused(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "sessions")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	secret := recordWith(t, root, "secret",
+		`{"seq":1,"session_id":"secret","type":"session.created","at":"2026-08-21T00:00:00Z","payload":{"id":"secret","workspace":"/w","model":"m"}}`)
+	before, err := os.ReadFile(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, id := range []string{"", ".", "..", "../secret", "a/b", `a\b`, secret[:len(secret)-len(".jsonl")], "secret.jsonl", strings.Repeat("a", 200)} {
+		err := Rename(dir, id, "x", at(t))
+		if pe, ok := protocol.AsError(err); !ok || pe.Code != protocol.CodeInvalidInput {
+			t.Errorf("Rename(%q) = %v, want %s", id, err, protocol.CodeInvalidInput)
+		}
+	}
+	after, err := os.ReadFile(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("a name reached a record outside the directory:\n%s", after)
+	}
+}

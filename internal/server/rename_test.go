@@ -229,3 +229,39 @@ func TestAnOverLongNameIsRefusedByTheDaemon(t *testing.T) {
 		t.Errorf("a refused name reached the record: %q", found[0].Name)
 	}
 }
+
+// The route holds the id to the record directory too. The mux decodes `%2F` in
+// a path value, so `..%2Fsecret` arrived at the handler as `../secret` and the
+// name was appended to a record one directory up.
+func TestNamingAnIdThatLeavesTheRecordDirectoryIsRefusedByTheDaemon(t *testing.T) {
+	srv, _ := newServer(t, 4)
+	root := recordDirWith(t, "secret")
+	dir := filepath.Join(root, "sessions")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	srv.cfg.RecordDir = dir
+	secret := filepath.Join(root, "secret.jsonl")
+	before, err := os.ReadFile(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, id := range []string{"..%2Fsecret", "%2E%2E%2Fsecret", "%2E%2E", "a%2Fb", "a%5Cb", "secret.jsonl"} {
+		t.Run(id, func(t *testing.T) {
+			rec := postName(t, srv, id, "x")
+			var e protocol.Error
+			if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil ||
+				rec.Code != http.StatusBadRequest || e.Code != protocol.CodeInvalidInput || e.Message == "" {
+				t.Errorf("status %d, error %+v: want invalid_input with a reason", rec.Code, e)
+			}
+		})
+	}
+	after, err := os.ReadFile(secret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("a name reached a record outside the directory:\n%s", after)
+	}
+}
