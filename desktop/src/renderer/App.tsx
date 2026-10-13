@@ -190,7 +190,7 @@ export function App({
   // A conversation's name (D43): the field over its title; "Renomear" in the ⋯ menu opens it too.
   const renames = useRenames(actions.rename, say);
   const rename = (id: string) => renames.begin(id, titleNow(sessions.byId[id], rowById.get(id)));
-  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand, rename });
+  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand, rename, end: win.endIn });
 
   // The grid, in stable places: the plan reads the places as last drawn, and
   // they are kept the way React keeps a value from the previous render. The

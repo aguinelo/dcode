@@ -10,6 +10,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma sessão pode ser encerrada pelo menu ⋯.** A janela só fechava uma sessão
+  por conta própria (a nunca usada, e a deixada para trás ao trocar de modelo),
+  então a pessoa não tinha como encerrar uma. "Encerrar sessão" agora a fecha
+  com o mesmo `DELETE /v1/sessions/{id}`; o daemon guarda o registro, a lista
+  mostra a conversa terminada, e escrever nela a continua numa sessão nova. No
+  meio de um turno, ou com uma aprovação esperando, o menu pergunta antes,
+  dizendo o que se perderia, com o foco em "Cancelar". Uma recusa vira aviso com
+  o motivo do daemon. Nada em repouso muda: as duas referências visuais medem
+  0,00% (D51).
 - **Os comandos que a pessoa escreveu aparecem e vão como na TUI.** A TUI
   oferece os comandos de barra de `commands/*.md`, os do usuário e os do
   projeto; a janela não conseguia lê-los. Agora ela pergunta ao núcleo

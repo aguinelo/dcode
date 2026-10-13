@@ -4,6 +4,7 @@ import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
 import { markSent, moveDraft, refuse, STEER_TAKES_TEXT } from '../state/attachments';
 import { compactText, parseInput, undoText } from '../state/commands';
+import { ENDED } from '../state/end';
 import { useImageStore } from './useImages';
 
 // The window's pictures are kept with its windows (D46); App provides them to the fields.
@@ -166,6 +167,20 @@ export function useWindows(o: {
     async (id: string): Promise<boolean> => {
       const out = await once(`undo:${id}`, () => actions.undo(id));
       if (out?.ok) say(undoText(out.value));
+      return !!out?.ok;
+    },
+    [actions, once, say],
+  );
+
+  /**
+   * Encerrar sessão (D51): the daemon closes it and keeps its record, and the
+   * list says it ended; the window says where the conversation went. A refusal
+   * is said by once, with the daemon's reason.
+   */
+  const endIn = useCallback(
+    async (id: string): Promise<boolean> => {
+      const out = await once(`close:${id}`, () => actions.closeSession(id));
+      if (out?.ok) say(ENDED);
       return !!out?.ok;
     },
     [actions, once, say],
@@ -337,6 +352,7 @@ export function useWindows(o: {
     sendIn,
     undoIn,
     compactIn,
+    endIn,
     stopIn,
     answerIn,
     continueIn,
