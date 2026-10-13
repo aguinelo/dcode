@@ -169,7 +169,9 @@ func encodeOpenAI(req Request) (WireRequest, error) {
 		om := oaMessage{Role: string(m.Role), Content: m.Text}
 		if m.Role == ce.RoleTool && m.ToolResult != nil {
 			om.ToolCallID = m.ToolResult.ToolCallID
-			om.Content = m.ToolResult.Output
+			// This dialect has no error field on a tool message, so the
+			// failure travels in the content or it does not travel at all.
+			om.Content = toolResultContent(*m.ToolResult)
 		}
 		if len(m.Images) > 0 {
 			parts := make([]oaPart, 0, len(m.Images)+1)
@@ -500,7 +502,7 @@ func encodeAnthropic(req Request) (WireRequest, error) {
 			}
 			body.Messages = append(body.Messages, anMessage{Role: "user", Content: []anContent{{
 				Type: "tool_result", ToolUseID: m.ToolResult.ToolCallID,
-				Content: m.ToolResult.Output, IsError: m.ToolResult.IsError,
+				Content: toolResultContent(*m.ToolResult), IsError: m.ToolResult.IsError,
 			}}})
 			continue
 		}
@@ -705,6 +707,39 @@ func (d *anthropicDecoder) flush() ([]StreamEvent, error) {
 		out = append(out, StreamEvent{Type: EventToolCall, ToolCall: call})
 	}
 	return out, nil
+}
+
+// ---------- shared encoding ----------
+
+// toolFailedMark opens the content of every failed tool result, on every
+// dialect. The text is declared once, here and in the provider-adapter spec,
+// and never per family.
+//
+// The OpenAI dialect has no error field on a tool message, so before this a
+// model behind it — MiniMax over that dialect, Gemini, anything generic — read
+// a failure exactly as it read a success, while Claude was told through
+// is_error. Whether the model learned that a call failed depended on which
+// family was running, and that is a fact the harness owes every model the same.
+//
+// The Anthropic dialect carries the mark too, beside is_error rather than
+// instead of it: the field is that dialect's own way of saying it, and the
+// text is what makes the words the model reads identical whichever dialect
+// carried them.
+//
+// Constant, with no count, id or time in it: it sits in the history every
+// later request sends, and a varying byte there invalidates the cached prefix.
+const toolFailedMark = "The tool call failed.\n\n"
+
+// toolResultContent is what a tool result says to the model, on any dialect.
+//
+// Applied at encoding and never stored: the history keeps the neutral result,
+// so a session recorded before this reads back as it was and is encoded with
+// the mark like any other.
+func toolResultContent(r ce.ToolResult) string {
+	if !r.IsError {
+		return r.Output
+	}
+	return toolFailedMark + r.Output
 }
 
 // ---------- shared validation ----------

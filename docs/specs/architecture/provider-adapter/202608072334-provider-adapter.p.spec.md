@@ -185,6 +185,22 @@ type Usage struct {
 >
 > Por isso o juiz daquele cenário decodifica a estrutura e exige os campos obrigatórios por conta própria. Validar schema no adaptador é decisão em aberto, não dívida escondida: custaria uma dependência de JSON Schema num projeto que escreveu o próprio leitor de TOML para não ter uma.
 
+### 3.1 Resultado de ferramenta que falhou (RN-12)
+
+Todo `ToolResult` com `IsError` é codificado, em **todo** dialeto, com o conteúdo aberto por este texto, exato, seguido da saída da ferramenta:
+
+```
+The tool call failed.
+
+```
+
+(uma frase e uma linha em branco). Em inglês, como toda superfície que o modelo lê (`docs/conventions/LANGUAGE.md`). Resultado sem `IsError` sai com a saída intocada.
+
+- O texto vive em **um** lugar no código — `toolFailedMark`, usado por `toolResultContent` — e os dois encoders o chamam. Cópia por família é exatamente o que a RN-12 proíbe.
+- O dialeto `anthropic` leva o texto **e** `is_error: true`. O `openai` não tem campo e leva só o texto.
+- É aplicado na codificação e **não** é gravado no histórico: o histórico guarda o resultado neutro, então uma sessão gravada antes disto é reidratada igual e codificada com o texto como qualquer outra.
+- Constante, sem contagem, identificador ou hora: fica no histórico que toda requisição seguinte reenvia, e byte variável ali invalida o prefixo em cache (ADR-03).
+
 **Ordem garantida:** zero ou mais `EventTextDelta` e `EventToolCall` intercalados, terminados por exatamente **um** `EventDone` ou **um** `EventError`. Nunca ambos, nunca nenhum.
 
 ## 4. Classes de erro
@@ -290,6 +306,7 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Call que o stream não terminou de emitir vira erro `tool_schema`, nunca execução.
 - Raciocínio nunca aparece em evento de texto nem no histórico (RN-10).
 - Frame que só carrega marcador de raciocínio e espaço em branco não produz evento algum.
+- O mesmo resultado de ferramenta que falhou é dito com as mesmas palavras nos dois dialetos, e um resultado bem-sucedido sai sem marca (RN-12).
 
 ## 8. Changelog
 
@@ -299,3 +316,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
 - [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610131200 — A falha chega em todo dialeto](changelog/202610131200-a-falha-chega-em-todo-dialeto.md)

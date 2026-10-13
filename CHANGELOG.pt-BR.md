@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um resultado de ferramenta que falhou diz isso em todo dialeto.** O
+  encoder OpenAI mandava só o identificador da chamada e a saída, e o
+  `IsError` se perdia — o dialeto não tem campo de erro na mensagem de
+  ferramenta. Então MiniMax por esse dialeto, Gemini e `generic` liam uma
+  falha exatamente como um sucesso, enquanto o Claude era avisado por
+  `is_error`. Agora todo resultado que falhou abre com o mesmo texto,
+  declarado uma vez na spec, nos dois dialetos, e o Anthropic continua
+  mandando `is_error` junto: se a chamada falhou é um fato que o harness deve
+  igual a todo modelo, não algo que depende da família rodando.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e

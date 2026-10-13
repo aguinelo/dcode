@@ -35,6 +35,7 @@ var providerInvariants = map[string]string{
 	"vira erro `tool_schema`":        "TestATruncatedToolCallIsAnErrorRatherThanAnEmptyCall",
 	"nem no histórico (RN-10)":       "TestReasoningNeverBecomesAnswerText",
 	"marcador de raciocínio e esp":   "TestAFrameOfPureFramingProducesNothing",
+	"mesmas palavras nos dois":       "TestAFailedToolResultSaysSoOnEveryDialect",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
