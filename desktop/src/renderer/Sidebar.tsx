@@ -2,42 +2,33 @@ import type { ProjectView } from '../state/sidebar';
 import { nameParts } from './host';
 import { ProjectList, type ProjectActions } from './ProjectList';
 
-const NEW_SESSION = 'Nova sessão';
-const SEARCH = 'Procurar';
-
-const NAV = [
-  { icon: '+', label: NEW_SESSION, key: '⌘N' },
-  { icon: '⌕', label: SEARCH, key: '⌘K' },
-  { icon: '◷', label: 'Rotinas', key: '' },
-];
-
 export function Sidebar({
-  drawsWindowControls,
   projects,
   selectedId,
+  onGridIds,
+  gridShown,
+  gridCount,
   now,
   userName,
-  canGoBack,
-  canGoForward,
   actions,
-  onBack,
-  onForward,
   onToggleAll,
+  onShowGrid,
   onNewSession,
   onSearch,
   onMissing,
 }: {
-  drawsWindowControls: boolean;
   projects: ProjectView[];
   selectedId: string | null;
+  /** The conversations holding a place on the grid. */
+  onGridIds: ReadonlySet<string>;
+  /** The grid is on the stage. */
+  gridShown: boolean;
+  gridCount: number;
   now: number;
   userName: string | null;
-  canGoBack: boolean;
-  canGoForward: boolean;
   actions: ProjectActions;
-  onBack: () => void;
-  onForward: () => void;
   onToggleAll: () => void;
+  onShowGrid: () => void;
   onNewSession: () => void;
   onSearch: () => void;
   onMissing: (what: string) => void;
@@ -46,37 +37,26 @@ export function Sidebar({
   const user = userName ? nameParts(userName) : null;
   return (
     <aside className="sidebar">
-      <div className="sidebar-top drag-region">
-        {drawsWindowControls && (
-          // Placeholders where macOS draws the window controls. Only in a plain
-          // browser, where there are none: in Electron the OS draws its own.
-          <>
-            <span className="light light-close" />
-            <span className="light light-min" />
-            <span className="light light-max" />
-          </>
-        )}
-        <span className="spacer" />
-        <button type="button" className="sidebar-toggle no-drag" aria-label="Recolher a lateral" onClick={() => onMissing('Recolher a lateral')} />
-        <button type="button" className="nav-arrow back no-drag" aria-label="Voltar" disabled={!canGoBack} onClick={onBack}>
-          ←
-        </button>
-        <button type="button" className="nav-arrow no-drag" aria-label="Avançar" disabled={!canGoForward} onClick={onForward}>
-          →
-        </button>
-      </div>
       <nav className="sidebar-nav">
-        {NAV.map((n) => (
-          <button key={n.label} type="button" className="nav-item" onClick={() => (n.label === NEW_SESSION ? onNewSession() : n.label === SEARCH ? onSearch() : onMissing(n.label))}>
-            <span className="nav-icon">{n.icon}</span>
-            <span className="nav-label">{n.label}</span>
-            <span className="nav-key">{n.key}</span>
-          </button>
-        ))}
+        <button type="button" className={`nav-item${gridShown ? ' on' : ''}`} onClick={onShowGrid}>
+          <span className="nav-icon">▦</span>
+          <span className="nav-label">Grade{gridCount > 0 ? ` · ${gridCount}` : ''}</span>
+          <span className="nav-key">⌘0</span>
+        </button>
+        <button type="button" className="nav-item" onClick={onNewSession}>
+          <span className="nav-icon">+</span>
+          <span className="nav-label">Nova sessão</span>
+          <span className="nav-key">⌘N</span>
+        </button>
+        <button type="button" className="nav-item" onClick={onSearch}>
+          <span className="nav-icon">⌕</span>
+          <span className="nav-label">Procurar</span>
+          <span className="nav-key">⌘K</span>
+        </button>
       </nav>
       <div className="projects">
         <div className="projects-head">
-          <span className="projects-title">Projetos</span>
+          <span className="projects-title">Conversas</span>
           <button type="button" className="projects-toggle" onClick={onToggleAll}>
             {anyOpen ? 'recolher tudo' : 'expandir tudo'}
           </button>
@@ -84,7 +64,7 @@ export function Sidebar({
             +
           </button>
         </div>
-        <ProjectList projects={projects} selectedId={selectedId} now={now} actions={actions} />
+        <ProjectList projects={projects} selectedId={selectedId} onGridIds={onGridIds} now={now} actions={actions} />
       </div>
       <div className="sidebar-foot">
         <span className="avatar">{user?.initials ?? '?'}</span>

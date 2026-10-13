@@ -349,17 +349,30 @@ export function decisionLabel(decision: string): { text: string; tone: Tone } {
   }
 }
 
-/** The seal a turn ended with. `clean` changed nothing and says nothing. */
+/**
+ * The seal a turn ended with. `clean` changed nothing and says nothing — unless
+ * the turn wrote where the work is measured, which is never left out: a seal
+ * checked with a ruler the turn changed is not a plain pass.
+ */
 export function sealOf(c: P.Completion): { text: string; tone: Tone } | null {
+  const seal = verificationOf(c);
+  const touched = c.touched_protected ?? [];
+  if (touched.length === 0) return seal;
+  const ruler = `tocou a régua: ${touched.join(', ')}`;
+  if (!seal) return { text: `⚠ ${ruler}`, tone: 'warn' };
+  return { text: `${seal.text} · ${ruler}`, tone: seal.tone === 'err' ? 'err' : 'warn' };
+}
+
+function verificationOf(c: P.Completion): { text: string; tone: Tone } | null {
   switch (c.verification) {
     case 'passed':
-      return { text: `✓ verified · ${plural((c.met ?? []).length, 'check', 'checks')}`, tone: 'ok' };
+      return { text: `✓ verificado · ${plural((c.met ?? []).length, 'critério', 'critérios')}`, tone: 'ok' };
     case 'failed':
-      return { text: `✗ not verified · ${(c.unmet ?? []).join(', ')}`, tone: 'err' };
+      return { text: `✗ não verificado · ${(c.unmet ?? []).join(', ')}`, tone: 'err' };
     case 'stale':
-      return { text: '⚠ unverified · mudou depois do check', tone: 'dim' };
+      return { text: '⚠ não conferido · mudou depois do check', tone: 'dim' };
     case 'unavailable':
-      return { text: '⚠ unverified · nada pôde ser conferido', tone: 'dim' };
+      return { text: '⚠ não conferido · nada pôde ser conferido', tone: 'dim' };
     case 'clean':
       return null;
     default:
