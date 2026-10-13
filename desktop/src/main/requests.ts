@@ -65,6 +65,11 @@ export class Requests {
     return this.call('GET', `/${Version}/skills?workspace=${encodeURIComponent(workspace)}`);
   }
 
+  /** The slash commands the user and the project wrote, for the workspace. Passed on as it came, like the models. */
+  listCommands(workspace: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/commands?workspace=${encodeURIComponent(workspace)}`);
+  }
+
   /** What a session in the workspace reads as memory. Passed on as it came, like the models. */
   listMemory(workspace: string): Promise<Answer<unknown>> {
     return this.call('GET', `/${Version}/memory?workspace=${encodeURIComponent(workspace)}`);

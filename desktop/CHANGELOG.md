@@ -10,6 +10,18 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The commands the person wrote are offered and sent as in the TUI.** The
+  TUI offers the slash commands in `commands/*.md`, the user's and the
+  project's; the window could not read them. It now asks the core
+  (`GET /v1/commands`) once per project it has a conversation of, as the TUI
+  reads them once at start, and the `/` menu lists them after the field's own,
+  with their description and whose they are. Typed, one is expanded as the
+  TUI's `config.Expand` does (`$ARGUMENTS`, or what followed appended) and sent
+  as a message; a file named like a field command never shadows it. The help
+  lists them under "Deste projeto". A list that did not come is said, with the
+  daemon's reason, at the foot of the menu, in the help and by an unknown
+  `/name`; never an empty list. Nothing at rest changes: both visual references
+  measure 0.00% (D50).
 - **The core lists a workspace's user commands.** `GET /v1/commands` answers
   the slash commands the user and the project wrote, as the TUI finds them,
   each with the text it sends. What the field's `/` menu will offer beside its

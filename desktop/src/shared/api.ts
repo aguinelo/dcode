@@ -142,6 +142,8 @@ export interface DcodeApi {
   listModels(workspace: string): Promise<Answer<ModelsResponse>>;
   /** The skills a session in the workspace has (`GET /skills`), as it came. Decoded by the renderer. */
   listSkills(workspace: string): Promise<Answer<unknown>>;
+  /** The slash commands the user and the project wrote (`GET /commands`), as it came. Decoded by the renderer. */
+  listCommands(workspace: string): Promise<Answer<unknown>>;
   /** What a session in the workspace reads as memory (`GET /memory`), as it came. Decoded by the renderer. */
   listMemory(workspace: string): Promise<Answer<unknown>>;
   /**
@@ -217,6 +219,7 @@ export const CHANNELS = {
   closeSession: 'dcode:close-session',
   listModels: 'dcode:list-models',
   listSkills: 'dcode:list-skills',
+  listCommands: 'dcode:list-commands',
   listMemory: 'dcode:list-memory',
   conversationEvents: 'dcode:conversation-events',
   readGit: 'dcode:read-git',

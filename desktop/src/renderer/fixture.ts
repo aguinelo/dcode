@@ -40,6 +40,14 @@ export const fixtureActions: WindowActions = {
   undo: async () => ({ ok: false, why: NOT_CONNECTED }),
   compact: async () => ({ ok: false, why: NOT_CONNECTED }),
   listSkills: async () => ({ ok: false, why: NOT_CONNECTED }),
+  // A command the recording's project wrote, so the / menu shows one of the person's own (D50).
+  listCommands: async () => ({
+    ok: true,
+    value: {
+      commands: [{ name: 'review', description: 'revisa o que está preparado contra o AGENTS.md', source: 'project', path: 'review.md', body: 'Review the staged change against AGENTS.md. $ARGUMENTS' }],
+      overrides: [],
+    },
+  }),
   listMemory: async () => ({ ok: false, why: NOT_CONNECTED }),
   readHistory: async () => ({ state: 'failed', reason: NOT_CONNECTED }),
   readGit: async (id) => {

@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
+import type { CommandInfo } from '../protocol/generated';
 import { completions, type Command } from '../state/commands';
 
 /**
@@ -8,11 +9,20 @@ import { completions, type Command } from '../state/commands';
  * those keys: `keys` prevents their default, and whatever handles the field's
  * keys after it leaves a prevented key alone.
  */
-export function useSlashMenu(text: string, on: boolean, write: (text: string) => void, send: (text: string) => void) {
+export function useSlashMenu(
+  text: string,
+  on: boolean,
+  write: (text: string) => void,
+  send: (text: string) => void,
+  /** The commands the person and the project wrote (D50), after the field's own. */
+  user: readonly CommandInfo[] = [],
+  /** Why the project's commands are not in the list, said at its foot. */
+  missing: string | null = null,
+) {
   const [at, setAt] = useState(0);
   // The text the menu was closed on: it stays closed until the text changes.
   const [shut, setShut] = useState<string | null>(null);
-  const list = on && shut !== text ? completions(text) : [];
+  const list = on && shut !== text ? completions(text, user) : [];
   const cur = Math.min(at, Math.max(0, list.length - 1));
 
   const choose = (c: Command, submit: boolean) => {
@@ -63,9 +73,13 @@ export function useSlashMenu(text: string, on: boolean, write: (text: string) =>
               {c.name === '!' ? '!' : `/${c.name}`}
               {c.args && <span className="slash-args"> {c.args}</span>}
             </span>
-            <span className="slash-detail">{c.detail}</span>
+            <span className="slash-detail">
+              {c.detail}
+              {c.origin && <span className="slash-origin"> · {c.origin}</span>}
+            </span>
           </div>
         ))}
+        {missing && <div className="slash-missing tone-err">{missing}</div>}
       </div>
     ) : null;
 

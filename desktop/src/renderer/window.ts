@@ -4,7 +4,7 @@
 
 import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus, ImageAttachment, PickedImages } from '../shared/api';
-import type { CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
+import type { CommandsResponse, CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
 import type { Row } from '../state/sidebar';
 
@@ -76,6 +76,8 @@ export interface WindowActions {
   compact(sessionId: string): Promise<Outcome<CompactResult>>;
   /** The skills a session in the workspace has (`GET /v1/skills`, N6), or why not — a daemon without the route says so. */
   listSkills(workspace: string): Promise<Outcome<SkillsResponse>>;
+  /** The slash commands the user and the project wrote, as the TUI finds them (`GET /v1/commands`, D50), or why not. */
+  listCommands(workspace: string): Promise<Outcome<CommandsResponse>>;
   /** What a session in the workspace reads as memory (`GET /v1/memory`, N6), or why not. */
   listMemory(workspace: string): Promise<Outcome<MemoryResponse>>;
   /**

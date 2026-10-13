@@ -9,6 +9,7 @@ import { useImageStore } from './useImages';
 // The window's pictures are kept with its windows (D46); App provides them to the fields.
 export { ImagesProvider } from './useImages';
 import type { Sheet } from './CommandSheet';
+import { listOf, type UserCommands } from './useUserCommands';
 import type { Outcome, StartOptions, WindowActions } from './window';
 
 type Once = <T>(key: string, run: () => Promise<Outcome<T>>) => Promise<Outcome<T> | null>;
@@ -39,8 +40,10 @@ export function useWindows(o: {
   maximize: (id: string | null) => void;
   /** Opens the help, or a conversation's plan, over the window (D48). */
   sheet: (s: Sheet) => void;
+  /** The commands each project wrote, as the daemon listed them (D50). */
+  commandsOf: (workspace: string) => UserCommands;
 }) {
-  const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize, sheet } = o;
+  const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize, sheet, commandsOf } = o;
   // The pictures of the fields (D46): attached per conversation, sent with its next message.
   const images = useImageStore(actions, say);
   const attached = images.store;
@@ -187,16 +190,21 @@ export function useWindows(o: {
    */
   const sendIn = useCallback(
     async (id: string, text: string) => {
-      const input = parseInput(text);
+      const workspace = sessions.byId[id]?.info?.workspace ?? '';
+      const mine = commandsOf(workspace);
+      const input = parseInput(text, listOf(mine));
       const state = sessions.byId[id]?.state;
       let ok: boolean;
       switch (input.kind) {
         case 'unknown':
+          // A command the project wrote may be the one that did not come: said with why.
+          say(mine.state === 'failed' ? `${input.why} Os comandos deste projeto não vieram: ${mine.why}` : input.why);
+          return;
         case 'bad':
           say(input.why);
           return;
         case 'help':
-          sheet({ kind: 'help' });
+          sheet({ kind: 'help', workspace });
           ok = true;
           break;
         case 'plan':
@@ -245,7 +253,7 @@ export function useWindows(o: {
       setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
       updateAttention((a) => hold(a, id));
     },
-    [actions, attached, compactIn, once, say, sessions, setDrafts, sheet, undoIn, updateAttention],
+    [actions, attached, commandsOf, compactIn, once, say, sessions, setDrafts, sheet, undoIn, updateAttention],
   );
 
   const stopIn = useCallback((id: string) => void once(`stop:${id}`, () => actions.stop(id)), [actions, once]);

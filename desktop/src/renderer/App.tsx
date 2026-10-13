@@ -177,8 +177,8 @@ export function App({
     setSelectedId(to === GRID ? null : to);
   };
 
-  const sheet = useCommandSheet(sessions);
-  const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show });
+  const sheet = useCommandSheet(sessions, actions);
+  const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show, commandsOf: sheet.of });
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);
   const prompts = usePrompts(actions, sessions, once, say);
@@ -476,7 +476,7 @@ export function App({
     </div>
   );
   return (
-    <SheetContext.Provider value={sheet.show}>
+    <SheetContext.Provider value={sheet.context}>
       <RenameProvider value={renames}>
         <PromptsProvider value={prompts}>
           <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
