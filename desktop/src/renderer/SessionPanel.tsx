@@ -1,9 +1,11 @@
+import type { History } from '../state/history';
 import type { Measure } from '../state/models';
 import { paneView, type PaneView } from '../state/pane';
 import type { SessionView } from '../state/session';
 import { rowOfSession, sessionTitle, type Row } from '../state/sidebar';
 import { ConversationBody } from './ConversationBody';
 import { DoneRow } from './Pane';
+import { RecordedBody } from './RecordedBody';
 
 function BranchChip({ session }: { session: SessionView }) {
   const branch = session.info?.branch ?? '';
@@ -47,6 +49,7 @@ export function SessionPanel({
   onMode,
   measure,
   caret,
+  recorded,
 }: {
   session: SessionView;
   /** The conversation as the list has it, when the list has it yet. */
@@ -69,6 +72,11 @@ export function SessionPanel({
   measure: Measure | null;
   /** Changes when the caret is asked into the field. */
   caret?: number;
+  /**
+   * Set when the conversation ended and is not live: its history, read from
+   * its record, is shown read-only, and writing continues it (D42).
+   */
+  recorded?: { history: History | undefined; onRetry: () => void; onContinue: (text: string) => void };
 }) {
   const known = row ?? rowOfSession(session);
   const proof = paneView(known, session, now);
@@ -105,20 +113,34 @@ export function SessionPanel({
       <div className="proof">
         <DoneRow view={proof} measure={measure} />
       </div>
-      <ConversationBody
-        session={session}
-        now={now}
-        verbTick={verbTick}
-        draft={draft}
-        compact={false}
-        caret={caret}
-        onDraft={onDraft}
-        onAnswer={onAnswer}
-        onSend={onSend}
-        onStop={onStop}
-        onMissing={onMissing}
-        onMode={session.info ? onMode : undefined}
-      />
+      {recorded ? (
+        <RecordedBody
+          row={known}
+          history={recorded.history}
+          compact={false}
+          now={now}
+          draft={draft}
+          caret={caret}
+          onDraft={onDraft}
+          onContinue={recorded.onContinue}
+          onRetry={recorded.onRetry}
+        />
+      ) : (
+        <ConversationBody
+          session={session}
+          now={now}
+          verbTick={verbTick}
+          draft={draft}
+          compact={false}
+          caret={caret}
+          onDraft={onDraft}
+          onAnswer={onAnswer}
+          onSend={onSend}
+          onStop={onStop}
+          onMissing={onMissing}
+          onMode={session.info ? onMode : undefined}
+        />
+      )}
     </section>
   );
 }

@@ -1,0 +1,42 @@
+/* A conversation that ended, read from its record (D42): what is being read,
+   what could not be, and the line that says writing continues it. */
+.history-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dc-dim);
+}
+.history-note.failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--dc-err);
+}
+.history-note.warn {
+  color: var(--dc-warn);
+}
+.history-retry {
+  border: 1px solid var(--dc-line-strong);
+  border-radius: 6px;
+  padding: 2px 8px;
+  background: none;
+  color: var(--dc-text);
+  font: inherit;
+  cursor: pointer;
+}
+.history-retry:hover {
+  background: var(--dc-hover);
+}
+.recorded-ended {
+  flex: none;
+  margin: 0;
+  padding: 6px 24px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dc-dim);
+}
+.pane .recorded-ended {
+  padding: 4px 12px 0;
+  font-size: 12px;
+}

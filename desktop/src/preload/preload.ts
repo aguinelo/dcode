@@ -68,6 +68,7 @@ const api: DcodeApi = {
   listModels: (workspace) => invoke<Answer<ModelsResponse>>(CHANNELS.listModels, workspace),
   listSkills: (workspace) => invoke<Answer<unknown>>(CHANNELS.listSkills, workspace),
   listMemory: (workspace) => invoke<Answer<unknown>>(CHANNELS.listMemory, workspace),
+  conversationEvents: (id, from) => invoke<Answer<unknown>>(CHANNELS.conversationEvents, id, from),
   pickFolder: () => invoke<string | null>(CHANNELS.pickFolder),
   createSession: (workspace, options) =>
     options === undefined

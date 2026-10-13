@@ -12,6 +12,7 @@ import type { Answer, DaemonStatus, DcodeApi, NewSessionOptions } from '../share
 import { modeToSwitch, sandboxOf } from '../state/mode';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
 import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
+import { readHistory } from '../state/history';
 import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeMemory, decodeSkills } from '../protocol/crew';
 import { notExposed } from './text';
@@ -174,6 +175,18 @@ export class LiveStore {
       read(await this.api.listSkills(workspace), decodeSkills, 'as skills de um projeto (GET /v1/skills)', 'O daemon não disse quais skills existem'),
     listMemory: async (workspace) =>
       read(await this.api.listMemory(workspace), decodeMemory, 'a memória de um projeto (GET /v1/memory)', 'O daemon não disse o que a memória tem'),
+    readHistory: (id) =>
+      readHistory(id, async (from) => {
+        const page = await this.api.conversationEvents(id, from);
+        if (page.ok) return page;
+        const older = page.refusal.code === UNEXPECTED && / 404 /.test(page.refusal.message);
+        return {
+          ok: false,
+          why: older
+            ? notExposed('o histórico de uma conversa terminada (GET /v1/conversations/{id}/events)', page.refusal.message)
+            : `O histórico desta conversa não foi lido: ${page.refusal.message}`,
+        };
+      }),
   };
 
   private set(part: Partial<LiveSnapshot>): void {

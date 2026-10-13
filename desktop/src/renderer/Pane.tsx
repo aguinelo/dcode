@@ -1,9 +1,10 @@
+import type { History } from '../state/history';
 import type { Measure } from '../state/models';
 import type { PaneView } from '../state/pane';
 import { emptySession, type SessionView } from '../state/session';
 import type { Row } from '../state/sidebar';
-import { Field } from './Composer';
 import { ConversationBody } from './ConversationBody';
+import { RecordedBody } from './RecordedBody';
 import { ActionsButton } from './SessionActions';
 
 /**
@@ -61,6 +62,9 @@ export interface PaneProps {
   onAnswer: (approvalId: string, decision: string) => void;
   /** An ended conversation, written to: it continues in a new session. */
   onContinue: (text: string) => void;
+  /** An ended conversation's history, read from its record (D42); undefined until asked for. */
+  history: History | undefined;
+  onRetryHistory: () => void;
   onModel: (anchor: HTMLElement) => void;
   /** Opens the mode menu (D36). */
   onMode: (anchor: HTMLElement) => void;
@@ -108,23 +112,17 @@ export function Pane(p: PaneProps) {
       <DoneRow view={v} measure={p.measure} />
       <div className="pane-body">
         {ended ? (
-          <>
-            <div className="pane-ended">
-              Terminada · {row.turns ?? 0} {row.turns === 1 ? 'turno' : 'turnos'}. Escrever continua a conversa numa sessão nova, com o
-              histórico.
-            </div>
-            <div className="composer-wrap compact">
-              <div className="composer">
-                <Field
-                  text={p.draft}
-                  placeholder="Escreva para continuar esta conversa"
-                  caret={p.caret}
-                  onText={p.onDraft}
-                  onSubmit={() => p.draft.trim() && p.onContinue(p.draft)}
-                />
-              </div>
-            </div>
-          </>
+          <RecordedBody
+            row={row}
+            history={p.history}
+            compact
+            now={p.now}
+            draft={p.draft}
+            caret={p.caret}
+            onDraft={p.onDraft}
+            onContinue={p.onContinue}
+            onRetry={p.onRetryHistory}
+          />
         ) : (
           <ConversationBody
             session={session ?? emptySession(row.id)}

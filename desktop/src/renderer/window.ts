@@ -5,6 +5,7 @@
 import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus } from '../shared/api';
 import type { CompactResult, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
+import type { History } from '../state/history';
 import type { Row } from '../state/sidebar';
 
 /** What the bottom bar says about the daemon: a live status, or that this is a recording. */
@@ -64,4 +65,9 @@ export interface WindowActions {
   listSkills(workspace: string): Promise<Outcome<SkillsResponse>>;
   /** What a session in the workspace reads as memory (`GET /v1/memory`, N6), or why not. */
   listMemory(workspace: string): Promise<Outcome<MemoryResponse>>;
+  /**
+   * A conversation that ended, read from its record and folded like a live
+   * one's events, without continuing it (D42) — or why it could not be read.
+   */
+  readHistory(id: string): Promise<History>;
 }

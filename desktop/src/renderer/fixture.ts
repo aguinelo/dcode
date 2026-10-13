@@ -25,4 +25,5 @@ export const fixtureActions: WindowActions = {
   compact: async () => ({ ok: false, why: NOT_CONNECTED }),
   listSkills: async () => ({ ok: false, why: NOT_CONNECTED }),
   listMemory: async () => ({ ok: false, why: NOT_CONNECTED }),
+  readHistory: async () => ({ state: 'failed', reason: NOT_CONNECTED }),
 };

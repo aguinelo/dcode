@@ -1,6 +1,7 @@
 import { ChevronDown, FileDiff, GitBranch } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { filesTouched } from '../../state/context';
+import type { History } from '../../state/history';
 import { contextPercent, stateWord } from '../../state/crew';
 import type { Measure } from '../../state/models';
 import type { PaneView } from '../../state/pane';
@@ -11,14 +12,16 @@ import { DoneRow } from '../Pane';
 
 type Tab = 'mudancas' | 'pronto' | 'sessao';
 
-function Changes({ session, row }: { session: SessionView | undefined; row: Row }) {
+function Changes({ session, row, history }: { session: SessionView | undefined; row: Row; history?: History }) {
   const files = useMemo(() => (session ? filesTouched(session.entries) : []), [session]);
   if (!session) {
+    // An ended conversation's files come from its history (D42): being read, or why it could not be.
+    if (row.state === 'recorded' && history?.state === 'failed') {
+      return <p className="crew-quiet tone-err">Os arquivos vêm do histórico desta conversa, que não pôde ser lido.</p>;
+    }
     return (
       <p className="crew-quiet">
-        {row.state === 'recorded'
-          ? 'Uma conversa terminada não traz os eventos dela: os arquivos aparecem quando ela continua numa sessão nova.'
-          : 'Os eventos desta conversa ainda estão chegando.'}
+        {row.state === 'recorded' ? 'Lendo o histórico desta conversa para saber os arquivos que ela mudou…' : 'Os eventos desta conversa ainda estão chegando.'}
       </p>
     );
   }
@@ -144,6 +147,7 @@ export function ContextPane({
   row,
   view,
   session,
+  history,
   measure,
   onModel,
   onMode,
@@ -151,6 +155,8 @@ export function ContextPane({
   row: Row | null;
   view: PaneView | null;
   session: SessionView | undefined;
+  /** For an ended conversation, its history as it is being read (D42); `session` is its folded view once read. */
+  history?: History;
   measure: Measure | null;
   onModel: (row: Row, anchor: HTMLElement) => void;
   onMode: (id: string, anchor: HTMLElement) => void;
@@ -176,7 +182,7 @@ export function ContextPane({
         {!row || !view ? (
           <p className="crew-quiet">Nenhuma conversa em foco.</p>
         ) : tab === 'mudancas' ? (
-          <Changes session={session} row={row} />
+          <Changes session={session} row={row} history={history} />
         ) : tab === 'pronto' ? (
           <Done view={view} measure={measure} />
         ) : (

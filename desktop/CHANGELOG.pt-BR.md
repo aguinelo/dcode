@@ -10,6 +10,20 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma conversa terminada abre no histórico dela.** Abrir uma mostrava a
+  thread vazia, e o painel da direita do Crew dizia que uma conversa terminada
+  não traz os eventos dela: a pessoa achou que as sessões tinham se perdido.
+  Uma conversa gravada sem sessão viva, numa janela da grade, maximizada ou na
+  thread do Crew, agora é lida página por página da rota
+  `GET /v1/conversations/{id}/events` do núcleo, por um canal novo do processo
+  principal (o id conferido no alfabeto do núcleo, a posição a partir de 1).
+  Os eventos são dobrados como os de uma sessão viva e desenhados só para
+  leitura pelo mesmo fluxo, acima do mesmo campo "Escrever continua a conversa
+  numa sessão nova". As Mudanças do Crew listam os arquivos que ela mudou.
+  Enquanto lê, a janela diz que está lendo. Se a leitura falha, o motivo do
+  daemon aparece na thread com "Tentar de novo" e também num aviso; nunca
+  parece uma conversa vazia. Passando de 20 páginas, a janela diz quanto ficou
+  sem ler. As duas referências visuais continuam a 0,00% (D42).
 - **Os tipos do protocolo trazem a página de uma conversa gravada.**
   `src/protocol/generated.ts` foi regenerado para a nova rota do núcleo,
   `GET /v1/conversations/{id}/events` (`ConversationEventsResponse`,

@@ -11,6 +11,8 @@ import {
   keys,
   mode,
   model,
+  position,
+  recordedId,
   sessionOptions,
   size,
   text,
@@ -122,6 +124,22 @@ describe('an argument from the window', () => {
     expect(clip('ls -la')).toEqual({ ok: true, value: 'ls -la' });
     refused(clip(''));
     refused(clip(null));
+  });
+});
+
+describe('a recorded conversation to read (D42)', () => {
+  it('takes an id the daemon could name a record by, and refuses one that is a path', () => {
+    expect(recordedId('0199a1b2c3d4e5f6a7b')).toEqual({ ok: true, value: '0199a1b2c3d4e5f6a7b' });
+    expect(recordedId('s-1_a')).toEqual({ ok: true, value: 's-1_a' });
+    for (const bad of ['', '..', '../secret', 'a/b', 'a\\b', 'a.jsonl', '%2e%2e', 'a b', 'x'.repeat(129), 7, null]) {
+      expect(refused(recordedId(bad))).toMatch(/O id da conversa/);
+    }
+  });
+
+  it('takes a position from 1, and refuses anything else', () => {
+    expect(position(1)).toEqual({ ok: true, value: 1 });
+    expect(position(5001)).toEqual({ ok: true, value: 5001 });
+    for (const bad of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1, '1', undefined]) refused(position(bad));
   });
 });
 

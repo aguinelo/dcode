@@ -107,6 +107,23 @@ export function conversation(v: unknown): Checked<{ id: string; workspace: strin
   return { ok: true, value: { id: which.value, workspace: where.value } };
 }
 
+/**
+ * The id of a recorded conversation to read (D42): the alphabet the daemon
+ * names records by (`session.ValidID`) and nothing else. The id becomes part
+ * of a path on the daemon, so one carrying a `/`, a `.` or an escape is
+ * refused here, before it is sent, rather than left to the daemon to refuse.
+ */
+export function recordedId(v: unknown): Checked<string> {
+  if (typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v)) return { ok: true, value: v };
+  return invalid(`O id da conversa precisa ter de 1 a 128 letras, dígitos, - ou _, e veio ${shown(v)}.`);
+}
+
+/** A position in a recorded conversation's events: a whole number from 1. */
+export function position(v: unknown): Checked<number> {
+  if (typeof v === 'number' && Number.isSafeInteger(v) && v >= 1) return { ok: true, value: v };
+  return invalid(`A posição no histórico precisa ser um número inteiro a partir de 1, e veio ${shown(v)}.`);
+}
+
 /** A command to type into a terminal (D37), or to run in the session after `!` (D40). */
 export function command(v: unknown): Checked<string> {
   if (!filled(v)) return invalid(`O comando precisa ser um texto não vazio, e veio ${shown(v)}.`);

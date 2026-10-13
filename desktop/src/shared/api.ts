@@ -122,6 +122,11 @@ export interface DcodeApi {
   listSkills(workspace: string): Promise<Answer<unknown>>;
   /** What a session in the workspace reads as memory (`GET /memory`), as it came. Decoded by the renderer. */
   listMemory(workspace: string): Promise<Answer<unknown>>;
+  /**
+   * One page of a recorded conversation's events (`GET /conversations/{id}/events`),
+   * from a position, as it came. Read-only: nothing is loaded or continued (D42).
+   */
+  conversationEvents(id: string, from: number): Promise<Answer<unknown>>;
   /** Asks for a folder through the system's picker; null when the person cancels. */
   pickFolder(): Promise<string | null>;
   /** Opens a session in a workspace, on what was chosen, else with the daemon's defaults. */
@@ -173,6 +178,7 @@ export const CHANNELS = {
   listModels: 'dcode:list-models',
   listSkills: 'dcode:list-skills',
   listMemory: 'dcode:list-memory',
+  conversationEvents: 'dcode:conversation-events',
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',

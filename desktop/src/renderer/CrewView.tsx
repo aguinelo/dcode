@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { isCrewSection, type CrewSection } from '../state/crew';
+import type { History } from '../state/history';
 import type { Measure } from '../state/models';
 import { paneView } from '../state/pane';
 import type { SessionView } from '../state/session';
@@ -55,6 +56,8 @@ export function CrewView({
   daemon,
   actions,
   on,
+  history,
+  onRetryHistory,
   onSectionError,
 }: {
   /** The conversation in focus, if any. */
@@ -75,6 +78,9 @@ export function CrewView({
   daemon: DaemonView;
   actions: WindowActions;
   on: CrewHandlers;
+  /** The history of the conversation in focus when it ended, read from its record (D42). */
+  history: History | undefined;
+  onRetryHistory: () => void;
   /** Says a section that could not be remembered. */
   onSectionError: (text: string) => void;
 }) {
@@ -99,8 +105,27 @@ export function CrewView({
             listModels={actions.listModels}
             pickFolder={actions.pickFolder}
           />
-          <ThreadPane row={row} view={view} session={session} now={now} verbTick={verbTick} draft={draft} caret={caret} on={on} />
-          <ContextPane row={row} view={view} session={session} measure={measure} onModel={on.model} onMode={on.mode} />
+          <ThreadPane
+            row={row}
+            view={view}
+            session={session}
+            now={now}
+            verbTick={verbTick}
+            draft={draft}
+            caret={caret}
+            history={history}
+            onRetryHistory={onRetryHistory}
+            on={on}
+          />
+          <ContextPane
+            row={row}
+            view={view}
+            session={session ?? (history?.state === 'loaded' ? history.view : undefined)}
+            history={session ? undefined : history}
+            measure={measure}
+            onModel={on.model}
+            onMode={on.mode}
+          />
         </div>
       );
       break;

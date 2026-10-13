@@ -307,6 +307,11 @@ desktop não os implementa, espera por eles.
   permissão, nunca o corpo; e as memórias do arquivo do projeto, com o que está
   velho e o que fica fora do que a sessão lê. Os tipos vêm do `generated.ts`, e
   `src/protocol/crew.ts` só os confere na fronteira. Pedido por D33.
+- **N7. O histórico de uma conversa gravada** — `client-server-protocol`, MINOR.
+  **Feito** (#448). `GET /v1/conversations/{id}/events?from=` responde uma
+  página da conversa lida do registro, sem carregá-la nem continuá-la — a
+  cadeia que ela continua primeiro, numerada de 1 sob o id dela —, com teto de
+  5000 eventos por página e `next` dizendo onde continuar. Pedido por D42.
 
 A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
 sem ele, uma sessão que o desktop abre num projeto ignoraria o `.dcode/config.toml`

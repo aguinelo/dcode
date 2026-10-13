@@ -34,6 +34,7 @@ function fakeApi() {
     memory: missing('/v1/memory?workspace=%2Fw%2Fdcode'),
     undo: ok<unknown>({ restored: ['a.go'], refused: [] }),
     compact: ok<unknown>({ compacted: true }),
+    history: missing('/v1/conversations/old/events?from=1'),
   };
   const api: DcodeApi = {
     platform: 'test',
@@ -52,6 +53,7 @@ function fakeApi() {
     listModels: (ws) => (asked.push(`models of ${ws}`), Promise.resolve(models)),
     listSkills: (ws) => (asked.push(`skills of ${ws}`), Promise.resolve(crew.skills)),
     listMemory: (ws) => (asked.push(`memory of ${ws}`), Promise.resolve(crew.memory)),
+    conversationEvents: (id, from) => (asked.push(`history of ${id} from ${from}`), Promise.resolve(crew.history)),
     pickFolder: () => Promise.resolve('/w/novo'),
     createSession: (ws, o) => {
       const how = [o?.model && `on ${o.model}`, o?.sandboxMode && `in ${o.sandboxMode}`].filter(Boolean).join(' ');
@@ -200,6 +202,26 @@ describe('the window connected', () => {
     });
     expect(!memory.ok && memory.why).toMatch(/^Este daemon ainda não expõe a memória de um projeto/);
     expect(f.asked).toEqual(['skills of /w/dcode', 'memory of /w/dcode']);
+  });
+
+  it('reads an ended conversation’s history without continuing it, and says why when it cannot (D42)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const older = await store.actions.readHistory('old');
+    expect(older.state === 'failed' && older.reason).toMatch(/^Este daemon ainda não expõe o histórico de uma conversa terminada/);
+    f.crew.history = { ok: false, refusal: { code: 'session_not_found', message: 'no recorded conversation with the id "old"' } };
+    expect(await store.actions.readHistory('old')).toEqual({
+      state: 'failed',
+      reason: 'O histórico desta conversa não foi lido: no recorded conversation with the id "old"',
+    });
+    f.crew.history = { ok: true, value: {
+      events: [{ seq: 1, session_id: 'old', type: 'turn.started', at: '2026-09-30T10:00:00Z', payload: { turn_id: 't', text: 'conserte o parser' } }],
+      total: 1,
+    } };
+    const read = await store.actions.readHistory('old');
+    expect(read.state === 'loaded' && read.view.entries).toMatchObject([{ kind: 'user', text: 'conserte o parser' }]);
+    // Read, and nothing else: no continuation, no stream.
+    expect(f.asked).toEqual(['history of old from 1', 'history of old from 1', 'history of old from 1']);
   });
 
   it('reads skills and memory, and says a refusal or an unreadable answer as a failure', async () => {
