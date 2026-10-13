@@ -30,6 +30,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   `ConversationEventsLimit`). Nada na janela a lê ainda; isso é a próxima
   mudança, que abre uma conversa terminada no histórico dela em vez de numa
   thread vazia.
+- **O núcleo lê o git de um workspace como está agora.** Duas rotas respondem,
+  para uma pasta, a branch de agora, o commit, se é uma worktree ligada e de
+  qual checkout, cada arquivo mudado desde o último commit com as linhas, e o
+  diff de um arquivo. O que o painel de contexto vai ler, em vez da branch
+  congelada no início da sessão e do que os eventos das ferramentas disseram ter
+  escrito. Os tipos do protocolo foram regenerados.
 - **A aprovação oferece as respostas que a TUI oferece.** O cartão oferecia
   sempre uma vez, nesta sessão e negar; o protocolo tem cinco respostas, e a TUI
   escolhe pela travessia. Uma travessia de rede agora oferece uma vez, neste

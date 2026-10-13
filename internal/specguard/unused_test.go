@@ -46,6 +46,8 @@ var exportedWithoutUser = map[string]string{
 	"ListModels":         "pkg/client is the public API; a consumer asks which models a session can ask for, as the desktop's model menu does over HTTP",
 	"ReadMemory":         "pkg/client is the public API; a consumer asks what a workspace remembers, as the desktop's crew view does over HTTP",
 	"ListSkills":         "pkg/client is the public API; a consumer asks which skills a workspace has, as the desktop's crew view does over HTTP",
+	"ReadGit":            "pkg/client is the public API; a consumer asks where a workspace is in git and what changed, as the desktop's context panel does over HTTP",
+	"ReadGitDiff":        "pkg/client is the public API; a consumer asks for one changed file's diff, as the desktop's context panel does over HTTP",
 
 	// The zero value of an enum, named so a reader knows what zero means. The
 	// name is unused precisely because the value is the default — deleting it

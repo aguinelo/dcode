@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 208 changelogs de decisão |
+| famílias de spec | 18, com 209 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -273,6 +273,18 @@ existe para impedir exatamente isso.
   vazia. Antes, a única rota de eventos servia sessão carregada, e o desktop
   abria uma conversa terminada numa thread vazia, que a pessoa tomou por
   perdida.
+- **O daemon lê o git de um workspace como está agora.** `GET /v1/git`
+  responde onde a pasta está no git quando alguém olha — o topo da árvore, a
+  branch de agora (não a do início da sessão), o commit, e se é uma worktree
+  ligada e de qual checkout principal — e cada arquivo mudado desde o último
+  commit, preparado ou não, com o estado e as linhas. `GET /v1/git/diff` dá o
+  diff unificado de um desses arquivos, cortado numa linha depois de 256 KiB e
+  dizendo que foi. Só arquivo que o git lista como mudado tem diff, então a rota
+  nunca lê um arquivo pelo nome. Pasta comum é dita como fora de repositório, e
+  git ausente ou falhando é recusa com o motivo — nunca "nada mudou". Antes, o
+  cliente sabia só a branch congelada no início da sessão e o que os eventos
+  das ferramentas diziam ter escrito; é isto que o painel de contexto do
+  desktop lê.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e

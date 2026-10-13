@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -282,4 +283,76 @@ func samePath(t *testing.T, a, b string) bool {
 		return false
 	}
 	return ra == rb
+}
+
+// Git failing for a reason other than "not a repository" — here, asked from
+// inside the git directory, where there is no work tree — is said with what git
+// said, not read as a folder outside any repository.
+func TestGitFailingIsSaidAndNotReadAsAbsent(t *testing.T) {
+	dir := repo(t)
+	_, err := ReadTree(context.Background(), filepath.Join(dir, ".git"))
+	if err == nil {
+		t.Fatal("reading from inside the git directory answered as if it were a tree")
+	}
+	var ge *gitError
+	if !errors.As(err, &ge) || !strings.Contains(err.Error(), "git rev-parse") || errors.Unwrap(ge) == nil {
+		t.Errorf("got %v, want git's own refusal", err)
+	}
+	if got := (&gitError{args: []string{"status"}, err: errors.New("exit status 128")}).Error(); got != "git status: exit status 128" {
+		t.Errorf("a failure with nothing on stderr read %q", got)
+	}
+}
+
+// A conflict is said as one, whichever side git marks.
+func TestAConflictIsSaidAsOne(t *testing.T) {
+	for xy, want := range map[string]string{
+		"UU": Conflicted, "AA": Conflicted, "DD": Conflicted, "AU": Conflicted,
+		"??": Untracked, " D": Deleted, "D ": Deleted, "A ": Added, "AM": Added, " M": Modified, "MM": Modified,
+	} {
+		if got := statusOf(xy[0], xy[1]); got != want {
+			t.Errorf("%q: got %s, want %s", xy, got, want)
+		}
+	}
+}
+
+// A new file's lines are counted as git would add them: the last line counts
+// without its newline, an empty file has none, and a link is not followed.
+func TestANewFilesLinesAreCountedAsGitWould(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "open.txt", "a\nb")
+	write(t, dir, "empty.txt", "")
+	if err := os.Symlink("/etc/hosts", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]int{"open.txt": 2, "empty.txt": 0, "link": 0, "missing": 0} {
+		if got, bin := countLines(filepath.Join(dir, name)); got != want || bin {
+			t.Errorf("%s: got %d binary=%v, want %d", name, got, bin, want)
+		}
+	}
+	if got := resolved(filepath.Join(dir, "missing", "..", "missing")); got != filepath.Join(dir, "missing") {
+		t.Errorf("a path that cannot be resolved came back as %q", got)
+	}
+}
+
+// More changed files than the list carries are cut, and the cut is said.
+func TestAListPastTheCapSaysItWasCut(t *testing.T) {
+	dir := repo(t)
+	for i := 0; i <= maxTreeFiles; i++ {
+		write(t, dir, "f"+strconv.Itoa(i), "")
+	}
+	tr, err := ReadTree(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tr.Truncated || len(tr.Files) != maxTreeFiles {
+		t.Errorf("got %d files truncated=%v, want %d and truncated", len(tr.Files), tr.Truncated, maxTreeFiles)
+	}
+}
+
+// A diff asked of a folder outside any repository is refused like any path
+// git does not list.
+func TestADiffOutsideARepositoryIsRefused(t *testing.T) {
+	if _, err := FileDiff(context.Background(), t.TempDir(), "a.txt", 1024); !errors.Is(err, ErrNotChanged) {
+		t.Errorf("got %v, want ErrNotChanged", err)
+	}
 }

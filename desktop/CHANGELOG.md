@@ -29,6 +29,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   `ConversationEventsLimit`). Nothing in the window reads it yet; that is the
   next change, which opens a finished conversation onto its history instead of
   an empty thread.
+- **The core reads a workspace's git as it is now.** Two routes answer, for a
+  folder, the branch checked out now, the commit, whether it is a linked
+  worktree and of which checkout, every file changed since the last commit with
+  its lines, and one file's diff. What the context panel will read, instead of
+  the branch frozen at session start and what the tool events said they wrote.
+  The protocol types are regenerated.
 - **An approval offers the answers the TUI offers.** The card always offered
   once, this session and deny; the protocol has five answers, and the TUI picks
   by the crossing. A network crossing now offers once, this project, always and
