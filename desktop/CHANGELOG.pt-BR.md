@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Os tipos de memória e skills da Crew vêm do núcleo.** Escritos à mão
+  enquanto o #432 estava aberto, agora são os que o tygo gera a partir de
+  `internal/protocol`; `src/protocol/crew.ts` fica só com o decodificador que
+  confere uma resposta contra eles, e uma mudança de forma no núcleo reprova o
+  `check:protocol` em vez de divergir (N6).
 - **A Crew vira um painel com um trilho de seções, sobre os dados do daemon.** A
   primeira Crew pôs um terceiro painel ao lado da lateral da grade; estudada
   contra um painel desse tipo, faltava a forma que faz um: seções, e uma lista de

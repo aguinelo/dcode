@@ -2,7 +2,7 @@
 // derived from the conversations the daemon lists and the sessions the window
 // follows. Pure: the query and `now` are arguments.
 
-import type { MemoryEntry } from '../protocol/crew';
+import type { MemoryEntry } from '../protocol/generated';
 import { fold } from './search';
 import type { SessionView } from './session';
 import type { SessionsState } from './sessions';

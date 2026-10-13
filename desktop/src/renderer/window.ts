@@ -4,7 +4,7 @@
 
 import type { ModelsResponse } from '../protocol/generated';
 import type { DaemonStatus } from '../shared/api';
-import type { MemoryResponse, SkillsResponse } from '../protocol/crew';
+import type { MemoryResponse, SkillsResponse } from '../protocol/generated';
 import type { Row } from '../state/sidebar';
 
 /** What the bottom bar says about the daemon: a live status, or that this is a recording. */

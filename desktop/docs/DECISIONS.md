@@ -490,8 +490,8 @@ desktop não os implementa, espera por eles.
   **Feito** (#432). `GET /v1/skills?workspace=` e `GET /v1/memory?workspace=`
   respondem o que uma sessão no projeto tem: as skills, com a origem e se pedem
   permissão, nunca o corpo; e as memórias do arquivo do projeto, com o que está
-  velho e o que fica fora do que a sessão lê. Tipos à mão em `src/protocol/crew.ts`
-  até a pilha chegar à `main`. Pedido por D33.
+  velho e o que fica fora do que a sessão lê. Os tipos vêm do `generated.ts`, e
+  `src/protocol/crew.ts` só os confere na fronteira. Pedido por D33.
 
 A ordem: o N1 antes da conexão (o loop de `docs/loop/`); o N2 junto com ela —
 sem ele, uma sessão que o desktop abre num projeto ignoraria o `.dcode/config.toml`

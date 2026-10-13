@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **Crew's memory and skills types come from the core.** Written by hand while
+  #432 was open, they are now the ones tygo generates from `internal/protocol`;
+  `src/protocol/crew.ts` keeps only the decoder that checks an answer against
+  them, so a change in the core's shape fails `check:protocol` instead of
+  drifting (N6).
 - **Crew becomes a dashboard with a rail of sections, on the daemon's data.**
   The first Crew put a third panel beside the grid's sidebar; studied against a
   dashboard of that kind, it lacked the shape that makes one: sections, and a

@@ -1,6 +1,6 @@
 import { Brain, Sparkles } from 'lucide-react';
 import { useMemo } from 'react';
-import type { MemoryResponse, SkillsResponse } from '../../protocol/crew';
+import type { MemoryResponse, SkillsResponse } from '../../protocol/generated';
 import { memoryGroups, skillsSeen } from '../../state/crew';
 import type { SessionsState } from '../../state/sessions';
 import { NOT_EXPOSED } from '../text';
