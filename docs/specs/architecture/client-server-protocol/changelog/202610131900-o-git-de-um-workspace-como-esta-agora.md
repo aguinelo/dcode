@@ -2,7 +2,7 @@
 
 **Data:** 2026-10-13
 **Specs afetadas:** `202608072240-client-server-protocol` (`.p`: duas rotas em
-§4, a §5.5, dez linhas novas em §9)
+§4, a §5.5, onze linhas novas em §9)
 **Fonte:** o relato de uso do cliente desktop, em 2026-10-13: "não fica claro
 em que sessão estou, pasta de projeto, branch, worktree e diff, tá bem cru".
 
@@ -71,18 +71,24 @@ mão, o que um `bash` mudou, nem o diff de um arquivo.
   atravessar o socket inteiro.
 - **Pasta que não existe é recusada** antes do git rodar: sem isso, o git
   rodaria onde o processo caísse.
+- **Nenhum programa do repositório roda.** A configuração de um repositório
+  pode pôr um comando em `core.fsmonitor`, e o `git status` o executa. A rota lê
+  qualquer pasta em que uma conversa roda, um repositório clonado inclusive;
+  olhar o painel não pode ser o jeito de esse programa rodar. Toda leitura passa
+  `-c core.fsmonitor=false`. O diff já roda sem diff externo e sem `textconv`.
 
 ## As invariantes
 
-As dez linhas novas em §9 são reivindicadas onde cada metade está — a leitura
+As onze linhas novas em §9 são reivindicadas onde cada metade está — a leitura
 em `internal/vcs`, contra repositórios de verdade, e as rotas em
 `internal/server`: `TestTheGitRouteListsTheTreeAsItIsNow`,
 `TestALinkedWorktreeNamesItsMainCheckout`, `TestADetachedHeadIsNotABranch`,
 `TestARepositoryWithNoCommitListsWhatItHolds`,
 `TestABinaryFileIsMarkedAndNotCounted`,
 `TestAFolderThatIsNotARepositoryIsSaidAsSuch`, `TestWithoutGitTheRouteSaysSo`,
-`TestALongDiffIsCutAndSaysSo`, `TestTheDiffRouteRefusesAFileThatDidNotChange`
-e `TestTheGitRoutesRefuseAWorkspaceTheyCannotRead`.
+`TestALongDiffIsCutAndSaysSo`, `TestTheDiffRouteRefusesAFileThatDidNotChange`,
+`TestTheGitRoutesRefuseAWorkspaceTheyCannotRead` e
+`TestReadingTheTreeNeverRunsTheRepositorysFsmonitor`.
 
 Rotas e tipos novos, nenhum contrato existente mudado: MINOR.
 

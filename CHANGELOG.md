@@ -282,7 +282,9 @@ exists to stop exactly that.
   since the last commit, staged or not, with its status and its lines.
   `GET /v1/git/diff` gives one of those files' unified diff, cut at a line past
   256 KiB and saying so. Only a file git lists as changed has a diff, so the
-  route never reads a file by name. A plain folder is said as not a
+  route never reads a file by name, and every read runs with
+  `core.fsmonitor` off, so a repository's configuration cannot make looking
+  at it run a program. A plain folder is said as not a
   repository, and git missing or failing is a refusal with the reason — never
   "no changes". Before, a client knew only the branch frozen at session start
   and what the tool events said they wrote; this is what the desktop's context

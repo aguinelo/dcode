@@ -112,6 +112,7 @@ var protocolInvariants = map[string]string{
 	"cortado numa linha depois de `limit`": "TestALongDiffIsCutAndSaysSo",
 	"nunca um arquivo qualquer pelo nome":  "TestTheDiffRouteRefusesAFileThatDidNotChange",
 	"As rotas de git recusam":              "TestTheGitRoutesRefuseAWorkspaceTheyCannotRead",
+	"o `core.fsmonitor` é desligado":       "TestReadingTheTreeNeverRunsTheRepositorysFsmonitor",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

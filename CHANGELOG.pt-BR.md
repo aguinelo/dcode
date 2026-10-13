@@ -280,7 +280,9 @@ existe para impedir exatamente isso.
   commit, preparado ou não, com o estado e as linhas. `GET /v1/git/diff` dá o
   diff unificado de um desses arquivos, cortado numa linha depois de 256 KiB e
   dizendo que foi. Só arquivo que o git lista como mudado tem diff, então a rota
-  nunca lê um arquivo pelo nome. Pasta comum é dita como fora de repositório, e
+  nunca lê um arquivo pelo nome, e toda leitura roda com o `core.fsmonitor`
+  desligado, para a configuração de um repositório não fazer olhar para ele
+  rodar um programa. Pasta comum é dita como fora de repositório, e
   git ausente ou falhando é recusa com o motivo — nunca "nada mudou". Antes, o
   cliente sabia só a branch congelada no início da sessão e o que os eventos
   das ferramentas diziam ter escrito; é isto que o painel de contexto do

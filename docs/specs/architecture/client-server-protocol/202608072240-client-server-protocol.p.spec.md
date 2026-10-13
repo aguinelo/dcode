@@ -510,6 +510,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - `GET /git/diff` dá o diff unificado de um arquivo mudado, cortado numa linha depois de `limit` bytes e dizendo `truncated`.
 - Diff de caminho que o git não lista como mudado é recusado com `invalid_input`: a rota lê mudança, nunca um arquivo qualquer pelo nome.
 - As rotas de git recusam, com `workspace_invalid` e antes de rodar o git, workspace que falta, que é relativo ou que não existe.
+- Ler o git de uma pasta nunca roda programa que a configuração do repositório nomeia: o `core.fsmonitor` é desligado em toda leitura.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
