@@ -22,6 +22,7 @@ function focusIsNowhere(): boolean {
  * brings it back. With the focus in no field: the arrows move between windows,
  * ↵ puts the caret in the one in focus, and a window waiting for an answer
  * takes 1, 2, 3, esc and ↵ — which denies (D22). Maximized, esc goes back.
+ * ⇧⇥ switches the mode of the conversation in focus (D36).
  */
 export function useWindowKeys(k: {
   /** The windows, in their places: conversations, then choosers. */
@@ -40,8 +41,10 @@ export function useWindowKeys(k: {
   show: (id: string | null) => void;
   answer: (sessionId: string, approvalId: string, decision: string) => void;
   isConversation: (id: string) => boolean;
+  /** ⇧⇥: the next mode for the conversation in focus (D36). */
+  cycleMode: () => void;
 }) {
-  const { ids, cols, focusId, setFocusId, caretTo, sessions, maximized, busy, setSearching, newSession, show, answer, isConversation } = k;
+  const { ids, cols, focusId, setFocusId, caretTo, sessions, maximized, busy, setSearching, newSession, show, answer, isConversation, cycleMode } = k;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -81,6 +84,16 @@ export function useWindowKeys(k: {
         e.preventDefault();
         if (maximized) show(null);
         else if (focusId && isConversation(focusId)) show(focusId);
+        return;
+      }
+      // ⇧⇥ cycles the mode, as in the TUI — from a conversation's field or
+      // from nowhere. On a button it stays the browser's: back one control.
+      if (e.key === 'Tab' && e.shiftKey && !mod && !e.altKey) {
+        const el = document.activeElement;
+        if (focusIsNowhere() || el instanceof HTMLTextAreaElement) {
+          e.preventDefault();
+          cycleMode();
+        }
         return;
       }
       if (mod || isEditable(document.activeElement)) return;
@@ -131,5 +144,5 @@ export function useWindowKeys(k: {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ids, cols, focusId, setFocusId, caretTo, sessions, maximized, busy, setSearching, newSession, show, answer, isConversation]);
+  }, [ids, cols, focusId, setFocusId, caretTo, sessions, maximized, busy, setSearching, newSession, show, answer, isConversation, cycleMode]);
 }

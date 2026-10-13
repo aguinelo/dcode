@@ -18,6 +18,7 @@ export interface WindowHandlers {
   answer: (id: string, approvalId: string, decision: string) => void;
   continueIn: (row: Row, text: string) => void;
   model: (row: Row, anchor: HTMLElement) => void;
+  mode: (id: string, anchor: HTMLElement) => void;
   missing: (what: string) => void;
 }
 
@@ -119,6 +120,7 @@ export function Grid({
             onAnswer={(approvalId, decision) => on.answer(id, approvalId, decision)}
             onContinue={(text) => on.continueIn(row, text)}
             onModel={(anchor) => on.model(row, anchor)}
+            onMode={(anchor) => on.mode(row.id, anchor)}
             onMissing={on.missing}
           />
         );

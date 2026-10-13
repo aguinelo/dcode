@@ -12,6 +12,8 @@ export interface CrewHandlers {
   answer: (id: string, approvalId: string, decision: string) => void;
   continueIn: (row: Row, text: string) => void;
   model: (row: Row, anchor: HTMLElement) => void;
+  /** Opens the mode menu of a live session (D36). */
+  mode: (id: string, anchor: HTMLElement) => void;
   missing: (what: string) => void;
   /** Opens a session from the folder picker. */
   newSession: () => void;

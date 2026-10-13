@@ -38,6 +38,11 @@ export interface WindowActions {
    * session to show. A live one is closed once its continuation opens (D28).
    */
   switchModel(sessionId: string, workspace: string, model: string): Promise<Outcome<string>>;
+  /**
+   * Switches a session's behavioural mode (D36). Not optimistic: the window
+   * shows the new mode when the session's `session.mode_changed` arrives.
+   */
+  setMode(sessionId: string, mode: string): Promise<Outcome<null>>;
   /** The skills a session in the workspace has (`GET /v1/skills`, N6), or why not — a daemon without the route says so. */
   listSkills(workspace: string): Promise<Outcome<SkillsResponse>>;
   /** What a session in the workspace reads as memory (`GET /v1/memory`, N6), or why not. */

@@ -87,6 +87,7 @@ export function ThreadPane({
           onSend={(t) => on.send(row.id, t)}
           onStop={() => on.stop(row.id)}
           onMissing={on.missing}
+          onMode={session?.info ? (anchor) => on.mode(row.id, anchor) : undefined}
         />
       )}
     </section>

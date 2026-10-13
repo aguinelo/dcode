@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A session's mode is switched from the window.** Plan, assist and auto were
+  the TUI's alone (`/mode`, ⇧⇥); the window showed the mode and could not change
+  it. The mode chip — in a grid window's field, the maximized conversation's and
+  Crew's Sessão tab — opens a menu of the three, and ⇧⇥ cycles them in the
+  conversation in focus. The chip changes when the session announces the switch,
+  never before, so a refusal is never shown as accepted; it is said with the
+  daemon's reason. Auto is drawn in the warning tone, as on the TUI's bar, and a
+  pair that is none of the three is called custom rather than the nearest mode
+  (D36).
 - **A sober light theme, chosen per window; dark stays the default.** Grafite
   was dark only (D29), which leaves out daylight and anyone who reads better on
   light. Sistema (follows the system), Claro or Escuro, in Crew's

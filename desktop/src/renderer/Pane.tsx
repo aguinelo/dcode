@@ -61,6 +61,8 @@ export interface PaneProps {
   /** An ended conversation, written to: it continues in a new session. */
   onContinue: (text: string) => void;
   onModel: (anchor: HTMLElement) => void;
+  /** Opens the mode menu (D36). */
+  onMode: (anchor: HTMLElement) => void;
   onMissing: (what: string) => void;
 }
 
@@ -132,6 +134,7 @@ export function Pane(p: PaneProps) {
             onSend={p.onSend}
             onStop={p.onStop}
             onMissing={p.onMissing}
+            onMode={session?.info ? p.onMode : undefined}
           />
         )}
       </div>

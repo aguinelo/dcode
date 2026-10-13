@@ -23,6 +23,7 @@ export function ConversationBody({
   onSend,
   onStop,
   onMissing,
+  onMode,
 }: {
   session: SessionView;
   now: number;
@@ -37,6 +38,7 @@ export function ConversationBody({
   onSend: (text: string) => void;
   onStop: () => void;
   onMissing: (what: string) => void;
+  onMode?: (anchor: HTMLElement) => void;
 }) {
   const blocks = useMemo(() => flowBlocks(session.entries), [session.entries]);
   const act = useMemo(() => activity(session.entries), [session.entries]);
@@ -80,6 +82,7 @@ export function ConversationBody({
         onSend={onSend}
         onStop={onStop}
         onMissing={onMissing}
+        onMode={onMode}
       />
     </>
   );

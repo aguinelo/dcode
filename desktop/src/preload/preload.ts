@@ -73,6 +73,7 @@ const api: DcodeApi = {
   interrupt: (sessionId) => invoke<Answer<null>>(CHANNELS.interrupt, sessionId),
   resolveApproval: (sessionId, approvalId, decision) =>
     invoke<Answer<null>>(CHANNELS.resolveApproval, sessionId, approvalId, decision),
+  setMode: (sessionId, mode) => invoke<Answer<null>>(CHANNELS.setMode, sessionId, mode),
 };
 
 contextBridge.exposeInMainWorld('dcode', api);

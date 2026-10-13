@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import type { ModelOption } from '../state/models';
+import { placeBy, usePopover } from './popover';
 
 const WIDTH = 320;
 
@@ -29,47 +30,9 @@ export function ModelMenu({
   onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const away = (e: MouseEvent) => {
-      const at = e.target as Node;
-      if (box.current?.contains(at) || anchor.contains(at)) return;
-      onClose();
-    };
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-        return;
-      }
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-      const items = [...(box.current?.querySelectorAll<HTMLButtonElement>('.model-option:not(:disabled)') ?? [])];
-      if (items.length === 0) return;
-      e.preventDefault();
-      const at = items.indexOf(document.activeElement as HTMLButtonElement);
-      const next = e.key === 'ArrowDown' ? (at + 1) % items.length : at <= 0 ? items.length - 1 : at - 1;
-      items[next]?.focus();
-    };
-    window.addEventListener('mousedown', away);
-    window.addEventListener('keydown', key, true);
-    return () => {
-      window.removeEventListener('mousedown', away);
-      window.removeEventListener('keydown', key, true);
-    };
-  }, [anchor, onClose]);
-  // The first choice takes the focus once there are choices: the arrows move
-  // it and ↵ picks, without the pointer.
-  useEffect(() => {
-    box.current?.querySelector<HTMLButtonElement>('.model-option:not(:disabled)')?.focus();
-  }, [options]);
-
-  // Right-aligned to the button: below one in the upper half of the window — a
-  // panel's chip —, above one in the lower half.
-  const r = anchor.getBoundingClientRect();
-  const left = Math.max(8, Math.min(r.right - WIDTH, window.innerWidth - WIDTH - 8));
-  const place = r.top < window.innerHeight / 2 ? { top: r.bottom + 6 } : { bottom: Math.max(8, window.innerHeight - r.top + 6) };
+  usePopover(box, anchor, onClose, '.model-option', options);
   return (
-    <div ref={box} className="model-menu" style={{ left, width: WIDTH, ...place }} role="menu" aria-label="Continuar em outro modelo">
+    <div ref={box} className="model-menu" style={{ width: WIDTH, ...placeBy(anchor, WIDTH) }} role="menu" aria-label="Continuar em outro modelo">
       <div className="model-menu-head">Continuar em outro modelo</div>
       {busy ? (
         <div className="model-menu-note">Pare o turno ou espere ele terminar para trocar de modelo.</div>

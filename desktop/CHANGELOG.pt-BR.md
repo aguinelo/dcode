@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O modo da sessão muda pela janela.** Plano, assistir e auto eram só da TUI
+  (`/mode`, ⇧⇥); a janela mostrava o modo e não o mudava. O chip do modo — no
+  campo da janela da grade, no da conversa maximizada e na aba Sessão da Crew —
+  abre um menu com os três, e o ⇧⇥ passa de um ao outro na conversa em foco. O
+  chip muda quando a sessão anuncia a troca, nunca antes, e uma recusa nunca
+  aparece como aceita: vem com a razão do daemon. Auto vem no tom de aviso, como
+  na barra da TUI, e um par que não é nenhum dos três é chamado de personalizado,
+  não do modo mais próximo (D36).
 - **Um tema claro, sóbrio, escolhido por janela; o escuro continua o padrão.**
   O grafite era só escuro (D29), o que deixa de fora a luz do dia e quem lê
   melhor no claro. Sistema (segue o sistema), Claro ou Escuro, nas
