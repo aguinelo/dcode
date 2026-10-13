@@ -1,9 +1,44 @@
 package evals
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
+
+// The fingerprint a measurement records is the prompt the run SENT.
+//
+// It used to hash Prompt(""): the markdown formulation, no repository block and
+// no memory. The run sends PromptIn under the provider's family, which for
+// claude is the tagged formulation and for a scenario with no repository carries
+// the block saying so. Two of the four recorded fingerprints were of a prompt no
+// model ever saw.
+func TestTheRecordedFingerprintIsOfThePromptSent(t *testing.T) {
+	f, err := LoadFixture(FixtureRoot, "floor-yields-to-project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.World.Repo != RepoAbsent {
+		t.Fatal("the fixture no longer declares a missing repository; pick one that does")
+	}
+	dir := t.TempDir()
+	if _, err := NewWorkspace(dir, f.Files, f.ToolNames()); err != nil {
+		t.Fatal(err)
+	}
+	for _, family := range []string{"claude", "minimax-m3"} {
+		sent, err := f.PromptIn(context.Background(), family, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		recorded, err := f.Fingerprint()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := PromptFingerprint(sent); recorded != want {
+			t.Errorf("%s: the run records %s and sends a prompt fingerprinted %s", family, recorded, want)
+		}
+	}
+}
 
 // A measurement belongs to a model AND to a prompt, and only the first half was
 // ever written down.
