@@ -216,8 +216,11 @@ func (c Cost) PerRun(runs int) Cost {
 // that answers in prose without calling is a real verdict, and several
 // contracts exist to catch exactly that, so swallowing it here would hide the
 // failure they are for.
+//
+// The line itself is provider.EmptyCompletion, which the product's loop uses
+// too: what counts as an answer is not decided twice.
 func unreadable(calls int, text string) bool {
-	return calls == 0 && strings.TrimSpace(text) == ""
+	return provider.EmptyCompletion(text, calls, 0) != nil
 }
 
 // Rate is the share of runs that behaved as contracted.

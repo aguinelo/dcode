@@ -555,6 +555,10 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 		text  strings.Builder
 		calls []ce.ToolCall
 		usage provider.Usage
+		// refused records a tool_schema refusal fed back to the model. Such a
+		// stream did produce something — a call the adapter would not run —
+		// so it is never an empty completion.
+		refused bool
 	)
 
 	ch, err := e.cfg.Provider.Stream(ctx, provider.Request{
@@ -638,9 +642,23 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 						IsError: true,
 					},
 				})
+				refused = true
 				continue
 			}
 			return text.String(), calls, usage, ev.Err
+		}
+	}
+
+	// A clean end that carried nothing is a provider failure, retried within
+	// the budget every provider failure has and reported when it persists.
+	// Read as an answer it ended the turn done, with nothing on the screen and
+	// nothing said — and done is the one shape a failure must not take.
+	//
+	// Not under a cancelled context: a stream cut by the person's stop is an
+	// interruption, and the path after this one already says so.
+	if !refused && ctx.Err() == nil {
+		if perr := provider.EmptyCompletion(text.String(), len(calls), usage.OutputTokens); perr != nil {
+			return "", nil, usage, perr
 		}
 	}
 	return text.String(), calls, usage, nil

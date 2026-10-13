@@ -4,7 +4,6 @@ package evals
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -141,16 +140,16 @@ func exchange(ctx context.Context, p provider.Provider, model string, msgs []ce.
 	// It is NOT "no tool call". A model that answers in prose without calling
 	// is a real verdict, and several contracts exist to catch exactly that —
 	// swallowing it here would hide the failure they are for.
-	if unreadable(len(calls), text) {
-		spent := 0
-		if usage != nil {
-			spent = usage.OutputTokens
-		}
-		return nil, "", &provider.ProviderError{
-			Class: provider.ErrClassProvider,
-			Message: fmt.Sprintf(
-				"empty completion: no tool call and no text (%d output tokens spent)", spent),
-		}
+	//
+	// The same definition the product's loop uses, from the same function: a
+	// measurement and a session that disagreed about what counts as an answer
+	// would be one model treated two ways by one harness.
+	spent := 0
+	if usage != nil {
+		spent = usage.OutputTokens
+	}
+	if perr := provider.EmptyCompletion(text, len(calls), spent); perr != nil {
+		return nil, "", perr
 	}
 	return calls, text, nil
 }

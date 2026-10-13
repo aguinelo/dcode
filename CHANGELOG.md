@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 207 decision changelogs |
+| spec families | 18, with 208 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An empty completion is a provider failure, not the end of a turn.** A
+  stream that ended with no text and no tool call went down the "no more
+  calls" path and ended the turn as done, with an empty screen and no
+  explanation. Gemini did this about half the time. The eval harness already
+  retried it as a failure to measure, so the same model was a failure in the
+  measurement and an answer in the product. It is now a retryable `provider`
+  error. The loop sends the same request again within the turn's existing retry
+  budget and, if the completion stays empty, stops with an error that says the
+  completion was empty. The loop and the eval harness now use one function,
+  `provider.EmptyCompletion`, to decide this.
 - **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
   answers what a session in a workspace reads as memory: every entry of
   `.dcode/memory.md` with its kind, subject, body and provenance, marked stale
