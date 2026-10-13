@@ -263,6 +263,10 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The mascot's reference sheet is kept in `refs/design/brand/mascote.webp`.**
+  Six colourways, poses, icons, interface uses and the 23-tone palette, kept
+  where design references live so the desktop and the TUI draw from one source
+  rather than a picture in a chat.
 - **A session id from a client can no longer name a file outside the record
   directory.** Naming a conversation that is not loaded and continuing one
   (`resume`) now hold the id to the rule reading a recorded conversation
