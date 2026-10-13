@@ -30,7 +30,7 @@ func TestEveryUnmeasuredFamilySaysSo(t *testing.T) {
 	for _, f := range families {
 		measured := false
 		for _, m := range Measured {
-			if familyClaims(f, m.Model) {
+			if name, ok := m.family(families); ok && name == f.Name() {
 				measured = true
 				break
 			}
@@ -66,18 +66,4 @@ func TestAnUnmeasuredWarningNamesItsFamily(t *testing.T) {
 				"against, which is the fact that makes the caveat readable: %q", f.Name(), w)
 		}
 	}
-}
-
-// familyClaims reports whether a measured model name belongs to this family.
-//
-// Derived from the family's own Models() prefixes rather than from a second
-// table mapping one to the other: `MiniMax-M3` is the model and `minimax-m3` is
-// the family, and a table saying so is a copy of a truth that already exists.
-func familyClaims(f provider.Family, model string) bool {
-	for _, prefix := range f.Models() {
-		if prefix != "" && strings.HasPrefix(strings.ToLower(model), strings.ToLower(prefix)) {
-			return true
-		}
-	}
-	return false
 }

@@ -26,12 +26,13 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 208 changelogs de decisão |
+| famílias de spec | 18, com 209 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | destes, **contra o prompt de hoje** | **1**, e **3** contra um que mudou desde então |
+| destes, **por família** | `minimax-m3` **20** · `gemini` **1** · `claude` **0** · `generic` **0** |
 | cobertura | 93,9%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.23.0** |
@@ -269,6 +270,20 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um contrato pode ser medido contra várias famílias.** `Measured` recusava
+  ID de contrato registrado duas vezes, então medir um contrato contra um segundo
+  modelo significava apagar a primeira medição. A chave agora é contrato, modelo
+  e família, e a leitura mais nova de uma mesma chave continua substituindo a
+  anterior. `Measurement.Family` nomeia a família quando o nome do modelo não a
+  diz. A tabela de estado ganha uma linha contada de contratos medidos por
+  família, com os zeros: `minimax-m3` 20, `gemini` 1, `claude` 0, `generic` 0.
+  O eval passa a resolver como a sessão: honra `DCODE_FAMILY` por
+  `ResolveFamily`, então um modelo local pode ser medido pela `generic`, e
+  procura a credencial guardada da família do modelo medido, não a de
+  `model.name`, o que mandava a chave de um provider para outro. A linha de
+  resultado diz a família. O que "medida" quer dizer no aviso de sessão de uma
+  família não muda: a RN-11 ainda trata uma medição como suficiente, e o
+  `docs/ROADMAP.md` §18 propõe a regra contada.
 - **A impressão digital de uma medição é do prompt que a execução enviou, e a
   velha é contada.** O eval registrava `Fixture.Fingerprint`, a soma de
   `Prompt("")`: a formulação em markdown, sem bloco de repositório e sem

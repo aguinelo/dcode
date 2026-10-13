@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/app"
@@ -104,5 +105,45 @@ func TestAnUnclaimedModelMustNameItsFamily(t *testing.T) {
 	_, err := measuredByFamily([]Measurement{{ID: "a", Model: "qwen3-coder", Sound: true}}, app.Families())
 	if err == nil {
 		t.Error("a measurement no family claims was counted under none")
+	}
+}
+
+// measuredOptions points the product's options at the model being measured.
+//
+// FromEnv resolves options for model.name, and the eval measures eval.model.
+// Everything that depends on the model — its family, and so the credential and
+// the formulation — has to be decided for the second, or the eval sends one
+// model's key to another model's provider. The environment key is explicit and
+// scoped to one invocation, so it wins here as it does in the product.
+//
+// lookup is app.LookupCredential with the roots bound, passed in so that what
+// is asked of the store can be seen without a store.
+func measuredOptions(opts app.Options, model string, lookup func(app.Options) (string, string)) app.Options {
+	opts.Model = model
+	if opts.CredentialFrom != "DCODE_API_KEY" {
+		opts.APIKey, opts.CredentialFrom = lookup(opts)
+	}
+	return opts
+}
+
+// measuredProvider resolves the provider the way the product does: the family
+// model.family names when it names one, and the model's prefix otherwise.
+//
+// The product's order, written once more because app keeps its builder
+// private. The two branches are each one call into the same registry, and a
+// test holds this one to both.
+func measuredProvider(reg *provider.Registry, opts app.Options) (provider.Provider, error) {
+	if opts.Family != "" {
+		return reg.ResolveFamily(opts.Family, opts.Transport)
+	}
+	return reg.Resolve(opts.Model, opts.Transport)
+}
+
+// The line a measurement is recorded from names the family, because with a
+// named family the model's name no longer says which one the run went through.
+func TestTheResultLineNamesTheFamily(t *testing.T) {
+	line := Result{ID: "a", Runs: 1, Passed: 1, Model: "qwen3-coder", Family: provider.GenericName}.String()
+	if !strings.Contains(line, "family "+provider.GenericName) {
+		t.Errorf("the result line does not name the family: %s", line)
 	}
 }

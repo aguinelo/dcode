@@ -55,12 +55,7 @@ func TestTheReadmeBadgesAreCountedAndNotCarried(t *testing.T) {
 	wantFamilies := countDirs(t, filepath.Join(root, "docs", "specs", "architecture"))
 	wantDeclared := len(Contracts)
 	wantNeedModel := Measurable(Contracts)
-	wantMeasured := 0
-	for _, m := range Measured {
-		if m.Sound {
-			wantMeasured++
-		}
-	}
+	wantMeasured := contractsMeasured(Measured)
 
 	for _, r := range []readme{readReadmeEnglish(t, root), readReadmePortuguese(t, root)} {
 		t.Run(filepath.Base(r.path), func(t *testing.T) {

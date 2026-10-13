@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aguinelo/dcode/internal/app"
+	"github.com/aguinelo/dcode/internal/config"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/provider"
 )
@@ -49,9 +50,20 @@ func setup(t *testing.T) (provider.Provider, Config) {
 		t.Skip(reason)
 	}
 
+	// The options FromEnv resolved are for model.name. The credential and the
+	// family are decided again for the model this run measures, or a gemini
+	// measurement goes out with the MiniMax key.
+	roots, err := config.DiscoverRoots(os.Getenv)
+	if err != nil {
+		t.Fatalf("finding the credential store: %v", err)
+	}
+	opts = measuredOptions(opts, cfg.Model, func(o app.Options) (string, string) {
+		return app.LookupCredential(roots, o)
+	})
+
 	key := opts.APIKey
 	if key == "" {
-		t.Skip("no credential: set DCODE_API_KEY or run `dcode login`. A measurement against a real model needs one.")
+		t.Skip("no credential for " + app.CredentialName(opts) + ": set DCODE_API_KEY or run `dcode login`. A measurement against a real model needs one.")
 	}
 
 	reg := provider.NewRegistry()
@@ -63,7 +75,10 @@ func setup(t *testing.T) (provider.Provider, Config) {
 			t.Fatalf("registering family: %v", err)
 		}
 	}
-	p, err := reg.Resolve(cfg.Model, resolved.String("model.transport", ""))
+	// DCODE_FAMILY names the family, as it does in a session. Without it a
+	// model no prefix claims — every local model, through generic — could not
+	// be measured at all.
+	p, err := measuredProvider(reg, opts)
 	if err != nil {
 		t.Fatalf("resolving provider for %q: %v", cfg.Model, err)
 	}

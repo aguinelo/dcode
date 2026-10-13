@@ -26,12 +26,13 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 208 decision changelogs |
+| spec families | 18, with 209 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
 | of those, **against a prompt they cannot name** | **17** |
 | of those, **against today's prompt** | **1**, and **3** against one that has changed since |
+| of those, **by family** | `minimax-m3` **20** · `gemini` **1** · `claude` **0** · `generic` **0** |
 | coverage | 93.9%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.23.0** |
@@ -271,6 +272,20 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **One contract can be measured against several families.** `Measured`
+  refused a contract ID recorded twice, so measuring a contract against a second
+  model meant deleting the first measurement. Measurements are now keyed by
+  contract, model and family. The newest reading for one key still replaces the
+  older one. A new `Measurement.Family` names the family when the model's name
+  does not imply it. The state table gains a counted row of contracts measured
+  per family, zeros included: `minimax-m3` 20, `gemini` 1, `claude` 0,
+  `generic` 0. The eval harness now resolves like a session. It honours
+  `DCODE_FAMILY` through `ResolveFamily`, so a local model can be measured
+  through `generic`. It looks up the stored credential for the measured model's
+  family, not for `model.name`'s, which used to send one provider's key to
+  another. The result line names the family. What "measured" means for a
+  family's session warning is unchanged: RN-11 still treats one measurement as
+  enough, and `docs/ROADMAP.md` §18 proposes the counted rule.
 - **A measurement's fingerprint is of the prompt the run sent, and a stale one
   is counted.** The eval recorded `Fixture.Fingerprint`, a hash of
   `Prompt("")`: the markdown formulation with no repository block and no

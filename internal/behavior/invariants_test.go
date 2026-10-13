@@ -118,6 +118,9 @@ var behaviorInvariants = map[string]string{
 	"relata o que consumiu":                  "TestCostAccumulatesEveryExchangeIncludingRepeats",
 	"a do prompt que a execução enviou":      "TestTheRecordedFingerprintIsOfThePromptSent",
 	"é contada como velha":                   "TestAMeasurementWhosePromptMovedIsStale",
+	"são duas medições":                      "TestOneContractIsMeasuredOncePerFamily",
+	"honra a família nomeada":                "TestTheEvalHonoursANamedFamily",
+	"família do modelo medido, não a de":     "TestTheEvalLooksUpTheCredentialOfTheModelItMeasures",
 	"Troca de modo reconstrói o prompt":      "TestAModeChangeRebuildsTheSystemPrompt",
 	"Prompt novo só entra no turno seguinte": "TestANewPromptWaitsForTheNextTurn",
 }
