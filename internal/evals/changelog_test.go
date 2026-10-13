@@ -58,6 +58,12 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 	// same reason "ever actually measured" is: the distance between a number
 	// and what it describes only stays visible while something counts it.
 	wantUnverifiable := unverifiable(Measured)
+	// And of those that can name it, whether it is still the prompt today's
+	// build sends. A fingerprint nobody compares is a field, not a check.
+	wantCurrent, wantStale, err := freshness(Measured, todayFingerprint(t))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for _, e := range []edition{readEnglish(t, root), readPortuguese(t, root)} {
 		t.Run(filepath.Base(e.path), func(t *testing.T) {
@@ -69,6 +75,8 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 				"byAssertion":  wantByAssertion,
 				"everMeasured": wantMeasured,
 				"unverifiable": wantUnverifiable,
+				"current":      wantCurrent,
+				"stale":        wantStale,
 			} {
 				got, ok := e.rows[name]
 				if !ok {
@@ -172,6 +180,10 @@ func readEnglish(t *testing.T, root string) edition {
 	e.rows["everMeasured"] = row(t, body, `\| \*\*contracts ever actually measured\*\* \| \*\*(\d+)\*\* \|`, 1)
 	e.rows["unverifiable"] = row(t, body,
 		`\| of those, \*\*against a prompt they cannot name\*\* \| \*\*(\d+)\*\* \|`, 1)
+	e.rows["current"] = row(t, body,
+		`\| of those, \*\*against today's prompt\*\* \| \*\*(\d+)\*\*, and \*\*(\d+)\*\* against one that has changed since \|`, 1)
+	e.rows["stale"] = row(t, body,
+		`\| of those, \*\*against today's prompt\*\* \| \*\*(\d+)\*\*, and \*\*(\d+)\*\* against one that has changed since \|`, 2)
 
 	// "Of the forty-three contracts that need a model, thirty-eight have never
 	// run against one"
@@ -196,6 +208,10 @@ func readPortuguese(t *testing.T, root string) edition {
 	e.rows["everMeasured"] = row(t, body, `\| \*\*contratos de fato já medidos\*\* \| \*\*(\d+)\*\* \|`, 1)
 	e.rows["unverifiable"] = row(t, body,
 		`\| destes, \*\*contra um prompt que não sabem nomear\*\* \| \*\*(\d+)\*\* \|`, 1)
+	e.rows["current"] = row(t, body,
+		`\| destes, \*\*contra o prompt de hoje\*\* \| \*\*(\d+)\*\*, e \*\*(\d+)\*\* contra um que mudou desde então \|`, 1)
+	e.rows["stale"] = row(t, body,
+		`\| destes, \*\*contra o prompt de hoje\*\* \| \*\*(\d+)\*\*, e \*\*(\d+)\*\* contra um que mudou desde então \|`, 2)
 
 	m := regexp.MustCompile(`Dos\s+([a-zç-]+(?:\s+e\s+[a-zê-]+)?)\s+contratos que precisam de modelo, \*\*([a-zê-]+(?:\s+e\s+[a-zô-]+)?) nunca rodaram`).FindStringSubmatch(body)
 	if m == nil {

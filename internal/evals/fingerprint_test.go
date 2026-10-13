@@ -1,9 +1,124 @@
 package evals
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/aguinelo/dcode/internal/app"
+	"github.com/aguinelo/dcode/internal/provider"
 )
+
+// The fingerprint a measurement records is the prompt the run SENT.
+//
+// It used to hash Prompt(""): the markdown formulation, no repository block and
+// no memory. The run sends PromptIn under the provider's family, which for
+// claude is the tagged formulation and for a scenario with no repository carries
+// the block saying so. Two of the four recorded fingerprints were of a prompt no
+// model ever saw.
+func TestTheRecordedFingerprintIsOfThePromptSent(t *testing.T) {
+	f, err := LoadFixture(FixtureRoot, "floor-yields-to-project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.World.Repo != RepoAbsent {
+		t.Fatal("the fixture no longer declares a missing repository; pick one that does")
+	}
+	dir := t.TempDir()
+	if _, err := NewWorkspace(dir, f.Files, f.ToolNames()); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]string{}
+	for _, family := range []string{"claude", "minimax-m3"} {
+		sent, err := f.PromptIn(context.Background(), family, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msgs, recorded, err := f.Messages(context.Background(), family, dir, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(msgs[0].Text, sent) {
+			t.Fatalf("%s: the system message does not open with the prompt PromptIn builds", family)
+		}
+		if want := PromptFingerprint(sent); recorded != want {
+			t.Errorf("%s: the run records %s and sends a prompt fingerprinted %s", family, recorded, want)
+		}
+		seen[family] = recorded
+	}
+	// The two formulations are different prompts, so they are different
+	// fingerprints. One hash for both would be the family left out again.
+	if seen["claude"] == seen["minimax-m3"] {
+		t.Error("claude and minimax-m3 are sent different prompts and recorded the same fingerprint")
+	}
+}
+
+// Stale is counted, and so is current, and neither swallows "not recorded".
+//
+// A measurement whose prompt has moved since describes a product that no longer
+// exists. The count is what makes that visible without forcing every prompt
+// change to pay for fifty re-measurements.
+func TestAMeasurementWhosePromptMovedIsStale(t *testing.T) {
+	ms := []Measurement{
+		{ID: "unrecorded"},
+		{ID: "same", Prompt: "aaaaaaaaaaaa"},
+		{ID: "moved", Prompt: "bbbbbbbbbbbb"},
+	}
+	today := func(m Measurement) (string, error) {
+		if m.ID == "unrecorded" {
+			t.Errorf("asked for today's prompt of a measurement that recorded none; it would be invented")
+		}
+		return "aaaaaaaaaaaa", nil
+	}
+	current, stale, err := freshness(ms, today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current != 1 || stale != 1 {
+		t.Errorf("current=%d stale=%d, want 1 and 1", current, stale)
+	}
+}
+
+// A prompt that cannot be rebuilt is a failure to say, never a quiet "current".
+func TestAPromptThatCannotBeRebuiltIsAnError(t *testing.T) {
+	_, _, err := freshness([]Measurement{{ID: "x", Prompt: "aaaaaaaaaaaa"}},
+		func(Measurement) (string, error) { return "", errors.New("no such fixture") })
+	if err == nil {
+		t.Error("a measurement whose prompt could not be rebuilt was counted")
+	}
+}
+
+// todayFingerprint is what the scenario a measurement ran would be sent now,
+// under the family that claims its model.
+//
+// Through Messages, the same call the eval makes, in a workspace built the way
+// the eval builds one. A second construction of the prompt here would be the
+// defect this file exists for.
+func todayFingerprint(t *testing.T) func(Measurement) (string, error) {
+	t.Helper()
+	return func(m Measurement) (string, error) {
+		c, ok := ContractByID(m.ID)
+		if !ok {
+			return "", fmt.Errorf("no contract %s", m.ID)
+		}
+		fam, ok := provider.FamilyFor(m.Model, app.Families())
+		if !ok {
+			return "", fmt.Errorf("no family claims model %q, so no prompt can be rebuilt for it", m.Model)
+		}
+		f, err := LoadFixture(FixtureRoot, c.FixtureID())
+		if err != nil {
+			return "", err
+		}
+		dir := t.TempDir()
+		if _, err := NewWorkspace(dir, f.Files, f.ToolNames()); err != nil {
+			return "", err
+		}
+		_, fp, err := f.Messages(context.Background(), fam.Name(), dir, nil)
+		return fp, err
+	}
+}
 
 // A measurement belongs to a model AND to a prompt, and only the first half was
 // ever written down.

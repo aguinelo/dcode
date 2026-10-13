@@ -40,6 +40,13 @@ type Transcript struct {
 	// before an edit", a run that read once at the start and edited without
 	// ever re-reading passes — and not re-reading is precisely the failure.
 	InjectedAt int
+	// Prompt fingerprints the prompt this run was sent, as Messages built it.
+	//
+	// Not for judges: it is what the measurement records about itself, carried
+	// here because the transcript is the one thing a run hands back. Taken from
+	// the call that was sent rather than rebuilt beside it, because a rebuilt
+	// prompt is a second construction, and the first one was wrong for weeks.
+	Prompt string
 }
 
 // Since narrows a transcript to what happened after the product spoke.
