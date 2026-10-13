@@ -173,6 +173,28 @@ button {
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--dc-text);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+.toast-glyph {
+  margin-top: 1px;
+}
+
+/* The mascot (D49): its size is the glyph's own attribute, never a box
+   squeezed around it, so a pose reads the same wherever it is drawn. */
+.mascot-glyph {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+.mascot-glyph.pane-glyph,
+.mascot-glyph.crew-item-glyph {
+  width: auto;
+}
+.mascot-figure {
+  flex: none;
 }
 
 ::-webkit-scrollbar {

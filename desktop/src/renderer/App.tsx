@@ -12,6 +12,7 @@ import { CrewView } from './CrewView';
 import { Grid } from './Grid';
 import type { Host } from './host';
 import { useNow, useReducedMotion, useTick, useWindowSize } from './hooks';
+import { MascotGlyph } from './Mascot';
 import { ModeMenu } from './ModeMenu';
 import { ModelMenu } from './ModelMenu';
 import { Search } from './Search';
@@ -459,7 +460,8 @@ export function App({
         <div className="toasts" role="status" aria-live="polite">
           {toasts.map((t) => (
             <button key={t.id} type="button" className="toast" onClick={() => setToasts((all) => all.filter((x) => x.id !== t.id))}>
-              {t.text}
+              <MascotGlyph state="bug" size={16} className="toast-glyph tone-err" />
+              <span>{t.text}</span>
             </button>
           ))}
         </div>

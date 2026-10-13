@@ -6,6 +6,7 @@ import { lastEventText, searchSide } from '../../state/search';
 import type { SessionsState } from '../../state/sessions';
 import { basename, type ProjectView, type Row } from '../../state/sidebar';
 import type { ModelsResponse } from '../../protocol/generated';
+import { MascotGlyph } from '../Mascot';
 import { StartForm } from '../StartForm';
 import type { Outcome, StartOptions } from '../window';
 
@@ -18,7 +19,7 @@ function SessionItem({ row, sessions, now, on, onPick }: { row: Row; sessions: S
   return (
     <button type="button" className={`crew-item${on ? ' on' : ''}`} data-session-id={row.id} aria-current={on ? 'true' : undefined} onClick={() => onPick(row)}>
       <span className="crew-item-top">
-        <span className={`crew-item-glyph tone-${v.tone}${v.live ? ' dc-breath' : ''}`}>{v.glyph}</span>
+        <MascotGlyph state={v.mascot} live={v.live} size={12} className={`crew-item-glyph tone-${v.tone}`} />
         <span className="crew-item-project mono">{basename(row.workspace) || '(sem projeto)'}</span>
         <span className={`crew-item-side tone-${side.tone}`}>{side.text}</span>
       </span>

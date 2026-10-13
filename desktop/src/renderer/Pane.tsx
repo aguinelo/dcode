@@ -6,6 +6,7 @@ import { emptySession, type SessionView } from '../state/session';
 import type { Row } from '../state/sidebar';
 import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
+import { MascotGlyph } from './Mascot';
 import { RecordedBody } from './RecordedBody';
 import { ConversationTitle } from './RenameTitle';
 import { ActionsButton } from './SessionActions';
@@ -94,7 +95,7 @@ export function Pane(p: PaneProps) {
       onMouseDown={p.onFocus}
     >
       <div className="pane-head" onDoubleClick={p.onMaximize}>
-        <span className={`pane-glyph tone-${v.tone}${v.live ? ' dc-breath' : ''}`}>{v.glyph}</span>
+        <MascotGlyph state={v.mascot} live={v.live} className={`pane-glyph tone-${v.tone}`} />
         <ConversationTitle id={row.id} title={row.title} className="pane-title" tooltip={row.title} />
         {row.model && (
           <button type="button" className="chip" title="Continuar em outro modelo" onClick={(e) => p.onModel(e.currentTarget)}>

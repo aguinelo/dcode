@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- dcode's app icon (D49): the mascot, front pose, Laranja, on a graphite
+       (#2D2D2D) tile. The source of every size in this folder: npm run
+       gen:icons. The figure is the one MascotFigure draws in the renderer
+       (src/renderer/Mascot.tsx), on the same 130-unit grid, scaled. -->
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="#2D2D2D"/>
+  <g transform="translate(172 118) scale(5.25)">
+    <path d="M101 24 L111 11 M106 35 L120 29" stroke="#FF6A00" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <rect x="12" y="74" width="20" height="30" rx="9" fill="#0A0A0A" transform="rotate(12 22 89)"/>
+    <rect x="98" y="74" width="20" height="30" rx="9" fill="#0A0A0A" transform="rotate(-12 108 89)"/>
+    <rect x="37" y="126" width="22" height="13" rx="6" fill="#0A0A0A"/>
+    <rect x="71" y="126" width="22" height="13" rx="6" fill="#0A0A0A"/>
+    <rect x="31" y="102" width="68" height="26" rx="9" fill="#FF6A00"/>
+    <rect x="37" y="105" width="56" height="4" rx="2" fill="#FB923C"/>
+    <rect x="27" y="72" width="76" height="28" rx="9" fill="#FF6A00"/>
+    <rect x="33" y="75" width="64" height="4" rx="2" fill="#FB923C"/>
+    <rect x="12" y="14" width="106" height="56" rx="15" fill="#FF6A00"/>
+    <rect x="22" y="18" width="86" height="5" rx="2.5" fill="#FB923C"/>
+    <circle cx="65" cy="42" r="21" fill="#1A1A1A"/>
+    <circle cx="65" cy="42" r="14" fill="#F5F5F2"/>
+    <circle cx="65" cy="42" r="6.5" fill="#1A1A1A"/>
+    <circle cx="61.5" cy="38.5" r="2.4" fill="#F5F5F2"/>
+  </g>
+</svg>

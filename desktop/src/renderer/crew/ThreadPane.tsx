@@ -6,6 +6,7 @@ import { ContextLine } from '../context/ContextLine';
 import { emptySession, type SessionView } from '../../state/session';
 import type { Row } from '../../state/sidebar';
 import { ConversationBody } from '../ConversationBody';
+import { MascotFigure, MascotGlyph } from '../Mascot';
 import { RecordedBody } from '../RecordedBody';
 import { ConversationTitle } from '../RenameTitle';
 import { ActionsButton } from '../SessionActions';
@@ -46,6 +47,7 @@ export function ThreadPane({
   if (!row || !view) {
     return (
       <section className="crew-thread crew-empty">
+        <MascotFigure size={56} />
         <strong>Nenhuma conversa em foco.</strong>
         <span>Escolha uma na lista de sessões, ou abra uma nova.</span>
         <button type="button" className="crew-primary" onClick={on.newSession}>
@@ -59,7 +61,7 @@ export function ThreadPane({
   return (
     <section className="crew-thread" aria-label={row.title}>
       <header className="crew-head">
-        <span className={`pane-glyph tone-${view.tone}${view.live ? ' dc-breath' : ''}`}>{view.glyph}</span>
+        <MascotGlyph state={view.mascot} live={view.live} size={16} className={`pane-glyph tone-${view.tone}`} />
         <span className="crew-head-text">
           <ConversationTitle id={row.id} title={row.title} className="crew-title" />
           <span className="crew-where">

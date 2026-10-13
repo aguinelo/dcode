@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { basename, rowOfSession, sessionTitle, type Row } from '../state/sidebar';
 import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
+import { MascotGlyph } from './Mascot';
 import { DoneRow } from './Pane';
 import { RecordedBody } from './RecordedBody';
 import { ConversationTitle } from './RenameTitle';
@@ -129,7 +130,7 @@ export function SessionPanel({
         </div>
       </header>
       <div className="panel-title-row">
-        <span className={`pane-glyph tone-${proof.tone}${proof.live ? ' dc-breath' : ''}`}>{proof.glyph}</span>
+        <MascotGlyph state={proof.mascot} live={proof.live} className={`pane-glyph tone-${proof.tone}`} />
         <ConversationTitle id={session.id} title={title} className="panel-title" />
         {model && (
           <button type="button" className="chip" title="Continuar em outro modelo" onClick={(e) => onModel(e.currentTarget)}>
