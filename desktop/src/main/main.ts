@@ -61,7 +61,7 @@ function createWindow(): void {
     minHeight: 560,
     title: 'DCode',
     // Painted before the first frame: the window is grafite whatever the
-    // system's theme (D28), so opening never flashes a light one.
+    // system's theme (D29), so opening never flashes a light one.
     backgroundColor: '#0f1114',
     // The window draws its own title bar and keeps the native controls: on
     // macOS the traffic lights sit at the left of the 40px top bar, centred on it.

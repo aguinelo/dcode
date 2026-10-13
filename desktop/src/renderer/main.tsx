@@ -78,7 +78,7 @@ if (wanted !== null && fixtureSession === null) {
   // Ready once the bundled fonts are in: a screenshot before that would
   // measure the fallback font, not the design. A face that does not load is a
   // build defect, and it is said rather than drawn around.
-  // The text face is the system's (D28); the bundled one is the monospace,
+  // The text face is the system's (D29); the bundled one is the monospace,
   // which Linux also reads text in.
   const faces = ['400 12px "Geist Mono Variable"'];
   void Promise.all(faces.map((f) => document.fonts.load(f)))
