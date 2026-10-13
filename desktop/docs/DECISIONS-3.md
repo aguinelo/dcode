@@ -23,8 +23,10 @@ respostas, e a TUI escolhe quais pela travessia (`approvalKeys`,
   ponteiro.
 
 A tela de referência 03 é uma travessia de rede, então ela muda com isto: quatro
-opções no lugar de três, e a razão numa linha. A captura nova é decisão de quem
-aprova o visual, num PR próprio, como `tests/visual/states.json` pede.
+opções no lugar de três, e a razão numa linha — 0,73% contra a captura anterior.
+O dono viu a tela nova e autorizou trocar a 03 neste mesmo PR, só ela: foi
+recapturada pela própria verificação, nas condições de sempre, e a 02 continua a
+captura de 9656919, a 0,00%.
 
 Descartados: manter as três para todas (a janela ofereceria "nesta sessão" para
 a rede, que a TUI não oferece, e esconderia as duas respostas permanentes);

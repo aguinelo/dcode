@@ -17,7 +17,8 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   deny. Keys 1 to n, ↵ and esc deny, deny stays preselected; the answers that
   are recorded beyond the session carry the warning tone. The daemon's reason
   is on the card, not only in a tooltip. Reference state 03 is a network
-  crossing, so its capture changes with this (D39).
+  crossing, so it changed with this (0.73%); the owner saw it and authorized
+  recapturing 03 alone in the same PR, and both states measure 0.00% (D39).
 - **Undo, compact and run a command from the window.** `/undo`, `/compact` and
   `!` were the TUI's alone, and text starting with `/` went to the model as a
   message. A conversation's ⋯ (a grid window, Crew's thread) now offers
