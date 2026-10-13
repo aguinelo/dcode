@@ -193,6 +193,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/models", s.listModels)
 	s.mux.HandleFunc("GET "+p+"/memory", s.readMemory)
 	s.mux.HandleFunc("GET "+p+"/skills", s.listSkills)
+	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
+	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)

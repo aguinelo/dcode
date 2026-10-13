@@ -152,3 +152,25 @@ func TestGoldenSkillsResponse(t *testing.T) {
 			Reason: "has no `when_to_use` line"}},
 	})
 }
+
+// A repository in a linked worktree with two changed files, one of them
+// binary. `repository`, `detached`, `worktree`, `binary` and `truncated` are
+// never omitted — false is what a client reads them for.
+func TestGoldenGitResponse(t *testing.T) {
+	golden(t, "git_response", GitResponse{
+		Repository: true, Root: "/src/dcode-side", Branch: "side", Head: "6ec45f1",
+		Worktree: true, MainCheckout: "/src/dcode",
+		Files: []GitFile{
+			{Path: "internal/vcs/tree.go", Status: GitModified, Added: 12, Removed: 3},
+			{Path: "logo.png", Status: GitUntracked, Binary: true},
+		},
+	})
+}
+
+// One file's diff, cut at the cap.
+func TestGoldenGitDiffResponse(t *testing.T) {
+	golden(t, "git_diff_response", GitDiffResponse{
+		Path: "a.txt", Status: GitModified, Diff: "--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-two\n+TWO\n",
+		Truncated: true, Limit: GitDiffLimit,
+	})
+}

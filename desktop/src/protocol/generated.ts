@@ -184,6 +184,120 @@ export const CodeMaxSessionsReached = "max_sessions_reached";
 export const CodeInternal = "internal";
 
 //////////
+// source: git.go
+
+/**
+ * How a file differs from the last commit, as GitFile.Status says it.
+ */
+export const GitModified = "modified";
+/**
+ * How a file differs from the last commit, as GitFile.Status says it.
+ */
+export const GitAdded = "added";
+/**
+ * How a file differs from the last commit, as GitFile.Status says it.
+ */
+export const GitDeleted = "deleted";
+/**
+ * How a file differs from the last commit, as GitFile.Status says it.
+ */
+export const GitUntracked = "untracked";
+/**
+ * How a file differs from the last commit, as GitFile.Status says it.
+ */
+export const GitConflicted = "conflicted";
+/**
+ * GitDiffLimit is how many bytes of one file's diff GET /git/diff hands over.
+ * Past it the diff is cut at a line and says so: a generated file rewritten
+ * whole would otherwise travel as megabytes nobody reads in a side panel.
+ */
+export const GitDiffLimit = 256 << 10;
+/**
+ * GitFile is one file git lists as changed, against the last commit.
+ */
+export interface GitFile {
+  /**
+   * Path is relative to the top of the work tree, with forward slashes.
+   */
+  path: string;
+  /**
+   * Status is one of the Git* constants.
+   */
+  status: string;
+  added: number /* int */;
+  removed: number /* int */;
+  /**
+   * Binary says git counts no lines for it; Added and Removed are then zero
+   * because there are no lines, not because nothing changed.
+   */
+  binary: boolean;
+}
+/**
+ * GitResponse answers GET /git: where a workspace is in git now, and what
+ * changed in it.
+ * Read when asked, never kept: the branch is the one checked out now, which
+ * may not be the one a session started on (Session.Branch is that). The files
+ * are the folder's, every change since the last commit, staged or not — not
+ * only what one conversation wrote.
+ */
+export interface GitResponse {
+  /**
+   * Repository is false for a folder outside any repository: the ordinary
+   * case for a scratch folder, said rather than answered as a clean tree.
+   */
+  repository: boolean;
+  /**
+   * Root is the top of the work tree the workspace is in.
+   */
+  root?: string;
+  /**
+   * Branch is empty when Detached.
+   */
+  branch?: string;
+  detached: boolean;
+  /**
+   * Head is the abbreviated commit checked out; empty before the first one.
+   */
+  head?: string;
+  /**
+   * Worktree says Root is a linked worktree (`git worktree add`), and
+   * MainCheckout is then the repository's own working tree — or its git
+   * directory, for a bare repository.
+   */
+  worktree: boolean;
+  main_checkout?: string;
+  /**
+   * Files is in path order; none is an empty list, never null.
+   */
+  files: GitFile[];
+  /**
+   * Truncated says there were more changed files than the list carries.
+   */
+  truncated: boolean;
+}
+/**
+ * GitDiffResponse answers GET /git/diff: one changed file's unified diff
+ * against the last commit, or against nothing for a file git does not track.
+ */
+export interface GitDiffResponse {
+  path: string;
+  status: string;
+  /**
+   * Diff is as git writes it, without colour, cut at a line past Limit.
+   */
+  diff: string;
+  /**
+   * Binary says git has no lines to show for it, and Diff only says so.
+   */
+  binary: boolean;
+  truncated: boolean;
+  /**
+   * Limit is the cap the diff was cut at, in bytes (GitDiffLimit).
+   */
+  limit: number /* int */;
+}
+
+//////////
 // source: memory.go
 
 /**

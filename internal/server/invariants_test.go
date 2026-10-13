@@ -13,7 +13,7 @@ import (
 // directory keeps that visible; the alternative is an invariant reading as
 // unclaimed because its test sits one package over, and the obvious fix for
 // that is to duplicate the test.
-var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "tools"), filepath.Join("..", "contextengine"), filepath.Join("..", "provider"), filepath.Join("..", "..", "cmd", "dcode")}
+var protocolDirs = []string{".", filepath.Join("..", "loop"), filepath.Join("..", "tui"), filepath.Join("..", "session"), filepath.Join("..", "app"), filepath.Join("..", "vcs"), filepath.Join("..", "tools"), filepath.Join("..", "contextengine"), filepath.Join("..", "provider"), filepath.Join("..", "..", "cmd", "dcode")}
 
 var protocolInvariants = map[string]string{
 	"anuncia a troca pelo log":             "TestSetModeAnnouncesOverTheLog",
@@ -100,6 +100,19 @@ var protocolInvariants = map[string]string{
 	"o corpo de uma skill":            "TestMemoryAndSkillsNeverCarryWhatTheyDoNotDeclare",
 	"recusam workspace ausente":       "TestMemoryAndSkillsRefuseAWorkspaceThatCannotBeRead",
 	"gancho de memória ou de skills":  "TestMemoryAndSkillsWithoutTheHookRefuse",
+	// A workspace's git, as it is now. Read by vcs, served by the server, and
+	// each assertion sits where its half is.
+	"a branch de **agora**":                "TestTheGitRouteListsTheTreeAsItIsNow",
+	"nomeia o checkout principal":          "TestALinkedWorktreeNamesItsMainCheckout",
+	"não vira branch chamada":              "TestADetachedHeadIsNotABranch",
+	"compara contra a árvore vazia":        "TestARepositoryWithNoCommitListsWhatItHolds",
+	"não contado como zero linhas":         "TestABinaryFileIsMarkedAndNotCounted",
+	"nunca como árvore limpa":              "TestAFolderThatIsNotARepositoryIsSaidAsSuch",
+	"Sem git no `PATH` do daemon":          "TestWithoutGitTheRouteSaysSo",
+	"cortado numa linha depois de `limit`": "TestALongDiffIsCutAndSaysSo",
+	"nunca um arquivo qualquer pelo nome":  "TestTheDiffRouteRefusesAFileThatDidNotChange",
+	"As rotas de git recusam":              "TestTheGitRoutesRefuseAWorkspaceTheyCannotRead",
+	"o `core.fsmonitor` é desligado":       "TestReadingTheTreeNeverRunsTheRepositorysFsmonitor",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

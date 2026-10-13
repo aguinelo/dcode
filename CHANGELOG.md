@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 208 decision changelogs |
+| spec families | 18, with 209 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -275,6 +275,20 @@ exists to stop exactly that.
   conversation. Before, the only route for events served loaded sessions, so
   the desktop opened a finished conversation onto an empty thread and the
   person took it for lost.
+- **The daemon reads a workspace's git as it is now.** `GET /v1/git` answers
+  where a folder is in git when someone looks — the top of its work tree, the
+  branch now (not the one the session started on), the commit, and whether it
+  is a linked worktree and of which main checkout — and every file changed
+  since the last commit, staged or not, with its status and its lines.
+  `GET /v1/git/diff` gives one of those files' unified diff, cut at a line past
+  256 KiB and saying so. Only a file git lists as changed has a diff, so the
+  route never reads a file by name, and every read runs with
+  `core.fsmonitor` off, so a repository's configuration cannot make looking
+  at it run a program. A plain folder is said as not a
+  repository, and git missing or failing is a refusal with the reason — never
+  "no changes". Before, a client knew only the branch frozen at session start
+  and what the tool events said they wrote; this is what the desktop's context
+  panel reads.
 - **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
   answers what a session in a workspace reads as memory: every entry of
   `.dcode/memory.md` with its kind, subject, body and provenance, marked stale

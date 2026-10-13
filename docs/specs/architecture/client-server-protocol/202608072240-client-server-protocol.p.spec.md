@@ -61,6 +61,8 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/models` | `experimental` | Os modelos que uma sessão pode pedir: o que ela recebe sem pedir nenhum e cada perfil do `models.toml` (o do usuário e o do projeto), cada um dizendo se a família tem medição. Query `workspace` (absoluto, opcional) escolhe o projeto; sem ela, vale a configuração com que o daemon subiu. Devolve `ModelsResponse`. |
 | `GET` | `/memory` | `experimental` | O que uma sessão do workspace lê como memória: cada entrada do `.dcode/memory.md` com tipo, assunto, corpo e procedência, se está velha e se a sessão a mostra, e os blocos que não são memória, com o motivo. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `MemoryResponse`. |
 | `GET` | `/skills` | `experimental` | As skills que uma sessão do workspace tem: as do usuário e as do projeto, com o que cada uma declara de si e de onde vem, as retidas marcadas, e os arquivos que não carregaram, com o motivo. Query `workspace` (absoluto, obrigatória). Devolve `SkillsResponse`. |
+| `GET` | `/git` | `experimental` | Onde o workspace está no git agora — topo da árvore, branch, commit, se é worktree ligada e de qual checkout — e cada arquivo mudado desde o último commit, com o estado e as linhas. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitResponse`. |
+| `GET` | `/git/diff` | `experimental` | O diff unificado de um arquivo que `/git` lista, com teto. Query `workspace` e `path` (como `/git` o lista). Só leitura. Devolve `GitDiffResponse`. |
 | `GET` | `/sessions/{id}` | `experimental` | Detalhe de uma sessão. |
 | `DELETE` | `/sessions/{id}` | `experimental` | Encerra e libera a sessão. |
 | `GET` | `/sessions/{id}/events` | `experimental` | **SSE.** Query `from` (uint64, default `1`). |
@@ -322,6 +324,49 @@ Nenhuma das duas carrega nada além do arquivo de memória do workspace e do que
 cada skill declara de si: nem a chave, nem o corpo de uma skill, nem a
 configuração ao lado.
 
+### 5.5 O git de um workspace
+
+O que o painel de contexto do desktop mostra da pasta de uma conversa
+(`internal/protocol/git.go`), lido pelo `vcs.ReadTree` e pelo `vcs.FileDiff`
+quando alguém pergunta, e nunca guardado. Só leitura: nada aqui prepara,
+commita ou troca de branch.
+
+```go
+type GitFile struct {
+    Path    string `json:"path"`    // relativo ao topo da árvore, com barras
+    Status  string `json:"status"`  // modified, added, deleted, untracked ou conflicted
+    Added   int    `json:"added"`
+    Removed int    `json:"removed"`
+    Binary  bool   `json:"binary"`  // sem linhas: zero aqui não é "nada mudou"
+}
+
+type GitResponse struct {
+    Repository   bool      `json:"repository"`              // falso: a pasta não está em repositório
+    Root         string    `json:"root,omitempty"`          // topo da árvore de trabalho
+    Branch       string    `json:"branch,omitempty"`        // a de agora; vazia quando Detached
+    Detached     bool      `json:"detached"`
+    Head         string    `json:"head,omitempty"`          // commit abreviado; vazio antes do primeiro
+    Worktree     bool      `json:"worktree"`                // Root é uma worktree ligada
+    MainCheckout string    `json:"main_checkout,omitempty"` // o checkout principal, ou a pasta git de um repositório bare
+    Files        []GitFile `json:"files"`                   // por caminho; nenhum é []
+    Truncated    bool      `json:"truncated"`               // havia mais de 1000
+}
+
+type GitDiffResponse struct {
+    Path      string `json:"path"`
+    Status    string `json:"status"`
+    Diff      string `json:"diff"`      // como o git escreve, sem cor
+    Binary    bool   `json:"binary"`
+    Truncated bool   `json:"truncated"` // cortado numa linha depois de Limit
+    Limit     int    `json:"limit"`     // GitDiffLimit, 256 KiB
+}
+```
+
+A comparação é contra o último commit — contra a árvore vazia num repositório
+sem commit —, com o que está preparado e o que não está juntos: é o que a pasta
+tem que o commit não tem. Os arquivos são da pasta, não de uma conversa: duas
+conversas na mesma pasta veem a mesma lista.
+
 ## 6. Fluxo de aprovação
 
 Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
@@ -455,6 +500,17 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Memória e skills nunca carregam a chave, o corpo de uma skill ou a configuração ao lado; os campos são um conjunto declarado.
 - Memória e skills recusam workspace ausente, relativo, inexistente ou com configuração ilegível com `workspace_invalid` e o motivo.
 - Daemon sem o gancho de memória ou de skills recusa dizendo por quê, nunca responde lista vazia.
+- `GET /git` lista cada arquivo que o git dá como mudado desde o último commit, preparado ou não, com o estado e as linhas, e a branch de **agora**, não a do início da sessão.
+- Worktree ligada diz que é, e nomeia o checkout principal do repositório.
+- HEAD destacado não vira branch chamada `HEAD`.
+- Repositório sem commit compara contra a árvore vazia: o que ele guarda é novo, não erro.
+- Arquivo binário é marcado, não contado como zero linhas.
+- Pasta fora de repositório é dita com `repository` falso, nunca como árvore limpa.
+- Sem git no `PATH` do daemon, as duas rotas recusam dizendo isso, nunca respondem "não é repositório".
+- `GET /git/diff` dá o diff unificado de um arquivo mudado, cortado numa linha depois de `limit` bytes e dizendo `truncated`.
+- Diff de caminho que o git não lista como mudado é recusado com `invalid_input`: a rota lê mudança, nunca um arquivo qualquer pelo nome.
+- As rotas de git recusam, com `workspace_invalid` e antes de rodar o git, workspace que falta, que é relativo ou que não existe.
+- Ler o git de uma pasta nunca roda programa que a configuração do repositório nomeia: o `core.fsmonitor` é desligado em toda leitura.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
@@ -477,3 +533,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)
 - [202610080001 — A memória e as skills de um workspace](changelog/202610080001-a-memoria-e-as-skills-de-um-workspace.md)
 - [202610131800 — Ler uma conversa gravada, sem carregá-la](changelog/202610131800-ler-uma-conversa-gravada.md)
+- [202610131900 — O git de um workspace, como está agora](changelog/202610131900-o-git-de-um-workspace-como-esta-agora.md)
