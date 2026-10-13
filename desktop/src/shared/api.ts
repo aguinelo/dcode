@@ -95,6 +95,10 @@ export interface DcodeApi {
   closeSession(sessionId: string): Promise<Answer<null>>;
   /** What a session in the workspace can ask for (`GET /models`), as it came. Decoded by the renderer. */
   listModels(workspace: string): Promise<Answer<ModelsResponse>>;
+  /** The skills a session in the workspace has (`GET /skills`), as it came. Decoded by the renderer. */
+  listSkills(workspace: string): Promise<Answer<unknown>>;
+  /** What a session in the workspace reads as memory (`GET /memory`), as it came. Decoded by the renderer. */
+  listMemory(workspace: string): Promise<Answer<unknown>>;
   /** Asks for a folder through the system's picker; null when the person cancels. */
   pickFolder(): Promise<string | null>;
   /** Opens a session in a workspace, with the daemon's defaults. */
@@ -121,6 +125,8 @@ export const CHANNELS = {
   continueConversation: 'dcode:continue-conversation',
   closeSession: 'dcode:close-session',
   listModels: 'dcode:list-models',
+  listSkills: 'dcode:list-skills',
+  listMemory: 'dcode:list-memory',
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',

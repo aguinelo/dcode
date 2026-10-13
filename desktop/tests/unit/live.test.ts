@@ -23,6 +23,11 @@ function fakeApi() {
   };
   let resolveContinue: (a: Answer<P.Session>) => void = () => {};
   let models: Answer<P.ModelsResponse> = { ok: false, refusal: { code: 'unexpected_answer', message: 'O daemon respondeu 404 a GET /v1/models: 404 page not found.' } };
+  const missing = (path: string): Answer<unknown> => ({
+    ok: false,
+    refusal: { code: 'unexpected_answer', message: `O daemon respondeu 404 a GET ${path}: 404 page not found.` },
+  });
+  const crew = { skills: missing('/v1/skills?workspace=%2Fw%2Fdcode'), memory: missing('/v1/memory?workspace=%2Fw%2Fdcode') };
   const api: DcodeApi = {
     platform: 'test',
     user: () => Promise.resolve({ name: 'Ana' }),
@@ -38,6 +43,8 @@ function fakeApi() {
     },
     closeSession: (id) => answer(`close ${id}`),
     listModels: (ws) => (asked.push(`models of ${ws}`), Promise.resolve(models)),
+    listSkills: (ws) => (asked.push(`skills of ${ws}`), Promise.resolve(crew.skills)),
+    listMemory: (ws) => (asked.push(`memory of ${ws}`), Promise.resolve(crew.memory)),
     pickFolder: () => Promise.resolve('/w/novo'),
     createSession: (ws) => (asked.push(`create in ${ws}`), Promise.resolve(ok(session('new')))),
     submitTurn: (id, text) => answer(`turn ${id}: ${text}`),
@@ -52,6 +59,7 @@ function fakeApi() {
     refuse: (what: string, code: string, message: string) => (refusals[what] = { code, message }),
     continued: (id: string) => resolveContinue(ok(session(id))),
     listing: (a: Answer<P.ModelsResponse>) => (models = a),
+    crew,
   };
 }
 
@@ -156,6 +164,32 @@ describe('the window connected', () => {
     expect(unreadable.ok).toBe(false);
     expect(!unreadable.ok && unreadable.why).toContain('Resposta ilegível do daemon: lista de modelos: default.model');
     expect(f.asked).toEqual(['models of /w/dcode', 'models of /w/dcode', 'models of /w/dcode']);
+  });
+
+  it('says a daemon older than the skills and memory routes does not expose them, in its own words', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const skills = await store.actions.listSkills('/w/dcode');
+    const memory = await store.actions.listMemory('/w/dcode');
+    expect(skills).toEqual({
+      ok: false,
+      why: 'Este daemon ainda não expõe as skills de um projeto (GET /v1/skills) — atualize o dcode. O daemon disse: O daemon respondeu 404 a GET /v1/skills?workspace=%2Fw%2Fdcode: 404 page not found.',
+    });
+    expect(!memory.ok && memory.why).toMatch(/^Este daemon ainda não expõe a memória de um projeto/);
+    expect(f.asked).toEqual(['skills of /w/dcode', 'memory of /w/dcode']);
+  });
+
+  it('reads skills and memory, and says a refusal or an unreadable answer as a failure', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const skills = { enabled: true, skills: [{ name: 'release', when_to_use: 'ao publicar', source: 'project', path: 'release/SKILL.md', held: false }], notices: [] };
+    f.crew.skills = { ok: true, value: skills };
+    expect(await store.actions.listSkills('/w/dcode')).toEqual({ ok: true, value: skills });
+    f.crew.memory = { ok: false, refusal: { code: 'workspace_invalid', message: 'workspace must be absolute' } };
+    expect(await store.actions.listMemory('/w/dcode')).toEqual({ ok: false, why: 'O daemon não disse o que a memória tem: workspace must be absolute' });
+    f.crew.memory = { ok: true, value: { path: '.dcode/memory.md' } };
+    const unreadable = await store.actions.listMemory('/w/dcode');
+    expect(!unreadable.ok && unreadable.why).toBe('Resposta ilegível do daemon: memória: exists deveria ser booleano');
   });
 
   it('steers a running turn, and says the daemon’s reason when it refuses', async () => {

@@ -106,6 +106,21 @@ export function useWindows(o: {
     [fromFolder, maximize, maximized, place],
   );
 
+  /** A session opened straight in a project, or from the folder picker with null — no chooser window (Crew, D33). */
+  const startIn = useCallback(
+    async (workspace: string | null) => {
+      let id: string | null = null;
+      if (workspace) {
+        const created = await once(`new:${workspace}`, () => actions.newSessionIn(workspace));
+        if (created?.ok) id = created.value;
+      } else {
+        id = await fromFolder();
+      }
+      if (id) place(id);
+    },
+    [actions, fromFolder, once, place],
+  );
+
   const dropChooser = useCallback((key: string) => {
     setChoosers((c) => c.filter((k) => k !== key));
     setOpening((w) => without(w, key));
@@ -208,6 +223,7 @@ export function useWindows(o: {
     focus,
     open,
     newSession,
+    startIn,
     dropChooser,
     openIn,
     sendIn,

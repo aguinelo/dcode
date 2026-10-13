@@ -57,6 +57,16 @@ export class Requests {
     return a.ok ? { ok: true, value: a.value as ModelsResponse } : a;
   }
 
+  /** The skills a session in the workspace has. Passed on as it came, like the models. */
+  listSkills(workspace: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/skills?workspace=${encodeURIComponent(workspace)}`);
+  }
+
+  /** What a session in the workspace reads as memory. Passed on as it came, like the models. */
+  listMemory(workspace: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/memory?workspace=${encodeURIComponent(workspace)}`);
+  }
+
   submitTurn(sessionId: string, text: string): Promise<Answer<null>> {
     return this.command(`${sessionPath(sessionId)}/turns`, { text });
   }

@@ -10,6 +10,26 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **Crew's memory and skills types come from the core.** Written by hand while
+  #432 was open, they are now the ones tygo generates from `internal/protocol`;
+  `src/protocol/crew.ts` keeps only the decoder that checks an answer against
+  them, so a change in the core's shape fails `check:protocol` instead of
+  drifting (N6).
+- **Crew becomes a dashboard with a rail of sections, on the daemon's data.**
+  The first Crew put a third panel beside the grid's sidebar; studied against a
+  dashboard of that kind, it lacked the shape that makes one: sections, and a
+  list of sessions of its own. Crew now has a narrow icon rail — Painel, Agenda,
+  Memória, Skills, Apps, Conhecimento, Configurações — and the Painel three
+  panes: every conversation the daemon lists, searched and grouped (active, by
+  project, older), the one in focus whole, and its context in tabs — Mudanças,
+  Pronto, Sessão. Skills and Memória read the daemon's new routes (N6, #432):
+  each skill with its source, file, triggers and what makes it ask first, and
+  the files refused; each memory by kind, marking stale and unread ones, with
+  the blocks that are not memories. A daemon older than the routes is said to
+  not expose them, in its own words. Configurações shows the look, the daemon
+  and each project's models. Routines, apps and knowledge have nothing in the
+  core yet and say so instead of showing an empty list. The grid is untouched and
+  stays the default. Icons from `lucide-react` (MIT) (D33).
 - **A second version of the screen, Crew, beside the grid.** After Kiro Crew, and
   without taking the grid apart: a switch in the top bar alternates Grade and Crew,
   and the grid stays the default. Crew has three panels — the list, the

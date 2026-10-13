@@ -18,7 +18,7 @@ export interface SearchGroup {
 }
 
 /** Case and accents do not count: "readme" finds "README", "sessao" finds "sessão". */
-function fold(s: string): string {
+export function fold(s: string): string {
   return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
