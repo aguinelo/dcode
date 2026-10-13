@@ -3,7 +3,7 @@ import { forgetMissing, markSeen } from '../state/attention';
 import { capacityFor, gridShape, planGrid } from '../state/grid';
 import { measureOf } from '../state/models';
 import { paneView } from '../state/pane';
-import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
+import { dropBefore, moveProject, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
 import { countStates, projectsOf, rowOfSession, titleNow, type Row } from '../state/sidebar';
@@ -17,6 +17,7 @@ import { Search } from './Search';
 import { RenameProvider, useRenames } from './RenameTitle';
 import { SessionPanel, type Peer } from './SessionPanel';
 import { Sidebar } from './Sidebar';
+import { LOOK_KEY, loadLook, loadPrefs } from './stored';
 import { notYet } from './text';
 import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
@@ -25,6 +26,7 @@ import { useModelLists } from './useModelLists';
 import { useModeMenu } from './useModeMenu';
 import { useSessionActions } from './SessionActions';
 import { useModelMenu } from './useModelMenu';
+import { PromptsProvider, usePrompts } from './usePrompts';
 import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
 import { useWindows } from './useWindows';
@@ -39,29 +41,6 @@ const TOAST_MS = 6000;
 
 /** In the history of the stage, the grid's place. */
 const GRID = '';
-
-/** Which version of the screen, per window, as a convenience: the grid when unknown (D32). */
-const LOOK_KEY = 'dcode.desktop.look.v1';
-
-function loadLook(): Look {
-  try {
-    return window.localStorage.getItem(LOOK_KEY) === 'crew' ? 'crew' : 'grade';
-  } catch {
-    return 'grade';
-  }
-}
-
-function loadPrefs(host: Host): { prefs: Prefs; problem: string | null } {
-  let raw: string | null;
-  try {
-    raw = window.localStorage.getItem(PREFS_KEY);
-  } catch (err) {
-    return { prefs: host.initialPrefs, problem: `Não foi possível ler as preferências locais (${(err as Error).message}); a lateral começa do arranjo inicial.` };
-  }
-  const read = parsePrefs(raw);
-  if (read.problem) return { prefs: host.initialPrefs, problem: `${read.problem}; a lateral começa do arranjo inicial.` };
-  return { prefs: read.prefs ?? host.initialPrefs ?? emptyPrefs, problem: null };
-}
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i]);
@@ -203,6 +182,7 @@ export function App({
   const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show });
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);
+  const prompts = usePrompts(actions, sessions, once, say);
   // "Rodar um comando…" puts the ! in the field and the caret after it (D40).
   const typeCommand = (id: string) => {
     setDrafts((d) => ({ ...d, [id]: '!' }));
@@ -495,5 +475,5 @@ export function App({
       )}
     </div>
   );
-  return <RenameProvider value={renames}>{drawn}</RenameProvider>;
+  return <RenameProvider value={renames}><PromptsProvider value={prompts}>{drawn}</PromptsProvider></RenameProvider>;
 }

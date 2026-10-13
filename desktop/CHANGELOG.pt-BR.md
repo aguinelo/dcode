@@ -10,6 +10,21 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O campo lembra o que se pediu e guarda o que vem depois.** A TUI traz de
+  volta o que foi pedido com ↑/↓ e põe uma mensagem na fila até o turno acabar;
+  a janela não fazia nenhum dos dois, então pedir de novo era redigitar, e toda
+  mensagem durante um turno virava redirecionamento. Agora ↑/↓ no campo de uma
+  conversa percorrem o que ela já pediu, da mais nova para a mais velha, e
+  devolvem o rascunho depois da mais nova — só nas bordas do campo, então uma
+  mensagem de várias linhas continua editada como texto. O que se pediu vem dos
+  próprios eventos `turn.started` e `turn.steered` da conversa, e sobrevive a
+  reiniciar o app sem um segundo armazenamento; uma conversa continuada lê o
+  registro da de origem na primeira vez que ↑ passa da mais velha. Durante o
+  turno ↵ continua redirecionando (D23) e ⌥↵ põe na fila: a fila aparece em
+  fichas acima do campo, cada uma com ×, ⌃X tira a última, e cada uma é enviada
+  quando a conversa volta a ficar parada, uma por turno. Um envio recusado para
+  a fila, diz por quê e espera "Retomar"; só mensagens entram, e um comando é
+  recusado com o motivo. As duas referências visuais seguem medindo 0,00% (D47).
 - **Uma chamada de ferramenta abre no que ela fez.** O fluxo mostrava cada
   chamada do modelo numa linha de resumo, embora o `tool.completed` sempre
   trouxesse a saída inteira e, de quem mudou arquivo, o diff unificado; só um

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropAt, dropLast, enqueue, failed, noQueues, resume, sent, step, type Queues } from '../../src/state/queue';
+import { dropAt, dropLast, enqueue, failed, noQueues, resume, sent, step, stepAll, type Queues } from '../../src/state/queue';
 
 // The messages queued while a turn runs (D47): kept in order, sent one at a
 // time when the conversation is idle again, each only after the turn the one
@@ -83,5 +83,16 @@ describe('sending what was queued', () => {
 
   it('does nothing for a conversation with no queue', () => {
     expect(step(noQueues, 's-1', idle(0))).toEqual({ queues: noQueues, send: null });
+  });
+
+  it('looks at every queue at once, the same object back when nothing moved', () => {
+    const q = enqueue(enqueue(noQueues, 's-1', 'a'), 's-2', 'b');
+    const progress: Record<string, { state: string; turns: number }> = { 's-1': idle(0), 's-2': running(0) };
+    const moved = stepAll(q, (id) => progress[id]);
+    expect(moved['s-1']?.phase).toBe('sending');
+    expect(moved['s-2']?.phase).toBe('waiting');
+    expect(stepAll(moved, (id) => progress[id])).toBe(moved);
+    // A conversation the window does not hold is left as it is.
+    expect(stepAll(q, () => undefined)).toBe(q);
   });
 });

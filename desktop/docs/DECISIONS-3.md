@@ -215,3 +215,44 @@ Descartados: abrir o diff sem pedir, como a prévia da TUI (mudaria o fluxo em
 repouso, que as referências medem); ler o diff do git (é o da pasta desde o
 último commit, não o da chamada); uma seta ao lado da linha (mudaria a linha
 fechada).
+
+**D47. O campo lembra o que se pediu e guarda o que vem depois, como na TUI.**
+Na TUI, ↑/↓ trazem de volta o que foi enviado e uma mensagem pode esperar o
+turno acabar; no desktop, ↑ só andava entre janelas e toda mensagem durante o
+turno redirecionava (D23).
+
+- **↑/↓ no campo** percorrem o que a conversa já pediu, da mais nova para a
+  mais velha, e passar da mais nova devolve o rascunho que estava no campo —
+  como `HistoryPrev`/`HistoryNext` da TUI. ↑ só lembra na primeira linha, sem
+  seleção, e com o campo vazio, o cursor no começo ou o passeio já começado:
+  num rascunho, o primeiro ↑ vai ao começo, como num campo qualquer. ↓ só
+  avança passeando, e na última linha. Assim uma mensagem de várias linhas
+  continua editada como texto. As setas da grade não mudam: a janela já não
+  lê setas digitadas num campo (D31). Com o menu "/" aberto (D48), as setas
+  são dele: ele trata a tecla primeiro e o histórico ignora a que já foi
+  tratada.
+- **De onde vem:** dos eventos da própria conversa, `turn.started` e
+  `turn.steered`, que o daemon devolve ao seguir uma sessão — sobrevive a
+  reiniciar o app sem um segundo armazenamento. Uma conversa continuada
+  (`session.resumed`) lê, na primeira vez que ↑ passa da mais velha, o
+  registro da conversa de origem (D42), até oito continuações para trás; uma
+  falha vira aviso com o motivo, e o próximo ↑ tenta de novo. Repetição
+  seguida conta uma vez. Comandos (`!`, `/`) não entram: não são eventos de
+  conversa, e lembrá-los pediria um armazenamento à parte.
+- **A fila:** durante o turno, ↵ continua redirecionando (D23); **⌥↵** põe a
+  mensagem na fila. Escolhido ⌥ porque ⇧↵ quebra linha e ⌘↵ maximiza (D31).
+  A fila aparece em fichas acima do campo, na ordem, cada uma com ×; **⌃X**
+  (sem seleção no campo) tira a última posta — a que a pessoa acabou de
+  decidir, ao contrário da TUI, que tira a mais velha. Quando a conversa volta
+  a ficar parada, a mais velha é enviada como mensagem nova; a seguinte espera
+  esse turno começar e acabar, para nunca cruzar num redirecionamento. Só
+  mensagens entram: um comando vale quando é dado, e esperá-lo o rodaria
+  noutro estado da sessão; a recusa é dita e o texto fica no campo.
+- **Falha:** um envio recusado para a fila, que diz "A fila parou: …" com o
+  motivo, mantém a mensagem e espera "Retomar". Nunca um envio calado.
+- A fila vive enquanto a janela vive: fechar o app a perde, e isso está dito
+  aqui. Nada em repouso muda: as referências 02 e 03 medem 0,00%.
+
+Descartados: ↑ lembrar com qualquer texto no campo (tiraria a edição de várias
+linhas); guardar o histórico no `localStorage` (uma segunda cópia do que o
+registro já tem, que diverge); ⌥↵ redirecionar e ↵ enfileirar (inverteria D23).

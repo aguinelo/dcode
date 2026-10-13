@@ -1,7 +1,10 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from 'react';
 import type { SessionView } from '../state/session';
 import { turnTelemetry, usageFact } from '../state/telemetry';
 import { ModeChip } from './ModeMenu';
+import { QueueChips } from './QueueChips';
+import { useFieldKeys } from './useFieldKeys';
+import { usePromptsContext } from './usePrompts';
 
 /**
  * The placeholder by state. During a turn, a message corrects it (D23); while
@@ -22,7 +25,7 @@ function meterTone(pct: number): string {
 
 /**
  * The text field itself: grows with what is typed, ↵ sends and ⇧↵ breaks the
- * line. ⌘↵ is the window's, and Esc leaves the field so the window's keys —
+ * line; ↑/↓, ⌥↵ and ⌃X are the conversation's (D47). ⌘↵ is the window's, and Esc leaves the field so the window's keys —
  * the arrows between windows, an approval's answers — apply again.
  */
 export function Field({
@@ -32,6 +35,7 @@ export function Field({
   caret,
   onText,
   onSubmit,
+  onKeys,
 }: {
   text: string;
   placeholder: string;
@@ -40,6 +44,8 @@ export function Field({
   caret?: number;
   onText: (text: string) => void;
   onSubmit: () => void;
+  /** The conversation's own keys — history, queue (D47) — before ↵ sends; one that acts prevents the default. */
+  onKeys?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
   // A field that stops taking text gives the keys back to the window, where
@@ -75,6 +81,8 @@ export function Field({
             e.currentTarget.blur();
             return;
           }
+          onKeys?.(e);
+          if (e.defaultPrevented) return;
           if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             onSubmit();
@@ -122,13 +130,28 @@ export function Composer({
   const live = turnTelemetry(session);
   const ceilings = live ? [live.rounds, live.inFlight].filter((c) => c !== null) : [];
   const spent = session.usage ? usageFact(session.usage) : null;
+  const prompts = usePromptsContext();
+  const keys = useFieldKeys(session, text, onText, prompts);
   const send = () => {
-    if (!blocked && text.trim()) onSend(text);
+    if (blocked || !text.trim()) return;
+    keys.reset();
+    onSend(text);
   };
   return (
     <div className={`composer-wrap${compact ? ' compact' : ''}`}>
       <div className="composer">
-        <Field text={text} placeholder={placeholderOf(session.state)} disabled={blocked} caret={caret} onText={onText} onSubmit={send} />
+        {prompts && (
+          <QueueChips queue={prompts.queue(session.id)} onDrop={(i) => prompts.dropAt(session.id, i)} onResume={() => prompts.resume(session.id)} />
+        )}
+        <Field
+          text={text}
+          placeholder={placeholderOf(session.state)}
+          disabled={blocked}
+          caret={caret}
+          onText={onText}
+          onSubmit={send}
+          onKeys={keys.onKeys}
+        />
         <div className="composer-bar">
           {!compact && (
             <button type="button" className="composer-attach" onClick={() => onMissing('Anexar')}>
