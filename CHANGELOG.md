@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 207 decision changelogs |
+| spec families | 18, with 208 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A failed tool result says so on every dialect.** The OpenAI encoder sent
+  only the call id and the output, and `IsError` was lost — that dialect has
+  no error field on a tool message. So MiniMax over it, Gemini and `generic`
+  read a failure exactly as they read a success, while Claude was told through
+  `is_error`. Every failed result now opens with the same text, declared once
+  in the spec, on both dialects, and Anthropic still sends `is_error` beside
+  it: whether a call failed is a fact the harness owes every model alike, not
+  something that depends on which family is running.
 - **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
   answers what a session in a workspace reads as memory: every entry of
   `.dcode/memory.md` with its kind, subject, body and provenance, marked stale

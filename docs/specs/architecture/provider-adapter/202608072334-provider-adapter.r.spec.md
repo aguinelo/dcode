@@ -110,6 +110,14 @@ Um modelo que lê o próprio raciocínio de volta como algo que disse em voz alt
 
 Família que manda o raciocínio duplicado no campo de conteúdo é o caso comum, não a exceção: quem monta a resposta precisa distinguir os dois, e na dúvida o texto é raciocínio.
 
+### RN-12 — O fato é o mesmo em todo dialeto
+
+O que o harness diz ao modelo não depende da família que está rodando. Um dialeto que não tem campo para um fato não é motivo para o fato não chegar: ele viaja no conteúdo, com um texto declarado **uma vez**, no `.p`, e nunca copiado por família.
+
+O caso que escreveu esta regra é o resultado de ferramenta que falhou. O dialeto Anthropic tem `is_error`; o OpenAI não tem campo nenhum para isso na mensagem de ferramenta, e o encoder mandava só o identificador da chamada e a saída. Um modelo atrás do dialeto OpenAI — MiniMax por ele, Gemini, qualquer `generic` — lia uma falha exatamente como lia um sucesso, enquanto o Claude era avisado. A RN-4 do loop ("erro de ferramenta alimenta o modelo") valia por inteiro para uma família e pela metade para as outras.
+
+O dialeto que tem o campo continua usando o campo, **e** leva o mesmo texto. O campo é o jeito dele de dizer; o texto é o que torna idênticas as palavras que o modelo lê, venham por onde vierem.
+
 ## 5. Fora de escopo
 
 - Roteamento entre múltiplos provedores por custo ou capacidade.
@@ -121,3 +129,4 @@ Família que manda o raciocínio duplicado no campo de conteúdo é o caso comum
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
 - [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md) — nova RN-10.
+- [202610131200 — A falha chega em todo dialeto](changelog/202610131200-a-falha-chega-em-todo-dialeto.md) — nova RN-12.

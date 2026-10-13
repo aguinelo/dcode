@@ -148,3 +148,86 @@ func TestClosingAnAnthropicStreamAddsNothing(t *testing.T) {
 		t.Errorf("closing produced %+v, want nothing", got)
 	}
 }
+
+// A failed tool result says it failed on every dialect, in the same words.
+//
+// The Anthropic dialect has a field for it and the OpenAI one does not, so for
+// as long as the mark lived only in is_error, a model behind the OpenAI dialect
+// — MiniMax over it, Gemini, anything generic — read a failure exactly as it
+// read a success. Whether the model was told "this call failed" depended on
+// the family running it, and the harness is the part that should not.
+//
+// One family speaking both dialects is the cleanest witness: the same result,
+// encoded twice, has to say the same thing twice.
+func TestAFailedToolResultSaysSoOnEveryDialect(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		failed bool
+	}{
+		{"failed", true},
+		{"succeeded", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := &ce.ToolResult{ToolCallID: "c1", Output: "no such file: a.txt", IsError: tc.failed}
+			req := Request{
+				Model: "MiniMax-M3",
+				Messages: []ce.Message{
+					{Role: ce.RoleUser, Text: "read a.txt"},
+					{Role: ce.RoleAssistant, ToolCalls: []ce.ToolCall{
+						{ID: "c1", Name: "read", Input: json.RawMessage(`{"path":"a.txt"}`)},
+					}},
+					{Role: ce.RoleTool, ToolResult: result},
+				},
+			}
+
+			oaWire, err := MiniMaxM3{}.Encode(req, TransportOpenAI)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var oa struct {
+				Messages []struct {
+					Content string `json:"content"`
+				} `json:"messages"`
+			}
+			if err := json.Unmarshal(oaWire.Body, &oa); err != nil {
+				t.Fatal(err)
+			}
+
+			anWire, err := MiniMaxM3{}.Encode(req, TransportAnthropic)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var an struct {
+				Messages []struct {
+					Content []struct {
+						Content string `json:"content"`
+						IsError bool   `json:"is_error"`
+					} `json:"content"`
+				} `json:"messages"`
+			}
+			if err := json.Unmarshal(anWire.Body, &an); err != nil {
+				t.Fatal(err)
+			}
+
+			oaSays := oa.Messages[2].Content
+			anBlock := an.Messages[2].Content[0]
+
+			if oaSays != anBlock.Content {
+				t.Errorf("the dialects say different things for one result:\n openai:    %q\n anthropic: %q",
+					oaSays, anBlock.Content)
+			}
+			if anBlock.IsError != tc.failed {
+				t.Errorf("anthropic is_error = %v, want %v", anBlock.IsError, tc.failed)
+			}
+			if !strings.HasSuffix(oaSays, result.Output) {
+				t.Errorf("content = %q, want it to end with the tool's own output", oaSays)
+			}
+			if tc.failed && oaSays == result.Output {
+				t.Errorf("openai content = %q: a failure reads exactly like a success", oaSays)
+			}
+			if !tc.failed && oaSays != result.Output {
+				t.Errorf("content = %q: a success is marked, want the output untouched", oaSays)
+			}
+		})
+	}
+}
