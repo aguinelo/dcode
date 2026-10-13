@@ -26,11 +26,12 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
+| destes, **contra o prompt de hoje** | **1**, e **3** contra um que mudou desde então |
 | cobertura | 93,9%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
 | versão publicada | **0.23.0** |
@@ -241,6 +242,13 @@ mudança de prompt reprovar o build significaria todo PR de prompt carregando
 cinquenta e três remedições, e regra que ninguém consegue pagar é regra que
 alguém desliga.
 
+A impressão digital é do prompt que a execução **enviou** — a formulação da
+família do modelo, o bloco de repositório, a memória —, e a linha abaixo da que
+conta as não registradas compara cada impressão registrada com o que o build de
+hoje enviaria ao mesmo cenário. Das quatro que registraram uma, três descrevem um
+prompt que mudou desde então; duas delas tinham registrado um prompt que nenhum
+modelo recebeu, porque a impressão era tirada longe da chamada.
+
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
 cinco contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
@@ -261,6 +269,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A impressão digital de uma medição é do prompt que a execução enviou, e a
+  velha é contada.** O eval registrava `Fixture.Fingerprint`, a soma de
+  `Prompt("")`: a formulação em markdown, sem bloco de repositório e sem
+  memória. A execução envia `PromptIn` na família do provider — seções com tag
+  para o claude, o bloco dizendo que não há repositório, a memória do projeto —,
+  então um cenário com qualquer um desses registrava um prompt que nenhum modelo
+  recebeu. A impressão agora volta de `Fixture.Messages`, a chamada que monta o
+  que é enviado, e execuções de uma mesma medição que receberam prompts
+  diferentes falham em medir em vez de registrar um deles. A tabela de estado
+  ganha uma linha contada que compara cada impressão registrada com o que o build
+  de hoje envia ao mesmo cenário na família do modelo medido: 1 atual, 3 velhas.
+  As medições que não registraram nenhuma continuam não registradas; nenhuma
+  ganha uma agora. Continua reportado, não imposto.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e

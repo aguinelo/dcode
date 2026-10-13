@@ -26,11 +26,12 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 207 decision changelogs |
+| spec families | 18, with 208 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
 | of those, **against a prompt they cannot name** | **17** |
+| of those, **against today's prompt** | **1**, and **3** against one that has changed since |
 | coverage | 93.9%, gate at 90% aggregate **and per package** |
 | CI | macOS + Linux matrix, gated on the **union** of the profiles |
 | published version | **0.23.0** |
@@ -244,6 +245,13 @@ synonym for current. It is reported rather than enforced: making a prompt change
 fail the build would mean every prompt pull request carrying fifty-three
 re-measurements, and a rule nobody can afford is a rule that gets switched off.
 
+The fingerprint is of the prompt the run **sent** — the model's family
+formulation, the repository block, the memory — and the row below the one that
+counts the unrecorded compares each recorded fingerprint with what today's build
+would send the same scenario. Of the four that recorded one, three describe a
+prompt that has since changed; two of those had recorded a prompt no model was
+ever sent, because the fingerprint used to be taken apart from the call.
+
 **What this document does not say.** That the system is verified. Of the
 fifty-five contracts that need a model, **thirty-four have never run against
 one**, and the suite prints the split on every run to stop the opposite reading.
@@ -263,6 +271,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A measurement's fingerprint is of the prompt the run sent, and a stale one
+  is counted.** The eval recorded `Fixture.Fingerprint`, a hash of
+  `Prompt("")`: the markdown formulation with no repository block and no
+  memory. The run sends `PromptIn` under the provider's family — tagged
+  sections for claude, the block saying there is no repository, the project's
+  memory — so a scenario with any of those recorded a prompt no model was sent.
+  The fingerprint now comes back from `Fixture.Messages`, the call that builds
+  what is sent, and runs of one measurement that were sent different prompts
+  fail to measure instead of recording one of them. The state table gains a
+  counted row comparing each recorded fingerprint with what today's build sends
+  the same scenario under the measured model's family: 1 current, 3 stale.
+  Measurements that recorded none stay not recorded; none is given one now.
+  Still reported rather than enforced.
 - **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
   answers what a session in a workspace reads as memory: every entry of
   `.dcode/memory.md` with its kind, subject, body and provenance, marked stale

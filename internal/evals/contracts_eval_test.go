@@ -67,6 +67,9 @@ func TestEveryContract(t *testing.T) {
 			// stays invisible.
 			evidence := NewEvidence(MaxEvidence)
 			retries := 0
+			// prompt is the fingerprint the runs were sent, from the first run
+			// that got as far as sending one.
+			var prompt string
 			// What the whole contract consumes, accumulated across runs and
 			// across retries. Retries are IN it deliberately: a retried run
 			// was paid for twice, and a cost that omitted the second payment
@@ -116,6 +119,14 @@ func TestEveryContract(t *testing.T) {
 				if err != nil {
 					return false, err
 				}
+				// Every run of one measurement is sent the same prompt, or the
+				// rate is over two products and the fingerprint names one.
+				switch {
+				case prompt == "":
+					prompt = tr.Prompt
+				case tr.Prompt != prompt:
+					return false, fmt.Errorf("runs of %s were sent different prompts: %s and %s", contract.ID, prompt, tr.Prompt)
+				}
 				ok := contract.Judge(tr)
 				if !ok {
 					evidence.Record(tr.Digest(), tr.HitCeiling)
@@ -149,10 +160,10 @@ func TestEveryContract(t *testing.T) {
 			r.Cost = cost
 			// The prefix this ran against, printed with the number so that
 			// recording the measurement is copying a line rather than a second
-			// manual step nobody would do twice.
-			if fp, ferr := f.Fingerprint(); ferr == nil {
-				r.Prompt = fp
-			}
+			// manual step nobody would do twice. It is the fingerprint of what
+			// the runs SENT, under this provider's family and in the scenario's
+			// workspace — it used to be Prompt(""), which no model was sent.
+			r.Prompt = prompt
 			measured = append(measured, r)
 			// Evidence on failure, and evidence whenever the contract is
 			// measuring rather than judging.
@@ -205,9 +216,17 @@ func exchangeRounds(ctx context.Context, p provider.Provider, model string, f Fi
 		rounds = 1
 	}
 	for i := 0; i < rounds; i++ {
-		msgs, err := f.Messages(ctx, p.Family().Name(), w.Dir, history)
+		msgs, fp, err := f.Messages(ctx, p.Family().Name(), w.Dir, history)
 		if err != nil {
 			return Transcript{}, err
+		}
+		// The prompt is rebuilt every round from the same inputs, so every
+		// round sends the same one. If it ever did not, the run would have been
+		// measured against two prompts, and recording either would be a lie.
+		if tr.Prompt == "" {
+			tr.Prompt = fp
+		} else if tr.Prompt != fp {
+			return Transcript{}, fmt.Errorf("the prompt moved mid-run: round 1 sent %s and round %d sent %s", tr.Prompt, i+1, fp)
 		}
 		calls, text, err := exchange(ctx, p, model, msgs, f.Tools, cost)
 		if err != nil {

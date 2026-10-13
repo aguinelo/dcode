@@ -502,14 +502,24 @@ func (f Fixture) Opening() []ce.Message {
 // dir is the scenario's workspace, because the prompt now depends on it: a
 // scenario carrying a memory has that memory in its prefix, read by the
 // product's own reader.
-func (f Fixture) Messages(ctx context.Context, family, dir string, history []ce.Message) ([]ce.Message, error) {
+//
+// The fingerprint comes back with the call because it is of THIS prompt — the
+// one built here and sent. It used to be computed apart, from Prompt(""), and
+// that was a different prompt: no family formulation, no repository block, no
+// memory. A fingerprint taken anywhere but where the prompt is built is a
+// second construction of it, and the two drift.
+func (f Fixture) Messages(ctx context.Context, family, dir string, history []ce.Message) ([]ce.Message, string, error) {
 	prompt, err := f.PromptIn(ctx, family, dir)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return ce.Assemble(ce.Session{
+	msgs, err := ce.Assemble(ce.Session{
 		Instructions: prompt,
 		Tools:        f.Tools,
 		History:      history,
 	})
+	if err != nil {
+		return nil, "", err
+	}
+	return msgs, PromptFingerprint(prompt), nil
 }

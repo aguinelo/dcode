@@ -116,6 +116,8 @@ var behaviorInvariants = map[string]string{
 	// What counts as having measured a contract.
 	"nem chamada nem texto":                  "TestAnExchangeWithNothingReadableIsNotAVerdict",
 	"relata o que consumiu":                  "TestCostAccumulatesEveryExchangeIncludingRepeats",
+	"a do prompt que a execução enviou":      "TestTheRecordedFingerprintIsOfThePromptSent",
+	"é contada como velha":                   "TestAMeasurementWhosePromptMovedIsStale",
 	"Troca de modo reconstrói o prompt":      "TestAModeChangeRebuildsTheSystemPrompt",
 	"Prompt novo só entra no turno seguinte": "TestANewPromptWaitsForTheNextTurn",
 }
