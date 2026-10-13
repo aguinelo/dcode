@@ -1,6 +1,6 @@
 import { Version, type CreateSessionRequest, type ModelsResponse, type Session } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import { UNREACHABLE, type Answer, type DaemonStatus, type Refusal } from '../shared/api';
+import { UNREACHABLE, type Answer, type DaemonStatus, type NewSessionOptions, type Refusal } from '../shared/api';
 import { UNEXPECTED, request, shown } from './wire';
 
 // The window's requests to the daemon, one route each. Every one ends in an
@@ -29,9 +29,12 @@ export function notConnected(status: DaemonStatus): Refusal {
 export class Requests {
   constructor(private readonly status: () => DaemonStatus) {}
 
-  /** Opens a session in a folder, with the daemon's defaults. */
-  createSession(workspace: string): Promise<Answer<Session>> {
-    return this.open({ workspace });
+  /** Opens a session in a folder, on what was chosen; what was not stays the daemon's default. */
+  createSession(workspace: string, options: NewSessionOptions = {}): Promise<Answer<Session>> {
+    const body: CreateSessionRequest = { workspace };
+    if (options.model) body.model = options.model;
+    if (options.sandboxMode) body.sandbox_mode = options.sandboxMode;
+    return this.open(body);
   }
 
   /**

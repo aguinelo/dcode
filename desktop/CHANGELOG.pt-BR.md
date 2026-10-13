@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O modelo e o modo de uma sessão nova são escolhidos antes de ela abrir.** A
+  Nova sessão abria sempre no padrão do daemon, e trocar depois custava uma
+  sessão nova ou um turno no modo errado. A janela que pergunta onde, na grade, e
+  o "Nova ▾" da Crew ganham "+ modelo e modo": ligado, escolher o projeto (ou
+  outra pasta) leva aos modelos que o daemon lista para ele e aos quatro modos,
+  e abre ali. O que fica no padrão não é enviado. O modo vai como o sandbox que
+  ele mapeia, e a janela troca o modo logo depois quando a sessão abriu em
+  outro; uma recusa deixa a sessão aberta e diz por quê (D38).
 - **O modo da sessão muda pela janela.** Plano, assistir e auto eram só da TUI
   (`/mode`, ⇧⇥); a janela mostrava o modo e não o mudava. O chip do modo — no
   campo da janela da grade, no da conversa maximizada e na aba Sessão da Crew —

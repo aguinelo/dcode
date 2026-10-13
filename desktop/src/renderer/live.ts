@@ -7,13 +7,14 @@ import { decodeChange } from '../protocol/conversations';
 import { decodeEvent } from '../protocol/events';
 import { decodeModels } from '../protocol/models';
 import { CodeNoActiveTurn, CodeTurnAlreadyActive } from '../protocol/generated';
-import type { Answer, DaemonStatus, DcodeApi } from '../shared/api';
+import type { Answer, DaemonStatus, DcodeApi, NewSessionOptions } from '../shared/api';
+import { modeToSwitch, sandboxOf } from '../state/mode';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
 import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
 import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeMemory, decodeSkills } from '../protocol/crew';
 import { notExposed } from './text';
-import type { Outcome, WindowActions } from './window';
+import type { Outcome, StartOptions, WindowActions } from './window';
 
 export interface LiveSnapshot {
   daemon: DaemonStatus;
@@ -123,7 +124,8 @@ export class LiveStore {
       const folder = await this.api.pickFolder();
       return folder ? this.newSessionIn(folder) : null;
     },
-    newSessionIn: (workspace) => this.newSessionIn(workspace),
+    newSessionIn: (workspace, options) => this.newSessionIn(workspace, options),
+    pickFolder: () => this.api.pickFolder(),
     closeSession: async (id) => outcome(await this.api.closeSession(id), 'A sessão não fechou'),
     watch: (row) => {
       // An ended conversation has no stream: its panel reads the list.
@@ -189,9 +191,27 @@ export class LiveStore {
       : outcome(await this.api.steer(id, text), 'A correção não foi enviada');
   }
 
-  private async newSessionIn(workspace: string): Promise<Outcome<string>> {
-    const created = outcome(await this.api.createSession(workspace), `A sessão não abriu em ${workspace}`);
-    return created.ok ? this.follow(created.value.id) : created;
+  /**
+   * Opens a session on what was chosen (D38). The mode goes as the sandbox it
+   * maps to; the policy comes from the configuration, so when the session
+   * opens in another mode it is switched at once. A refused switch leaves the
+   * session open, as it opened, and says so.
+   */
+  private async newSessionIn(workspace: string, options: StartOptions = {}): Promise<Outcome<string>> {
+    const asked: NewSessionOptions = {};
+    if (options.model) asked.model = options.model;
+    const sandbox = options.mode ? sandboxOf(options.mode) : undefined;
+    if (sandbox) asked.sandboxMode = sandbox;
+    const answer = Object.keys(asked).length > 0 ? await this.api.createSession(workspace, asked) : await this.api.createSession(workspace);
+    const created = outcome(answer, `A sessão não abriu em ${workspace}`);
+    if (!created.ok) return created;
+    const id = created.value.id;
+    const mode = modeToSwitch(created.value.mode ?? '', options.mode);
+    if (mode) {
+      const switched = await this.api.setMode(id, mode);
+      if (!switched.ok) this.notice(`A sessão abriu, mas não no modo ${mode}: ${switched.refusal.message}`);
+    }
+    return this.follow(id);
   }
 
   private async follow(id: string): Promise<Outcome<string>> {

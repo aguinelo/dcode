@@ -67,7 +67,10 @@ const api: DcodeApi = {
   listSkills: (workspace) => invoke<Answer<unknown>>(CHANNELS.listSkills, workspace),
   listMemory: (workspace) => invoke<Answer<unknown>>(CHANNELS.listMemory, workspace),
   pickFolder: () => invoke<string | null>(CHANNELS.pickFolder),
-  createSession: (workspace) => invoke<Answer<Session>>(CHANNELS.createSession, workspace),
+  createSession: (workspace, options) =>
+    options === undefined
+      ? invoke<Answer<Session>>(CHANNELS.createSession, workspace)
+      : invoke<Answer<Session>>(CHANNELS.createSession, workspace, options),
   submitTurn: (sessionId, text) => invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text),
   steer: (sessionId, text) => invoke<Answer<null>>(CHANNELS.steer, sessionId, text),
   interrupt: (sessionId) => invoke<Answer<null>>(CHANNELS.interrupt, sessionId),

@@ -336,3 +336,32 @@ Descartados: mudar o chip na hora e desfazer na recusa (otimista: por um momento
 a janela afirma uma fronteira que o daemon não aplica); pedir confirmação para o
 auto (a TUI decidiu que o aviso é o tom que fica, não uma pergunta que se
 responde uma vez sem ler).
+
+**D38. Modelo e modo escolhidos antes de a sessão abrir.** Nova sessão abria
+sempre no padrão do daemon; trocar depois custava uma sessão nova (D28) ou um
+turno no modo errado. A janela que pergunta onde (D31) e o "Nova ▾" da Crew
+ganham "+ modelo e modo": ligado, escolher o projeto — ou "Outra pasta…", depois
+do seletor — leva a um formulário com o modelo, da lista que o daemon dá para
+aquele projeto (`GET /v1/models`, N5, com "sem medição" onde for o caso), e o
+modo (Padrão, Plano, Assistir, Auto), e "Abrir sessão" abre ali. Desligado, que é
+como começa, escolher abre na hora, como antes.
+
+- **O que não se escolhe não vai.** "Padrão do projeto" e "Padrão" não mandam
+  `model` nem `sandbox_mode`: o padrão continua sendo do daemon, não uma cópia
+  dele na janela.
+- **O modo vai como o sandbox que ele mapeia, e depois como modo se precisar.** O
+  `CreateSessionRequest` só leva o sandbox (plano → read-only, assistir →
+  workspace-write, auto → full-access); a política de aprovação vem da
+  configuração, então a sessão pode abrir com o sandbox certo e outro modo — ou
+  nenhum dos três. Quando o modo que o daemon respondeu não é o escolhido, a
+  janela pede `POST /mode` logo em seguida (D36). Se ele recusa, a sessão fica
+  aberta como abriu, e um aviso diz em que modo ela não está, com a razão.
+- **A lista de modelos é do projeto escolhido**, por isso o formulário vem depois
+  dele: perfis do projeto e do usuário resolvidos como a sessão os resolveria.
+  Daemon que não lista diz isso no lugar da lista, e a sessão ainda abre no
+  padrão.
+
+Descartados: o formulário sempre, antes de qualquer projeto (um passo a mais no
+gesto mais comum, que é abrir com o padrão); a lista de modelos montada fora do
+projeto (ofereceria perfis que aquele projeto não resolve); só o sandbox, sem o
+`POST /mode` (a sessão abriria sem o modo pedido, dizendo outro no chip).

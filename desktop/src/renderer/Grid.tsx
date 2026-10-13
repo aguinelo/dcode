@@ -5,6 +5,8 @@ import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
 import { NewConversation, type Place } from './NewConversation';
 import { Pane } from './Pane';
+import type { ModelsResponse } from '../protocol/generated';
+import type { Outcome, StartOptions } from './window';
 
 /** What the grid's windows do, by the conversation each holds. */
 export interface WindowHandlers {
@@ -24,8 +26,10 @@ export interface WindowHandlers {
 
 /** What the windows for new sessions do, by their key. */
 export interface ChooserHandlers {
-  place: (key: string, workspace: string) => void;
+  place: (key: string, workspace: string, options?: StartOptions) => void;
   otherFolder: (key: string) => void;
+  listModels: (workspace: string) => Promise<Outcome<ModelsResponse>>;
+  pickFolder: () => Promise<string | null>;
   close: (key: string) => void;
 }
 
@@ -132,9 +136,11 @@ export function Grid({
           focused={key === focusId}
           opening={opening[key] ?? null}
           onFocus={() => on.focus(key)}
-          onPlace={(workspace) => chooser.place(key, workspace)}
+          onPlace={(workspace, options) => chooser.place(key, workspace, options)}
           onOtherFolder={() => chooser.otherFolder(key)}
           onClose={() => chooser.close(key)}
+          listModels={chooser.listModels}
+          pickFolder={chooser.pickFolder}
         />
       ))}
     </div>

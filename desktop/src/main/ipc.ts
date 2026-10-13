@@ -48,9 +48,11 @@ export function serveTheWindows(daemon: Connection): void {
     else console.warn(`dcode: unfollow ignored: ${session.refusal.message}`);
   });
   const ask = daemon.requests;
-  handle(CHANNELS.createSession, (_event, workspace) => {
+  handle(CHANNELS.createSession, (_event, workspace, options) => {
     const where = input.workspace(workspace);
-    return where.ok ? ask.createSession(where.value) : where;
+    if (!where.ok) return where;
+    const how = input.sessionOptions(options);
+    return how.ok ? ask.createSession(where.value, how.value) : how;
   });
   handle(CHANNELS.continueConversation, (_event, conversation, model) => {
     const which = input.conversation(conversation);

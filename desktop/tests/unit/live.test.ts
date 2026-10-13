@@ -261,7 +261,8 @@ describe('the window connected', () => {
     f.asked.length = 0;
     f.opensIn('plan');
     await store.actions.newSessionIn('/w/b', { mode: 'plan' });
-    expect(f.asked).toEqual(['create in /w/b in read-only', 'follow new']);
+    // Opened in plan: no switch. (The fake answers the same id, already followed.)
+    expect(f.asked).toEqual(['create in /w/b in read-only']);
   });
 
   it('opens the session even when the mode is refused after, and says so with the daemon’s reason', async () => {

@@ -11,7 +11,7 @@ import {
   ModePlan,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import type { Refusal } from '../shared/api';
+import type { NewSessionOptions, Refusal } from '../shared/api';
 
 // What the renderer hands the main process is checked here, at the boundary,
 // before any of it reaches the daemon. A bad argument is a refusal the window
@@ -67,6 +67,28 @@ export const MODES: readonly string[] = [ModePlan, ModeAssist, ModeAuto];
 export function mode(v: unknown): Checked<string> {
   if (typeof v === 'string' && MODES.includes(v)) return { ok: true, value: v };
   return invalid(`O modo precisa ser um de ${MODES.join(', ')}, e veio ${shown(v)}.`);
+}
+
+/** The sandboxes a session opens in (`CreateSessionRequest.sandbox_mode`), as the daemon parses them. */
+export const SANDBOXES: readonly string[] = ['read-only', 'workspace-write', 'full-access'];
+
+/** What a new session opens on: each option only when given. */
+export function sessionOptions(v: unknown): Checked<NewSessionOptions> {
+  if (v === undefined) return { ok: true, value: {} };
+  if (!isRecord(v)) return invalid(`As opções da sessão nova precisam ser um objeto, e veio ${shown(v)}.`);
+  const out: NewSessionOptions = {};
+  if (v.model !== undefined) {
+    const named = model(v.model);
+    if (!named.ok) return named;
+    out.model = named.value;
+  }
+  if (v.sandboxMode !== undefined) {
+    if (typeof v.sandboxMode !== 'string' || !SANDBOXES.includes(v.sandboxMode)) {
+      return invalid(`O sandbox precisa ser um de ${SANDBOXES.join(', ')}, e veio ${shown(v.sandboxMode)}.`);
+    }
+    out.sandboxMode = v.sandboxMode;
+  }
+  return { ok: true, value: out };
 }
 
 /** A profile or a model, as the daemon resolves it (`CreateSessionRequest.model`). */

@@ -336,7 +336,7 @@ export function App({
               mode: modes.open,
               missing,
               newSession: crewNew,
-              startIn: (workspace) => void win.startIn(workspace),
+              startIn: (workspace, options) => void win.startIn(workspace, options),
               look: chooseLook,
               theme: chooseTheme,
             }}
@@ -416,7 +416,9 @@ export function App({
                     missing,
                   }}
                   chooser={{
-                    place: (key, workspace) => void win.openIn(key, workspace),
+                    place: (key, workspace, options) => void win.openIn(key, workspace, options),
+                    listModels: actions.listModels,
+                    pickFolder: actions.pickFolder,
                     otherFolder: (key) => void win.openIn(key, null),
                     close: win.dropChooser,
                   }}
