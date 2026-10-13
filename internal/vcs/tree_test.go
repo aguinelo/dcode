@@ -356,3 +356,28 @@ func TestADiffOutsideARepositoryIsRefused(t *testing.T) {
 		t.Errorf("got %v, want ErrNotChanged", err)
 	}
 }
+
+// Reading a folder never runs a program the repository's own configuration
+// names: `core.fsmonitor` set to a command makes `git status` execute it, and
+// a panel that looks at a cloned repository must not be how that runs.
+func TestReadingTheTreeNeverRunsTheRepositorysFsmonitor(t *testing.T) {
+	dir := repo(t)
+	write(t, dir, "a.txt", "a\n")
+	commitAll(t, dir, "first")
+	write(t, dir, "a.txt", "b\n")
+	ran := filepath.Join(t.TempDir(), "ran")
+	hook := filepath.Join(t.TempDir(), "hook.sh")
+	if err := os.WriteFile(hook, []byte("#!/bin/sh\ntouch "+ran+"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "config", "core.fsmonitor", hook)
+	if _, err := ReadTree(context.Background(), dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FileDiff(context.Background(), dir, "a.txt", 1024); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(ran); err == nil {
+		t.Error("reading the tree ran the program core.fsmonitor names")
+	}
+}
