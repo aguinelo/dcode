@@ -127,6 +127,14 @@ export interface DcodeApi {
    * from a position, as it came. Read-only: nothing is loaded or continued (D42).
    */
   conversationEvents(id: string, from: number): Promise<Answer<unknown>>;
+  /**
+   * Where a conversation's folder is in git now, and what changed in it
+   * (`GET /git`), as it came (D41). Named by the conversation: the folder is
+   * the one the daemon lists for it.
+   */
+  readGit(conversationId: string): Promise<Answer<unknown>>;
+  /** One changed file's diff in a conversation's folder (`GET /git/diff`), as it came (D41). */
+  readGitDiff(conversationId: string, path: string): Promise<Answer<unknown>>;
   /** Asks for a folder through the system's picker; null when the person cancels. */
   pickFolder(): Promise<string | null>;
   /** Opens a session in a workspace, on what was chosen, else with the daemon's defaults. */
@@ -179,6 +187,8 @@ export const CHANNELS = {
   listSkills: 'dcode:list-skills',
   listMemory: 'dcode:list-memory',
   conversationEvents: 'dcode:conversation-events',
+  readGit: 'dcode:read-git',
+  readGitDiff: 'dcode:read-git-diff',
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',

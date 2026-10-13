@@ -24,6 +24,17 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   daemon aparece na thread com "Tentar de novo" e também num aviso; nunca
   parece uma conversa vazia. Passando de 20 páginas, a janela diz quanto ficou
   sem ler. As duas referências visuais continuam a 0,00% (D42).
+- **Fica claro onde a conversa trabalha.** A conversa em foco mostrava o título
+  e o nome curto da pasta, a branch do início da sessão e só o que as
+  ferramentas disseram ter escrito. Agora, na Crew, debaixo do título: o id da
+  sessão, a pasta, a branch de agora, se a pasta é uma worktree e de qual
+  checkout, e +/− da pasta. Mudanças lista cada arquivo mudado desde o último
+  commit com as linhas, e abrir um mostra o diff; Sessão traz id e pasta com
+  copiar, viva ou terminada, em que branch a sessão começou se a pasta mudou, e o
+  commit. Na Grade, o chip da branch e o rodapé de cada janela abrem um cartão
+  com o mesmo, sem mudar o que a grade desenha (02 e 03 a 0,00%). Lido do
+  daemon, pela conversa, nunca por um caminho que a janela escolhe; pasta sem
+  git, git ausente e daemon antigo são ditos, nunca uma lista vazia (D41).
 - **Os tipos do protocolo trazem a página de uma conversa gravada.**
   `src/protocol/generated.ts` foi regenerado para a nova rota do núcleo,
   `GET /v1/conversations/{id}/events` (`ConversationEventsResponse`,

@@ -1,0 +1,271 @@
+/*
+ * Where a conversation works (D41): the line under its title in Crew, the
+ * facts and the folder's changes in Crew's right pane, and the same two in the
+ * card a grid window opens from its branch chip or its foot. Tokens only, so
+ * both themes hold.
+ */
+
+/* ---- the line under the title ----------------------------------------- */
+
+.ctx-line {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--dc-faint);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ctx-line-part {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex: none;
+}
+.ctx-line-part:nth-child(2) {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-line-part svg {
+  margin-right: 3px;
+}
+.ctx-sep {
+  margin: 0 6px;
+  color: var(--dc-line-strong);
+}
+
+/* ---- facts -------------------------------------------------------------- */
+
+.ctx-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+.ctx-facts dt {
+  color: var(--dc-faint);
+}
+.ctx-facts dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--dc-text);
+  overflow-wrap: anywhere;
+}
+.ctx-facts dd svg {
+  vertical-align: -1px;
+}
+.ctx-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ctx-note {
+  font-family: var(--dc-font);
+}
+.ctx-copy,
+.ctx-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-faint);
+}
+.ctx-copy:hover,
+.ctx-refresh:hover {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}
+.ctx-divider {
+  flex: none;
+  height: 1px;
+  background: var(--dc-line-soft);
+}
+
+/* ---- the folder's changes ---------------------------------------------- */
+
+.ctx-sum {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.ctx-sum > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ctx-sum-label {
+  font-weight: 500;
+  color: var(--dc-text);
+}
+.ctx-sum-nums {
+  font-size: 11.5px;
+  color: var(--dc-dim);
+}
+.ctx-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ctx-file-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-radius: var(--dc-radius-sm);
+  font-size: 12px;
+  text-align: left;
+  color: var(--dc-faint);
+}
+.ctx-file-row:hover,
+.ctx-files li.on > .ctx-file-row {
+  background: var(--dc-hover);
+}
+.ctx-status {
+  flex: none;
+  width: 10px;
+  font-size: 11px;
+  text-align: center;
+}
+.ctx-path {
+  flex: 1;
+  min-width: 0;
+  color: var(--dc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+.ctx-wrote {
+  flex: none;
+  font-size: 8px;
+  color: var(--dc-accent);
+}
+.ctx-nums {
+  flex: none;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- one file's diff ----------------------------------------------------- */
+
+.ctx-diff {
+  margin: 4px 0 8px;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-panel);
+  max-height: 360px;
+  overflow: auto;
+}
+.ctx-diff pre {
+  margin: 0;
+  /* Code as typed: `!=` stays two characters, never a ligature. */
+  font-variant-ligatures: none;
+  padding: 6px 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  width: max-content;
+  min-width: 100%;
+}
+.ctx-dl {
+  display: block;
+  padding: 0 10px;
+  white-space: pre;
+  color: var(--dc-text);
+}
+.ctx-dl-meta {
+  color: var(--dc-faint);
+}
+.ctx-dl-hunk {
+  color: var(--dc-dim);
+  background: var(--dc-hover);
+}
+.ctx-dl-add {
+  color: var(--dc-ok);
+  background: color-mix(in srgb, var(--dc-ok) 10%, transparent);
+}
+.ctx-dl-del {
+  color: var(--dc-err);
+  background: color-mix(in srgb, var(--dc-err) 10%, transparent);
+}
+.ctx-dl-note {
+  color: var(--dc-faint);
+  font-style: italic;
+}
+.ctx-diff-note {
+  margin: 4px 6px 8px 24px;
+  font-size: 11.5px;
+}
+
+/* ---- the card a grid window opens -------------------------------------- */
+
+.ctx-card {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: var(--dc-raised);
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  box-shadow: var(--dc-shadow-popover);
+  font-size: 12.5px;
+  cursor: default;
+  overflow-x: hidden;
+}
+/* A long diff line scrolls inside its box; it never widens the card. */
+.ctx-card > *,
+.ctx-card-changes > *,
+.ctx-files li {
+  min-width: 0;
+}
+.ctx-diff {
+  max-width: 100%;
+}
+.ctx-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--dc-emph);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-card .ctx-diff {
+  background: var(--dc-sunken);
+}
+.ctx-card-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dc-line-soft);
+}
+button.pane-where {
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+button.pane-where:hover {
+  color: var(--dc-text);
+}
+.branch-chip[role='button'] {
+  cursor: pointer;
+}

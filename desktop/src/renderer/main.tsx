@@ -16,6 +16,7 @@ import './styles/start.css';
 import './styles/terminal.css';
 import './styles/actions.css';
 import './styles/history.css';
+import './styles/context.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -27,6 +28,7 @@ import { App } from './App';
 import { fixtureActions } from './fixture';
 import { currentHost, type Host } from './host';
 import { LiveStore } from './live';
+import { GitReaderContext } from './useGit';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('index.html has no #root to draw into');
@@ -64,7 +66,9 @@ if (wanted !== null && fixtureSession === null) {
     store.start();
     createRoot(root).render(
       <StrictMode>
-        <LiveWindow host={host} store={store} />
+        <GitReaderContext.Provider value={store.actions}>
+          <LiveWindow host={host} store={store} />
+        </GitReaderContext.Provider>
       </StrictMode>,
     );
   } else {
@@ -74,14 +78,16 @@ if (wanted !== null && fixtureSession === null) {
     const rows = rowsOfSessions(sessions);
     createRoot(root).render(
       <StrictMode>
-        <App
-          host={host}
-          rows={rows}
-          sessions={sessions}
-          daemon={{ state: 'recording', version: recording.daemonVersion }}
-          actions={fixtureActions}
-          initialSelection={fixtureSession}
-        />
+        <GitReaderContext.Provider value={fixtureActions}>
+          <App
+            host={host}
+            rows={rows}
+            sessions={sessions}
+            daemon={{ state: 'recording', version: recording.daemonVersion }}
+            actions={fixtureActions}
+            initialSelection={fixtureSession}
+          />
+        </GitReaderContext.Provider>
       </StrictMode>,
     );
   }

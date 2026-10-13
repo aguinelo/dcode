@@ -2,23 +2,50 @@ import type { History } from '../state/history';
 import type { Measure } from '../state/models';
 import { paneView, type PaneView } from '../state/pane';
 import type { SessionView } from '../state/session';
-import { rowOfSession, sessionTitle, type Row } from '../state/sidebar';
+import { useState } from 'react';
+import { basename, rowOfSession, sessionTitle, type Row } from '../state/sidebar';
+import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
 import { DoneRow } from './Pane';
 import { RecordedBody } from './RecordedBody';
 
-function BranchChip({ session }: { session: SessionView }) {
+/**
+ * The branch the session started on and the lines its tools reported, as the
+ * approved look draws them; clicked, it opens where the conversation works —
+ * session, folder, branch now, worktree, the folder's diff (D41). Without a
+ * branch or a line it is the folder's name, so the card is always one click
+ * away.
+ */
+function BranchChip({ session, row }: { session: SessionView; row: Row }) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const branch = session.info?.branch ?? '';
   // Nothing reported is drawn as nothing, the reading the TUI's bar makes:
   // "+0 −0" would claim no change where the tools simply said none.
   const changed = session.added > 0 || session.removed > 0;
-  if (!branch && !changed) return null;
+  const toggle = (el: HTMLElement) => setAnchor((a) => (a ? null : el));
   return (
-    <span className="branch-chip" title={changed ? 'linhas que as ferramentas reportaram nesta sessão' : undefined}>
-      {branch && <span>{branch}</span>}
-      {changed && <span className="tone-ok">+{session.added}</span>}
-      {changed && <span className={session.removed > 0 ? 'tone-err' : 'tone-faint'}>−{session.removed}</span>}
-    </span>
+    <>
+      <span
+        className="branch-chip"
+        role="button"
+        tabIndex={0}
+        aria-haspopup="dialog"
+        aria-expanded={anchor !== null}
+        title={`${changed ? 'Linhas que as ferramentas reportaram nesta sessão. ' : ''}Clique para ver a sessão, a pasta, a branch de agora, a worktree e o diff.`}
+        onClick={(e) => toggle(e.currentTarget)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          toggle(e.currentTarget);
+        }}
+      >
+        {branch && <span>{branch}</span>}
+        {!branch && !changed && <span>{basename(row.workspace) || 'pasta'}</span>}
+        {changed && <span className="tone-ok">+{session.added}</span>}
+        {changed && <span className={session.removed > 0 ? 'tone-err' : 'tone-faint'}>−{session.removed}</span>}
+      </span>
+      {anchor && <ContextCard row={row} session={session} anchor={anchor} onClose={() => setAnchor(null)} />}
+    </>
   );
 }
 
@@ -108,7 +135,7 @@ export function SessionPanel({
             {model} ⌄
           </button>
         )}
-        <BranchChip session={session} />
+        <BranchChip session={session} row={known} />
       </div>
       <div className="proof">
         <DoneRow view={proof} measure={measure} />

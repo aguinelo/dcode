@@ -78,6 +78,16 @@ export class Requests {
     return this.call('GET', `/${Version}/conversations/${encodeURIComponent(id)}/events?from=${from}`);
   }
 
+  /** Where the folder is in git now, and what changed in it (D41). Passed on as it came. */
+  readGit(workspace: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/git?workspace=${encodeURIComponent(workspace)}`);
+  }
+
+  /** One changed file's diff (D41). Passed on as it came. */
+  readGitDiff(workspace: string, path: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/git/diff?workspace=${encodeURIComponent(workspace)}&path=${encodeURIComponent(path)}`);
+  }
+
   submitTurn(sessionId: string, text: string): Promise<Answer<null>> {
     return this.command(`${sessionPath(sessionId)}/turns`, { text });
   }
