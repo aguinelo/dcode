@@ -1,7 +1,8 @@
 # Decisões do desktop — D21 em diante
 
 A continuação de [`DECISIONS.md`](DECISIONS.md), que tem a introdução, D1 a D20, as
-decisões em aberto, as lacunas e os pedidos ao núcleo. A numeração é uma só.
+decisões em aberto, as lacunas e os pedidos ao núcleo. A numeração é uma só; D39
+está em [`DECISIONS-3.md`](DECISIONS-3.md).
 
 **D21. A lista de sessões vem do protocolo** (N3): vivas e gravadas, com resumo, e
 um fluxo só de mudanças da lista. Abrir uma gravada continua a conversa numa

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import type { SessionView } from '../state/session';
 import type { SessionsState } from '../state/sessions';
-import { answerForKey } from './ApprovalCard';
+import { answerForKey, pendingRequest } from '../state/approval';
 
 /** Whether keys typed now go into text. A disabled field takes none. */
 function isEditable(el: Element | null): boolean {
@@ -105,7 +105,7 @@ export function useWindowKeys(k: {
       if (maximized) {
         if (maximized.pendingApprovalId) {
           if (e.key === 'Enter' && !nowhere) return;
-          const decision = answerForKey(e.key);
+          const decision = answerForKey(e.key, pendingRequest(maximized) ?? { boundary_crossed: '' });
           if (decision) {
             e.preventDefault();
             answer(maximized.id, maximized.pendingApprovalId, decision);
@@ -132,7 +132,7 @@ export function useWindowKeys(k: {
       const waiting = sessions.byId[id]?.pendingApprovalId;
       if (waiting) {
         if (e.key === 'Enter' && !nowhere) return;
-        const decision = answerForKey(e.key);
+        const decision = answerForKey(e.key, pendingRequest(sessions.byId[id]) ?? { boundary_crossed: '' });
         if (decision) {
           e.preventDefault();
           answer(id, waiting, decision);
