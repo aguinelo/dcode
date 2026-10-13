@@ -8,6 +8,7 @@ import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
 import { DoneRow } from './Pane';
 import { RecordedBody } from './RecordedBody';
+import { ConversationTitle } from './RenameTitle';
 
 /**
  * The branch the session started on and the lines its tools reported, as the
@@ -129,7 +130,7 @@ export function SessionPanel({
       </header>
       <div className="panel-title-row">
         <span className={`pane-glyph tone-${proof.tone}${proof.live ? ' dc-breath' : ''}`}>{proof.glyph}</span>
-        <span className="panel-title">{title}</span>
+        <ConversationTitle id={session.id} title={title} className="panel-title" />
         {model && (
           <button type="button" className="chip" title="Continuar em outro modelo" onClick={(e) => onModel(e.currentTarget)}>
             {model} ⌄

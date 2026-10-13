@@ -6,7 +6,7 @@ import { paneView } from '../state/pane';
 import { emptyPrefs, dropBefore, moveProject, parsePrefs, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
-import { countStates, projectsOf, rowOfSession, type Row } from '../state/sidebar';
+import { countStates, projectsOf, rowOfSession, titleNow, type Row } from '../state/sidebar';
 import { CrewView } from './CrewView';
 import { Grid } from './Grid';
 import type { Host } from './host';
@@ -14,6 +14,7 @@ import { useNow, useReducedMotion, useTick, useWindowSize } from './hooks';
 import { ModeMenu } from './ModeMenu';
 import { ModelMenu } from './ModelMenu';
 import { Search } from './Search';
+import { RenameProvider, useRenames } from './RenameTitle';
 import { SessionPanel, type Peer } from './SessionPanel';
 import { Sidebar } from './Sidebar';
 import { notYet } from './text';
@@ -207,7 +208,10 @@ export function App({
     setDrafts((d) => ({ ...d, [id]: '!' }));
     win.caretTo(id);
   };
-  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand });
+  // A conversation's name (D43): the field over its title; "Renomear" in the ⋯ menu opens it too.
+  const renames = useRenames(actions.rename, say);
+  const rename = (id: string) => renames.begin(id, titleNow(sessions.byId[id], rowById.get(id)));
+  const acts = useSessionActions(sessions, { undo: win.undoIn, compact: win.compactIn, command: typeCommand, rename });
 
   // The grid, in stable places: the plan reads the places as last drawn, and
   // they are kept the way React keeps a value from the previous render. The
@@ -300,7 +304,7 @@ export function App({
   const missing = (what: string) => say(notYet(what));
   const draftIn = (id: string, text: string) => setDrafts((d) => ({ ...d, [id]: text }));
 
-  return (
+  const drawn = (
     <div className={`window look-${look}${searching ? ' searching' : ''}`}>
       <TopBar
         host={host}
@@ -491,4 +495,5 @@ export function App({
       )}
     </div>
   );
+  return <RenameProvider value={renames}>{drawn}</RenameProvider>;
 }

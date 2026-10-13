@@ -5,7 +5,9 @@ import {
   SANDBOXES,
   clip,
   command,
+  NAME_LIMIT,
   conversation,
+  conversationName,
   decision,
   gitWorkspaceOf,
   id,
@@ -142,6 +144,25 @@ describe('a recorded conversation to read (D42)', () => {
     expect(position(1)).toEqual({ ok: true, value: 1 });
     expect(position(5001)).toEqual({ ok: true, value: 5001 });
     for (const bad of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1, '1', undefined]) refused(position(bad));
+  });
+});
+
+describe('a conversation’s name (D43)', () => {
+  it('takes a name trimmed, and an empty one, which gives the derived title back', () => {
+    expect(conversationName('  Migração do banco  ')).toEqual({ ok: true, value: 'Migração do banco' });
+    expect(conversationName('')).toEqual({ ok: true, value: '' });
+    expect(conversationName('   ')).toEqual({ ok: true, value: '' });
+  });
+
+  it('counts characters as the daemon does, and refuses what it would refuse rather than cutting it', () => {
+    expect(NAME_LIMIT).toBe(120);
+    expect(conversationName('é'.repeat(120))).toEqual({ ok: true, value: 'é'.repeat(120) });
+    expect(conversationName('🙂'.repeat(120)).ok).toBe(true);
+    expect(refused(conversationName('x'.repeat(121)))).toBe('O nome tem 121 caracteres, e o daemon guarda até 120.');
+  });
+
+  it('refuses what is not text', () => {
+    for (const bad of [undefined, null, 7, ['a'], { name: 'a' }]) expect(refused(conversationName(bad))).toMatch(/^O nome da conversa precisa ser um texto/);
   });
 });
 

@@ -25,6 +25,8 @@ export interface FakeOptions {
   refuseList?: { status: number; contentType: string; body: string };
   /** What GET /v1/models answers; without it, the route is not there, as on a daemon before it. */
   models?: unknown;
+  /** Refuses GET /v1/conversations, the list read once, as a failing daemon would. */
+  refuseConversations?: boolean;
 }
 
 export interface FakeDaemon {
@@ -47,12 +49,16 @@ function event(sessionId: string, seq: number): unknown {
   return { seq, session_id: sessionId, type: seq === 1 ? 'session.created' : 'turn.started', at: '2026-10-01T10:00:00Z', payload: {} };
 }
 
+type Listed = { id: string } & Record<string, unknown>;
+
 export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<FakeDaemon> {
   const requests: string[] = [];
   const bodies: unknown[] = [];
   const seqs = new Map(Object.entries(o.sessions ?? {}));
   const lists = new Set<http.ServerResponse>();
   const streams = new Map<string, Set<http.ServerResponse>>();
+  /** What GET /v1/conversations answers: the list the stream opened with, as names change it. */
+  const listed = [...((o.conversations ?? []) as Listed[])];
   let opened = 0;
 
   const json = (res: http.ServerResponse, status: number, body: unknown) => {
@@ -88,7 +94,21 @@ export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<F
       return json(res, 201, { id: sid, state: 'idle', workspace: ws, model: 'fake', sandbox_mode: 'workspace-write', mode: 'assist', created_at: '2026-10-01T10:00:00Z', last_seq: 1, done_criteria: 0 });
     }
     if (method === 'GET' && u.pathname === '/v1/models' && o.models !== undefined) return json(res, 200, o.models);
-    if (session && !seqs.has(id)) return json(res, 404, { code: 'session_not_found', message: `no session ${id}` });
+    if (method === 'GET' && u.pathname === '/v1/conversations') {
+      if (o.refuseConversations) return json(res, 500, { code: 'internal', message: 'the records could not be read' });
+      return json(res, 200, { conversations: listed });
+    }
+    // A name, live or recorded, as `dcode serve` takes it: on any conversation it lists, and an empty one
+    // gives the derived title back (here, the id).
+    if (method === 'POST' && rest === '/name') {
+      const at = listed.findIndex((c) => c.id === id);
+      if (at < 0) return json(res, 404, { code: 'session_not_found', message: 'no recorded conversation with that id' });
+      const name = String((body as { name?: unknown } | undefined)?.name ?? '').trim();
+      if (name.length > 120) return json(res, 400, { code: 'invalid_input', message: 'a name is at most 120 characters' });
+      listed[at] = { ...(listed[at] as Listed), title: name || id, named: name !== '' };
+      return void res.writeHead(204).end();
+    }
+    if (session && !seqs.has(id))return json(res, 404, { code: 'session_not_found', message: `no session ${id}` });
     if (method === 'DELETE' && rest === '') {
       seqs.delete(id);
       for (const s of streams.get(id) ?? []) s.end();

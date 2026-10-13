@@ -108,7 +108,7 @@ export function conversation(v: unknown): Checked<{ id: string; workspace: strin
 }
 
 /**
- * The id of a recorded conversation to read (D42): the alphabet the daemon
+ * The id of a recorded conversation to read (D42) or to name (D43): the alphabet the daemon
  * names records by (`session.ValidID`) and nothing else. The id becomes part
  * of a path on the daemon, so one carrying a `/`, a `.` or an escape is
  * refused here, before it is sent, rather than left to the daemon to refuse.
@@ -116,6 +116,22 @@ export function conversation(v: unknown): Checked<{ id: string; workspace: strin
 export function recordedId(v: unknown): Checked<string> {
   if (typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v)) return { ok: true, value: v };
   return invalid(`O id da conversa precisa ter de 1 a 128 letras, dígitos, - ou _, e veio ${shown(v)}.`);
+}
+
+/** How long a conversation's name may be: the daemon's `session.NameLimit`, in characters. */
+export const NAME_LIMIT = 120;
+
+/**
+ * A name for a conversation (D43), trimmed. Empty is a name too: it gives the
+ * title derived from the first question back. Longer than the daemon keeps is
+ * refused, never cut — half of what was typed is a name nobody chose.
+ */
+export function conversationName(v: unknown): Checked<string> {
+  if (typeof v !== 'string') return invalid(`O nome da conversa precisa ser um texto, e veio ${shown(v)}.`);
+  const name = v.trim();
+  const length = [...name].length;
+  if (length > NAME_LIMIT) return invalid(`O nome tem ${length} caracteres, e o daemon guarda até ${NAME_LIMIT}.`);
+  return { ok: true, value: name };
 }
 
 /** A position in a recorded conversation's events: a whole number from 1. */

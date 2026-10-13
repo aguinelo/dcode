@@ -115,6 +115,20 @@ export class Requests {
     return this.command(`${sessionPath(sessionId)}/exec`, { command });
   }
 
+  /**
+   * Names a conversation, live or ended (D43); an empty name gives the derived
+   * title back. A live one announces it in `session.renamed`; an ended one is
+   * named in its record, and only the list says so.
+   */
+  rename(id: string, name: string): Promise<Answer<null>> {
+    return this.command(`${sessionPath(id)}/name`, { name });
+  }
+
+  /** Every conversation, live and recorded, as the daemon lists it now. Passed on as it came. */
+  listConversations(): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/conversations`);
+  }
+
   /** Puts back what the last turn changed. Passed on as it came: the renderer reads it at its boundary. */
   async undo(sessionId: string): Promise<Answer<UndoResult>> {
     const a = await this.call('POST', `${sessionPath(sessionId)}/undo`);

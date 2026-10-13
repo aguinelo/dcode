@@ -10,6 +10,20 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A conversation can be renamed from the window.** The daemon has named
+  conversations, live and ended, since `POST /v1/sessions/{id}/name`, and the
+  window never asked: a title was whatever the first question was. Now a
+  double-click on the title (a grid window, the maximized one, Crew's thread)
+  turns it into a field, and "Renomear" in the ⋯ menu opens the same field.
+  Enter or leaving the field saves, Esc gives up, an empty name gives the
+  automatic title back, and the window's keys stay out of the field. The title
+  changes when the daemon says so, not when the name is typed: a live
+  conversation's `session.renamed`, or, for an ended one (whose rename no
+  stream announces), its row read again from `GET /v1/conversations`. A refusal
+  is a notice with the daemon's reason and the field keeps the text. The name
+  goes through a new main-process channel: id in the core's alphabet, name
+  trimmed and refused, not cut, past the core's 120 characters. Nothing at rest
+  changes: both visual references measure 0.00% (D43).
 - **A conversation that ended opens onto its history.** Opening one showed an
   empty thread, and Crew's right panel said a finished conversation carries no
   events, so the person took their sessions for lost. A recorded conversation

@@ -27,6 +27,15 @@ export function sessionTitle(v: SessionView): string {
   return derived || UNTITLED;
 }
 
+/**
+ * The title a conversation shows now, as the maximized panel draws it: its
+ * events', once they say something, else the list's row.
+ */
+export function titleNow(v: SessionView | undefined, row: Row | undefined): string {
+  if (v && (v.name || v.firstQuestion)) return sessionTitle(v);
+  return row?.title ?? (v ? sessionTitle(v) : '');
+}
+
 /** One line of the sidebar: a conversation, whatever it was read from. */
 export interface Row {
   id: string;

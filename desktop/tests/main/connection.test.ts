@@ -332,3 +332,65 @@ describe('requests', () => {
     expect(daemon.requests).toEqual([]);
   });
 });
+
+describe('naming a conversation (D43)', () => {
+  const live = { id: 'a', title: 'a pergunta', workspace: '/w', state: 'idle', live: true, turns: 1, started: '', last_activity: '' };
+  const ended = { ...live, id: 'r1', title: 'outra pergunta', state: 'recorded', live: false };
+
+  it('names an ended one at its route, and passes on its row as the daemon lists it: no stream announces it', async () => {
+    const { daemon, conn, r } = await setUp({ conversations: [live, ended] });
+    conn.start();
+    await until(() => r.frames.length === 1, 'the snapshot');
+    expect(await conn.rename('r1', 'Migração do banco')).toEqual({ ok: true, value: null });
+    expect(daemon.requests).toContain('POST /v1/sessions/r1/name');
+    expect(daemon.requests).toContain('GET /v1/conversations');
+    expect(daemon.bodies).toEqual([{ name: 'Migração do banco' }]);
+    const named = { ...ended, title: 'Migração do banco', named: true };
+    expect(r.frames[1]).toEqual({ kind: 'changed', conversation: named });
+    expect(conn.listed()).toEqual([live, named]);
+  });
+
+  it('sends an empty name as it is, which gives the derived title back', async () => {
+    const { daemon, conn, r } = await setUp({ conversations: [ended] });
+    conn.start();
+    await until(() => r.frames.length === 1, 'the snapshot');
+    expect(await conn.rename('r1', '')).toEqual({ ok: true, value: null });
+    expect(daemon.bodies).toEqual([{ name: '' }]);
+    expect(r.frames[1]).toEqual({ kind: 'changed', conversation: { ...ended, title: 'r1', named: false } });
+  });
+
+  it('leaves a live one to its own stream, which announces the name', async () => {
+    const { daemon, conn, r } = await setUp({ conversations: [live] });
+    conn.start();
+    await until(() => r.frames.length === 1, 'the snapshot');
+    expect(await conn.rename('a', 'Nome')).toEqual({ ok: true, value: null });
+    expect(daemon.requests).toContain('POST /v1/sessions/a/name');
+    expect(r.frames).toHaveLength(1);
+  });
+
+  it('answers the daemon’s refusal as it came, and touches nothing in the list', async () => {
+    const { conn, r } = await setUp({ conversations: [ended] });
+    conn.start();
+    await until(() => r.frames.length === 1, 'the snapshot');
+    expect(await conn.rename('r1', 'x'.repeat(121))).toEqual({ ok: false, refusal: { code: 'invalid_input', message: 'a name is at most 120 characters' } });
+    expect(await conn.rename('nope', 'Nome')).toEqual({ ok: false, refusal: { code: 'session_not_found', message: 'no recorded conversation with that id' } });
+    expect(r.frames).toHaveLength(1);
+    expect(conn.listed()).toEqual([ended]);
+  });
+
+  it('says so when the name was taken but the list could not be read again', async () => {
+    const { daemon, conn, r } = await setUp({ conversations: [ended], refuseConversations: true });
+    conn.start();
+    await until(() => r.frames.length === 1, 'the snapshot');
+    const got = await conn.rename('r1', 'Nome');
+    expect(got.ok).toBe(false);
+    expect(!got.ok && got.refusal.message).toMatch(/^O daemon guardou o nome, mas a lista não foi relida/);
+    expect(daemon.requests).toContain('POST /v1/sessions/r1/name');
+  });
+
+  it('answers unreachable while still connecting, and sends nothing', async () => {
+    const { daemon, conn } = await setUp({ conversations: [ended] });
+    expect(await conn.rename('r1', 'Nome')).toMatchObject({ ok: false, refusal: { code: 'unreachable' } });
+    expect(daemon.requests).toEqual([]);
+  });
+});

@@ -55,6 +55,12 @@ export interface WindowActions {
    * shows the new mode when the session's `session.mode_changed` arrives.
    */
   setMode(sessionId: string, mode: string): Promise<Outcome<null>>;
+  /**
+   * Names a conversation, live or ended (D43); an empty name gives the
+   * automatic title back. Not optimistic: the title changes when the
+   * daemon's `session.renamed` or its list says so.
+   */
+  rename(conversationId: string, name: string): Promise<Outcome<null>>;
   /** Runs a command the person typed (`!`), outside a turn (D40); the output arrives in the flow. */
   exec(sessionId: string, command: string): Promise<Outcome<null>>;
   /** Puts back what the last turn changed, and says what went back and what did not (D40). */

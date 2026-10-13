@@ -7,7 +7,7 @@ const WIDTH = 300;
 /** The ⋯ that opens a conversation's actions (D40). */
 export function ActionsButton({ title, onOpen }: { title: string; onOpen: (anchor: HTMLElement) => void }) {
   return (
-    <button type="button" className="icon-btn" aria-label={`Ações de ${title}`} aria-haspopup="menu" title="Desfazer, resumir, rodar um comando" onClick={(e) => onOpen(e.currentTarget)}>
+    <button type="button" className="icon-btn" aria-label={`Ações de ${title}`} aria-haspopup="menu" title="Desfazer, resumir, rodar um comando, renomear" onClick={(e) => onOpen(e.currentTarget)}>
       ⋯
     </button>
   );
@@ -16,8 +16,8 @@ export function ActionsButton({ title, onOpen }: { title: string; onOpen: (ancho
 /**
  * What acts on a live session besides a message (D40): undo the last turn,
  * compact the context, and run a command — the same as /undo, /compact and !
- * in the field. While a turn runs or waits the daemon refuses the first two,
- * and the menu says so instead of offering them.
+ * in the field — and rename it (D43). While a turn runs or waits the daemon refuses the first two,
+ * and the menu says so instead of offering them; renaming stays offered.
  */
 function ActionsMenu({
   anchor,
@@ -25,6 +25,7 @@ function ActionsMenu({
   onUndo,
   onCompact,
   onCommand,
+  onRename,
   onClose,
 }: {
   anchor: HTMLElement;
@@ -32,6 +33,7 @@ function ActionsMenu({
   onUndo: () => void;
   onCompact: () => void;
   onCommand: () => void;
+  onRename: () => void;
   onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -40,6 +42,8 @@ function ActionsMenu({
     { label: 'Desfazer o último turno', detail: 'põe de volta os arquivos que ele mudou', key: '/undo', run: onUndo, idle: true },
     { label: 'Resumir o contexto', detail: 'compacta agora o que o modelo carrega', key: '/compact', run: onCompact, idle: true },
     { label: 'Rodar um comando…', detail: 'no campo, depois de !; a saída aparece aberta', key: '!', run: onCommand, idle: true },
+    // Naming works in the middle of a turn too: the daemon takes it at any time (D43).
+    { label: 'Renomear', detail: 'o título desta conversa; vazio volta ao automático', key: '2× clique', run: onRename, idle: false },
   ];
   return (
     <div ref={box} className="model-menu" style={{ width: WIDTH, ...placeBy(anchor, WIDTH) }} role="menu" aria-label="Ações da conversa">
@@ -69,7 +73,7 @@ function ActionsMenu({
 /** The actions menu of one conversation at a time, and what each item does. */
 export function useSessionActions(
   sessions: SessionsState,
-  run: { undo: (id: string) => unknown; compact: (id: string) => unknown; command: (id: string) => void },
+  run: { undo: (id: string) => unknown; compact: (id: string) => unknown; command: (id: string) => void; rename: (id: string) => void },
 ): { open: (id: string, anchor: HTMLElement) => void; menu: boolean; node: ReactNode } {
   const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement } | null>(null);
   const open = useCallback((id: string, anchor: HTMLElement) => setMenu((m) => (m?.id === id ? null : { id, anchor })), []);
@@ -82,6 +86,7 @@ export function useSessionActions(
       onUndo={() => void run.undo(menu.id)}
       onCompact={() => void run.compact(menu.id)}
       onCommand={() => run.command(menu.id)}
+      onRename={() => run.rename(menu.id)}
       onClose={close}
     />
   ) : null;

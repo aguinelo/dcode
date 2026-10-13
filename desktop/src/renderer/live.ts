@@ -169,6 +169,7 @@ export class LiveStore {
     },
     switchModel: (id, workspace, model) => this.switchModel(id, workspace, model),
     setMode: async (id, mode) => outcome(await this.api.setMode(id, mode), 'O modo não mudou'),
+    rename: async (id, name) => outcome(await this.api.renameConversation(id, name), 'A conversa não foi renomeada'),
     exec: async (id, command) => outcome(await this.api.exec(id, command), 'O comando não rodou'),
     undo: async (id) => decoded(outcome(await this.api.undo(id), 'O último turno não foi desfeito'), decodeUndo),
     compact: async (id) => decoded(outcome(await this.api.compact(id), 'O contexto não foi resumido'), decodeCompact),

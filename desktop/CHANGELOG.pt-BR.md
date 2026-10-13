@@ -10,6 +10,20 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma conversa pode ser renomeada pela janela.** O daemon nomeia conversas,
+  vivas e terminadas, desde `POST /v1/sessions/{id}/name`, e a janela nunca
+  pedia: o título era o que a primeira pergunta fosse. Agora um duplo clique no
+  título (janela da grade, a maximizada, a thread do Crew) vira um campo, e
+  "Renomear" no menu ⋯ abre o mesmo campo. Enter ou sair do campo salva, Esc
+  desiste, um nome vazio devolve o título automático, e as teclas da janela
+  ficam fora do campo. O título muda quando o daemon diz, não quando o nome é
+  digitado: o `session.renamed` de uma conversa viva ou, para uma terminada
+  (cujo nome nenhum stream anuncia), a linha dela relida de
+  `GET /v1/conversations`. Uma recusa vira um aviso com o motivo do daemon, e o
+  campo guarda o texto. O nome passa por um canal novo do processo principal:
+  id no alfabeto do núcleo, nome aparado e recusado, não cortado, acima dos 120
+  caracteres do núcleo. Nada em repouso muda: as duas referências visuais medem
+  0,00% (D43).
 - **Uma conversa terminada abre no histórico dela.** Abrir uma mostrava a
   thread vazia, e o painel da direita do Crew dizia que uma conversa terminada
   não traz os eventos dela: a pessoa achou que as sessões tinham se perdido.
