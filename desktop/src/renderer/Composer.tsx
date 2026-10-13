@@ -1,5 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import { imageSource, QUEUE_TAKES_TEXT, sizeOf } from '../state/attachments';
+import { SheetContext } from './CommandSheet';
+import { useSlashMenu } from './SlashMenu';
 import type { SessionView } from '../state/session';
 import { turnTelemetry, usageFact } from '../state/telemetry';
 import { ModeChip } from './ModeMenu';
@@ -66,12 +68,15 @@ function Attachments({ sessionId }: { sessionId: string }) {
 /**
  * The text field itself: grows with what is typed, ↵ sends and ⇧↵ breaks the
  * line; ↑/↓, ⌥↵ and ⌃X are the conversation's (D47). ⌘↵ is the window's, and Esc leaves the field so the window's keys —
- * the arrows between windows, an approval's answers — apply again.
+ * the arrows between windows, an approval's answers — apply again. With
+ * `commands`, a leading / opens the menu of commands, which owns the arrows
+ * while open, and ? in an empty field opens the help (D48).
  */
 export function Field({
   text,
   placeholder,
   disabled = false,
+  commands = false,
   caret,
   onText,
   onSubmit,
@@ -81,16 +86,21 @@ export function Field({
   text: string;
   placeholder: string;
   disabled?: boolean;
+  /** Whether the field takes the harness's commands: the / menu and ? for the help. */
+  commands?: boolean;
   /** Changes when the caret is asked into this field. */
   caret?: number;
   onText: (text: string) => void;
-  onSubmit: () => void;
+  /** Sends what is in the field, or the text given, which the field already shows. */
+  onSubmit: (text?: string) => void;
   /** The conversation's own keys — history, queue (D47) — before ↵ sends; one that acts prevents the default. */
   onKeys?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   /** A paste that carries pictures (D46): they attach, and nothing is typed. */
   onPasteImages?: (files: File[]) => void;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
+  const sheet = useContext(SheetContext);
+  const menu = useSlashMenu(text, commands && !disabled, onText, onSubmit);
   // A field that stops taking text gives the keys back to the window, where
   // the approval's answers are (↵ among them).
   useLayoutEffect(() => {
@@ -106,6 +116,7 @@ export function Field({
   const empty = text.length === 0;
   return (
     <div className={`composer-field${empty ? ' empty' : ''}${disabled ? ' blocked' : ''}`}>
+      {menu.node}
       <div className="composer-sizer" aria-hidden="true">
         {empty ? placeholder : `${text}\n`}
       </div>
@@ -116,7 +127,10 @@ export function Field({
         rows={1}
         value={text}
         disabled={disabled}
-        onChange={(e) => onText(e.target.value)}
+        onChange={(e) => {
+          menu.reset();
+          onText(e.target.value);
+        }}
         onPaste={(e) => {
           const files = imageFiles(e.clipboardData);
           if (!onPasteImages || files.length === 0) return;
@@ -124,6 +138,13 @@ export function Field({
           onPasteImages(files);
         }}
         onKeyDown={(e) => {
+          menu.keys(e);
+          if (e.defaultPrevented) return;
+          if (commands && sheet && e.key === '?' && text === '') {
+            e.preventDefault();
+            sheet({ kind: 'help' });
+            return;
+          }
           if (e.key === 'Escape') {
             // Only out of the field: a second Esc is the window's.
             e.stopPropagation();
@@ -181,10 +202,10 @@ export function Composer({
   const spent = session.usage ? usageFact(session.usage) : null;
   const prompts = usePromptsContext();
   const keys = useFieldKeys(session, text, onText, prompts);
-  const send = () => {
-    if (blocked || !text.trim()) return;
+  const send = (t: string = text) => {
+    if (blocked || !t.trim()) return;
     keys.reset();
-    onSend(text);
+    onSend(t);
   };
   // Pictures (D46): "+" opens the picker, a paste or a drop attaches.
   const images = useImages();
@@ -230,6 +251,7 @@ export function Composer({
           text={text}
           placeholder={placeholderOf(session.state)}
           disabled={blocked}
+          commands
           caret={caret}
           onText={onText}
           onSubmit={send}
@@ -268,7 +290,7 @@ export function Composer({
               <span className="stop-square" />
             </button>
           ) : (
-            <button type="button" className="composer-button send" aria-label="Enviar" disabled={blocked} onClick={send}>
+            <button type="button" className="composer-button send" aria-label="Enviar" disabled={blocked} onClick={() => send()}>
               ↑
             </button>
           )}

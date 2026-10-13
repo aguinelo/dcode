@@ -10,6 +10,19 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The field's commands are offered, and a help lists them with the keys.**
+  The field answered `/undo`, `/compact`, `/mode` and `!`, and nothing said so.
+  A `/` at the start of a conversation's field now opens a menu of every
+  command, filtered as the name is typed (↑ ↓ choose, ⇥ completes, ↵ sends one
+  that needs nothing more, esc closes), as the TUI's completion does. `/help`,
+  or `?` in an empty field, opens a help over the window with the commands and
+  the window's, the field's and an approval's keys. Two TUI commands join:
+  `/init` sends the TUI's own DCODE.md turn, word for word (a test compares it
+  with `internal/tui/commands.go`), and `/plan` shows the current plan, or with
+  text asks for a new one as the TUI does. Both start a turn, so mid-turn the
+  window refuses and says why instead of steering the work with another
+  request. Nothing at rest changes: both visual references measure 0.00%
+  (D48).
 - **Images go with a turn.** The daemon has taken pictures on a turn since
   `SubmitTurnRequest.images`, and the TUI sends them; the window sent text only,
   and its "+" said attaching did not exist yet. Now "+" opens the system's

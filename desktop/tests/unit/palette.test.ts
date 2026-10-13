@@ -69,6 +69,6 @@ describe('/help, /init and /plan', () => {
 describe('the keys the help lists', () => {
   it('names the window keys useWindowKeys answers, and the field keys', () => {
     const keys = HELP_KEYS.flatMap((g) => g.keys.map((k) => k.key));
-    for (const k of ['⌘K', '⌘N', '⌘0', '⌘1–9', '⌘↵', '⇧⇥', '↵', '⇧↵', '/', '?', '1–4']) expect(keys).toContain(k);
+    for (const k of ['⌘K', '⌘N', '⌘0', '⌘1–9', '⌘↵', '⇧⇥', '↵', '⇧↵', '↑ ↓', '⌥↵', '⌃X', '/', '?', '1–4']) expect(keys).toContain(k);
   });
 });

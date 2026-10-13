@@ -10,6 +10,18 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Os comandos do campo aparecem, e uma ajuda os lista com as teclas.** O
+  campo atendia `/undo`, `/compact`, `/mode` e `!`, e nada dizia isso. Um `/` no
+  começo do campo de uma conversa agora abre um menu com todos os comandos,
+  filtrado enquanto o nome é digitado (↑ ↓ escolhem, ⇥ completa, ↵ envia o que
+  não pede mais nada, esc fecha), como a completação da TUI. `/help`, ou `?` no
+  campo vazio, abre por cima da janela uma ajuda com os comandos e as teclas da
+  janela, do campo e da aprovação. Dois comandos da TUI chegam: `/init` manda o
+  turno do DCODE.md da própria TUI, palavra por palavra (um teste compara com
+  `internal/tui/commands.go`), e `/plan` mostra o plano atual ou, com texto,
+  pede um novo como a TUI pede. Os dois começam um turno, então no meio de um a
+  janela recusa e diz por quê, em vez de redirecionar o trabalho com outro
+  pedido. Nada em repouso muda: as duas referências visuais medem 0,00% (D48).
 - **Imagens vão com o turno.** O daemon aceita imagens num turno desde
   `SubmitTurnRequest.images`, e a TUI as manda; a janela mandava só o texto, e o
   "+" dela dizia que anexar ainda não existia. Agora o "+" abre o seletor do

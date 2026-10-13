@@ -7,6 +7,7 @@ import { dropBefore, moveProject, PREFS_KEY, relabel, setAllCollapsed, setCollap
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
 import { countStates, projectsOf, rowOfSession, titleNow, type Row } from '../state/sidebar';
+import { SheetContext, useCommandSheet } from './CommandSheet';
 import { CrewView } from './CrewView';
 import { Grid } from './Grid';
 import type { Host } from './host';
@@ -32,10 +33,7 @@ import { useWindowKeys } from './useWindowKeys';
 import { ImagesProvider, useWindows } from './useWindows';
 import type { DaemonView, Outcome, WindowActions } from './window';
 
-interface Toast {
-  id: number;
-  text: string;
-}
+type Toast = { id: number; text: string };
 
 const TOAST_MS = 6000;
 
@@ -179,7 +177,8 @@ export function App({
     setSelectedId(to === GRID ? null : to);
   };
 
-  const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show });
+  const sheet = useCommandSheet(sessions);
+  const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show });
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);
   const prompts = usePrompts(actions, sessions, once, say);
@@ -252,7 +251,7 @@ export function App({
     caretTo: win.caretTo,
     sessions,
     maximized: selected,
-    busy: searching || !!models.menu || !!modes.menu || acts.menu,
+    busy: searching || !!models.menu || !!modes.menu || acts.menu || sheet.open,
     setSearching,
     newSession: look === 'crew' ? crewNew : newSession,
     show,
@@ -443,6 +442,7 @@ export function App({
         />
       )}
       {acts.node}
+      {sheet.node}
       {modes.menu && (
         <ModeMenu
           anchor={modes.menu.anchor}
@@ -476,10 +476,12 @@ export function App({
     </div>
   );
   return (
-    <RenameProvider value={renames}>
-      <PromptsProvider value={prompts}>
-        <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
-      </PromptsProvider>
-    </RenameProvider>
+    <SheetContext.Provider value={sheet.show}>
+      <RenameProvider value={renames}>
+        <PromptsProvider value={prompts}>
+          <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
+        </PromptsProvider>
+      </RenameProvider>
+    </SheetContext.Provider>
   );
 }
