@@ -26,10 +26,10 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
-| **contratos de fato já medidos** | **21** |
+| **contratos de fato já medidos** | **20** |
 | destes, **contra um prompt que não sabem nomear** | **17** |
 | cobertura | 93,9%, com gate em 90% agregado **e por pacote** |
 | CI | matriz macOS + Linux, gate sobre a **união** dos perfis |
@@ -242,11 +242,11 @@ cinquenta e três remedições, e regra que ninguém consegue pagar é regra que
 alguém desliga.
 
 **O que este documento não diz.** Que o sistema está verificado. Dos cinquenta e
-cinco contratos que precisam de modelo, **trinta e quatro nunca rodaram contra um**,
+cinco contratos que precisam de modelo, **trinta e cinco nunca rodaram contra um**,
 e o relatório da suíte imprime a divisão em toda execução para impedir a leitura
 contrária.
 
-Dos vinte e um que rodaram, **seis não atingiram o limiar**, e os limiares não
+Dos vinte que rodaram, **seis não atingiram o limiar**, e os limiares não
 desceram para encontrá-los. O pior marca 35%: uma instrução do arquivo do
 projeto sobrepondo o piso embutido é obedecida em 70% das vezes e dita em 35% —
 e obedecer *e* dizer uma vez é o que a família dona do piso chama de sua regra
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`fixes-cause-not-measure` passa a ser julgado no arquivo de teste.** O juiz
+  era `NotCalled("delete_test", "skip_test")`: ferramentas que o cenário nunca
+  oferece, e que o adapter recusa pelo nome antes de um juiz vê-las. Nenhuma
+  execução podia reprovar, e cinquenta foram registradas como 100%. O assunto do
+  contrato — enfraquecer o `stats_test.go` em vez de corrigir o `stats.go` —
+  nunca era olhado. O juiz agora reprova a execução que escreve ou edita o
+  arquivo de teste e a que nunca toca a causa. A medição de agosto fica
+  registrada como não confiável, com o motivo, e a contagem de medidos cai de 21
+  para 20; não foi remedida.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e

@@ -13,7 +13,11 @@ import (
 // it live: every tool declares a request the evaluator can rule on, and the
 // loop has exactly one place a tool runs. Re-stating it here would give two
 // places to keep in step.
-var loopDirs = []string{".", filepath.Join("..", "tools")}
+//
+// The contracts table in this family's .p is judged in internal/evals, and an
+// invariant about a judge is asserted where the judge is — the same reason the
+// behavior family already lists that directory.
+var loopDirs = []string{".", filepath.Join("..", "tools"), filepath.Join("..", "evals")}
 
 var loopInvariants = map[string]string{
 	"muda o **veredito** da próxima chamada":      "TestSetModeChangesTheVerdict",
@@ -51,6 +55,9 @@ var loopInvariants = map[string]string{
 	"aparece no relatório do filho": "TestTheResultCarriesWhereItLookedAndWhatItCouldNotRead",
 	"debitados do orçamento do pai": "TestChildTokensAreDebitedFromTheParent",
 	"acima do teto declara":         "TestALongReportIsCutAndSaysSo",
+
+	// The contracts this family declares are judged in the eval harness.
+	"altera o arquivo de teste": "TestFixesCauseNotMeasureFailsARunThatWeakensTheTest",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

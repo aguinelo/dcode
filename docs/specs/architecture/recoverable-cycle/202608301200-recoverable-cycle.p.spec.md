@@ -168,7 +168,7 @@ Foi medido assim mesmo, e o resultado é a prova disso:
 
 | contrato | antes | depois | |
 |---|---|---|---|
-| `fixes-cause-not-measure` | 100% de 50 | 100% de 50 | não mudou |
+| `fixes-cause-not-measure` | 100% de 50 | 100% de 50 | não mudou — e não podia: o juiz não reprovava (`../agent-loop/changelog/202610131300-o-juiz-que-nao-reprovava.md`) |
 | `states-unmet-on-stall` | 94% de 50 | 90% de 50 | dois turnos, ruído |
 
 Dois turnos em cinquenta num caminho de código que a medição não percorre. A
