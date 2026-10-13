@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Uma proposta para rodar o `/loop` pelo desktop, à espera de aprovação.**
+  `docs/proposals/loop.md` desenha começar, acompanhar, revisar e parar um
+  loop pela grade e pela Crew, o pedido ao núcleo em que ele se apoia (N4: o
+  daemon conduz a sequência do `/loop`, para os dois clientes verem o mesmo
+  loop, e um evento por conferência dentro do turno), e o que fazer com
+  `done.proposed`, `done.signed` e `SignDoneRequest`, que nada emite. Escrita
+  antes de qualquer código porque a metade do núcleo muda um protocolo
+  versionado e o dono pediu para aprovar o desenho antes; nada muda no app.
 - **Rodando a partir do código no macOS, a barra de menus e o Dock dizem DCode
   Box.** O `npm start` agora roda antes o `scripts/dev-name.mjs`, que grava o
   nome no Info.plist do Electron de desenvolvimento (em node_modules) e assina
