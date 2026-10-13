@@ -7,12 +7,14 @@ import {
   command,
   conversation,
   decision,
+  gitWorkspaceOf,
   id,
   keys,
   mode,
   model,
   position,
   recordedId,
+  repoPath,
   sessionOptions,
   size,
   text,
@@ -153,5 +155,27 @@ describe('the folder a session’s terminal opens in', () => {
     expect(workspaceOf(list, 's-2')).toEqual({ ok: true, value: '/work/other' });
     expect(refused(workspaceOf(list, 's-9'))).toContain('s-9');
     refused(workspaceOf(null, 's-1'));
+  });
+});
+
+describe('the folder whose git a conversation’s panel reads (D41)', () => {
+  const list = [
+    { id: 's-1', workspace: '/work/app' },
+    { id: 'old', workspace: '/work/ended' },
+  ];
+
+  it('is the workspace the daemon listed for the conversation, live or ended, never one the window names', () => {
+    expect(gitWorkspaceOf(list, 'old')).toEqual({ ok: true, value: '/work/ended' });
+    expect(refused(gitWorkspaceOf(list, 's-9'))).toContain('s-9');
+    refused(gitWorkspaceOf(null, 's-1'));
+    refused(gitWorkspaceOf([{ id: 'rel', workspace: 'work/app' }], 'rel'));
+  });
+
+  it('takes a file as the list names it, and refuses nothing, a NUL or a runaway path', () => {
+    expect(repoPath('internal/vcs/tree.go')).toEqual({ ok: true, value: 'internal/vcs/tree.go' });
+    refused(repoPath(''));
+    refused(repoPath(42));
+    refused(repoPath('a\0b'));
+    refused(repoPath('a/'.repeat(3000)));
   });
 });

@@ -35,6 +35,8 @@ function fakeApi() {
     undo: ok<unknown>({ restored: ['a.go'], refused: [] }),
     compact: ok<unknown>({ compacted: true }),
     history: missing('/v1/conversations/old/events?from=1'),
+    git: missing('/v1/git?workspace=%2Fw%2Fdcode'),
+    gitDiff: missing('/v1/git/diff?workspace=%2Fw%2Fdcode&path=a.go'),
   };
   const api: DcodeApi = {
     platform: 'test',
@@ -54,6 +56,8 @@ function fakeApi() {
     listSkills: (ws) => (asked.push(`skills of ${ws}`), Promise.resolve(crew.skills)),
     listMemory: (ws) => (asked.push(`memory of ${ws}`), Promise.resolve(crew.memory)),
     conversationEvents: (id, from) => (asked.push(`history of ${id} from ${from}`), Promise.resolve(crew.history)),
+    readGit: (id) => (asked.push(`git of ${id}`), Promise.resolve(crew.git)),
+    readGitDiff: (id, path) => (asked.push(`diff of ${path} in ${id}`), Promise.resolve(crew.gitDiff)),
     pickFolder: () => Promise.resolve('/w/novo'),
     createSession: (ws, o) => {
       const how = [o?.model && `on ${o.model}`, o?.sandboxMode && `in ${o.sandboxMode}`].filter(Boolean).join(' ');
@@ -235,6 +239,45 @@ describe('the window connected', () => {
     f.crew.memory = { ok: true, value: { path: '.dcode/memory.md' } };
     const unreadable = await store.actions.listMemory('/w/dcode');
     expect(!unreadable.ok && unreadable.why).toBe('Resposta ilegível do daemon: memória: exists deveria ser booleano');
+  });
+
+  it('says a daemon older than the git routes does not expose them, rather than an empty diff (D41)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const git = await store.actions.readGit('s1');
+    expect(!git.ok && git.why).toMatch(/^Este daemon ainda não expõe o git da pasta \(GET \/v1\/git\) — atualize o dcode/);
+    const diff = await store.actions.readGitDiff('s1', 'a.go');
+    expect(!diff.ok && diff.why).toMatch(/^Este daemon ainda não expõe o diff de um arquivo/);
+    expect(f.asked).toEqual(['git of s1', 'diff of a.go in s1']);
+  });
+
+  it('reads a folder’s git and a diff, and says a refusal or an unreadable answer as a failure (D41)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    const tree = {
+      repository: true,
+      root: '/w/dcode',
+      branch: 'main',
+      detached: false,
+      head: 'abc1234',
+      worktree: true,
+      main_checkout: '/src/dcode',
+      files: [{ path: 'a.go', status: 'modified', added: 2, removed: 1, binary: false }],
+      truncated: false,
+    };
+    f.crew.git = { ok: true, value: tree };
+    expect(await store.actions.readGit('s1')).toEqual({ ok: true, value: tree });
+    f.crew.git = { ok: false, refusal: { code: 'internal', message: 'git is not installed: it is not on the daemon’s PATH' } };
+    expect(await store.actions.readGit('s1')).toEqual({
+      ok: false,
+      why: 'O daemon não leu o git da pasta: git is not installed: it is not on the daemon’s PATH',
+    });
+    f.crew.git = { ok: true, value: { repository: true, files: [] } };
+    const unreadable = await store.actions.readGit('s1');
+    expect(!unreadable.ok && unreadable.why).toBe('Resposta ilegível do daemon: git da pasta: detached deveria ser booleano');
+    const d = { path: 'a.go', status: 'modified', diff: '@@ -1 +1 @@\n-a\n+b\n', binary: false, truncated: false, limit: 262144 };
+    f.crew.gitDiff = { ok: true, value: d };
+    expect(await store.actions.readGitDiff('s1', 'a.go')).toEqual({ ok: true, value: d });
   });
 
   it('steers a running turn, and says the daemon’s reason when it refuses', async () => {
