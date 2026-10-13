@@ -97,10 +97,10 @@ export class LiveStore {
       outcome(await this.api.resolveApproval(id, approvalId, decision), 'A resposta não foi enviada'),
     newSession: async () => {
       const folder = await this.api.pickFolder();
-      if (!folder) return null;
-      const created = outcome(await this.api.createSession(folder), `A sessão não abriu em ${folder}`);
-      return created.ok ? this.follow(created.value.id) : created;
+      return folder ? this.newSessionIn(folder) : null;
     },
+    newSessionIn: (workspace) => this.newSessionIn(workspace),
+    closeSession: async (id) => outcome(await this.api.closeSession(id), 'A sessão não fechou'),
     watch: (row) => {
       // An ended conversation has no stream: its panel reads the list.
       if (row.state === 'recorded' || this.followed.has(row.id)) return;
@@ -158,6 +158,11 @@ export class LiveStore {
     return steer
       ? outcome(await this.api.submitTurn(id, text), 'A mensagem não foi enviada')
       : outcome(await this.api.steer(id, text), 'A correção não foi enviada');
+  }
+
+  private async newSessionIn(workspace: string): Promise<Outcome<string>> {
+    const created = outcome(await this.api.createSession(workspace), `A sessão não abriu em ${workspace}`);
+    return created.ok ? this.follow(created.value.id) : created;
   }
 
   private async follow(id: string): Promise<Outcome<string>> {

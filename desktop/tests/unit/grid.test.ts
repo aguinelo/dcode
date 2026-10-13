@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type * as P from '../../src/protocol/generated';
-import { beginAt, emptyAttention, forgetMissing, markSeen, parseAttention, togglePin, type Attention } from '../../src/state/attention';
+import { beginAt, emptyAttention, forgetMissing, hold, markSeen, parseAttention, release, togglePin, type Attention } from '../../src/state/attention';
 import { capacityFor, claimOf, gridShape, planGrid } from '../../src/state/grid';
 import { paneView } from '../../src/state/pane';
 import { rowOfConversation, type Row } from '../../src/state/sidebar';
@@ -93,6 +93,19 @@ describe('the grid’s memory', () => {
     expect(forgetMissing(a, new Set(['y']))).toEqual({ ...a, seen: {} });
     expect(togglePin(a, 'y').pinned).toEqual([]);
   });
+
+  it('holds a window the person opened or wrote in, and lets it go, seen, when closed', () => {
+    const held = hold(hold(since, 'a'), 'a');
+    expect(held.pinned).toEqual(['a']);
+    expect(claimOf(row('a', { last_event: 'session.created' }), held)).toBe('pinned');
+    const closed = release(held, 'a', '2026-10-01T10:05:00Z');
+    expect(closed.pinned).toEqual([]);
+    expect(closed.seen.a).toBe('2026-10-01T10:05:00Z');
+    // What it had finished counts as seen: closed, it does not come straight back.
+    expect(claimOf(row('a'), closed)).toBeNull();
+    // What still works keeps its place, closed or not.
+    expect(claimOf(row('a', { state: 'running' }), closed)).toBe('running');
+  });
 });
 
 describe('a panel', () => {
@@ -115,10 +128,8 @@ describe('a panel', () => {
       { name: 'lint', state: 'met' },
       { name: 'test', state: 'unmet' },
     ]);
-    expect(p.lines.map((l) => [l.kind, l.text])).toEqual([
-      ['you', 'rode a régua'],
-      ['said', 'Dois testes falharam.'],
-    ]);
+    // The criteria say it; the seal would repeat them.
+    expect(p.seal).toBeNull();
   });
 
   it('says when the turn wrote where the work is measured, and a pass is no longer a plain one', () => {
@@ -136,16 +147,12 @@ describe('a panel', () => {
     expect(paneView(row('s2'), log('s2', '2026-10-01T10:00:00Z').fold(), now).touched).toEqual([]);
   });
 
-  it('says what runs while it runs, and holds the question when one waits', () => {
+  it('breathes while it runs, and turns amber while it waits for you', () => {
     const running = log('s2', '2026-10-01T10:00:00Z')
       .add('turn.started', { turn_id: 't1', text: 'leia o README' })
       .add('tool.requested', { turn_id: 't1', tool_call_id: 'c1', name: 'read', input: { path: 'README.md' } });
     const p = paneView(row('s2', { state: 'running' }), running.fold(), now);
-    expect(p.live).toBe(true);
-    expect(p.lines).toEqual([
-      { kind: 'you', text: 'leia o README', tone: 'text' },
-      { kind: 'work', glyph: '●', tone: 'accent', text: 'read README.md' },
-    ]);
+    expect([p.live, p.glyph, p.tone]).toEqual([true, '●', 'accent']);
     expect(p.doneNote).toBe('sem definição de pronto');
 
     const waiting = running
@@ -160,11 +167,11 @@ describe('a panel', () => {
       })
       .fold();
     const q = paneView(row('s2', { state: 'blocked' }), waiting, now);
-    expect([q.glyph, q.approval?.command, q.lines.length]).toEqual(['◆', 'npm ci', 2]);
+    expect([q.live, q.glyph, q.tone]).toEqual([false, '◆', 'warn']);
   });
 
   it('reads an ended conversation from the list alone', () => {
     const p = paneView(row('old', { state: 'recorded', live: false, verification: 'passed', turns: 3 }), undefined, now);
-    expect([p.glyph, p.seal?.text, p.lines[0]?.text]).toEqual(['✓', '✓ verificado', 'Terminada · 3 turnos. Abrir continua numa sessão nova.']);
+    expect([p.glyph, p.seal?.text, p.when.endsWith('3 turnos')]).toEqual(['✓', '✓ verificado', true]);
   });
 });

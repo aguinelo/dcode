@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { age, clock, elapsed } from '../../src/state/format';
 import { dropBefore, emptyPrefs, moveProject, parsePrefs, relabel, setAllCollapsed } from '../../src/state/prefs';
 import { applyRaw, emptySessions } from '../../src/state/sessions';
-import { countStates, projectsOf, rowSide, rowsOfSessions, sessionTitle } from '../../src/state/sidebar';
+import { countStates, projectsOf, rowSide, rowsOfSessions, sessionTitle, shortPath } from '../../src/state/sidebar';
 import { recordedClient, recording, RECORDED_AT } from '../../src/fixtures/recording';
 
 const state = applyRaw(emptySessions, recording.events);
@@ -94,5 +94,17 @@ describe('durations', () => {
     ]);
     expect([clock(48 * s), clock(95 * s), clock(3729 * s)]).toEqual(['0:48', '1:35', '1:02:09']);
     expect([elapsed(42 * s), elapsed(102 * s), elapsed(922 * s), elapsed(3720 * s)]).toEqual(['42s', '1m42s', '15m22s', '1h02m']);
+  });
+});
+
+describe('a path in little room', () => {
+  it('reads the home folder as ~, and keeps the end of what is still long', () => {
+    expect(shortPath('/Users/ana/workspace/dcode')).toBe('~/workspace/dcode');
+    expect(shortPath('/home/ana')).toBe('~');
+    expect(shortPath('/srv/app')).toBe('/srv/app');
+    const long = shortPath('/Users/ana/workspace/clientes/dreibox/pagamentos-webhooks');
+    expect(long.startsWith('…')).toBe(true);
+    expect(long.endsWith('pagamentos-webhooks')).toBe(true);
+    expect(long.length).toBe(34);
   });
 });
