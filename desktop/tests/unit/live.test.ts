@@ -69,6 +69,7 @@ function fakeApi() {
     interrupt: (id) => answer(`interrupt ${id}`),
     resolveApproval: (id, a, d) => answer(`approve ${id} ${a} ${d}`),
     setMode: (id, m) => answer(`mode ${id} ${m}`),
+    renameConversation: (id, name) => answer(`name ${id}: ${name}`),
     // The terminal (D37) talks to its dock, not to the store: none of it is asked here.
     copy: (text) => answer(`copy ${text}`),
     openTerminal: () => Promise.resolve({ ok: false, refusal: { code: 'unexpected', message: 'not under test' } }),
@@ -314,6 +315,18 @@ describe('the window connected', () => {
       why: 'O modo não mudou: unknown mode "yolo" (want plan, assist or auto)',
     });
     expect(f.asked).toEqual(['mode s1 auto', 'mode s1 plan']);
+  });
+
+  it('asks the daemon to name a conversation, and says its reason when it refuses (D43)', async () => {
+    const f = fakeApi();
+    const store = new LiveStore(f.api);
+    expect(await store.actions.rename('old', 'Parser novo')).toEqual({ ok: true, value: null });
+    f.refuse('name', 'invalid_input', 'a name is at most 120 characters');
+    expect(await store.actions.rename('old', 'x'.repeat(121))).toEqual({
+      ok: false,
+      why: 'A conversa não foi renomeada: a name is at most 120 characters',
+    });
+    expect(f.asked).toEqual(['name old: Parser novo', `name old: ${'x'.repeat(121)}`]);
   });
 
   it('undoes and compacts, reading the answers, and says an unreadable one or a refusal', async () => {
