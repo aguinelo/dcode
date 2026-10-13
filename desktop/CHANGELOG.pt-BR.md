@@ -10,6 +10,19 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O texto do modelo é desenhado como o markdown que ele é.** Respostas com
+  títulos em negrito e listas mostravam os asteriscos e os traços crus. O texto
+  do modelo agora desenha parágrafos, negrito, itálico, código em linha, blocos
+  de código cercados (mono, com rolagem horizontal), títulos modestos, listas
+  com e sem número e aninhadas, citações, linhas, tabelas e links. O `marked`
+  18.0.14 (MIT, sem dependências) só separa os tokens, e a árvore vira elementos
+  React: nenhuma string de HTML é montada, então o HTML que o modelo escreve
+  aparece como texto e a CSP não muda. Só link `https` é link, aberto no
+  navegador pelo processo principal; qualquer outro endereço fica como texto, com
+  o endereço no título, e imagem é o texto alternativo. Durante o streaming, um
+  `**` sem par fica como chegou e uma cerca sem fim é código até onde o texto
+  chegou. Os estilos usam só os tokens que existem, e valem na grade, nas janelas
+  compactas e na Crew (D34).
 - **As referências visuais são capturas da janela aprovada.** O dono aprovou o
   visual novo — grafite, as janelas da grade, a Crew — e o `check:visual` o media
   contra o mock do handoff, com o qual ele já não se parece. Os dois estados

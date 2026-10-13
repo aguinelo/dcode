@@ -1,0 +1,130 @@
+/*
+ * The model's markdown (D34). Tokens only, and sizes relative to the text
+ * around it, so the same rules serve the stage, a compact window of the grid
+ * and Crew, in whatever theme the tokens name.
+ */
+
+.model-text strong {
+  font-weight: 600;
+  color: var(--dc-emph);
+}
+
+/* Headings live inside a conversation: a step above the text, not a page title. */
+.md-h {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--dc-emph);
+}
+.md-h1 {
+  font-size: 1.2em;
+}
+.md-h2 {
+  font-size: 1.12em;
+}
+.md-h3 {
+  font-size: 1.04em;
+}
+.md-h4 {
+  font-size: 1em;
+  color: var(--dc-text);
+}
+.md-list {
+  margin: 0;
+  padding-left: 1.4em;
+}
+.md-list .md-list {
+  margin-top: 2px;
+}
+.md-list > li + li {
+  margin-top: 2px;
+}
+.md-list > li::marker {
+  color: var(--dc-faint);
+}
+
+.md-pre {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: var(--dc-radius);
+  background: var(--dc-sunken);
+  font-family: var(--dc-mono);
+  font-size: 0.89em;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 4;
+  color: var(--dc-text);
+}
+.md-pre code {
+  font: inherit;
+}
+
+.md-quote {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--dc-line);
+  color: var(--dc-dim);
+}
+
+.md-hr {
+  margin-left: 0;
+  margin-right: 0;
+  border: 0;
+  border-top: 1px solid var(--dc-line);
+}
+
+.md-link {
+  color: var(--dc-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--dc-line);
+  text-underline-offset: 2px;
+}
+.md-link:hover {
+  text-decoration-color: currentColor;
+}
+.md-link-text {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--dc-faint);
+  text-underline-offset: 2px;
+}
+
+.md-table-wrap {
+  overflow-x: auto;
+}
+.md-table {
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.md-table th,
+.md-table td {
+  padding: 3px 8px;
+  border: 1px solid var(--dc-line-soft);
+  text-align: left;
+  vertical-align: top;
+}
+.md-table th {
+  font-weight: 600;
+  color: var(--dc-emph);
+  background: var(--dc-raised);
+}
+
+/* Spacing between blocks last, so it wins over each block's own reset. */
+.model-text > * + *,
+.model-text li > * + *,
+.md-quote > * + * {
+  margin-top: 9px;
+}
+.pane .model-text > * + *,
+.pane .model-text li > * + *,
+.pane .md-quote > * + * {
+  margin-top: 6px;
+}
+
+.model-text > * + .md-h {
+  margin-top: 14px;
+}
+.pane .model-text > * + .md-h {
+  margin-top: 10px;
+}

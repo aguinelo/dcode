@@ -27,6 +27,7 @@ As que estão no outro arquivo:
 - [D31](DECISIONS-2.md) — Cada janela da grade é uma conversa em que se trabalha.
 - [D32](DECISIONS-2.md) — Uma segunda versão da tela, Crew, ao lado da grade.
 - [D33](DECISIONS-2.md) — A Crew é um painel com trilho de seções, só com o que o daemon tem.
+- [D34](DECISIONS-2.md) — O texto do modelo é desenhado como o markdown que ele é.
 
 ## Decisões
 

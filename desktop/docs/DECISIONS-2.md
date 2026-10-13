@@ -215,3 +215,38 @@ faltavam seções e uma lista de sessões própria. A Crew troca a lateral; a gr
 
 Descartados: dados de exemplo (parece funcionar e não lê nada); a lateral da grade
 na Crew (dois jeitos de achar a mesma conversa); esconder seção sem dado.
+
+**D34. O texto do modelo é desenhado como o markdown que ele é.** O modelo
+escreve markdown, e a janela mostrava os asteriscos e os traços crus: uma
+resposta com títulos em negrito e listas chegava como `**Plano**` e `- item`.
+Agora o texto do modelo desenha parágrafos, negrito, itálico, código em linha,
+blocos de código cercados (fonte mono, rolagem horizontal, sem cores de
+sintaxe), títulos de h1 a h4 — modestos, porque moram dentro de uma conversa, e
+os níveis 5 e 6 viram 4 —, listas com e sem número e aninhadas, citações,
+linhas horizontais, tabelas simples e links. Uma quebra de linha simples
+continua sendo quebra, como o texto aparecia antes.
+
+- **O `marked` só lê; quem desenha é o React.** O lexer do `marked` 18.0.14 (MIT,
+  sem dependências, cerca de 45 KB minificado e 14 KB comprimido, versão fixa) dá
+  a árvore de tokens, e `src/renderer/Markdown.tsx` a mapeia para elementos.
+  Nenhuma string de HTML é montada nem injetada: o HTML que o modelo escreve
+  aparece como o texto que é, escapado pelo React, e a CSP (D2) fica como está.
+  O `react-markdown` com `remark-gfm` faria o mesmo trazendo o ecossistema
+  unified/micromark — dezenas de pacotes — para uma tela que só lê.
+- **Link sai para o navegador, e só `https`.** O link é um `<a target="_blank">`
+  que o processo principal já manda ao navegador pelo `setWindowOpenHandler` e
+  que nunca navega a janela. Qualquer outro endereço — `http`, `file:`,
+  `javascript:`, relativo — fica como texto, com o endereço no título. Imagem é
+  o texto alternativo: nada é buscado de onde o modelo apontou.
+- **Durante o streaming cada prefixo é desenhado como o que é até ali:** um `**`
+  sem par fica como chegou até o par chegar, e uma cerca sem fim é código até
+  onde o texto chegou. Nada é inventado para fechar o que ainda não chegou.
+- **Estilos só de tokens** (`styles/markdown.css`), com tamanhos relativos ao
+  texto em volta: o mesmo serve o palco, a janela compacta da grade e a Crew, e
+  qualquer tema que os tokens nomeiem.
+
+Descartados: escrever o parser à mão (é um formato inteiro, com casos que um
+parser mantido já resolve); usar o HTML que o `marked` gera, sanitizado
+(`dangerouslySetInnerHTML` com texto do modelo, e mais uma dependência para
+limpar); fechar sozinho o `**` sem par durante o streaming (adivinha, e erra em
+`2**3`).

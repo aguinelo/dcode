@@ -1,38 +1,12 @@
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { delegation, toolLine, VERBS, WORKING, type Activity, type Block, type Tone } from '../state/flow';
 import { elapsed, since } from '../state/format';
 import type { Entry, ToolCall } from '../state/session';
 import { ApprovalCard } from './ApprovalCard';
+import { RichText } from './Markdown';
 import { noteText } from './text';
 
-/** Model text: paragraphs, and `code` between backticks. An unpaired backtick stays text. */
-export function RichText({ text }: { text: string }) {
-  const paragraphs = text.split(/\n{2,}/);
-  return (
-    <>
-      {paragraphs.map((p, i) => {
-        const parts = p.split('`');
-        // An even count of parts means one backtick has no partner: the last.
-        const stray = parts.length % 2 === 0 ? parts.length - 1 : -1;
-        return (
-          <p key={i} className="rich-p">
-            {parts.map((part, j) =>
-              j === stray ? (
-                <Fragment key={j}>{`\`${part}`}</Fragment>
-              ) : j % 2 === 1 ? (
-                <code key={j} className="inline-code">
-                  {part}
-                </code>
-              ) : (
-                <Fragment key={j}>{part}</Fragment>
-              ),
-            )}
-          </p>
-        );
-      })}
-    </>
-  );
-}
+export { RichText };
 
 function ToolLine({ call }: { call: ToolCall }) {
   const v = toolLine(call);
