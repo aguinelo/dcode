@@ -352,3 +352,37 @@ Descartados: abrir o menu com `/` em qualquer ponto do texto (um caminho como
 a lista de teclas tirada do código de `useWindowKeys` (as teclas são tratadas
 num `switch`, não numa tabela, e reescrevê-lo como tabela para a ajuda era
 mudança maior que a ajuda).
+
+**D50. Os comandos que a pessoa escreveu, no menu e no campo, como na TUI.** A
+TUI oferece os comandos de barra que o usuário e o projeto escrevem em
+`commands/*.md` e os expande antes de mandar; a janela não tinha como, porque
+não lê a pasta de configuração do usuário. O núcleo passou a listá-los
+(`GET /v1/commands`, registro `202610132000` do protocolo), pela mesma
+descoberta da TUI.
+
+- **Quando:** a janela pergunta uma vez por projeto de que tem conversa, como a
+  TUI lê uma vez ao abrir: um comando não muda de sentido no meio do trabalho.
+  Um arquivo novo aparece quando a janela abre de novo.
+- **No menu:** depois dos comandos do campo (D48), com a descrição do arquivo,
+  ou "comando seu/do projeto, sem descrição", e de quem é. Um corpo com
+  `$ARGUMENTS` espera o argumento: ↵ completa `/nome ` em vez de mandar. Um
+  arquivo com nome de comando do campo (`/undo`, `/help`…) não aparece e não
+  vale: o campo vence, como o `ShadowedBuiltins` da TUI.
+- **Ao mandar:** o texto do comando, expandido como o `config.Expand` —
+  `$ARGUMENTS` trocado pelo que veio depois do nome, ou o resto acrescentado
+  depois de uma linha em branco —, como mensagem. Começa um turno, então no
+  meio de um a janela recusa dizendo por quê, como `/init` (D48).
+- **Na ajuda:** a seção "Deste projeto" lista os do projeto do campo de onde a
+  ajuda abriu.
+- **Falha:** uma lista que não veio — daemon antigo, arquivo de comando que não
+  carrega, daemon fora — fica guardada com o motivo do daemon. O menu diz o
+  motivo no pé, a ajuda também, e um `/nome` desconhecido diz que os comandos
+  do projeto não vieram e por quê. Nunca uma lista vazia no lugar.
+- Nada em repouso muda: as referências 02 e 03 medem 0,00%. O modo fixture
+  mostra um comando do projeto gravado, para o menu ter um.
+
+Descartados: um aviso na abertura quando a lista não vem (todo projeto num
+daemon antigo daria um aviso a cada janela, longe de onde importa); expandir no
+daemon (a rota precisaria do texto digitado, e a mensagem já tem rota e
+garantias próprias); perguntar a cada `/` (um comando mudaria de sentido no meio
+da conversa, o que a TUI evita de propósito).

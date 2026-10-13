@@ -33,6 +33,7 @@
   white-space: nowrap;
 }
 .slash-args,
+.slash-origin,
 .sheet-args {
   color: var(--dc-faint);
 }
@@ -43,6 +44,12 @@
   white-space: nowrap;
   font-size: 11.5px;
   color: var(--dc-dim);
+}
+
+.slash-missing {
+  padding: 5px 8px;
+  border-top: 1px solid var(--dc-line-soft);
+  font-size: 11.5px;
 }
 
 .sheet-veil {

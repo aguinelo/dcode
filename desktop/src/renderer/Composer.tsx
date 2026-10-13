@@ -2,6 +2,7 @@ import { useContext, useEffect, useLayoutEffect, useRef, useState, type DragEven
 import { imageSource, QUEUE_TAKES_TEXT, sizeOf } from '../state/attachments';
 import { SheetContext } from './CommandSheet';
 import { useSlashMenu } from './SlashMenu';
+import { listOf } from './useUserCommands';
 import type { SessionView } from '../state/session';
 import { turnTelemetry, usageFact } from '../state/telemetry';
 import { ModeChip } from './ModeMenu';
@@ -77,6 +78,7 @@ export function Field({
   placeholder,
   disabled = false,
   commands = false,
+  workspace = '',
   caret,
   onText,
   onSubmit,
@@ -88,6 +90,8 @@ export function Field({
   disabled?: boolean;
   /** Whether the field takes the harness's commands: the / menu and ? for the help. */
   commands?: boolean;
+  /** The project whose commands the menu offers and the help lists (D50). */
+  workspace?: string;
   /** Changes when the caret is asked into this field. */
   caret?: number;
   onText: (text: string) => void;
@@ -99,8 +103,10 @@ export function Field({
   onPasteImages?: (files: File[]) => void;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
-  const sheet = useContext(SheetContext);
-  const menu = useSlashMenu(text, commands && !disabled, onText, onSubmit);
+  const field = useContext(SheetContext);
+  const mine = field && workspace ? field.of(workspace) : null;
+  const missing = mine?.state === 'failed' ? `Os comandos deste projeto não vieram: ${mine.why}` : null;
+  const menu = useSlashMenu(text, commands && !disabled, onText, onSubmit, mine ? listOf(mine) : [], missing);
   // A field that stops taking text gives the keys back to the window, where
   // the approval's answers are (↵ among them).
   useLayoutEffect(() => {
@@ -140,9 +146,9 @@ export function Field({
         onKeyDown={(e) => {
           menu.keys(e);
           if (e.defaultPrevented) return;
-          if (commands && sheet && e.key === '?' && text === '') {
+          if (commands && field && e.key === '?' && text === '') {
             e.preventDefault();
-            sheet({ kind: 'help' });
+            field.show({ kind: 'help', workspace });
             return;
           }
           if (e.key === 'Escape') {
@@ -252,6 +258,7 @@ export function Composer({
           placeholder={placeholderOf(session.state)}
           disabled={blocked}
           commands
+          workspace={session.info?.workspace}
           caret={caret}
           onText={onText}
           onSubmit={send}

@@ -5,7 +5,7 @@
 // never goes to the model as typed: it is the person asking the harness, not
 // the model, for something.
 
-import type { CompactResult, PlanItem, UndoResult } from '../protocol/generated';
+import type { CommandInfo, CompactResult, PlanItem, UndoResult } from '../protocol/generated';
 import { MODES } from './mode';
 
 export type Input =
@@ -33,6 +33,8 @@ export interface Command {
   insert: string;
   /** Whether what it writes can be sent as it is; otherwise the caret waits for the argument. */
   ready: boolean;
+  /** Whose it is, for one the person wrote (D50): "seu" or "projeto". */
+  origin?: string;
 }
 
 /** Every command the field answers, in the order the menu and the help show them. */
@@ -48,15 +50,62 @@ export const COMMANDS: readonly Command[] = [
 
 export const KNOWN = `Aqui há /help, /init, /plan, /undo, /compact, /mode <${NAMES.join('|')}> e !comando.`;
 
+const OWN = new Set(COMMANDS.map((c) => c.name));
+
+/** The `$ARGUMENTS` a command's body takes what followed its name at (config.ArgsPlaceholder). */
+const ARGS = '$ARGUMENTS';
+
+/**
+ * The commands the person wrote that the field offers (D50): every one but a
+ * name the field answers itself, which a file cannot make mean something else —
+ * the TUI's `ShadowedBuiltins` rule.
+ */
+function usable(user: readonly CommandInfo[]): CommandInfo[] {
+  return user.filter((c) => !OWN.has(c.name));
+}
+
+function asEntry(c: CommandInfo): Command {
+  const origin = c.source === 'project' ? 'projeto' : 'seu';
+  const takes = c.body.includes(ARGS);
+  return {
+    name: c.name,
+    args: takes ? '[argumentos]' : '',
+    detail: c.description || `comando ${c.source === 'project' ? 'do projeto' : 'seu'}, sem descrição`,
+    insert: takes ? `/${c.name} ` : `/${c.name}`,
+    ready: !takes,
+    origin,
+  };
+}
+
+/** The person's commands as the menu and the help list them, the shadowed ones left out. */
+export function userEntries(user: readonly CommandInfo[]): Command[] {
+  return usable(user).map(asEntry);
+}
+
 /**
  * The "/" menu for what is in the field: only while the field is a slash and a
  * name being typed, as the TUI's `Complete`. Once an argument begins the
- * choice is made, and a menu that stays open is a menu in the way.
+ * choice is made, and a menu that stays open is a menu in the way. The field's
+ * own come first, then the person's: one of theirs can never shadow the
+ * field's, so mixing them would suggest a competition that does not exist.
  */
-export function completions(text: string): Command[] {
+export function completions(text: string, user: readonly CommandInfo[] = []): Command[] {
   if (!text.startsWith('/') || /\s/.test(text)) return [];
   const prefix = text.slice(1).toLowerCase();
-  return COMMANDS.filter((c) => (c.name === '!' ? prefix === '' : c.name.startsWith(prefix)));
+  const own = COMMANDS.filter((c) => (c.name === '!' ? prefix === '' : c.name.startsWith(prefix)));
+  return [...own, ...userEntries(user).filter((c) => c.name.toLowerCase().startsWith(prefix))];
+}
+
+/**
+ * A command's text with what followed its name, as `config.Expand` writes it:
+ * every `$ARGUMENTS` replaced, or — with none in the body — what followed
+ * appended after a blank line, since the person typed it meaning it to reach
+ * the model.
+ */
+export function expandCommand(body: string, args: string): string {
+  const a = args.trim();
+  if (body.includes(ARGS)) return body.split(ARGS).join(a);
+  return a ? `${body}\n\n${a}` : body;
 }
 
 /**
@@ -104,7 +153,7 @@ export function replanPrompt(what: string): string {
   return w ? `Revise the plan to account for this: ${w}` : 'Re-examine the plan and revise it if it no longer fits what you have learned.';
 }
 
-export function parseInput(text: string): Input {
+export function parseInput(text: string, user: readonly CommandInfo[] = []): Input {
   const t = text.trim();
   if (t.startsWith('!')) {
     const command = t.slice(1).trim();
@@ -132,8 +181,12 @@ export function parseInput(text: string): Input {
       if (!NAMES.includes(mode)) return { kind: 'bad', why: `Modo desconhecido: ${mode}. Os que existem: ${NAMES.join(', ')}.` };
       return { kind: 'mode', mode };
     }
-    default:
+    default: {
+      // One the person wrote: sent as its text, as the TUI sends it (D50).
+      const mine = usable(user).find((c) => c.name === name);
+      if (mine) return { kind: 'turn', name, text: expandCommand(mine.body, t.slice(1 + name.length)) };
       return { kind: 'unknown', why: `Comando desconhecido: /${name}. ${KNOWN}` };
+    }
   }
 }
 

@@ -15,6 +15,7 @@ import { applyListChange, emptyConversations, liveContinuationOf, type Conversat
 import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
 import { readHistory } from '../state/history';
 import { rowOfConversation, type Row } from '../state/sidebar';
+import { decodeCommands } from '../protocol/commands';
 import { decodeMemory, decodeSkills } from '../protocol/crew';
 import { decodeGit, decodeGitDiff } from '../protocol/git';
 import { notExposed } from './text';
@@ -178,6 +179,8 @@ export class LiveStore {
     compact: async (id) => decoded(outcome(await this.api.compact(id), 'O contexto não foi resumido'), decodeCompact),
     listSkills: async (workspace) =>
       read(await this.api.listSkills(workspace), decodeSkills, 'as skills de um projeto (GET /v1/skills)', 'O daemon não disse quais skills existem'),
+    listCommands: async (workspace) =>
+      read(await this.api.listCommands(workspace), decodeCommands, 'os comandos de um projeto (GET /v1/commands)', 'O daemon não disse quais comandos existem'),
     listMemory: async (workspace) =>
       read(await this.api.listMemory(workspace), decodeMemory, 'a memória de um projeto (GET /v1/memory)', 'O daemon não disse o que a memória tem'),
     readHistory: (id) =>

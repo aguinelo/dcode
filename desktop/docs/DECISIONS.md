@@ -39,6 +39,7 @@ As que estão nos outros arquivos:
 - [D43](DECISIONS-3.md) — Renomear uma conversa pela janela.
 - [D47](DECISIONS-3.md) — O campo lembra o que se pediu e guarda o que vem depois, como na TUI.
 - [D48](DECISIONS-3.md) — Os comandos do campo num menu, e uma ajuda com eles e com as teclas.
+- [D50](DECISIONS-3.md) — Os comandos que a pessoa escreveu, no menu e no campo, como na TUI.
 
 ## Decisões
 

@@ -10,6 +10,17 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Os comandos que a pessoa escreveu aparecem e vão como na TUI.** A TUI
+  oferece os comandos de barra de `commands/*.md`, os do usuário e os do
+  projeto; a janela não conseguia lê-los. Agora ela pergunta ao núcleo
+  (`GET /v1/commands`) uma vez por projeto de que tem conversa, como a TUI lê
+  uma vez ao abrir, e o menu de `/` os lista depois dos do campo, com a
+  descrição e de quem são. Digitado, um comando é expandido como o
+  `config.Expand` da TUI expande (`$ARGUMENTS`, ou o resto acrescentado) e vai
+  como mensagem; um arquivo com nome de comando do campo nunca o encobre. A
+  ajuda os lista em "Deste projeto". Uma lista que não veio é dita, com o motivo
+  do daemon, no pé do menu, na ajuda e num `/nome` desconhecido; nunca uma lista
+  vazia. Nada em repouso muda: as duas referências visuais medem 0,00% (D50).
 - **O núcleo lista os comandos do usuário num workspace.** `GET /v1/commands`
   responde os comandos de barra que o usuário e o projeto escreveram, como a TUI
   os acha, cada um com o texto que manda. É o que o menu de `/` do campo vai

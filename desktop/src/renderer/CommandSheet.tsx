@@ -1,19 +1,52 @@
-import { createContext, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { COMMANDS, planSummary } from '../state/commands';
+import { createContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { COMMANDS, planSummary, userEntries } from '../state/commands';
 import { HELP_KEYS } from '../state/help';
 import type { SessionsState } from '../state/sessions';
+import { useUserCommands, type UserCommands } from './useUserCommands';
+import type { WindowActions } from './window';
 
 /** What opens over the window from a command (D48): the help, or one conversation's plan. */
-export type Sheet = { kind: 'help' } | { kind: 'plan'; id: string };
+export type Sheet = { kind: 'help'; workspace?: string } | { kind: 'plan'; id: string };
 
-/** Lets any field open the help with `?`, without every window in between carrying it. */
-export const SheetContext = createContext<((s: Sheet) => void) | null>(null);
+/** What a field reaches without every window in between carrying it: the help (`?`), and its project's commands (D50). */
+export interface FieldCommands {
+  show: (s: Sheet) => void;
+  of: (workspace: string) => UserCommands;
+}
+
+export const SheetContext = createContext<FieldCommands | null>(null);
 
 function glyph(status: string): string {
   return status === 'done' ? '✓' : status === 'active' ? '●' : status === 'blocked' ? '⊘' : '·';
 }
 
-function Help() {
+/** The commands a project's people wrote, as the help lists them under the field's own (D50). */
+function Mine({ mine }: { mine: UserCommands }) {
+  const entries = mine.state === 'ok' ? userEntries(mine.list) : [];
+  return (
+    <section className="sheet-group">
+      <h3 className="sheet-group-title">Deste projeto</h3>
+      {mine.state === 'loading' && <p className="sheet-empty">Perguntando ao daemon quais comandos este projeto tem…</p>}
+      {mine.state === 'failed' && <p className="sheet-empty tone-err">Os comandos deste projeto não vieram: {mine.why}</p>}
+      {mine.state === 'ok' && entries.length === 0 && (
+        <p className="sheet-empty">Nenhum. Um arquivo .md em .dcode/commands/ do projeto, ou em commands/ da sua pasta do dcode, vira /nome.</p>
+      )}
+      {entries.map((c) => (
+        <div key={c.name} className="sheet-row">
+          <span className="sheet-key">
+            /{c.name}
+            {c.args && <span className="sheet-args"> {c.args}</span>}
+          </span>
+          <span className="sheet-what">
+            {c.detail} <span className="sheet-args">· {c.origin}</span>
+          </span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function Help({ mine }: { mine: UserCommands | null }) {
   return (
     <>
       <section className="sheet-group">
@@ -28,6 +61,7 @@ function Help() {
           </div>
         ))}
       </section>
+      {mine && <Mine mine={mine} />}
       {HELP_KEYS.map((g) => (
         <section key={g.title} className="sheet-group">
           <h3 className="sheet-group-title">{g.title}</h3>
@@ -81,15 +115,20 @@ function SheetView({ title, note, onClose, children }: { title: string; note?: s
   );
 }
 
-/** The sheet the window has open, if any, and how commands open one. */
-export function useCommandSheet(sessions: SessionsState): { show: (s: Sheet) => void; open: boolean; node: ReactNode } {
+/** The sheet the window has open, if any, how commands open one, and the commands each project wrote. */
+export function useCommandSheet(
+  sessions: SessionsState,
+  actions: WindowActions,
+): { show: (s: Sheet) => void; open: boolean; node: ReactNode; of: (workspace: string) => UserCommands; context: FieldCommands } {
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const of = useUserCommands(actions, sessions);
+  const context = useMemo(() => ({ show: setSheet, of }), [of]);
   const close = useCallback(() => setSheet(null), []);
   let node: ReactNode = null;
   if (sheet?.kind === 'help') {
     node = (
       <SheetView title="Ajuda" note="comandos e atalhos" onClose={close}>
-        <Help />
+        <Help mine={sheet.workspace ? of(sheet.workspace) : null} />
       </SheetView>
     );
   } else if (sheet?.kind === 'plan') {
@@ -114,5 +153,5 @@ export function useCommandSheet(sessions: SessionsState): { show: (s: Sheet) => 
       </SheetView>
     );
   }
-  return { show: setSheet, open: sheet !== null, node };
+  return { show: setSheet, open: sheet !== null, node, of, context };
 }

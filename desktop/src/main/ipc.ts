@@ -106,6 +106,10 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const where = input.workspace(workspace);
     return where.ok ? ask.listSkills(where.value) : where;
   });
+  handle(CHANNELS.listCommands, (_event, workspace) => {
+    const where = input.workspace(workspace);
+    return where.ok ? ask.listCommands(where.value) : where;
+  });
   handle(CHANNELS.listMemory, (_event, workspace) => {
     const where = input.workspace(workspace);
     return where.ok ? ask.listMemory(where.value) : where;
