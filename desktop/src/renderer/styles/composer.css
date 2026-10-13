@@ -144,3 +144,72 @@
   border-radius: 1.5px;
   background: var(--dc-text);
 }
+
+/* The messages queued while a turn runs (D47), above the field. */
+.composer-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11.5px;
+}
+.composer-queue-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dc-faint);
+}
+.composer-queue-head.halted {
+  color: var(--dc-err);
+}
+.composer-queue-why {
+  flex: 1;
+  min-width: 0;
+}
+.composer-queue-resume {
+  padding: 0 8px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-text);
+}
+.composer-queue-resume:hover {
+  background: var(--dc-hover);
+}
+.composer-queue-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.composer-queued {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 4px 1px 8px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-raised);
+  color: var(--dc-text);
+}
+.composer-queued.going {
+  padding-right: 8px;
+  border-color: var(--dc-line-focus);
+  color: var(--dc-dim);
+}
+.composer-queued-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+}
+.composer-queued-drop {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-faint);
+  line-height: 16px;
+  text-align: center;
+}
+.composer-queued-drop:hover {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}

@@ -10,6 +10,20 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The field remembers what was asked, and holds what comes next.** The TUI
+  recalls past prompts with ↑/↓ and queues a message until the turn ends; the
+  window did neither, so asking again meant retyping and every message during a
+  turn became a steer. Now ↑/↓ in a conversation's field walk what it asked
+  before, newest first, and give back the draft past the newest — only at the
+  field's edges, so a message of several lines is still edited as text. The
+  prompts come from the conversation's own `turn.started` and `turn.steered`
+  events, so they survive a restart with no second store; a continued
+  conversation reads its source's record the first time ↑ passes the oldest.
+  During a turn ↵ still steers (D23) and ⌥↵ queues: the queue shows as chips
+  above the field, each with ×, ⌃X drops the last one, and each is sent when
+  the conversation is idle again, one per turn. A refused send stops the queue,
+  says why and waits for "Retomar"; only messages are queued, a command is
+  refused with the reason. Both visual references still measure 0.00% (D47).
 - **A tool call opens onto what it did.** The flow showed each model call as
   one summary line, though `tool.completed` always carried the whole output
   and, for a call that changed a file, its unified diff; only a command typed
