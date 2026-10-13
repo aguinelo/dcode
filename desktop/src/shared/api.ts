@@ -60,6 +60,17 @@ export interface StreamEnd {
   reason: string;
 }
 
+/**
+ * What a new session opens on, when the person chose (`CreateSessionRequest`).
+ * Each is sent only when given: what is not chosen stays the daemon's default.
+ */
+export interface NewSessionOptions {
+  /** A profile or a model, as the daemon resolves it. */
+  model?: string;
+  /** read-only, workspace-write or full-access. */
+  sandboxMode?: string;
+}
+
 export interface DcodeApi {
   /** process.platform of the main process: decides where the native window controls are. */
   readonly platform: string;
@@ -101,8 +112,8 @@ export interface DcodeApi {
   listMemory(workspace: string): Promise<Answer<unknown>>;
   /** Asks for a folder through the system's picker; null when the person cancels. */
   pickFolder(): Promise<string | null>;
-  /** Opens a session in a workspace, with the daemon's defaults. */
-  createSession(workspace: string): Promise<Answer<Session>>;
+  /** Opens a session in a workspace, on what was chosen, else with the daemon's defaults. */
+  createSession(workspace: string, options?: NewSessionOptions): Promise<Answer<Session>>;
   /** A turn, for an idle session. */
   submitTurn(sessionId: string, text: string): Promise<Answer<null>>;
   /** A correction for the turn running (D23). */

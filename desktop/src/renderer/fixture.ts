@@ -14,6 +14,7 @@ export const fixtureActions: WindowActions = {
   answer: unsent,
   newSession: async () => ({ ok: false, why: NOT_CONNECTED }),
   newSessionIn: async () => ({ ok: false, why: NOT_CONNECTED }),
+  pickFolder: async () => null,
   closeSession: unsent,
   watch: () => {},
   listModels: async () => ({ ok: false, why: NOT_CONNECTED }),

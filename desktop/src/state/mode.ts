@@ -55,3 +55,20 @@ export function modeChip(mode: string, sandbox: string): ModeChip | null {
     title: `${named.label}: ${named.about}. Trocar de modo (⇧⇥)`,
   };
 }
+
+/** The sandbox each mode maps to, as the daemon maps it (`modeToSandbox`): what a new session opens in. */
+const SANDBOX: Readonly<Record<string, string>> = { plan: 'read-only', assist: 'workspace-write', auto: 'full-access' };
+
+export function sandboxOf(mode: string): string | undefined {
+  return SANDBOX[mode];
+}
+
+/**
+ * The mode a session just opened still has to be switched to: the sandbox
+ * gives the boundary, and the approval policy comes from the configuration,
+ * so a session can open on the right sandbox and still be another mode — or
+ * none of the three. Null when it opened in the one chosen, or none was.
+ */
+export function modeToSwitch(opened: string, chosen: string | undefined): string | null {
+  return chosen && opened !== chosen ? chosen : null;
+}

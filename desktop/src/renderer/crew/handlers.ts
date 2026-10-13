@@ -1,6 +1,7 @@
 import type { ThemeChoice } from '../../state/theme';
 import type { Look } from '../TopBar';
 import type { Row } from '../../state/sidebar';
+import type { StartOptions } from '../window';
 
 /** What the Crew look does, by the conversation in focus and the window. */
 export interface CrewHandlers {
@@ -18,7 +19,7 @@ export interface CrewHandlers {
   /** Opens a session from the folder picker. */
   newSession: () => void;
   /** Opens a session in a known project, or from the folder picker with null; it takes the middle. */
-  startIn: (workspace: string | null) => void;
+  startIn: (workspace: string | null, options?: StartOptions) => void;
   look: (look: Look) => void;
   theme: (theme: ThemeChoice) => void;
 }

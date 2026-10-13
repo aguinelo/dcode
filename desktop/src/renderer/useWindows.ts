@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type Dispatch, type SetStateAction } fro
 import { hold, markSeen, release, type Attention } from '../state/attention';
 import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
-import type { Outcome, WindowActions } from './window';
+import type { Outcome, StartOptions, WindowActions } from './window';
 
 type Once = <T>(key: string, run: () => Promise<Outcome<T>>) => Promise<Outcome<T> | null>;
 
@@ -108,10 +108,10 @@ export function useWindows(o: {
 
   /** A session opened straight in a project, or from the folder picker with null — no chooser window (Crew, D33). */
   const startIn = useCallback(
-    async (workspace: string | null) => {
+    async (workspace: string | null, options?: StartOptions) => {
       let id: string | null = null;
       if (workspace) {
-        const created = await once(`new:${workspace}`, () => actions.newSessionIn(workspace));
+        const created = await once(`new:${workspace}`, () => actions.newSessionIn(workspace, options));
         if (created?.ok) id = created.value;
       } else {
         id = await fromFolder();
@@ -128,11 +128,11 @@ export function useWindows(o: {
 
   /** A chooser answered: the session opens there and takes the chooser's window. */
   const openIn = useCallback(
-    async (key: string, workspace: string | null) => {
+    async (key: string, workspace: string | null, options?: StartOptions) => {
       setOpening((w) => ({ ...w, [key]: workspace ?? 'outra pasta' }));
       let id: string | null = null;
       if (workspace) {
-        const created = await actions.newSessionIn(workspace);
+        const created = await actions.newSessionIn(workspace, options);
         if (created.ok) id = created.value;
         else say(created.why);
       } else {

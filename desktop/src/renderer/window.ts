@@ -10,6 +10,12 @@ import type { Row } from '../state/sidebar';
 /** What the bottom bar says about the daemon: a live status, or that this is a recording. */
 export type DaemonView = { state: 'recording'; version: string } | DaemonStatus;
 
+/** What a new session opens on, when the person chose: a profile or model, and a mode. */
+export interface StartOptions {
+  model?: string;
+  mode?: string;
+}
+
 /** Done, or why not — in the window's language, to be said where the person looks. */
 export type Outcome<T> = { ok: true; value: T } | { ok: false; why: string };
 
@@ -25,8 +31,13 @@ export interface WindowActions {
   answer(sessionId: string, approvalId: string, decision: string): Promise<Outcome<null>>;
   /** Asks for a folder and opens a session there. Null when the person cancelled. */
   newSession(): Promise<Outcome<string> | null>;
-  /** Opens a session in a project already known, and answers it to show. */
-  newSessionIn(workspace: string): Promise<Outcome<string>>;
+  /**
+   * Opens a session in a project, and answers it to show — on the model and
+   * in the mode chosen, when they were (D38); else with the daemon's defaults.
+   */
+  newSessionIn(workspace: string, options?: StartOptions): Promise<Outcome<string>>;
+  /** Asks for a folder through the system's picker; null when the person cancels. */
+  pickFolder(): Promise<string | null>;
   /** Closes a live session; the daemon keeps its record. For one that was never asked anything. */
   closeSession(sessionId: string): Promise<Outcome<null>>;
   /** Keeps a live conversation's events coming, for its panel on the grid. Once each; again is harmless. */

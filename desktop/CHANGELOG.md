@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A new session's model and mode are chosen before it opens.** Nova sessão
+  always opened on the daemon's defaults, and changing either afterwards cost a
+  new session or a turn in the wrong mode. The grid's "where?" window and Crew's
+  "Nova ▾" gain "+ modelo e modo": on, choosing a project (or another folder)
+  leads to the project's models as the daemon lists them and the four modes,
+  and opens there. What is left on its default is not sent. The mode goes as
+  the sandbox it maps to, and the window switches the mode right after when the
+  session opened in another; a refusal leaves the session open and says why
+  (D38).
 - **A session's mode is switched from the window.** Plan, assist and auto were
   the TUI's alone (`/mode`, ⇧⇥); the window showed the mode and could not change
   it. The mode chip — in a grid window's field, the maximized conversation's and

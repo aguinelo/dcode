@@ -94,7 +94,11 @@ export function CrewView({
     case 'painel':
       body = (
         <div className="crew-board">
-          <SessionsPane projects={projects} sessions={sessions} focusId={row?.id ?? null} now={now} onPick={on.pick} onStart={on.startIn} />
+          <SessionsPane projects={projects} sessions={sessions} focusId={row?.id ?? null} now={now} onPick={on.pick}
+            onStart={on.startIn}
+            listModels={actions.listModels}
+            pickFolder={actions.pickFolder}
+          />
           <ThreadPane row={row} view={view} session={session} now={now} verbTick={verbTick} draft={draft} caret={caret} on={on} />
           <ContextPane row={row} view={view} session={session} measure={measure} onModel={on.model} onMode={on.mode} />
         </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DECISIONS, MODES, conversation, decision, id, mode, model, text, workspace } from '../../src/main/inputs';
+import { DECISIONS, MODES, SANDBOXES, conversation, decision, id, mode, model, sessionOptions, text, workspace } from '../../src/main/inputs';
 
 // What the renderer hands the main process, checked before it reaches the
 // daemon: a bad argument is a refusal with the reason, never a throw.
@@ -62,6 +62,19 @@ describe('an argument from the window', () => {
     expect(refused(mode('full-access'))).toContain('plan, assist, auto');
     refused(mode(''));
     refused(mode(undefined));
+  });
+
+  it('takes the options of a new session, each only when given, and refuses a bad one', () => {
+    expect(SANDBOXES).toEqual(['read-only', 'workspace-write', 'full-access']);
+    expect(sessionOptions(undefined)).toEqual({ ok: true, value: {} });
+    expect(sessionOptions({})).toEqual({ ok: true, value: {} });
+    expect(sessionOptions({ model: 'qwen-local', sandboxMode: 'full-access' })).toEqual({
+      ok: true,
+      value: { model: 'qwen-local', sandboxMode: 'full-access' },
+    });
+    expect(refused(sessionOptions({ sandboxMode: 'yolo' }))).toContain('read-only, workspace-write, full-access');
+    expect(refused(sessionOptions({ model: 'qwen local' }))).toContain('sem espaços');
+    refused(sessionOptions('qwen'));
   });
 
   it('cuts a long value short in the reason', () => {

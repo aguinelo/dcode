@@ -5,6 +5,9 @@ import { paneView, sealWord } from '../../state/pane';
 import { lastEventText, searchSide } from '../../state/search';
 import type { SessionsState } from '../../state/sessions';
 import { basename, type ProjectView, type Row } from '../../state/sidebar';
+import type { ModelsResponse } from '../../protocol/generated';
+import { StartForm } from '../StartForm';
+import type { Outcome, StartOptions } from '../window';
 
 function SessionItem({ row, sessions, now, on, onPick }: { row: Row; sessions: SessionsState; now: number; on: boolean; onPick: (r: Row) => void }) {
   const v = paneView(row, sessions.byId[row.id], now);
@@ -39,6 +42,8 @@ export function SessionsPane({
   now,
   onPick,
   onStart,
+  listModels,
+  pickFolder,
 }: {
   projects: readonly ProjectView[];
   sessions: SessionsState;
@@ -46,17 +51,29 @@ export function SessionsPane({
   now: number;
   onPick: (row: Row) => void;
   /** Opens a session in a known project, or from the folder picker with null. */
-  onStart: (workspace: string | null) => void;
+  onStart: (workspace: string | null, options?: StartOptions) => void;
+  /** For choosing the model and mode before opening (D38). */
+  listModels: (workspace: string) => Promise<Outcome<ModelsResponse>>;
+  pickFolder: () => Promise<string | null>;
 }) {
   const [query, setQuery] = useState('');
   const [olderOpen, setOlderOpen] = useState(false);
   const [menu, setMenu] = useState(false);
+  // "Com modelo e modo": choosing a project leads to the form instead of opening.
+  const [choosing, setChoosing] = useState(false);
+  const [where, setWhere] = useState<string | null>(null);
   const groups = useMemo(() => sessionGroups(projects, query, now), [projects, query, now]);
   const total = projects.reduce((n, p) => n + p.rows.length, 0);
   const known = projects.filter((p) => p.id);
-  const start = (ws: string | null) => {
+  const start = (ws: string | null, options?: StartOptions) => {
     setMenu(false);
-    onStart(ws);
+    setWhere(null);
+    onStart(ws, options);
+  };
+  const choose = (ws: string | null) => {
+    if (!choosing) return start(ws);
+    if (ws) return setWhere(ws);
+    void pickFolder().then((picked) => picked && setWhere(picked));
   };
   return (
     <section className="crew-sessions" aria-label="Sessões">
@@ -73,15 +90,31 @@ export function SessionsPane({
           </button>
           {menu && (
             <span className="crew-new-menu" role="menu" onKeyDown={(e) => e.key === 'Escape' && setMenu(false)}>
-              <span className="crew-new-title">Abrir em</span>
-              {known.map((p) => (
-                <button key={p.id} type="button" role="menuitem" title={p.id} onClick={() => start(p.id)}>
-                  {p.label}
-                </button>
-              ))}
-              <button type="button" role="menuitem" onClick={() => start(null)}>
-                Outra pasta…
-              </button>
+              {where ? (
+                <StartForm workspace={where} listModels={listModels} opening={false} onOpen={(o) => start(where, o)} onBack={() => setWhere(null)} />
+              ) : (
+                <>
+                  <span className="crew-new-title">Abrir em</span>
+                  {known.map((p) => (
+                    <button key={p.id} type="button" role="menuitem" title={p.id} onClick={() => choose(p.id)}>
+                      {p.label}
+                    </button>
+                  ))}
+                  <button type="button" role="menuitem" onClick={() => choose(null)}>
+                    Outra pasta…
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={choosing}
+                    className="crew-new-choose"
+                    title="Escolher o modelo e o modo antes de abrir"
+                    onClick={() => setChoosing((c) => !c)}
+                  >
+                    {choosing ? '✓' : '+'} com modelo e modo
+                  </button>
+                </>
+              )}
             </span>
           )}
         </span>

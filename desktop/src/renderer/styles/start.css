@@ -1,0 +1,127 @@
+/* ---- a new session's model and mode, chosen before it opens (D38) ------- */
+
+.new-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.new-choose,
+.crew-new-menu .crew-new-choose {
+  margin-left: auto;
+  padding: 0 6px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dc-dim);
+}
+.crew-new-menu .crew-new-choose {
+  margin: 4px 4px 0;
+  border-color: var(--dc-line-soft);
+}
+.new-choose:hover,
+.new-choose.on,
+.crew-new-menu .crew-new-choose[aria-checked='true'] {
+  color: var(--dc-text);
+  border-color: var(--dc-line-strong);
+}
+
+.start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.crew-new-menu .start-form {
+  width: 280px;
+  padding: 6px 8px 8px;
+}
+.start-where {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--dc-faint);
+}
+.start-where .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crew-new-menu .start-back,
+.start-back {
+  flex: none;
+  padding: 0;
+  font-size: 11.5px;
+  color: var(--dc-dim);
+}
+.start-back:hover:not(:disabled) {
+  color: var(--dc-text);
+}
+.start-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.start-label {
+  font-size: 11px;
+  color: var(--dc-faint);
+}
+.start-note {
+  font-size: 11.5px;
+}
+.start-field select {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  background: var(--dc-raised);
+  color: var(--dc-text);
+  font: inherit;
+  font-size: 12px;
+}
+.start-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.crew-new-menu .start-mode,
+.start-mode {
+  padding: 2px 8px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  font-size: 11.5px;
+  color: var(--dc-dim);
+}
+.start-mode.tone-warn {
+  color: var(--dc-warn);
+}
+.start-mode:hover:not(:disabled) {
+  border-color: var(--dc-line-strong);
+}
+.start-mode.on {
+  color: var(--dc-emph);
+  border-color: var(--dc-accent);
+  background: var(--dc-accent-soft);
+}
+.start-mode.on.tone-warn {
+  color: var(--dc-warn);
+  border-color: var(--dc-warn-line);
+  background: var(--dc-warn-bg);
+}
+.crew-new-menu .start-open,
+.start-open {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: var(--dc-radius);
+  background: var(--dc-btn);
+  color: var(--dc-btn-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.start-open:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
