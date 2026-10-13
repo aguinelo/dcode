@@ -164,6 +164,7 @@ func TestEveryContract(t *testing.T) {
 			// the runs SENT, under this provider's family and in the scenario's
 			// workspace — it used to be Prompt(""), which no model was sent.
 			r.Prompt = prompt
+			r.Family = p.Family().Name()
 			measured = append(measured, r)
 			// Evidence on failure, and evidence whenever the contract is
 			// measuring rather than judging.

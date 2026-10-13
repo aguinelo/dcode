@@ -284,6 +284,9 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Toda medição relata o que consumiu — relógio, trocas e tokens — e retentativa entra no custo: execução repetida foi paga duas vezes.
 - A impressão digital que uma medição registra é a do prompt que a execução enviou, devolvida pela mesma chamada que o monta, e nunca de uma segunda montagem ao lado.
 - Medição cuja impressão não bate com o que o build de hoje envia ao mesmo cenário, na família do modelo medido, é contada como velha; medição sem impressão não entra nessa conta nem ganha uma.
+- Uma medição pertence a um contrato, a um modelo e a uma família: o mesmo contrato medido contra duas famílias são duas medições, e a tabela de estado conta os contratos medidos por família, listando a família que tem zero.
+- O eval honra a família nomeada em `model.family`, como a sessão: modelo que nenhum prefixo reivindica é medido pela `generic`.
+- A credencial do eval é a da família do modelo medido, não a de `model.name`; `DCODE_API_KEY` continua vencendo.
 - A grafia dos modos em `behavior` e em `policy` é a mesma, comparada onde os dois são legítimos.
 - Troca de modo reconstrói o prompt **com o motor já impondo o novo modo**, e não reconstrói nada quando o modo não mudou.
 - Prompt novo só entra no turno seguinte, uma única vez; rebuild que falha é reportado, não é fatal, e prompt vazio nunca substitui o que existe.
@@ -364,3 +367,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202609031200 — A fronteira é um fato](changelog/202609031200-a-fronteira-e-um-fato.md)
 - [202609040200 — A primeira medição com preço](changelog/202609040200-a-primeira-medicao-com-preco.md)
 - [202610131200 — A impressão do que foi enviado](changelog/202610131200-a-impressao-do-que-foi-enviado.md)
+- [202610131400 — Um contrato, várias famílias](changelog/202610131400-um-contrato-varias-familias.md)

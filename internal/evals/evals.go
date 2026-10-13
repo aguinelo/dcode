@@ -127,7 +127,10 @@ type Result struct {
 	// nobody can act on early.
 	Retries int
 	Model   string
-	Build   string
+	// Family is the family the provider resolved to, which is what a
+	// measurement is counted under and what decides the prompt's formulation.
+	Family string
+	Build  string
 	// Prompt fingerprints the prefix the scenario ran against.
 	//
 	// The other half of "a threshold belongs to a model". The prompt is what
@@ -295,6 +298,11 @@ func (r Result) String() string {
 	}
 	if r.Model != "" {
 		fmt.Fprintf(&b, " · model %s", r.Model)
+	}
+	// The family, because with DCODE_FAMILY the model's name no longer says
+	// which one the run went through, and a measurement is recorded per family.
+	if r.Family != "" {
+		fmt.Fprintf(&b, " · family %s", r.Family)
 	}
 	if r.Build != "" {
 		fmt.Fprintf(&b, " · build %s", r.Build)

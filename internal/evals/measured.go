@@ -1,5 +1,11 @@
 package evals
 
+import (
+	"fmt"
+
+	"github.com/aguinelo/dcode/internal/provider"
+)
+
 // Measurement is one contract that has ACTUALLY been run against a model.
 //
 // Not one that could be: `Measurable` counts those, and the two are constantly
@@ -21,6 +27,14 @@ type Measurement struct {
 	// Model is what it ran against. A threshold measured against one model
 	// says nothing about another, which is why this is not optional.
 	Model string
+	// Family is the family the run went through, when the model does not say.
+	//
+	// Empty means the family whose prefix claims Model, which is every
+	// measurement so far. It has to be written when no family claims the model
+	// — a local model run through generic, with DCODE_FAMILY — because that is
+	// the one case where the model's name cannot answer which prompt it was
+	// sent, which credential it used, or which family it counts for.
+	Family string
 	// Date is when, as YYYY-MM-DD.
 	Date string
 	// Prompt fingerprints the prefix this scenario was measured against.
@@ -53,6 +67,11 @@ type Measurement struct {
 }
 
 // Measured is every measurement this repository has actually taken.
+//
+// One entry per contract, model and family: a threshold belongs to a model,
+// so the same contract measured against two of them is two measurements, and
+// neither replaces the other. Measured again against the SAME model and family,
+// the newer reading replaces the older one in this list rather than joining it.
 //
 // Nineteen, against fifty-three contracts that need a model. Four of them
 // have been measured twice, and the second reading replaced the
@@ -139,4 +158,61 @@ var Measured = []Measurement{
 			"It cost 1m12s, 68 exchanges and 232,853 input tokens against 1,055 out, with 174,567 read from cache. " +
 			"Seventeen transport retries across twenty runs: this provider returned an empty completion roughly half the time, and until the harness learned to call that a failure to MEASURE it was arriving as 0% — the reading that looks most like a finding. " +
 			"The first scenario said 'the vendor's site' without naming one, and the transcripts showed rounds spent guessing which vendor; that measured the guess, not the crossing"},
+}
+
+// family is the family this measurement ran under: the one it names, or the
+// one whose prefix claims its model. False when neither answers.
+func (m Measurement) family(families []provider.Family) (string, bool) {
+	if m.Family != "" {
+		return m.Family, true
+	}
+	f, ok := provider.FamilyFor(m.Model, families)
+	if !ok {
+		return "", false
+	}
+	return f.Name(), true
+}
+
+// measuredByFamily counts, for every family, the contracts with a sound
+// measurement under it. A family with none is in the map at zero: the gap is
+// the point of the count, and a family missing from it reads as nobody asked.
+//
+// A measurement no family accounts for is an error, not a skip. Counted under
+// none, it would vanish from the one row that exists to say where the
+// verification is.
+func measuredByFamily(ms []Measurement, families []provider.Family) (map[string]int, error) {
+	out := map[string]int{}
+	for _, f := range families {
+		out[f.Name()] = 0
+	}
+	seen := map[[2]string]bool{}
+	for _, m := range ms {
+		name, ok := m.family(families)
+		if !ok {
+			return nil, fmt.Errorf("%s: no family claims model %q and the measurement names none", m.ID, m.Model)
+		}
+		if _, known := out[name]; !known {
+			return nil, fmt.Errorf("%s: family %q is not one this build has", m.ID, name)
+		}
+		key := [2]string{name, m.ID}
+		if !m.Sound || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out[name]++
+	}
+	return out, nil
+}
+
+// contractsMeasured counts the contracts with at least one sound measurement,
+// against any model. A contract measured against two families is one contract
+// measured, which is what the state table's row says.
+func contractsMeasured(ms []Measurement) int {
+	seen := map[string]bool{}
+	for _, m := range ms {
+		if m.Sound {
+			seen[m.ID] = true
+		}
+	}
+	return len(seen)
 }

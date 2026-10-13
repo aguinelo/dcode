@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/app"
-	"github.com/aguinelo/dcode/internal/provider"
 )
 
 // The fingerprint a measurement records is the prompt the run SENT.
@@ -91,7 +90,7 @@ func TestAPromptThatCannotBeRebuiltIsAnError(t *testing.T) {
 }
 
 // todayFingerprint is what the scenario a measurement ran would be sent now,
-// under the family that claims its model.
+// under the family it ran through.
 //
 // Through Messages, the same call the eval makes, in a workspace built the way
 // the eval builds one. A second construction of the prompt here would be the
@@ -103,9 +102,9 @@ func todayFingerprint(t *testing.T) func(Measurement) (string, error) {
 		if !ok {
 			return "", fmt.Errorf("no contract %s", m.ID)
 		}
-		fam, ok := provider.FamilyFor(m.Model, app.Families())
+		family, ok := m.family(app.Families())
 		if !ok {
-			return "", fmt.Errorf("no family claims model %q, so no prompt can be rebuilt for it", m.Model)
+			return "", fmt.Errorf("no family claims model %q and the measurement names none, so no prompt can be rebuilt for it", m.Model)
 		}
 		f, err := LoadFixture(FixtureRoot, c.FixtureID())
 		if err != nil {
@@ -115,7 +114,7 @@ func todayFingerprint(t *testing.T) func(Measurement) (string, error) {
 		if _, err := NewWorkspace(dir, f.Files, f.ToolNames()); err != nil {
 			return "", err
 		}
-		_, fp, err := f.Messages(context.Background(), fam.Name(), dir, nil)
+		_, fp, err := f.Messages(context.Background(), family, dir, nil)
 		return fp, err
 	}
 }

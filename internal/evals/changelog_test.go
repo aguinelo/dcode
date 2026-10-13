@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"unicode"
+
+	"github.com/aguinelo/dcode/internal/app"
 )
 
 // The state table at the top of the changelog is the first thing anyone reads
@@ -35,6 +37,8 @@ type edition struct {
 	rows map[string]int
 	// prose holds the two numbers the sentence beside the table carries.
 	proseNeedModel, proseNeverRun int
+	// perFamily is the row splitting the measured contracts by family.
+	perFamily map[string]int
 }
 
 func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
@@ -48,12 +52,11 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 	// Sound ones. A run that lost an execution to a transport error measured
 	// nineteen things and reported a rate over twenty, and counting it here
 	// would put a number in the table that the record itself calls unreadable.
-	wantMeasured := 0
-	for _, m := range Measured {
-		if m.Sound {
-			wantMeasured++
-		}
-	}
+	//
+	// Contracts, not measurements: one measured against two families is one
+	// contract measured, and counting it twice would put the table ahead of
+	// the tree.
+	wantMeasured := contractsMeasured(Measured)
 	// A measurement that cannot say which prompt it saw. Counted here for the
 	// same reason "ever actually measured" is: the distance between a number
 	// and what it describes only stays visible while something counts it.
@@ -61,6 +64,13 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 	// And of those that can name it, whether it is still the prompt today's
 	// build sends. A fingerprint nobody compares is a field, not a check.
 	wantCurrent, wantStale, err := freshness(Measured, todayFingerprint(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// And under which family. A threshold belongs to a model, so the number
+	// that says where verification is has to be split by the thing it belongs
+	// to — and a family at zero is listed at zero.
+	wantPerFamily, err := measuredByFamily(Measured, app.Families())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,6 +108,14 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 			if want := wantNeedModel - wantMeasured; e.proseNeverRun != want {
 				t.Errorf("the prose says %d have never run and the numbers give %d",
 					e.proseNeverRun, want)
+			}
+			if len(e.perFamily) != len(wantPerFamily) {
+				t.Errorf("the per-family row lists %v and this build has %v", e.perFamily, wantPerFamily)
+			}
+			for name, want := range wantPerFamily {
+				if got, ok := e.perFamily[name]; !ok || got != want {
+					t.Errorf("the per-family row says %s = %d (listed: %v) and the tree says %d", name, got, ok, want)
+				}
 			}
 		})
 	}
@@ -159,10 +177,18 @@ func TestEveryMeasurementNamesWhatProducedIt(t *testing.T) {
 		if !m.Sound && m.Note == "" {
 			t.Errorf("%s is recorded as unsound and does not say why", m.ID)
 		}
-		if seen[m.ID] {
-			t.Errorf("%s is recorded twice; the later measurement replaces the earlier one rather than joining it", m.ID)
+		family, ok := m.family(app.Families())
+		if !ok {
+			t.Errorf("%s: no family claims model %q and the measurement names none; with DCODE_FAMILY the model's name does not say", m.ID, m.Model)
 		}
-		seen[m.ID] = true
+		// One per contract, model and family. Two models are two
+		// measurements; the same one twice is a reading that should have
+		// replaced the other.
+		key := m.ID + "|" + m.Model + "|" + family
+		if seen[key] {
+			t.Errorf("%s is recorded twice against %s (%s); the later measurement replaces the earlier one rather than joining it", m.ID, m.Model, family)
+		}
+		seen[key] = true
 	}
 }
 
@@ -184,6 +210,8 @@ func readEnglish(t *testing.T, root string) edition {
 		`\| of those, \*\*against today's prompt\*\* \| \*\*(\d+)\*\*, and \*\*(\d+)\*\* against one that has changed since \|`, 1)
 	e.rows["stale"] = row(t, body,
 		`\| of those, \*\*against today's prompt\*\* \| \*\*(\d+)\*\*, and \*\*(\d+)\*\* against one that has changed since \|`, 2)
+
+	e.perFamily = perFamily(t, body, `\| of those, \*\*by family\*\* \| ([^|]+) \|`)
 
 	// "Of the forty-three contracts that need a model, thirty-eight have never
 	// run against one"
@@ -213,6 +241,8 @@ func readPortuguese(t *testing.T, root string) edition {
 	e.rows["stale"] = row(t, body,
 		`\| destes, \*\*contra o prompt de hoje\*\* \| \*\*(\d+)\*\*, e \*\*(\d+)\*\* contra um que mudou desde então \|`, 2)
 
+	e.perFamily = perFamily(t, body, `\| destes, \*\*por família\*\* \| ([^|]+) \|`)
+
 	m := regexp.MustCompile(`Dos\s+([a-zç-]+(?:\s+e\s+[a-zê-]+)?)\s+contratos que precisam de modelo, \*\*([a-zê-]+(?:\s+e\s+[a-zô-]+)?) nunca rodaram`).FindStringSubmatch(body)
 	if m == nil {
 		t.Fatalf("CHANGELOG.pt-BR.md: the sentence beside the table did not match; this guard is reading nothing")
@@ -220,6 +250,30 @@ func readPortuguese(t *testing.T, root string) edition {
 	e.proseNeedModel = palavras(t, m[1])
 	e.proseNeverRun = palavras(t, m[2])
 	return e
+}
+
+// perFamily reads "`minimax-m3` **20** · `gemini` **1**" into a map.
+//
+// Every pair in the cell is read, so a family the table lists and this build
+// does not have fails as surely as one it leaves out.
+func perFamily(t *testing.T, body, pattern string) map[string]int {
+	t.Helper()
+	m := regexp.MustCompile(pattern).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("no per-family row matched %s; the table has drifted from what this guard reads", pattern)
+	}
+	out := map[string]int{}
+	for _, pair := range regexp.MustCompile("`([a-z0-9-]+)` \\*\\*(\\d+)\\*\\*").FindAllStringSubmatch(m[1], -1) {
+		n, err := strconv.Atoi(pair[2])
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[pair[1]] = n
+	}
+	if len(out) == 0 {
+		t.Fatalf("the per-family row has no family in it: %q", m[1])
+	}
+	return out
 }
 
 func readFile(t *testing.T, path string) string {

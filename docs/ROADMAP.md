@@ -720,6 +720,31 @@ a harness change rather than a contract — which is why it is here and not in t
 multi-turn fixture belongs in this suite at all, given what it costs per run,
 and the answer may be that decay is measured some other way entirely.
 
+## 18. A family counts as "measured" after one contract
+
+`provider.Unmeasured` decides whether a session warns that its family has not
+been measured, and RN-11 of `provider-adapter` says how it decides: a family with
+**no** measurement warns, and one with any measurement does not. The guard
+`TestEveryUnmeasuredFamilySaysSo` enforces that in both directions.
+
+That binary is what the rule says today, and it is too weak. `gemini` stopped
+warning on 4 September after one contract of fifty-five was measured against
+`gemini-2.5-flash`. The old warning ("not one of this product's behavioural
+contracts has been measured against it") stopped being true. The silence that
+replaced it says more than one contract supports. The state table now counts
+contracts measured per family (`minimax-m3` 20, `gemini` 1, `claude` 0,
+`generic` 0), so the distance can be seen. The session still does not show it.
+
+**Proposed rule.** A family is measured when every contract that needs a model
+has a sound measurement against it, on a prompt that is still current. Below
+that, the session says how many: "*N* of *M* contracts measured against this
+family". The warning moves from binary to counted. The guard keeps checking it
+against `Measured` in both directions, so the number cannot be typed. The
+broader generic warning stays, because there the endpoint itself is unknown.
+
+This is a change to RN-11's meaning, so it starts in the spec, then the guard,
+then the text. It does not start by editing `Unmeasured`.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -755,6 +780,7 @@ has not weakened.
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
 | **17** — measuring decay across turns | The fact and the contract shipped in #372; what is left needs a multi-turn fixture, which is a harness change. Decide whether that belongs here at all before writing one. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
+| **18** — what "measured" means for a family | A spec decision first: RN-11 says one measurement is enough, and the state table now shows how far that is from the contracts. Write the rule, then make the guard count it. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
 and each redesign was pushing the model toward a behaviour rather than measuring
