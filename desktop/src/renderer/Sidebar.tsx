@@ -1,6 +1,8 @@
 import type { ProjectView } from '../state/sidebar';
+import type { ThemeChoice } from '../state/theme';
 import { nameParts } from './host';
 import { ProjectList, type ProjectActions } from './ProjectList';
+import { ThemeMenu } from './ThemeMenu';
 
 export function Sidebar({
   projects,
@@ -16,6 +18,8 @@ export function Sidebar({
   onNewSession,
   onSearch,
   onMissing,
+  theme,
+  onTheme,
 }: {
   projects: ProjectView[];
   selectedId: string | null;
@@ -32,6 +36,8 @@ export function Sidebar({
   onNewSession: () => void;
   onSearch: () => void;
   onMissing: (what: string) => void;
+  theme: ThemeChoice;
+  onTheme: (theme: ThemeChoice) => void;
 }) {
   const anyOpen = projects.some((p) => !p.collapsed);
   const user = userName ? nameParts(userName) : null;
@@ -69,9 +75,7 @@ export function Sidebar({
       <div className="sidebar-foot">
         <span className="avatar">{user?.initials ?? '?'}</span>
         <span className="user-name">{user?.first ?? '—'}</span>
-        <button type="button" className="settings" aria-label="Configurações" onClick={() => onMissing('Configurações')}>
-          ⚙
-        </button>
+        <ThemeMenu theme={theme} onTheme={onTheme} />
       </div>
     </aside>
   );

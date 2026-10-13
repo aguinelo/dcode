@@ -20,6 +20,7 @@ import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
 import { useModelLists } from './useModelLists';
 import { useModelMenu } from './useModelMenu';
+import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
 import { useWindows } from './useWindows';
 import type { DaemonView, Outcome, WindowActions } from './window';
@@ -108,6 +109,7 @@ export function App({
     setToasts((t) => [...t.filter((x) => x.text !== text), { id: Date.now() + Math.random(), text }]);
   }, []);
   const [attention, updateAttention] = useAttention(say);
+  const [theme, chooseTheme] = useTheme(say);
 
   useEffect(() => {
     host.user().then(
@@ -310,6 +312,7 @@ export function App({
             measure={crewRow ? measureFor(crewRow) : null}
             waiting={counts.blocked}
             look={look}
+            theme={theme}
             daemon={daemon}
             actions={actions}
             onSectionError={say}
@@ -325,6 +328,7 @@ export function App({
               newSession: crewNew,
               startIn: (workspace) => void win.startIn(workspace),
               look: chooseLook,
+              theme: chooseTheme,
             }}
           />
         ) : (
@@ -342,6 +346,8 @@ export function App({
               onNewSession={newSession}
               onSearch={() => setSearching(true)}
               onMissing={missing}
+              theme={theme}
+              onTheme={chooseTheme}
               actions={{
                 toggle: (id) => updatePrefs((p) => setCollapsed(p, id, !p.collapsed[id])),
                 rename: (id, label) => updatePrefs((p) => relabel(p, id, label)),

@@ -83,7 +83,7 @@ button {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #3a3f46;
+  background: var(--dc-light-dot);
 }
 .brand {
   font-size: 13px;

@@ -279,3 +279,23 @@
 .settings:hover {
   color: var(--dc-text);
 }
+
+/* The ⚙ at the foot opens the theme (D35); closed, it is the same glyph. */
+.theme-menu {
+  position: relative;
+  display: flex;
+}
+.theme-popover {
+  top: auto;
+  right: -6px;
+  bottom: 26px;
+  min-width: 160px;
+}
+.popover-head {
+  padding: 4px 8px 2px;
+  font-size: 11px;
+  color: var(--dc-faint);
+}
+.popover-item.on .popover-hint {
+  color: var(--dc-accent);
+}

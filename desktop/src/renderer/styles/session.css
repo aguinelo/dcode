@@ -66,7 +66,7 @@
 }
 .peer:hover {
   color: var(--dc-text);
-  border-color: #39404a;
+  border-color: var(--dc-line-strong);
 }
 .peer-title {
   overflow: hidden;

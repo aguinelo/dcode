@@ -100,7 +100,8 @@ lima (`#c6f36b`) para o foco e o que é seu; âmbar só para o que espera você;
 e vermelho só para o que os critérios disseram. A fonte do sistema (SF no macOS)
 no texto, mono no que é código ou nome de máquina — modelo, branch, comando,
 caminho —, com a Geist Mono como reserva; cantos de 4px. Escuro só, por ora: um
-segundo tema é um bloco de tokens (D6), não uma caça. Descartados: manter o v2 e
+segundo tema é um bloco de tokens (D6), não uma caça. (O "escuro só" mudou em
+D35: há um claro, à escolha, e o escuro continua o padrão.) Descartados: manter o v2 e
 só adicionar a grade (a unidade da tela continuaria a conversa); um tema claro
 junto (o dobro de ajuste visual para uma proposta ainda não aprovada).
 
@@ -250,3 +251,60 @@ parser mantido já resolve); usar o HTML que o `marked` gera, sanitizado
 (`dangerouslySetInnerHTML` com texto do modelo, e mais uma dependência para
 limpar); fechar sozinho o `**` sem par durante o streaming (adivinha, e erra em
 `2**3`).
+
+**D35. Um tema claro, sóbrio, à escolha; o escuro continua o padrão** (emenda o
+"escuro só" de D29). Sistema (segue o `prefers-color-scheme`), Claro ou Escuro,
+nas Configurações da Crew e, na grade, no ⚙ do pé da lateral — que antes dizia
+"ainda não" e agora abre as três opções. Lembrado por janela no `localStorage`
+(como D7 e D32); valor ilegível ou armazenamento que recusa é dito num aviso, e
+a janela fica no escuro. Sem escolha guardada, Escuro: as réguas continuam
+medindo a janela escura, a 0,00% nas duas.
+
+- **Só tokens.** O resultado vira `data-theme` na raiz do documento, e o claro
+  redefine os `--dc-*` em `:root[data-theme='light']` (grafite) e em
+  `:root[data-theme='light'] .window.look-crew` (Crew, D32). As cores que ainda
+  estavam escritas nos estilos — bordas de hover e foco, o verde do selo de
+  modelo, o véu e a sombra da busca, os pontos das janelas — viraram tokens,
+  com o mesmo valor no escuro.
+- **A paleta:** chão neutro quase branco, nem creme nem azulado, e texto quase
+  preto; os cinzas quietos legíveis, o mais apagado acima de 4,5:1 em todo chão.
+  O lima não se lê no branco (1,2:1): o acento escurece para um oliva-lima
+  (`#4b6b00`) em texto e marcas, e o lima vivo (`#c6f36b`) fica só onde é
+  preenchimento sob tinta escura — o botão de enviar. Âmbar, verde e vermelho
+  escurecem para serem lidos como texto.
+- **Sem piscar ao abrir:** o tema mora no renderer, então a janela nasce
+  escondida e aparece no primeiro quadro pintado (`ready-to-show`); se ele não
+  vier em 5 s, aparece assim mesmo, com o motivo no log. O `backgroundColor`
+  fica o chão escuro, que só aparece atrás de um redimensionamento.
+
+Contraste (WCAG, texto sobre chão; "sel" é a seleção sobre o painel):
+
+| grafite claro | chrome `#eeeff0` | panel `#f9f9fa` | raised `#ffffff` | sunken `#f3f3f4` | sel |
+|---|---|---|---|---|---|
+| text `#1c1d20` | 14,64 | 16,02 | 16,85 | 15,20 | 13,76 |
+| dim `#4a4c52` | 7,45 | 8,16 | 8,58 | 7,74 | 7,00 |
+| faint `#5f6168` | 5,37 | 5,88 | 6,18 | 5,58 | 5,05 |
+| accent `#4b6b00` | 5,36 | 5,87 | 6,17 | 5,57 | 5,04 |
+| ok `#1a6e30` | 5,50 | 6,02 | 6,33 | 5,71 | 5,17 |
+| err `#b52f1c` | 5,38 | 5,89 | 6,20 | 5,59 | 5,06 |
+| warn `#8a5800` | 5,25 | 5,74 | 6,04 | 5,45 | 4,93 |
+
+| Crew clara | chrome `#f7f7f8` | panel `#ffffff` | raised `#f2f2f3` | sunken `#f9f9fa` | sel |
+|---|---|---|---|---|---|
+| text `#18181b` | 16,55 | 17,72 | 15,84 | 16,84 | 15,13 |
+| dim `#3d3d44` | 10,06 | 10,77 | 9,63 | 10,24 | 9,20 |
+| faint `#56565f` | 6,78 | 7,26 | 6,49 | 6,90 | 6,20 |
+| accent `#4b6b00` | 5,77 | 6,17 | 5,52 | 5,87 | 5,27 |
+| ok `#17723a` | 5,60 | 5,99 | 5,36 | 5,70 | 5,12 |
+| err `#b42318` | 6,14 | 6,57 | 5,88 | 6,25 | 5,62 |
+| warn `#855300` | 6,06 | 6,49 | 5,80 | 6,17 | 5,55 |
+
+O botão de enviar, tinta `#16181b` sobre o lima `#c6f36b`: 13,92. No aviso de
+aprovação (âmbar a 10% sobre o painel), o texto fica em 13,95 e o âmbar em 5,00.
+
+Descartados: o seletor de tema na barra do topo, ao lado do seletor de versão
+(mexe nos pixels que as réguas medem, e a grade deixaria de estar a 0,00%);
+seguir o sistema por padrão (as réguas passariam a depender do tema da máquina);
+o lima vivo como acento no claro (texto e marcas ilegíveis); trocar o
+`backgroundColor` da janela pelo processo principal (ele não lê o `localStorage`
+do renderer, e um canal só para isso é mais peça que esconder até o quadro).

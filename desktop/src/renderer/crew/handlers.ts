@@ -1,3 +1,4 @@
+import type { ThemeChoice } from '../../state/theme';
 import type { Look } from '../TopBar';
 import type { Row } from '../../state/sidebar';
 
@@ -17,4 +18,5 @@ export interface CrewHandlers {
   /** Opens a session in a known project, or from the folder picker with null; it takes the middle. */
   startIn: (workspace: string | null) => void;
   look: (look: Look) => void;
+  theme: (theme: ThemeChoice) => void;
 }
