@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { DECISIONS, MODES, SANDBOXES, conversation, decision, id, mode, model, sessionOptions, text, workspace } from '../../src/main/inputs';
+import {
+  DECISIONS,
+  MODES,
+  SANDBOXES,
+  clip,
+  command,
+  conversation,
+  decision,
+  id,
+  keys,
+  mode,
+  model,
+  sessionOptions,
+  size,
+  text,
+  workspace,
+  workspaceOf,
+} from '../../src/main/inputs';
 
 // What the renderer hands the main process, checked before it reaches the
 // daemon: a bad argument is a refusal with the reason, never a throw.
@@ -79,5 +96,44 @@ describe('an argument from the window', () => {
 
   it('cuts a long value short in the reason', () => {
     expect(refused(workspace('x'.repeat(500))).length).toBeLessThan(200);
+  });
+
+  it('takes a command to type into a terminal, and refuses an empty or huge one', () => {
+    expect(command('sudo npm i')).toEqual({ ok: true, value: 'sudo npm i' });
+    expect(refused(command(''))).toContain('comando');
+    refused(command(3));
+    refused(command('x'.repeat(20_000)));
+  });
+
+  it('takes keys for a terminal as they came, and a size in cells', () => {
+    expect(keys('\r')).toEqual({ ok: true, value: '\r' });
+    expect(keys('\x1b[A')).toEqual({ ok: true, value: '\x1b[A' });
+    refused(keys(''));
+    refused(keys({}));
+    refused(keys('x'.repeat(70_000)));
+    expect(size(80, 24)).toEqual({ ok: true, value: { cols: 80, rows: 24 } });
+    refused(size(0, 24));
+    refused(size(80.5, 24));
+    refused(size(80, 5000));
+    refused(size('80', 24));
+  });
+
+  it('takes text to copy, and refuses nothing to copy', () => {
+    expect(clip('ls -la')).toEqual({ ok: true, value: 'ls -la' });
+    refused(clip(''));
+    refused(clip(null));
+  });
+});
+
+describe('the folder a session’s terminal opens in', () => {
+  const list = [
+    { id: 's-1', workspace: '/work/app' },
+    { id: 's-2', workspace: '/work/other' },
+  ];
+
+  it('is the workspace the daemon listed for the session, never one the window names', () => {
+    expect(workspaceOf(list, 's-2')).toEqual({ ok: true, value: '/work/other' });
+    expect(refused(workspaceOf(list, 's-9'))).toContain('s-9');
+    refused(workspaceOf(null, 's-1'));
   });
 });
