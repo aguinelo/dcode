@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **As referências visuais são capturas da janela aprovada.** O dono aprovou o
+  visual novo — grafite, as janelas da grade, a Crew — e o `check:visual` o media
+  contra o mock do handoff, com o qual ele já não se parece. Os dois estados
+  medidos (02, 03) agora são capturados da janela pela própria verificação, nas
+  condições dela; o piso é 0 px nos dois, e o limite continua 1,25%. Uma mudança
+  visual futura os troca num PR próprio, depois do visto. As decisões de D21 em
+  diante vão para `docs/DECISIONS-2.md`, e cada arquivo fica abaixo de 500 linhas
+  (D18).
 - **Os tipos de memória e skills da Crew vêm do núcleo.** Escritos à mão
   enquanto o #432 estava aberto, agora são os que o tygo gera a partir de
   `internal/protocol`; `src/protocol/crew.ts` fica só com o decodificador que

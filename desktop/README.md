@@ -58,8 +58,8 @@ macOS would put them.
 
 ## The design loop
 
-The window is measured against the design's own screenshots, so it can be
-iterated until it matches — by a person, or by dcode.
+The window is measured against reference screenshots of the approved look, so
+it can be iterated without drifting from it — by a person, or by dcode.
 
 ```bash
 npm run check:visual
@@ -101,10 +101,11 @@ folder: they are the ruler, and changing them is not progress. What the loop is
 building now, and why it needs a session with full access, is in
 `docs/loop/tasks.md`.
 
-**A new Claude Design version** is new reference PNGs in
-`refs/design/desktop/screenshots/`. The loop then shows the distance to them.
-Measure the new design's own floor before trusting the old limit (see
-`tests/visual/states.json`).
+**The references are captures of the approved window** (since 2026-10-13; the
+handoff's mock before that). A new look is new PNGs in
+`refs/design/desktop/screenshots/`, in a PR of its own after it is approved —
+never in the PR that changes the window. Measure the new references' own floor
+before trusting the old limit (see `tests/visual/states.json` and D18).
 
 ## More
 
