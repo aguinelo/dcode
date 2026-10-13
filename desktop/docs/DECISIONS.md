@@ -9,8 +9,8 @@ D30); desde 2026-10-13 a régua visual mede contra capturas da janela aprovada (
 
 Quatro partes: o que foi decidido, o que ficou em aberto, o que o design pede e o
 protocolo não traz, e o que o desktop pede ao núcleo. As decisões de D21 em
-diante estão em [`DECISIONS-2.md`](DECISIONS-2.md), e D39 em
-[`DECISIONS-3.md`](DECISIONS-3.md), para que cada arquivo fique abaixo de 500
+diante estão em [`DECISIONS-2.md`](DECISIONS-2.md), D39 em
+[`DECISIONS-3.md`](DECISIONS-3.md) e D49 em [`DECISIONS-4.md`](DECISIONS-4.md), para que cada arquivo fique abaixo de 500
 linhas; a numeração é uma só, e uma referência a "D29" vale em todos.
 
 As que estão nos outros arquivos:
@@ -42,6 +42,7 @@ As que estão nos outros arquivos:
 - [D50](DECISIONS-3.md) — Os comandos que a pessoa escreveu, no menu e no campo, como na TUI.
 - [D51](DECISIONS-3.md) — Encerrar uma sessão pelo menu ⋯, perguntando antes quando um turno roda.
 - [D53](DECISIONS-3.md) — A memória e as skills de um projeto, alcançadas da grade.
+- [D49](DECISIONS-4.md) — O mascote entra no app: o ícone e o estado de cada conversa.
 
 ## Decisões
 

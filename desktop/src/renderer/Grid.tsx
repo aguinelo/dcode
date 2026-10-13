@@ -4,6 +4,7 @@ import type { Measure } from '../state/models';
 import { paneView } from '../state/pane';
 import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
+import { MascotFigure } from './Mascot';
 import { NewConversation, type Place } from './NewConversation';
 import { Pane } from './Pane';
 import type { ModelsResponse } from '../protocol/generated';
@@ -85,6 +86,7 @@ export function Grid({
   if (total === 0) {
     return (
       <div className="grid-empty">
+        <MascotFigure size={56} />
         <strong>Nada pedindo sua atenção agora.</strong>
         <span>O que você abrir fica aqui, cada conversa na sua janela; o que rodar, esperar você ou terminar aparece sozinho.</span>
         <span style={{ display: 'flex', gap: 8 }}>

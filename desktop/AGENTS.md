@@ -22,6 +22,7 @@ npm run gen:protocol    # regenerate src/protocol/generated.ts from internal/pro
 npm run check:protocol  # regenerate, and fail if the committed file was stale
 npm run check:visual    # the window against the design's screenshots (see below)
 npm run check:daemon    # the window against a real dcode serve and a scripted model (see below)
+npm run gen:icons       # the app icon's sizes (.icns, .ico, .png) from assets/icon/icon.svg (D49)
 ```
 
 `npm run build` does not package or sign; there are no makers yet.

@@ -6,8 +6,9 @@
 // not run — are what the harness established, not what the model said.
 
 import type * as P from '../protocol/generated';
-import type { Tone } from './flow';
+import { activity, type Tone } from './flow';
 import { age, elapsed, plural, since } from './format';
+import { mascotOf, type MascotState } from './mascot';
 import type { Entry, SessionView } from './session';
 import { basename, type Row } from './sidebar';
 
@@ -22,6 +23,8 @@ export interface PaneView {
   tone: Tone;
   /** Working right now: the glyph breathes. */
   live: boolean;
+  /** The mascot's pose for the same state (D49), where the window draws it. */
+  mascot: MascotState;
   /** The seal of the last measured turn (D13), when there is one. */
   seal: { text: string; tone: Tone } | null;
   /** Each criterion, when the last measured turn names them. */
@@ -100,6 +103,7 @@ export function paneView(r: Row, v: SessionView | undefined, now: number): PaneV
     glyph,
     tone,
     live: state === 'running',
+    mascot: mascotOf(state, verification, state === 'running' && v ? activity(v.entries).phase : null),
     seal: lights.length > 0 ? null : sealWord(verification),
     lights,
     touched,

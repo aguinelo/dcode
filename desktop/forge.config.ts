@@ -19,8 +19,15 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 // and the .node a library, neither of which can run from inside one.
 const NATIVE = 'node-pty';
 
+// The app icon (D49), without its extension: the packager takes icon.icns on
+// macOS and icon.ico on Windows. Linux reads no icon at package time; its
+// icon.png waits beside them for the maker that will. All three are made from
+// icon.svg by `npm run gen:icons`.
+const ICON = path.join(__dirname, 'assets', 'icon', 'icon');
+
 const config: ForgeConfig = {
   packagerConfig: {
+    icon: ICON,
     asar: { unpack: `**/node_modules/${NATIVE}/**` },
   },
   rebuildConfig: { ignoreModules: [NATIVE] },

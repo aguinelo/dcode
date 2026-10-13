@@ -10,6 +10,23 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The mascot enters the app: the icon and each conversation's state.** The
+  owner chose the mascot of `refs/design/brand/mascote.webp` as dcode's face.
+  It is drawn by hand as vectors, never cropped from the sheet: the app icon
+  (`assets/icon/icon.svg`, front pose in Laranja on a graphite tile) and
+  `npm run gen:icons`, which rasterises it in Playwright's Chromium and packs
+  the `.icns`, `.ico` and `.png` with no platform tool; `forge.config.ts` gives
+  it to the packager. Where the window showed a conversation's state with a
+  character — a grid window, the maximized one, Crew's thread and session
+  rows — it now shows the mascot's head in the same tone, and the eye and a
+  mark say the state again in shape: Planejando…, Codando…, Verificando…,
+  Deu certo!, Bug encontrado…, Esperando você, Hum…, Parado. The pose is read
+  from what the window already folds (the conversation's state, the phase of
+  the call running, the last seal), never from a field the protocol lacks.
+  Empty screens show the whole figure; notices carry the "Bug encontrado…"
+  head. Reduced motion still stops the breathing. References 02 and 03 move
+  by 0.07% and 0.04%, inside the limit; the palette change stacked on this
+  one recaptures them once (D49).
 - **A project's memory and skills are reachable from the grid.** Only Crew
   showed them. "Memória e skills…" in a conversation's ⋯ menu now opens, over
   the window, Crew's own Memória and Skills sections, a tab each, on that
