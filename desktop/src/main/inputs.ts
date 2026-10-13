@@ -6,6 +6,9 @@ import {
   ApprovalAllowSession,
   ApprovalDeny,
   CodeInvalidInput,
+  ModeAssist,
+  ModeAuto,
+  ModePlan,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import type { Refusal } from '../shared/api';
@@ -56,6 +59,14 @@ export function workspace(v: unknown): Checked<string> {
 export function decision(v: unknown): Checked<string> {
   if (typeof v === 'string' && DECISIONS.includes(v)) return { ok: true, value: v };
   return invalid(`A resposta à aprovação precisa ser uma de ${DECISIONS.join(', ')}, e veio ${shown(v)}.`);
+}
+
+/** The behavioural modes the daemon switches between (`POST …/mode`). */
+export const MODES: readonly string[] = [ModePlan, ModeAssist, ModeAuto];
+
+export function mode(v: unknown): Checked<string> {
+  if (typeof v === 'string' && MODES.includes(v)) return { ok: true, value: v };
+  return invalid(`O modo precisa ser um de ${MODES.join(', ')}, e veio ${shown(v)}.`);
 }
 
 /** A profile or a model, as the daemon resolves it (`CreateSessionRequest.model`). */

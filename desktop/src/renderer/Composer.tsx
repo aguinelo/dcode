@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { SessionView } from '../state/session';
+import { ModeChip } from './ModeMenu';
 
 /**
  * The placeholder by state. During a turn, a message corrects it (D23); while
@@ -88,6 +89,7 @@ export function Composer({
   onSend,
   onStop,
   onMissing,
+  onMode,
 }: {
   session: SessionView;
   /** The draft, kept per session by the window so switching away loses nothing. */
@@ -99,6 +101,8 @@ export function Composer({
   onSend: (text: string) => void;
   onStop: () => void;
   onMissing: (what: string) => void;
+  /** Opens the mode menu from the chip (D36). */
+  onMode?: (anchor: HTMLElement) => void;
 }) {
   const running = session.state === 'running';
   const blocked = session.state === 'blocked';
@@ -109,7 +113,6 @@ export function Composer({
     session.contextTokens !== null && contextWindow > 0
       ? Math.min(100, Math.floor((100 * session.contextTokens) / contextWindow))
       : null;
-  const chip = [session.sandbox, session.mode].filter(Boolean).join(' · ');
   const send = () => {
     if (!blocked && text.trim()) onSend(text);
   };
@@ -123,7 +126,7 @@ export function Composer({
               +
             </button>
           )}
-          {!compact && chip && <span className="composer-chip">{chip}</span>}
+          <ModeChip mode={session.mode} sandbox={session.sandbox} onOpen={onMode} />
           <span className="spacer" />
           {pct !== null && <span className={`composer-meter ${meterTone(pct)}`}>{pct}%</span>}
           {running ? (

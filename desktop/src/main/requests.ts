@@ -84,6 +84,11 @@ export class Requests {
     return this.command(`${sessionPath(sessionId)}/approvals/${encodeURIComponent(approvalId)}`, { decision });
   }
 
+  /** Switches the session's behavioural mode; the session announces it in `session.mode_changed`. */
+  setMode(sessionId: string, mode: string): Promise<Answer<null>> {
+    return this.command(`${sessionPath(sessionId)}/mode`, { mode });
+  }
+
   private async call(method: string, path: string, body?: unknown): Promise<Answer<unknown>> {
     const now = this.status();
     if (now.state !== 'connected') return { ok: false, refusal: notConnected(now) };

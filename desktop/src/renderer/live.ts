@@ -140,6 +140,7 @@ export class LiveStore {
       return read.ok ? { ok: true, value: read.models } : { ok: false, why: `Resposta ilegível do daemon: ${read.reason}` };
     },
     switchModel: (id, workspace, model) => this.switchModel(id, workspace, model),
+    setMode: async (id, mode) => outcome(await this.api.setMode(id, mode), 'O modo não mudou'),
     listSkills: async (workspace) =>
       read(await this.api.listSkills(workspace), decodeSkills, 'as skills de um projeto (GET /v1/skills)', 'O daemon não disse quais skills existem'),
     listMemory: async (workspace) =>

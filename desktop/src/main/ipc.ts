@@ -91,6 +91,12 @@ export function serveTheWindows(daemon: Connection): void {
     const session = input.id(id, SESSION);
     return session.ok ? ask.interrupt(session.value) : session;
   });
+  handle(CHANNELS.setMode, (_event, id, mode) => {
+    const session = input.id(id, SESSION);
+    if (!session.ok) return session;
+    const named = input.mode(mode);
+    return named.ok ? ask.setMode(session.value, named.value) : named;
+  });
   handle(CHANNELS.resolveApproval, (_event, id, approvalId, decision) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

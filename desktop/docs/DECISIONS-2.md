@@ -308,3 +308,31 @@ seguir o sistema por padrão (as réguas passariam a depender do tema da máquin
 o lima vivo como acento no claro (texto e marcas ilegíveis); trocar o
 `backgroundColor` da janela pelo processo principal (ele não lê o `localStorage`
 do renderer, e um canal só para isso é mais peça que esconder até o quadro).
+
+**D36. O modo da sessão muda pela janela, como na TUI.** Plano, Assistir e Auto
+existiam só no `/mode` e no ⇧⇥ da TUI; a janela mostrava o modo e não o mudava.
+O chip do modo — no campo da janela da grade, no da conversa maximizada e na aba
+Sessão da Crew — vira o botão de um menu com os três, e escolher pede
+`POST /v1/sessions/{id}/mode`. O ⇧⇥ passa ao próximo (plano → assistir → auto →
+plano, e de um par sem nome para plano), na conversa em foco: a maximizada, senão
+a janela em foco da grade ou a do meio da Crew.
+
+- **Nada muda antes do daemon dizer.** O chip troca quando chega o
+  `session.mode_changed` da sessão, não quando se escolhe: um pedido recusado
+  nunca aparece como aceito, e a recusa vem num aviso com a razão do daemon. A
+  troca não interrompe um turno, e o menu diz isso.
+- **O chip continua desenhado como era** — `sandbox · modo` —, e as telas de
+  referência não mudam. Auto vem no tom de aviso, como na barra da TUI: sem
+  fronteira entre o agente e a máquina é o único fato ali que merece a cor.
+- **Um par que não é nenhum dos três é "personalizado (sandbox · política)"**,
+  nunca o modo mais próximo — o `mode` vazio do fio, como a TUI lê. A política de
+  aprovação não vem no `Session`, só o sandbox, então o chip diz o sandbox e que a
+  política é outra, sem nomeá-la.
+- **⇧⇥ é do campo e de lugar nenhum.** Num botão, continua sendo voltar um
+  controle, como no navegador; sem isso, quem navega pelo teclado perde o
+  caminho de volta.
+
+Descartados: mudar o chip na hora e desfazer na recusa (otimista: por um momento
+a janela afirma uma fronteira que o daemon não aplica); pedir confirmação para o
+auto (a TUI decidiu que o aviso é o tom que fica, não uma pergunta que se
+responde uma vez sem ler).

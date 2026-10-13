@@ -6,6 +6,7 @@ import type { Measure } from '../../state/models';
 import type { PaneView } from '../../state/pane';
 import type { SessionView } from '../../state/session';
 import { shortPath, type Row } from '../../state/sidebar';
+import { ModeChip } from '../ModeMenu';
 import { DoneRow } from '../Pane';
 
 type Tab = 'mudancas' | 'pronto' | 'sessao';
@@ -75,7 +76,17 @@ function Done({ view, measure }: { view: PaneView; measure: Measure | null }) {
   );
 }
 
-function Facts({ row, session, onModel }: { row: Row; session: SessionView | undefined; onModel: (anchor: HTMLElement) => void }) {
+function Facts({
+  row,
+  session,
+  onModel,
+  onMode,
+}: {
+  row: Row;
+  session: SessionView | undefined;
+  onModel: (anchor: HTMLElement) => void;
+  onMode: (anchor: HTMLElement) => void;
+}) {
   const info = session?.info;
   const pct = contextPercent(session);
   const branch = info?.branch ?? row.branch;
@@ -108,11 +119,11 @@ function Facts({ row, session, onModel }: { row: Row; session: SessionView | und
       </dd>
       <dt>estado</dt>
       <dd>{stateWord(session?.state ?? row.state)}</dd>
-      {session?.sandbox && (
+      {session?.info && (session.sandbox || session.mode) && (
         <>
           <dt>modo</dt>
-          <dd className="mono">
-            {session.sandbox} · {session.mode}
+          <dd>
+            <ModeChip mode={session.mode} sandbox={session.sandbox} className="chip" onOpen={onMode} />
           </dd>
         </>
       )}
@@ -135,12 +146,14 @@ export function ContextPane({
   session,
   measure,
   onModel,
+  onMode,
 }: {
   row: Row | null;
   view: PaneView | null;
   session: SessionView | undefined;
   measure: Measure | null;
   onModel: (row: Row, anchor: HTMLElement) => void;
+  onMode: (id: string, anchor: HTMLElement) => void;
 }) {
   const [tab, setTab] = useState<Tab>('mudancas');
   const files = useMemo(() => (session ? filesTouched(session.entries).length : null), [session]);
@@ -167,7 +180,7 @@ export function ContextPane({
         ) : tab === 'pronto' ? (
           <Done view={view} measure={measure} />
         ) : (
-          <Facts row={row} session={session} onModel={(anchor) => onModel(row, anchor)} />
+          <Facts row={row} session={session} onModel={(anchor) => onModel(row, anchor)} onMode={(anchor) => onMode(row.id, anchor)} />
         )}
       </div>
     </aside>

@@ -109,6 +109,8 @@ export interface DcodeApi {
   steer(sessionId: string, text: string): Promise<Answer<null>>;
   interrupt(sessionId: string): Promise<Answer<null>>;
   resolveApproval(sessionId: string, approvalId: string, decision: string): Promise<Answer<null>>;
+  /** Switches a session's behavioural mode: plan, assist or auto. The session's own event confirms it. */
+  setMode(sessionId: string, mode: string): Promise<Answer<null>>;
 }
 
 /** The channels, one per request and one per push. */
@@ -133,6 +135,7 @@ export const CHANNELS = {
   steer: 'dcode:steer',
   interrupt: 'dcode:interrupt',
   resolveApproval: 'dcode:resolve-approval',
+  setMode: 'dcode:set-mode',
 } as const;
 
 /** The channel the main process answers `user()` on. */

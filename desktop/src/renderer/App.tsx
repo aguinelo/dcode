@@ -11,6 +11,7 @@ import { CrewView } from './CrewView';
 import { Grid } from './Grid';
 import type { Host } from './host';
 import { useNow, useReducedMotion, useTick, useWindowSize } from './hooks';
+import { ModeMenu } from './ModeMenu';
 import { ModelMenu } from './ModelMenu';
 import { Search } from './Search';
 import { SessionPanel, type Peer } from './SessionPanel';
@@ -19,6 +20,7 @@ import { notYet } from './text';
 import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
 import { useModelLists } from './useModelLists';
+import { useModeMenu } from './useModeMenu';
 import { useModelMenu } from './useModelMenu';
 import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
@@ -197,6 +199,7 @@ export function App({
 
   const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show });
   const models = useModelMenu(actions, sessions, once, win.replace);
+  const modes = useModeMenu(actions, sessions, once, say);
 
   // The grid, in stable places: the plan reads the places as last drawn, and
   // they are kept the way React keeps a value from the previous render. The
@@ -242,6 +245,10 @@ export function App({
   const crewNew = useCallback(() => void win.startIn(null), [win]);
   const isConversation = useCallback((id: string) => rowById.has(id) || id in sessions.byId, [rowById, sessions]);
 
+  // Crew shows one conversation in the middle: the one in focus, else the first that wants attention.
+  const crewId = win.focusId && isConversation(win.focusId) ? win.focusId : (plan.ids[0] ?? null);
+  const crewRow = crewId ? (rowById.get(crewId) ?? (sessions.byId[crewId] ? rowOfSession(sessions.byId[crewId]) : null)) : null;
+
   useWindowKeys({
     ids: windowIds,
     cols: gridShape(windowIds.length).cols,
@@ -250,12 +257,17 @@ export function App({
     caretTo: win.caretTo,
     sessions,
     maximized: selected,
-    busy: searching || !!models.menu,
+    busy: searching || !!models.menu || !!modes.menu,
     setSearching,
     newSession: look === 'crew' ? crewNew : newSession,
     show,
     answer: win.answerIn,
     isConversation,
+    // ⇧⇥ switches the mode of the conversation in focus: the maximized one, else the window's (D36).
+    cycleMode: () => {
+      const id = selectedId ?? (look === 'crew' ? crewId : win.focusId);
+      if (id && isConversation(id)) modes.cycle(id);
+    },
   });
 
   const peers: Peer[] = plan.ids
@@ -273,9 +285,6 @@ export function App({
       say(`Não foi possível guardar a versão da tela (${(err as Error).message}); vale só até fechar.`);
     }
   };
-  // Crew shows one conversation in the middle: the one in focus, else the first that wants attention.
-  const crewId = win.focusId && isConversation(win.focusId) ? win.focusId : (plan.ids[0] ?? null);
-  const crewRow = crewId ? (rowById.get(crewId) ?? (sessions.byId[crewId] ? rowOfSession(sessions.byId[crewId]) : null)) : null;
 
   const missing = (what: string) => say(notYet(what));
   const draftIn = (id: string, text: string) => setDrafts((d) => ({ ...d, [id]: text }));
@@ -324,6 +333,7 @@ export function App({
               answer: win.answerIn,
               continueIn: (row, text) => void win.continueIn(row, text),
               model: models.open,
+              mode: modes.open,
               missing,
               newSession: crewNew,
               startIn: (workspace) => void win.startIn(workspace),
@@ -375,6 +385,7 @@ export function App({
                   onGrid={() => show(null)}
                   onOpenPeer={(id) => (rowById.get(id)?.state === 'recorded' ? void win.open(id) : show(id))}
                   onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
+                  onMode={(anchor) => modes.open(selected.id, anchor)}
                   measure={measureFor(selectedRow ?? rowOfSession(selected))}
                 />
               ) : (
@@ -401,6 +412,7 @@ export function App({
                     answer: win.answerIn,
                     continueIn: (row, text) => void win.continueIn(row, text),
                     model: models.open,
+                    mode: modes.open,
                     missing,
                   }}
                   chooser={{
@@ -424,6 +436,15 @@ export function App({
           busy={models.busy}
           onPick={(name) => void models.pick(name)}
           onClose={models.close}
+        />
+      )}
+      {modes.menu && (
+        <ModeMenu
+          anchor={modes.menu.anchor}
+          mode={modes.session?.mode ?? ''}
+          sandbox={modes.session?.sandbox ?? ''}
+          onPick={modes.pick}
+          onClose={modes.close}
         />
       )}
       {toasts.length > 0 && (

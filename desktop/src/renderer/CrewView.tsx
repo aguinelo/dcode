@@ -96,7 +96,7 @@ export function CrewView({
         <div className="crew-board">
           <SessionsPane projects={projects} sessions={sessions} focusId={row?.id ?? null} now={now} onPick={on.pick} onStart={on.startIn} />
           <ThreadPane row={row} view={view} session={session} now={now} verbTick={verbTick} draft={draft} caret={caret} on={on} />
-          <ContextPane row={row} view={view} session={session} measure={measure} onModel={on.model} />
+          <ContextPane row={row} view={view} session={session} measure={measure} onModel={on.model} onMode={on.mode} />
         </div>
       );
       break;

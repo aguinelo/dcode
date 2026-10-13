@@ -82,6 +82,21 @@
   line-height: 18px;
   color: var(--dc-dim);
 }
+/* The mode chip is the menu's button (D36): drawn as the chip always was. */
+.mode-chip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mode-chip:hover {
+  color: var(--dc-text);
+  border-color: var(--dc-line-strong);
+}
+.mode-chip.mode-auto {
+  color: var(--dc-warn);
+  border-color: var(--dc-warn-line);
+}
 .composer-model {
   padding: 1px 6px;
   border-radius: var(--dc-radius-sm);

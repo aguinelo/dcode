@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MODES, modeChip, nextMode } from '../../src/state/mode';
 
-// The session's behavioural mode as the window names and switches it (D35):
+// The session's behavioural mode as the window names and switches it (D36):
 // the three the daemon knows, in the TUI's order, and a pair that is none of
 // them named as such rather than as the nearest one.
 

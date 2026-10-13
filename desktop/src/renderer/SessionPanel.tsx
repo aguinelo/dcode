@@ -44,6 +44,7 @@ export function SessionPanel({
   onGrid,
   onOpenPeer,
   onModel,
+  onMode,
   measure,
   caret,
 }: {
@@ -62,6 +63,8 @@ export function SessionPanel({
   onGrid: () => void;
   onOpenPeer: (id: string) => void;
   onModel: (anchor: HTMLElement) => void;
+  /** Opens the mode menu (D36). */
+  onMode: (anchor: HTMLElement) => void;
   /** What the daemon's list says of the family it runs on. */
   measure: Measure | null;
   /** Changes when the caret is asked into the field. */
@@ -114,6 +117,7 @@ export function SessionPanel({
         onSend={onSend}
         onStop={onStop}
         onMissing={onMissing}
+        onMode={session.info ? onMode : undefined}
       />
     </section>
   );
