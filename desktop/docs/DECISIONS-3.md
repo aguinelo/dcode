@@ -31,3 +31,37 @@ captura de 9656919, a 0,00%.
 Descartados: manter as três para todas (a janela ofereceria "nesta sessão" para
 a rede, que a TUI não oferece, e esconderia as duas respostas permanentes);
 oferecer as cinco sempre (concessão permanente de escrita fora do projeto).
+
+**D42. Uma conversa terminada abre no histórico dela** (emenda D21). Abrir uma
+conversa que terminou mostrava a thread vazia e, no painel da direita do Crew,
+"Uma conversa terminada não traz os eventos dela": a pessoa achou que as sessões
+tinham se perdido. Elas estavam no disco; o protocolo só não tinha como lê-las
+sem continuar. Com `GET /v1/conversations/{id}/events` (N7), a janela agora as lê:
+
+- **Onde:** na janela da grade, na conversa maximizada e na thread do Crew — onde
+  quer que uma conversa gravada, sem sessão viva, apareça. A lateral continua
+  como D21: clicar numa gravada continua a conversa numa sessão nova.
+- **Como:** o processo principal pede a rota página por página (um canal, com o
+  id conferido no alfabeto do núcleo e a posição a partir de 1), e o renderer
+  dobra os eventos pelo mesmo `applyEvent` de uma sessão viva — a conversa lida
+  é a mesma que se via enquanto rodava, com o mesmo `FlowBlocks`. Só leitura: o
+  cartão de aprovação não aparece (o núcleo não manda pergunta já decidida), e
+  "Rodar no terminal" fica de fora; "Copiar" fica.
+- **Abaixo:** a mesma linha de antes — "Escrever continua a conversa numa sessão
+  nova, com o histórico" — e o campo que continua.
+- **Mudanças:** o painel do Crew lê os arquivos do histórico, como lê os de uma
+  sessão viva (`filesTouched`).
+- **Enquanto lê:** "Lendo o histórico desta conversa…". **Se falha:** o motivo
+  do daemon na thread, em vermelho, com "Tentar de novo", e também num aviso —
+  nunca uma thread vazia como se nada tivesse acontecido. Daemon mais velho que a
+  rota diz que não a expõe, com as palavras dele.
+- **Longa demais:** até 20 páginas (100 mil eventos). Passando disso, mostra o
+  que leu e diz quantos eventos ficaram de fora — o fim da conversa, já que a
+  leitura vai do começo.
+
+Cada conversa é lida uma vez por janela, quando aparece: uma gravada não muda.
+
+Descartados: continuar a conversa só para mostrá-la (abriria uma sessão que
+ninguém pediu); ler o arquivo do registro pelo processo principal (acoplaria o
+desktop ao formato do disco, que é do núcleo); mostrar só as últimas páginas
+(sem o começo, a pergunta que abriu a conversa some).

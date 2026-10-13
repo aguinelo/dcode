@@ -70,6 +70,14 @@ export class Requests {
     return this.call('GET', `/${Version}/memory?workspace=${encodeURIComponent(workspace)}`);
   }
 
+  /**
+   * One page of a recorded conversation, from a position (D42). Passed on as
+   * it came: the renderer reads it at its boundary, page by page.
+   */
+  conversationEvents(id: string, from: number): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/conversations/${encodeURIComponent(id)}/events?from=${from}`);
+  }
+
   submitTurn(sessionId: string, text: string): Promise<Answer<null>> {
     return this.command(`${sessionPath(sessionId)}/turns`, { text });
   }

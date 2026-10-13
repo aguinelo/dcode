@@ -1,4 +1,5 @@
 import { gridShape, type GridPlan } from '../state/grid';
+import type { History } from '../state/history';
 import type { Measure } from '../state/models';
 import { paneView } from '../state/pane';
 import type { SessionsState } from '../state/sessions';
@@ -23,6 +24,9 @@ export interface WindowHandlers {
   mode: (id: string, anchor: HTMLElement) => void;
   actions: (id: string, anchor: HTMLElement) => void;
   missing: (what: string) => void;
+  /** An ended conversation's history, read from its record (D42); undefined until asked for. */
+  history: (id: string) => History | undefined;
+  retryHistory: (id: string) => void;
 }
 
 /** What the windows for new sessions do, by their key. */
@@ -124,6 +128,8 @@ export function Grid({
             onStop={() => on.stop(id)}
             onAnswer={(approvalId, decision) => on.answer(id, approvalId, decision)}
             onContinue={(text) => on.continueIn(row, text)}
+            history={on.history(id)}
+            onRetryHistory={() => on.retryHistory(id)}
             onModel={(anchor) => on.model(row, anchor)}
             onMode={(anchor) => on.mode(row.id, anchor)}
             onActions={(anchor) => on.actions(row.id, anchor)}

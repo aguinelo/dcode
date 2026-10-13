@@ -290,7 +290,7 @@ describe('requests', () => {
       ok: false,
       refusal: { code: 'unexpected_answer', message: 'O daemon respondeu 404 a GET /v1/conversations/0199a1b2c3d4e5f6a7b/events?from=5001: 404 page not found.' },
     });
-    expect(daemon.requests.filter((q) => q.includes('/conversations/'))).toEqual(['GET /v1/conversations/0199a1b2c3d4e5f6a7b/events?from=5001']);
+    expect(daemon.requests.filter((q) => q.includes('/events?from='))).toEqual(['GET /v1/conversations/0199a1b2c3d4e5f6a7b/events?from=5001']);
   });
 
   it('sends each command to its route, and answers null', async () => {

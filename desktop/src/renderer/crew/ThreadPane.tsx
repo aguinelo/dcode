@@ -1,9 +1,10 @@
 import { ChevronDown } from 'lucide-react';
+import type { History } from '../../state/history';
 import type { PaneView } from '../../state/pane';
 import { emptySession, type SessionView } from '../../state/session';
 import type { Row } from '../../state/sidebar';
-import { Field } from '../Composer';
 import { ConversationBody } from '../ConversationBody';
+import { RecordedBody } from '../RecordedBody';
 import { ActionsButton } from '../SessionActions';
 import type { CrewHandlers } from './handlers';
 
@@ -20,6 +21,8 @@ export function ThreadPane({
   verbTick,
   draft,
   caret,
+  history,
+  onRetryHistory,
   on,
 }: {
   row: Row | null;
@@ -29,6 +32,9 @@ export function ThreadPane({
   verbTick: number;
   draft: string;
   caret?: number;
+  /** An ended conversation's history, read from its record (D42); undefined until asked for. */
+  history: History | undefined;
+  onRetryHistory: () => void;
   on: CrewHandlers;
 }) {
   if (!row || !view) {
@@ -60,22 +66,17 @@ export function ThreadPane({
         {session?.info && <ActionsButton title={row.title} onOpen={(anchor) => on.actions(row.id, anchor)} />}
       </header>
       {ended ? (
-        <div className="crew-ended">
-          <p>
-            Terminada · {row.turns ?? 0} {row.turns === 1 ? 'turno' : 'turnos'}. Escrever continua a conversa numa sessão nova, com o histórico.
-          </p>
-          <div className="composer-wrap">
-            <div className="composer">
-              <Field
-                text={draft}
-                placeholder="Escreva para continuar esta conversa"
-                caret={caret}
-                onText={(t) => on.draft(row.id, t)}
-                onSubmit={() => draft.trim() && on.continueIn(row, draft)}
-              />
-            </div>
-          </div>
-        </div>
+        <RecordedBody
+          row={row}
+          history={history}
+          compact={false}
+          now={now}
+          draft={draft}
+          caret={caret}
+          onDraft={(t) => on.draft(row.id, t)}
+          onContinue={(t) => on.continueIn(row, t)}
+          onRetry={onRetryHistory}
+        />
       ) : (
         <ConversationBody
           session={session ?? emptySession(row.id)}

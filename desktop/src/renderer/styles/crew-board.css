@@ -272,19 +272,6 @@
 .crew-facts .chip svg {
   vertical-align: -1px;
 }
-.crew-ended {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 12px;
-}
-.crew-ended p {
-  margin: 0;
-  padding: 0 20px;
-  color: var(--dc-dim);
-  font-size: 13.5px;
-}
 
 /* ---- right: the context, in tabs -------------------------------------- */
 

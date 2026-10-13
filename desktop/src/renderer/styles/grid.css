@@ -183,15 +183,6 @@ button.chip:hover {
 .composer-wrap.compact .composer-input {
   font-size: 12.5px;
 }
-.pane-ended {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--dc-dim);
-}
 
 .pane-foot {
   flex: none;

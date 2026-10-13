@@ -95,6 +95,12 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const where = input.workspace(workspace);
     return where.ok ? ask.listMemory(where.value) : where;
   });
+  handle(CHANNELS.conversationEvents, (_event, id, from) => {
+    const which = input.recordedId(id);
+    if (!which.ok) return which;
+    const at = input.position(from);
+    return at.ok ? ask.conversationEvents(which.value, at.value) : at;
+  });
   handle(CHANNELS.submitTurn, (_event, id, text) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

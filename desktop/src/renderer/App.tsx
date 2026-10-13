@@ -19,6 +19,7 @@ import { Sidebar } from './Sidebar';
 import { notYet } from './text';
 import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
+import { useHistories } from './useHistories';
 import { useModelLists } from './useModelLists';
 import { useModeMenu } from './useModeMenu';
 import { useSessionActions } from './SessionActions';
@@ -256,6 +257,9 @@ export function App({
   const crewId = win.focusId && isConversation(win.focusId) ? win.focusId : (plan.ids[0] ?? null);
   const crewRow = crewId ? (rowById.get(crewId) ?? (sessions.byId[crewId] ? rowOfSession(sessions.byId[crewId]) : null)) : null;
 
+  // What is drawn — Crew's thread, the maximized one, else the grid's windows — and ended has its history read (D42).
+  const histories = useHistories(actions, look === 'crew' ? (crewId ? [crewId] : []) : selectedId ? [selectedId] : plan.ids, rowById, sessions, say);
+
   useWindowKeys({
     ids: windowIds,
     cols: gridShape(windowIds.length).cols,
@@ -331,6 +335,8 @@ export function App({
             theme={theme}
             daemon={daemon}
             actions={actions}
+            history={crewId ? histories.of(crewId) : undefined}
+            onRetryHistory={() => crewId && histories.retry(crewId)}
             onSectionError={say}
             on={{
               pick: (row) => (row.state === 'recorded' ? win.focus(row.id) : void win.open(row.id)),
@@ -395,6 +401,7 @@ export function App({
                   onModel={(anchor) => models.open(selectedRow ?? rowOfSession(selected), anchor)}
                   onMode={(anchor) => modes.open(selected.id, anchor)}
                   measure={measureFor(selectedRow ?? rowOfSession(selected))}
+                  recorded={selectedRow && histories.ended(selectedRow.id) ? histories.recorded(selectedRow.id, (text) => void win.continueIn(selectedRow, text)) : undefined}
                 />
               ) : (
                 <Grid
@@ -423,6 +430,8 @@ export function App({
                     mode: modes.open,
                     actions: acts.open,
                     missing,
+                    history: histories.of,
+                    retryHistory: histories.retry,
                   }}
                   chooser={{
                     place: (key, workspace, options) => void win.openIn(key, workspace, options),

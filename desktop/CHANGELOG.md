@@ -10,6 +10,19 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A conversation that ended opens onto its history.** Opening one showed an
+  empty thread, and Crew's right panel said a finished conversation carries no
+  events, so the person took their sessions for lost. A recorded conversation
+  without a live session, whether in a grid window, maximized or in Crew's
+  thread, is now read page by page from the core's
+  `GET /v1/conversations/{id}/events` through a new main-process channel (id
+  checked against the core's alphabet, position from 1). Its events are folded
+  like a live session's and drawn read-only by the same flow, above the same
+  "Escrever continua a conversa numa sessão nova" field. Crew's Mudanças lists
+  the files it changed. While the window reads it says so. A failure is shown
+  in the thread with the daemon's reason and a retry, and as a notice; it never
+  looks like an empty conversation. Past 20 pages the window says how much was
+  left unread. Both visual references still measure 0.00% (D42).
 - **The protocol types carry the page of a recorded conversation.**
   `src/protocol/generated.ts` is regenerated for the core's new
   `GET /v1/conversations/{id}/events` (`ConversationEventsResponse`,
