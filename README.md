@@ -550,7 +550,7 @@ Nineteen families. Each declares its regime, and the regime decides how it is ve
 | [delegated-writing](docs/specs/architecture/delegated-writing/) | mixed | when writing is split between children, and who reports |
 | [task-ledger](docs/specs/architecture/task-ledger/) | mixed | what is in flight, and what it cost |
 | [learned-memory](docs/specs/architecture/learned-memory/) | mixed | what the agent discovers, versioned where people read it — **design only, not built** |
-| [orchestration](docs/specs/architecture/orchestration/) | mixed | a conversation that splits work into child sessions and stays free to talk — **proposal, not approved** |
+| [orchestration](docs/specs/architecture/orchestration/) | mixed | a conversation that splits work into child sessions and stays free to talk — **design only, not built** |
 
 ---
 

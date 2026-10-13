@@ -1,8 +1,7 @@
 # Research: Orquestrador — uma conversa que reparte o trabalho em sessões filhas
 
-> **Estado, 2026-10-13: proposta, à espera do visto do dono.** Nada aqui foi
-> construído, e as regras da §4 são as recomendações das perguntas da §12 —
-> uma resposta diferente do dono muda a regra antes do `.p`. Depende de:
+> **Estado, 2026-10-13: aprovado pelo dono**, com as decisões da §12. Nada aqui
+> foi construído; vem depois do `/loop` no desktop. Depende de:
 > **`202608072335-agent-loop`** (RN-11, a delegação de leitura),
 > **`202608191800-delegated-writing`** (`owns`, RN-1 a RN-7),
 > **`202608072240-client-server-protocol`** (sessões, eventos, aprovações) e
@@ -115,10 +114,10 @@ quer dizer "esperando você".
 
 Aprovação não se herda (ADR-02) e **não sobe ao pai**: o consentimento é sobre
 o ato daquele filho, e quem tem o contexto para dar é quem vê a janela dele.
-O filho pede como qualquer sessão pede, com o mesmo prazo (`ApprovalTimeout`,
-120 s), e a grade o põe em "esperando você" (D30). Um pedido que expira é
-negado, e a negação entra no relato do filho como `unwritten`/`unread` — nunca
-some.
+O pedido do filho **não expira** (Q5): espera a pessoa, sem o `ApprovalTimeout`
+de 120 s, e a grade o põe em "esperando você" (D30). O prazo existe para um
+turno não ficar preso, e aqui o pai não está; esse tempo não conta no prazo do
+filho (RN-8). Uma negação entra no relato como `unwritten`/`unread`.
 
 Isto **muda** a `delegated-writing` RN-3 só para filhos-sessão: lá o filho não
 tinha canal, e negar era a única saída honesta. Aqui ele tem. O `explore`
@@ -410,9 +409,8 @@ Passos 2–6: `CHANGELOG.md` (duas edições) e changelog de família, MINOR;
 - **Custo.** Quatro filhos são quatro conversas pagas; o teto da RN-9 freia, e
   o contador do lote fica à vista no pai.
 - **Atenção partida.** Quatro janelas pedindo aprovação ao mesmo tempo é o que a
-  RN-3 do `explore` evitava. A grade ordena (D30), mas o prazo de 120 s pode
-  vencer enquanto a pessoa responde outro; a negação é relatada, não
-  escondida. Se isso doer, a Q5 tem a saída.
+  RN-3 do `explore` evitava. A grade ordena (D30) e nenhum pedido de filho
+  expira (Q5): o custo é um filho parado, à vista, até a pessoa olhar.
 - **Árvore incoerente** entre filhos disjuntos: é a RN-7, e o turno de
   integração é a resposta — o risco é o modelo pular a conferência, e o
   contrato `orchestrator-integrates-before-done` mede isso.
@@ -424,27 +422,27 @@ Passos 2–6: `CHANGELOG.md` (duas edições) e changelog de família, MINOR;
 - **Daemon do desktop (D19)**: fechar o app mata pai e filhos; a pergunta de
   fechar passa a contá-los.
 
-## 12. Perguntas em aberto
+## 12. Decisões — 2026-10-13, aprovado pelo dono
 
 **Q1. Quem é orquestrador?**
 - A. Toda sessão tem `delegate`.
 - B. Opt-in na criação (`Orchestrate`), com prompt e ferramentas próprios.
 - C. Um modo novo, ao lado de plan/assist/auto.
-- **Recomendo B.** A muda o prefixo e o comportamento de toda sessão e os
+- **Decidido: B** (aprovado pelo dono). A muda o prefixo e o comportamento de toda sessão e os
   limiares medidos; C mistura "o que pode escrever" com "como trabalha", que o
   modo hoje não mistura.
 
 **Q2. O orquestrador também tem `explore`?**
 - A. Sim: lê de forma síncrona, delega de forma assíncrona.
 - B. Não: só `delegate`, para uma forma só de dividir.
-- **Recomendo A.** Reconhecer o terreno antes de dividir é leitura curta, e
+- **Decidido: A** (aprovado pelo dono). Reconhecer o terreno antes de dividir é leitura curta, e
   abrir uma sessão para isso é janela demais.
 
 **Q3. Quando o pai integra?**
 - A. Sozinho, uma vez, quando o lote inteiro termina.
 - B. A cada filho que termina.
 - C. Só quando a pessoa pedir.
-- **Recomendo A.** B gasta um turno por filho e integra árvore pela metade; C
+- **Decidido: A** (aprovado pelo dono). B gasta um turno por filho e integra árvore pela metade; C
   deixa trabalho pronto parado sem ninguém dizer.
 
 **Q4. Onde os filhos escrevem?**
@@ -452,7 +450,7 @@ Passos 2–6: `CHANGELOG.md` (duas edições) e changelog de família, MINOR;
   já faz).
 - B. Uma `git worktree` por filho, com todas as ferramentas, e o pai junta.
 - C. Na mesma árvore, com `bash` e o sandbox de escrita reduzido ao `owns`.
-- **Recomendo A agora, B depois** (passo 13). A reaproveita tudo que existe e a
+- **Decidido: A agora, B depois** (aprovado pelo dono) (passo 13). A reaproveita tudo que existe e a
   `delegated-writing` RN-7 já mostrou que worktree não resolve incoerência, só
   a adia para a junção. B vale quando os conjuntos não puderem ser disjuntos ou
   quando o filho precisar rodar testes; C promete uma contenção que o sandbox
@@ -462,27 +460,27 @@ Passos 2–6: `CHANGELOG.md` (duas edições) e changelog de família, MINOR;
 - A. Mesmo prazo e mesma negação de toda sessão (120 s), relatada ao pai.
 - B. Sem prazo para filho: espera a pessoa, e o prazo do filho (RN-8) não conta.
 - C. Uma resposta nova, "permitir para o lote", dada uma vez.
-- **Recomendo B.** O prazo existe para um turno não ficar preso; num filho, o
+- **Decidido: B** (aprovado pelo dono). O prazo existe para um turno não ficar preso; num filho, o
   pai não está preso, e negar sozinho perde trabalho que a pessoa só não viu
   ainda. C mexe no consentimento (ADR-02) e merece spec própria.
 
 **Q6. O filho tem definição de pronto própria?**
 - A. Não: só o pai confere, na árvore inteira.
 - B. Sim, se o pai declarar critérios por filho no lote.
-- **Recomendo A** na primeira entrega. Um critério do filho roda numa árvore que
+- **Decidido: A** (aprovado pelo dono) na primeira entrega. Um critério do filho roda numa árvore que
   outros filhos estão mudando; B só faz sentido com Q4-B.
 
 **Q7. Desfazer o lote.**
 - A. Só por sessão (o `undo` de cada um).
 - B. Uma operação "desfazer o lote" no pai, que desfaz o último turno de cada
   filho do lote.
-- **Recomendo A agora**, com B como proposta futura: desfazer N sessões de uma
+- **Decidido: A agora** (aprovado pelo dono), com B como proposta futura: desfazer N sessões de uma
   vez é atômico só no nome se uma delas recusar um arquivo.
 
 **Q8. O nome do filho.**
 - A. O pai dá um título curto no lote (`title`).
 - B. O daemon deriva da tarefa, como deriva o título de uma conversa.
-- **Recomendo A**, com B quando faltar: o pai sabe o que separou; fecha L4.
+- **Decidido: A** (aprovado pelo dono), com B quando faltar: o pai sabe o que separou; fecha L4.
 
 ## 13. Fora de escopo
 
@@ -490,10 +488,12 @@ Passos 2–6: `CHANGELOG.md` (duas edições) e changelog de família, MINOR;
 - Filhos em outro workspace que não o do pai.
 - Junção automática de worktrees (vem com Q4-B, se vier).
 - Um filho mandar mensagem a outro filho. Tudo passa pelo pai.
-- O `/loop` com filhos: um loop por pasta, cada pasta orquestrada, é a soma
-  desta proposta com a do desktop (`desktop/docs/proposals/loop.md`), e espera
-  as duas.
+- O `/loop` com filhos (cada pasta orquestrada): espera este e o `/loop` no
+  desktop (`desktop/docs/proposals/loop.md`) estarem construídos.
 
 ## 14. Changelog
 
-_Sem alterações desde a criação._
+- 2026-10-13 — o dono aprovou: Q4 A (mesma árvore, `owns` disjuntos, sem
+  `bash`; worktree depois), Q5 B (o pedido do filho espera a pessoa, fora do
+  prazo dele; RN-3 e §11 reescritas) e as recomendações de Q1, Q2, Q3, Q6, Q7
+  e Q8. Constrói-se depois do `/loop` no desktop.

@@ -261,7 +261,7 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
-- **Uma proposta de orquestrador, à espera de aprovação.** Uma família de spec
+- **Um desenho de orquestrador, aprovado pelo dono em 2026-10-13.** Uma família de spec
   nova, `orchestration`, abre com o documento de pesquisa: uma conversa que
   reparte o trabalho em sessões filhas que o daemon roda em paralelo, cada uma
   uma sessão de verdade — visível na própria janela da grade, conduzível,
@@ -269,7 +269,7 @@ existe para impedir exatamente isso.
   e livre para conversar. Cobre a propriedade de caminho arrendada entre
   sessões, como os relatos voltam e quando o pai integra, falha, prazo e
   orçamento, as mudanças no protocolo e nos clientes, como se mede, e oito
-  perguntas em aberto, cada uma com uma recomendação. Escrita antes porque muda
+  decisões. Escrita antes porque muda
   quem cria sessões e quem responde aprovações, e o dono pediu para aprovar o
   desenho antes de qualquer código.
 - **O daemon lista os comandos do usuário num workspace.** `GET /v1/commands`

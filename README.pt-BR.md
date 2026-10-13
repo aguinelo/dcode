@@ -547,7 +547,7 @@ Dezenove famílias. Cada uma declara seu regime, e o regime decide como ela é v
 | [delegated-writing](docs/specs/architecture/delegated-writing/) | misto | quando a escrita é dividida entre filhos, e quem relata |
 | [task-ledger](docs/specs/architecture/task-ledger/) | misto | o que está em voo, e quanto custou |
 | [learned-memory](docs/specs/architecture/learned-memory/) | misto | o que o agente descobre, versionado onde gente lê — **só desenho, não construído** |
-| [orchestration](docs/specs/architecture/orchestration/) | misto | uma conversa que reparte o trabalho em sessões filhas e continua livre para conversar — **proposta, não aprovada** |
+| [orchestration](docs/specs/architecture/orchestration/) | misto | uma conversa que reparte o trabalho em sessões filhas e continua livre para conversar — **só desenho, não construído** |
 
 ---
 

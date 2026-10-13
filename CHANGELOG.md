@@ -263,14 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
-- **A proposal for an orchestrator, awaiting approval.** A new spec family,
+- **An orchestrator design, approved by the owner on 2026-10-13.** A new spec family,
   `orchestration`, opens with its research document: a conversation that splits
   work into child sessions the daemon runs in parallel, each one a real session
   — visible in its own grid window, steerable, asking the person for its own
   approvals — while the orchestrator stays idle and free to talk. It covers path
   ownership leased across sessions, how reports return and when the parent
   integrates, failure, deadlines and budget, the protocol and client changes,
-  how it is measured, and eight open questions with a recommendation each.
+  how it is measured, and eight decisions.
   Written first because it changes who creates sessions and who answers
   approvals, and the owner asked to approve the design before any code.
 - **The daemon lists a workspace's user commands.** `GET /v1/commands` answers
