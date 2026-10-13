@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 18, with 207 decision changelogs |
+| spec families | 18, with 208 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,18 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A recorded conversation can be read without loading it.**
+  `GET /v1/conversations/{id}/events` answers one page of a conversation that
+  ended, read from its record — the chain it continues first, numbered as one
+  sequence under its own id, the way a session continuing it would replay it.
+  Pages are capped at 5000 events; a larger `limit` is refused rather than
+  trimmed, and a page that stops short says where to read on. The id must be
+  letters, digits, `-` and `_`, so it cannot name a file outside the record
+  directory, and a `session.resumed` marker naming one outside it is no longer
+  followed. A missing record is `session_not_found`, never an empty
+  conversation. Before, the only route for events served loaded sessions, so
+  the desktop opened a finished conversation onto an empty thread and the
+  person took it for lost.
 - **The daemon lists a workspace's memory and skills.** `GET /v1/memory`
   answers what a session in a workspace reads as memory: every entry of
   `.dcode/memory.md` with its kind, subject, body and provenance, marked stale

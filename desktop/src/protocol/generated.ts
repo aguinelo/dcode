@@ -95,6 +95,37 @@ export interface ConversationChange {
   conversation?: Conversation;
   id?: string;
 }
+/**
+ * ConversationEventsLimit is the most events one page of a recorded
+ * conversation carries, and what a page carries when the request does not say.
+ * A record holds every fragment of every answer, so a long conversation is
+ * tens of thousands of events; one response with all of them would be however
+ * many megabytes the conversation happened to reach. A limit above this is
+ * refused rather than lowered, so a client is never handed less than it asked
+ * for without being told.
+ */
+export const ConversationEventsLimit = 5000;
+/**
+ * ConversationEventsResponse answers GET /conversations/{id}/events: one page
+ * of a recorded conversation, read from its record without loading it.
+ * The events are the conversation the way a session continuing it would
+ * replay it — the chain it continues first, oldest first, a question already
+ * answered left out — numbered as one sequence from 1 under the conversation's
+ * own id. Seq is the position in that reading, which is what from and Next
+ * count.
+ */
+export interface ConversationEventsResponse {
+  events: Event[];
+  /**
+   * Total is how many events the whole reading has.
+   */
+  total: number /* int */;
+  /**
+   * Next is the position the next page starts at, or zero when this page
+   * ends the conversation. Non-zero is the response saying it was cut.
+   */
+  next?: number /* uint64 */;
+}
 
 //////////
 // source: errors.go

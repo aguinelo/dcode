@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 18, com 207 changelogs de decisão |
+| famílias de spec | 18, com 208 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,18 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma conversa gravada pode ser lida sem ser carregada.**
+  `GET /v1/conversations/{id}/events` responde uma página de uma conversa que
+  terminou, lida do registro — a cadeia que ela continua primeiro, numerada
+  como uma sequência só sob o id dela, como uma sessão que a continuasse a
+  reproduziria. A página tem teto de 5000 eventos; `limit` maior é recusado em
+  vez de aparado, e página que para antes do fim diz onde continuar. O id só
+  pode ter letras, dígitos, `-` e `_`, então não nomeia arquivo fora da pasta
+  de registros, e um marcador `session.resumed` que nomeia um fora dela deixa
+  de ser seguido. Registro inexistente é `session_not_found`, nunca conversa
+  vazia. Antes, a única rota de eventos servia sessão carregada, e o desktop
+  abria uma conversa terminada numa thread vazia, que a pessoa tomou por
+  perdida.
 - **O daemon lista a memória e as skills de um workspace.** `GET /v1/memory`
   responde o que uma sessão num workspace lê como memória: cada entrada do
   `.dcode/memory.md` com tipo, assunto, corpo e procedência, marcada velha e

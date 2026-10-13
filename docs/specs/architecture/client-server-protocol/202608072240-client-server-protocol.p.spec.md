@@ -57,6 +57,7 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/sessions` | `experimental` | Lista sessões vivas. |
 | `GET` | `/conversations` | `experimental` | Lista as conversas, vivas e gravadas, da atividade mais recente para a mais antiga. Query `workspace` (absoluto) guarda um projeto. Devolve `ListConversationsResponse`. |
 | `GET` | `/conversations/events` | `experimental` | **SSE.** A lista inteira primeiro (`snapshot`), depois cada conversa que mudou (`changed`) ou saiu (`removed`). Sem `from`: reconectar recebe outro `snapshot`. |
+| `GET` | `/conversations/{id}/events` | `experimental` | Uma página da conversa **gravada**, lida do registro sem carregá-la nem continuá-la. Query `from` (posição, default `1`) e `limit` (de `1` a `ConversationEventsLimit`, que é o default). Devolve `ConversationEventsResponse`. Id fora do alfabeto de `session.ValidID`, `from` ou `limit` fora da faixa → `invalid_input`; registro inexistente → `session_not_found`. |
 | `GET` | `/models` | `experimental` | Os modelos que uma sessão pode pedir: o que ela recebe sem pedir nenhum e cada perfil do `models.toml` (o do usuário e o do projeto), cada um dizendo se a família tem medição. Query `workspace` (absoluto, opcional) escolhe o projeto; sem ela, vale a configuração com que o daemon subiu. Devolve `ModelsResponse`. |
 | `GET` | `/memory` | `experimental` | O que uma sessão do workspace lê como memória: cada entrada do `.dcode/memory.md` com tipo, assunto, corpo e procedência, se está velha e se a sessão a mostra, e os blocos que não são memória, com o motivo. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `MemoryResponse`. |
 | `GET` | `/skills` | `experimental` | As skills que uma sessão do workspace tem: as do usuário e as do projeto, com o que cada uma declara de si e de onde vem, as retidas marcadas, e os arquivos que não carregaram, com o motivo. Query `workspace` (absoluto, obrigatória). Devolve `SkillsResponse`. |
@@ -216,6 +217,19 @@ type ConversationChange struct {
 
 Abrir uma conversa gravada é continuá-la numa sessão nova
 (`CreateSessionRequest.Resume`): nada sobrevive a quem o criou.
+
+Ler uma conversa gravada não é continuá-la: `GET /conversations/{id}/events`
+devolve os eventos do registro, uma página por vez.
+
+```go
+const ConversationEventsLimit = 5000 // teto e default de uma página
+
+type ConversationEventsResponse struct {
+    Events []Event `json:"events"`         // a leitura do Carry, numerada de 1 sob o id da conversa
+    Total  int     `json:"total"`          // quantos eventos a leitura inteira tem
+    Next   uint64  `json:"next,omitempty"` // onde a próxima página começa; zero quando esta é a última
+}
+```
 
 ### 5.3 Os modelos que uma sessão pode pedir
 
@@ -420,6 +434,11 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Conversa que termina continua na lista, como gravada, e o fluxo diz.
 - Registro é relido para a lista só quando o arquivo mudou, e só ele.
 - A linha viva e a linha gravada de uma conversa são dobradas pelo mesmo código: terminar não muda o que a lista diz dela além de que terminou.
+- Conversa gravada é lida do registro sem ser carregada, a cadeia inteira e numerada de 1 sob o id dela, como uma sessão que a continuasse a reproduziria.
+- Id de conversa é nome de arquivo dentro da pasta de registros e nada mais: fora do alfabeto fechado, é recusado com `invalid_input` antes de tocar o disco.
+- Marcador `session.resumed` que nomeia id fora da pasta não é seguido.
+- Página de conversa gravada tem teto; `limit` acima dele é recusado, não aparado, e página que não chega ao fim diz onde continuar.
+- Ler conversa sem registro diz que ela não existe; daemon sem transcrições recusa dizendo por quê, nunca responde conversa vazia.
 - `GET /models` lista o modelo que uma sessão do workspace recebe sem pedir nenhum e os perfis do `models.toml` dela — o do usuário e o do projeto, por nome; sem `workspace`, vale a configuração com que o daemon subiu.
 - Escolha do menu é a sessão que ela abre: pedir o nome monta a sessão com o modelo e a janela que o menu prometeu.
 - Modelo de família sem medição diz isso antes de ser escolhido: `measured` falso e, em `notice`, a admissão da própria família (`provider.Unmeasured`).
@@ -457,3 +476,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202609302328 — Uma lista de conversas, vivas e gravadas](changelog/202609302328-uma-lista-de-conversas.md)
 - [202610070001 — Os modelos que uma sessão pode pedir](changelog/202610070001-os-modelos-que-uma-sessao-pode-pedir.md)
 - [202610080001 — A memória e as skills de um workspace](changelog/202610080001-a-memoria-e-as-skills-de-um-workspace.md)
+- [202610131800 — Ler uma conversa gravada, sem carregá-la](changelog/202610131800-ler-uma-conversa-gravada.md)

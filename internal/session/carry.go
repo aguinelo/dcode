@@ -80,6 +80,13 @@ func carry(path string, seen map[string]bool) ([]protocol.Event, int, error) {
 			if json.Unmarshal(ev.Payload, &d) != nil || d.SourceID == "" {
 				continue
 			}
+			if ValidID(d.SourceID) != nil {
+				// The marker is data read from disk, and the id it names becomes
+				// a file name just like one that came over the wire: `../x`
+				// would read a record outside the directory. Not followed, the
+				// way a missing ancestor is not.
+				continue
+			}
 			older, n, oerr := carry(filepath.Join(filepath.Dir(path), d.SourceID+".jsonl"), seen)
 			if oerr != nil {
 				// A missing ancestor is a shorter conversation, not a failed

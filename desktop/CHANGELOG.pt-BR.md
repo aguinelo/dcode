@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Os tipos do protocolo trazem a página de uma conversa gravada.**
+  `src/protocol/generated.ts` foi regenerado para a nova rota do núcleo,
+  `GET /v1/conversations/{id}/events` (`ConversationEventsResponse`,
+  `ConversationEventsLimit`). Nada na janela a lê ainda; isso é a próxima
+  mudança, que abre uma conversa terminada no histórico dela em vez de numa
+  thread vazia.
 - **A aprovação oferece as respostas que a TUI oferece.** O cartão oferecia
   sempre uma vez, nesta sessão e negar; o protocolo tem cinco respostas, e a TUI
   escolhe pela travessia. Uma travessia de rede agora oferece uma vez, neste
