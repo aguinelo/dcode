@@ -82,6 +82,7 @@ const api: DcodeApi = {
   resolveApproval: (sessionId, approvalId, decision) =>
     invoke<Answer<null>>(CHANNELS.resolveApproval, sessionId, approvalId, decision),
   setMode: (sessionId, mode) => invoke<Answer<null>>(CHANNELS.setMode, sessionId, mode),
+  renameConversation: (id, name) => invoke<Answer<null>>(CHANNELS.renameConversation, id, name),
 
   copy: (text) => invoke<Answer<null>>(CHANNELS.copy, text),
   openTerminal: (sessionId, command, cols, rows) =>

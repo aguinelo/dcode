@@ -147,6 +147,12 @@ export interface DcodeApi {
   resolveApproval(sessionId: string, approvalId: string, decision: string): Promise<Answer<null>>;
   /** Switches a session's behavioural mode: plan, assist or auto. The session's own event confirms it. */
   setMode(sessionId: string, mode: string): Promise<Answer<null>>;
+  /**
+   * Names a conversation, live or ended (`POST /sessions/{id}/name`, D43); an
+   * empty name gives the automatic title back. The title changes when the
+   * list does, never on the answer alone.
+   */
+  renameConversation(id: string, name: string): Promise<Answer<null>>;
 
   /** Puts text on the system's clipboard. */
   copy(text: string): Promise<Answer<null>>;
@@ -196,6 +202,7 @@ export const CHANNELS = {
   interrupt: 'dcode:interrupt',
   resolveApproval: 'dcode:resolve-approval',
   setMode: 'dcode:set-mode',
+  renameConversation: 'dcode:rename-conversation',
   copy: 'dcode:copy',
   terminalCreate: 'dcode:terminal-create',
   terminalWrite: 'dcode:terminal-write',

@@ -113,3 +113,39 @@ Descartados: continuar a conversa só para mostrá-la (abriria uma sessão que
 ninguém pediu); ler o arquivo do registro pelo processo principal (acoplaria o
 desktop ao formato do disco, que é do núcleo); mostrar só as últimas páginas
 (sem o começo, a pergunta que abriu a conversa some).
+
+**D43. Renomear uma conversa pela janela.** O daemon nomeia conversas desde
+`POST /v1/sessions/{id}/name` (`RenameSessionRequest`), vivas ou terminadas, e
+a janela nunca pedia: o título era sempre a primeira pergunta.
+
+- **Onde:** duplo clique no título — da janela da grade, da maximizada e da
+  thread do Crew — vira um campo no lugar dele, com a mesma classe, ocupando o
+  mesmo espaço. "Renomear" no menu ⋯ (D40) abre o mesmo campo, e fica
+  oferecido no meio de um turno: o daemon aceita o nome a qualquer hora. A
+  lateral não tem menu por conversa, então não ganha um. Duplo clique no resto
+  do cabeçalho da janela da grade continua maximizando; no título, renomeia.
+- **Teclas:** Enter salva, Esc desiste, sair do campo salva. Nada mudou fecha
+  sem pedir nada. Nome vazio é um nome: devolve o título automático. Enquanto o
+  campo está aberto, nenhuma tecla vai para a janela (o campo para a
+  propagação de todas, como o campo da mensagem faz com o Esc).
+- **Não otimista:** o título que se vê é o do daemon. Uma conversa viva anuncia
+  o nome em `session.renamed`, e a lista o recebe pelo stream dela. Uma
+  terminada é nomeada no registro, e nenhum stream anuncia isso: o processo
+  principal relê `GET /v1/conversations` depois do sim e passa a linha dela
+  adiante como a mudança que ela é. Se a releitura falha, a janela diz que o
+  daemon guardou o nome e que o título aparece quando a lista mudar — nunca um
+  sim calado com o título velho.
+- **Recusa:** um aviso com o motivo do daemon, e o campo continua aberto com o
+  texto, com o cursor nele. Sair do campo depois de uma recusa não reenvia o
+  mesmo texto; Enter pede de novo, Esc desiste.
+- **Na fronteira:** o canal confere o id no alfabeto do núcleo (como D42: ele
+  vira caminho no daemon), apara o nome e recusa, sem cortar, o que passa dos
+  120 caracteres do `session.NameLimit`.
+- Nada em repouso muda: as referências 02 e 03 medem 0,00%.
+
+Descartados: mudar o título ao digitar e desfazer na recusa (o título mostraria
+por um instante um nome que o daemon não guardou); um diálogo para o nome (tira
+o olho do título que se está mudando); um item na lateral (ela não tem menu por
+conversa, e criar um é outra decisão). Pedido ao núcleo, sem pressa: o stream
+da lista anunciar o nome de uma conversa terminada, o que tornaria a releitura
+desnecessária.

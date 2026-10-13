@@ -1,4 +1,4 @@
-import { ConversationSnapshot, Version, type Conversation, type ConversationChange } from '../protocol/generated';
+import { ConversationChanged, ConversationSnapshot, Version, type Conversation, type ConversationChange } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import type { Answer, DaemonStatus, Refusal, SessionEvents, StreamEnd } from '../shared/api';
 import { countWorking, foldConversations } from './conversations';
@@ -7,7 +7,7 @@ import { findBinary, findSocket, type Lookup } from './locate';
 import { Requests, notConnected } from './requests';
 import { exitWords, lastWords, type Exit, type Serve } from './serve';
 import { decodeData } from './sse';
-import { exchange, openStream, request, shown, type Stream, type StreamEnded } from './wire';
+import { UNEXPECTED, exchange, openStream, request, shown, type Stream, type StreamEnded } from './wire';
 
 // The main process is the daemon's client (D2, D19), and this is where it
 // stands with the daemon: finding one or starting one, and then knowing at
@@ -148,6 +148,30 @@ export class Connection {
   /** The conversations as the daemon last listed them, or null before the first list. */
   listed(): readonly Conversation[] | null {
     return this.list;
+  }
+
+  /**
+   * Names a conversation (D43). A live one's stream announces the name, and
+   * the list's stream with it. An ended one is named in its record, which no
+   * stream announces: its row is read again from the daemon's list and passed
+   * on as the change it is, so the title every window shows is the daemon's,
+   * never the one typed.
+   */
+  async rename(id: string, name: string): Promise<Answer<null>> {
+    const named = await this.requests.rename(id, name);
+    if (!named.ok) return named;
+    if (this.list?.find((c) => c.id === id)?.live) return named;
+    const kept = (message: string): Answer<null> => ({
+      ok: false,
+      refusal: { code: UNEXPECTED, message: `O daemon guardou o nome, mas a lista não foi relida, e o título aparece quando ela mudar: ${message}` },
+    });
+    const listed = await this.requests.listConversations();
+    if (!listed.ok) return kept(listed.refusal.message);
+    const all = isRecord(listed.value) ? (listed.value.conversations ?? []) : null;
+    const row = Array.isArray(all) ? (all as unknown[]).find((c) => isRecord(c) && c.id === id) : undefined;
+    if (!row) return kept(`ela não traz a conversa ${shown(id)}.`);
+    this.listFrame({ kind: ConversationChanged, conversation: row });
+    return named;
   }
 
   /** The app started the daemon, and it still runs: quitting stops it (D19). */

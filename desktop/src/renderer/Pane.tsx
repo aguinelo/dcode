@@ -7,6 +7,7 @@ import type { Row } from '../state/sidebar';
 import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
 import { RecordedBody } from './RecordedBody';
+import { ConversationTitle } from './RenameTitle';
 import { ActionsButton } from './SessionActions';
 
 /**
@@ -94,9 +95,7 @@ export function Pane(p: PaneProps) {
     >
       <div className="pane-head" onDoubleClick={p.onMaximize}>
         <span className={`pane-glyph tone-${v.tone}${v.live ? ' dc-breath' : ''}`}>{v.glyph}</span>
-        <span className="pane-title" title={row.title}>
-          {row.title}
-        </span>
+        <ConversationTitle id={row.id} title={row.title} className="pane-title" tooltip={row.title} />
         {row.model && (
           <button type="button" className="chip" title="Continuar em outro modelo" onClick={(e) => p.onModel(e.currentTarget)}>
             {session?.info?.model ?? row.model} ⌄

@@ -58,3 +58,33 @@
   font-size: 10.5px;
   color: var(--dc-faint);
 }
+
+/* ---- a conversation's title, being renamed (D43): only after a double-click -- */
+
+.title-field {
+  width: 100%;
+  min-width: 0;
+  margin: -1px 0;
+  padding: 0 4px;
+  font-family: inherit;
+  color: var(--dc-emph);
+  background: var(--dc-sunken);
+  border: 1px solid var(--dc-line-focus);
+  border-radius: var(--dc-radius-sm);
+  outline: none;
+  text-overflow: clip;
+}
+.title-field:focus {
+  border-color: var(--dc-accent);
+}
+.title-field[aria-busy] {
+  color: var(--dc-dim);
+}
+.title-field::placeholder {
+  color: var(--dc-faint);
+  font-weight: 400;
+}
+/* The grid's title takes its size from the head; an input would take the browser's. */
+.pane-title.title-field {
+  font-size: inherit;
+}

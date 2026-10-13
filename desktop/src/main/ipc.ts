@@ -139,6 +139,14 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const named = input.mode(mode);
     return named.ok ? ask.setMode(session.value, named.value) : named;
   });
+  // A conversation's name (D43), live or ended: the id in the daemon's
+  // alphabet, since it becomes a path there, and the name trimmed and in size.
+  handle(CHANNELS.renameConversation, (_event, id, name) => {
+    const which = input.recordedId(id);
+    if (!which.ok) return which;
+    const named = input.conversationName(name);
+    return named.ok ? daemon.rename(which.value, named.value) : named;
+  });
   handle(CHANNELS.exec, (_event, id, typed) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

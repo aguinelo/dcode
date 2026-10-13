@@ -33,6 +33,7 @@ export const fixtureActions: WindowActions = {
   listModels: async () => ({ ok: false, why: NOT_CONNECTED }),
   switchModel: async () => ({ ok: false, why: NOT_CONNECTED }),
   setMode: unsent,
+  rename: unsent,
   exec: unsent,
   undo: async () => ({ ok: false, why: NOT_CONNECTED }),
   compact: async () => ({ ok: false, why: NOT_CONNECTED }),

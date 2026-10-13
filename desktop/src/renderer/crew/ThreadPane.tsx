@@ -7,6 +7,7 @@ import { emptySession, type SessionView } from '../../state/session';
 import type { Row } from '../../state/sidebar';
 import { ConversationBody } from '../ConversationBody';
 import { RecordedBody } from '../RecordedBody';
+import { ConversationTitle } from '../RenameTitle';
 import { ActionsButton } from '../SessionActions';
 import type { CrewHandlers } from './handlers';
 
@@ -60,7 +61,7 @@ export function ThreadPane({
       <header className="crew-head">
         <span className={`pane-glyph tone-${view.tone}${view.live ? ' dc-breath' : ''}`}>{view.glyph}</span>
         <span className="crew-head-text">
-          <span className="crew-title">{row.title}</span>
+          <ConversationTitle id={row.id} title={row.title} className="crew-title" />
           <span className="crew-where">
             <ContextLine row={row} state={git} />
           </span>
