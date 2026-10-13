@@ -1,4 +1,5 @@
 import { menuOf } from '../../state/models';
+import { THEME_CHOICES, type ThemeChoice } from '../../state/theme';
 import type { Look } from '../TopBar';
 import type { DaemonView, WindowActions } from '../window';
 import { Page, PlacePicker, usePlace, useWorkspaceData, type Place } from './Page';
@@ -70,13 +71,15 @@ function Models({ places, preferred, actions }: { places: readonly Place[]; pref
 }
 
 /**
- * Configurações: only what is real now — which version of the screen, where
- * the daemon stands, and what models each project can ask for. Nothing here
- * pretends to save a setting the daemon does not have.
+ * Configurações: only what is real now — which version of the screen and
+ * which palette, where the daemon stands, and what models each project can
+ * ask for. Nothing here pretends to save a setting the daemon does not have.
  */
 export function SettingsSection({
   look,
   onLook,
+  theme,
+  onTheme,
   daemon,
   places,
   preferred,
@@ -84,6 +87,8 @@ export function SettingsSection({
 }: {
   look: Look;
   onLook: (look: Look) => void;
+  theme: ThemeChoice;
+  onTheme: (theme: ThemeChoice) => void;
   daemon: DaemonView;
   places: readonly Place[];
   preferred: string | null;
@@ -98,6 +103,17 @@ export function SettingsSection({
           {(['grade', 'crew'] as const).map((l) => (
             <button key={l} type="button" className={l === look ? 'on' : ''} aria-pressed={l === look} onClick={() => onLook(l)}>
               {l === 'grade' ? 'Grade' : 'Crew'}
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="crew-card-block">
+        <h2>Tema</h2>
+        <p className="crew-quiet">Lembrado nesta janela. Sistema segue o claro ou escuro do sistema; o escuro é o padrão (D35).</p>
+        <div className="crew-choice" role="group" aria-label="Tema">
+          {THEME_CHOICES.map((t) => (
+            <button key={t.value} type="button" className={t.value === theme ? 'on' : ''} aria-pressed={t.value === theme} onClick={() => onTheme(t.value)}>
+              {t.label}
             </button>
           ))}
         </div>

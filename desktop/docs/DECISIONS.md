@@ -28,6 +28,7 @@ As que estão no outro arquivo:
 - [D32](DECISIONS-2.md) — Uma segunda versão da tela, Crew, ao lado da grade.
 - [D33](DECISIONS-2.md) — A Crew é um painel com trilho de seções, só com o que o daemon tem.
 - [D34](DECISIONS-2.md) — O texto do modelo é desenhado como o markdown que ele é.
+- [D35](DECISIONS-2.md) — Um tema claro, sóbrio, à escolha; o escuro continua o padrão.
 
 ## Decisões
 
@@ -69,7 +70,8 @@ seria um estado que parece sucesso. Enviar, parar e responder aprovação avisam
 que nada foi enviado. Sem estado no endereço, a gravação abre na grade (D30).
 
 **D6. O tema é o de D29** (era: os tokens do handoff nos dois temas, seguindo o
-sistema). Os tokens são variáveis CSS, num bloco só (`styles/tokens.css`). A Geist
+sistema), escuro por padrão e claro à escolha (D35). Os tokens são variáveis CSS,
+num bloco só por tema (`styles/tokens.css`, e os da Crew em `crew.css`). A Geist
 Mono vem do `@fontsource-variable` (OFL), empacotada, e é a reserva da mono onde o
 sistema não tem uma; nada vem da rede em tempo de execução. Com
 `prefers-reduced-motion`, nada pulsa nem pisca e o verbo da atividade não roda: o

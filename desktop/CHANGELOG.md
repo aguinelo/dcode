@@ -10,6 +10,18 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A sober light theme, chosen per window; dark stays the default.** Grafite
+  was dark only (D29), which leaves out daylight and anyone who reads better on
+  light. Sistema (follows the system), Claro or Escuro, in Crew's
+  Configurações and, on the grid, behind the ⚙ at the foot of the sidebar —
+  which said "not yet" before and costs no pixel the rulers measure. Light is a
+  token block for each look: a neutral near-white ground, near-black text, the
+  faintest grey above 4.5:1 everywhere, an olive-lime accent for text and marks
+  (the bright lime stays only as the send button's fill, under dark ink), and
+  amber, green and red darkened to read as text. The colours still written in
+  the styles became tokens. The window opens hidden until its first frame is
+  painted, so neither palette flashes the other. Unset, it is Escuro, and both
+  visual references still measure 0.00% (D35).
 - **The model's text is drawn as the markdown it is.** Replies with bold
   headings and bullet lists showed literal asterisks and dashes. Model text now
   draws paragraphs, bold, italic, inline code, fenced code blocks (monospace,

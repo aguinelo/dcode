@@ -20,7 +20,7 @@
   background: var(--dc-sunken);
 }
 .composer:focus-within {
-  border-color: #3a414b;
+  border-color: var(--dc-line-focus);
 }
 
 .composer-field {

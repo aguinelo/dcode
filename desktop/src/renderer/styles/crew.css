@@ -35,6 +35,27 @@
   font-feature-settings: 'ss01', 'cv11';
 }
 
+/* Crew in light (D35): the same contrast-first rule — white panels, the
+   faintest grey at about 6.5:1 — with grafite's light accent and semantics. */
+:root[data-theme='light'] .window.look-crew {
+  --dc-chrome: #f7f7f8;
+  --dc-panel: #ffffff;
+  --dc-raised: #f2f2f3;
+  --dc-sunken: #f9f9fa;
+  --dc-line: #dedee2;
+  --dc-line-soft: #ebebee;
+  --dc-text: #18181b;
+  --dc-emph: #09090b;
+  --dc-dim: #3d3d44;
+  --dc-faint: #56565f;
+  --dc-hover: rgba(0, 0, 0, 0.04);
+  --dc-sel: rgba(0, 0, 0, 0.07);
+  --dc-ok: #17723a;
+  --dc-err: #b42318;
+  --dc-warn: #855300;
+  --dc-warn-line: rgba(133, 83, 0, 0.5);
+}
+
 /* The look switch in the top bar: both versions, side by side. */
 .look-switch {
   display: inline-flex;

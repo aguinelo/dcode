@@ -3,6 +3,10 @@
  * one accent — lime — for what is working and for the product's mark; amber
  * only for what waits for you; green and red only for what was measured.
  *
+ * Dark is the default. The light palette (D35) redefines the same tokens
+ * under [data-theme='light'] on the document root; no component carries a
+ * colour of its own, so a theme is this block and Crew's, nothing else.
+ *
  * The face is the system's: SF on macOS, Segoe UI on Windows. Linux has no
  * single system face, and there the bundled Geist Mono reads well, so it is
  * the fallback for text as well as for code.
@@ -20,6 +24,9 @@
   --dc-sunken: #0c0e10;
   --dc-line: #262a31;
   --dc-line-soft: #1e2227;
+  --dc-line-hover: #313740;
+  --dc-line-strong: #39404a;
+  --dc-line-focus: #3a414b;
   --dc-text: #d9dde3;
   --dc-emph: #f2f4f7;
   --dc-dim: #9aa0a8;
@@ -30,6 +37,7 @@
   --dc-accent-ink: #0f1114;
   --dc-accent-soft: rgba(198, 243, 107, 0.1);
   --dc-ok: #7fd38a;
+  --dc-ok-line: rgba(127, 211, 138, 0.35);
   --dc-err: #ff7a6b;
   --dc-warn: #f2b84b;
   --dc-warn-bg: rgba(242, 184, 75, 0.07);
@@ -40,6 +48,53 @@
   --dc-radius: 4px;
   --dc-radius-sm: 3px;
   --dc-shadow-popover: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --dc-shadow-dialog: 0 24px 70px rgba(0, 0, 0, 0.45);
+  --dc-veil: rgba(0, 0, 0, 0.45);
+  --dc-light-dot: #3a3f46;
+}
+
+/*
+ * Light (D35): sober. A neutral near-white ground — no cream, no blue — and
+ * near-black text; the quiet greys stay readable (the faintest at 5:1 or more
+ * on every ground). The lime cannot be read on white, so the accent darkens to
+ * an olive-lime for text and marks, and the bright lime stays only where it is
+ * a fill under dark ink: the send button. Amber, green and red darken to read
+ * as text. Ratios in docs/DECISIONS-2.md, D35.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --dc-chrome: #eeeff0;
+  --dc-panel: #f9f9fa;
+  --dc-raised: #ffffff;
+  --dc-sunken: #f3f3f4;
+  --dc-line: #d8d9dc;
+  --dc-line-soft: #e4e5e7;
+  --dc-line-hover: #c4c6ca;
+  --dc-line-strong: #b9bbc0;
+  --dc-line-focus: #a9acb2;
+  --dc-text: #1c1d20;
+  --dc-emph: #0a0b0c;
+  --dc-dim: #4a4c52;
+  --dc-faint: #5f6168;
+  --dc-hover: rgba(0, 0, 0, 0.04);
+  --dc-sel: rgba(0, 0, 0, 0.07);
+  --dc-accent: #4b6b00;
+  --dc-accent-ink: #ffffff;
+  --dc-accent-soft: rgba(75, 107, 0, 0.12);
+  --dc-ok: #1a6e30;
+  --dc-ok-line: rgba(26, 110, 48, 0.4);
+  --dc-err: #b52f1c;
+  --dc-warn: #8a5800;
+  --dc-warn-bg: rgba(138, 88, 0, 0.1);
+  --dc-warn-line: rgba(138, 88, 0, 0.5);
+  --dc-btn: #c6f36b;
+  --dc-btn-ink: #16181b;
+
+  --dc-shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.14);
+  --dc-shadow-dialog: 0 20px 60px rgba(0, 0, 0, 0.18);
+  --dc-veil: rgba(0, 0, 0, 0.2);
+  --dc-light-dot: #c9cacd;
 }
 
 @keyframes dcBreath {

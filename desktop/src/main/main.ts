@@ -60,8 +60,11 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 560,
     title: 'DCode',
-    // Painted before the first frame: the window is grafite whatever the
-    // system's theme (D29), so opening never flashes a light one.
+    // The theme is the renderer's to know (D35: localStorage, or the system's
+    // under Sistema), so the window stays hidden until its first frame is
+    // painted, and neither palette flashes the other on launch. This colour
+    // only shows behind a resize; it is the default dark ground.
+    show: false,
     backgroundColor: '#0f1114',
     // The window draws its own title bar and keeps the native controls: on
     // macOS the traffic lights sit at the left of the 40px top bar, centred on it.
@@ -75,6 +78,16 @@ function createWindow(): void {
       spellcheck: false,
     },
   });
+
+  win.once('ready-to-show', () => win.show());
+  // A renderer that never paints must not leave an invisible app behind: the
+  // window is shown anyway, and whatever it failed at is on screen.
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) {
+      console.error('dcode: the window did not paint within 5 s; showing it anyway');
+      win.show();
+    }
+  }, 5000);
 
   const target = rendererURL();
   if ('url' in target) void win.loadURL(target.url);

@@ -14,6 +14,7 @@ import { SettingsSection } from './crew/Settings';
 import { SessionsPane } from './crew/SessionsPane';
 import { ThreadPane } from './crew/ThreadPane';
 import { APPS_NOT_YET, KNOWLEDGE_NOT_YET, ROUTINES_NOT_YET } from './text';
+import type { ThemeChoice } from '../state/theme';
 import type { Look } from './TopBar';
 import type { DaemonView, WindowActions } from './window';
 
@@ -50,6 +51,7 @@ export function CrewView({
   measure,
   waiting,
   look,
+  theme,
   daemon,
   actions,
   on,
@@ -69,6 +71,7 @@ export function CrewView({
   /** How many conversations wait for you, for the rail. */
   waiting: number;
   look: Look;
+  theme: ThemeChoice;
   daemon: DaemonView;
   actions: WindowActions;
   on: CrewHandlers;
@@ -113,7 +116,7 @@ export function CrewView({
       body = <NotYetSection title="Conhecimento" about="Documentos e fontes que o agente consulta além do código." text={KNOWLEDGE_NOT_YET} />;
       break;
     case 'config':
-      body = <SettingsSection look={look} onLook={on.look} daemon={daemon} places={places} preferred={preferred} actions={actions} />;
+      body = <SettingsSection look={look} onLook={on.look} theme={theme} onTheme={on.theme} daemon={daemon} places={places} preferred={preferred} actions={actions} />;
       break;
   }
   return (

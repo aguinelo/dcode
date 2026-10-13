@@ -10,7 +10,7 @@
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--dc-veil);
 }
 
 .search {
@@ -27,7 +27,7 @@
   background: var(--dc-panel);
   border: 1px solid var(--dc-line);
   border-radius: var(--dc-radius);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--dc-shadow-dialog);
   overflow: hidden;
 }
 

@@ -29,7 +29,7 @@
   outline: none;
 }
 .pane:hover {
-  border-color: #313740;
+  border-color: var(--dc-line-hover);
 }
 .pane.waiting {
   border-color: var(--dc-warn-line);
@@ -75,7 +75,7 @@
 }
 button.chip:hover {
   color: var(--dc-text);
-  border-color: #39404a;
+  border-color: var(--dc-line-strong);
 }
 .icon-btn {
   flex: none;
@@ -346,7 +346,7 @@ button.chip:hover {
 }
 .model-badge.ok {
   color: var(--dc-ok);
-  border-color: rgba(127, 211, 138, 0.35);
+  border-color: var(--dc-ok-line);
 }
 .model-badge.warn {
   color: var(--dc-warn);
