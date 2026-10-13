@@ -386,3 +386,27 @@ daemon antigo daria um aviso a cada janela, longe de onde importa); expandir no
 daemon (a rota precisaria do texto digitado, e a mensagem já tem rota e
 garantias próprias); perguntar a cada `/` (um comando mudaria de sentido no meio
 da conversa, o que a TUI evita de propósito).
+
+**D51. Encerrar uma sessão pelo menu ⋯, perguntando antes quando um turno
+roda.** A janela só fechava uma sessão por conta própria — a nunca usada, ao
+fechar a janela dela, e a deixada para trás ao trocar de modelo (D28) —, e a
+pessoa não tinha como encerrar uma: ficava aberta até o daemon cair.
+
+- **Onde:** "Encerrar sessão" no menu ⋯ (D40), por último. Usa o mesmo
+  `DELETE /v1/sessions/{id}` (`closeSession`) que a janela já usava; nada novo no
+  protocolo.
+- **No meio de um turno**, ou com uma aprovação esperando, o item continua
+  oferecido, como o botão de parar, mas pergunta antes: o menu vira "Encerrar a
+  sessão?", diz o que se perde ("encerrar o interrompe no meio"), e o foco cai
+  em "Cancelar", para um ↵ distraído não encerrar. Em repouso, encerra direto:
+  nada se perde, e a conversa continua a um texto de distância.
+- **Depois:** o daemon guarda o registro e a lista passa a dizer que a conversa
+  terminou; a janela dela passa ao histórico (D42), e escrever nela continua
+  numa sessão nova (D21). Um aviso diz isso. Uma recusa vira aviso com o motivo
+  do daemon, e a sessão segue.
+- Nada em repouso muda: as referências 02 e 03 medem 0,00%.
+
+Descartados: um diálogo modal de confirmação (tira o olho da conversa que se
+está encerrando; o próprio menu basta); encerrar sem perguntar no meio de um
+turno (o trabalho em curso se perderia com um clique); esconder o item durante
+um turno (a pessoa que quer parar e fechar teria de parar primeiro e voltar).

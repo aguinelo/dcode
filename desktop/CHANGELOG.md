@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A session can be ended from the ⋯ menu.** The window only closed a
+  session on its own (one never used, and the one left behind by a model
+  switch), so a person could not end one. "Encerrar sessão" now closes it with
+  the same `DELETE /v1/sessions/{id}`; the daemon keeps the record, the list
+  shows the conversation ended, and writing in it continues it in a new
+  session. In the middle of a turn, or with an approval waiting, the menu asks
+  first, saying what would be cut short, with the focus on "Cancelar". A
+  refusal is a notice with the daemon's reason. Nothing at rest changes: both
+  visual references measure 0.00% (D51).
 - **The commands the person wrote are offered and sent as in the TUI.** The
   TUI offers the slash commands in `commands/*.md`, the user's and the
   project's; the window could not read them. It now asks the core
