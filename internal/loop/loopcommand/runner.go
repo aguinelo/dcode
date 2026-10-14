@@ -310,13 +310,12 @@ func (r *Runner) propose(ctx context.Context, i int, q LoopArgs) error {
 	if err != nil {
 		return fmt.Errorf("could not write the proposed definition of done: %w", err)
 	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
+	// The file is on disk now, stopped or not: the run says where, before it
+	// honours a stop that landed while it was being written.
 	r.change(func(run *protocol.LoopRun) {
 		run.Specs[i].Phase, run.Specs[i].Proposal = protocol.SpecProposed, out.Path
 	})
-	return nil
+	return ctx.Err()
 }
 
 // review stops the run for a person, and says whether to go on to the work.

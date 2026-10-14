@@ -637,6 +637,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Daemon que está encerrando não começa loop.
 - Id de loop que não pôde ser sorteado é erro, nunca um id de zeros.
 - Inscrito lento no fluxo de loops é largado, e isso é dito no log.
+- A sobreposição de árvores de loop vale também na raiz `/`.
 
 ## 10. Changelog
 

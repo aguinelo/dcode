@@ -157,3 +157,24 @@ func TestASlowLoopSubscriberIsDroppedAndSaid(t *testing.T) {
 	}
 	close(h.release)
 }
+
+// Nesting is nesting at the root too: a loop on "/" holds every tree.
+func TestOverlapsHoldsAtTheRoot(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"/", "/a", true},
+		{"/a", "/", true},
+		{"/", "/", true},
+		{"/a", "/a/b", true},
+		{"/a/b", "/a", true},
+		{"/a", "/ab", false},
+		{"/a/b", "/a/c", false},
+	}
+	for _, c := range cases {
+		if got := overlaps(c.a, c.b); got != c.want {
+			t.Errorf("overlaps(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}

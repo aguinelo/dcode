@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 219 decision changelogs |
+| spec families | 19, with 220 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A loop stopped while it writes a proposal still says where the file is,
+  and a loop on `/` holds every tree.** A stop now that landed during the
+  commit left a `done.toml` on disk and no proposal on the run; the path is now
+  recorded before the stop is honoured. And the refusal of a loop inside or
+  around a live one compared `/` as `//`, so a loop on the root refused
+  nothing. The loop-command spec also states that a goal stops at the first
+  folder whose turn ends at a ceiling, where the TUI goes on — on purpose.
 - **A goal qualifies every folder that declares nothing before any work.** In
   a `/loop <goal>`, each pending folder with no criteria now gets a qualifying
   session first, all in one pass, and the run stops with the proposals written

@@ -169,6 +169,7 @@ var protocolInvariants = map[string]string{
 	"Daemon que está encerrando":            "TestNoLoopStartsOnADaemonGoingAway",
 	"nunca um id de zeros":                  "TestALoopIDThatCannotBeDrawnIsAnError",
 	"Inscrito lento no fluxo de loops":      "TestASlowLoopSubscriberIsDroppedAndSaid",
+	"vale também na raiz":                   "TestOverlapsHoldsAtTheRoot",
 	// Images.
 	"imagem por valor":     "TestAnImageArrivesOnATurn",
 	"recusado na borda":    "TestAMalformedImageIsRefused",
