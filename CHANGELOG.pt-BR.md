@@ -267,7 +267,9 @@ existe para impedir exatamente isso.
   foi, cada proposta, o fim — com as palavras de sempre. Digitar o mesmo
   `/loop` de novo depois de uma proposta segue o loop que espera aquela
   revisão; um diferente é recusado, nomeando o loop que espera. Interromper o
-  turno do loop agora para o loop em vez de pular para a próxima pasta. O loop
+  turno do loop agora para o loop em vez de pular para a próxima pasta, e uma
+  mensagem enfileirada na sessão de um loop espera o loop em vez de abrir um
+  turno na pasta que o daemon está deixando. O loop
   carrega o que foi digitado, o que a pergunta achou de cada pasta e o que cada
   proposta escreveu (`args`, `criteria`, `unmet`, `unavailable`, `error`,
   `proposal_criteria`, `proposal_summary`), para nenhum cliente medir duas

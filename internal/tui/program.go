@@ -456,7 +456,14 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case loopChangedMsg:
 		return p, p.onLoopChanged(msg)
 
+	case loopNoteMsg:
+		return p, p.onLoopNote(msg)
+
 	case switchedMsg:
+		// Switching away on purpose stops following a loop: its next session
+		// would pull the person back. The loop goes on in the daemon, and
+		// typing it again picks it up.
+		p.stopFollowingLoop()
 		// A new session means a new event log, so the view is rebuilt rather
 		// than carried over: keeping entries from the old one would show a
 		// history the model no longer has.
@@ -501,13 +508,16 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if c := p.resumeTicking(); c != nil {
 			cmds = append(cmds, c)
 		}
-		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
+		// Not on a session a live loop is in: the daemon moves on when its turn
+		// ends, and a queued message sent now would start a second writer in
+		// the folder it is leaving, with a reply nobody would see. The queue
+		// waits for the loop and goes with the person (loop.go).
+		loopHere := p.loop != nil && p.loop.session == p.opts.SessionID
+		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 && !loopHere {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
 		}
-		// The loop's sequence is the daemon's: it moves on when a turn ends,
-		// and this client follows it (loop.go) rather than conducting it.
 		cmds = append(cmds, p.waitForEvent())
 		return p, tea.Batch(cmds...)
 

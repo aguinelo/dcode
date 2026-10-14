@@ -30,8 +30,19 @@ type loopFollow struct {
 	// session is the run's session on screen, so interrupting it stops the
 	// run and interrupting anything else does not.
 	session string
-	msgs    chan tea.Msg
-	cancel  context.CancelFunc
+	// interrupted is this client having stopped the run because the person
+	// interrupted its turn, so the end can say which stop it was.
+	interrupted bool
+	msgs        chan tea.Msg
+	ctx         context.Context
+	cancel      context.CancelFunc
+}
+
+// loopNoteMsg is something the follower has to say. It keeps the follow going
+// unless ended says the follower has stopped.
+type loopNoteMsg struct {
+	text  string
+	ended bool
 }
 
 // loopStartedMsg is a run this client started, or continued after a review.
@@ -104,7 +115,7 @@ func (p *program) onLoopStarted(msg loopStartedMsg) tea.Cmd {
 		}
 	}
 	ctx, cancel := context.WithCancel(p.ctx)
-	f.cancel = cancel
+	f.ctx, f.cancel = ctx, cancel
 	p.loop = f
 	go p.followLoop(ctx, f)
 	return p.onLoopChanged(loopChangedMsg{run: msg.run})
@@ -143,7 +154,7 @@ func (p *program) followLoop(ctx context.Context, f *loopFollow) {
 			if run.SessionID != "" && run.SessionID != lastSession {
 				s, err := p.opts.Transport.GetSession(ctx, run.SessionID)
 				if err != nil {
-					if !send(noteMsg("could not open the loop's session: " + err.Error())) {
+					if !send(loopNoteMsg{text: "could not open the loop's session: " + err.Error()}) {
 						return
 					}
 				} else {
@@ -154,9 +165,11 @@ func (p *program) followLoop(ctx context.Context, f *loopFollow) {
 				return
 			}
 		case err, open := <-errs:
+			text := "the loop could not be followed: the stream ended"
 			if open && err != nil {
-				send(noteMsg("the loop could not be followed: " + err.Error()))
+				text = "the loop could not be followed: " + err.Error()
 			}
+			send(loopNoteMsg{text: text, ended: true})
 			return
 		case <-ctx.Done():
 			return
@@ -186,10 +199,23 @@ func (p *program) waitForLoop() tea.Cmd {
 		select {
 		case m := <-f.msgs:
 			return m
-		case <-p.ctx.Done():
+		case <-f.ctx.Done():
+			// The follow was replaced or stopped: nothing more comes, and
+			// waiting on would leave this goroutine behind for good.
 			return nil
 		}
 	}
+}
+
+// onLoopNote says what the follower had to say, and keeps following unless
+// the follower has stopped.
+func (p *program) onLoopNote(msg loopNoteMsg) tea.Cmd {
+	p.loopNote(msg.text)
+	if msg.ended {
+		p.stopFollowingLoop()
+		return nil
+	}
+	return p.waitForLoop()
 }
 
 // onLoopChanged says what moved, once each: the plan, the session the run
@@ -232,7 +258,9 @@ func (p *program) onLoopChanged(msg loopChangedMsg) tea.Cmd {
 			continue
 		}
 		f.announced[s.Path] = true
-		p.loopNote(fmt.Sprintf(Text(p.opts.Lang).CmdLoopProposed, s.ProposalCriteria, s.Proposal, s.Path) +
+		// The command that goes on is the one that started the run, as typed:
+		// for a goal or a bare word that is the sentence, not the folder.
+		p.loopNote(fmt.Sprintf(Text(p.opts.Lang).CmdLoopProposed, s.ProposalCriteria, s.Proposal, run.Args) +
 			"\n\n" + s.ProposalSummary)
 	}
 	// A goal's pass over the backlog ends with one sentence for the review.
@@ -244,6 +272,13 @@ func (p *program) onLoopChanged(msg loopChangedMsg) tea.Cmd {
 	if !run.Live() {
 		p.loopEnded(run)
 		p.stopFollowingLoop()
+		// What the person queued while the loop ran waited for it; it goes
+		// now, to the session on screen, if nothing is running there.
+		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
+			m, text := p.model.DrainQueue()
+			p.model = m
+			cmds = append(cmds, p.submit(text))
+		}
 		return tea.Batch(cmds...)
 	}
 	cmds = append(cmds, p.waitForLoop())
@@ -263,9 +298,14 @@ func (p *program) loopOpened(run protocol.LoopRun, s protocol.Session) tea.Cmd {
 			qualify = sp.Phase == protocol.SpecQualifying || sp.Phase == protocol.SpecProposed
 		}
 	}
+	queued := p.model.Queue
 	p.opts.SessionID = s.ID
 	p.model = NewModel(s.ID, s.Workspace, s.Model, s.SandboxMode, p.opts.Lang)
 	p.model.Sessions = p.opts.Sessions
+	// The queue goes with the person, not with the session it was typed in:
+	// sent to the previous folder it would start a second writer in the tree
+	// and a reply nobody sees, and dropped it would vanish without a word.
+	p.model.Queue = queued
 	text := fmt.Sprintf(t.CmdLoopOpened, spec, s.DoneCriteria)
 	if qualify {
 		text = fmt.Sprintf(t.CmdLoopQualifying, spec)
@@ -276,6 +316,9 @@ func (p *program) loopOpened(run protocol.LoopRun, s protocol.Session) tea.Cmd {
 		text = fmt.Sprintf(t.CmdLoopEmpty, spec)
 	}
 	p.loopNote(text)
+	if len(queued) > 0 {
+		p.loopNote(fmt.Sprintf(t.CmdLoopQueueHeld, len(queued), spec))
+	}
 	if p.loop != nil {
 		p.loop.session = s.ID
 	}
@@ -295,7 +338,10 @@ func (p *program) loopEnded(run protocol.LoopRun) {
 		p.loopNote(run.Error)
 		return
 	case protocol.LoopStopped:
-		text := t.CmdLoopStopped
+		text := t.CmdLoopStoppedElsewhere
+		if p.loop != nil && p.loop.interrupted {
+			text = t.CmdLoopStopped
+		}
 		if run.Error != "" {
 			text += "\n" + run.Error
 		}
@@ -350,6 +396,7 @@ func (p *program) interruptLoop() (tea.Cmd, bool) {
 		return nil, false
 	}
 	id := f.id
+	f.interrupted = true
 	return func() tea.Msg {
 		if _, err := p.opts.Transport.StopLoop(p.ctx, id, protocol.StopNow); err != nil {
 			return noteMsg("could not stop the loop: " + err.Error())

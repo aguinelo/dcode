@@ -269,7 +269,9 @@ exists to stop exactly that.
   into, each proposal, the end — in the words it always used. Typing the same
   `/loop` again after a proposal goes on with the loop waiting for that review;
   a different one is refused, naming the loop that waits. Interrupting the
-  loop's turn now stops the loop instead of skipping to the next folder. The
+  loop's turn now stops the loop instead of skipping to the next folder, and a
+  message queued on a loop's session waits for the loop instead of starting a
+  turn in the folder the daemon is leaving. The
   run carries what was typed, what its survey found in each folder and what
   each proposal wrote (`args`, `criteria`, `unmet`, `unavailable`, `error`,
   `proposal_criteria`, `proposal_summary`), so no client measures twice. Two
