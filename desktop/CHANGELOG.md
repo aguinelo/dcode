@@ -14,7 +14,8 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   `args` and each `LoopSpecRun` what the survey found (`criteria`, `unmet`,
   `unavailable`, `error`) and what its proposal wrote (`proposal_criteria`,
   `proposal_summary`), so the loop sheet and the review card draw them without
-  measuring again. Regenerated; nothing in the app reads them yet.
+  measuring again. Regenerated, and the loop decoder accepts them as optional
+  (an absent `criteria` is zero); nothing in the app draws them yet.
 - **The quit question counts live loops (D55, amending D19).** Quitting the
   app stops the daemon it started, and a loop lives in that daemon: it ends
   with it and does not come back. The question before quitting now counts the

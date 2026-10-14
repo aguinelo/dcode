@@ -14,7 +14,9 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   ganha `args`, e cada `LoopSpecRun` o que a pergunta achou (`criteria`,
   `unmet`, `unavailable`, `error`) e o que a proposta escreveu
   (`proposal_criteria`, `proposal_summary`), para a folha do loop e o card de
-  revisão os desenharem sem medir de novo. Regenerado; nada no app os lê ainda.
+  revisão os desenharem sem medir de novo. Regenerado, e o decodificador do
+  loop os aceita como opcionais (`criteria` ausente é zero); nada no app os
+  desenha ainda.
 - **A pergunta ao fechar conta os loops vivos (D55, emenda D19).** Fechar o
   app para o daemon que ele subiu, e um loop vive nesse daemon: termina junto
   e não volta. A pergunta antes de fechar agora conta os loops vivos ao lado

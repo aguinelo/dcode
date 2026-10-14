@@ -24,4 +24,8 @@ novo — rodando os critérios outra vez — ou ler o disco, que o desktop não 
 O loop já tinha medido; agora diz. `args` é como um cliente distingue "o loop
 que eu pedi" de outro esperando no mesmo workspace.
 
+Todos são `omitempty`, e `criteria` ausente é zero: um cliente que já lia o
+`LoopRun` antes deles continua lendo, e o desktop os decodifica como
+opcionais.
+
 `experimental`, abaixo de 1.0: campos novos são **MINOR** como feature.

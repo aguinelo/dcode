@@ -458,7 +458,7 @@ export interface LoopRun {
    * Args is what was typed after `/loop`, as it was typed: how a client tells
    * "the loop I asked for" from another one waiting in the same workspace.
    */
-  args: string;
+  args?: string;
   /**
    * Goal is the sentence of a `/loop <goal>`; empty for a folder.
    */
@@ -498,9 +498,10 @@ export interface LoopSpecRun {
    * Criteria, Unmet, Unavailable and Error are what the survey said of the
    * folder before anything opened: the plan a client draws, from the one
    * measurement the run made rather than a second one of its own. Unmet and
-   * Unavailable are counted only when a goal measured the folders.
+   * Unavailable are counted only when a goal measured the folders; absent is
+   * zero.
    */
-  criteria: number /* int */;
+  criteria?: number /* int */;
   unmet?: number /* int */;
   unavailable?: number /* int */;
   error?: string;

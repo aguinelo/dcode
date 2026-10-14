@@ -174,7 +174,7 @@ type StartLoopRequest struct {
 
 type LoopRun struct {
     ID        string        `json:"id"`
-    Args      string        `json:"args"` // o que foi digitado depois de /loop
+    Args      string        `json:"args,omitempty"` // o que foi digitado depois de /loop
     Workspace string        `json:"workspace"`
     Goal      string        `json:"goal,omitempty"`
     Protect   []string      `json:"protect,omitempty"`
@@ -195,7 +195,7 @@ type LoopSpecRun struct {
     // O que a pergunta achou da pasta antes de qualquer sessão abrir: o plano
     // que um cliente desenha sem medir de novo. Unmet e Unavailable só quando
     // um objetivo mediu as pastas.
-    Criteria    int    `json:"criteria"`
+    Criteria    int    `json:"criteria,omitempty"` // ausente é zero
     Unmet       int    `json:"unmet,omitempty"`
     Unavailable int    `json:"unavailable,omitempty"`
     Error       string `json:"error,omitempty"`
