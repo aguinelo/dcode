@@ -25,6 +25,8 @@ function loopsApi() {
       start: (ws: string, args: string) => answer('start', `start in ${ws}: ${args}`),
       stop: (id: string, when: string) => answer('stop', `stop ${id} ${when}`),
       specs: (ws: string) => answer('specs', `specs of ${ws}`),
+      continue: (id: string) => answer('continue', `continue ${id}`),
+      openProposal: (id: string, file: string) => answer('open', `open ${file} of ${id}`),
     },
   } as unknown as DcodeApi;
   return { api, asked, answers, push: (p: LoopsPush) => pushes.forEach((l) => l(p)) };
@@ -89,5 +91,26 @@ describe('what the window asks about a loop', () => {
     expect(await store.actions.listSpecs('/w')).toEqual({ ok: true, value: [folder] });
     f.answers.specs = { ok: true, value: { specs: 'x' } };
     expect(await store.actions.listSpecs('/w')).toMatchObject({ ok: false, why: expect.stringMatching(/^Resposta ilegível do daemon: /) });
+  });
+});
+
+describe('the review of a proposal (D56)', () => {
+  it('starts the work, and says a review another window answered first', async () => {
+    const { f, store } = started();
+    f.answers.continue = { ok: true, value: { ...run, state: 'working' } };
+    expect(await store.actions.continueLoop('L')).toMatchObject({ ok: true, value: { state: 'working' } });
+    f.answers.continue = { ok: false, refusal: { code: 'loop_not_awaiting_review', message: 'loop L is working, not waiting for a review' } };
+    const got = await store.actions.continueLoop('L');
+    expect(got.ok === false && got.why).toMatch(/^O trabalho já começou, ou o loop saiu da revisão/);
+    expect(f.asked).toEqual(['continue L', 'continue L']);
+  });
+
+  it('opens the file through the main process, and says why not', async () => {
+    const { f, store } = started();
+    f.answers.open = { ok: true, value: null };
+    expect(await store.actions.openProposal('L', '/w/specs/a/done.toml')).toEqual({ ok: true, value: null });
+    f.answers.open = { ok: false, refusal: { code: 'invalid_input', message: 'não é uma proposta' } };
+    expect(await store.actions.openProposal('L', '/etc/passwd')).toEqual({ ok: false, why: 'O arquivo da proposta não abriu: não é uma proposta' });
+    expect(f.asked).toEqual(['open /w/specs/a/done.toml of L', 'open /etc/passwd of L']);
   });
 });
