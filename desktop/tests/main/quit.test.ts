@@ -13,3 +13,22 @@ describe('quitting with sessions at work', () => {
     expect(quitQuestion(2).buttons).toEqual(['Fechar', 'Cancelar']);
   });
 });
+
+describe('quitting with loops alive (D19, D55)', () => {
+  it('says the loops end with the daemon, alone', () => {
+    const q = quitQuestion(0, 1);
+    expect(q.message).toBe('Fechar o DCode Box e encerrar 1 loop?');
+    expect(q.detail).toBe(
+      'Um loop está vivo. O daemon foi aberto pelo DCode Box e fecha com ele, e um loop não sobrevive ao daemon: ele termina junto, e não volta quando o app abrir de novo.',
+    );
+    expect(quitQuestion(0, 2).message).toBe('Fechar o DCode Box e encerrar 2 loops?');
+    expect(quitQuestion(0, 2).detail).toContain('2 loops estão vivos.');
+  });
+
+  it('counts sessions and loops together', () => {
+    const q = quitQuestion(2, 1);
+    expect(q.message).toBe('Fechar o DCode Box, parar 2 sessões e encerrar 1 loop?');
+    expect(q.detail).toContain('2 sessões estão rodando ou esperando aprovação, e um loop está vivo.');
+    expect(q.detail).toContain('não sobrevive ao daemon');
+  });
+});
