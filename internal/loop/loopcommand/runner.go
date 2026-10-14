@@ -101,11 +101,13 @@ func (r *Runner) Run(parent context.Context) {
 	r.mu.Unlock()
 
 	var err error
-	if !stopped {
-		// Red: the sequence is not wired yet.
-		err = errors.New("the daemon does not run /loop yet")
+	switch {
+	case stopped:
+	case r.args.Goal:
+		err = r.goal(ctx)
+	default:
+		err = r.one(ctx)
 	}
-	_, _, _ = r.goal, r.one, ctx
 	r.end(err)
 }
 

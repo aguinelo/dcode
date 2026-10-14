@@ -63,6 +63,7 @@ const SESSION: Shape<P.Session> = {
   first_seq: opt('number'),
   context_window: opt('number'),
   done_criteria: req('number'),
+  loop_id: opt('string'),
 };
 
 const USAGE: Shape<P.Usage> = {

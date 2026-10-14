@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 216 changelogs de decisão |
+| famílias de spec | 19, com 218 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,20 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O daemon roda o `/loop`.** `POST /v1/loops` recebe o argumento como foi
+  digitado e o daemon conduz a sequência que a TUI rodava no próprio processo:
+  pergunta primeiro, qualifica a pasta que não declara nada, para na proposta
+  escrita (`awaiting_review`) até `POST /v1/loops/{id}/continue`, trabalha as
+  pendentes de um objetivo uma sessão por vez, e termina com o veredito da
+  corrida inteira. `GET /v1/loops` e o fluxo `GET /v1/loops/events` mostram
+  todo loop, e `POST /v1/loops/{id}/stop` para agora ou depois da pasta
+  corrente. Um loop vivo por workspace (`loop_already_running`); sessões e
+  conversas que um loop abriu carregam `loop_id`; o cliente Go ganha
+  `StartLoop`, `ListLoops`, `WatchLoops`, `ContinueLoop` e `StopLoop`. A
+  sequência e a fila viviam na memória da TUI, então um segundo cliente não
+  conseguia começar nem ver um loop, e reimplementá-la seria uma segunda cópia
+  da regra. A TUI não muda aqui e segue rodando o próprio loop até passar a
+  usar estas rotas.
 - **Cada conferência da definição de pronto dentro do turno é um evento.** O
   laço re-entra no turno enquanto os critérios não cumpridos encolhem, e cada
   uma dessas conferências corria em silêncio: o cliente só sabia onde os

@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Sessões e conversas são lidas com `loop_id`.** O núcleo agora roda o
+  `/loop` e marca as sessões que um loop abre (passo 4 de
+  `docs/proposals/loop.md`); o `generated.ts` é regenerado com os tipos do
+  loop, e os decodificadores de sessão e de conversa aceitam o campo. Nada no
+  app o usa ainda: começar e acompanhar um loop são os passos 7 e 8.
 - **As luzes dos critérios andam a cada conferência (D54).** Enquanto o turno
   roda, as luzes da janela da grade, da maximizada e da aba Pronto da Crew são
   as do último `done.checked` dele, não as do último turno que terminou, com

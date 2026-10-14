@@ -119,6 +119,11 @@ export interface Conversation {
    * ContinuedFrom is the conversation this one continues, when it does.
    */
   continued_from?: string;
+  /**
+   * LoopID is the `/loop` run this conversation belongs to, when it does, so
+   * a list can group a loop's sessions without reading another stream.
+   */
+  loop_id?: string;
 }
 /**
  * ListConversationsResponse answers GET /conversations: newest activity first.
@@ -233,6 +238,20 @@ export const CodeWorkspaceInvalid = "workspace_invalid";
  * Error codes. Section 8 of the planning spec.
  */
 export const CodeMaxSessionsReached = "max_sessions_reached";
+/**
+ * CodeLoopAlreadyRunning refuses a second loop in a workspace that has one
+ * alive: two loops in one tree measure each other's work.
+ */
+export const CodeLoopAlreadyRunning = "loop_already_running";
+/**
+ * CodeLoopNotAwaitingReview answers a continue for a run that is not
+ * waiting for one — usually because another client continued it first.
+ */
+export const CodeLoopNotAwaitingReview = "loop_not_awaiting_review";
+/**
+ * CodeLoopNotFound names a run id the daemon does not hold.
+ */
+export const CodeLoopNotFound = "loop_not_found";
 /**
  * Error codes. Section 8 of the planning spec.
  */
@@ -350,6 +369,191 @@ export interface GitDiffResponse {
    * Limit is the cap the diff was cut at, in bytes (GitDiffLimit).
    */
   limit: number /* int */;
+}
+
+//////////
+// source: loops.go
+
+/**
+ * StartLoopRequest asks the daemon to run `/loop`.
+ * Args travels as the person typed it, after `/loop`. The grammar has one home,
+ * the daemon's: a client recognises the command and never parses its argument,
+ * so two clients cannot disagree about what `/loop specs/x --protect t/**` means.
+ */
+export interface StartLoopRequest {
+  workspace: string;
+  args: string;
+  model?: string;
+  sandbox_mode?: string;
+}
+/**
+ * LoopSurveying asks the daemon what the spec folders declare.
+ */
+export const LoopSurveying = "surveying";
+/**
+ * LoopQualifying runs a qualifying session for a folder that declares
+ * nothing.
+ */
+export const LoopQualifying = "qualifying";
+/**
+ * LoopAwaitingReview is a proposal written and waiting for a person. Nothing
+ * leaves it but continue or stop: a ruler nobody read is not run against.
+ */
+export const LoopAwaitingReview = "awaiting_review";
+/**
+ * LoopWorking runs a work session against a folder's criteria.
+ */
+export const LoopWorking = "working";
+/**
+ * LoopFinished, LoopStopped and LoopFailed are the ends. Finished ran out
+ * of work, stopped was asked to, and failed could not go on and says why.
+ */
+export const LoopFinished = "finished";
+/**
+ * The states of a loop run.
+ */
+export const LoopStopped = "stopped";
+/**
+ * The states of a loop run.
+ */
+export const LoopFailed = "failed";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecPending = "pending";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecQualifying = "qualifying";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecProposed = "proposed";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecWorking = "working";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecDone = "done";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecUnfinished = "unfinished";
+/**
+ * The phases of one spec folder inside a run.
+ */
+export const SpecSkipped = "skipped";
+/**
+ * LoopRun is a `/loop` the daemon is running, or ran.
+ * The daemon conducts it, not the client that asked: closing that client does
+ * not stop it, and every client sees the same run. It does not outlive the
+ * daemon.
+ */
+export interface LoopRun {
+  id: string;
+  workspace: string;
+  /**
+   * Goal is the sentence of a `/loop <goal>`; empty for a folder.
+   */
+  goal?: string;
+  protect?: string[];
+  state: string;
+  specs: LoopSpecRun[];
+  /**
+   * Current indexes Specs; -1 outside any folder.
+   */
+  current: number /* int */;
+  /**
+   * SessionID is the session the run is in now, or was in last.
+   */
+  session_id?: string;
+  verdict?: LoopVerdict;
+  /**
+   * Error says why a failed run could not go on.
+   */
+  error?: string;
+  started: string;
+  finished?: string;
+}
+/**
+ * LoopSpecRun is one spec folder of a run and where it stands.
+ */
+export interface LoopSpecRun {
+  path: string;
+  phase: string;
+  session_id?: string;
+  /**
+   * Proposal is the done.toml written for review, when one was.
+   */
+  proposal?: string;
+  /**
+   * Standing is the last completion of this folder's work: the last word for
+   * a folder wins, because a folder can complete several turns.
+   */
+  standing?: Completion;
+}
+/**
+ * LoopVerdict is where done stands for the whole run, not its last folder.
+ */
+export interface LoopVerdict {
+  /**
+   * Worked is how many folders were worked.
+   */
+  worked: number /* int */;
+  /**
+   * Met and Total sum the criteria over every folder worked.
+   */
+  met: number /* int */;
+  total: number /* int */;
+  /**
+   * Unmet and Unchecked name criteria, each once. Unchecked counts as left:
+   * a criterion nobody could check is not one that passed.
+   */
+  unmet?: string[];
+  unchecked?: string[];
+  /**
+   * Unfinished names the folders that ended with anything outstanding.
+   */
+  unfinished?: string[];
+}
+/**
+ * StopLoopRequest asks a run to stop now, or after the folder it is in.
+ */
+export interface StopLoopRequest {
+  when: string;
+}
+/**
+ * StopNow interrupts the turn under way and ends the run.
+ */
+export const StopNow = "now";
+/**
+ * StopAfterSpec lets the current folder finish and opens no other.
+ */
+export const StopAfterSpec = "after_spec";
+/**
+ * ListLoopsResponse answers GET /loops: the runs the daemon holds, oldest
+ * first.
+ */
+export interface ListLoopsResponse {
+  loops: LoopRun[];
+}
+/**
+ * LoopSnapshot opens the stream with every run.
+ */
+export const LoopSnapshot = "snapshot";
+/**
+ * LoopChanged carries one run that moved.
+ */
+export const LoopChanged = "changed";
+/**
+ * LoopChange is one frame of the stream of runs.
+ */
+export interface LoopChange {
+  kind: string;
+  loops?: LoopRun[];
+  loop?: LoopRun;
 }
 
 //////////
@@ -743,6 +947,10 @@ export interface Session {
    * nothing by it.
    */
   done_criteria: number /* int */;
+  /**
+   * LoopID is the `/loop` run that opened this session, when one did.
+   */
+  loop_id?: string;
 }
 /**
  * CreateSessionRequest opens a session. Workspace must be absolute.
