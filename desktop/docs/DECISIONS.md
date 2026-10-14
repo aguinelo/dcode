@@ -46,6 +46,7 @@ As que estão nos outros arquivos:
 - [D52](DECISIONS-4.md) — Laranja: a cor do dcode é a do mascote.
 - [D54](DECISIONS-4.md) — As luzes dos critérios andam a cada conferência.
 - [D55](DECISIONS-4.md) — Um loop começa e para pela janela, e ocupa uma janela que segue a sessão corrente dele.
+- [D56](DECISIONS-4.md) — A definição de pronto proposta é revisada antes do trabalho, num card.
 
 ## Decisões
 

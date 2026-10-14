@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loopArgs, loopId, stopWhen } from '../../src/main/inputs';
-import { countLiveLoops, foldLoops } from '../../src/main/loops';
+import { countLiveLoops, foldLoops, proposalToOpen } from '../../src/main/loops';
 import type { LoopRun } from '../../src/protocol/generated';
 
 // The list of loops as the main process keeps it (D55), and what a window may
@@ -72,5 +72,31 @@ describe('what a window asks about a loop', () => {
     expect(stopWhen('now')).toEqual({ ok: true, value: 'now' });
     expect(stopWhen('after_spec')).toEqual({ ok: true, value: 'after_spec' });
     expect(refused(stopWhen('later'))).toContain('now, after_spec');
+  });
+});
+
+describe('the proposal a window may open in the editor (D56)', () => {
+  const runs = [
+    run('L', {
+      workspace: '/w/dcode',
+      specs: [
+        { path: 'specs/a', phase: 'proposed', proposal: '/w/dcode/specs/a/done.toml' },
+        { path: 'specs/b', phase: 'proposed', proposal: 'specs/b/done.toml' },
+        { path: 'specs/c', phase: 'proposed', proposal: '../elsewhere/done.toml' },
+      ],
+    }),
+  ];
+
+  it('is only a file the daemon wrote for that loop', () => {
+    expect(proposalToOpen(runs, 'L', '/w/dcode/specs/a/done.toml')).toEqual({ ok: true, value: '/w/dcode/specs/a/done.toml' });
+    expect(refused(proposalToOpen(runs, 'L', '/etc/passwd'))).toContain('não é uma proposta que o daemon escreveu para este loop');
+    expect(refused(proposalToOpen(runs, 'K', '/w/dcode/specs/a/done.toml'))).toContain('O daemon não lista o loop');
+    expect(refused(proposalToOpen(null, 'L', '/w/dcode/specs/a/done.toml'))).toContain('O daemon não lista o loop');
+    expect(refused(proposalToOpen(runs, 'L', 42))).toContain('O arquivo da proposta');
+  });
+
+  it('reads a relative one from the loop’s project, and never outside it', () => {
+    expect(proposalToOpen(runs, 'L', 'specs/b/done.toml')).toEqual({ ok: true, value: '/w/dcode/specs/b/done.toml' });
+    expect(refused(proposalToOpen(runs, 'L', '../elsewhere/done.toml'))).toContain('fora do projeto');
   });
 });

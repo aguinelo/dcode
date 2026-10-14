@@ -1,6 +1,8 @@
 import { useContext, useState } from 'react';
 import { plural } from '../state/format';
 import { loopRuler } from '../state/loop';
+import { useNow } from './hooks';
+import { ProposalReview } from './ProposalReview';
 import { LoopContext } from './useLoops';
 
 function phaseGlyph(phase: string): string {
@@ -24,12 +26,13 @@ function phaseGlyph(phase: string): string {
  * ends, its verdict; when it fails, why. Nothing at all for a conversation
  * that is not a loop's.
  */
-export function LoopRuler({ sessionId, now }: { sessionId: string; now: number }) {
+export function LoopRuler({ sessionId, now, unfolded = false }: { sessionId: string; now: number; unfolded?: boolean }) {
   const loops = useContext(LoopContext);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(unfolded);
   const run = loops?.of(sessionId) ?? null;
   if (!loops || !run) return null;
   const v = loopRuler(run, now);
+  const review = loops.review(run);
   return (
     <div className="loop-ruler" data-loop-id={v.id} data-loop-state={run.state}>
       <div className="loop-line">
@@ -63,6 +66,7 @@ export function LoopRuler({ sessionId, now }: { sessionId: string; now: number }
           ))}
         </div>
       )}
+      {review && <ProposalReview review={review} onOpen={loops.openProposal} onStop={loops.stopNow} onStart={loops.startWork} />}
       {v.verdict && <div className={`loop-note tone-${v.tone}`}>{v.verdict}</div>}
       {v.error && <div className="loop-note tone-err">{v.error}</div>}
       {v.warnings.map((w) => (
@@ -70,7 +74,7 @@ export function LoopRuler({ sessionId, now }: { sessionId: string; now: number }
           ⚠ {w}
         </div>
       ))}
-      {v.live && (
+      {v.live && !review && (
         <div className="loop-stops">
           <button type="button" className="chip" title="Interrompe o turno e encerra o loop" onClick={() => loops.stopNow(v.id)}>
             ⏹ Parar agora
@@ -81,5 +85,18 @@ export function LoopRuler({ sessionId, now }: { sessionId: string; now: number }
         </div>
       )}
     </div>
+  );
+}
+
+/** The Crew's Pronto tab gets the loop of the conversation in focus (D56, Figure 4): nothing when it has none. */
+export function LoopSection({ sessionId }: { sessionId: string }) {
+  const loops = useContext(LoopContext);
+  const now = useNow(1000);
+  if (!loops?.of(sessionId)) return null;
+  return (
+    <section className="crew-loop" aria-label="Loop">
+      <h3 className="crew-loop-title">Loop</h3>
+      <LoopRuler sessionId={sessionId} now={now} unfolded />
+    </section>
   );
 }

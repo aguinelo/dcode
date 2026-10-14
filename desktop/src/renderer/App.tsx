@@ -183,7 +183,7 @@ export function App({
   };
 
   const sheet = useCommandSheet(sessions, actions);
-  const loop = useLoops({ loops, actions, once, say, updateAttention, show });
+  const loop = useLoops({ loops, actions, once, say, updateAttention, show, sessions, rowById });
   const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show, commandsOf: sheet.of, startLoop: loop.view.start });
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);

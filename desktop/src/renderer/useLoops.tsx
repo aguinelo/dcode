@@ -2,6 +2,9 @@ import { createContext, useCallback, useEffect, useMemo, useRef, useState, type 
 import { StopAfterSpec, StopNow, type LoopRun } from '../protocol/generated';
 import type { Attention } from '../state/attention';
 import { carryHolds, liveLoopIn, loopNews, loopOfSession, type LoopsState } from '../state/loop';
+import { reviewOf, type ReviewView } from '../state/review';
+import type { SessionsState } from '../state/sessions';
+import type { Row } from '../state/sidebar';
 import { LoopSheet } from './LoopSheet';
 import type { Outcome, WindowActions } from './window';
 
@@ -17,6 +20,12 @@ export interface LoopsView {
   stopAfter: (loopId: string) => void;
   /** Opens a folder's session, ended or not, where it can be read (D42). */
   openSession: (sessionId: string) => void;
+  /** The proposals a run waiting for a review wrote, as the daemon measured them (D56); null when it is not waiting. */
+  review: (run: LoopRun) => ReviewView | null;
+  /** "Começar o trabalho" (D56): the daemon measures again, and the first answer wins. */
+  startWork: (loopId: string) => void;
+  /** "Abrir no editor" (D56): the file the daemon wrote, opened by the main process. */
+  openProposal: (loopId: string, file: string) => void;
 }
 
 export const LoopContext = createContext<LoopsView | null>(null);
@@ -35,8 +44,10 @@ export function useLoops(o: {
   say: (text: string) => void;
   updateAttention: (fn: (a: Attention) => Attention) => void;
   show: (id: string | null) => void;
+  sessions: SessionsState;
+  rowById: ReadonlyMap<string, Row>;
 }): { view: LoopsView; sheet: (workspace: string) => void; node: ReactNode; open: boolean } {
-  const { loops, actions, once, say, updateAttention, show } = o;
+  const { loops, actions, once, say, updateAttention, show, sessions, rowById } = o;
   const [sheetFor, setSheetFor] = useState<string | null>(null);
   const before = useRef(loops);
 
@@ -45,6 +56,19 @@ export function useLoops(o: {
     before.current = loops;
     updateAttention((a) => carryHolds(a, loops));
   }, [loops, say, updateAttention]);
+
+  // A run waiting for a review draws each proposal from its folder's session
+  // (done.proposed): every one it wrote is followed, not only the current one.
+  useEffect(() => {
+    for (const id of loops.order) {
+      const run = loops.byId[id];
+      if (!run || !reviewOf(run, {})) continue;
+      for (const s of run.specs) {
+        const row = s.session_id ? rowById.get(s.session_id) : undefined;
+        if (row && s.proposal) actions.watch(row);
+      }
+    }
+  }, [actions, loops, rowById]);
 
   const start = useCallback(
     async (workspace: string, args: string) => {
@@ -62,8 +86,11 @@ export function useLoops(o: {
       stopNow: (id) => void once(`stop-loop:${id}`, () => actions.stopLoop(id, StopNow)),
       stopAfter: (id) => void once(`stop-loop:${id}`, () => actions.stopLoop(id, StopAfterSpec)),
       openSession: (id) => show(id),
+      review: (run) => reviewOf(run, sessions.byId),
+      startWork: (id) => void once(`continue-loop:${id}`, () => actions.continueLoop(id)),
+      openProposal: (id, file) => void once(`open-proposal:${file}`, () => actions.openProposal(id, file)),
     }),
-    [actions, loops, once, show, start],
+    [actions, loops, once, sessions, show, start],
   );
 
   const close = useCallback(() => setSheetFor(null), []);

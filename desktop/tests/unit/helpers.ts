@@ -42,5 +42,5 @@ export function done(callId: string, extra: Partial<PayloadByType['tool.complete
 /** A main process with no loops to tell of, and none asked about (D55). */
 export function quietLoops(): LoopApi {
   const no = () => Promise.resolve({ ok: false as const, refusal: { code: 'internal', message: 'not under test' } });
-  return { on: () => () => {}, start: no, stop: no, specs: no };
+  return { on: () => () => {}, start: no, stop: no, specs: no, continue: no, openProposal: no };
 }

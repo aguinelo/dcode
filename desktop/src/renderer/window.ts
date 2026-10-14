@@ -95,4 +95,8 @@ export interface WindowActions {
   stopLoop(loopId: string, when: string): Promise<Outcome<LoopRun>>;
   /** The spec folders of a project and what each declares, for the "Começar loop" sheet (D55). */
   listSpecs(workspace: string): Promise<Outcome<SpecFolder[]>>;
+  /** "Começar o trabalho": takes the run out of awaiting_review (D56); another client may have answered first. */
+  continueLoop(loopId: string): Promise<Outcome<LoopRun>>;
+  /** Opens a run's proposal in the system's editor, through the main process (D56). */
+  openProposal(loopId: string, file: string): Promise<Outcome<null>>;
 }
