@@ -248,22 +248,29 @@ func QualifyingTool(specDir string, into *Proposals) tools.DonePropose {
 	}
 }
 
+// Committed is what writing a proposal produced: the summary a person reads,
+// and the measured proposal a client is told about.
+type Committed struct {
+	Summary  string
+	Proposal protocol.DoneProposal
+}
+
 // CommitProposal measures a recorded proposal and writes it into the spec
-// folder, returning what a person reads.
+// folder, returning what a person reads and what was written.
 //
 // This is the loop's half, and it runs OUTSIDE the qualifying turn on purpose.
 // Measuring under read-only would call a criterion broken because the sandbox
 // refused it a cache directory, and a proposal born with a false measurement
 // is worse than none.
-func CommitProposal(ctx context.Context, p *Proposal, run loop.CriterionRunner, timeout time.Duration) (string, error) {
+func CommitProposal(ctx context.Context, p *Proposal, run loop.CriterionRunner, timeout time.Duration) (Committed, error) {
 	if p == nil {
-		return "", fmt.Errorf("app: nothing was proposed")
+		return Committed{}, fmt.Errorf("app: nothing was proposed")
 	}
 	measured, cond, err := qualifier.Measure(ctx, qualifier.Proposal{
 		Criteria: p.Criteria, Protected: p.Protected,
 	}, run, timeout)
 	if err != nil {
-		return "", err
+		return Committed{}, err
 	}
 	path := filepath.Join(p.Spec, tools.DoneProposeFile)
 	// A goal with no spec folder is anchored at `.dcode`, which a fresh
@@ -273,11 +280,39 @@ func CommitProposal(ctx context.Context, p *Proposal, run loop.CriterionRunner, 
 	// has been guarding since before goals could be qualified.
 	if filepath.Base(p.Spec) == protocol.WorkspaceDoneDir {
 		if err := os.MkdirAll(p.Spec, 0o755); err != nil {
-			return "", fmt.Errorf("could not create %s: %w", p.Spec, err)
+			return Committed{}, fmt.Errorf("could not create %s: %w", p.Spec, err)
 		}
 	}
 	if err := os.WriteFile(path, qualifier.Render(measured, p.Protected, cond), 0o644); err != nil {
-		return "", fmt.Errorf("could not write %s: %w", path, err)
+		return Committed{}, fmt.Errorf("could not write %s: %w", path, err)
 	}
-	return qualifier.Summary(measured, cond, path), nil
+	return Committed{
+		Summary:  qualifier.Summary(measured, cond, path),
+		Proposal: doneProposal(measured, cond, p.Protected, path),
+	}, nil
+}
+
+// doneProposal is the written proposal as the wire carries it: every criterion
+// with its class and what running it did, the same things the file says.
+func doneProposal(measured []qualifier.Measured, cond qualifier.Conditions, protected []string, path string) protocol.DoneProposal {
+	out := protocol.DoneProposal{
+		Path:         path,
+		Criteria:     make([]protocol.DoneCriterion, 0, len(measured)),
+		Protected:    protected,
+		NoAcceptance: cond.NoAcceptance,
+	}
+	for _, m := range measured {
+		out.Criteria = append(out.Criteria, protocol.DoneCriterion{
+			Name:     m.Name,
+			Command:  m.Command,
+			ExitCode: m.ExitCode,
+			Expects:  string(m.Expects),
+			Why:      m.Why,
+			Class:    string(m.Class),
+			Exit:     m.Exit,
+			Output:   m.Output,
+			Mismatch: m.Mismatch,
+		})
+	}
+	return out
 }

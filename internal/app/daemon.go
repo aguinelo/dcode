@@ -18,7 +18,6 @@ import (
 	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/server"
 	"github.com/aguinelo/dcode/internal/session"
-	"github.com/aguinelo/dcode/internal/tools"
 )
 
 // DaemonOptions configure the server process.
@@ -579,13 +578,18 @@ func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.Com
 	if serr != nil {
 		return protocol.CommitDoneResponse{}, serr
 	}
-	summary, cerr := CommitProposal(ctx, p, criterionRunner(sb, opts), opts.DoneTimeout)
+	done, cerr := CommitProposal(ctx, p, criterionRunner(sb, opts), opts.DoneTimeout)
 	if cerr != nil {
 		return protocol.CommitDoneResponse{}, cerr
 	}
+	// Announced only now, with the file on disk: the notice says there is a
+	// file to review, and it waits for nothing — the turn that proposed has
+	// already ended.
+	done.Proposal.ProposalID = session.NewID(time.Now, randomUint32)
+	sess.Emit(protocol.EventDoneProposed, done.Proposal)
 	return protocol.CommitDoneResponse{
-		Path:     filepath.Join(p.Spec, tools.DoneProposeFile),
-		Summary:  summary,
+		Path:     done.Proposal.Path,
+		Summary:  done.Summary,
 		Criteria: len(p.Criteria),
 	}, nil
 }

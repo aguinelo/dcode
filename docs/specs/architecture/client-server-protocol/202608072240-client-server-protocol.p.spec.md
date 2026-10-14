@@ -163,6 +163,7 @@ type Error struct {
 | `tool.approval_resolved` | `{"approval_id":string,"decision":ApprovalDecision}` | decisão registrada |
 | `tool.completed` | `{"tool_call_id":string,"ok":bool,"output":string,"truncated":bool}` | ferramenta terminou |
 | `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error` |
+| `done.proposed` | `DoneProposal` (`done-qualifier` §6.1) | a proposta de definição de pronto foi medida e escrita no `done.toml`; aviso, nada espera resposta |
 | `plan.updated` | `{"items":[{"id":int,"text":string,"status":string,"blocked":string}]}` | plano criado ou alterado |
 | `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
 | `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
@@ -575,3 +576,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610131930 — O id fica na pasta em toda porta](changelog/202610131930-o-id-fica-na-pasta-em-toda-porta.md)
 - [202610132000 — Os comandos de um workspace](changelog/202610132000-os-comandos-de-um-workspace.md)
 - [202610140900 — A assinatura que nunca viajou sai do fio](changelog/202610140900-a-assinatura-que-nunca-viajou.md)
+- [202610141000 — A proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)

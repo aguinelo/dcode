@@ -183,12 +183,10 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
   'plan.updated': { items: req('array', PLAN_ITEM) } satisfies Shape<P.PlanUpdated>,
   'done.proposed': {
     proposal_id: req('string'),
-    turn_id: req('string'),
-    round: req('number'),
+    path: req('string'),
     criteria: req('array', DONE_CRITERION),
     protected: opt('array', 'string'),
     no_acceptance: opt('boolean'),
-    expires_at: req('string'),
   } satisfies Shape<P.DoneProposal>,
 };
 

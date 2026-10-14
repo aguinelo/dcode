@@ -23,14 +23,6 @@ import (
 // allowlist would grow silently every time someone found this test
 // inconvenient; a reason has to be written and can be argued with.
 var exportedWithoutUser = map[string]string{
-	// done.proposed, which step 2 of desktop/docs/proposals/loop.md rewires as
-	// a notice emitted once the proposal is written. Until that pull request
-	// nothing emits it; the signing round trip it was born with is gone.
-	"EventDoneProposed": "the event that announces a written, measured definition of done; commitDone emits it in the next pull request of the loop proposal",
-	"DoneProposal":      "the payload of done.proposed; reshaped and emitted in the next pull request of the loop proposal",
-	"Round":             "DoneProposal.Round, which leaves with the reshaping of DoneProposal in the next pull request of the loop proposal",
-	"ProposalID":        "DoneProposal.ProposalID, set when commitDone emits done.proposed in the next pull request of the loop proposal",
-
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.
 	"DeleteSession":      "pkg/client is the public API; a consumer deletes sessions",

@@ -888,15 +888,20 @@ export interface ApprovalRequest {
   rule?: string;
 }
 /**
- * DoneProposal is a measured definition of done, waiting for a signature.
- * The turn blocks until it is signed or ExpiresAt passes, which REFUSES. A
- * deadline that approved would be the quietest way to start a turn against a
- * ruler nobody read.
+ * DoneProposal is a measured definition of done, written for review.
+ * It is the payload of done.proposed, announced in the qualifying session's
+ * log once the file at Path is written, and never before. It is a notice, not
+ * a question: the qualifying turn has already ended, the signature is the
+ * person reviewing the file, and nothing here waits for an answer or expires.
+ * It carries what the file carries, so a client can draw the review without
+ * parsing the summary's prose.
  */
 export interface DoneProposal {
   proposal_id: string;
-  turn_id: string;
-  round: number /* int */;
+  /**
+   * Path is the done.toml the proposal was written to.
+   */
+  path: string;
   criteria: DoneCriterion[];
   protected?: string[];
   /**
@@ -905,7 +910,6 @@ export interface DoneProposal {
    * refactor. Named, never refused.
    */
   no_acceptance?: boolean;
-  expires_at: string;
 }
 /**
  * DoneCriterion is one criterion as the operator sees it: what was proposed,
