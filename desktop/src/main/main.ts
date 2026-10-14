@@ -181,12 +181,13 @@ app.on('window-all-closed', () => {
 });
 
 // Quitting stops the daemon the app started — asking first when sessions are
-// at work, since they stop with it — and never one it attached to (D19).
+// at work or loops are alive, since they end with it — and never one it
+// attached to (D19, D55).
 let quitting: 'no' | 'deciding' | 'yes' = 'no';
 
-/** Asks whether to stop `working` sessions; true for Fechar. */
-async function confirmQuit(working: number): Promise<boolean> {
-  const q = quitQuestion(working);
+/** Asks whether to stop `working` sessions and end `loops` live loops; true for Fechar. */
+async function confirmQuit(working: number, loops: number): Promise<boolean> {
+  const q = quitQuestion(working, loops);
   const options = { type: 'question' as const, message: q.message, detail: q.detail, buttons: q.buttons, defaultId: 1, cancelId: 1, noLink: true };
   const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
   const { response } = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options);
@@ -196,7 +197,8 @@ async function confirmQuit(working: number): Promise<boolean> {
 async function stopAndQuit(): Promise<void> {
   try {
     const working = daemon.working();
-    if (working > 0 && !(await confirmQuit(working))) {
+    const loops = daemon.loops.live();
+    if ((working > 0 || loops > 0) && !(await confirmQuit(working, loops))) {
       quitting = 'no';
       // Closing the last window is what asked, off macOS: staying open needs a window to stay in.
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
