@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 218 changelogs de decisão |
+| famílias de spec | 19, com 219 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um objetivo qualifica toda pasta que não declara nada antes de qualquer
+  trabalho.** Num `/loop <objetivo>`, cada pasta pendente sem critério ganha
+  antes uma sessão qualificadora, todas numa passada, e o loop para com as
+  propostas escritas para uma revisão só: o daemon espera em
+  `awaiting_review` e trabalha toda pendente no `continue`, e a TUI diz quantas
+  escreveu e que o objetivo roda de novo depois da revisão. Antes ela abria
+  sessão de trabalho numa pasta assim, que relata pronto depois de um turno
+  medido contra nada. Decisão do dono, pela §3.3 da proposta do loop; daemon e
+  TUI mudam juntos para os dois clientes rodarem o mesmo loop.
 - **O daemon roda o `/loop`.** `POST /v1/loops` recebe o argumento como foi
   digitado e o daemon conduz a sequência que a TUI rodava no próprio processo:
   pergunta primeiro, qualifica a pasta que não declara nada, para na proposta

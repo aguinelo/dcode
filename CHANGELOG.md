@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 218 decision changelogs |
+| spec families | 19, with 219 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,15 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A goal qualifies every folder that declares nothing before any work.** In
+  a `/loop <goal>`, each pending folder with no criteria now gets a qualifying
+  session first, all in one pass, and the run stops with the proposals written
+  for one review: the daemon waits in `awaiting_review` and works every pending
+  folder on `continue`, and the TUI says how many it wrote and that the goal
+  runs again after the review. It used to open a work session on such a
+  folder, which reports done after one turn measured against nothing. The
+  owner's decision, per §3.3 of the loop proposal; daemon and TUI change
+  together so the two clients run the same loop.
 - **The daemon runs `/loop`.** `POST /v1/loops` takes the argument as typed
   and the daemon conducts the sequence the TUI ran in its own process: survey
   first, qualify a folder that declares nothing, stop at a written proposal

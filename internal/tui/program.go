@@ -198,6 +198,12 @@ type program struct {
 	// loopQualified is the spec a qualifying session is proposing criteria
 	// for, so the loop knows what just finished and can say what to do next.
 	loopQualified string
+	// loopToQualify is what a goal's qualifying pass still has to propose, and
+	// loopProposed how many it wrote: every pending folder that declares
+	// nothing is qualified first, in one pass, and the run stops with the
+	// files written for one review.
+	loopToQualify []protocol.SpecFolder
+	loopProposed  int
 
 	// generation counts subscriptions, so a message from one that has been
 	// replaced can be told from one that is current. Switching sessions cancels
@@ -500,6 +506,21 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// loud: every spec's own criteria pass right now.
 			return p, nil
 		}
+		// A folder that declares nothing is qualified before anything is
+		// worked: every one of them, in one pass, and then the run stops with
+		// the files written — one sitting to review them all. Working one
+		// would report done after a turn measured against nothing.
+		var empty []protocol.SpecFolder
+		for _, f := range pending {
+			if f.Criteria == 0 && f.Error == "" {
+				empty = append(empty, f)
+			}
+		}
+		if len(empty) > 0 {
+			p.loopToQualify, p.loopProposed = empty[1:], 0
+			p.loopProtect = msg.protect
+			return p, p.loopSession(LoopArgs{Spec: empty[0].Path, Protect: msg.protect, Qualify: true})
+		}
 		// The queue is the operator's, not the agent's: it runs one spec at a
 		// time, in the order the folders sort, and stops wherever it is
 		// interrupted with the finished ones finished.
@@ -525,6 +546,21 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// It does NOT go straight on to the work here. A proposal nobody looked
 		// at is a ruler nobody read; the independence is that qualifying
 		// happened by itself, not that the signature was skipped.
+		if p.loopToQualify != nil {
+			p.loopProposed++
+			if len(p.loopToQualify) > 0 {
+				next := p.loopToQualify[0]
+				p.loopToQualify = p.loopToQualify[1:]
+				return p, p.loopSession(LoopArgs{Spec: next.Path, Protect: p.loopProtect, Qualify: true})
+			}
+			// The pass is over: say what to review and how to go on.
+			n := p.loopProposed
+			p.loopToQualify, p.loopProposed, p.loopProtect = nil, 0, nil
+			p.model.Entries = append(p.model.Entries, Entry{
+				Kind: KindNote, Summary: fmt.Sprintf(Text(p.opts.Lang).CmdLoopReviewAll, n), Expanded: true,
+			})
+			return p, nil
+		}
 		return p, p.nextSpec()
 
 	case loopOpenedMsg:

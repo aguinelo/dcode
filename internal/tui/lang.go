@@ -278,6 +278,7 @@ type Strings struct {
 	CmdLoopOpened      string // takes the spec path and the criterion count
 	CmdLoopEmpty       string // takes the spec path
 	CmdLoopProposed    string // takes the criterion count, the file and the spec path
+	CmdLoopReviewAll   string // takes how many proposals the goal's pass wrote
 	CmdLoopQualifying  string // takes the spec path
 	// CmdLoopFinished is the run ending, with what done says. It takes the
 	// number of specs worked and the state of the criteria.
@@ -518,6 +519,7 @@ var catalogue = map[Lang]Strings{
 		LoopSpecOne:        "spec",
 		LoopSpecMany:       "specs",
 		CmdLoopProposed:    "loop: %d criteria written to %s, measured before any work. Read it, change what is wrong, then /loop %s to work it.",
+		CmdLoopReviewAll:   "loop: %d folders declared nothing, and each now has a proposed done.toml. Review them, then /loop the goal again to work the backlog.",
 		CmdLoopOpened:      "loop: %s, %d criteria",
 		CmdLoopEmpty:       "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
@@ -736,6 +738,7 @@ Environment:
 		LoopSpecOne:        "spec",
 		LoopSpecMany:       "specs",
 		CmdLoopProposed:    "loop: %d critérios escritos em %s, medidos antes de qualquer trabalho. Leia, corrija o que estiver errado, e então /loop %s para trabalhá-la.",
+		CmdLoopReviewAll:   "loop: %d pastas não declaravam nada, e cada uma agora tem um done.toml proposto. Revise-os, e então /loop o objetivo de novo para trabalhar o backlog.",
 		CmdLoopOpened:      "loop: %s, %d critérios",
 		CmdLoopEmpty:       "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
 		CmdModel:           "troca de modelo — abre nova sessão, porque o prefixo muda",

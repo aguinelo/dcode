@@ -223,7 +223,7 @@ func (r *Runner) goal(ctx context.Context) error {
 	if q, ok := GoalToQualify(a, found); ok {
 		return r.qualify(ctx, q, LoopArgs{Spec: q.Spec, Task: a.Task, Protect: a.Protect})
 	}
-	var pending []int
+	var pending, empty []int
 	for _, f := range found {
 		phase := protocol.SpecDone
 		switch {
@@ -235,6 +235,26 @@ func (r *Runner) goal(ctx context.Context) error {
 		i := r.addSpec(f.Path, phase)
 		if f.Pending {
 			pending = append(pending, i)
+		}
+		if f.Pending && f.Criteria == 0 && f.Error == "" {
+			empty = append(empty, i)
+		}
+	}
+	// Every pending folder that declares nothing is qualified first, in one
+	// pass, and the run stops with the files written: one sitting to review
+	// them all, before any work runs against a ruler nobody read.
+	if len(empty) > 0 {
+		for _, i := range empty {
+			if r.stopAsked() {
+				return nil
+			}
+			path := r.Snapshot().Specs[i].Path
+			if err := r.propose(ctx, i, LoopArgs{Spec: path, Protect: a.Protect, Qualify: true}); err != nil {
+				return err
+			}
+		}
+		if goOn, err := r.review(ctx); !goOn || err != nil {
+			return err
 		}
 	}
 	for _, i := range pending {
@@ -253,7 +273,19 @@ func (r *Runner) goal(ctx context.Context) error {
 // waits for a person. work is what runs once they say so.
 func (r *Runner) qualify(ctx context.Context, q, work LoopArgs) error {
 	i := r.addSpec(q.Spec, protocol.SpecQualifying)
+	if err := r.propose(ctx, i, q); err != nil {
+		return err
+	}
+	if goOn, err := r.review(ctx); !goOn || err != nil {
+		return err
+	}
+	return r.work(ctx, i, work)
+}
+
+// propose runs the qualifying session for folder i and writes its proposal.
+func (r *Runner) propose(ctx context.Context, i int, q LoopArgs) error {
 	r.change(func(run *protocol.LoopRun) {
+		run.Specs[i].Phase = protocol.SpecQualifying
 		run.State, run.Current = protocol.LoopQualifying, i
 	})
 	id, err := r.open(ctx, i, q)
@@ -283,23 +315,27 @@ func (r *Runner) qualify(ctx context.Context, q, work LoopArgs) error {
 	}
 	r.change(func(run *protocol.LoopRun) {
 		run.Specs[i].Phase, run.Specs[i].Proposal = protocol.SpecProposed, out.Path
-		run.State = protocol.LoopAwaitingReview
 	})
-	// The run stops here. A proposal nobody looked at is a ruler nobody read;
-	// the independence is that qualifying happened by itself, not that the
-	// signature was skipped.
+	return nil
+}
+
+// review stops the run for a person, and says whether to go on to the work.
+//
+// A proposal nobody looked at is a ruler nobody read; the independence is that
+// qualifying happened by itself, not that the signature was skipped.
+func (r *Runner) review(ctx context.Context) (bool, error) {
 	if r.stopAsked() {
-		return nil
+		return false, nil
 	}
+	r.change(func(run *protocol.LoopRun) {
+		run.State, run.Current = protocol.LoopAwaitingReview, -1
+	})
 	select {
 	case goOn := <-r.resume:
-		if !goOn {
-			return nil
-		}
+		return goOn, nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return false, ctx.Err()
 	}
-	return r.work(ctx, i, work)
 }
 
 // work runs one folder's work session and keeps where it was left.
