@@ -10,6 +10,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **As luzes dos critérios andam a cada conferência (D54).** Enquanto o turno
+  roda, as luzes da janela da grade, da maximizada e da aba Pronto da Crew são
+  as do último `done.checked` dele, não as do último turno que terminou, com
+  "ciclo N" ao lado e, quando para, "parado s de L" contra o teto que o evento
+  traz. Quando o turno termina, o `turn.completed` volta a mandar. Conferência
+  que quebrou um critério e fez o laço devolver trabalho diz isso no fluxo
+  ("⟲ Ciclo 2 voltou: e2e quebrou, desfeito src/cart.ts"); antes, as luzes
+  ficavam paradas até o fim do turno e um desfazer era invisível. As telas 02 e
+  03 não têm conferência em curso e ficam a 0,00%.
 - **O desktop lê `done.checked`, e ainda não o mostra.** O núcleo agora anuncia
   cada conferência da definição de pronto dentro do turno (passo 3 de
   `docs/proposals/loop.md`), e tipo que o protocolo acrescenta reprova os

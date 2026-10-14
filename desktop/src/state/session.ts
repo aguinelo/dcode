@@ -31,6 +31,7 @@ export type Note =
   | { kind: 'context'; fraction: number }
   | { kind: 'completion'; completion: P.Completion }
   | { kind: 'stopped'; reason: string; rounds: number; maxRounds: number | null }
+  | { kind: 'cycle-back'; cycle: number; broke: string[]; undone: string[] }
   | { kind: 'done-proposed'; criteria: number; noAcceptance: boolean }
   | { kind: 'gap'; from: number; to: number }
   | { kind: 'orphan-result'; callId: string }
@@ -83,6 +84,12 @@ export interface SessionView {
   turn: { id: string; startedAt: string } | null;
   rounds: Counter | null;
   inFlight: Counter | null;
+  /**
+   * The last check of the definition of done in the turn under way
+   * (done.checked). Null outside a turn and before its first check: once the
+   * turn ends, turn.completed's completion is what the criteria stand at.
+   */
+  check: P.DoneChecked | null;
   pendingApprovalId: string | null;
   lastSeq: number;
   lastAt: string | null;
@@ -106,6 +113,7 @@ export function emptySession(id: string): SessionView {
     turn: null,
     rounds: null,
     inFlight: null,
+    check: null,
     pendingApprovalId: null,
     lastSeq: 0,
     lastAt: null,
@@ -258,6 +266,31 @@ function onPlan(view: SessionView, ev: EventOf<'plan.updated'>): SessionView {
   return { ...view, entries };
 }
 
+/**
+ * One check of the criteria inside the turn: the lights move with it (D54).
+ *
+ * A check of another turn than the one running is not this turn's, and is
+ * left out rather than drawn over it. A check that broke a criterion and made
+ * the loop put work back is said in the flow, with what broke and what went
+ * back: the lights alone would show a red appearing and nothing about the
+ * files that changed under the person.
+ */
+function onChecked(view: SessionView, ev: EventOf<'done.checked'>): SessionView {
+  const d = ev.payload;
+  if (!view.turn || view.turn.id !== d.turn_id) return view;
+  let next: SessionView = { ...view, check: d };
+  if (d.moved === 'backward') {
+    const before = new Set(view.check?.unmet ?? []);
+    next = withNote(next, ev.seq, ev.at, {
+      kind: 'cycle-back',
+      cycle: d.cycle,
+      broke: (d.unmet ?? []).filter((n) => !before.has(n)),
+      undone: d.undone ?? [],
+    });
+  }
+  return next;
+}
+
 // The stop reasons that end a turn abruptly and say nothing else about it.
 // `error` already arrived as session.error; `done` is the answer itself.
 const ABRUPT = new Set(['max_iterations', 'repeat_loop', 'max_tokens', 'interrupted']);
@@ -268,6 +301,7 @@ function onTurnCompleted(view: SessionView, ev: EventOf<'turn.completed'>): Sess
     ...view,
     state: 'idle',
     turn: null,
+    check: null,
     turns: view.turns + 1,
     contextTokens: d.usage?.context_tokens ? d.usage.context_tokens : view.contextTokens,
     usage: d.usage ?? null,
@@ -341,6 +375,7 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
         // usage: left standing it would read as this turn's.
         rounds: null,
         inFlight: null,
+        check: null,
         usage: null,
       };
     }
@@ -372,10 +407,7 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
     case 'progress':
       return onProgress(view, ev);
     case 'done.checked':
-      // Read and validated, and not shown yet: the criteria lights still
-      // move at turn.completed. Folding each check into them is its own
-      // change (step 6 of desktop/docs/proposals/loop.md).
-      return view;
+      return onChecked(view, ev);
     case 'plan.updated':
       return onPlan(view, ev);
     case 'done.proposed':

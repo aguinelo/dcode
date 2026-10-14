@@ -112,6 +112,11 @@ button.chip:hover {
 .crit.unavailable {
   color: var(--dc-dim);
 }
+/* Which check of the running turn the lights are (D54): a fact, not a verdict. */
+.crit.cycle {
+  color: var(--dc-dim);
+  font-family: var(--dc-mono);
+}
 .crit.unmeasured,
 .crit.touched {
   color: var(--dc-warn);

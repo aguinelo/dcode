@@ -1,3 +1,4 @@
+import { plural } from '../state/format';
 import type { History } from '../state/history';
 import { useState } from 'react';
 import type { Measure } from '../state/models';
@@ -16,9 +17,25 @@ import { ActionsButton } from './SessionActions';
  * about done — and, when the daemon says so, that nobody measured the family
  * of the model doing the work.
  */
-export function DoneRow({ view, measure }: { view: Pick<PaneView, 'lights' | 'seal' | 'doneNote' | 'touched'>; measure?: Measure | null }) {
+export function DoneRow({
+  view,
+  measure,
+}: {
+  view: Pick<PaneView, 'lights' | 'seal' | 'doneNote' | 'touched' | 'cycle'>;
+  measure?: Measure | null;
+}) {
+  const cycle = view.cycle;
   return (
     <div className="done-row">
+      {cycle && (
+        <span
+          className="crit cycle"
+          title={`Conferência ${cycle.n} deste turno. O turno termina incompleto depois de ${plural(cycle.limit, 'conferência', 'conferências')} seguidas sem avanço.`}
+        >
+          ciclo {cycle.n}
+          {cycle.stall > 0 && ` · parado ${cycle.stall} de ${cycle.limit}`}
+        </span>
+      )}
       {view.lights.map((l) => (
         <span key={l.name} className={`crit ${l.state}`} title={l.state === 'unavailable' ? 'não pôde rodar' : undefined}>
           {l.state === 'met' ? '✓' : l.state === 'unmet' ? '✗' : '?'} {l.name}

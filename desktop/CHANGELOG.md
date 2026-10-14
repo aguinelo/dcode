@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The criteria lights move with each check (D54).** While a turn runs, the
+  lights in the grid window, the maximized one and the Crew's Pronto tab are
+  those of its last `done.checked`, not of the last turn that ended, with
+  "ciclo N" beside them and, once it stalls, "parado s de L" against the
+  ceiling the event carries. When the turn ends, `turn.completed` takes over
+  again. A check that broke a criterion and made the loop put work back says so
+  in the flow ("⟲ Ciclo 2 voltou: e2e quebrou, desfeito src/cart.ts"); before,
+  the lights stood still until the turn was over and a rollback was invisible.
+  Screens 02 and 03 have no check under way and stay at 0.00%.
 - **The desktop reads `done.checked`, and does not show it yet.** The core now
   announces every check of the definition of done inside a turn (step 3 of
   `docs/proposals/loop.md`), and a type the protocol adds fails this app's
