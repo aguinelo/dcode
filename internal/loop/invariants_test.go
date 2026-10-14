@@ -208,6 +208,7 @@ var loopCommandInvariants = map[string]string{
 	"são resultado, não falha":            "TestATurnThatEndsWithAResultIsNotAFailure",
 	"aparece em `warnings`":               "TestASurveyThatFailsStillOpensTheWork",
 	"qualificada numa passada só":         "TestAGoalQualifiesEveryFolderThatDeclaresNothingBeforeAnyWork",
+	"durante a gravação da proposta":      "TestAStopDuringTheCommitKeepsTheFileItWrote",
 	"a fachada não tem orçamento próprio": "TestSessionConfigCarriesTheLimitsUntouched",
 }
 

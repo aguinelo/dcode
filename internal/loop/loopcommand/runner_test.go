@@ -38,6 +38,10 @@ type fakeDaemon struct {
 	// qualifyHold makes a qualifying turn wait until it closes, ignoring the
 	// context: a turn that ends on its own just as it is stopped.
 	qualifyHold chan struct{}
+	// commitHold makes CommitDone wait until it closes, ignoring the context,
+	// and then write: a stop that lands while the file is being written.
+	commitHold    chan struct{}
+	commitEntered chan struct{}
 
 	surveys    []bool // measure, per survey
 	opened     []protocol.CreateSessionRequest
@@ -120,6 +124,10 @@ func (f *fakeDaemon) RunTurn(ctx context.Context, id, text string) (protocol.Tur
 }
 
 func (f *fakeDaemon) CommitDone(_ context.Context, id string) (protocol.CommitDoneResponse, error) {
+	if f.commitHold != nil {
+		f.commitEntered <- struct{}{}
+		<-f.commitHold
+	}
 	req := f.spec(id)
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -651,5 +659,34 @@ func TestAGoalQualifiesEveryFolderThatDeclaresNothingBeforeAnyWork(t *testing.T)
 	}
 	if done.Verdict.Worked != 3 {
 		t.Errorf("verdict %+v, want three folders worked", done.Verdict)
+	}
+}
+
+// A stop that lands while the proposal is being written does not lose the file:
+// it is on disk, so the run says where, even though it stops there.
+func TestAStopDuringTheCommitKeepsTheFileItWrote(t *testing.T) {
+	f := newFake(protocol.SpecFolder{Path: "specs/x"})
+	f.commitHold, f.commitEntered = make(chan struct{}), make(chan struct{}, 1)
+	r, w := looping(t, f, "specs/x")
+	go r.Run(context.Background())
+	select {
+	case <-f.commitEntered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the proposal was never written")
+	}
+	if _, err := r.Stop(protocol.StopNow); err != nil {
+		t.Fatal(err)
+	}
+	close(f.commitHold)
+	got := w.until(t, protocol.LoopStopped)
+	if len(got.Specs) != 1 || got.Specs[0].Proposal != "specs/x/done.toml" || got.Specs[0].Phase != protocol.SpecProposed {
+		t.Errorf("specs %+v; the file written before the stop is not on the run", got.Specs)
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for _, seen := range w.seen {
+		if seen.State == protocol.LoopAwaitingReview {
+			t.Error("a stopped run said it was waiting for a review")
+		}
 	}
 }
