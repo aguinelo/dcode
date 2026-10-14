@@ -100,10 +100,18 @@ func Measure(ctx context.Context, p Proposal, run loop.CriterionRunner, timeout 
 	for _, c := range p.Criteria {
 		out = append(out, measureOne(ctx, c, run, timeout))
 	}
-	// conditionsOf, not a second count here. Two places deciding what
-	// "nothing red" means is two places to keep in step, and the one that
-	// drifts is the one nobody reads.
 	return out, conditionsOf(out), nil
+}
+
+// conditionsOf is the one place that decides what "nothing red" means; the
+// file rendered for review reads the same answer.
+func conditionsOf(measured []Measured) Conditions {
+	for _, m := range measured {
+		if m.Class == ClassAcceptance {
+			return Conditions{}
+		}
+	}
+	return Conditions{NoAcceptance: true}
 }
 
 func measureOne(ctx context.Context, c Proposed, run loop.CriterionRunner, timeout time.Duration) Measured {

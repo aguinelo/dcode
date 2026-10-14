@@ -23,20 +23,13 @@ import (
 // allowlist would grow silently every time someone found this test
 // inconvenient; a reason has to be written and can be argued with.
 var exportedWithoutUser = map[string]string{
-	// The signing round trip, and the protocol it speaks. Step 2 of the
-	// done-qualifier .p is the qualifier deciding WHAT is asked; step 3 is the
-	// server carrying it. Nothing emits done.proposed yet, so nothing reads any
-	// of these outside a test.
-	//
-	// They ship together on purpose: Sign's whole shape is decided by what the
-	// operator can answer, and inventing the answer type later would mean
-	// rewriting the seam that made it testable without a server.
-	"Sign":              "qualifier.Sign runs the operator round trip; the server that emits done.proposed and carries the answer back is step 3 of the done-qualifier .i and is not built",
-	"EventDoneProposed": "the event that carries a measured definition of done to the operator; nothing emits it until the qualifier is wired into a session",
-	"EventDoneSigned":   "the event that announces the signed definition of done; same wiring, same PR",
-	"DoneProposal":      "the payload of done.proposed; declared with Sign because Sign's shape is decided by what the operator can answer",
-	"SignDoneRequest":   "the operator's answer, carrying the DoneSet as they left it rather than a verdict on the one proposed",
-	"Round":             "DoneProposal.Round, which is how the operator sees that an edit of theirs sent the proposal back; read by the client that does not exist yet",
+	// done.proposed, which step 2 of desktop/docs/proposals/loop.md rewires as
+	// a notice emitted once the proposal is written. Until that pull request
+	// nothing emits it; the signing round trip it was born with is gone.
+	"EventDoneProposed": "the event that announces a written, measured definition of done; commitDone emits it in the next pull request of the loop proposal",
+	"DoneProposal":      "the payload of done.proposed; reshaped and emitted in the next pull request of the loop proposal",
+	"Round":             "DoneProposal.Round, which leaves with the reshaping of DoneProposal in the next pull request of the loop proposal",
+	"ProposalID":        "DoneProposal.ProposalID, set when commitDone emits done.proposed in the next pull request of the loop proposal",
 
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.

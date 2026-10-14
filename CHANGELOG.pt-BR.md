@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 211 changelogs de decisão |
+| famílias de spec | 19, com 213 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,17 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O ida-e-volta da assinatura, que nunca foi entregue, sai.** `done.signed`,
+  `SignDoneRequest`, `qualifier.Sign` (com `Asker`, `SignedAnswer`,
+  `ErrRefused` e o teto de rodadas) e as chaves
+  `DCODE_QUALIFIER_MAX_SIGN_ROUNDS` e `DCODE_QUALIFIER_SIGN_TIMEOUT` saem do
+  protocolo, do código e da spec, com as nove invariantes que só o `Sign`
+  cumpria. A assinatura virou o `done.toml` revisado quando a medição saiu do
+  turno, e estas peças ficaram para trás sem emissor, sem rota e sem leitor além
+  de testes e de um decodificador no desktop: promessa num fio versionado que
+  nenhum código cumpria. Contrato removido, então MINOR. Decisão Q1 C de
+  `desktop/docs/proposals/loop.md`; o `done.proposed` fica e é religado como
+  aviso no passo seguinte.
 - **Um desenho de orquestrador, aprovado pelo dono em 2026-10-13.** Uma família de spec
   nova, `orchestration`, abre com o documento de pesquisa: uma conversa que
   reparte o trabalho em sessões filhas que o daemon roda em paralelo, cada uma

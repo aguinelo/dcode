@@ -49,24 +49,22 @@ pergunta da §10 do `.p` com dados de uso real.
 vezes o modelo pode chamar `done_propose` no mesmo turno. Esgotado, a última
 proposta medida vai ao operador com a contagem à vista.
 
-**`DCODE_QUALIFIER_MAX_SIGN_ROUNDS`**, inteiro, default `3` (etapa 2). Quantas
-vezes a proposta volta ao operador quando a edição dele muda a classe de algum
-critério. Esgotado é **recusa**.
-
-**`DCODE_QUALIFIER_SIGN_TIMEOUT`**, duração, default `30m` (etapa 2). Prazo da
-assinatura. Esgotado é **recusa**. Zero desliga o prazo, e é a única forma de a
-fase esperar indefinidamente.
+`DCODE_QUALIFIER_MAX_SIGN_ROUNDS` e `DCODE_QUALIFIER_SIGN_TIMEOUT` **saíram**
+(changelog `202610140900`): eram o teto e o prazo de um ida-e-volta de
+assinatura dentro do turno que nunca teve emissor. A assinatura é o arquivo
+revisado, e o laço espera a pessoa sem relógio.
 
 **`DCODE_QUALIFIER_OUTPUT_LIMIT`**, bytes, default `2000` (etapa 1). Quanto da
 saída de cada critério chega ao operador. Truncado diz que foi truncado.
 
 ## 2. O que os tetos recusam, e o que nunca aprovam
 
-**Os dois tetos e o prazo recusam ao estourar, e isso não é configurável.**
+**Nenhum teto desta fase aprova ao estourar, e isso não é configurável.**
 
-Um prazo que aprova é a forma mais silenciosa de a RN-6 da `.r` ser quebrada: o
+Um teto que aprova é a forma mais silenciosa de a RN-6 da `.r` ser quebrada: o
 turno começa contra uma régua que ninguém leu, e o relatório do fim diz pronto.
-O mesmo vale para um teto de rodadas que, esgotado, aceita o último estado.
+Por isso a revisão não tem prazo: o laço para com o arquivo escrito e espera a
+pessoa, pelo tempo que ela levar.
 
 O custo de recusar é o operador digitar de novo. O custo de aprovar sozinho é um
 agente trabalhando contra uma régua que ninguém viu.

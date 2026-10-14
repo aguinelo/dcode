@@ -39,8 +39,6 @@ export function noteText(n: Note): { text: string; tone: Tone } {
         text: `Definição de pronto proposta · ${plural(n.criteria, 'critério', 'critérios')}${n.noAcceptance ? ' · nenhum vermelho' : ''}`,
         tone: 'dim',
       };
-    case 'done-signed':
-      return { text: 'Definição de pronto assinada', tone: 'dim' };
     case 'gap':
       return { text: `Faltam eventos ${n.from}–${n.to} desta sessão: o que aconteceu ali não está na tela`, tone: 'err' };
     case 'orphan-result':

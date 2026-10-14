@@ -8,10 +8,12 @@
 
 ## 1. Nível de estabilidade
 
-**Parcialmente entregue.** As etapas 1 e 2 da §12 — `Measure`, a classificação
-e o ida-e-volta da assinatura — existem em `internal/loop/qualifier/`, e as
-invariantes delas estão na §9, já verificáveis. Falta o transporte: nada no
-produto chama `Sign` ainda, porque o servidor não emite `done.proposed`.
+**Parcialmente entregue.** `Measure`, a classificação, a ferramenta
+`done_propose` e o arquivo escrito existem em `internal/loop/qualifier/` e no
+daemon, e as invariantes deles estão na §9, já verificáveis. A assinatura é o
+`done.toml` revisado pela pessoa (§6); o ida-e-volta dentro do turno que este
+`.p` previa foi apagado sem nunca ter tido emissor — ver o changelog
+`202610140900`.
 
 Duas ausências são consequência disso, e as duas são o repositório funcionando:
 
@@ -36,8 +38,8 @@ internal/loop/qualifier/
     proposal.go       # Proposal, Proposed, Expectation
     measure.go        # Measure, Class, Measured — puro, sem modelo e sem rede
     measure_test.go
-    sign.go           # o ida-e-volta da assinatura e a remedição de edições
-    sign_test.go
+    render.go         # o done.toml que a pessoa revisa, e o resumo
+    render_test.go
     record.go         # Record: o que aconteceu, para o relatório
 internal/tools/
     done_propose.go   # a ferramenta pela qual a proposta chega
@@ -228,6 +230,13 @@ escolhendo o que é medição, que é o que a RN-4 da `loop-command` proíbe.
 
 ## 6. A assinatura
 
+**A assinatura é o arquivo revisado.** A proposta medida é escrita no
+`done.toml` da pasta (§5, `render.go`), com a classe de cada critério, o que o
+proponente disse dele e o que a medição achou, e o laço **para** ali. O que a
+pessoa deixar no arquivo é a definição de pronto do próximo turno, e o
+carregador o lê como lê qualquer `done.toml`. Editar um critério é editar o
+arquivo: não há um segundo canal, dentro do turno, por onde a régua mude.
+
 ### 6.1 Protocolo
 
 ```go
@@ -235,21 +244,7 @@ escolhendo o que é medição, que é o que a RN-4 da `loop-command` proíbe.
 
 const (
     EventDoneProposed EventType = "done.proposed"
-    EventDoneSigned   EventType = "done.signed"
 )
-
-// DoneProposal is emitted when a qualifying turn has a measured proposal. The
-// turn blocks until it is signed or ExpiresAt passes, which REFUSES.
-type DoneProposal struct {
-    ProposalID   string          `json:"proposal_id"`
-    TurnID       string          `json:"turn_id"`
-    Attempt      int             `json:"attempt"`
-    Criteria     []DoneCriterion `json:"criteria"`
-    Protected    []string        `json:"protected,omitempty"`
-    Empty        bool            `json:"empty,omitempty"`
-    NoAcceptance bool            `json:"no_acceptance,omitempty"`
-    ExpiresAt    time.Time       `json:"expires_at"`
-}
 
 // DoneCriterion is one criterion as the operator sees it: what was proposed,
 // what was claimed about it, and what running it actually did.
@@ -264,58 +259,20 @@ type DoneCriterion struct {
     Output   string `json:"output,omitempty"`
     Mismatch bool   `json:"mismatch,omitempty"`
 }
-
-// SignDoneRequest is the operator's answer. It carries the DoneSet AS THEY LEFT
-// IT, not a verdict on the one that was proposed.
-type SignDoneRequest struct {
-    ProposalID string          `json:"proposal_id"`
-    Signed     bool            `json:"signed"`
-    Criteria   []DoneCriterion `json:"criteria"`
-    Protected  []string        `json:"protected,omitempty"`
-}
 ```
 
-`Signed: false` é recusa e encerra. Não há terceiro estado, e a ausência de
-resposta até `ExpiresAt` é recusa também — é a mesma semântica que
-`ApprovalRequest` já tem, pelo mesmo motivo, e está escrita aqui porque um
-prazo que **aprova** é a forma mais silenciosa de a RN-6 ser quebrada.
+`done.proposed` e `DoneProposal` ainda descrevem o desenho antigo e não têm
+emissor; o passo seguinte da proposta `desktop/docs/proposals/loop.md` (§8,
+passo 2) os religa como aviso depois que o arquivo é escrito.
 
-### 6.2 Edição obriga remedição
-
-`SignDoneRequest.Criteria` é a lista final. O operador pode ter trocado um
-comando, mudado um `exit_code`, apagado um critério, acrescentado outro.
-
-**Todo critério cujo comando ou `ExitCode` mudou é medido de novo antes de
-congelar.** Sem isso, a edição do operador escapa exatamente da regra que a
-família existe para aplicar: um comando escrito à mão e já verde entraria como
-critério de aceitação sem nunca ter sido vermelho.
-
-```go
-// Sign runs the operator round trip. Criteria edited in the answer are measured
-// again; if any of them changes class or comes back broken, the proposal goes
-// back once more, up to qualifier.max_sign_rounds.
-func Sign(ctx context.Context, in []Measured, ask Asker, run loop.CriterionRunner, timeout time.Duration) (loop.DoneSet, error)
-
-// Asker puts a measured proposal in front of the operator and returns what came
-// back. The transport is the server's; this is the seam that keeps qualifier
-// testable without one.
-type Asker func(ctx context.Context, p []Measured, c Conditions) (SignedAnswer, error)
-
-// SignedAnswer is the protocol type, restated at the package boundary.
-type SignedAnswer struct {
-    Signed    bool
-    Criteria  []Proposed
-    Protected []string
-}
-
-// ErrRefused is the operator declining, the deadline passing, or the round
-// limit being reached. All three end the turn the same way, and none of them
-// starts a loop.
-var ErrRefused = errors.New("qualifier: the definition of done was not signed")
-```
-
-Esgotar `max_sign_rounds` é recusa, não aprovação do último estado. Um teto que
-aprova ao estourar é o mesmo defeito do prazo que aprova, com outro nome.
+**Saíram, sem nunca terem tido emissor:** `done.signed`, `SignDoneRequest`,
+`qualifier.Sign` com o `Asker`, o `SignedAnswer`, o `ErrRefused` e o teto de
+rodadas, e as chaves `DCODE_QUALIFIER_MAX_SIGN_ROUNDS` e
+`DCODE_QUALIFIER_SIGN_TIMEOUT` do `.config`. Eram a assinatura como um
+ida-e-volta bloqueante dentro do turno, e o desenho que ganhou
+(`202608270700-o-laco-le-as-ferramentas`) pôs a medição **fora** do turno e a
+revisão no arquivo. Não há prazo que aprova porque não há prazo: a RN-6 da `.r`
+é cumprida pelo laço que para e espera a pessoa, sem relógio nenhum.
 
 ## 7. O congelamento e a quarta origem
 
@@ -449,16 +406,7 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 - O arquivo gravado é o que o carregador lê de volta.
 - Critério quebrado é **gravado comentado**: fica no arquivo para ser lido e não vira critério do próximo turno.
 - Saída enorme de critério é cortada antes de chegar ao arquivo e ao resumo.
-- Critério editado na assinatura é medido de novo antes de congelar.
-- Critério que o operador **acrescentou** volta ao operador antes de congelar: classe que ninguém viu não se assina.
-- Edição que não muda a classe assenta na hora — voltar por uma classe já vista é perguntar duas vezes.
-- Recusa, prazo esgotado, teto de rodadas e falha do canal terminam em `ErrRefused`, e nenhum deles inicia laço.
-- Prazo esgotado nunca aprova; teto de rodadas esgotado nunca aprova.
-- Assinar sem runner é recusado **antes** de perguntar: edição que ninguém mede não se assina.
-- Assinar conjunto vazio é recusado, venha de onde vier.
-- Critério quebrado não entra na `DoneSet` congelada.
-- Conjunto que **fica** vazio ao congelar é recusado: ele não era vazio, ficou.
-- A condição do conjunto é mostrada junto dele, para ser assinada sabendo.
+- A condição do conjunto é mostrada junto dele, no arquivo, para ser revisada sabendo.
 
 ## 10. Invariantes previstas
 
@@ -493,8 +441,7 @@ A ordem é a inversa da intuitiva, e é de propósito.
 
 1. **`Measure` e a classificação.** Puro, com runner injetado. Sem modelo, sem
    protocolo, sem operador. Testável inteiro por asserção.
-2. **A medição de t=0 nas origens que já existem, e o ida-e-volta da
-   assinatura.** Ainda sem modelo: a entrada é o `done.toml` ou o `tasks.md` que
+2. **A medição de t=0 nas origens que já existem.** Ainda sem modelo: a entrada é o `done.toml` ou o `tasks.md` que
    o operador já escreveu. Entrega valor sozinha — "dois dos seus critérios já
    passavam antes de qualquer trabalho" — e é onde o número da §10 aparece.
 3. **A ferramenta `done_propose` e o turno de qualificação.** A parte mediada, e
@@ -512,3 +459,4 @@ derivação boa também não vale nada.
 - [202608270700 — o laço lê as ferramentas, não o contrário](changelog/202608270700-o-laco-le-as-ferramentas.md)
 - [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)
 - [202608280200 — o cenário que mudou embaixo do número](changelog/202608280200-o-cenario-que-mudou-embaixo.md)
+- [202610140900 — a assinatura é o arquivo, e o ida-e-volta sai](changelog/202610140900-a-assinatura-e-o-arquivo.md)

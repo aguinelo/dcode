@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O desktop deixa de ler `done.signed`.** O núcleo apagou o evento e o
+  `SignDoneRequest` (passo 1 de `docs/proposals/loop.md`, decisão Q1 C): a
+  assinatura é o `done.toml` revisado, e nada nunca emitiu nenhum dos dois. O
+  `generated.ts` regenerado perde os dois, e o decodificador e a nota
+  "Definição de pronto assinada" saem junto; o `done.proposed` fica.
 - **Um desenho para rodar o `/loop` pelo desktop, aprovado pelo dono em
   2026-10-13 com todas as recomendações; é construído antes do orquestrador.**
   `docs/proposals/loop.md` desenha começar, acompanhar, revisar e parar um

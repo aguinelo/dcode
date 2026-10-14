@@ -32,7 +32,6 @@ export type Note =
   | { kind: 'completion'; completion: P.Completion }
   | { kind: 'stopped'; reason: string; rounds: number; maxRounds: number | null }
   | { kind: 'done-proposed'; criteria: number; noAcceptance: boolean }
-  | { kind: 'done-signed' }
   | { kind: 'gap'; from: number; to: number }
   | { kind: 'orphan-result'; callId: string }
   | { kind: 'protocol'; reason: string };
@@ -380,8 +379,6 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
         criteria: (ev.payload.criteria ?? []).length,
         noAcceptance: !!ev.payload.no_acceptance,
       });
-    case 'done.signed':
-      return withNote(view, ev.seq, ev.at, { kind: 'done-signed' });
   }
 }
 

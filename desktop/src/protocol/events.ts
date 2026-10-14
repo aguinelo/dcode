@@ -30,9 +30,6 @@ export interface PayloadByType {
   progress: P.Progress;
   'plan.updated': P.PlanUpdated;
   'done.proposed': P.DoneProposal;
-  // Declared by the protocol and emitted by nothing yet, with no payload type
-  // of its own. Read as "signed" and nothing more.
-  'done.signed': unknown;
 }
 
 export type EventKind = keyof PayloadByType;
@@ -193,7 +190,6 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
     no_acceptance: opt('boolean'),
     expires_at: req('string'),
   } satisfies Shape<P.DoneProposal>,
-  'done.signed': null,
 };
 
 /** Every event type this desktop knows how to read. */
