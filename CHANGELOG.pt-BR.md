@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 219 changelogs de decisão |
+| famílias de spec | 19, com 220 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um loop parado enquanto grava a proposta ainda diz onde o arquivo está, e
+  um loop em `/` contém toda árvore.** Uma parada que chegava durante a
+  gravação deixava um `done.toml` no disco e nenhuma proposta no loop; agora o
+  caminho é registrado antes de a parada ser honrada. E a recusa de um loop
+  dentro ou em volta de outro vivo comparava `/` como `//`, então um loop na
+  raiz não recusava nada. A spec da loop-command também diz que um objetivo
+  para na primeira pasta cujo turno termina num teto, onde a TUI segue — de
+  propósito.
 - **Um objetivo qualifica toda pasta que não declara nada antes de qualquer
   trabalho.** Num `/loop <objetivo>`, cada pasta pendente sem critério ganha
   antes uma sessão qualificadora, todas numa passada, e o loop para com as

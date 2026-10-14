@@ -76,10 +76,13 @@ func loopRoot(ws string) (string, error) {
 	return root, nil
 }
 
-// overlaps reports two trees where one holds the other.
+// overlaps reports two trees where one holds the other. Both end in exactly
+// one separator before comparing, so the root "/" holds every tree rather
+// than being compared as "//".
 func overlaps(a, b string) bool {
 	sep := string(filepath.Separator)
-	return a == b || strings.HasPrefix(a, b+sep) || strings.HasPrefix(b, a+sep)
+	a, b = strings.TrimSuffix(a, sep)+sep, strings.TrimSuffix(b, sep)+sep
+	return strings.HasPrefix(a, b) || strings.HasPrefix(b, a)
 }
 
 // start refuses a second live run in, inside or around a live run's tree, then
