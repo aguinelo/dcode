@@ -23,6 +23,7 @@ const CONVERSATION: Shape<P.Conversation> = {
   last_activity: req('string'),
   last_event: opt('string'),
   continued_from: opt('string'),
+  loop_id: opt('string'),
 };
 
 /** One frame of the list's stream, read. */

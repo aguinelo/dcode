@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 216 decision changelogs |
+| spec families | 19, with 218 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,23 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The daemon runs `/loop`.** `POST /v1/loops` takes the argument as typed
+  and the daemon conducts the sequence the TUI ran in its own process: survey
+  first, qualify a folder that declares nothing, stop at a written proposal
+  (`awaiting_review`) until `POST /v1/loops/{id}/continue`, work a goal's
+  pending folders one session each, and end with the verdict of the whole run.
+  `GET /v1/loops` and the `GET /v1/loops/events` stream show every run, and
+  `POST /v1/loops/{id}/stop` stops now or after the current folder. One live
+  loop per workspace (`loop_already_running`); sessions and conversations a
+  loop opened carry `loop_id`; the Go client gains `StartLoop`, `ListLoops`,
+  `WatchLoops`, `ContinueLoop` and `StopLoop`. The sequence and the queue lived
+  in the TUI's memory, so a second client could neither start a loop nor see
+  one, and reimplementing it would be a second copy of the rule. The TUI is
+  unchanged here and still runs its own loop until it moves to these routes.
+  A turn that ends in error or at a ceiling fails the run with the reason
+  rather than counting its folder done, a stop leaves no session working, and
+  a run that only qualified waits for continue where the TUI waits to be typed
+  again.
 - **Each check of the definition of done inside a turn is an event.** The loop
   re-enters a turn while the unmet criteria shrink, and every one of those
   checks ran in silence: a client learned where the criteria stood only at

@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **Sessions and conversations are read with `loop_id`.** The core now runs
+  `/loop` and marks the sessions a loop opens (step 4 of
+  `docs/proposals/loop.md`); `generated.ts` is regenerated with the loop types,
+  and the session and conversation decoders accept the field. Nothing in the
+  app uses it yet: starting and following a loop are steps 7 and 8.
 - **The criteria lights move with each check (D54).** While a turn runs, the
   lights in the grid window, the maximized one and the Crew's Pronto tab are
   those of its last `done.checked`, not of the last turn that ended, with

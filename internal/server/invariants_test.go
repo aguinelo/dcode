@@ -157,6 +157,18 @@ var protocolInvariants = map[string]string{
 	"o que não pôde rodar, e diz o que o protegido": "TestACheckNamesWhatPassedFailedAndCouldNotRun",
 	"nomeia o que o laço desfez":                    "TestABackwardCheckNamesWhatWasUndone",
 	"não anuncia conferência":                       "TestATurnThatChangedNothingAnnouncesNoCheck",
+	// The loop as a resource of the daemon.
+	"outro workspace é outra árvore":        "TestALoopIsStartedListedAndStopped",
+	"código que diz o que houve":            "TestTheLoopRoutesRefuseWithACodeThatSaysWhy",
+	"abre com todos os loops":               "TestTheLoopStreamStartsWithEveryRunAndFollowsThem",
+	"carrega `loop_id` desde":               "TestASessionALoopOpensCarriesTheLoop",
+	"alcança toda rota de loop":             "TestTheClientDrivesALoop",
+	"contexto já cancelado não é submetido": "TestATurnIsNotSubmittedOnACancelledContext",
+	"entre o retrato e a inscrição":         "TestTheLoopStreamMissesNoChange",
+	"em volta da árvore de um loop vivo":    "TestALoopNeedsAFolderOfItsOwn",
+	"Daemon que está encerrando":            "TestNoLoopStartsOnADaemonGoingAway",
+	"nunca um id de zeros":                  "TestALoopIDThatCannotBeDrawnIsAnError",
+	"Inscrito lento no fluxo de loops":      "TestASlowLoopSubscriberIsDroppedAndSaid",
 	// Images.
 	"imagem por valor":     "TestAnImageArrivesOnATurn",
 	"recusado na borda":    "TestAMalformedImageIsRefused",

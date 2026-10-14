@@ -190,7 +190,24 @@ var loopCommandInvariants = map[string]string{
 	"igual ao `DoneSet` da `LoopSpec`":             "TestSessionConfigDoneMatchesSpec",
 	"se e só se há ao menos um critério":           "TestSessionConfigDoneEnabledReflectsCriteria",
 	"carrega prefixo, basename e instante":         "TestSessionConfigNameCarriesPrefixSpecAndInstant",
-	"a fachada não tem orçamento próprio":          "TestSessionConfigCarriesTheLimitsUntouched",
+	// The daemon conducts the loop.
+	"**uma** sessão que carrega":          "TestALoopOnAFolderWorksItAndSaysWhereItEnded",
+	"só o `continue` abre":                "TestAFolderThatDeclaresNothingIsQualifiedAndWaitsForReview",
+	"o primeiro que chega leva":           "TestContinueOutsideAReviewIsRefused",
+	"interrompe o turno em curso":         "TestStopNowInterruptsTheTurn",
+	"não abre a próxima":                  "TestStopAfterTheFolderOpensNoOther",
+	"encerra sem abrir trabalho":          "TestABareWordThatNamesNothingIsQualifiedAsAGoal",
+	"com o motivo escrito":                "TestARunThatCannotGoOnSaysWhy",
+	"antes de o loop existir":             "TestABadArgumentIsRefusedBeforeAnythingRuns",
+	"nomeia as pastas que ficaram":        "TestAGoalWorksEveryPendingFolderAndSumsTheRun",
+	"roda um loop de verdade numa pasta":  "TestTheDaemonRunsALoopOnAFolder",
+	"Pergunta cancelada é a parada":       "TestStopDuringTheSurveyOpensNothing",
+	"enquanto a sessão abre":              "TestStopWhileASessionOpensSubmitsNothing",
+	"Parada durante a qualificadora":      "TestStopWhileQualifyingWritesNoProposal",
+	"não terminou normalmente":            "TestATurnThatDidNotEndNormallyFailsTheRun",
+	"são resultado, não falha":            "TestATurnThatEndsWithAResultIsNotAFailure",
+	"aparece em `warnings`":               "TestASurveyThatFailsStillOpensTheWork",
+	"a fachada não tem orçamento próprio": "TestSessionConfigCarriesTheLimitsUntouched",
 }
 
 // This replaces a test that claimed the same family and asserted nothing: it

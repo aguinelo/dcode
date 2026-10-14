@@ -215,6 +215,8 @@ type Session struct {
 	// told. Without this the client would have to say "loop opened" and mean
 	// nothing by it.
 	DoneCriteria int `json:"done_criteria"`
+	// LoopID is the `/loop` run that opened this session, when one did.
+	LoopID string `json:"loop_id,omitempty"`
 }
 
 // CreateSessionRequest opens a session. Workspace must be absolute.
