@@ -10,12 +10,19 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **Run from the sources on macOS, the menu bar and the Dock say DCode Box.**
+  `npm start` now first runs `scripts/dev-name.mjs`, which writes the name into
+  the development Electron's Info.plist (in node_modules) and signs that bundle
+  again ad hoc, since macOS reads those two places from the bundle and not from
+  `app.setName`. It does nothing when the name is already there, and `npm ci`
+  undoing it is fixed on the next start. A failure is said and never stops the
+  app. A packaged app is untouched.
 - **The app is called DCode Box and shows the mascot's icon when run from the
   sources.** Run with `npm start`, the binary is Electron's own, so the Dock and
   the taskbar showed Electron's icon. The icon is now set at runtime, and the
   product name (windows, dialogs, packaged bundle) is "DCode Box". On macOS the
   menu bar's app name and the Dock's label still read "Electron" in that mode:
-  they come from Electron's own bundle, and only a packaged app changes them.
+  they come from Electron's own bundle (the entry above names it too).
 - **dcode's colour is the mascot's Laranja.** The owner chose orange
   `#FF6A00` as dcode's main colour, replacing D29's lime `#c6f36b`; the
   neutrals and semantics come from the mascot sheet's 23 tones, in Grade and
