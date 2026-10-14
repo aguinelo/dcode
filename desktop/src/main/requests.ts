@@ -1,4 +1,15 @@
-import { Version, type CompactResult, type CreateSessionRequest, type ModelsResponse, type Session, type SubmitTurnRequest, type TurnImage, type UndoResult } from '../protocol/generated';
+import {
+  Version,
+  type CompactResult,
+  type CreateSessionRequest,
+  type ModelsResponse,
+  type Session,
+  type StartLoopRequest,
+  type StopLoopRequest,
+  type SubmitTurnRequest,
+  type TurnImage,
+  type UndoResult,
+} from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import { UNREACHABLE, type Answer, type DaemonStatus, type NewSessionOptions, type Refusal } from '../shared/api';
 import { UNEXPECTED, request, shown } from './wire';
@@ -146,6 +157,23 @@ export class Requests {
   async compact(sessionId: string): Promise<Answer<CompactResult>> {
     const a = await this.call('POST', `${sessionPath(sessionId)}/compact`);
     return a.ok ? { ok: true, value: a.value as CompactResult } : a;
+  }
+
+  /** Starts `/loop` in a project (D55). The run is passed on as it came. */
+  startLoop(workspace: string, args: string): Promise<Answer<unknown>> {
+    const body: StartLoopRequest = { workspace, args };
+    return this.call('POST', `/${Version}/loops`, body);
+  }
+
+  /** Stops a run now or after its folder (D55). The run is passed on as it came. */
+  stopLoop(loopId: string, when: string): Promise<Answer<unknown>> {
+    const body: StopLoopRequest = { when };
+    return this.call('POST', `/${Version}/loops/${encodeURIComponent(loopId)}/stop`, body);
+  }
+
+  /** What each spec folder of a project declares, without running its criteria (D55). Passed on as it came. */
+  listSpecs(workspace: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/specs?workspace=${encodeURIComponent(workspace)}&measure=false`);
   }
 
   private async call(method: string, path: string, body?: unknown): Promise<Answer<unknown>> {

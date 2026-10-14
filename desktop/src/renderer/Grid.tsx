@@ -36,6 +36,8 @@ export interface ChooserHandlers {
   otherFolder: (key: string) => void;
   listModels: (workspace: string) => Promise<Outcome<ModelsResponse>>;
   pickFolder: () => Promise<string | null>;
+  /** "Começar loop…": the chooser gives way to the loop's sheet, for the project chosen (D55). */
+  loop: (key: string, workspace: string) => void;
   close: (key: string) => void;
 }
 
@@ -148,6 +150,7 @@ export function Grid({
           onFocus={() => on.focus(key)}
           onPlace={(workspace, options) => chooser.place(key, workspace, options)}
           onOtherFolder={() => chooser.otherFolder(key)}
+          onLoop={(workspace) => chooser.loop(key, workspace)}
           onClose={() => chooser.close(key)}
           listModels={chooser.listModels}
           pickFolder={chooser.pickFolder}

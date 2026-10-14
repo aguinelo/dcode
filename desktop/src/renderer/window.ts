@@ -2,7 +2,7 @@
 // answers come from the daemon through the main process (live.ts); in fixture
 // mode, from a recording that sends nothing anywhere (fixture.ts).
 
-import type { ModelsResponse } from '../protocol/generated';
+import type { LoopRun, ModelsResponse, SpecFolder } from '../protocol/generated';
 import type { DaemonStatus, ImageAttachment, PickedImages } from '../shared/api';
 import type { CommandsResponse, CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
@@ -89,4 +89,10 @@ export interface WindowActions {
   readGit(conversationId: string): Promise<Outcome<GitResponse>>;
   /** One changed file's diff in a conversation's folder (`GET /v1/git/diff`, D41), or why not. */
   readGitDiff(conversationId: string, path: string): Promise<Outcome<GitDiffResponse>>;
+  /** Starts `/loop` in a project with its argument as typed (D55); a refusal says the daemon's reason. */
+  startLoop(workspace: string, args: string): Promise<Outcome<LoopRun>>;
+  /** Stops a run now, or after the folder it is in (D55). */
+  stopLoop(loopId: string, when: string): Promise<Outcome<LoopRun>>;
+  /** The spec folders of a project and what each declares, for the "Começar loop" sheet (D55). */
+  listSpecs(workspace: string): Promise<Outcome<SpecFolder[]>>;
 }

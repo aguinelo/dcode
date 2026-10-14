@@ -7,6 +7,7 @@ import { basename, rowOfSession, sessionTitle, type Row } from '../state/sidebar
 import { ContextCard } from './context/ContextCard';
 import { ConversationBody } from './ConversationBody';
 import { MascotGlyph } from './Mascot';
+import { LoopRuler } from './LoopRuler';
 import { DoneRow } from './Pane';
 import { RecordedBody } from './RecordedBody';
 import { ConversationTitle } from './RenameTitle';
@@ -140,6 +141,7 @@ export function SessionPanel({
         <BranchChip session={session} row={known} />
       </div>
       <div className="proof">
+        <LoopRuler sessionId={session.id} now={now} />
         <DoneRow view={proof} measure={measure} />
       </div>
       {recorded ? (

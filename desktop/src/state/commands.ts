@@ -1,7 +1,8 @@
 // What the field does with what was typed (D40, D48). `!` runs a command in the
 // session, as the TUI's `!`; `/undo`, `/compact` and `/mode <m>` act on it;
 // `/help` opens the help, `/plan` shows the plan, and `/init` and `/plan <text>`
-// send the turns the TUI sends. Any other slash is said to be unknown. A slash
+// send the turns the TUI sends. `/loop` asks the daemon to run a loop in the
+// project (D55), with its argument as typed. Any other slash is said to be unknown. A slash
 // never goes to the model as typed: it is the person asking the harness, not
 // the model, for something.
 
@@ -16,6 +17,8 @@ export type Input =
   | { kind: 'mode'; mode: string }
   | { kind: 'help' }
   | { kind: 'plan' }
+  /** `/loop` and what followed it, as typed: the grammar is the daemon's (D55). */
+  | { kind: 'loop'; args: string }
   /** A command that becomes a turn: what the model receives is `text`, not what was typed. */
   | { kind: 'turn'; name: string; text: string }
   | { kind: 'unknown'; why: string }
@@ -45,10 +48,11 @@ export const COMMANDS: readonly Command[] = [
   { name: 'undo', args: '', detail: 'desfaz o último turno: os arquivos voltam', insert: '/undo', ready: true },
   { name: 'compact', args: '', detail: 'resume agora o contexto do modelo', insert: '/compact', ready: true },
   { name: 'mode', args: `<${NAMES.join('|')}>`, detail: 'troca o modo da sessão', insert: '/mode ', ready: false },
+  { name: 'loop', args: '<pasta|objetivo>', detail: 'o daemon roda um loop no projeto; --protect glob protege', insert: '/loop ', ready: false },
   { name: '!', args: 'comando', detail: 'roda um comando na sessão; a saída aparece aberta', insert: '!', ready: false },
 ];
 
-export const KNOWN = `Aqui há /help, /init, /plan, /undo, /compact, /mode <${NAMES.join('|')}> e !comando.`;
+export const KNOWN = `Aqui há /help, /init, /plan, /undo, /compact, /mode <${NAMES.join('|')}>, /loop <pasta|objetivo> e !comando.`;
 
 const OWN = new Set(COMMANDS.map((c) => c.name));
 
@@ -153,6 +157,10 @@ export function replanPrompt(what: string): string {
   return w ? `Revise the plan to account for this: ${w}` : 'Re-examine the plan and revise it if it no longer fits what you have learned.';
 }
 
+/** What a bare `/loop` is told. */
+export const LOOP_USAGE =
+  '/loop precisa de uma pasta de spec ou de um objetivo: /loop specs/home, ou /loop implemente as specs pendentes --protect tests/**.';
+
 export function parseInput(text: string, user: readonly CommandInfo[] = []): Input {
   const t = text.trim();
   if (t.startsWith('!')) {
@@ -170,6 +178,12 @@ export function parseInput(text: string, user: readonly CommandInfo[] = []): Inp
       // The rest of the line as it was written, not re-joined from words.
       const what = t.slice(1 + name.length).trim();
       return what ? { kind: 'turn', name, text: replanPrompt(what) } : { kind: 'plan' };
+    }
+    case 'loop': {
+      // The rest of the line as it was written: the daemon parses it, not this.
+      const what = t.slice(1 + name.length).trim();
+      if (!what) return { kind: 'bad', why: LOOP_USAGE };
+      return { kind: 'loop', args: what };
     }
     case 'undo':
       return { kind: 'undo' };

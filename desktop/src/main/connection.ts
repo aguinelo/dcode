@@ -1,9 +1,10 @@
 import { ConversationChanged, ConversationSnapshot, Version, type Conversation, type ConversationChange } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import type { Answer, DaemonStatus, Refusal, SessionEvents, StreamEnd } from '../shared/api';
+import type { Answer, DaemonStatus, LoopsPush, Refusal, SessionEvents, StreamEnd } from '../shared/api';
 import { countWorking, foldConversations } from './conversations';
 import { Backoff, Followers } from './follow';
 import { findBinary, findSocket, type Lookup } from './locate';
+import { LoopList } from './loops';
 import { Requests, notConnected } from './requests';
 import { exitWords, lastWords, type Exit, type Serve } from './serve';
 import { decodeData } from './sse';
@@ -47,6 +48,8 @@ export interface Pushes {
   conversations(frame: unknown): void;
   sessionEvents(batch: SessionEvents): void;
   streamEnd(end: StreamEnd): void;
+  /** A frame of the stream of loops, or why the daemon gives none (D55). */
+  loops(push: LoopsPush): void;
 }
 
 export interface ConnectionOptions {
@@ -118,6 +121,8 @@ export class Connection {
   private readonly sessions: Followers;
   /** The window's requests: each answered, and none sent while the daemon is not connected. */
   readonly requests = new Requests(() => this.now);
+  /** The `/loop` runs the daemon conducts, from their stream (D55). */
+  readonly loops: LoopList;
 
   constructor(
     private readonly o: ConnectionOptions,
@@ -132,6 +137,13 @@ export class Connection {
       events: (batch) => this.push.sessionEvents(batch),
       ended: (end) => this.push.streamEnd(end),
       dropped: () => this.stillThere(),
+    });
+    this.loops = new LoopList({
+      retryFromMs: this.t.retryFromMs,
+      retryUpToMs: this.t.retryUpToMs,
+      push: (p) => this.push.loops(p),
+      dropped: () => this.stillThere(),
+      log: (line) => this.log(line),
     });
   }
 
@@ -270,6 +282,7 @@ export class Connection {
     }
     this.set({ state: 'connected', version: version.version, socket, started: this.startedByApp() });
     this.openList(socket);
+    this.loops.open(socket);
     this.sessions.resumeAll();
     this.schedule(this.t.healthEveryMs);
   }
@@ -355,6 +368,7 @@ export class Connection {
 
   private lose(reason: string): void {
     this.closeList();
+    this.loops.close();
     this.sessions.suspendAll();
     this.set({ state: 'lost', reason });
     this.schedule(this.t.lostEveryMs);
@@ -371,6 +385,7 @@ export class Connection {
   private fail(reason: string): void {
     this.unschedule();
     this.closeList();
+    this.loops.close();
     this.sessions.closeAll();
     this.set({ state: 'failed', reason });
   }
@@ -423,6 +438,7 @@ export class Connection {
     this.unschedule();
     // The streams first: a daemon told to stop waits on the connections still open to it.
     this.closeList();
+    this.loops.close();
     this.sessions.closeAll();
     const child = this.child;
     if (child === null || child.ended() !== null) return;

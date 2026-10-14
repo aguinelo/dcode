@@ -35,8 +35,13 @@ export function finishedUnseen(r: Row, a: Attention): boolean {
   return Number.isNaN(seen) || at > seen;
 }
 
-export function claimOf(r: Row, a: Attention): Claim | null {
-  if (r.state === 'blocked') return 'waiting';
+/**
+ * Why a conversation is on the grid. `waiting` names what waits for the person
+ * though its session does not say so — a loop's proposal written and waiting
+ * for review (D55).
+ */
+export function claimOf(r: Row, a: Attention, waiting?: ReadonlySet<string>): Claim | null {
+  if (r.state === 'blocked' || waiting?.has(r.id)) return 'waiting';
   if (a.pinned.includes(r.id)) return 'pinned';
   if (r.state === 'running') return 'running';
   if (finishedUnseen(r, a)) return 'unseen';
@@ -58,11 +63,17 @@ export interface GridPlan {
  * When more want a place than there are, what waits for you wins, then what
  * you pinned, then what runs, then what finished — the newest first in each.
  */
-export function planGrid(rows: readonly Row[], a: Attention, previous: readonly string[], capacity: number): GridPlan {
+export function planGrid(
+  rows: readonly Row[],
+  a: Attention,
+  previous: readonly string[],
+  capacity: number,
+  waiting?: ReadonlySet<string>,
+): GridPlan {
   const claims: Record<string, Claim> = {};
   const candidates: Row[] = [];
   for (const r of rows) {
-    const c = claimOf(r, a);
+    const c = claimOf(r, a, waiting);
     if (c) {
       claims[r.id] = c;
       candidates.push(r);

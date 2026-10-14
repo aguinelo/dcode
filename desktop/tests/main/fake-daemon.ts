@@ -27,6 +27,8 @@ export interface FakeOptions {
   models?: unknown;
   /** Refuses GET /v1/conversations, the list read once, as a failing daemon would. */
   refuseConversations?: boolean;
+  /** The runs the stream of loops opens with; without it, the route is not there, as on a daemon before /loop. */
+  loops?: unknown[];
 }
 
 export interface FakeDaemon {
@@ -86,6 +88,11 @@ export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<F
       lists.add(res);
       res.on('close', () => lists.delete(res));
       return;
+    }
+    if (method === 'GET' && u.pathname === '/v1/loops/events' && o.loops !== undefined) {
+      sse(res);
+      // Left open until the daemon dies, as a stream nothing changes on.
+      return void res.write(`data: ${JSON.stringify({ kind: 'snapshot', loops: o.loops })}\n\n`);
     }
     if (method === 'POST' && u.pathname === '/v1/sessions') {
       const sid = `s-new-${++opened}`;

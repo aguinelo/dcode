@@ -26,6 +26,7 @@ export function NewConversation({
   onFocus,
   onPlace,
   onOtherFolder,
+  onLoop,
   onClose,
   listModels,
   pickFolder,
@@ -37,6 +38,8 @@ export function NewConversation({
   onFocus: () => void;
   onPlace: (workspace: string, options?: StartOptions) => void;
   onOtherFolder: () => void;
+  /** "Começar loop…" in the project chosen (D55). */
+  onLoop: (workspace: string) => void;
   onClose: () => void;
   /** What the daemon lists for a project, for choosing the model before opening (D38). */
   listModels: (workspace: string) => Promise<Outcome<ModelsResponse>>;
@@ -44,11 +47,13 @@ export function NewConversation({
 }) {
   // With "modelo e modo" on, choosing a place goes to the form instead of opening there.
   const [choosing, setChoosing] = useState(false);
+  // With "loop" on, choosing a place opens the loop's sheet there instead (D55).
+  const [looping, setLooping] = useState(false);
   const [where, setWhere] = useState<string | null>(null);
-  const pick = (ws: string) => (choosing ? setWhere(ws) : onPlace(ws));
+  const pick = (ws: string) => (looping ? onLoop(ws) : choosing ? setWhere(ws) : onPlace(ws));
   const other = () => {
-    if (!choosing) return onOtherFolder();
-    void pickFolder().then((ws) => ws && setWhere(ws));
+    if (!choosing && !looping) return onOtherFolder();
+    void pickFolder().then((ws) => ws && pick(ws));
   };
   return (
     <section className={`pane new-pane${focused ? ' focused' : ''}`} aria-label="Nova sessão" onMouseDown={onFocus}>
@@ -71,9 +76,18 @@ export function NewConversation({
                 className={`new-choose${choosing ? ' on' : ''}`}
                 aria-pressed={choosing}
                 title="Escolher o modelo e o modo antes de abrir"
-                onClick={() => setChoosing((c) => !c)}
+                onClick={() => (setChoosing((c) => !c), setLooping(false))}
               >
                 {choosing ? '✓ ' : '+ '}modelo e modo
+              </button>
+              <button
+                type="button"
+                className={`new-choose new-loop${looping ? ' on' : ''}`}
+                aria-pressed={looping}
+                title="Começar um loop no projeto escolhido: uma pasta de spec ou um objetivo"
+                onClick={() => (setLooping((l) => !l), setChoosing(false))}
+              >
+                {looping ? '✓ ' : '↻ '}loop
               </button>
             </span>
             <div className="new-places">
@@ -100,7 +114,13 @@ export function NewConversation({
       </div>
       <div className="pane-foot">
         <span className="pane-where">
-          {opening ? `abrindo em ${opening}…` : choosing && !where ? 'escolher leva ao modelo e ao modo' : 'escolher abre a sessão aqui'}
+          {opening
+            ? `abrindo em ${opening}…`
+            : looping
+              ? 'escolher abre o começar loop'
+              : choosing && !where
+                ? 'escolher leva ao modelo e ao modo'
+                : 'escolher abre a sessão aqui'}
         </span>
       </div>
     </section>

@@ -10,6 +10,21 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A loop is started and stopped from the window (D55).** `/loop
+  <folder|goal> [--protect glob]` in any field goes to the daemon as typed
+  (`POST /v1/loops`), and is in the "/" menu and the help; "↻ loop" in the new
+  session window opens a "Começar loop" sheet with the folders the daemon lists
+  and what each declares, or a goal, and what to protect, sending the same text
+  a person would type. A loop takes one grid window that follows its current
+  session and keeps its place from folder to folder (Q5 A, amending D31); a
+  ruler at its top — only when there is a loop — says the goal, the state, the
+  folder it is in of how many, each folder's phase one click from its
+  conversation, the verdict, the error and the warnings, with "Parar agora" and
+  "Parar depois desta pasta". The main process keeps the loops' stream next to
+  the conversations'. Refusals (`loop_already_running` and the rest) are said
+  with the daemon's reason, and a loop that fails is said once. Before, the
+  daemon could run a loop and the window could neither start, see nor stop it.
+  Screens 02 and 03 have no loop and stay at 0.00%.
 - **Sessions and conversations are read with `loop_id`.** The core now runs
   `/loop` and marks the sessions a loop opens (step 4 of
   `docs/proposals/loop.md`); `generated.ts` is regenerated with the loop types,

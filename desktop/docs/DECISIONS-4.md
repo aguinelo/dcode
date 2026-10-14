@@ -202,3 +202,55 @@ Descartados: luzes só no fim do turno (o que havia; o D24 recusou um loop que
 só se vê terminado); contar testes por critério (exigiria ler a saída do
 comando, recusado no D24 e na Q4); uma linha no fluxo por conferência (num
 turno de 40 ciclos, o fluxo viraria o placar e a conversa sumiria).
+
+**D55. Um loop começa e para pela janela, e ocupa uma janela que segue a sessão
+corrente dele** (emenda D31; passo 7 de [`proposals/loop.md`](proposals/loop.md),
+as decisões Q5 A, Q6 C e Q7 A). O daemon conduz o `/loop` (N4, #474); a janela
+pede, mostra e para — nunca decide o que o loop faz.
+
+- **Duas portas, uma gramática (Q6 C).** `/loop <pasta|objetivo> [--protect
+  glob]` no campo de qualquer janela vai ao daemon como foi digitado
+  (`POST /v1/loops`), no projeto daquela conversa; o campo reconhece o comando e
+  não o interpreta, porque a gramática é do daemon. O `/loop` entra no menu "/" e
+  na ajuda. A outra porta é "↻ loop" na janela de "Nova sessão": escolher o
+  projeto abre a folha "Começar loop", com as pastas que o daemon lista
+  (`GET /v1/specs?measure=false`, só leitura) e o que cada uma declara — "0 ·
+  qualifica antes" é o que o daemon disse, não previsão —, ou um objetivo, e o
+  que proteger. A folha manda o mesmo texto que a pessoa digitaria, e mostra
+  esse texto antes de mandar.
+- **Recusa dita com a razão do daemon.** Um segundo loop vivo no mesmo projeto
+  é `loop_already_running` (Q7 A): a folha avisa antes, quando sabe, e a recusa
+  aparece com a mensagem do daemon, no campo ou na folha. Argumento que o
+  daemon não aceita volta com a mensagem dele. Um loop que falha depois de
+  começar é dito uma vez, com o porquê.
+- **Uma janela por loop, que segue a sessão corrente (Q5 A, emenda D31).** Das
+  sessões que um loop abre, só a corrente disputa lugar na grade, e ela fica no
+  lugar que a anterior tinha: a janela não pula quando o loop passa de uma pasta
+  para a outra. Se a pessoa tinha prendido a janela, a prisão passa para a
+  sessão nova. Proposta escrita esperando revisão conta como "esperando você"
+  (D30).
+- **A régua do loop, só quando há loop.** No topo da janela — na grade e na
+  maximizada —, acima das luzes dos critérios: o objetivo ou a pasta, o estado,
+  o tempo, e "pasta 2 de 3 · specs/…"; aberta, cada pasta com a fase dela
+  (pendente, qualificando, proposta, trabalhando, pronta, ficou por fazer), a um
+  clique da conversa daquela pasta, que abre maximizada e só leitura se
+  terminou (D42). No fim, o veredito que o daemon somou; numa falha, o erro; e
+  os avisos que o daemon deu sem parar. Conversa que não é de loop não desenha
+  nada, e por isso as telas 02 e 03 ficam a 0,00%.
+- **Parar agora, ou depois desta pasta.** Dois botões na régua enquanto o loop
+  vive: "agora" interrompe o turno e encerra o loop; "depois desta pasta" deixa
+  a corrente terminar e não abre a próxima (`POST /v1/loops/{id}/stop`).
+- **A lista de loops vem como a de conversas.** O processo principal abre
+  `GET /v1/loops/events` ao lado da lista de conversas, guarda o último estado
+  para a janela que abre depois e repassa cada quadro; a janela confere cada um
+  contra os tipos gerados. Um dcode sem a rota é dito uma vez, e a janela segue
+  sem loops — as conversas não dependem deles.
+
+A revisão da proposta, com o card e "Começar o trabalho", é o passo 8, numa
+decisão própria.
+
+Descartados: uma janela por pasta (D31 ao pé da letra, a Q5 B — enche a grade
+de janelas terminadas e empurra o resto para fora); o cliente interpretar o
+argumento do `/loop` (duas gramáticas que derivam, recusado na Q2); a folha
+montar o loop por campos que o campo não tem (duas portas com regras
+diferentes).

@@ -56,6 +56,7 @@ const daemon = new Connection(
     conversations: (frame) => broadcast(CHANNELS.conversations, frame),
     sessionEvents: (batch) => broadcast(CHANNELS.sessionEvents, batch),
     streamEnd: (end) => broadcast(CHANNELS.streamEnd, end),
+    loops: (push) => broadcast(CHANNELS.loops, push),
   },
 );
 

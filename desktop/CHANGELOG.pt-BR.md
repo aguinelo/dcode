@@ -10,6 +10,21 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Um loop começa e para pela janela (D55).** `/loop <pasta|objetivo>
+  [--protect glob]` em qualquer campo vai ao daemon como foi digitado
+  (`POST /v1/loops`), e está no menu "/" e na ajuda; "↻ loop" na janela de
+  sessão nova abre a folha "Começar loop", com as pastas que o daemon lista e o
+  que cada uma declara, ou um objetivo, e o que proteger, mandando o mesmo texto
+  que a pessoa digitaria. Um loop ocupa uma janela da grade que segue a sessão
+  corrente dele e fica no lugar de pasta em pasta (Q5 A, emenda D31); uma régua
+  no topo — só quando há loop — diz o objetivo, o estado, em que pasta está de
+  quantas, a fase de cada pasta a um clique da conversa dela, o veredito, o erro
+  e os avisos, com "Parar agora" e "Parar depois desta pasta". O processo
+  principal guarda o fluxo de loops ao lado do de conversas. Recusas
+  (`loop_already_running` e as outras) aparecem com a razão do daemon, e um
+  loop que falha é dito uma vez. Antes, o daemon rodava um loop e a janela não
+  conseguia começar, ver nem parar. As telas 02 e 03 não têm loop e ficam a
+  0,00%.
 - **Sessões e conversas são lidas com `loop_id`.** O núcleo agora roda o
   `/loop` e marca as sessões que um loop abre (passo 4 de
   `docs/proposals/loop.md`); o `generated.ts` é regenerado com os tipos do
