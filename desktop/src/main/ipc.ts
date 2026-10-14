@@ -1,6 +1,7 @@
-import { BrowserWindow, clipboard, dialog, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent, type OpenDialogOptions } from 'electron';
+import { BrowserWindow, clipboard, dialog, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent, type OpenDialogOptions } from 'electron';
 import { CHANNELS, type PickedImages } from '../shared/api';
 import type { Connection } from './connection';
+import { proposalToOpen } from './loops';
 import * as images from './images';
 import * as input from './inputs';
 import type { Terminals } from './terminals';
@@ -200,6 +201,20 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     if (!run.ok) return run;
     const at = input.stopWhen(when);
     return at.ok ? ask.stopLoop(run.value, at.value) : at;
+  });
+  handle(CHANNELS.continueLoop, (_event, id) => {
+    const run = input.loopId(id);
+    return run.ok ? ask.continueLoop(run.value) : run;
+  });
+  // The proposal in the editor (D56): only the file the daemon wrote for that
+  // run, as it listed it. The renderer never names a path that is opened.
+  handle(CHANNELS.openProposal, async (_event, id, file) => {
+    const run = input.loopId(id);
+    if (!run.ok) return run;
+    const which = proposalToOpen(daemon.loops.listed(), run.value, file);
+    if (!which.ok) return which;
+    const failed = await shell.openPath(which.value);
+    return failed ? { ok: false, refusal: { code: 'open_failed', message: `${which.value} não abriu: ${failed}` } } : { ok: true, value: null };
   });
   handle(CHANNELS.listSpecs, (_event, workspace) => {
     const where = input.workspace(workspace);

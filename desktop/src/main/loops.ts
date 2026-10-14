@@ -1,5 +1,8 @@
 import { LoopAwaitingReview, LoopChanged, LoopQualifying, LoopSnapshot, LoopSurveying, LoopWorking, Version, type LoopRun } from '../protocol/generated';
+import path from 'node:path';
+import { CodeInvalidInput } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
+import type { Checked } from './inputs';
 import type { LoopsPush } from '../shared/api';
 import { Backoff } from './follow';
 import { decodeData } from './sse';
@@ -51,6 +54,24 @@ export function countLiveLoops(list: readonly LoopRun[]): number {
   return list.filter((r) => LIVE.includes(r.state)).length;
 }
 
+/**
+ * The file a window may open in the editor (D56): only a proposal the daemon
+ * wrote for that run, as the daemon listed it — never a path the window
+ * chose. A relative one is read from the run's project, and never outside it.
+ */
+export function proposalToOpen(list: readonly LoopRun[] | null, loopId: string, file: unknown): Checked<string> {
+  const no = (message: string): Checked<string> => ({ ok: false, refusal: { code: CodeInvalidInput, message } });
+  if (typeof file !== 'string' || file === '') return no('O arquivo da proposta precisa ser um caminho.');
+  const run = list?.find((r) => r.id === loopId);
+  if (!run) return no(`O daemon não lista o loop ${loopId}: só a proposta de um loop que ele conhece abre.`);
+  if (!run.specs.some((s) => s.proposal === file)) return no(`${file} não é uma proposta que o daemon escreveu para este loop.`);
+  if (path.isAbsolute(file)) return { ok: true, value: file };
+  const root = path.resolve(run.workspace);
+  const full = path.resolve(root, file);
+  if (full !== root && !full.startsWith(root + path.sep)) return no(`${file} fica fora do projeto do loop, e não abre.`);
+  return { ok: true, value: full };
+}
+
 const LOOP_EVENTS = `/${Version}/loops/events`;
 
 export interface LoopListDeps {
@@ -85,6 +106,11 @@ export class LoopList {
   now(): LoopsPush | null {
     if (this.refused !== null) return { kind: 'refused', reason: this.refused };
     return this.list === null ? null : { kind: 'frame', frame: { kind: LoopSnapshot, loops: this.list } };
+  }
+
+  /** The runs as last listed, or null before the first list. */
+  listed(): readonly LoopRun[] | null {
+    return this.list;
   }
 
   /** Runs still alive, as last listed. */

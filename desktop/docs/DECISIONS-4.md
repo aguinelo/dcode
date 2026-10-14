@@ -254,3 +254,44 @@ de janelas terminadas e empurra o resto para fora); o cliente interpretar o
 argumento do `/loop` (duas gramáticas que derivam, recusado na Q2); a folha
 montar o loop por campos que o campo não tem (duas portas com regras
 diferentes).
+
+**D56. A definição de pronto proposta é revisada antes do trabalho, num card**
+(passo 8 de [`proposals/loop.md`](proposals/loop.md), a decisão Q3 A). Uma
+pasta sem critério passa pela qualificadora; o daemon mede, escreve o
+`done.toml` e anuncia a proposta (`done.proposed`, #472), e o loop fica em
+`awaiting_review` até a pessoa dizer.
+
+- **O card é o que o daemon mediu.** Na régua do loop (D55), enquanto ele
+  espera: o arquivo escrito, quantos critérios, e cada um com a classe que a
+  medição deu — aceitação, regressão ou quebrado —, o que rodar fez antes do
+  trabalho (o exit), o comando, o porquê do proponente e a saída, recolhida.
+  Vem do `done.proposed` da sessão qualificadora, nunca do resumo em prosa.
+- **Onde o olho cai.** A discordância entre o que o proponente disse e o que a
+  medição achou (`mismatch`) ganha a linha "⚠ O proponente disse que falharia,
+  e passou: confira o porquê."; critério quebrado — não havia o que rodar — diz
+  que não testemunha nada. Conjunto sem nenhum vermelho (`no_acceptance`) é
+  dito: num refactor pode ser o certo, fora dele é defeito. Os caminhos
+  protegidos aparecem embaixo.
+- **Um objetivo sobre um backlog vira uma lista.** O daemon qualifica todas as
+  pastas sem critério numa passada; o card mostra uma proposta por pasta, e a
+  janela segue a sessão de cada uma para ler o `done.proposed` dela. Proposta
+  que ainda não chegou à janela é dita, com o arquivo a um clique.
+- **"Abrir no editor" passa pelo processo principal.** A janela nomeia o loop e
+  o arquivo; o processo principal só abre (`shell.openPath`) um caminho que o
+  daemon listou como proposta daquele loop, e um relativo só dentro do projeto
+  do loop. O renderer continua sem tocar o disco (D2). O daemon fala por um
+  socket Unix, então é sempre local.
+- **"Começar o trabalho" é a pessoa dizendo.** `POST /v1/loops/{id}/continue`;
+  nada começa sozinho (`done-qualifier` RN-6). Se outra janela ou a TUI
+  respondeu antes, o daemon recusa com `loop_not_awaiting_review`, e a janela
+  diz isso com a mensagem dele; o estado novo chega pelo fluxo. "Parar o loop"
+  fica ao lado.
+- **Na Crew**, a aba Pronto ganha uma seção Loop, acima das luzes: a mesma
+  régua, aberta, com o card quando há revisão.
+
+As réguas: as telas 02 e 03 não têm loop e ficam a 0,00%.
+
+Descartados: editar os critérios na janela (Q3 B — editar critério é editar a
+régua, e merece desenho próprio); só o resumo em prosa (Q3 C — a discordância
+some no texto); abrir qualquer caminho que a janela mandasse (o renderer
+escolheria o que o sistema abre).

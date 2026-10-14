@@ -116,6 +116,8 @@ const api: DcodeApi = {
     start: (workspace, args) => invoke<Answer<unknown>>(CHANNELS.startLoop, workspace, args),
     stop: (loopId, when) => invoke<Answer<unknown>>(CHANNELS.stopLoop, loopId, when),
     specs: (workspace) => invoke<Answer<unknown>>(CHANNELS.listSpecs, workspace),
+    continue: (loopId) => invoke<Answer<unknown>>(CHANNELS.continueLoop, loopId),
+    openProposal: (loopId, file) => invoke<Answer<null>>(CHANNELS.openProposal, loopId, file),
   },
 };
 

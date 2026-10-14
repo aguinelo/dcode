@@ -125,6 +125,13 @@ export interface LoopApi {
   stop(loopId: string, when: string): Promise<Answer<unknown>>;
   /** The spec folders of a project and what each declares, without running anything (`GET /specs?measure=false`). */
   specs(workspace: string): Promise<Answer<unknown>>;
+  /** Takes a run out of awaiting_review and into the work (`POST /loops/{id}/continue`, D56). */
+  continue(loopId: string): Promise<Answer<unknown>>;
+  /**
+   * Opens a run's proposal in the system's editor (D56): only a file the
+   * daemon wrote for that run, checked by the main process.
+   */
+  openProposal(loopId: string, file: string): Promise<Answer<null>>;
 }
 
 export interface DcodeApi {
@@ -273,6 +280,8 @@ export const CHANNELS = {
   startLoop: 'dcode:start-loop',
   stopLoop: 'dcode:stop-loop',
   listSpecs: 'dcode:list-specs',
+  continueLoop: 'dcode:continue-loop',
+  openProposal: 'dcode:open-proposal',
 } as const;
 
 /** The channel the main process answers `user()` on. */

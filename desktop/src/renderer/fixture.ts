@@ -57,6 +57,8 @@ export const fixtureActions: WindowActions = {
   startLoop: async () => ({ ok: false, why: NOT_CONNECTED }),
   stopLoop: async () => ({ ok: false, why: NOT_CONNECTED }),
   listSpecs: async () => ({ ok: false, why: NOT_CONNECTED }),
+  continueLoop: async () => ({ ok: false, why: NOT_CONNECTED }),
+  openProposal: unsent,
   readGitDiff: async (id, path) => {
     const git = recordedGit[recordedWorkspace(id) ?? ''];
     const diff = git?.files.some((f) => f.path === path) ? recordedDiffs[path] : undefined;

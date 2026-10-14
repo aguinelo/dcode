@@ -161,3 +161,110 @@
   color: inherit;
   opacity: 0.7;
 }
+
+/* ---- a proposed definition of done, reviewed before the work (D56) ------- */
+
+.loop-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--dc-line-soft);
+}
+.pane .loop-review {
+  max-height: 45vh;
+  overflow: auto;
+}
+.loop-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.loop-proposal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.loop-proposal-file {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dc-text);
+}
+.loop-proposal-count {
+  flex: none;
+  color: var(--dc-faint);
+}
+.loop-criterion {
+  display: grid;
+  grid-template-columns: 72px 64px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--dc-line-soft);
+}
+.loop-class {
+  color: var(--dc-dim);
+}
+.loop-class.class-acceptance {
+  color: var(--dc-accent);
+}
+.loop-class.class-broken {
+  color: var(--dc-err);
+}
+.loop-criterion-name {
+  color: var(--dc-emph);
+}
+.loop-criterion-command,
+.loop-criterion-why,
+.loop-criterion-warn,
+.loop-criterion-output {
+  grid-column: 3;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.loop-criterion-command {
+  font-size: 11px;
+  color: var(--dc-faint);
+}
+.loop-criterion-output summary {
+  cursor: pointer;
+  color: var(--dc-faint);
+}
+.loop-criterion-output pre {
+  margin: 4px 0 0;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 11px;
+  color: var(--dc-dim);
+}
+.loop-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.loop-review-actions .start-open {
+  align-self: auto;
+}
+
+.crew-loop {
+  margin-bottom: 12px;
+}
+.crew-loop-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dc-faint);
+}
+.crew-loop .loop-ruler {
+  margin: 0;
+}

@@ -10,6 +10,19 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A definição de pronto proposta é revisada antes do trabalho (D56).**
+  Enquanto um loop espera em `awaiting_review`, a régua dele mostra um card
+  feito do `done.proposed` como o daemon mediu: o arquivo, cada critério com a
+  classe (aceitação, regressão, quebrado), o que rodá-lo fez, o comando, o
+  porquê do proponente e a saída; a discordância entre o proponente e a
+  medição, critério quebrado e conjunto sem nenhum vermelho são avisados; os
+  caminhos protegidos aparecem. Um objetivo que qualificou várias pastas ganha
+  uma proposta por pasta. "Abrir no editor" pede ao processo principal, que só
+  abre um arquivo que o daemon listou como proposta daquele loop. "Começar o
+  trabalho" continua o loop (`POST /v1/loops/{id}/continue`); quando outro
+  cliente respondeu antes, `loop_not_awaiting_review` aparece com a razão do
+  daemon. A aba Pronto da Crew ganha uma seção Loop. Antes, a revisão só
+  existia na TUI. As telas 02 e 03 não têm loop e ficam a 0,00%.
 - **Um loop começa e para pela janela (D55).** `/loop <pasta|objetivo>
   [--protect glob]` em qualquer campo vai ao daemon como foi digitado
   (`POST /v1/loops`), e está no menu "/" e na ajuda; "↻ loop" na janela de

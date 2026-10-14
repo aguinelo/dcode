@@ -90,6 +90,8 @@ export interface SessionView {
    * turn ends, turn.completed's completion is what the criteria stand at.
    */
   check: P.DoneChecked | null;
+  /** The last definition of done this session proposed and the daemon measured and wrote (done.proposed, D56). */
+  proposal: P.DoneProposal | null;
   pendingApprovalId: string | null;
   lastSeq: number;
   lastAt: string | null;
@@ -114,6 +116,7 @@ export function emptySession(id: string): SessionView {
     rounds: null,
     inFlight: null,
     check: null,
+    proposal: null,
     pendingApprovalId: null,
     lastSeq: 0,
     lastAt: null,
@@ -411,7 +414,7 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
     case 'plan.updated':
       return onPlan(view, ev);
     case 'done.proposed':
-      return withNote(view, ev.seq, ev.at, {
+      return withNote({ ...view, proposal: ev.payload }, ev.seq, ev.at, {
         kind: 'done-proposed',
         criteria: (ev.payload.criteria ?? []).length,
         noAcceptance: !!ev.payload.no_acceptance,

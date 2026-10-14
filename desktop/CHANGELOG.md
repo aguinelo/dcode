@@ -10,6 +10,19 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A proposed definition of done is reviewed before the work (D56).** While
+  a loop waits in `awaiting_review`, its ruler shows a card drawn from
+  `done.proposed` as the daemon measured it: the file, each criterion with its
+  class (acceptance, regression, broken), what running it did, the command, the
+  proposer's reason and the output; the proposer disagreeing with the run, a
+  broken criterion and a set with nothing red are warned; protected paths are
+  listed. A goal that qualified several folders gets one proposal each.
+  "Abrir no editor" asks the main process, which opens only a file the daemon
+  listed as that loop's proposal. "Começar o trabalho" continues the loop
+  (`POST /v1/loops/{id}/continue`); when another client answered first,
+  `loop_not_awaiting_review` is said with the daemon's reason. The Crew's
+  Pronto tab gets a Loop section. Before, the review existed only in the TUI.
+  Screens 02 and 03 have no loop and stay at 0.00%.
 - **A loop is started and stopped from the window (D55).** `/loop
   <folder|goal> [--protect glob]` in any field goes to the daemon as typed
   (`POST /v1/loops`), and is in the "/" menu and the help; "↻ loop" in the new

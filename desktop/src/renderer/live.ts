@@ -20,6 +20,7 @@ import { decodeMemory, decodeSkills } from '../protocol/crew';
 import { decodeGit, decodeGitDiff } from '../protocol/git';
 import { decodeLoopChange, decodeLoopRun, decodeSpecs } from '../protocol/loops';
 import { applyLoopChange, emptyLoops, loopsUnavailable, startRefusal, type LoopsState } from '../state/loop';
+import { continueRefusal } from '../state/review';
 import type { LoopsPush } from '../shared/api';
 import { notExposed } from './text';
 import type { Outcome, StartOptions, WindowActions } from './window';
@@ -211,6 +212,12 @@ export class LiveStore {
       return read(got, decodeLoopRun, 'o /loop (POST /v1/loops)', 'O loop não começou');
     },
     stopLoop: async (id, when) => read(await this.api.loops.stop(id, when), decodeLoopRun, 'parar um loop (POST /v1/loops/{id}/stop)', 'O loop não parou'),
+    continueLoop: async (id) => {
+      const got = await this.api.loops.continue(id);
+      if (!got.ok) return { ok: false, why: continueRefusal(got.refusal.code, got.refusal.message) };
+      return read(got, decodeLoopRun, 'começar o trabalho de um loop (POST /v1/loops/{id}/continue)', 'O trabalho não começou');
+    },
+    openProposal: async (id, file) => outcome(await this.api.loops.openProposal(id, file), 'O arquivo da proposta não abriu'),
     listSpecs: async (workspace) =>
       read(await this.api.loops.specs(workspace), decodeSpecs, 'as pastas de spec de um projeto (GET /v1/specs)', 'O daemon não disse quais pastas de spec existem'),
   };

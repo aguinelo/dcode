@@ -171,6 +171,11 @@ export class Requests {
     return this.call('POST', `/${Version}/loops/${encodeURIComponent(loopId)}/stop`, body);
   }
 
+  /** Takes a run out of awaiting_review (D56); the first answer wins. The run is passed on as it came. */
+  continueLoop(loopId: string): Promise<Answer<unknown>> {
+    return this.call('POST', `/${Version}/loops/${encodeURIComponent(loopId)}/continue`);
+  }
+
   /** What each spec folder of a project declares, without running its criteria (D55). Passed on as it came. */
   listSpecs(workspace: string): Promise<Answer<unknown>> {
     return this.call('GET', `/${Version}/specs?workspace=${encodeURIComponent(workspace)}&measure=false`);

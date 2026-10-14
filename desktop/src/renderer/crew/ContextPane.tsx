@@ -13,6 +13,7 @@ import type { Row } from '../../state/sidebar';
 import { GitChanges } from '../context/GitChanges';
 import { GitFacts } from '../context/GitFacts';
 import { ModeChip } from '../ModeMenu';
+import { LoopSection } from '../LoopRuler';
 import { DoneRow } from '../Pane';
 
 type Tab = 'mudancas' | 'pronto' | 'sessao';
@@ -276,7 +277,10 @@ export function ContextPane({
             <Wrote session={session} row={row} history={history} />
           </>
         ) : tab === 'pronto' ? (
-          <Done view={view} measure={measure} />
+          <>
+            <LoopSection sessionId={row.id} />
+            <Done view={view} measure={measure} />
+          </>
         ) : (
           <>
             <GitFacts row={row} sessionState={history ? 'recorded' : session?.state} startedOn={session?.info?.branch ?? row.branch} state={git.state} />
