@@ -27,6 +27,17 @@ type fakeDaemon struct {
 	// hold makes the work turns of these folders wait until the channel
 	// closes, or until they are cancelled.
 	hold map[string]chan struct{}
+	// reason is how a work turn on a folder ends; "done" when unset.
+	reason map[string]string
+	// surveyHold makes a survey wait for its context, as a slow one would.
+	surveyHold bool
+	// openHold makes Open wait until it closes, ignoring the context, as the
+	// daemon's does; openEntered says Open was reached.
+	openHold    chan struct{}
+	openEntered chan struct{}
+	// qualifyHold makes a qualifying turn wait until it closes, ignoring the
+	// context: a turn that ends on its own just as it is stopped.
+	qualifyHold chan struct{}
 
 	surveys    []bool // measure, per survey
 	opened     []protocol.CreateSessionRequest
@@ -38,17 +49,27 @@ type fakeDaemon struct {
 
 func newFake(found ...protocol.SpecFolder) *fakeDaemon {
 	return &fakeDaemon{found: found, standing: map[string]*protocol.Completion{},
-		hold: map[string]chan struct{}{}, started: make(chan string, 16)}
+		hold: map[string]chan struct{}{}, reason: map[string]string{}, started: make(chan string, 16)}
 }
 
-func (f *fakeDaemon) ListSpecs(_ context.Context, ws string, measure bool) ([]protocol.SpecFolder, error) {
+func (f *fakeDaemon) ListSpecs(ctx context.Context, ws string, measure bool) ([]protocol.SpecFolder, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	f.surveys = append(f.surveys, measure)
+	hold := f.surveyHold
+	f.mu.Unlock()
+	if hold {
+		f.started <- "survey"
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
 	return f.found, f.surveyErr
 }
 
 func (f *fakeDaemon) Open(_ context.Context, req protocol.CreateSessionRequest) (protocol.Session, error) {
+	if f.openHold != nil {
+		f.openEntered <- struct{}{}
+		<-f.openHold
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.openErr != nil {
@@ -75,8 +96,16 @@ func (f *fakeDaemon) RunTurn(ctx context.Context, id, text string) (protocol.Tur
 		hold = nil
 	}
 	done := f.standing[req.LoopSpec]
+	reason := f.reason[req.LoopSpec]
+	qhold := f.qualifyHold
 	f.mu.Unlock()
+	if reason == "" {
+		reason = protocol.StopDone
+	}
 	f.started <- req.LoopSpec
+	if req.Qualify && qhold != nil {
+		<-qhold
+	}
 	if hold != nil {
 		select {
 		case <-hold:
@@ -87,7 +116,7 @@ func (f *fakeDaemon) RunTurn(ctx context.Context, id, text string) (protocol.Tur
 	if req.Qualify {
 		return protocol.TurnCompleted{Reason: "done"}, nil
 	}
-	return protocol.TurnCompleted{Reason: "done", Completion: done}, nil
+	return protocol.TurnCompleted{Reason: reason, Completion: done}, nil
 }
 
 func (f *fakeDaemon) CommitDone(_ context.Context, id string) (protocol.CommitDoneResponse, error) {
@@ -249,8 +278,13 @@ func TestASurveyThatFailsStillOpensTheWork(t *testing.T) {
 	f.surveyErr = errors.New("disk on fire")
 	r, _ := looping(t, f, "specs/a")
 	r.Run(context.Background())
-	if len(f.opened) != 1 || f.opened[0].Qualify || r.Snapshot().State != protocol.LoopFinished {
-		t.Errorf("opened %+v, state %s", f.opened, r.Snapshot().State)
+	got := r.Snapshot()
+	if len(f.opened) != 1 || f.opened[0].Qualify || got.State != protocol.LoopFinished {
+		t.Errorf("opened %+v, state %s", f.opened, got.State)
+	}
+	// Going on is not the same as staying quiet about it.
+	if len(got.Warnings) != 1 || !strings.Contains(got.Warnings[0], "disk on fire") {
+		t.Errorf("warnings %q, want the survey's failure said", got.Warnings)
 	}
 }
 
@@ -458,5 +492,116 @@ func turnStarted(t *testing.T, f *fakeDaemon) {
 	case <-f.started:
 	case <-time.After(5 * time.Second):
 		t.Fatal("no turn started")
+	}
+}
+
+// Stopping while the survey runs opens nothing: a cancelled survey is the stop,
+// not a survey that failed and lets the work go ahead.
+func TestStopDuringTheSurveyOpensNothing(t *testing.T) {
+	f := newFake(protocol.SpecFolder{Path: "specs/a", Criteria: 1})
+	f.surveyHold = true
+	r, w := looping(t, f, "specs/a")
+	go r.Run(context.Background())
+	turnStarted(t, f) // the survey
+	if _, err := r.Stop(protocol.StopNow); err != nil {
+		t.Fatal(err)
+	}
+	got := w.until(t, protocol.LoopStopped)
+	if len(f.opened) != 0 || len(f.turns) != 0 || len(got.Warnings) != 0 {
+		t.Errorf("a stopped survey opened %+v, ran %q, warned %q", f.opened, f.turns, got.Warnings)
+	}
+}
+
+// A stop that arrives while a session opens submits nothing to it: the run
+// says stopped, and nothing is working behind it.
+func TestStopWhileASessionOpensSubmitsNothing(t *testing.T) {
+	f := newFake(protocol.SpecFolder{Path: "specs/a", Criteria: 1})
+	f.openHold, f.openEntered = make(chan struct{}), make(chan struct{}, 1)
+	r, w := looping(t, f, "specs/a")
+	go r.Run(context.Background())
+	select {
+	case <-f.openEntered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("no session was opened")
+	}
+	if _, err := r.Stop(protocol.StopNow); err != nil {
+		t.Fatal(err)
+	}
+	close(f.openHold)
+	w.until(t, protocol.LoopStopped)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.turns) != 0 {
+		t.Errorf("a turn was submitted after the stop: %q", f.turns)
+	}
+}
+
+// A stop while a qualifying turn ends on its own writes no proposal and never
+// says it is waiting for a review.
+func TestStopWhileQualifyingWritesNoProposal(t *testing.T) {
+	f := newFake(protocol.SpecFolder{Path: "specs/x"})
+	f.qualifyHold = make(chan struct{})
+	r, w := looping(t, f, "specs/x")
+	go r.Run(context.Background())
+	turnStarted(t, f)
+	if _, err := r.Stop(protocol.StopNow); err != nil {
+		t.Fatal(err)
+	}
+	close(f.qualifyHold)
+	got := w.until(t, protocol.LoopStopped)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for _, seen := range w.seen {
+		if seen.State == protocol.LoopAwaitingReview {
+			t.Error("a stopped run said it was waiting for a review")
+		}
+	}
+	if len(f.committed) != 0 || got.Error != "" {
+		t.Errorf("committed %v, error %q; want nothing written and nothing to report", f.committed, got.Error)
+	}
+}
+
+// A turn that did not end normally is not a folder done: the folder keeps the
+// reason, the run fails saying it, and a goal opens nothing after it.
+func TestATurnThatDidNotEndNormallyFailsTheRun(t *testing.T) {
+	for _, reason := range []string{protocol.StopError, protocol.StopMaxIterations, protocol.StopRepeatLoop,
+		protocol.StopMaxTokens, protocol.StopInterrupted} {
+		t.Run(reason, func(t *testing.T) {
+			f := newFake(
+				protocol.SpecFolder{Path: "specs/a", Criteria: 1, Pending: true},
+				protocol.SpecFolder{Path: "specs/b", Criteria: 1, Pending: true},
+			)
+			f.reason["specs/a"] = reason
+			r, _ := looping(t, f, "implemente tudo")
+			r.Run(context.Background())
+			got := r.Snapshot()
+			if got.State != protocol.LoopFailed || !strings.Contains(got.Error, reason) || !strings.Contains(got.Error, "specs/a") {
+				t.Errorf("state %s, error %q; want failed naming specs/a and %s", got.State, got.Error, reason)
+			}
+			if len(got.Specs) < 2 || got.Specs[0].Phase != protocol.SpecUnfinished || got.Specs[0].Reason != reason {
+				t.Errorf("specs %+v; want specs/a unfinished with its reason", got.Specs)
+			}
+			if len(f.opened) != 1 {
+				t.Errorf("opened %+v; a failed folder must stop the goal", f.opened)
+			}
+		})
+	}
+}
+
+// Results are not failures: a turn that ends unverified or incomplete leaves
+// the folder where its criteria say, and the run goes on.
+func TestATurnThatEndsWithAResultIsNotAFailure(t *testing.T) {
+	f := newFake(
+		protocol.SpecFolder{Path: "specs/a", Criteria: 1, Pending: true},
+		protocol.SpecFolder{Path: "specs/b", Criteria: 1, Pending: true},
+	)
+	f.reason["specs/a"] = protocol.StopIncomplete
+	f.standing["specs/a"] = standing(nil, []string{"unit"}, nil)
+	f.reason["specs/b"] = protocol.StopUnverified
+	r, _ := looping(t, f, "implemente tudo")
+	r.Run(context.Background())
+	got := r.Snapshot()
+	if got.State != protocol.LoopFinished || len(f.opened) != 2 || got.Specs[0].Phase != protocol.SpecUnfinished {
+		t.Errorf("run %+v, opened %d", got, len(f.opened))
 	}
 }

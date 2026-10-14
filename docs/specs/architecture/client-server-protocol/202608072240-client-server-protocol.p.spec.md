@@ -631,6 +631,12 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - `/loops/events` abre com todos os loops e segue cada mudança até o fim do loop.
 - Sessão aberta por um loop carrega `loop_id` desde o `session.created`; sessão aberta por um cliente não carrega.
 - O cliente Go alcança toda rota de loop por um socket de verdade.
+- Turno de loop num contexto já cancelado não é submetido, e um cancelado depois de submetido interrompe a sessão.
+- O fluxo de loops não perde mudança entre o retrato e a inscrição.
+- Workspace de loop é pasta que existe, lida através dos links, e não fica dentro nem em volta da árvore de um loop vivo.
+- Daemon que está encerrando não começa loop.
+- Id de loop que não pôde ser sorteado é erro, nunca um id de zeros.
+- Inscrito lento no fluxo de loops é largado, e isso é dito no log.
 
 ## 10. Changelog
 

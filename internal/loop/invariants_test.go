@@ -201,6 +201,12 @@ var loopCommandInvariants = map[string]string{
 	"antes de o loop existir":             "TestABadArgumentIsRefusedBeforeAnythingRuns",
 	"nomeia as pastas que ficaram":        "TestAGoalWorksEveryPendingFolderAndSumsTheRun",
 	"roda um loop de verdade numa pasta":  "TestTheDaemonRunsALoopOnAFolder",
+	"Pergunta cancelada é a parada":       "TestStopDuringTheSurveyOpensNothing",
+	"enquanto a sessão abre":              "TestStopWhileASessionOpensSubmitsNothing",
+	"Parada durante a qualificadora":      "TestStopWhileQualifyingWritesNoProposal",
+	"não terminou normalmente":            "TestATurnThatDidNotEndNormallyFailsTheRun",
+	"são resultado, não falha":            "TestATurnThatEndsWithAResultIsNotAFailure",
+	"aparece em `warnings`":               "TestASurveyThatFailsStillOpensTheWork",
 	"a fachada não tem orçamento próprio": "TestSessionConfigCarriesTheLimitsUntouched",
 }
 

@@ -101,29 +101,30 @@ func waitLoop(t *testing.T, srv *Server, id, state string) protocol.LoopRun {
 func TestALoopIsStartedListedAndStopped(t *testing.T) {
 	h := &heldDaemon{found: []protocol.SpecFolder{{Path: "specs/a", Criteria: 1}}, release: make(chan struct{})}
 	srv := loopServer(t, h)
+	ws := t.TempDir()
 
-	rec := post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w", Args: "specs/a"})
+	rec := post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws, Args: "specs/a"})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("start gave %d %s", rec.Code, rec.Body.String())
 	}
 	run := decodeRun(t, rec)
-	if run.ID == "" || run.Workspace != "/w" {
+	if run.ID == "" || run.Workspace != ws {
 		t.Fatalf("started %+v", run)
 	}
 	waitLoop(t, srv, run.ID, protocol.LoopWorking)
 
 	// One loop per workspace while it lives.
-	rec = post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w", Args: "specs/a"})
+	rec = post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws, Args: "specs/a"})
 	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), protocol.CodeLoopAlreadyRunning) {
 		t.Errorf("a second loop gave %d %s, want loop_already_running", rec.Code, rec.Body.String())
 	}
 	// Another workspace is another tree.
-	if rec := post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/v", Args: "specs/a"}); rec.Code != http.StatusCreated {
+	if rec := post(srv, "/loops", protocol.StartLoopRequest{Workspace: t.TempDir(), Args: "specs/a"}); rec.Code != http.StatusCreated {
 		t.Errorf("a loop elsewhere gave %d %s", rec.Code, rec.Body.String())
 	}
 
 	var list protocol.ListLoopsResponse
-	if err := json.Unmarshal(get(srv, "/loops?workspace=/w").Body.Bytes(), &list); err != nil {
+	if err := json.Unmarshal(get(srv, "/loops?workspace="+ws).Body.Bytes(), &list); err != nil {
 		t.Fatal(err)
 	}
 	if len(list.Loops) != 1 || list.Loops[0].ID != run.ID {
@@ -138,7 +139,7 @@ func TestALoopIsStartedListedAndStopped(t *testing.T) {
 		t.Fatalf("stop gave %d %s", rec.Code, rec.Body.String())
 	}
 	waitLoop(t, srv, run.ID, protocol.LoopStopped)
-	if rec := post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w", Args: "specs/a"}); rec.Code != http.StatusCreated {
+	if rec := post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws, Args: "specs/a"}); rec.Code != http.StatusCreated {
 		t.Errorf("a loop after the last one stopped gave %d %s", rec.Code, rec.Body.String())
 	}
 }
@@ -147,6 +148,7 @@ func TestALoopIsStartedListedAndStopped(t *testing.T) {
 func TestTheLoopRoutesRefuseWithACodeThatSaysWhy(t *testing.T) {
 	h := &heldDaemon{found: []protocol.SpecFolder{{Path: "specs/x"}}, release: make(chan struct{})}
 	srv := loopServer(t, h)
+	ws := t.TempDir()
 
 	cases := []struct {
 		name string
@@ -154,8 +156,8 @@ func TestTheLoopRoutesRefuseWithACodeThatSaysWhy(t *testing.T) {
 		code string
 	}{
 		{"relative workspace", post(srv, "/loops", protocol.StartLoopRequest{Workspace: "w", Args: "specs/x"}), protocol.CodeWorkspaceInvalid},
-		{"no argument", post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w"}), protocol.CodeInvalidInput},
-		{"unknown flag", post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w", Args: "specs/x --nope"}), protocol.CodeInvalidInput},
+		{"no argument", post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws}), protocol.CodeInvalidInput},
+		{"unknown flag", post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws, Args: "specs/x --nope"}), protocol.CodeInvalidInput},
 		{"unknown loop", post(srv, "/loops/nope/continue", nil), protocol.CodeLoopNotFound},
 		{"unknown loop stop", post(srv, "/loops/nope/stop", protocol.StopLoopRequest{When: "now"}), protocol.CodeLoopNotFound},
 	}
@@ -168,7 +170,7 @@ func TestTheLoopRoutesRefuseWithACodeThatSaysWhy(t *testing.T) {
 	}
 
 	// A folder that declares nothing is qualified, and the run waits.
-	run := decodeRun(t, post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w", Args: "specs/x"}))
+	run := decodeRun(t, post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws, Args: "specs/x"}))
 	if rec := post(srv, "/loops/"+run.ID+"/continue", nil); rec.Code != http.StatusConflict ||
 		!strings.Contains(rec.Body.String(), protocol.CodeLoopNotAwaitingReview) {
 		t.Errorf("continuing a run still qualifying gave %d %s", rec.Code, rec.Body.String())
@@ -194,7 +196,8 @@ func TestTheLoopRoutesRefuseWithACodeThatSaysWhy(t *testing.T) {
 func TestTheLoopStreamStartsWithEveryRunAndFollowsThem(t *testing.T) {
 	h := &heldDaemon{found: []protocol.SpecFolder{{Path: "specs/a", Criteria: 1}}, release: make(chan struct{})}
 	srv := loopServer(t, h)
-	first := decodeRun(t, post(srv, "/loops", protocol.StartLoopRequest{Workspace: "/w", Args: "specs/a"}))
+	ws := t.TempDir()
+	first := decodeRun(t, post(srv, "/loops", protocol.StartLoopRequest{Workspace: ws, Args: "specs/a"}))
 
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -314,6 +317,7 @@ func decodeSession(t *testing.T, rec *httptest.ResponseRecorder) protocol.Sessio
 func TestTheClientDrivesALoop(t *testing.T) {
 	h := &heldDaemon{found: []protocol.SpecFolder{{Path: "specs/x"}}, release: make(chan struct{})}
 	srv := loopServer(t, h)
+	ws := t.TempDir()
 	c := serve(t, srv)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -322,16 +326,16 @@ func TestTheClientDrivesALoop(t *testing.T) {
 	if first := within(t, changes); first.Kind != protocol.LoopSnapshot || len(first.Loops) != 0 {
 		t.Fatalf("the watch opened with %+v", first)
 	}
-	run, err := c.StartLoop(ctx, protocol.StartLoopRequest{Workspace: "/w", Args: "specs/x"})
+	run, err := c.StartLoop(ctx, protocol.StartLoopRequest{Workspace: ws, Args: "specs/x"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.StartLoop(ctx, protocol.StartLoopRequest{Workspace: "/w", Args: "specs/x"}); !hasCode(err, protocol.CodeLoopAlreadyRunning) {
+	if _, err := c.StartLoop(ctx, protocol.StartLoopRequest{Workspace: ws, Args: "specs/x"}); !hasCode(err, protocol.CodeLoopAlreadyRunning) {
 		t.Errorf("a second loop gave %v", err)
 	}
 	releaseOne(t, h)
 	waitLoop(t, srv, run.ID, protocol.LoopAwaitingReview)
-	list, err := c.ListLoops(ctx, "/w")
+	list, err := c.ListLoops(ctx, ws)
 	if err != nil || len(list) != 1 || list[0].State != protocol.LoopAwaitingReview {
 		t.Fatalf("listed %+v %v", list, err)
 	}

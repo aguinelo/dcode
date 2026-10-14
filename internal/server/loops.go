@@ -33,6 +33,9 @@ type loopRegistry struct {
 	stop context.CancelFunc
 	wg   sync.WaitGroup
 
+	// log receives what the registry drops or cannot do.
+	log func(string)
+
 	mu    sync.Mutex
 	runs  map[string]*loopcommand.Runner
 	order []string
@@ -155,9 +158,12 @@ func (g *loopRegistry) close() {
 	g.wg.Wait()
 }
 
+// randRead draws the entropy of a loop id; a variable so a test can fail it.
+var randRead = rand.Read
+
 func randomUint32() uint32 {
 	var b [4]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := randRead(b[:]); err != nil {
 		return 0
 	}
 	return binary.BigEndian.Uint32(b[:])

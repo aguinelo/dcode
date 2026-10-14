@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ func TestWatchLoopsReconnectsAndEndsOnARefusal(t *testing.T) {
 		switch calls.Add(1) {
 		case 1, 2:
 			w.Header().Set("Content-Type", "text/event-stream")
-			fmt.Fprint(w, ": ping\n\ndata: not json\n\n")
+			fmt.Fprint(w, ": ping\n\n")
 			fmt.Fprintf(w, "data: {\"kind\":%q,\"loops\":[{\"id\":\"L1\",\"state\":\"working\"}]}\n\n", protocol.LoopSnapshot)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
@@ -82,5 +83,25 @@ func TestWatchLoopsEndsWhenCancelled(t *testing.T) {
 	}
 	if err, open := <-errs; open {
 		t.Errorf("a cancelled watch reported %v", err)
+	}
+}
+
+// A frame the client cannot read ends the watch and says so: skipping it would
+// leave a list that silently disagrees with the daemon.
+func TestAnUnreadableLoopFrameEndsTheWatchSaid(t *testing.T) {
+	c := loopDaemon(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, "data: not json\n\n")
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, errs := c.WatchLoops(ctx)
+	select {
+	case err := <-errs:
+		if err == nil || !strings.Contains(err.Error(), "could not be read") {
+			t.Errorf("the watch ended with %v, want the frame named as unreadable", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("an unreadable frame was skipped in silence")
 	}
 }

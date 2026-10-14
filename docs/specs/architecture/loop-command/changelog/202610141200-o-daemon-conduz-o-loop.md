@@ -64,3 +64,22 @@ daemon, como toda sessão.
   daemon vive; um tipo de frame que nada emite seria promessa sem dono.
 - **Código `loop_not_found`.** Continuar ou parar um id que o daemon não guarda
   precisava de um código que dissesse isso; nenhum dos existentes diz.
+
+## O que a revisão do dono mudou antes do merge
+
+- **Parar agora para mesmo.** Pergunta cancelada é a parada (antes, um
+  cancelamento durante o survey era lido como survey que falhou, e o trabalho
+  abria); o `Runner` confere o contexto antes de abrir sessão e antes de
+  submeter turno; `Stop(now)` cancela antes de interromper; e a qualificadora
+  parada não grava proposta nem publica `awaiting_review`.
+- **Turno que não terminou normalmente não é pasta pronta.** `TurnCompleted.Reason`
+  era ignorado: um turno com `error` ou `max_iterations` e sem critérios
+  deixava a pasta `done` e o loop `finished`. Agora a pasta guarda o motivo
+  (`LoopSpecRun.Reason`), fica `unfinished`, e o loop termina em `failed` com
+  o motivo — num objetivo, sem abrir a próxima pasta. `unverified` e
+  `incomplete` são resultado, não falha (é o que o protocolo diz deles).
+- **Nada some calado.** A pergunta que falha e deixa o trabalho seguir aparece
+  em `LoopRun.Warnings`.
+- **Diferente da TUI, de propósito:** um loop que só qualificou espera em
+  `awaiting_review` e trabalha no `continue` (desenho aprovado, Q3 A); na TUI
+  a pessoa digita `/loop` de novo.

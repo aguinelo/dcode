@@ -62,6 +62,9 @@ type LoopRun struct {
 	// SessionID is the session the run is in now, or was in last.
 	SessionID string       `json:"session_id,omitempty"`
 	Verdict   *LoopVerdict `json:"verdict,omitempty"`
+	// Warnings say what went wrong without stopping the run — a survey that
+	// failed before the session opened anyway. Going on is not staying quiet.
+	Warnings []string `json:"warnings,omitempty"`
 	// Error says why a failed run could not go on.
 	Error    string    `json:"error,omitempty"`
 	Started  time.Time `json:"started"`
@@ -80,6 +83,10 @@ type LoopSpecRun struct {
 	SessionID string `json:"session_id,omitempty"`
 	// Proposal is the done.toml written for review, when one was.
 	Proposal string `json:"proposal,omitempty"`
+	// Reason is how the folder's last turn ended (a TurnCompleted reason). A
+	// turn that did not end normally leaves the folder unfinished and fails
+	// the run, whatever its criteria say.
+	Reason string `json:"reason,omitempty"`
 	// Standing is the last completion of this folder's work: the last word for
 	// a folder wins, because a folder can complete several turns.
 	Standing *Completion `json:"standing,omitempty"`

@@ -51,3 +51,17 @@ feature.
 - O desktop só aprende o campo `loop_id`; começar, seguir e parar um loop pela
   janela são os passos 7 e 8.
 - A pergunta de fechar do desktop (D19) ainda conta só sessões, não loops.
+
+## O que a revisão do dono mudou antes do merge
+
+- `LoopRun` ganha `warnings` e `LoopSpecRun` ganha `reason` (como o último
+  turno da pasta terminou).
+- Workspace de loop é conferido como o de uma sessão: existe, é pasta, e é lido
+  através dos links; e a recusa de um segundo loop vale para quem está dentro
+  ou em volta da árvore de um loop vivo, não só para o mesmo caminho escrito.
+- O fluxo de loops tira o retrato e inscreve o cliente sob a mesma trava, para
+  nenhuma mudança cair entre os dois; inscrito lento é largado e isso é dito.
+- Um turno de loop num contexto já cancelado não é submetido, e um cancelado
+  depois de submetido interrompe a sessão.
+- Daemon encerrando não começa loop; id que não pôde ser sorteado é erro.
+- O cliente Go encerra a observação, dizendo, num quadro que não consegue ler.
