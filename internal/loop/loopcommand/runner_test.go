@@ -605,3 +605,51 @@ func TestATurnThatEndsWithAResultIsNotAFailure(t *testing.T) {
 		t.Errorf("run %+v, opened %d", got, len(f.opened))
 	}
 }
+
+// A goal over a backlog qualifies every pending folder that declares nothing,
+// in one pass, and waits for one review of all the files before any work;
+// continuing works every pending folder in order (proposal §3.3).
+func TestAGoalQualifiesEveryFolderThatDeclaresNothingBeforeAnyWork(t *testing.T) {
+	f := newFake(
+		protocol.SpecFolder{Path: "specs/a", Criteria: 2, Unmet: 1, Pending: true},
+		protocol.SpecFolder{Path: "specs/b", Criteria: 0, Pending: true},
+		protocol.SpecFolder{Path: "specs/c", Criteria: 0, Pending: true},
+	)
+	r, w := looping(t, f, "implemente o que falta")
+	go r.Run(context.Background())
+	waiting := w.until(t, protocol.LoopAwaitingReview)
+
+	f.mu.Lock()
+	opened := append([]protocol.CreateSessionRequest(nil), f.opened...)
+	f.mu.Unlock()
+	if len(opened) != 2 || opened[0].LoopSpec != "specs/b" || !opened[0].Qualify ||
+		opened[1].LoopSpec != "specs/c" || !opened[1].Qualify {
+		t.Fatalf("opened %+v; want qualifying sessions on specs/b and specs/c and no work", opened)
+	}
+	phases := []string{protocol.SpecPending, protocol.SpecProposed, protocol.SpecProposed}
+	for i, want := range phases {
+		if waiting.Specs[i].Phase != want {
+			t.Errorf("%s is %s, want %s", waiting.Specs[i].Path, waiting.Specs[i].Phase, want)
+		}
+	}
+
+	if _, err := r.Continue(); err != nil {
+		t.Fatal(err)
+	}
+	done := w.until(t, protocol.LoopFinished)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var worked []string
+	for _, o := range f.opened[2:] {
+		if o.Qualify {
+			t.Errorf("a folder was qualified again after the review: %+v", o)
+		}
+		worked = append(worked, o.LoopSpec)
+	}
+	if strings.Join(worked, ",") != "specs/a,specs/b,specs/c" {
+		t.Errorf("worked %v, want every pending folder in order", worked)
+	}
+	if done.Verdict.Worked != 3 {
+		t.Errorf("verdict %+v, want three folders worked", done.Verdict)
+	}
+}
