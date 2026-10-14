@@ -220,6 +220,10 @@ var loopCommandInvariants = map[string]string{
 	"Trocar de sessão de propósito":                     "TestSwitchingAwayStopsFollowingTheLoop",
 	"não deixa leitor esperando":                        "TestAReplacedOrFailedFollowLeavesNothingWaiting",
 	"não veio desta TUI":                                "TestAStopFromElsewhereIsSaidPlainly",
+	"volta a acompanhá-lo":                              "TestTypingTheLoopAgainFollowsAWorkingRun",
+	"Fluxo de loops que fecha":                          "TestALoopStreamThatClosesEndsTheFollowSaid",
+	"ociosa entre pastas fica retido":                   "TestTextTypedBetweenFoldersIsHeld",
+	"guarda a fila retida":                              "TestAStoppedLoopKeepsTheQueueAndSaysSo",
 	"a fachada não tem orçamento próprio":               "TestSessionConfigCarriesTheLimitsUntouched",
 }
 

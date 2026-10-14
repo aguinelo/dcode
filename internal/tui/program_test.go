@@ -69,6 +69,9 @@ type fakeTransport struct {
 	// channel of the loop stream.
 	getFails  int
 	watchErrs chan error
+	// watchFrames, when set, is the loop stream instead of the daemon's own,
+	// so a test can close it.
+	watchFrames chan protocol.LoopChange
 }
 
 func newFakeTransport() *fakeTransport {

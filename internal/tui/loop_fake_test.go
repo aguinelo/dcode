@@ -39,6 +39,13 @@ func (f *fakeTransport) StartLoop(_ context.Context, req protocol.StartLoopReque
 	d := f.loopd()
 	f.mu.Lock()
 	id := fmt.Sprintf("L%d", len(d.order)+1)
+	for _, other := range d.order {
+		// One live loop per workspace, as the daemon's registry has it.
+		if run := d.runs[other].Snapshot(); run.Live() && run.Workspace == req.Workspace {
+			f.mu.Unlock()
+			return protocol.LoopRun{}, protocol.Errorf(protocol.CodeLoopAlreadyRunning, "loop %s is already running", other)
+		}
+	}
 	f.mu.Unlock()
 	r, err := loopcommand.NewRunner(id, req, loopSide{f}, func(run protocol.LoopRun) {
 		d.frames <- protocol.LoopChange{Kind: protocol.LoopChanged, Loop: &run}
@@ -67,10 +74,13 @@ func (f *fakeTransport) ListLoops(context.Context, string) ([]protocol.LoopRun, 
 
 func (f *fakeTransport) WatchLoops(context.Context) (<-chan protocol.LoopChange, <-chan error) {
 	f.mu.Lock()
-	errs := f.watchErrs
+	errs, frames := f.watchErrs, f.watchFrames
 	f.mu.Unlock()
 	if errs == nil {
 		errs = make(chan error)
+	}
+	if frames != nil {
+		return frames, errs
 	}
 	return f.loopd().frames, errs
 }

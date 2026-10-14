@@ -78,3 +78,18 @@ perde.
   foi interrompido.
 - As linhas novas que a TUI passa a mostrar — o aviso do loop e o erro de um
   loop de uma pasta só — estão declaradas na §2 com as outras divergências.
+
+## O que a segunda revisão mudou
+
+- **Digitar o mesmo `/loop` com o loop trabalhando volta a acompanhá-lo.**
+  Depois de trocar de sessão, o `/loop` de novo tentava abrir outro e recebia
+  `loop_already_running`.
+- **Fluxo que fecha encerra o acompanhamento, dizendo** — e o motivo, quando
+  houver.
+- **O texto digitado com a sessão do loop parada entre duas pastas fica
+  retido**, como a fila: mandado ali, abriria um turno na pasta que o daemon
+  está deixando.
+- **Decisão do dono: depois de uma parada, nada dispara sozinho.** A fila
+  retida só sai sozinha quando o loop termina normalmente; parado ou com
+  falha, ela fica, e a nota diz que ↵ numa linha vazia a manda e ctrl+x a
+  descarta.
