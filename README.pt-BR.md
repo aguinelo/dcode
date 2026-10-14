@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/aguinelo/dcode?label=release&color=success)](https://github.com/aguinelo/dcode/releases)
 ![Go](https://img.shields.io/badge/go-1.25%2B-00ADD8)
 ![Cobertura](https://img.shields.io/badge/cobertura-93%2C9%25-success)
-![Specs](https://img.shields.io/badge/specs-18%20fam%C3%ADlias-informational)
+![Specs](https://img.shields.io/badge/specs-19%20fam%C3%ADlias-informational)
 ![Contratos](https://img.shields.io/badge/contratos-21%20medidos%20%2F%2060%20declarados-orange)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
@@ -525,7 +525,7 @@ uma verdade que se move** — e ele foi achado dentro do documento que existe pa
 
 ## Specs
 
-Dezoito famílias. Cada uma declara seu regime, e o regime decide como ela é verificada.
+Dezenove famílias. Cada uma declara seu regime, e o regime decide como ela é verificada.
 
 | Spec | Regime | Cobre |
 |---|---|---|
@@ -547,6 +547,7 @@ Dezoito famílias. Cada uma declara seu regime, e o regime decide como ela é ve
 | [delegated-writing](docs/specs/architecture/delegated-writing/) | misto | quando a escrita é dividida entre filhos, e quem relata |
 | [task-ledger](docs/specs/architecture/task-ledger/) | misto | o que está em voo, e quanto custou |
 | [learned-memory](docs/specs/architecture/learned-memory/) | misto | o que o agente descobre, versionado onde gente lê — **só desenho, não construído** |
+| [orchestration](docs/specs/architecture/orchestration/) | misto | uma conversa que reparte o trabalho em sessões filhas e continua livre para conversar — **só desenho, não construído** |
 
 ---
 
