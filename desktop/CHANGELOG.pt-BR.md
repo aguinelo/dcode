@@ -10,13 +10,20 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **Rodando a partir do código no macOS, a barra de menus e o Dock dizem DCode
+  Box.** O `npm start` agora roda antes o `scripts/dev-name.mjs`, que grava o
+  nome no Info.plist do Electron de desenvolvimento (em node_modules) e assina
+  esse pacote de novo, ad hoc, porque o macOS lê esses dois lugares do pacote e
+  não do `app.setName`. Não faz nada quando o nome já está lá, e um `npm ci` que
+  o desfaça é corrigido no próximo início. Uma falha é dita e nunca impede o
+  app de abrir. O app empacotado não muda.
 - **O app se chama DCode Box e mostra o ícone do mascote quando roda a partir
   do código.** Com `npm start`, o binário é o do próprio Electron, então o Dock
   e a barra de tarefas mostravam o ícone do Electron. O ícone agora é definido
   em tempo de execução, e o nome do produto (janelas, diálogos, pacote) é
   "DCode Box". No macOS, o nome do app na barra de menus e o rótulo no Dock
-  continuam "Electron" nesse modo: vêm do pacote do próprio Electron, e só o
-  app empacotado os troca.
+  continuam "Electron" nesse modo: vêm do pacote do próprio Electron (a entrada
+  acima também os troca).
 - **A cor do dcode é o Laranja do mascote.** O dono escolheu o laranja
   `#FF6A00` como cor principal do dcode, no lugar do lima `#c6f36b` de D29; os
   neutros e as semânticas saem dos 23 tons da folha do mascote, na Grade e na
