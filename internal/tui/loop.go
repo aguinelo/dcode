@@ -33,9 +33,12 @@ type loopFollow struct {
 	// interrupted is this client having stopped the run because the person
 	// interrupted its turn, so the end can say which stop it was.
 	interrupted bool
-	msgs        chan tea.Msg
-	ctx         context.Context
-	cancel      context.CancelFunc
+	// awaiting is the run waiting for a review: its session is the person's
+	// to use, so text typed there goes.
+	awaiting bool
+	msgs     chan tea.Msg
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // loopNoteMsg is something the follower has to say. It keeps the follow going
@@ -78,7 +81,15 @@ func (p *program) startLoop(args string) tea.Cmd {
 			return noteMsg("could not ask the daemon about its loops: " + err.Error())
 		}
 		for _, run := range runs {
+			if !run.Live() {
+				continue
+			}
 			if run.State != protocol.LoopAwaitingReview {
+				// The same loop, still working — typed again after switching
+				// away: follow it again rather than ask for a second one.
+				if sameLoopArgs(run.Args, args) {
+					return loopStartedMsg{run: run, continued: true}
+				}
 				continue
 			}
 			if !sameLoopArgs(run.Args, args) {
@@ -144,6 +155,17 @@ func (p *program) followLoop(ctx context.Context, f *loopFollow) {
 		select {
 		case ch, open := <-changes:
 			if !open {
+				// The stream closes errs before changes; whichever the select
+				// saw first, the reason is said and the follow ends.
+				text := "the loop could not be followed: the stream ended"
+				select {
+				case err, ok := <-errs:
+					if ok && err != nil {
+						text = "the loop could not be followed: " + err.Error()
+					}
+				default:
+				}
+				send(loopNoteMsg{text: text, ended: true})
 				return
 			}
 			run := loopIn(ch, f.id)
@@ -269,15 +291,22 @@ func (p *program) onLoopChanged(msg loopChangedMsg) tea.Cmd {
 		p.loopNote(fmt.Sprintf(Text(p.opts.Lang).CmdLoopReviewAll, proposed))
 	}
 
+	f.awaiting = run.State == protocol.LoopAwaitingReview
 	if !run.Live() {
 		p.loopEnded(run)
 		p.stopFollowingLoop()
-		// What the person queued while the loop ran waited for it; it goes
-		// now, to the session on screen, if nothing is running there.
-		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
-			m, text := p.model.DrainQueue()
-			p.model = m
-			cmds = append(cmds, p.submit(text))
+		// What the person queued while the loop ran waited for it. It goes
+		// on its own only when the loop finished: after a stop or a failure
+		// nothing fires by itself, and the person says when (owner's
+		// decision).
+		if len(p.model.Queue) > 0 {
+			if run.State == protocol.LoopFinished && p.model.State == protocol.SessionStateIdle {
+				m, text := p.model.DrainQueue()
+				p.model = m
+				cmds = append(cmds, p.submit(text))
+			} else if run.State != protocol.LoopFinished {
+				p.loopNote(fmt.Sprintf(Text(p.opts.Lang).CmdLoopQueueKept, len(p.model.Queue)))
+			}
 		}
 		return tea.Batch(cmds...)
 	}
@@ -403,4 +432,12 @@ func (p *program) interruptLoop() (tea.Cmd, bool) {
 		}
 		return nil
 	}, true
+}
+
+// loopHolds reports a live loop in the session on screen, between turns of
+// the daemon's: text sent there now would start a turn in the folder it is
+// leaving, so it is held. A loop waiting for a review holds nothing.
+func (p *program) loopHolds() bool {
+	f := p.loop
+	return f != nil && f.session == p.opts.SessionID && !f.awaiting
 }

@@ -512,8 +512,7 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ends, and a queued message sent now would start a second writer in
 		// the folder it is leaving, with a reply nobody would see. The queue
 		// waits for the loop and goes with the person (loop.go).
-		loopHere := p.loop != nil && p.loop.session == p.opts.SessionID
-		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 && !loopHere {
+		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 && !p.loopHolds() {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
@@ -1065,6 +1064,13 @@ func (p *program) moveCursor(delta int) (tea.Model, tea.Cmd) {
 func (p *program) onEnter() (tea.Model, tea.Cmd) {
 	line := strings.TrimSpace(p.model.Input)
 	if line == "" {
+		// ↵ on an empty line sends what is waiting in the queue, when nothing
+		// holds it: how a queue a stopped loop left behind goes, on purpose.
+		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 && !p.loopHolds() {
+			m, text := p.model.DrainQueue()
+			p.model = m
+			return p, p.submit(text)
+		}
 		return p, nil
 	}
 	p.model = p.model.SetInput("")
@@ -1116,6 +1122,22 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 				IsError: true, Expanded: true,
 			})
 		}
+		return p, nil
+	}
+	if p.loopHolds() {
+		// Idle between two of the loop's turns: held like the queue, not sent
+		// into the folder the daemon is leaving.
+		p.model.Entries = append(p.model.Entries, Entry{Kind: KindUser, Summary: line})
+		m, ok := p.model.Enqueue(r.Text, p.opts.QueueMax)
+		p.model = m
+		if !ok {
+			p.model.Entries = append(p.model.Entries, Entry{
+				Kind: KindError, Summary: "the queue is full; wait for the current turn",
+				IsError: true, Expanded: true,
+			})
+			return p, nil
+		}
+		p.loopNote(fmt.Sprintf(Text(p.opts.Lang).CmdLoopQueueBetween, len(p.model.Queue)))
 		return p, nil
 	}
 	return p, p.submit(r.Text)

@@ -269,7 +269,8 @@ existe para impedir exatamente isso.
   revisão; um diferente é recusado, nomeando o loop que espera. Interromper o
   turno do loop agora para o loop em vez de pular para a próxima pasta, e uma
   mensagem enfileirada na sessão de um loop espera o loop em vez de abrir um
-  turno na pasta que o daemon está deixando. O loop
+  turno na pasta que o daemon está deixando; ela sai sozinha só quando o loop
+  termina, e depois de uma parada fica até ↵ mandá-la. O loop
   carrega o que foi digitado, o que a pergunta achou de cada pasta e o que cada
   proposta escreveu (`args`, `criteria`, `unmet`, `unavailable`, `error`,
   `proposal_criteria`, `proposal_summary`), para nenhum cliente medir duas

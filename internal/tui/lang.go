@@ -283,6 +283,8 @@ type Strings struct {
 	CmdLoopStopped          string
 	CmdLoopStoppedElsewhere string
 	CmdLoopQueueHeld        string // takes how many messages and the folder the loop went to
+	CmdLoopQueueBetween     string // takes how many messages are held
+	CmdLoopQueueKept        string // takes how many messages a stopped loop left
 	CmdLoopQualifying       string // takes the spec path
 	// CmdLoopFinished is the run ending, with what done says. It takes the
 	// number of specs worked and the state of the criteria.
@@ -528,6 +530,8 @@ var catalogue = map[Lang]Strings{
 		CmdLoopStopped:          "loop: stopped. The turn was interrupted and no other folder opens — interrupting a loop's turn stops the loop instead of skipping to the next folder.",
 		CmdLoopStoppedElsewhere: "loop: stopped — no other folder opens.",
 		CmdLoopQueueHeld:        "%d queued message(s) were not sent; the loop moved on to %s. They go when the loop ends.",
+		CmdLoopQueueBetween:     "held — the loop is between folders, so this is not sent into the one it is leaving. %d message(s) go when the loop ends.",
+		CmdLoopQueueKept:        "%d message(s) left in the queue; send with ↵ on an empty line or discard with ctrl+x.",
 		CmdLoopOpened:           "loop: %s, %d criteria",
 		CmdLoopEmpty:            "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
@@ -751,6 +755,8 @@ Environment:
 		CmdLoopStopped:          "loop: parado. O turno foi interrompido e nenhuma outra pasta abre — interromper o turno de um loop para o loop em vez de pular para a próxima pasta.",
 		CmdLoopStoppedElsewhere: "loop: parado — nenhuma outra pasta abre.",
 		CmdLoopQueueHeld:        "%d mensagem(ns) na fila não foram enviadas; o loop foi para %s. Elas vão quando o loop terminar.",
+		CmdLoopQueueBetween:     "retida — o loop está entre pastas, então isto não vai para a que ele está deixando. %d mensagem(ns) vão quando o loop terminar.",
+		CmdLoopQueueKept:        "%d mensagem(ns) ficaram na fila; envie com ↵ numa linha vazia ou descarte com ctrl+x.",
 		CmdLoopOpened:           "loop: %s, %d critérios",
 		CmdLoopEmpty:            "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
 		CmdModel:                "troca de modelo — abre nova sessão, porque o prefixo muda",

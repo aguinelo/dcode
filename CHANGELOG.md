@@ -271,7 +271,8 @@ exists to stop exactly that.
   a different one is refused, naming the loop that waits. Interrupting the
   loop's turn now stops the loop instead of skipping to the next folder, and a
   message queued on a loop's session waits for the loop instead of starting a
-  turn in the folder the daemon is leaving. The
+  turn in the folder the daemon is leaving; it goes on its own only when the
+  loop finishes, and after a stop it stays until ↵ sends it. The
   run carries what was typed, what its survey found in each folder and what
   each proposal wrote (`args`, `criteria`, `unmet`, `unavailable`, `error`,
   `proposal_criteria`, `proposal_summary`), so no client measures twice. Two

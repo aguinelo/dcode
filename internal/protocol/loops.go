@@ -88,7 +88,8 @@ type LoopSpecRun struct {
 	// folder before anything opened: the plan a client draws, from the one
 	// measurement the run made rather than a second one of its own. Unmet and
 	// Unavailable are counted only when a goal measured the folders; absent is
-	// zero.
+	// zero. Criteria 0 with an Error means unknown — the folder could not be
+	// read — never "declares nothing".
 	Criteria    int    `json:"criteria,omitempty"`
 	Unmet       int    `json:"unmet,omitempty"`
 	Unavailable int    `json:"unavailable,omitempty"`
