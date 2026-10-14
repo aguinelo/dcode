@@ -83,7 +83,10 @@ function Done({ view, measure }: { view: PaneView; measure: Measure | null }) {
           </ul>
         </div>
       )}
-      <p className="crew-quiet crew-foot-note">O selo é o que os critérios conferiram ao fim do turno, não o que o modelo disse (D13).</p>
+      <p className="crew-quiet crew-foot-note">
+        O selo é o que os critérios conferiram — a cada conferência do turno que roda, e ao fim do turno —, não o que o modelo disse (D13,
+        D54).
+</p>
     </>
   );
 }

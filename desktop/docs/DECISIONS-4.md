@@ -166,3 +166,39 @@ texto no claro (2,9:1); branco sobre o laranja nos botões (2,9:1); o
 `#F59E0B` da folha para a espera (perto demais do acento); seguir os chãos do
 grafite e trocar só o acento (a folha traz os neutros, e o dono pediu a paleta
 inteira).
+
+**D54. As luzes dos critérios andam a cada conferência** (emenda D13; passo 6
+de [`proposals/loop.md`](proposals/loop.md), a decisão Q4 A). O núcleo anuncia
+cada conferência da definição de pronto dentro de um turno (`done.checked`,
+#471), e a janela passa a lê-las: enquanto o turno roda, as luzes são as da
+última conferência dele, não as do último `turn.completed`. É o que o D24 pediu
+ao N4 e o que a Figura 2 da proposta desenha — "ciclo 3, 2 de 4" — sem a régua
+do loop, que vem com o loop no daemon.
+
+- **As luzes, de onde vêm.** Da última conferência do turno em curso; antes da
+  primeira, continuam as do último turno medido; quando o turno termina, o
+  `turn.completed` volta a mandar, e a conferência sai de cena. Conferência de
+  outro turno que não o que roda não pinta este. O protegido escrito segue a
+  mesma regra, então o "⚠ tocou a régua" aparece na conferência em que
+  aconteceu, não só no fim.
+- **"ciclo N · parado s de L".** Ao lado das luzes, enquanto elas vêm de uma
+  conferência: qual conferência é, e — só quando há — as seguidas sem avanço
+  contra o teto em que o turno termina incompleto. O teto vem no evento
+  (`stall_limit`); a janela não guarda cópia do `MaxStallCycles`. "parado 0 de
+  3" seria ruído, e por isso só aparece quando parou.
+- **Uma conferência que voltou atrás é dita no fluxo.** Quando a conferência
+  quebra um critério que passava e o laço desfaz o ciclo, o fluxo ganha uma
+  linha: "⟲ Ciclo 2 voltou: e2e quebrou, desfeito src/cart.ts". O que quebrou
+  é o que está entre os não cumpridos agora e não estava na conferência
+  anterior do mesmo turno; o que voltou vem do evento. Sem ela, a luz ficaria
+  vermelha e nada diria que arquivos mudaram debaixo da pessoa. Conferência que
+  andou ou parou não escreve no fluxo: as luzes já dizem.
+- **Na grade, na maximizada e na aba Pronto da Crew** é a mesma linha
+  (`DoneRow`), então as três andam juntas.
+
+As réguas: as telas 02 e 03 não têm conferência em curso e ficam a 0,00%.
+
+Descartados: luzes só no fim do turno (o que havia; o D24 recusou um loop que
+só se vê terminado); contar testes por critério (exigiria ler a saída do
+comando, recusado no D24 e na Q4); uma linha no fluxo por conferência (num
+turno de 40 ciclos, o fluxo viraria o placar e a conversa sumiria).

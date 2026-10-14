@@ -27,8 +27,17 @@ export interface PaneView {
   mascot: MascotState;
   /** The seal of the last measured turn (D13), when there is one. */
   seal: { text: string; tone: Tone } | null;
-  /** Each criterion, when the last measured turn names them. */
+  /**
+   * Each criterion: as the last check of the turn under way left it (D54), or
+   * else as the last measured turn did.
+   */
   lights: Light[];
+  /**
+   * Which check of the turn under way the lights come from, and the checks in
+   * a row that moved nothing against the count at which the turn ends
+   * incomplete. Null when the lights are a finished turn's.
+   */
+  cycle: { n: number; stall: number; limit: number } | null;
   /** Where the work is measured, written in the last measured turn: never left out. */
   touched: string[];
   /** What is known about done when nothing was measured yet. */
@@ -74,15 +83,19 @@ export function paneView(r: Row, v: SessionView | undefined, now: number): PaneV
   const completion = v ? lastCompletion(v.entries) : null;
   const verification = completion?.verification ?? r.verification;
   const state = v?.state ?? r.state;
-  const touched = completion?.touched_protected ?? [];
+  // While a turn runs, its own last check is the newer measurement; the
+  // finished turn's completion is what stands once it ends.
+  const check = v?.turn ? v.check : null;
+  const measured = check ?? completion;
+  const touched = measured?.touched_protected ?? [];
   const mark = glyphOf(state, verification);
   // A pass measured with a ruler the turn changed is not a plain one.
   const { glyph, tone } = touched.length > 0 && mark.tone === 'ok' ? { ...mark, tone: 'warn' as const } : mark;
-  const lights: Light[] = completion
+  const lights: Light[] = measured
     ? [
-        ...(completion.met ?? []).map((name) => ({ name, state: 'met' as const })),
-        ...(completion.unmet ?? []).map((name) => ({ name, state: 'unmet' as const })),
-        ...(completion.unavailable ?? []).map((name) => ({ name, state: 'unavailable' as const })),
+        ...(measured.met ?? []).map((name) => ({ name, state: 'met' as const })),
+        ...(measured.unmet ?? []).map((name) => ({ name, state: 'unmet' as const })),
+        ...(measured.unavailable ?? []).map((name) => ({ name, state: 'unavailable' as const })),
       ]
     : [];
   const declared = v?.info?.done_criteria ?? 0;
@@ -106,6 +119,7 @@ export function paneView(r: Row, v: SessionView | undefined, now: number): PaneV
     mascot: mascotOf(state, verification, state === 'running' && v ? activity(v.entries).phase : null),
     seal: lights.length > 0 ? null : sealWord(verification),
     lights,
+    cycle: check ? { n: check.cycle, stall: check.stall, limit: check.stall_limit } : null,
     touched,
     doneNote,
     where,

@@ -44,6 +44,7 @@ As que estão nos outros arquivos:
 - [D53](DECISIONS-3.md) — A memória e as skills de um projeto, alcançadas da grade.
 - [D49](DECISIONS-4.md) — O mascote entra no app: o ícone e o estado de cada conversa.
 - [D52](DECISIONS-4.md) — Laranja: a cor do dcode é a do mascote.
+- [D54](DECISIONS-4.md) — As luzes dos critérios andam a cada conferência.
 
 ## Decisões
 
@@ -307,6 +308,8 @@ desktop não os implementa, espera por eles.
 - **N4. O `/loop` no daemon** — `loop-command` e `client-server-protocol`, MINOR. A
   sequência sai do processo da TUI (`internal/tui/program.go`) para o daemon, e um
   evento por ciclo traz o resultado de cada critério. Pedido por D24; fecha L11.
+  O evento está **feito** (#471, `done.checked`) e a janela o lê (D54); a
+  sequência no daemon, não ainda.
 - **N5. Os modelos que uma sessão pode pedir** — `client-server-protocol`, MINOR.
   **Feito** (#422). `GET /v1/models?workspace=` responde o padrão do projeto e
   cada perfil do `models.toml`, o do usuário com o do projeto por cima, cada um

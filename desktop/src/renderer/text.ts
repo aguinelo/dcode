@@ -34,6 +34,12 @@ export function noteText(n: Note): { text: string; tone: Tone } {
       const rounds = n.reason === 'max_iterations' && n.maxRounds ? ` (${n.rounds} de ${n.maxRounds})` : '';
       return { text: `${base}${rounds}`, tone: n.reason === 'interrupted' ? 'dim' : 'warn' };
     }
+    case 'cycle-back': {
+      const broke =
+        n.broke.length === 0 ? 'um critério que passava quebrou' : `${n.broke.join(', ')} ${n.broke.length === 1 ? 'quebrou' : 'quebraram'}`;
+      const undone = n.undone.length === 0 ? 'nada pôde ser desfeito' : `desfeito ${n.undone.join(', ')}`;
+      return { text: `⟲ Ciclo ${n.cycle} voltou: ${broke}, ${undone}`, tone: 'warn' };
+    }
     case 'done-proposed':
       return {
         text: `Definição de pronto proposta · ${plural(n.criteria, 'critério', 'critérios')}${n.noAcceptance ? ' · nenhum vermelho' : ''}`,
