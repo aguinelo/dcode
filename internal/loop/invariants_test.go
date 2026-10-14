@@ -209,6 +209,10 @@ var loopCommandInvariants = map[string]string{
 	"aparece em `warnings`":               "TestASurveyThatFailsStillOpensTheWork",
 	"qualificada numa passada só":         "TestAGoalQualifiesEveryFolderThatDeclaresNothingBeforeAnyWork",
 	"durante a gravação da proposta":      "TestAStopDuringTheCommitKeepsTheFileItWrote",
+	"o que cada proposta escreveu":        "TestTheRunCarriesWhatTheSurveyAndTheCommitSaid",
+	"segue esse loop até o fim":           "TestTypingTheLoopAgainAfterTheReviewGoesOn",
+	"nomeando o que espera":               "TestADifferentLoopWhileOneWaitsIsRefused",
+	"Interromper o turno do próprio loop": "TestInterruptingALoopsTurnStopsTheLoop",
 	"a fachada não tem orçamento próprio": "TestSessionConfigCarriesTheLimitsUntouched",
 }
 

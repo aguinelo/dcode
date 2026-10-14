@@ -13,9 +13,9 @@ import (
 
 	"github.com/aguinelo/dcode/internal/behavior"
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/memory"
 	"github.com/aguinelo/dcode/internal/policy"
-	"github.com/aguinelo/dcode/internal/tui"
 	"github.com/aguinelo/dcode/internal/vcs"
 )
 
@@ -217,7 +217,7 @@ func loadTask(dir string, w World) (string, error) {
 		if _, err := os.Stat(path); err == nil {
 			return "", fmt.Errorf("task.md sits beside a world.json that declares a qualifying turn; the instruction comes from the product, and two of them is one that drifts")
 		}
-		return tui.LoopTask(tui.LoopArgs{Qualify: true, Spec: w.Qualify}), nil
+		return loopcommand.LoopTask(loopcommand.LoopArgs{Qualify: true, Spec: w.Qualify}), nil
 	}
 	task, err := os.ReadFile(path)
 	if err != nil {

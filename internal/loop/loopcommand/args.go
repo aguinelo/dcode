@@ -52,6 +52,12 @@ type LoopArgs struct {
 	Goal bool
 }
 
+// FlagError is something that looks like a flag and is not one. It carries
+// the token, so a client can say it in the person's language.
+type FlagError struct{ Flag string }
+
+func (e FlagError) Error() string { return e.Flag + " is not a flag here — only --protect is" }
+
 // ParseLoopArgs splits the argument of `/loop`. Pure, and strict.
 //
 // Strict because a mistyped flag that is silently ignored produces a session
@@ -79,7 +85,7 @@ func ParseLoopArgs(args string) (LoopArgs, error) {
 		case strings.HasPrefix(f, "-"):
 			// Only a thing that LOOKS like a flag can be a mistyped one. A word
 			// is a word.
-			return LoopArgs{}, fmt.Errorf("%s is not a flag here — only --protect is", f)
+			return LoopArgs{}, FlagError{Flag: f}
 		default:
 			words = append(words, f)
 		}

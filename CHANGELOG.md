@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 220 decision changelogs |
+| spec families | 19, with 222 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,18 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The TUI's `/loop` asks the daemon to run it.** The terminal no longer
+  conducts its own loop: it sends what was typed to `POST /v1/loops`, follows
+  the run's stream and says what changed — the plan, the session the loop moved
+  into, each proposal, the end — in the words it always used. Typing the same
+  `/loop` again after a proposal goes on with the loop waiting for that review;
+  a different one is refused, naming the loop that waits. Interrupting the
+  loop's turn now stops the loop instead of skipping to the next folder. The
+  run carries what was typed, what its survey found in each folder and what
+  each proposal wrote (`args`, `criteria`, `unmet`, `unavailable`, `error`,
+  `proposal_criteria`, `proposal_summary`), so no client measures twice. Two
+  clients now see one loop; the TUI keeps no copy of the sequence or the
+  grammar.
 - **A loop stopped while it writes a proposal still says where the file is,
   and a loop on `/` holds every tree.** A stop now that landed during the
   commit left a `done.toml` on disk and no proposal on the run; the path is now
