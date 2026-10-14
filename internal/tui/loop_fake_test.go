@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -63,7 +66,13 @@ func (f *fakeTransport) ListLoops(context.Context, string) ([]protocol.LoopRun, 
 }
 
 func (f *fakeTransport) WatchLoops(context.Context) (<-chan protocol.LoopChange, <-chan error) {
-	return f.loopd().frames, make(chan error)
+	f.mu.Lock()
+	errs := f.watchErrs
+	f.mu.Unlock()
+	if errs == nil {
+		errs = make(chan error)
+	}
+	return f.loopd().frames, errs
 }
 
 func (f *fakeTransport) runner(id string) *loopcommand.Runner {
@@ -88,7 +97,7 @@ func (f *fakeTransport) lastLoop(t *testing.T) protocol.LoopRun {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if len(d.order) == 0 {
-		t.Fatal("no loop was started")
+		return protocol.LoopRun{}
 	}
 	return d.runs[d.order[len(d.order)-1]].Snapshot()
 }
@@ -163,32 +172,87 @@ func (l loopSide) Interrupt(string) {
 	f.interrupts++
 }
 
-// typeLoop is the person typing `/loop <args>`: the command, and what it
-// answered — the run started, or a note.
-func typeLoop(t *testing.T, p *program, args string) {
-	t.Helper()
-	_, cmd := p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "loop", Args: args})
+// runtime runs the commands Update returns, as the program would: each in its
+// own goroutine, their messages back through Update in arrival order. The
+// loop is followed through waitForLoop, the real path, never by reading the
+// follow's channel. One per program.
+type runtime struct {
+	msgs chan tea.Msg
+}
+
+var (
+	runtimesMu sync.Mutex
+	runtimes   = map[*program]*runtime{}
+)
+
+func runtimeOf(p *program) *runtime {
+	runtimesMu.Lock()
+	defer runtimesMu.Unlock()
+	rt, ok := runtimes[p]
+	if !ok {
+		rt = &runtime{msgs: make(chan tea.Msg, 1024)}
+		runtimes[p] = rt
+	}
+	return rt
+}
+
+func (rt *runtime) spawn(p *program, cmd tea.Cmd) {
 	if cmd == nil {
 		return
 	}
-	p.Update(cmd())
-}
-
-// followLoop feeds the program every message about the run it follows, as
-// the update loop would, until done says so or the run is no longer followed.
-func followLoop(t *testing.T, p *program, done func() bool) {
-	t.Helper()
-	deadline := time.After(5 * time.Second)
-	for done == nil || !done() {
-		f := p.loop
-		if f == nil {
+	go func() {
+		m := cmd()
+		if batch, ok := m.(tea.BatchMsg); ok {
+			for _, c := range batch {
+				rt.spawn(p, c)
+			}
+			return
+		}
+		if m == nil {
 			return
 		}
 		select {
-		case m := <-f.msgs:
-			p.Update(m)
+		case rt.msgs <- m:
+		case <-p.ctx.Done():
+		}
+	}()
+}
+
+// typeLoop is the person typing `/loop <args>`.
+func typeLoop(t *testing.T, p *program, args string) {
+	t.Helper()
+	_, cmd := p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "loop", Args: args})
+	runtimeOf(p).spawn(p, cmd)
+}
+
+// deliver runs one command's messages through the program, as the runtime
+// would, without waiting for them to arrive.
+func deliver(p *program, cmd tea.Cmd) {
+	runtimeOf(p).spawn(p, cmd)
+}
+
+// followLoop runs the program until done says so or, with done nil, until it
+// no longer follows a loop and nothing more is arriving.
+func followLoop(t *testing.T, p *program, done func() bool) {
+	t.Helper()
+	rt := runtimeOf(p)
+	deadline := time.After(5 * time.Second)
+	seen := p.loop != nil
+	for {
+		if done != nil && done() {
+			return
+		}
+		select {
+		case m := <-rt.msgs:
+			_, cmd := p.Update(m)
+			rt.spawn(p, cmd)
+			seen = seen || p.loop != nil
+		case <-time.After(150 * time.Millisecond):
+			if done == nil && seen && p.loop == nil {
+				return
+			}
 		case <-deadline:
-			t.Fatalf("the loop never got there; entries: %+v", summaries(p))
+			t.Fatalf("the loop never got there; entries: %q", summaries(p))
 		}
 	}
 }

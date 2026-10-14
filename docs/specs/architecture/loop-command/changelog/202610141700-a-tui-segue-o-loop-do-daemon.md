@@ -57,3 +57,24 @@ intermediária pode não aparecer, porque a TUI vai direto para a sessão em que
 loop está. Num loop de verdade cada turno leva segundos, e o fim, o plano e as
 propostas são ditos a partir do estado inteiro do loop, que nenhum quadro
 perde.
+
+## O que a revisão do dono mudou antes do merge
+
+- **Uma nota do acompanhamento não para o acompanhamento.** Uma sessão que não
+  pôde ser lida virava uma nota que não rearmava a espera: a TUI parava de
+  seguir o loop para sempre, e o leitor do fluxo travava com o buffer cheio.
+- **A fila não entra na sessão de um loop vivo.** Mandada quando o turno
+  terminava, ela abria um turno na pasta que o daemon estava deixando — dois
+  escritores na mesma árvore, e uma resposta que ninguém via; ou sumia quando
+  a TUI trocava para a sessão seguinte. Agora ela espera, vai com a pessoa,
+  é dita, e sai quando o loop termina.
+- **A nota da proposta diz o comando certo.** Para um objetivo ou uma palavra
+  solta, "/loop <pasta>" era recusado por não ser o loop que espera.
+- **Trocar de sessão de propósito deixa de seguir o loop**, em vez de ser
+  puxado de volta pela próxima sessão dele.
+- **O acompanhamento tem o próprio contexto**: trocado (revisão → continue) ou
+  falho, ele não deixa leitor esperando, e a falha do fluxo é dita.
+- **Parada vinda de outro cliente** é dita sem afirmar que um turno desta TUI
+  foi interrompido.
+- As linhas novas que a TUI passa a mostrar — o aviso do loop e o erro de um
+  loop de uma pasta só — estão declaradas na §2 com as outras divergências.

@@ -65,6 +65,10 @@ type fakeTransport struct {
 	// holdTurns makes a loop's work turns wait until it closes or they are
 	// stopped.
 	holdTurns chan struct{}
+	// getFails fails that many session lookups, and watchErrs is the error
+	// channel of the loop stream.
+	getFails  int
+	watchErrs chan error
 }
 
 func newFakeTransport() *fakeTransport {
@@ -120,6 +124,10 @@ func (f *fakeTransport) GetSession(_ context.Context, id string) (protocol.Sessi
 	defer f.mu.Unlock()
 	if f.getErr != nil {
 		return protocol.Session{}, f.getErr
+	}
+	if f.getFails > 0 {
+		f.getFails--
+		return protocol.Session{}, errors.New("the daemon did not answer")
 	}
 	for _, s := range f.sessions {
 		if s.ID == id {

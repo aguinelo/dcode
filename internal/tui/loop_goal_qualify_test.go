@@ -71,6 +71,7 @@ func TestADifferentLoopWhileOneWaitsIsRefused(t *testing.T) {
 	followLoop(t, p, func() bool { return tr.lastLoop(t).State == protocol.LoopAwaitingReview })
 
 	typeLoop(t, p, "specs/y")
+	followLoop(t, p, func() bool { return sawEntry(p, "/loop specs/x", "waiting") })
 	if !sawEntry(p, "/loop specs/x", "waiting") {
 		t.Errorf("a different loop was not refused naming the one waiting: %q", summaries(p))
 	}
