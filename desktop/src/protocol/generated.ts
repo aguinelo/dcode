@@ -629,6 +629,15 @@ export const EventSessionError: EventType = "session.error";
  */
 export const EventSessionModeChanged: EventType = "session.mode_changed";
 /**
+ * EventDoneChecked is one check of the definition of done inside a turn.
+ * The loop re-enters a turn while the criteria shrink, and every one of
+ * those checks used to happen in silence: a client learned where the
+ * criteria stood only at turn.completed, so "cycle 3, two of five" did not
+ * exist on the wire. A turn that wrote nothing runs no check and emits
+ * nothing, as before.
+ */
+export const EventDoneChecked: EventType = "done.checked";
+/**
  * WorkspaceDoneDir is the workspace's own definition-of-done directory.
  * It is where a proposal lands when no spec folder claims it — a goal typed as
  * a sentence — and it lives here because both halves need it: the client
@@ -1046,6 +1055,23 @@ export const StopUnverified = "unverified";
  */
 export const StopIncomplete = "incomplete";
 /**
+ * DoneMovedFirst is the first check of a turn: there was nothing before it
+ * to compare against. Calling it forward would claim progress nobody made.
+ */
+export const DoneMovedFirst = "first";
+/**
+ * DoneMovedForward: fewer criteria unmet, and none newly broken.
+ */
+export const DoneMovedForward = "forward";
+/**
+ * DoneMovedStalled: nothing got better and nothing got worse.
+ */
+export const DoneMovedStalled = "stalled";
+/**
+ * DoneMovedBackward: a criterion that passed does not any more.
+ */
+export const DoneMovedBackward = "backward";
+/**
  * ProgressRounds is the turn against its iteration ceiling.
  */
 export const ProgressRounds = "rounds";
@@ -1359,6 +1385,45 @@ export interface SessionModeChanged {
    * one place where being wrong is dangerous.
    */
   sandbox_mode: string;
+}
+/**
+ * DoneChecked is one check of the definition of done inside a turn.
+ * Names, never counts of tests: what a criterion printed is the model's to
+ * read, and counting passes would mean parsing a command's output, which
+ * ToolCompleted's own comment forbids.
+ * Never part of the context the model is sent. It is a person's window, as
+ * Progress is: the model is told the same facts as a reminder, in its own
+ * words.
+ */
+export interface DoneChecked {
+  turn_id: string;
+  /**
+   * Cycle counts the checks of this turn, from 1.
+   */
+  cycle: number /* int */;
+  met?: string[];
+  unmet?: string[];
+  unavailable?: string[];
+  /**
+   * Moved is one of the DoneMoved* values.
+   */
+  moved: string;
+  /**
+   * Stall is how many checks in a row moved nothing forward, against
+   * StallLimit, the count at which the turn ends incomplete. Carried
+   * together so a client never holds a second copy of the ceiling.
+   */
+  stall: number /* int */;
+  stall_limit: number /* int */;
+  /**
+   * Undone are the files the loop put back because this check found a
+   * criterion broken that had passed.
+   */
+  undone?: string[];
+  /**
+   * TouchedProtected are paths that measure the work and were written.
+   */
+  touched_protected?: string[];
 }
 
 //////////

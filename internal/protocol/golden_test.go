@@ -93,6 +93,20 @@ func TestGoldenTurnCompletedMinimal(t *testing.T) {
 	golden(t, "turn_completed_minimal", TurnCompleted{TurnID: "t-1", Reason: StopInterrupted})
 }
 
+// moved, stall and stall_limit are never omitted: zero stalls is an answer, and
+// a client that read a missing count as zero would be guessing.
+func TestGoldenDoneChecked(t *testing.T) {
+	golden(t, "done_checked", DoneChecked{
+		TurnID: "t1", Cycle: 3,
+		Met: []string{"lint", "unit"}, Unmet: []string{"e2e"}, Unavailable: []string{"a11y"},
+		Moved: DoneMovedBackward, Stall: 1, StallLimit: 3,
+		Undone: []string{"src/cart.ts"}, TouchedProtected: []string{"cart_test.go"},
+	})
+	golden(t, "done_checked_minimal", DoneChecked{
+		TurnID: "t1", Cycle: 1, Met: []string{"unit"}, Moved: DoneMovedFirst, StallLimit: 3,
+	})
+}
+
 func TestGoldenError(t *testing.T) {
 	golden(t, "error", Error{Code: CodeWorkspaceInvalid, Message: "not a directory"})
 }

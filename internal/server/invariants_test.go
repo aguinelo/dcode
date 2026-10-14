@@ -152,6 +152,11 @@ var protocolInvariants = map[string]string{
 	"restaura o que o **último** turno": "TestANewTurnReplacesWhatCanBeUndone",
 	"é recusado, nunca sobrescrito":     "TestUndoRefusesAFileChangedSinceTheTurn",
 	"durante um turno em curso":         "TestUndoIsRefusedWhileATurnRuns",
+	// The definition of done, checked inside a turn. Emitted by the loop.
+	"numerada a partir de 1 no turno":               "TestEachCheckInsideATurnIsAnEvent",
+	"o que não pôde rodar, e diz o que o protegido": "TestACheckNamesWhatPassedFailedAndCouldNotRun",
+	"nomeia o que o laço desfez":                    "TestABackwardCheckNamesWhatWasUndone",
+	"não anuncia conferência":                       "TestATurnThatChangedNothingAnnouncesNoCheck",
 	// Images.
 	"imagem por valor":     "TestAnImageArrivesOnATurn",
 	"recusado na borda":    "TestAMalformedImageIsRefused",

@@ -101,6 +101,14 @@ const (
 	// client that attaches after the change still sees what the session is
 	// running under, the same way SessionCreated already does for the original.
 	EventSessionModeChanged EventType = "session.mode_changed"
+	// EventDoneChecked is one check of the definition of done inside a turn.
+	//
+	// The loop re-enters a turn while the criteria shrink, and every one of
+	// those checks used to happen in silence: a client learned where the
+	// criteria stood only at turn.completed, so "cycle 3, two of five" did not
+	// exist on the wire. A turn that wrote nothing runs no check and emits
+	// nothing, as before.
+	EventDoneChecked EventType = "done.checked"
 )
 
 // WorkspaceDoneDir is the workspace's own definition-of-done directory.
@@ -486,6 +494,20 @@ const (
 	StopIncomplete = "incomplete"
 )
 
+// What one check did to the unmet criteria, carried in DoneChecked.Moved. A
+// closed set, so a client says it in the reader's language.
+const (
+	// DoneMovedFirst is the first check of a turn: there was nothing before it
+	// to compare against. Calling it forward would claim progress nobody made.
+	DoneMovedFirst = "first"
+	// DoneMovedForward: fewer criteria unmet, and none newly broken.
+	DoneMovedForward = "forward"
+	// DoneMovedStalled: nothing got better and nothing got worse.
+	DoneMovedStalled = "stalled"
+	// DoneMovedBackward: a criterion that passed does not any more.
+	DoneMovedBackward = "backward"
+)
+
 // What a Progress counts. A closed set, so a client can say it in the reader's
 // language instead of printing the daemon's.
 //
@@ -769,5 +791,34 @@ type (
 		// was created with — and §2.1 of client-tui calls the sandbox field the
 		// one place where being wrong is dangerous.
 		SandboxMode string `json:"sandbox_mode"`
+	}
+	// DoneChecked is one check of the definition of done inside a turn.
+	//
+	// Names, never counts of tests: what a criterion printed is the model's to
+	// read, and counting passes would mean parsing a command's output, which
+	// ToolCompleted's own comment forbids.
+	//
+	// Never part of the context the model is sent. It is a person's window, as
+	// Progress is: the model is told the same facts as a reminder, in its own
+	// words.
+	DoneChecked struct {
+		TurnID string `json:"turn_id"`
+		// Cycle counts the checks of this turn, from 1.
+		Cycle       int      `json:"cycle"`
+		Met         []string `json:"met,omitempty"`
+		Unmet       []string `json:"unmet,omitempty"`
+		Unavailable []string `json:"unavailable,omitempty"`
+		// Moved is one of the DoneMoved* values.
+		Moved string `json:"moved"`
+		// Stall is how many checks in a row moved nothing forward, against
+		// StallLimit, the count at which the turn ends incomplete. Carried
+		// together so a client never holds a second copy of the ceiling.
+		Stall      int `json:"stall"`
+		StallLimit int `json:"stall_limit"`
+		// Undone are the files the loop put back because this check found a
+		// criterion broken that had passed.
+		Undone []string `json:"undone,omitempty"`
+		// TouchedProtected are paths that measure the work and were written.
+		TouchedProtected []string `json:"touched_protected,omitempty"`
 	}
 )

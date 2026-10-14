@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import doneChecked from '../../../internal/protocol/testdata/done_checked.json?raw';
+import doneCheckedMinimal from '../../../internal/protocol/testdata/done_checked_minimal.json?raw';
 import * as generated from '../../src/protocol/generated';
 import { decodeEvent, EVENT_KINDS } from '../../src/protocol/events';
 
@@ -35,6 +37,16 @@ describe('decodeEvent', () => {
 
   it('reads a nil slice encoded as null as an empty list', () => {
     expect(decodeEvent(envelope('plan.updated', { items: null })).ok).toBe(true);
+  });
+
+  it('reads a check of the criteria in the shape the core records it', () => {
+    // The Go golden files, not a payload written here: a shape copied by hand
+    // agrees with itself and with nothing else.
+    for (const golden of [doneChecked, doneCheckedMinimal]) {
+      expect(decodeEvent(envelope('done.checked', JSON.parse(golden) as unknown)).ok).toBe(true);
+    }
+    const d = decodeEvent(envelope('done.checked', { turn_id: 't1', cycle: 1, moved: 'first', stall: 0 }));
+    expect(d.ok ? null : d.problem.reason).toMatch(/stall_limit/);
   });
 
   it('says why an event cannot be read, and keeps whatever names its session', () => {

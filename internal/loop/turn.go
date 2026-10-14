@@ -181,6 +181,12 @@ type Engine struct {
 	pendingPrompt string
 	session       ce.Session
 	turnSeq       int
+	// turnID and checks name the turn under way and how many checks of the
+	// definition of done it has run, for done.checked. Kept on the engine
+	// rather than threaded through checkDone because the turn owns them and
+	// checkDone only reports them.
+	turnID string
+	checks int
 	// seenDirs stops the same out-of-chain instruction being appended once per
 	// batch. Told once is guidance; told every batch is noise the model starts
 	// to discount.
@@ -319,6 +325,7 @@ func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Out
 	e.takePendingPrompt()
 	e.turnSeq++
 	turnID := fmt.Sprintf("t%d", e.turnSeq)
+	e.turnID, e.checks = turnID, 0
 	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: turnID, Text: input})
 
 	// The pictures ride with the question, in one message. Splitting them
@@ -1219,9 +1226,18 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, tol
 	rep := Check(ctx, e.cfg.Done, e.cfg.RunCriterion, e.cfg.DoneTimeout)
 	rep.TouchedProtected = e.cfg.Done.TouchedProtected(written)
 	e.lastReport = rep
+	e.checks++
 
 	now := rep.Unmet()
 	if len(now) == 0 {
+		// Announced before the turn decides anything, so a client sees the
+		// check that ended the turn and not only the ones that continued it.
+		moved := protocol.DoneMovedFirst
+		if *unmet != nil {
+			moved = protocol.DoneMovedForward
+			*stall = 0
+		}
+		e.announceCheck(rep, moved, *stall, nil)
 		// Nothing is unmet, but that is not the same as everything having been
 		// checked. Files changed and no criterion could run, so the turn
 		// delivered work nobody confirmed — and ending it as StopDone is
@@ -1272,6 +1288,11 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, tol
 		broke = regressedNames(*unmet, now)
 		undone, kept = e.undoCycle()
 	}
+	wire := movedOnTheWire(moved)
+	if *unmet == nil {
+		wire = protocol.DoneMovedFirst
+	}
+	e.announceCheck(rep, wire, *stall, undone)
 	*unmet = now
 
 	if *stall >= e.stallLimit() {
@@ -1289,6 +1310,38 @@ func (e *Engine) checkDone(ctx context.Context, stall *int, unmet *[]string, tol
 		CycleKept:        kept,
 		Regressed:        broke,
 	})
+}
+
+// announceCheck emits one check of the definition of done as done.checked.
+//
+// What the loop decided, read back rather than decided again: moved and stall
+// are the values checkDone acts on, so the client and the loop cannot disagree
+// about whether a cycle stalled.
+func (e *Engine) announceCheck(rep Report, moved string, stall int, undone []string) {
+	e.emit(protocol.EventDoneChecked, protocol.DoneChecked{
+		TurnID:           e.turnID,
+		Cycle:            e.checks,
+		Met:              rep.Names(CriterionMet),
+		Unmet:            rep.Names(CriterionUnmet),
+		Unavailable:      rep.Names(CriterionUnavailable),
+		Moved:            moved,
+		Stall:            stall,
+		StallLimit:       e.stallLimit(),
+		Undone:           undone,
+		TouchedProtected: rep.TouchedProtected,
+	})
+}
+
+// movedOnTheWire names a Movement in the protocol's closed set. A draw is
+// "stalled" there because that is what the loop counts it as.
+func movedOnTheWire(m Movement) string {
+	switch m {
+	case MovedForward:
+		return protocol.DoneMovedForward
+	case MovedBackward:
+		return protocol.DoneMovedBackward
+	}
+	return protocol.DoneMovedStalled
 }
 
 // undoCycle puts back what the cycle that regressed wrote.

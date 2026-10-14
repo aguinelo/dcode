@@ -28,6 +28,7 @@ export interface PayloadByType {
   'tool.approval_required': P.ApprovalRequest;
   'tool.approval_resolved': P.ApprovalResolved;
   progress: P.Progress;
+  'done.checked': P.DoneChecked;
   'plan.updated': P.PlanUpdated;
   'done.proposed': P.DoneProposal;
 }
@@ -180,6 +181,18 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
     done: req('number'),
     total: opt('number'),
   } satisfies Shape<P.Progress>,
+  'done.checked': {
+    turn_id: req('string'),
+    cycle: req('number'),
+    met: opt('array', 'string'),
+    unmet: opt('array', 'string'),
+    unavailable: opt('array', 'string'),
+    moved: req('string'),
+    stall: req('number'),
+    stall_limit: req('number'),
+    undone: opt('array', 'string'),
+    touched_protected: opt('array', 'string'),
+  } satisfies Shape<P.DoneChecked>,
   'plan.updated': { items: req('array', PLAN_ITEM) } satisfies Shape<P.PlanUpdated>,
   'done.proposed': {
     proposal_id: req('string'),

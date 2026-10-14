@@ -169,6 +169,7 @@ type Error struct {
 | `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
 | `session.compacted` | `{"from_seq":uint64,"to_seq":uint64}` | compactação de contexto (ADR-03) |
 | `session.mode_changed` | `{"previous":string?,"mode":string,"sandbox_mode":string}` | modo comportamental trocado; `previous` vazio quando não havia de onde vir. `sandbox_mode` é a metade técnica que a troca instalou — carregada, e não derivada pelo cliente, porque a tabela do §2.1 de `sandbox-policy` tem uma casa só |
+| `done.checked` | `{"turn_id":string,"cycle":int,"met":[string]?,"unmet":[string]?,"unavailable":[string]?,"moved":string,"stall":int,"stall_limit":int,"undone":[string]?,"touched_protected":[string]?}` | cada conferência da definição de pronto dentro de um turno (`agent-loop` RN-10); `cycle` conta de 1 dentro do turno; `moved` é `first`, `forward`, `stalled` ou `backward`; `stall` é o contador de conferências sem avanço contra `stall_limit`; `undone`, os arquivos que o laço devolveu numa conferência que quebrou critério. Nomes, nunca contagem de testes. Turno que não escreveu nada não confere e não emite |
 | `session.error` | `Error` | falha não atribuível a um turno |
 
 ```go
@@ -553,6 +554,10 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
+- Cada conferência da definição de pronto dentro de um turno sai como `done.checked`, antes do `turn.completed`, numerada a partir de 1 no turno e com o contador sem avanço contra o teto.
+- Conferência separa o que passou, o que não passou e o que não pôde rodar, e diz o que o protegido sofreu.
+- Conferência que quebrou critério sai como `backward` e nomeia o que o laço desfez.
+- Turno que não escreveu nada não anuncia conferência.
 
 ## 10. Changelog
 
@@ -577,3 +582,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610132000 — Os comandos de um workspace](changelog/202610132000-os-comandos-de-um-workspace.md)
 - [202610140900 — A assinatura que nunca viajou sai do fio](changelog/202610140900-a-assinatura-que-nunca-viajou.md)
 - [202610141000 — A proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)
+- [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)

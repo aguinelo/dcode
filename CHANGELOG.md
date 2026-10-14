@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 215 decision changelogs |
+| spec families | 19, with 216 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -261,6 +261,20 @@ exists to stop exactly that.
 
 ---
 
+## Unreleased
+
+- **Each check of the definition of done inside a turn is an event.** The loop
+  re-enters a turn while the unmet criteria shrink, and every one of those
+  checks ran in silence: a client learned where the criteria stood only at
+  `turn.completed`, so "cycle 3, two of five, stalled 1 of 3" was not on the
+  wire. `done.checked` now carries, for every check, the cycle within the turn,
+  the criteria met, unmet and unable to run, where the check moved (`first`,
+  `forward`, `stalled`, `backward`), the stall count against its ceiling, what
+  the loop undid and the protected paths written. `moved` and `stall` are the
+  values the loop acts on, read back rather than decided twice; names, never
+  test counts, because counting passes would mean parsing a command's output. A
+  turn that wrote nothing still runs no check and emits nothing. The desktop
+  reads the event and does not show it yet.
 - **A written proposal is announced as `done.proposed`.** Committing a
   qualifying session's proposal measures it, writes the `done.toml`, and only
   then emits `done.proposed` in that session's log, carrying each criterion's

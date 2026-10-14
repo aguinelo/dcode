@@ -8,6 +8,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ---
 
+## Não publicado
+
+- **O desktop lê `done.checked`, e ainda não o mostra.** O núcleo agora anuncia
+  cada conferência da definição de pronto dentro do turno (passo 3 de
+  `docs/proposals/loop.md`), e tipo que o protocolo acrescenta reprova os
+  testes deste app até ser decodificado. Ele é decodificado e conferido contra
+  os golden files do núcleo; as luzes dos critérios continuam a mudar no
+  `turn.completed`, e movê-las a cada conferência é o passo 6, uma mudança
+  própria.
 - **O `done.proposed` é lido na forma que o núcleo agora emite.** O daemon
   anuncia uma proposta escrita (passo 2 de `docs/proposals/loop.md`) com o
   caminho do `done.toml` e sem `turn_id`, `round` e `expires_at`, porque nada

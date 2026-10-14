@@ -8,6 +8,14 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ---
 
+## Unreleased
+
+- **The desktop reads `done.checked`, and does not show it yet.** The core now
+  announces every check of the definition of done inside a turn (step 3 of
+  `docs/proposals/loop.md`), and a type the protocol adds fails this app's
+  tests until it is decoded. It is decoded and validated against the core's
+  golden files; the criteria lights still move at `turn.completed`, and moving
+  them with each check is step 6, its own change.
 - **`done.proposed` is read in the shape the core now emits.** The daemon
   announces a written proposal (step 2 of `docs/proposals/loop.md`) with the
   `done.toml` path and without `turn_id`, `round` and `expires_at`, since it
