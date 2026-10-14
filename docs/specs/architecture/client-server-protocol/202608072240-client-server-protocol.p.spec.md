@@ -574,3 +574,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610131900 — O git de um workspace, como está agora](changelog/202610131900-o-git-de-um-workspace-como-esta-agora.md)
 - [202610131930 — O id fica na pasta em toda porta](changelog/202610131930-o-id-fica-na-pasta-em-toda-porta.md)
 - [202610132000 — Os comandos de um workspace](changelog/202610132000-os-comandos-de-um-workspace.md)
+- [202610140900 — A assinatura que nunca viajou sai do fio](changelog/202610140900-a-assinatura-que-nunca-viajou.md)
