@@ -2,8 +2,8 @@
 //
 // This is the deterministic half: running each proposed criterion against the
 // repository as it stands, before any work, and classifying what came back.
-// Deriving the proposal is a model's job and the operator's signature is a
-// person's; neither is here yet.
+// Deriving the proposal is a model's job, and signing it is a person reviewing
+// the done.toml it is written to; neither happens here.
 //
 // Spec: docs/specs/architecture/done-qualifier/202608261730-done-qualifier.*.spec.md
 package qualifier

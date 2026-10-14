@@ -553,12 +553,6 @@ export const EventApprovalResolved: EventType = "tool.approval_resolved";
  */
 export const EventDoneProposed: EventType = "done.proposed";
 /**
- * EventDoneSigned announces the definition of done the operator signed,
- * which is the one the turn is measured by and not necessarily the one that
- * was proposed.
- */
-export const EventDoneSigned: EventType = "done.signed";
-/**
  * Event types. Payload shapes are defined in section 5.1 of the planning spec.
  */
 export const EventToolCompleted: EventType = "tool.completed";
@@ -931,18 +925,6 @@ export interface DoneCriterion {
    * error and not a rejection: it is where the operator's eye should land.
    */
   mismatch?: boolean;
-}
-/**
- * SignDoneRequest is the operator's answer.
- * It carries the definition of done AS THEY LEFT IT, not a verdict on the one
- * proposed. A binary gate would turn "I disagree with item 3" into "redo
- * everything", and that cost lands on the operator until they stop disagreeing.
- */
-export interface SignDoneRequest {
-  proposal_id: string;
-  signed: boolean;
-  criteria: DoneCriterion[];
-  protected?: string[];
 }
 /**
  * CommitDoneResponse is what came of writing a proposed definition of done.

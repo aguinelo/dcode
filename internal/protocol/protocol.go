@@ -44,11 +44,7 @@ const (
 	// Measured, not merely proposed: every criterion in it has already been run
 	// against the repository as it stands, and each one says what that run did.
 	// A proposal without those results is a list of good intentions.
-	EventDoneProposed EventType = "done.proposed"
-	// EventDoneSigned announces the definition of done the operator signed,
-	// which is the one the turn is measured by and not necessarily the one that
-	// was proposed.
-	EventDoneSigned    EventType = "done.signed"
+	EventDoneProposed  EventType = "done.proposed"
 	EventToolCompleted EventType = "tool.completed"
 	// EventTurnSteered is the person correcting a turn already under way.
 	//
@@ -410,18 +406,6 @@ type DoneCriterion struct {
 	// Mismatch is the proposer's claim disagreeing with the measurement. Not an
 	// error and not a rejection: it is where the operator's eye should land.
 	Mismatch bool `json:"mismatch,omitempty"`
-}
-
-// SignDoneRequest is the operator's answer.
-//
-// It carries the definition of done AS THEY LEFT IT, not a verdict on the one
-// proposed. A binary gate would turn "I disagree with item 3" into "redo
-// everything", and that cost lands on the operator until they stop disagreeing.
-type SignDoneRequest struct {
-	ProposalID string          `json:"proposal_id"`
-	Signed     bool            `json:"signed"`
-	Criteria   []DoneCriterion `json:"criteria"`
-	Protected  []string        `json:"protected,omitempty"`
 }
 
 // CommitDoneResponse is what came of writing a proposed definition of done.

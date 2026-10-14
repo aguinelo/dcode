@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 211 decision changelogs |
+| spec families | 19, with 213 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The signature round trip that never shipped is removed.** `done.signed`,
+  `SignDoneRequest`, `qualifier.Sign` (with `Asker`, `SignedAnswer`,
+  `ErrRefused` and the round ceiling) and the `DCODE_QUALIFIER_MAX_SIGN_ROUNDS`
+  and `DCODE_QUALIFIER_SIGN_TIMEOUT` keys leave the protocol, the code and the
+  spec, with the nine invariants only `Sign` kept. The signature became the
+  reviewed `done.toml` when the measurement moved out of the turn, and these
+  were left behind with no emitter, no route and no reader but tests and a
+  desktop decoder: a promise on a versioned wire that no code kept. A removed
+  contract, so MINOR. Decision Q1 C of `desktop/docs/proposals/loop.md`;
+  `done.proposed` stays and is rewired as a notice next.
 - **An orchestrator design, approved by the owner on 2026-10-13.** A new spec family,
   `orchestration`, opens with its research document: a conversation that splits
   work into child sessions the daemon runs in parallel, each one a real session

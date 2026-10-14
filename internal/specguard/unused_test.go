@@ -29,6 +29,7 @@ var exportedWithoutUser = map[string]string{
 	"EventDoneProposed": "the event that announces a written, measured definition of done; commitDone emits it in the next pull request of the loop proposal",
 	"DoneProposal":      "the payload of done.proposed; reshaped and emitted in the next pull request of the loop proposal",
 	"Round":             "DoneProposal.Round, which leaves with the reshaping of DoneProposal in the next pull request of the loop proposal",
+	"ProposalID":        "DoneProposal.ProposalID, set when commitDone emits done.proposed in the next pull request of the loop proposal",
 
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.

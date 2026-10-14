@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The desktop no longer reads `done.signed`.** The core removed the event and
+  `SignDoneRequest` (step 1 of `docs/proposals/loop.md`, decision Q1 C): the
+  signature is the reviewed `done.toml`, and nothing ever emitted either. The
+  regenerated `generated.ts` loses both, and the decoder and the
+  "Definição de pronto assinada" note go with them; `done.proposed` stays.
 - **A design for running `/loop` from the desktop, approved by the owner on
   2026-10-13, with every recommendation taken; it is built before the
   orchestrator.**
