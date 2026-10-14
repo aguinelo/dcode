@@ -10,6 +10,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The quit question counts live loops (D55, amending D19).** Quitting the
+  app stops the daemon it started, and a loop lives in that daemon: it ends
+  with it and does not come back. The question before quitting now counts the
+  live loops next to the sessions at work and says so ("Fechar o DCode Box e
+  encerrar 1 loop?"); before, a loop waiting for review with no session at
+  work was ended without a word.
 - **A proposed definition of done is reviewed before the work (D56).** While
   a loop waits in `awaiting_review`, its ruler shows a card drawn from
   `done.proposed` as the daemon measured it: the file, each criterion with its

@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A pergunta ao fechar conta os loops vivos (D55, emenda D19).** Fechar o
+  app para o daemon que ele subiu, e um loop vive nesse daemon: termina junto
+  e não volta. A pergunta antes de fechar agora conta os loops vivos ao lado
+  das sessões que trabalham e diz isso ("Fechar o DCode Box e encerrar 1
+  loop?"); antes, um loop esperando revisão, sem sessão trabalhando, era
+  encerrado sem uma palavra.
 - **A definição de pronto proposta é revisada antes do trabalho (D56).**
   Enquanto um loop espera em `awaiting_review`, a régua dele mostra um card
   feito do `done.proposed` como o daemon mediu: o arquivo, cada critério com a

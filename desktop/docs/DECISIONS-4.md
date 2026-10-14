@@ -245,6 +245,12 @@ pede, mostra e para — nunca decide o que o loop faz.
   para a janela que abre depois e repassa cada quadro; a janela confere cada um
   contra os tipos gerados. Um dcode sem a rota é dito uma vez, e a janela segue
   sem loops — as conversas não dependem deles.
+- **Fechar o app conta os loops vivos** (emenda D19). Um loop vive no daemon,
+  não no cliente: fechar o desktop que subiu o daemon encerra os loops dele,
+  e eles não voltam quando o app abrir de novo. A pergunta antes de fechar
+  passa a contar os loops vivos ao lado das sessões que trabalham, e diz isso
+  ("Fechar o DCode Box e encerrar 1 loop?"); com um daemon que o app não
+  subiu, fechar não pergunta nada, porque nada para.
 
 A revisão da proposta, com o card e "Começar o trabalho", é o passo 8, numa
 decisão própria.
