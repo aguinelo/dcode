@@ -50,6 +50,9 @@ type Conversation struct {
 
 	// ContinuedFrom is the conversation this one continues, when it does.
 	ContinuedFrom string `json:"continued_from,omitempty"`
+	// LoopID is the `/loop` run this conversation belongs to, when it does, so
+	// a list can group a loop's sessions without reading another stream.
+	LoopID string `json:"loop_id,omitempty"`
 }
 
 // ListConversationsResponse answers GET /conversations: newest activity first.

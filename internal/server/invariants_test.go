@@ -157,6 +157,12 @@ var protocolInvariants = map[string]string{
 	"o que não pôde rodar, e diz o que o protegido": "TestACheckNamesWhatPassedFailedAndCouldNotRun",
 	"nomeia o que o laço desfez":                    "TestABackwardCheckNamesWhatWasUndone",
 	"não anuncia conferência":                       "TestATurnThatChangedNothingAnnouncesNoCheck",
+	// The loop as a resource of the daemon.
+	"outro workspace é outra árvore": "TestALoopIsStartedListedAndStopped",
+	"código que diz o que houve":     "TestTheLoopRoutesRefuseWithACodeThatSaysWhy",
+	"abre com todos os loops":        "TestTheLoopStreamStartsWithEveryRunAndFollowsThem",
+	"carrega `loop_id` desde":        "TestASessionALoopOpensCarriesTheLoop",
+	"alcança toda rota de loop":      "TestTheClientDrivesALoop",
 	// Images.
 	"imagem por valor":     "TestAnImageArrivesOnATurn",
 	"recusado na borda":    "TestAMalformedImageIsRefused",

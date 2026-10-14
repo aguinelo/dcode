@@ -36,22 +36,33 @@ const (
 	CodeEventsExpired      = "events_expired"
 	CodeWorkspaceInvalid   = "workspace_invalid"
 	CodeMaxSessionsReached = "max_sessions_reached"
-	CodeInternal           = "internal"
+	// CodeLoopAlreadyRunning refuses a second loop in a workspace that has one
+	// alive: two loops in one tree measure each other's work.
+	CodeLoopAlreadyRunning = "loop_already_running"
+	// CodeLoopNotAwaitingReview answers a continue for a run that is not
+	// waiting for one — usually because another client continued it first.
+	CodeLoopNotAwaitingReview = "loop_not_awaiting_review"
+	// CodeLoopNotFound names a run id the daemon does not hold.
+	CodeLoopNotFound = "loop_not_found"
+	CodeInternal     = "internal"
 )
 
 // httpStatus maps each code to its response status. Codes absent from the map
 // are a programming error and surface as 500 rather than silently as 200.
 var httpStatus = map[string]int{
-	CodeSessionNotFound:    http.StatusNotFound,
-	CodeTurnAlreadyActive:  http.StatusConflict,
-	CodeNoActiveTurn:       http.StatusConflict,
-	CodeInvalidInput:       http.StatusBadRequest,
-	CodeApprovalResolved:   http.StatusConflict,
-	CodeApprovalExpired:    http.StatusGone,
-	CodeEventsExpired:      http.StatusGone,
-	CodeWorkspaceInvalid:   http.StatusBadRequest,
-	CodeMaxSessionsReached: http.StatusServiceUnavailable,
-	CodeInternal:           http.StatusInternalServerError,
+	CodeSessionNotFound:       http.StatusNotFound,
+	CodeTurnAlreadyActive:     http.StatusConflict,
+	CodeNoActiveTurn:          http.StatusConflict,
+	CodeInvalidInput:          http.StatusBadRequest,
+	CodeApprovalResolved:      http.StatusConflict,
+	CodeApprovalExpired:       http.StatusGone,
+	CodeEventsExpired:         http.StatusGone,
+	CodeWorkspaceInvalid:      http.StatusBadRequest,
+	CodeMaxSessionsReached:    http.StatusServiceUnavailable,
+	CodeLoopAlreadyRunning:    http.StatusConflict,
+	CodeLoopNotAwaitingReview: http.StatusConflict,
+	CodeLoopNotFound:          http.StatusNotFound,
+	CodeInternal:              http.StatusInternalServerError,
 }
 
 // HTTPStatus returns the status for a code, or 500 for an unmapped one.

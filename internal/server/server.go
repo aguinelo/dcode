@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/session"
@@ -97,6 +98,8 @@ type Server struct {
 	mux      *http.ServeMux
 	listener net.Listener
 	http     *http.Server
+	// loops are the `/loop` runs the daemon conducts.
+	loops *loopRegistry
 }
 
 // New builds a server.
@@ -112,6 +115,7 @@ func New(cfg Config) *Server {
 	}
 
 	s := &Server{cfg: cfg, mux: http.NewServeMux()}
+	s.loops = newLoopRegistry(func(id string) loopcommand.Transport { return serverLoops{s: s, loopID: id} })
 	s.routes()
 	s.http = &http.Server{Handler: s.mux, ReadHeaderTimeout: 10 * time.Second}
 	return s
@@ -170,6 +174,8 @@ func (s *Server) Serve(ctx context.Context) error {
 		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = s.http.Shutdown(shutCtx)
+		// A loop does not outlive the daemon: nothing survives whoever made it.
+		s.loops.close()
 		s.cfg.Manager.CloseAll()
 		_ = os.Remove(s.cfg.SocketPath)
 	}()
@@ -201,6 +207,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
 	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
+	s.mux.HandleFunc("POST "+p+"/loops", s.startLoop)
+	s.mux.HandleFunc("GET "+p+"/loops", s.listLoops)
+	s.mux.HandleFunc("GET "+p+"/loops/events", s.loopEvents)
+	s.mux.HandleFunc("POST "+p+"/loops/{id}/continue", s.continueLoop)
+	s.mux.HandleFunc("POST "+p+"/loops/{id}/stop", s.stopLoop)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}", s.getSession)
 	s.mux.HandleFunc("DELETE "+p+"/sessions/{id}", s.deleteSession)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/name", s.renameSession)
@@ -238,15 +249,28 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess, err := s.cfg.Build(req)
+	sess, err := s.openSession(req, "")
 	if err != nil {
 		writeErr(w, wrapErr(err))
 		return
 	}
+	writeJSON(w, http.StatusCreated, sess.Describe())
+}
+
+// openSession builds a session, registers it and announces it. A loop opens
+// its sessions through here too, so a session a loop opened is the same thing
+// as one a client opened — plus the loop it belongs to.
+func (s *Server) openSession(req protocol.CreateSessionRequest, loopID string) (*session.Session, error) {
+	sess, err := s.cfg.Build(req)
+	if err != nil {
+		return nil, err
+	}
+	// Before it is shared or announced: the list learns that a conversation
+	// belongs to a loop from the session.created that opens it.
+	sess.LoopID = loopID
 	if err := s.cfg.Manager.Add(sess); err != nil {
 		sess.Close()
-		writeErr(w, wrapErr(err))
-		return
+		return nil, err
 	}
 
 	// The event carries the session as it is at creation; the RESPONSE has to
@@ -263,7 +287,7 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 	// at any point reads them in that order, including one that attaches later
 	// and replays from the file.
 	sess.EmitCarried()
-	writeJSON(w, http.StatusCreated, sess.Describe())
+	return sess, nil
 }
 
 // renameSession names a conversation, live or not.

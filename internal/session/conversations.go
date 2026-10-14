@@ -320,7 +320,7 @@ func (r *row) fold(ev protocol.Event) {
 	case protocol.EventSessionCreated:
 		var s protocol.Session
 		if json.Unmarshal(ev.Payload, &s) == nil {
-			c.Workspace, c.Branch, c.Model = s.Workspace, s.Branch, s.Model
+			c.Workspace, c.Branch, c.Model, c.LoopID = s.Workspace, s.Branch, s.Model, s.LoopID
 			if s.State != "" && c.Live {
 				c.State = s.State
 			}

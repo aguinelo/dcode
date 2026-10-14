@@ -64,6 +64,11 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/commands` | `experimental` | Os comandos de barra que um cliente do workspace oferece: os do usuário e os do projeto, como a TUI os descobre, cada um com de onde vem e o texto que manda, e os do usuário que o projeto tomou pelo nome. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `CommandsResponse`. |
 | `GET` | `/git` | `experimental` | Onde o workspace está no git agora — topo da árvore, branch, commit, se é worktree ligada e de qual checkout — e cada arquivo mudado desde o último commit, com o estado e as linhas. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitResponse`. |
 | `GET` | `/git/diff` | `experimental` | O diff unificado de um arquivo que `/git` lista, com teto. Query `workspace` e `path` (como `/git` o lista). Só leitura. Devolve `GitDiffResponse`. |
+| `POST` | `/loops` | `experimental` | Começa um `/loop` que o daemon conduz. Corpo `StartLoopRequest` (`args` como foi digitado depois de `/loop`). Devolve `LoopRun` com `201`. Workspace relativo → `workspace_invalid`; argumento sem palavra ou flag desconhecida → `invalid_input`; loop vivo no mesmo workspace → `loop_already_running`. |
+| `GET` | `/loops` | `experimental` | Os loops que o daemon guarda, do mais antigo ao mais novo. Query `workspace` (absoluto, opcional). Devolve `ListLoopsResponse`. |
+| `GET` | `/loops/events` | `experimental` | **SSE.** Todos os loops primeiro (`snapshot`), depois cada loop que mudou (`changed`). Sem `from`: reconectar recebe outro `snapshot`. Um loop não sai da lista enquanto o daemon vive — o veredito é o que o cliente mostra depois do fim. |
+| `POST` | `/loops/{id}/continue` | `experimental` | Tira o loop de `awaiting_review` e abre o trabalho. Fora desse estado → `loop_not_awaiting_review`; id desconhecido → `loop_not_found`. Devolve `LoopRun`. |
+| `POST` | `/loops/{id}/stop` | `experimental` | Corpo `StopLoopRequest{when: "now" \| "after_spec"}`. `now` interrompe o turno e encerra; `after_spec` deixa a pasta corrente terminar e não abre a próxima. Loop já terminado responde como terminou. Devolve `LoopRun`. |
 | `GET` | `/sessions/{id}` | `experimental` | Detalhe de uma sessão. |
 | `DELETE` | `/sessions/{id}` | `experimental` | Encerra e libera a sessão. |
 | `GET` | `/sessions/{id}/events` | `experimental` | **SSE.** Query `from` (uint64, default `1`). |
@@ -114,6 +119,9 @@ type Session struct {
     // leva omitempty.
     SandboxMode string `json:"sandbox_mode"`
     Mode        string `json:"mode"`
+    // LoopID é o /loop que abriu a sessão, quando foi um. Posto antes do
+    // session.created, então a lista de conversas o lê de lá.
+    LoopID string `json:"loop_id,omitempty"`
 }
 
 type CreateSessionRequest struct {
@@ -150,6 +158,63 @@ type Error struct {
     Message string         `json:"message"` // inglês, legível por humano — ver nota
 }
 ```
+
+### 5.0 O `/loop` como recurso do daemon
+
+Os tipos estão em `internal/protocol/loops.go`, e a sequência que eles
+descrevem em `loop-command` (changelog `202610141200`).
+
+```go
+type StartLoopRequest struct {
+    Workspace   string `json:"workspace"`              // absoluto
+    Args        string `json:"args"`                   // o que veio depois de /loop, como digitado
+    Model       string `json:"model,omitempty"`
+    SandboxMode string `json:"sandbox_mode,omitempty"`
+}
+
+type LoopRun struct {
+    ID        string        `json:"id"`
+    Workspace string        `json:"workspace"`
+    Goal      string        `json:"goal,omitempty"`
+    Protect   []string      `json:"protect,omitempty"`
+    State     string        `json:"state"` // surveying | qualifying | awaiting_review | working | finished | stopped | failed
+    Specs     []LoopSpecRun `json:"specs"`
+    Current   int           `json:"current"`              // índice em Specs; -1 fora de pasta
+    SessionID string        `json:"session_id,omitempty"` // a sessão corrente, ou a última
+    Verdict   *LoopVerdict  `json:"verdict,omitempty"`    // posto no fim
+    Error     string        `json:"error,omitempty"`      // por que um failed não seguiu
+    Started   time.Time     `json:"started"`
+    Finished  time.Time     `json:"finished,omitempty"`
+}
+
+type LoopSpecRun struct {
+    Path      string      `json:"path"`
+    Phase     string      `json:"phase"` // pending | qualifying | proposed | working | done | unfinished | skipped
+    SessionID string      `json:"session_id,omitempty"`
+    Proposal  string      `json:"proposal,omitempty"` // o done.toml escrito
+    Standing  *Completion `json:"standing,omitempty"` // a última palavra desta pasta
+}
+
+type LoopVerdict struct {
+    Worked     int      `json:"worked"`
+    Met        int      `json:"met"`
+    Total      int      `json:"total"`
+    Unmet      []string `json:"unmet,omitempty"`
+    Unchecked  []string `json:"unchecked,omitempty"`
+    Unfinished []string `json:"unfinished,omitempty"`
+}
+
+type StopLoopRequest struct{ When string `json:"when"` } // "now" | "after_spec"
+type ListLoopsResponse struct{ Loops []LoopRun `json:"loops"` }
+type LoopChange struct {
+    Kind  string    `json:"kind"` // snapshot | changed
+    Loops []LoopRun `json:"loops,omitempty"`
+    Loop  *LoopRun  `json:"loop,omitempty"`
+}
+```
+
+`Conversation` ganha `loop_id,omitempty`, lido do `session.created`: a lista e
+a grade sabem que uma conversa pertence a um loop sem ler outro fluxo.
 
 ### 5.1 Tipos de evento
 
@@ -434,6 +499,9 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 | `events_expired` | 410 | `from` anterior à retenção |
 | `workspace_invalid` | 400 | caminho não absoluto ou inacessível |
 | `max_sessions_reached` | 503 | limite do `.config.spec.md` |
+| `loop_already_running` | 409 | já há um `/loop` vivo no workspace (dois loops na mesma árvore medem o trabalho um do outro) |
+| `loop_not_awaiting_review` | 409 | `continue` num loop que não espera revisão — em geral, outro cliente continuou antes |
+| `loop_not_found` | 404 | id de loop que o daemon não guarda |
 | `internal` | 500 | falha não classificada |
 
 ## 9. Invariantes verificáveis
@@ -558,6 +626,11 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Conferência separa o que passou, o que não passou e o que não pôde rodar, e diz o que o protegido sofreu.
 - Conferência que quebrou critério sai como `backward` e nomeia o que o laço desfez.
 - Turno que não escreveu nada não anuncia conferência.
+- Um segundo `/loop` vivo no mesmo workspace é recusado com `loop_already_running`; outro workspace é outra árvore.
+- As rotas de loop recusam com o código que diz o que houve: `workspace_invalid`, `invalid_input`, `loop_not_found`, `loop_not_awaiting_review`.
+- `/loops/events` abre com todos os loops e segue cada mudança até o fim do loop.
+- Sessão aberta por um loop carrega `loop_id` desde o `session.created`; sessão aberta por um cliente não carrega.
+- O cliente Go alcança toda rota de loop por um socket de verdade.
 
 ## 10. Changelog
 
@@ -582,4 +655,5 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610132000 — Os comandos de um workspace](changelog/202610132000-os-comandos-de-um-workspace.md)
 - [202610140900 — A assinatura que nunca viajou sai do fio](changelog/202610140900-a-assinatura-que-nunca-viajou.md)
 - [202610141000 — A proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)
+- [202610141200 — O loop é um recurso do daemon](changelog/202610141200-o-loop-e-um-recurso-do-daemon.md)
 - [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)

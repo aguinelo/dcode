@@ -31,7 +31,10 @@ type Session struct {
 	// built. Set alongside Family/Transport/BaseURL, for the same reason:
 	// Describe() carries it so the status bar can draw it without this
 	// package — or the client — ever reading git itself.
-	Branch        string
+	Branch string
+	// LoopID is the `/loop` run that opened this session, when one did. Set
+	// by the daemon before the session is announced.
+	LoopID        string
 	Mode          string
 	behaviourMode string
 	CreatedAt     time.Time
@@ -181,6 +184,7 @@ func (s *Session) Describe() protocol.Session {
 		FirstSeq:      s.Log.FirstSeq(),
 		ContextWindow: s.ContextWindow,
 		DoneCriteria:  criteria,
+		LoopID:        s.LoopID,
 	}
 }
 
