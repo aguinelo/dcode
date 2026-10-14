@@ -45,7 +45,7 @@ func propose(t *testing.T, dir string, run loop.CriterionRunner, in tools.DonePr
 	if cerr != nil {
 		return res.Output, cerr
 	}
-	return out, nil
+	return out.Summary, nil
 }
 
 type toolErr struct{ msg string }
@@ -215,8 +215,8 @@ func TestAProposalIsMeasuredWhereItsCriteriaCanRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(blocked, "broken") {
-		t.Errorf("a criterion the boundary refused did not come back broken:\n%s", blocked)
+	if !strings.Contains(blocked.Summary, "broken") {
+		t.Errorf("a criterion the boundary refused did not come back broken:\n%s", blocked.Summary)
 	}
 }
 
@@ -336,8 +336,8 @@ func TestACommittedProposalCutsAHugeOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) > 10_000 {
-		t.Errorf("the summary is %d bytes; it is meant to be read", len(out))
+	if len(out.Summary) > 10_000 {
+		t.Errorf("the summary is %d bytes; it is meant to be read", len(out.Summary))
 	}
 	body, rerr := os.ReadFile(filepath.Join(dir, "done.toml"))
 	if rerr != nil {

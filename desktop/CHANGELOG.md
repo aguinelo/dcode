@@ -8,8 +8,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ---
 
-## Unreleased
-
+- **`done.proposed` is read in the shape the core now emits.** The daemon
+  announces a written proposal (step 2 of `docs/proposals/loop.md`) with the
+  `done.toml` path and without `turn_id`, `round` and `expires_at`, since it
+  waits for nothing. The decoder follows the regenerated `generated.ts`; the
+  note in the stream is unchanged, and the review card comes in its own step.
 - **The desktop no longer reads `done.signed`.** The core removed the event and
   `SignDoneRequest` (step 1 of `docs/proposals/loop.md`, decision Q1 C): the
   signature is the reviewed `done.toml`, and nothing ever emitted either. The

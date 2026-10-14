@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 213 changelogs de decisão |
+| famílias de spec | 19, com 215 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -259,8 +259,15 @@ existe para impedir exatamente isso.
 
 ---
 
-## Não publicado
-
+- **Uma proposta escrita é anunciada como `done.proposed`.** O commit da
+  proposta de uma sessão qualificadora mede, escreve o `done.toml` e só então
+  emite `done.proposed` no log dela, com a classe de cada critério, o que o
+  proponente disse, a discordância, o que é protegido e o caminho do arquivo.
+  Um cliente só sabia o que foi proposto pela prosa do resumo ou por um arquivo
+  que o desktop não lê; a revisão precisa da estrutura. Aviso, não pergunta: a
+  assinatura é o arquivo revisado, então `turn_id`, `round` e `expires_at` saem
+  do payload. Nada é anunciado quando a escrita falha. Decisão Q1 C de
+  `desktop/docs/proposals/loop.md`.
 - **O ida-e-volta da assinatura, que nunca foi entregue, sai.** `done.signed`,
   `SignDoneRequest`, `qualifier.Sign` (com `Asker`, `SignedAnswer`,
   `ErrRefused` e o teto de rodadas) e as chaves

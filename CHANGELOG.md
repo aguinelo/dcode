@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 213 decision changelogs |
+| spec families | 19, with 215 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -261,8 +261,15 @@ exists to stop exactly that.
 
 ---
 
-## Unreleased
-
+- **A written proposal is announced as `done.proposed`.** Committing a
+  qualifying session's proposal measures it, writes the `done.toml`, and only
+  then emits `done.proposed` in that session's log, carrying each criterion's
+  class, the proposer's claim, the mismatch, what is protected and the file's
+  path. A client could only learn what was proposed from the summary's prose or
+  from a file the desktop does not read; the review needs the structure. A
+  notice, not a question: the signature is the reviewed file, so `turn_id`,
+  `round` and `expires_at` leave the payload. Nothing is announced when the
+  write fails. Decision Q1 C of `desktop/docs/proposals/loop.md`.
 - **The signature round trip that never shipped is removed.** `done.signed`,
   `SignDoneRequest`, `qualifier.Sign` (with `Asker`, `SignedAnswer`,
   `ErrRefused` and the round ceiling) and the `DCODE_QUALIFIER_MAX_SIGN_ROUNDS`

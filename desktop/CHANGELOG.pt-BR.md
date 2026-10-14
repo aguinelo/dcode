@@ -8,8 +8,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ---
 
-## Não publicado
-
+- **O `done.proposed` é lido na forma que o núcleo agora emite.** O daemon
+  anuncia uma proposta escrita (passo 2 de `docs/proposals/loop.md`) com o
+  caminho do `done.toml` e sem `turn_id`, `round` e `expires_at`, porque nada
+  espera resposta. O decodificador segue o `generated.ts` regenerado; a nota no
+  fluxo não muda, e o card de revisão vem num passo próprio.
 - **O desktop deixa de ler `done.signed`.** O núcleo apagou o evento e o
   `SignDoneRequest` (passo 1 de `docs/proposals/loop.md`, decisão Q1 C): a
   assinatura é o `done.toml` revisado, e nada nunca emitiu nenhum dos dois. O

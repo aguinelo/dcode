@@ -374,22 +374,24 @@ type ApprovalRequest struct {
 	Rule   string `json:"rule,omitempty"`
 }
 
-// DoneProposal is a measured definition of done, waiting for a signature.
+// DoneProposal is a measured definition of done, written for review.
 //
-// The turn blocks until it is signed or ExpiresAt passes, which REFUSES. A
-// deadline that approved would be the quietest way to start a turn against a
-// ruler nobody read.
+// It is the payload of done.proposed, announced in the qualifying session's
+// log once the file at Path is written, and never before. It is a notice, not
+// a question: the qualifying turn has already ended, the signature is the
+// person reviewing the file, and nothing here waits for an answer or expires.
+// It carries what the file carries, so a client can draw the review without
+// parsing the summary's prose.
 type DoneProposal struct {
-	ProposalID string          `json:"proposal_id"`
-	TurnID     string          `json:"turn_id"`
-	Round      int             `json:"round"`
-	Criteria   []DoneCriterion `json:"criteria"`
-	Protected  []string        `json:"protected,omitempty"`
+	ProposalID string `json:"proposal_id"`
+	// Path is the done.toml the proposal was written to.
+	Path      string          `json:"path"`
+	Criteria  []DoneCriterion `json:"criteria"`
+	Protected []string        `json:"protected,omitempty"`
 	// NoAcceptance says nothing in the set is red. Such a set reports done
 	// without anything having to change — usually a defect, and legitimately a
 	// refactor. Named, never refused.
-	NoAcceptance bool      `json:"no_acceptance,omitempty"`
-	ExpiresAt    time.Time `json:"expires_at"`
+	NoAcceptance bool `json:"no_acceptance,omitempty"`
 }
 
 // DoneCriterion is one criterion as the operator sees it: what was proposed,
