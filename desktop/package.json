@@ -1,6 +1,6 @@
 {
   "name": "dcode-desktop",
-  "productName": "DCode",
+  "productName": "DCode Box",
   "version": "0.1.0",
   "description": "The desktop client of the dcode daemon",
   "private": true,

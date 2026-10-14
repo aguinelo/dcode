@@ -18,13 +18,23 @@ import { Terminals } from './terminals';
 // The main process is the one that talks to the daemon (D2, D19); the preload
 // hands the renderer a narrow API and nothing else.
 
+// The product's name, as the menu, the windows and the system show it. Set
+// before `ready`, so nothing reads Electron's own name first.
+const APP_NAME = 'DCode Box';
+app.setName(APP_NAME);
+
+// The mascot icon (D49). A packaged app takes it from its bundle; running from
+// the sources, the binary is Electron's own, so the icon is set at runtime or
+// the Dock and the taskbar show Electron's.
+const DEV_ICON = path.join(app.getAppPath(), 'assets', 'icon', 'icon.png');
+
 // Set before anything reads it, which is before `ready`.
 const userData = userDataDir(process.env, app.getPath('appData'));
 if (userData.ok) {
   app.setPath('userData', userData.dir);
 } else {
   console.error(`dcode: ${userData.reason}`);
-  dialog.showErrorBox('O DCode não abriu', userData.reason);
+  dialog.showErrorBox('O DCode Box não abriu', userData.reason);
   app.exit(1);
 }
 
@@ -89,7 +99,8 @@ function createWindow(): void {
     height: 900,
     minWidth: 900,
     minHeight: 560,
-    title: 'DCode',
+    title: APP_NAME,
+    ...(app.isPackaged ? {} : { icon: DEV_ICON }),
     // The theme is the renderer's to know (D35: localStorage, or the system's
     // under Sistema), so the window stays hidden until its first frame is
     // painted, and neither palette flashes the other on launch. This colour
@@ -145,6 +156,13 @@ app.on('web-contents-created', (_event, contents) => {
 
 app.whenReady().then(
   () => {
+    if (!app.isPackaged && process.platform === 'darwin') {
+      try {
+        app.dock?.setIcon(DEV_ICON);
+      } catch (err) {
+        console.error(`dcode: the Dock icon could not be set from ${DEV_ICON}; the Dock shows Electron's:`, err);
+      }
+    }
     daemon.start();
     createWindow();
     app.on('activate', () => {

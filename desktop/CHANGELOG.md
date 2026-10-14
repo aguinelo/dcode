@@ -10,6 +10,12 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The app is called DCode Box and shows the mascot's icon when run from the
+  sources.** Run with `npm start`, the binary is Electron's own, so the Dock and
+  the taskbar showed Electron's icon. The icon is now set at runtime, and the
+  product name (windows, dialogs, packaged bundle) is "DCode Box". On macOS the
+  menu bar's app name and the Dock's label still read "Electron" in that mode:
+  they come from Electron's own bundle, and only a packaged app changes them.
 - **dcode's colour is the mascot's Laranja.** The owner chose orange
   `#FF6A00` as dcode's main colour, replacing D29's lime `#c6f36b`; the
   neutrals and semantics come from the mascot sheet's 23 tones, in Grade and

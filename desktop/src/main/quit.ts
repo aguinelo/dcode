@@ -13,8 +13,8 @@ export function quitQuestion(working: number): QuitQuestion {
   const sessions = working === 1 ? '1 sessão' : `${working} sessões`;
   const are = working === 1 ? 'Uma sessão está' : `${working} sessões estão`;
   return {
-    message: `Fechar o DCode e parar ${sessions}?`,
-    detail: `${are} rodando ou esperando aprovação. O daemon foi aberto pelo DCode e fecha com ele, e as sessões dele param junto.`,
+    message: `Fechar o DCode Box e parar ${sessions}?`,
+    detail: `${are} rodando ou esperando aprovação. O daemon foi aberto pelo DCode Box e fecha com ele, e as sessões dele param junto.`,
     buttons: ['Fechar', 'Cancelar'],
   };
 }
