@@ -80,7 +80,7 @@ function connect(l: Lookup, serve: (bin: string, socket: string) => FakeChild, t
       },
       timing,
     },
-    { status: (s) => statuses.push(s), conversations: () => {}, sessionEvents: () => {}, streamEnd: () => {} },
+    { status: (s) => statuses.push(s), conversations: () => {}, sessionEvents: () => {}, streamEnd: () => {}, loops: () => {} },
   );
   cleanups.push(() => conn.close());
   const last = () => statuses[statuses.length - 1];

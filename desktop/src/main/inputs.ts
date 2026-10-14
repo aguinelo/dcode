@@ -9,6 +9,8 @@ import {
   ModeAssist,
   ModeAuto,
   ModePlan,
+  StopAfterSpec,
+  StopNow,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import type { NewSessionOptions, Refusal } from '../shared/api';
@@ -197,4 +199,32 @@ export function workspaceOf(list: ReadonlyArray<{ id: string; workspace: string 
   const found = list?.find((c) => c.id === sessionId);
   if (!found) return invalid(`O daemon não lista a sessão ${shown(sessionId)}: o terminal abre só na pasta de uma sessão que ele conhece.`);
   return workspace(found.workspace);
+}
+
+/** How long the argument of `/loop` may be: a folder or a sentence, and its globs. */
+export const LOOP_ARGS_LIMIT = 4096;
+
+/**
+ * What followed `/loop`, as it was typed (D55): the grammar is the daemon's,
+ * so nothing here parses it. Empty is refused, as is what no person types.
+ */
+export function loopArgs(v: unknown): Checked<string> {
+  if (!filled(v)) return invalid(`/loop precisa de uma pasta de spec ou de um objetivo, e veio ${shown(v)}.`);
+  if (v.includes('\0')) return invalid('O argumento do /loop tem um caractere nulo.');
+  if (v.length > LOOP_ARGS_LIMIT) return invalid(`O argumento do /loop tem ${v.length} caracteres, e o app manda até ${LOOP_ARGS_LIMIT}.`);
+  return { ok: true, value: v.trim() };
+}
+
+/** A run's id, in the daemon's alphabet: it becomes part of a path there. */
+export function loopId(v: unknown): Checked<string> {
+  if (typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v)) return { ok: true, value: v };
+  return invalid(`O id do loop precisa ter de 1 a 128 letras, dígitos, - ou _, e veio ${shown(v)}.`);
+}
+
+/** When a run stops (`StopLoopRequest.when`). */
+export const STOPS: readonly string[] = [StopNow, StopAfterSpec];
+
+export function stopWhen(v: unknown): Checked<string> {
+  if (typeof v === 'string' && STOPS.includes(v)) return { ok: true, value: v };
+  return invalid(`Parar o loop precisa ser um de ${STOPS.join(', ')}, e veio ${shown(v)}.`);
 }

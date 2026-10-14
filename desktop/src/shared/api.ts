@@ -105,6 +105,28 @@ export interface TerminalOpened {
 /** What a terminal sends the window that opened it: its output as it comes, then how its shell ended. */
 export type TerminalPush = { kind: 'data'; id: string; data: string } | { kind: 'exit'; id: string; code: number };
 
+/**
+ * A push of the stream of loops (D55): a frame as it came, decoded by the
+ * renderer, or why the daemon gives none — one older than `/loop` in the
+ * daemon, said once and never taken for a list with nothing in it.
+ */
+export type LoopsPush = { kind: 'frame'; frame: unknown } | { kind: 'refused'; reason: string };
+
+/**
+ * The `/loop` runs the daemon conducts (D55). Answers come as they came, and
+ * the renderer reads them at its boundary.
+ */
+export interface LoopApi {
+  /** Every run first (a `snapshot` frame), then each one that moves. Returns what stops the listening. */
+  on(listener: (push: LoopsPush) => void): () => void;
+  /** Starts `/loop` in a project, with what followed `/loop` as it was typed (`POST /loops`). */
+  start(workspace: string, args: string): Promise<Answer<unknown>>;
+  /** Stops a run now, or after the folder it is in (`POST /loops/{id}/stop`). */
+  stop(loopId: string, when: string): Promise<Answer<unknown>>;
+  /** The spec folders of a project and what each declares, without running anything (`GET /specs?measure=false`). */
+  specs(workspace: string): Promise<Answer<unknown>>;
+}
+
 export interface DcodeApi {
   /** process.platform of the main process: decides where the native window controls are. */
   readonly platform: string;
@@ -202,6 +224,8 @@ export interface DcodeApi {
   undo(sessionId: string): Promise<Answer<unknown>>;
   /** Compacts the context now, as it came. Decoded by the renderer. */
   compact(sessionId: string): Promise<Answer<unknown>>;
+  /** The `/loop` runs: their stream, and starting and stopping one (D55). */
+  readonly loops: LoopApi;
 }
 
 /** The channels, one per request and one per push. */
@@ -244,6 +268,11 @@ export const CHANNELS = {
   exec: 'dcode:exec',
   undo: 'dcode:undo',
   compact: 'dcode:compact',
+  loops: 'dcode:loops',
+  loopsNow: 'dcode:loops-now',
+  startLoop: 'dcode:start-loop',
+  stopLoop: 'dcode:stop-loop',
+  listSpecs: 'dcode:list-specs',
 } as const;
 
 /** The channel the main process answers `user()` on. */

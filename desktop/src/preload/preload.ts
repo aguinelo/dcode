@@ -6,6 +6,7 @@ import {
   type DaemonStatus,
   type DcodeApi,
   type ImageAttachment,
+  type LoopsPush,
   type PickedImages,
   type SessionEvents,
   type StreamEnd,
@@ -110,6 +111,12 @@ const api: DcodeApi = {
   exec: (sessionId, command) => invoke<Answer<null>>(CHANNELS.exec, sessionId, command),
   undo: (sessionId) => invoke<Answer<unknown>>(CHANNELS.undo, sessionId),
   compact: (sessionId) => invoke<Answer<unknown>>(CHANNELS.compact, sessionId),
+  loops: {
+    on: (listener) => subscribe<LoopsPush>(CHANNELS.loops, listener, CHANNELS.loopsNow),
+    start: (workspace, args) => invoke<Answer<unknown>>(CHANNELS.startLoop, workspace, args),
+    stop: (loopId, when) => invoke<Answer<unknown>>(CHANNELS.stopLoop, loopId, when),
+    specs: (workspace) => invoke<Answer<unknown>>(CHANNELS.listSpecs, workspace),
+  },
 };
 
 contextBridge.exposeInMainWorld('dcode', api);

@@ -43,8 +43,10 @@ export function useWindows(o: {
   sheet: (s: Sheet) => void;
   /** The commands each project wrote, as the daemon listed them (D50). */
   commandsOf: (workspace: string) => UserCommands;
+  /** `/loop`: asks the daemon to run a loop in the project (D55); true once it took it. */
+  startLoop: (workspace: string, args: string) => Promise<boolean>;
 }) {
-  const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize, sheet, commandsOf } = o;
+  const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize, sheet, commandsOf, startLoop } = o;
   // The pictures of the fields (D46): attached per conversation, sent with its next message.
   const images = useImageStore(actions, say);
   const attached = images.store;
@@ -235,6 +237,10 @@ export function useWindows(o: {
           }
           ok = !!(await once(`send:${id}`, () => actions.send(id, input.text, false)))?.ok;
           break;
+        case 'loop':
+          // The project's, not this conversation's: the daemon opens the loop's own sessions.
+          ok = await startLoop(workspace || (rowById.get(id)?.workspace ?? ''), input.args);
+          break;
         case 'undo':
           ok = await undoIn(id);
           break;
@@ -268,7 +274,7 @@ export function useWindows(o: {
       setDrafts((d) => (d[id] === text ? { ...d, [id]: '' } : d));
       updateAttention((a) => hold(a, id));
     },
-    [actions, attached, commandsOf, compactIn, once, say, sessions, setDrafts, sheet, undoIn, updateAttention],
+    [actions, attached, commandsOf, compactIn, once, rowById, say, sessions, setDrafts, sheet, startLoop, undoIn, updateAttention],
   );
 
   const stopIn = useCallback((id: string) => void once(`stop:${id}`, () => actions.stop(id)), [actions, once]);

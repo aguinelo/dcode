@@ -6,6 +6,7 @@ import type { PaneView } from '../state/pane';
 import { emptySession, type SessionView } from '../state/session';
 import type { Row } from '../state/sidebar';
 import { ContextCard } from './context/ContextCard';
+import { LoopRuler } from './LoopRuler';
 import { ConversationBody } from './ConversationBody';
 import { MascotGlyph } from './Mascot';
 import { RecordedBody } from './RecordedBody';
@@ -129,6 +130,7 @@ export function Pane(p: PaneProps) {
           </button>
         )}
       </div>
+      <LoopRuler sessionId={row.id} now={p.now} />
       <DoneRow view={v} measure={p.measure} />
       <div className="pane-body">
         {ended ? (

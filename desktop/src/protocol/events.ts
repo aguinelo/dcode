@@ -74,7 +74,7 @@ const USAGE: Shape<P.Usage> = {
   context_tokens: opt('number'),
 };
 
-const COMPLETION: Shape<P.Completion> = {
+export const COMPLETION: Shape<P.Completion> = {
   verification: req('string'),
   met: opt('array', 'string'),
   unmet: opt('array', 'string'),

@@ -1,5 +1,6 @@
 import type { EventKind, PayloadByType, ProtocolEvent } from '../../src/protocol/events';
 import { applyEvent, emptySession, type SessionView } from '../../src/state/session';
+import type { LoopApi } from '../../src/shared/api';
 
 /** A little log for one session: each call is the next event, one second later. */
 export function log(sessionId = 's-1', start = '2026-09-28T17:00:00.000Z') {
@@ -36,4 +37,10 @@ export const created = {
 
 export function done(callId: string, extra: Partial<PayloadByType['tool.completed']> = {}): PayloadByType['tool.completed'] {
   return { tool_call_id: callId, ok: true, output: '', truncated: false, ...extra };
+}
+
+/** A main process with no loops to tell of, and none asked about (D55). */
+export function quietLoops(): LoopApi {
+  const no = () => Promise.resolve({ ok: false as const, refusal: { code: 'internal', message: 'not under test' } });
+  return { on: () => () => {}, start: no, stop: no, specs: no };
 }

@@ -3,6 +3,7 @@ import type * as P from '../../src/protocol/generated';
 import { LiveStore } from '../../src/renderer/live';
 import type { Answer, DaemonStatus, DcodeApi, ImageAttachment, SessionEvents, StreamEnd } from '../../src/shared/api';
 import { STEER_TAKES_TEXT } from '../../src/state/attachments';
+import { quietLoops } from './helpers';
 
 const picture = (name: string): ImageAttachment => ({ name, mediaType: 'image/png', data: 'iVBORw0KGgo=', bytes: 8 });
 
@@ -92,6 +93,7 @@ function fakeApi() {
     exec: (id, c) => answer(`exec ${id}: ${c}`),
     undo: (id) => (asked.push(`undo ${id}`), Promise.resolve(crew.undo)),
     compact: (id) => (asked.push(`compact ${id}`), Promise.resolve(crew.compact)),
+    loops: quietLoops(),
   };
   return {
     api,

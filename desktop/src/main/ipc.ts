@@ -68,6 +68,7 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
   handle(CHANNELS.user, () => currentUser());
   handle(CHANNELS.daemonNow, () => daemon.status());
   handle(CHANNELS.conversationsNow, () => daemon.conversationsNow());
+  handle(CHANNELS.loopsNow, () => daemon.loops.now());
   handle(CHANNELS.pickFolder, (event) => pickFolder(event));
 
   handle(CHANNELS.follow, (_event, id) => {
@@ -185,6 +186,24 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
   handle(CHANNELS.compact, (_event, id) => {
     const session = input.id(id, SESSION);
     return session.ok ? ask.compact(session.value) : session;
+  });
+  // A loop (D55): the project's folder, what followed /loop as it was typed,
+  // and a run named in the daemon's alphabet, since it becomes a path there.
+  handle(CHANNELS.startLoop, (_event, workspace, args) => {
+    const where = input.workspace(workspace);
+    if (!where.ok) return where;
+    const typed = input.loopArgs(args);
+    return typed.ok ? ask.startLoop(where.value, typed.value) : typed;
+  });
+  handle(CHANNELS.stopLoop, (_event, id, when) => {
+    const run = input.loopId(id);
+    if (!run.ok) return run;
+    const at = input.stopWhen(when);
+    return at.ok ? ask.stopLoop(run.value, at.value) : at;
+  });
+  handle(CHANNELS.listSpecs, (_event, workspace) => {
+    const where = input.workspace(workspace);
+    return where.ok ? ask.listSpecs(where.value) : where;
   });
   handle(CHANNELS.resolveApproval, (_event, id, approvalId, decision) => {
     const session = input.id(id, SESSION);

@@ -18,6 +18,7 @@ import './styles/actions.css';
 import './styles/history.css';
 import './styles/context.css';
 import './styles/commands.css';
+import './styles/loop.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -46,6 +47,7 @@ function LiveWindow({ host, store }: { host: Host; store: LiveStore }) {
       actions={store.actions}
       notices={store.onNotice}
       initialSelection={null}
+      loops={snap.loops}
     />
   );
 }

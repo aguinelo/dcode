@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { forgetMissing, markSeen } from '../state/attention';
-import { capacityFor, gridShape, planGrid } from '../state/grid';
+import { capacityFor, gridShape } from '../state/grid';
+import { emptyLoops, planWithLoops, type LoopsState } from '../state/loop';
 import { measureOf } from '../state/models';
 import { paneView } from '../state/pane';
 import { dropBefore, moveProject, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
@@ -12,7 +13,6 @@ import { CrewView } from './CrewView';
 import { Grid } from './Grid';
 import type { Host } from './host';
 import { useNow, useReducedMotion, useTick, useWindowSize } from './hooks';
-import { MascotGlyph } from './Mascot';
 import { ModeMenu } from './ModeMenu';
 import { ModelMenu } from './ModelMenu';
 import { Search } from './Search';
@@ -21,9 +21,11 @@ import { SessionPanel, type Peer } from './SessionPanel';
 import { Sidebar } from './Sidebar';
 import { LOOK_KEY, loadLook, loadPrefs } from './stored';
 import { notYet } from './text';
+import { Toasts, type Toast } from './Toasts';
 import { TopBar, type Look } from './TopBar';
 import { useAttention } from './useAttention';
 import { useHistories } from './useHistories';
+import { LoopContext, useLoops } from './useLoops';
 import { useModelLists } from './useModelLists';
 import { useModeMenu } from './useModeMenu';
 import { useSessionActions } from './SessionActions';
@@ -34,8 +36,6 @@ import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
 import { ImagesProvider, useWindows } from './useWindows';
 import type { DaemonView, Outcome, WindowActions } from './window';
-
-type Toast = { id: number; text: string };
 
 const TOAST_MS = 6000;
 
@@ -54,6 +54,7 @@ export function App({
   actions,
   notices,
   initialSelection,
+  loops = emptyLoops,
 }: {
   host: Host;
   /** The sidebar's conversations. */
@@ -66,6 +67,8 @@ export function App({
   notices?: (say: (text: string) => void) => () => void;
   /** The conversation maximized at first; null opens on the grid. */
   initialSelection: string | null;
+  /** The `/loop` runs the daemon conducts (D55); none in a recording. */
+  loops?: LoopsState;
 }) {
   const now = useNow(1000);
   const reduced = useReducedMotion();
@@ -180,7 +183,8 @@ export function App({
   };
 
   const sheet = useCommandSheet(sessions, actions);
-  const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show, commandsOf: sheet.of });
+  const loop = useLoops({ loops, actions, once, say, updateAttention, show });
+  const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show, commandsOf: sheet.of, startLoop: loop.view.start });
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);
   const prompts = usePrompts(actions, sessions, once, say);
@@ -200,7 +204,7 @@ export function App({
   // windows asking where a session opens take their places from the same room.
   const [placed, setPlaced] = useState<string[]>([]);
   const capacity = Math.max(0, capacityFor(size.width, size.height) - win.choosers.length);
-  const plan = useMemo(() => planGrid(rows, attention, placed, capacity), [rows, attention, placed, capacity]);
+  const plan = useMemo(() => planWithLoops(rows, attention, placed, capacity, loops), [rows, attention, placed, capacity, loops]);
   if (!sameIds(plan.ids, placed)) setPlaced(plan.ids);
   const onGridIds = useMemo(() => new Set(plan.ids), [plan.ids]);
   const windowIds = useMemo(() => [...plan.ids, ...win.choosers], [plan.ids, win.choosers]);
@@ -254,7 +258,7 @@ export function App({
     caretTo: win.caretTo,
     sessions,
     maximized: selected,
-    busy: searching || !!models.menu || !!modes.menu || acts.menu || sheet.open || ctx.isOpen,
+    busy: searching || !!models.menu || !!modes.menu || acts.menu || sheet.open || ctx.isOpen || loop.open,
     setSearching,
     newSession: look === 'crew' ? crewNew : newSession,
     show,
@@ -424,6 +428,7 @@ export function App({
                     listModels: actions.listModels,
                     pickFolder: actions.pickFolder,
                     otherFolder: (key) => void win.openIn(key, null),
+                    loop: (key, workspace) => (win.dropChooser(key), loop.sheet(workspace)),
                     close: win.dropChooser,
                   }}
                   onNew={newSession}
@@ -447,6 +452,7 @@ export function App({
       {acts.node}
       {ctx.node}
       {sheet.node}
+      {loop.node}
       {modes.menu && (
         <ModeMenu
           anchor={modes.menu.anchor}
@@ -456,16 +462,7 @@ export function App({
           onClose={modes.close}
         />
       )}
-      {toasts.length > 0 && (
-        <div className="toasts" role="status" aria-live="polite">
-          {toasts.map((t) => (
-            <button key={t.id} type="button" className="toast" onClick={() => setToasts((all) => all.filter((x) => x.id !== t.id))}>
-              <MascotGlyph state="bug" size={16} className="toast-glyph tone-err" />
-              <span>{t.text}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <Toasts toasts={toasts} onDismiss={(id) => setToasts((all) => all.filter((x) => x.id !== id))} />
       {searching && (
         <Search
           projects={projects}
@@ -482,11 +479,13 @@ export function App({
   );
   return (
     <SheetContext.Provider value={sheet.context}>
-      <RenameProvider value={renames}>
-        <PromptsProvider value={prompts}>
-          <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
-        </PromptsProvider>
-      </RenameProvider>
+      <LoopContext.Provider value={loop.view}>
+        <RenameProvider value={renames}>
+          <PromptsProvider value={prompts}>
+            <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
+          </PromptsProvider>
+        </RenameProvider>
+      </LoopContext.Provider>
     </SheetContext.Provider>
   );
 }

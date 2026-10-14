@@ -25,6 +25,7 @@ function recorder() {
     conversations: (f) => frames.push(f),
     sessionEvents: (b) => batches.push(b),
     streamEnd: (e) => ends.push(e),
+    loops: () => {},
   };
   const seqs = (id: string) => batches.filter((b) => b.sessionId === id).flatMap((b) => b.events.map((e) => (e as { seq: number }).seq));
   return { statuses, frames, batches, ends, pushes, seqs, last: () => statuses[statuses.length - 1] };
@@ -250,7 +251,7 @@ describe('requests', () => {
     expect(await conn.requests.closeSession('s 1')).toEqual({ ok: true, value: null });
     expect(await conn.requests.closeSession('s 1')).toEqual({ ok: false, refusal: { code: 'session_not_found', message: 'no session s 1' } });
     expect(await conn.requests.listModels('/w a')).toEqual({ ok: true, value: menu });
-    expect(daemon.requests.filter((q) => !q.includes('/health') && !q.includes('/version') && !q.includes('/conversations'))).toEqual([
+    expect(daemon.requests.filter((q) => !q.includes('/health') && !q.includes('/version') && !q.includes('/conversations') && !q.includes('/loops/events'))).toEqual([
       'DELETE /v1/sessions/s%201',
       'DELETE /v1/sessions/s%201',
       'GET /v1/models?workspace=%2Fw%20a',

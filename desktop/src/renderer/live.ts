@@ -18,6 +18,9 @@ import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeCommands } from '../protocol/commands';
 import { decodeMemory, decodeSkills } from '../protocol/crew';
 import { decodeGit, decodeGitDiff } from '../protocol/git';
+import { decodeLoopChange, decodeLoopRun, decodeSpecs } from '../protocol/loops';
+import { applyLoopChange, emptyLoops, loopsUnavailable, startRefusal, type LoopsState } from '../state/loop';
+import type { LoopsPush } from '../shared/api';
 import { notExposed } from './text';
 import type { Outcome, StartOptions, WindowActions } from './window';
 
@@ -28,6 +31,8 @@ export interface LiveSnapshot {
   rows: Row[];
   /** The sessions this window follows, folded from their events. */
   sessions: SessionsState;
+  /** The `/loop` runs the daemon conducts (D55). */
+  loops: LoopsState;
 }
 
 /** How long the list has to show a conversation ended before its stream's end is called a failure. */
@@ -89,6 +94,7 @@ export class LiveStore {
     conversations: emptyConversations,
     rows: [],
     sessions: emptySessions,
+    loops: emptyLoops,
   };
   private readonly listeners = new Set<() => void>();
   private readonly noticed = new Set<(text: string) => void>();
@@ -105,6 +111,7 @@ export class LiveStore {
     const offs = [
       this.api.onDaemon((daemon) => this.set({ daemon })),
       this.api.onConversations((raw) => this.onList(raw)),
+      this.api.loops.on((push) => this.onLoops(push)),
       this.api.onSessionEvents((batch) => this.onEvents(batch.events)),
       this.api.onStreamEnd((end) => {
         // Ended for good: the next panel or open that wants it asks again.
@@ -198,6 +205,14 @@ export class LiveStore {
     readGit: async (id) => read(await this.api.readGit(id), decodeGit, 'o git da pasta (GET /v1/git)', 'O daemon não leu o git da pasta'),
     readGitDiff: async (id, path) =>
       read(await this.api.readGitDiff(id, path), decodeGitDiff, 'o diff de um arquivo (GET /v1/git/diff)', 'O daemon não deu o diff'),
+    startLoop: async (workspace, args) => {
+      const got = await this.api.loops.start(workspace, args);
+      if (!got.ok) return { ok: false, why: startRefusal(got.refusal.code, got.refusal.message) };
+      return read(got, decodeLoopRun, 'o /loop (POST /v1/loops)', 'O loop não começou');
+    },
+    stopLoop: async (id, when) => read(await this.api.loops.stop(id, when), decodeLoopRun, 'parar um loop (POST /v1/loops/{id}/stop)', 'O loop não parou'),
+    listSpecs: async (workspace) =>
+      read(await this.api.loops.specs(workspace), decodeSpecs, 'as pastas de spec de um projeto (GET /v1/specs)', 'O daemon não disse quais pastas de spec existem'),
   };
 
   private set(part: Partial<LiveSnapshot>): void {
@@ -217,6 +232,21 @@ export class LiveStore {
     }
     const conversations = applyListChange(this.snap.conversations, decoded.change);
     this.set({ conversations, rows: Object.values(conversations.byId).map(rowOfConversation) });
+  }
+
+  /** A frame of the stream of loops, or why the daemon gives none — said, never taken for an empty list. */
+  private onLoops(push: LoopsPush): void {
+    if (push.kind === 'refused') {
+      this.notice(push.reason);
+      this.set({ loops: loopsUnavailable(this.snap.loops, push.reason) });
+      return;
+    }
+    const decoded = decodeLoopChange(push.frame);
+    if (!decoded.ok) {
+      this.notice(`Mudança ilegível na lista de loops: ${decoded.reason}`);
+      return;
+    }
+    this.set({ loops: applyLoopChange(this.snap.loops, decoded.change) });
   }
 
   private onEvents(raw: readonly unknown[]): void {
