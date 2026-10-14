@@ -455,6 +455,11 @@ export interface LoopRun {
   id: string;
   workspace: string;
   /**
+   * Args is what was typed after `/loop`, as it was typed: how a client tells
+   * "the loop I asked for" from another one waiting in the same workspace.
+   */
+  args?: string;
+  /**
    * Goal is the sentence of a `/loop <goal>`; empty for a folder.
    */
   goal?: string;
@@ -490,9 +495,24 @@ export interface LoopSpecRun {
   phase: string;
   session_id?: string;
   /**
-   * Proposal is the done.toml written for review, when one was.
+   * Criteria, Unmet, Unavailable and Error are what the survey said of the
+   * folder before anything opened: the plan a client draws, from the one
+   * measurement the run made rather than a second one of its own. Unmet and
+   * Unavailable are counted only when a goal measured the folders; absent is
+   * zero. Criteria 0 with an Error means unknown — the folder could not be
+   * read — never "declares nothing".
+   */
+  criteria?: number /* int */;
+  unmet?: number /* int */;
+  unavailable?: number /* int */;
+  error?: string;
+  /**
+   * Proposal is the done.toml written for review, when one was, with how
+   * many criteria went into it and the summary a person reads.
    */
   proposal?: string;
+  proposal_criteria?: number /* int */;
+  proposal_summary?: string;
   /**
    * Reason is how the folder's last turn ended (a TurnCompleted reason). A
    * turn that did not end normally leaves the folder unfinished and fails

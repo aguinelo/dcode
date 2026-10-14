@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/aguinelo/dcode/internal/config"
+	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/session"
 	"github.com/aguinelo/dcode/pkg/client"
@@ -24,8 +24,11 @@ import (
 type Transport interface {
 	CreateSession(ctx context.Context, req protocol.CreateSessionRequest) (protocol.Session, error)
 	ListSessions(ctx context.Context) ([]protocol.Session, error)
-	ListSpecs(ctx context.Context, workspace string, measure bool) ([]protocol.SpecFolder, error)
-	CommitDone(ctx context.Context, id string) (protocol.CommitDoneResponse, error)
+	StartLoop(ctx context.Context, req protocol.StartLoopRequest) (protocol.LoopRun, error)
+	ListLoops(ctx context.Context, workspace string) ([]protocol.LoopRun, error)
+	WatchLoops(ctx context.Context) (<-chan protocol.LoopChange, <-chan error)
+	ContinueLoop(ctx context.Context, id string) (protocol.LoopRun, error)
+	StopLoop(ctx context.Context, id, when string) (protocol.LoopRun, error)
 	GetSession(ctx context.Context, id string) (protocol.Session, error)
 	Submit(ctx context.Context, id, text string, images ...protocol.TurnImage) error
 	Interrupt(ctx context.Context, id string) error
@@ -165,45 +168,8 @@ type program struct {
 	errs   <-chan error
 	fatal  string
 
-	// loopQueue is the specs a `/loop <goal>` still has to work, one session
-	// each and one at a time. Empty means nothing is running as a queue.
-	//
-	// It lives in the client because the sequencing is the operator's: they
-	// can interrupt between specs and keep everything already finished, which
-	// a daemon-side run would have to be told how to do.
-	loopQueue   []protocol.SpecFolder
-	loopGoal    string
-	loopProtect []string
-	// loopWorked counts the specs this run has started, so the run can say how
-	// much it did when it ends.
-	loopWorked int
-	// loopSpec is the spec being worked right now, so a completion can be
-	// attributed to the spec it is about.
-	loopSpec string
-	// loopResults is where each spec of the run ended, in the order they ran.
-	//
-	// A slice and not one standing, which is what this was. One standing was
-	// overwritten by every turn-completed event, so when the queue emptied it
-	// held whatever the LAST spec happened to say — and a run whose first spec
-	// left coverage unmet and whose second was clean announced that everything
-	// was met. Nothing lied: the number was true about the last spec and
-	// printed under a sentence about the run, which is the worst kind of wrong,
-	// because the reader has no way to tell and the specs that failed are the
-	// ones they most need named.
-	//
-	// Kept rather than re-derived: the completion is the guarantee that
-	// survives a model claiming success in prose, and re-reading it from the
-	// entries would be parsing back out what was already stated once.
-	loopResults []loopResult
-	// loopQualified is the spec a qualifying session is proposing criteria
-	// for, so the loop knows what just finished and can say what to do next.
-	loopQualified string
-	// loopToQualify is what a goal's qualifying pass still has to propose, and
-	// loopProposed how many it wrote: every pending folder that declares
-	// nothing is qualified first, in one pass, and the run stops with the
-	// files written for one review.
-	loopToQualify []protocol.SpecFolder
-	loopProposed  int
+	// loop is the daemon's `/loop` this client follows, when there is one.
+	loop *loopFollow
 
 	// generation counts subscriptions, so a message from one that has been
 	// replaced can be told from one that is current. Switching sessions cancels
@@ -484,137 +450,20 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: string(msg)})
 		return p, nil
 
-	case specsFoundMsg:
-		t := Text(p.opts.Lang)
-		var pending []protocol.SpecFolder
-		for _, f := range msg.specs {
-			if f.Pending {
-				pending = append(pending, f)
-			}
-		}
-		// No folder anywhere is not a refusal. The sentence is the brief, and
-		// the loop works out what finishing it means before working it — the
-		// same move loopOne already makes for a folder that declares nothing.
-		if q, ok := GoalToQualify(LoopArgs{Goal: true, Task: msg.goal, Protect: msg.protect}, msg.specs); ok {
-			return p, p.loopSession(q)
-		}
-		p.model.Entries = append(p.model.Entries, Entry{
-			Kind: KindNote, Summary: LoopPlan(msg.specs, t), Expanded: true,
-		})
-		if len(pending) == 0 {
-			// Nothing left is an answer, and it is the one worth saying out
-			// loud: every spec's own criteria pass right now.
-			return p, nil
-		}
-		// A folder that declares nothing is qualified before anything is
-		// worked: every one of them, in one pass, and then the run stops with
-		// the files written — one sitting to review them all. Working one
-		// would report done after a turn measured against nothing.
-		var empty []protocol.SpecFolder
-		for _, f := range pending {
-			if f.Criteria == 0 && f.Error == "" {
-				empty = append(empty, f)
-			}
-		}
-		if len(empty) > 0 {
-			p.loopToQualify, p.loopProposed = empty[1:], 0
-			p.loopProtect = msg.protect
-			return p, p.loopSession(LoopArgs{Spec: empty[0].Path, Protect: msg.protect, Qualify: true})
-		}
-		// The queue is the operator's, not the agent's: it runs one spec at a
-		// time, in the order the folders sort, and stops wherever it is
-		// interrupted with the finished ones finished.
-		p.loopQueue = pending[1:]
-		p.loopGoal, p.loopProtect = msg.goal, msg.protect
-		// Counted here, because this is where the first spec starts. It was
-		// not, and the consequence reached the screen twice: a run of one spec
-		// finished with worked == 0 and said nothing at all, and the gate on
-		// the completion recording meant that spec's own standing was never
-		// kept either.
-		p.loopWorked++
-		p.loopSpec = pending[0].Path
-		return p, p.loopSession(LoopArgs{Spec: pending[0].Path, Task: msg.goal, Protect: msg.protect})
+	case loopStartedMsg:
+		return p, p.onLoopStarted(msg)
 
-	case proposalWrittenMsg:
-		p.model.Entries = append(p.model.Entries, Entry{
-			Kind: KindNote, Summary: msg.note, Expanded: true,
-		})
-		// On to the next spec. A goal over a backlog qualifies every folder
-		// that declares nothing, in one pass, and stops with the files written
-		// — one sitting to review them all, and then the work runs on its own.
-		//
-		// It does NOT go straight on to the work here. A proposal nobody looked
-		// at is a ruler nobody read; the independence is that qualifying
-		// happened by itself, not that the signature was skipped.
-		if p.loopToQualify != nil {
-			p.loopProposed++
-			if len(p.loopToQualify) > 0 {
-				next := p.loopToQualify[0]
-				p.loopToQualify = p.loopToQualify[1:]
-				return p, p.loopSession(LoopArgs{Spec: next.Path, Protect: p.loopProtect, Qualify: true})
-			}
-			// The pass is over: say what to review and how to go on.
-			n := p.loopProposed
-			p.loopToQualify, p.loopProposed, p.loopProtect = nil, 0, nil
-			p.model.Entries = append(p.model.Entries, Entry{
-				Kind: KindNote, Summary: fmt.Sprintf(Text(p.opts.Lang).CmdLoopReviewAll, n), Expanded: true,
-			})
-			return p, nil
-		}
-		return p, p.nextSpec()
+	case loopChangedMsg:
+		return p, p.onLoopChanged(msg)
 
-	case loopOpenedMsg:
-		// The same switch, plus the one line that says what was loaded. The
-		// note is appended AFTER the model is rebuilt, or it would be written
-		// into the view the switch is about to discard.
-		t := Text(p.opts.Lang)
-		p.opts.SessionID = msg.session.ID
-		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
-		p.model.Sessions = p.opts.Sessions
-		text := fmt.Sprintf(t.CmdLoopOpened, msg.spec, msg.session.DoneCriteria)
-		if msg.qualify {
-			text = fmt.Sprintf(t.CmdLoopQualifying, msg.spec)
-			p.loopQualified = msg.spec
-		} else if msg.session.DoneCriteria == 0 {
-			// Zero is the answer that needs the sentence. A session with no
-			// definition of done reports done at the end of the first turn,
-			// and someone who typed /loop expecting one has to be told now.
-			text = fmt.Sprintf(t.CmdLoopEmpty, msg.spec)
-		}
-		p.model.Entries = append(p.model.Entries, Entry{Kind: KindNote, Summary: text, Expanded: true})
-		p.attach(msg.session.ID)
-		// And do the work. Opening a session against a definition of done and
-		// then waiting is the command doing half its job.
-		return p, tea.Batch(p.waitForEvent(), p.submit(msg.task))
-
-	case loopFinishedMsg:
-		t := Text(p.model.Lang)
-		text := fmt.Sprintf(t.CmdLoopFinished, msg.worked,
-			plural(msg.worked, t.LoopSpecOne, t.LoopSpecMany))
-		met, total, unmet, unchecked, specs := loopVerdict(msg.results)
-		if total > 0 {
-			text += " · " + fmt.Sprintf(t.CmdLoopStanding, met, total)
-		}
-		// What is left, by name. A count says how much; the names say what
-		// to do next, and the run ending is exactly when that is the
-		// question.
-		if len(unmet) > 0 {
-			text += "\n" + t.CompletionUnmet + " " + strings.Join(unmet, ", ")
-		}
-		if len(unchecked) > 0 {
-			text += "\n" + t.CompletionUnchecked + " " + strings.Join(unchecked, ", ")
-		}
-		// And which specs those belong to. Without this the run says a
-		// criterion is unmet and leaves the person to work out where.
-		if len(specs) > 0 {
-			text += "\n" + t.CmdLoopUnfinished + " " + strings.Join(specs, ", ")
-		}
-		p.model.Entries = append(p.model.Entries, Entry{
-			Kind: KindNote, Summary: text, Expanded: true,
-		})
-		return p, nil
+	case loopNoteMsg:
+		return p, p.onLoopNote(msg)
 
 	case switchedMsg:
+		// Switching away on purpose stops following a loop: its next session
+		// would pull the person back. The loop goes on in the daemon, and
+		// typing it again picks it up.
+		p.stopFollowingLoop()
 		// A new session means a new event log, so the view is rebuilt rather
 		// than carried over: keeping entries from the old one would show a
 		// history the model no longer has.
@@ -659,63 +508,14 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if c := p.resumeTicking(); c != nil {
 			cmds = append(cmds, c)
 		}
-		// Where done stood when this turn ended, kept while a run is going so
-		// the end of the run can say it. Read from the event rather than back
-		// out of the entries: the completion is stated once, by the thing that
-		// knows, and re-deriving it from prose breaks the day the wording does.
-		if msg.ev.Type == protocol.EventTurnCompleted && p.loopWorked > 0 {
-			var d protocol.TurnCompleted
-			if json.Unmarshal(msg.ev.Payload, &d) == nil && d.Completion != nil {
-				p.recordLoopResult(d.Completion)
-			}
-		}
-		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 {
+		// Not on a session a live loop is in: the daemon moves on when its turn
+		// ends, and a queued message sent now would start a second writer in
+		// the folder it is leaving, with a reply nobody would see. The queue
+		// waits for the loop and goes with the person (loop.go).
+		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 && !p.loopHolds() {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
-		} else if msg.ev.Type == protocol.EventTurnCompleted && p.loopQualified != "" {
-			// On the turn ENDING, and not merely on the session being idle.
-			//
-			// A session is idle before its first turn starts, and attach
-			// replays from the beginning — so the first event of a brand-new
-			// qualifying session found idle with this set, and committed a
-			// proposal nobody had made yet: "nothing was proposed for
-			// 1a05dd01b2…", arriving before the model had finished thinking.
-			//
-			// The queue drain above is right to read the state: it wants any
-			// moment nothing is running. This wants one specific moment, and
-			// the event is what names it.
-			//
-			// The qualifying session is done proposing. The loop moves on by
-			// itself: it reads, projects, qualifies and only then executes,
-			// and waiting here for someone to say "now do it" would put the
-			// sequence back in the model's hands.
-			//
-			// It does NOT start the work. The proposal is a file a person
-			// reviews, and running against a ruler nobody read is the thing
-			// this whole family refuses.
-			spec := p.loopQualified
-			p.loopQualified = ""
-			cmds = append(cmds, p.commitProposal(p.opts.SessionID, spec))
-		} else if p.model.State == protocol.SessionStateIdle && p.loopWorked > 0 {
-			// This spec is done with; the next one gets its own session, its
-			// own definition of done and its own budget. With nothing left in
-			// the queue this is where the run ENDS, which is why the condition
-			// is "a run is going" and not "there is more queued".
-			//
-			// It was the latter, and the consequence was that an ordinary run
-			// never announced its own end at all: when the last spec finished
-			// the queue was already empty, so nothing was called and nothing
-			// was said. The only path that ever produced the finishing notice
-			// was a proposal commit.
-			//
-			// nextSpec clears the run, so this cannot fire twice on the idle
-			// events that follow.
-			//
-			// After the typed queue, not before: something the person typed
-			// while watching is about the spec on screen, and moving on first
-			// would send it to the next one.
-			cmds = append(cmds, p.nextSpec())
 		}
 		cmds = append(cmds, p.waitForEvent())
 		return p, tea.Batch(cmds...)
@@ -1264,6 +1064,13 @@ func (p *program) moveCursor(delta int) (tea.Model, tea.Cmd) {
 func (p *program) onEnter() (tea.Model, tea.Cmd) {
 	line := strings.TrimSpace(p.model.Input)
 	if line == "" {
+		// ↵ on an empty line sends what is waiting in the queue, when nothing
+		// holds it: how a queue a stopped loop left behind goes, on purpose.
+		if p.model.State == protocol.SessionStateIdle && len(p.model.Queue) > 0 && !p.loopHolds() {
+			m, text := p.model.DrainQueue()
+			p.model = m
+			return p, p.submit(text)
+		}
 		return p, nil
 	}
 	p.model = p.model.SetInput("")
@@ -1315,6 +1122,22 @@ func (p *program) onEnter() (tea.Model, tea.Cmd) {
 				IsError: true, Expanded: true,
 			})
 		}
+		return p, nil
+	}
+	if p.loopHolds() {
+		// Idle between two of the loop's turns: held like the queue, not sent
+		// into the folder the daemon is leaving.
+		p.model.Entries = append(p.model.Entries, Entry{Kind: KindUser, Summary: line})
+		m, ok := p.model.Enqueue(r.Text, p.opts.QueueMax)
+		p.model = m
+		if !ok {
+			p.model.Entries = append(p.model.Entries, Entry{
+				Kind: KindError, Summary: "the queue is full; wait for the current turn",
+				IsError: true, Expanded: true,
+			})
+			return p, nil
+		}
+		p.loopNote(fmt.Sprintf(Text(p.opts.Lang).CmdLoopQueueBetween, len(p.model.Queue)))
 		return p, nil
 	}
 	return p, p.submit(r.Text)
@@ -1436,23 +1259,21 @@ func (p *program) runBuiltin(r Resolved) (tea.Model, tea.Cmd) {
 
 	case "loop":
 		t := Text(p.model.Lang)
-		spec, err := ParseLoopArgs(r.Args)
-		if err != nil {
-			if err.Error() == "" {
+		// Parsed here only to answer a typo in the person's language before
+		// anything travels. The daemon parses the same string, with the same
+		// grammar (loopcommand), and conducts the run.
+		if _, err := loopcommand.ParseLoopArgs(r.Args); err != nil {
+			var flag loopcommand.FlagError
+			switch {
+			case errors.Is(err, loopcommand.ErrLoopUsage):
 				return note(t.CmdLoopUsage)
+			case errors.As(err, &flag):
+				return note(fmt.Sprintf(t.CmdLoopFlag, flag.Flag))
+			default:
+				return note(fmt.Sprintf(t.CmdLoopFlag, err.Error()))
 			}
-			return note(fmt.Sprintf(t.CmdLoopFlag, err.Error()))
 		}
-		// A new session, always. The definition of done belongs to the session
-		// and is read when it is born; loading one into a session already
-		// running would change what the turn is measured against after the
-		// person had seen what it was.
-		if spec.Goal {
-			// A sentence, not a path. Find the spec folders, keep the ones
-			// with work left, and work them one at a time.
-			return p, p.loopEverySpec(spec)
-		}
-		return p, p.loopOne(spec)
+		return p, p.startLoop(r.Args)
 	}
 	return note("/" + r.Name + " is not implemented")
 }
@@ -1654,6 +1475,9 @@ func expandHome(path string) string {
 }
 
 func (p *program) interrupt() tea.Cmd {
+	if cmd, ok := p.interruptLoop(); ok {
+		return cmd
+	}
 	return func() tea.Msg {
 		_ = p.opts.Transport.Interrupt(p.ctx, p.opts.SessionID)
 		return nil
@@ -1943,226 +1767,4 @@ func (p *program) onNavKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 	return p, nil
-}
-
-// loopSession opens a session measured against a spec folder.
-//
-// The path travels as the person typed it. The daemon resolves it under the
-// workspace and refuses one that climbs out — a client that resolved it would
-// be asserting where a file is on a disk it may not share.
-func (p *program) loopSession(spec LoopArgs) tea.Cmd {
-	return func() tea.Msg {
-		s, err := p.opts.Transport.CreateSession(p.ctx, protocol.CreateSessionRequest{
-			Workspace:   p.model.Workspace,
-			Model:       p.opts.Model,
-			SandboxMode: p.model.Sandbox,
-			LoopSpec:    spec.Spec,
-			Protect:     spec.Protect,
-			Qualify:     spec.Qualify,
-		})
-		if err != nil {
-			return noteMsg("could not open a session: " + err.Error())
-		}
-		return loopOpenedMsg{session: s, spec: spec.Spec, task: LoopTask(spec), qualify: spec.Qualify}
-	}
-}
-
-// loopOpenedMsg is the switch plus the one line that says what was loaded.
-//
-// The count is the whole message. Zero criteria means the session reports done
-// at the end of the first turn, and someone who typed /loop expecting a
-// definition of done needs to be told THEN rather than at the end.
-type loopOpenedMsg struct {
-	session protocol.Session
-	spec    string
-	// task is submitted as the first turn of the new session. The command
-	// exists to do the work, not to prepare a place for someone to ask again.
-	task string
-	// qualify marks the session that works out what done means rather than the
-	// one that does the work.
-	qualify bool
-}
-
-// loopEverySpec turns a goal into the list of specs it is about.
-//
-// The daemon decides which are pending, because deciding it means running each
-// folder's criteria — and a checkbox in a tasks.md is marked by whoever felt
-// like marking it.
-func (p *program) loopEverySpec(spec LoopArgs) tea.Cmd {
-	return func() tea.Msg {
-		found, err := p.opts.Transport.ListSpecs(p.ctx, p.model.Workspace, true)
-		if err != nil {
-			return noteMsg("could not look for specs: " + err.Error())
-		}
-		return specsFoundMsg{goal: spec.Task, protect: spec.Protect, specs: found}
-	}
-}
-
-// specsFoundMsg is the plan, before any of it runs.
-// nextSpec starts the next spec in the queue, or reports that the run is over.
-func (p *program) nextSpec() tea.Cmd {
-	if len(p.loopQueue) == 0 {
-		// The run ending used to be silence. A loop that works four specs and
-		// then simply stops is indistinguishable, from the outside, from a loop
-		// that stalled on the fourth — and the person watching has no way to
-		// tell "it is over" from "it is thinking".
-		worked, results := p.loopWorked, p.loopResults
-		p.loopGoal, p.loopWorked, p.loopResults, p.loopSpec = "", 0, nil, ""
-		if worked == 0 {
-			return nil
-		}
-		return func() tea.Msg {
-			return loopFinishedMsg{worked: worked, results: results}
-		}
-	}
-	p.loopWorked++
-	next := p.loopQueue[0]
-	p.loopSpec = next.Path
-	p.loopQueue = p.loopQueue[1:]
-	return p.loopSession(LoopArgs{Spec: next.Path, Task: p.loopGoal, Protect: p.loopProtect})
-}
-
-// recordLoopResult files a completion under the spec it is about.
-//
-// The last word for a spec wins rather than a new row: a spec can complete
-// several turns — the done loop re-prompts while criteria are unmet — and each
-// of them reports where things stand. What matters at the end is where the spec
-// was LEFT, and appending every turn would count one spec's criteria as many.
-func (p *program) recordLoopResult(c *protocol.Completion) {
-	if n := len(p.loopResults); n > 0 && p.loopResults[n-1].spec == p.loopSpec {
-		p.loopResults[n-1].standing = c
-		return
-	}
-	p.loopResults = append(p.loopResults, loopResult{spec: p.loopSpec, standing: c})
-}
-
-// loopVerdict folds the run's results into the numbers and names it reports.
-//
-// Across every spec, not the last one. Criteria are summed because each spec
-// carries its own set; the names are deduplicated because the same criterion
-// failing in two specs is one thing to go and fix, and the specs are named
-// separately because that is what says where to go.
-func loopVerdict(results []loopResult) (met, total int, unmet, unchecked, specs []string) {
-	seenUnmet, seenUnchecked := map[string]bool{}, map[string]bool{}
-	add := func(dst *[]string, seen map[string]bool, names []string) {
-		for _, n := range names {
-			if !seen[n] {
-				seen[n] = true
-				*dst = append(*dst, n)
-			}
-		}
-	}
-	for _, r := range results {
-		if r.standing == nil {
-			continue
-		}
-		met += len(r.standing.Met)
-		total += len(r.standing.Met) + len(r.standing.Unmet) + len(r.standing.Unavailable)
-		add(&unmet, seenUnmet, r.standing.Unmet)
-		add(&unchecked, seenUnchecked, r.standing.Unavailable)
-		if r.unfinished() && r.spec != "" {
-			specs = append(specs, r.spec)
-		}
-	}
-	return met, total, unmet, unchecked, specs
-}
-
-// loopResult is where one spec of the run ended.
-type loopResult struct {
-	spec     string
-	standing *protocol.Completion
-}
-
-// unfinished reports whether this spec ended with anything outstanding.
-//
-// Unavailable counts. A criterion nobody could check is not a criterion that
-// passed, and folding it into "met" is how a run reports success for work
-// nothing measured.
-func (r loopResult) unfinished() bool {
-	return r.standing != nil && (len(r.standing.Unmet) > 0 || len(r.standing.Unavailable) > 0)
-}
-
-// loopFinishedMsg is the run being over, and where done stands when it is.
-type loopFinishedMsg struct {
-	worked  int
-	results []loopResult
-}
-
-type specsFoundMsg struct {
-	goal    string
-	protect []string
-	specs   []protocol.SpecFolder
-}
-
-// commitProposal asks the daemon to measure and write what was proposed.
-//
-// The loop makes this call, after the turn: the qualifying turn runs in plan
-// mode and cannot write, and measuring inside it would run the criteria under
-// a boundary they were never meant to run under. The loop reads the tools.
-func (p *program) commitProposal(id, spec string) tea.Cmd {
-	return func() tea.Msg {
-		out, err := p.opts.Transport.CommitDone(p.ctx, id)
-		if err != nil {
-			return noteMsg("could not write the proposed definition of done: " + err.Error())
-		}
-		return proposalWrittenMsg{
-			spec: spec,
-			note: fmt.Sprintf(Text(p.opts.Lang).CmdLoopProposed, out.Criteria, out.Path, spec) +
-				"\n\n" + out.Summary,
-		}
-	}
-}
-
-// loopOne works one spec folder, qualifying it first when it declares nothing.
-//
-// The loop asks what the folder declares — a read, not a run — and decides.
-// Deciding here rather than after opening a session is what keeps a discarded
-// session and its record off the disk for every spec that needs qualifying.
-func (p *program) loopOne(spec LoopArgs) tea.Cmd {
-	if spec.Qualify {
-		return p.loopSession(spec)
-	}
-	return func() tea.Msg {
-		found, err := p.opts.Transport.ListSpecs(p.ctx, p.model.Workspace, false)
-		if err != nil {
-			// Not fatal: if the daemon cannot say, open the session and let it
-			// answer. Refusing the command because the survey failed would be
-			// the survey holding the work hostage.
-			return p.loopSession(spec)()
-		}
-		// A bare word that names no folder at all is prose. Diverted before the
-		// loop below, because that loop only knows how to answer about folders
-		// it found — and falling through it opened a session against a path
-		// that does not exist, which the daemon answered with a raw read error.
-		if q, ok := ArgumentToQualify(spec, found); ok {
-			return p.loopSession(q)()
-		}
-		for _, f := range found {
-			if f.Path != spec.Spec {
-				continue
-			}
-			if f.Criteria == 0 && f.Error == "" {
-				// Nothing declares how this is finished, so the loop works
-				// that out before it works the spec. Reading, projecting and
-				// qualifying come before executing.
-				q := spec
-				q.Qualify = true
-				q.Task = ""
-				return p.loopSession(q)()
-			}
-			break
-		}
-		return p.loopSession(spec)()
-	}
-}
-
-// proposalWrittenMsg is a definition of done, on disk, waiting to be read.
-//
-// The loop stops here rather than going straight on to the work. A proposal
-// nobody looked at is a ruler nobody read, and running against one is what
-// this whole family refuses — the independence is that qualifying happened by
-// itself, not that the signature was skipped.
-type proposalWrittenMsg struct {
-	spec string
-	note string
 }

@@ -226,60 +226,66 @@ type Strings struct {
 	CmdCompact    string
 	// CompactNothingToDo answers a forced compaction that found nothing worth
 	// summarising — the one thing EventSessionCompacted never arrives to say.
-	CompactNothingToDo string
-	CmdImage           string
-	CmdImageArgs       string
-	ImageUsage         string
-	ImageAttached      string
-	ImageFailed        string
-	ImageUnsupported   string
-	ImagePasted        string
-	ImageTooBig        string
-	ClipboardEmpty     string
-	ClipboardMissing   string
-	UndoRestored       string
-	UndoRefused        string
-	UndoNothing        string
-	UndoFailed         string
-	KeyArrows          string
-	KeyPage            string
-	KeyTab             string
-	KeyEsc             string
-	KeyPanel           string
-	KeyDequeue         string
-	KeyEditing         string
-	KeyInterrupt       string
-	KeyQuit            string
-	CmdHelp            string
-	CmdInit            string
-	CmdClear           string
-	CmdPlan            string
-	CmdPlanArgs        string
-	CmdConfig          string
-	CmdConfigArgs      string
-	CmdModel           string
-	CmdModelArgs       string
-	CmdResume          string
-	CmdResumeArgs      string
-	CmdMode            string
-	CmdModeArgs        string
-	CmdModeCurrent     string // takes a mode name
-	CmdModeUnnamed     string // the boundary in force is none of the three
-	CmdModeUnknown     string // takes the name that is not a mode
-	CmdLang            string
-	CmdLangArgs        string
-	CmdLangCurrent     string // takes the language name
-	CmdLangUnknown     string // takes the name that is not a declared language
-	CmdLangSwitched    string // takes the language name; shown IN that language
-	CmdLoop            string
-	CmdLoopArgs        string
-	CmdLoopUsage       string
-	CmdLoopFlag        string // takes the flag that is not one
-	CmdLoopOpened      string // takes the spec path and the criterion count
-	CmdLoopEmpty       string // takes the spec path
-	CmdLoopProposed    string // takes the criterion count, the file and the spec path
-	CmdLoopReviewAll   string // takes how many proposals the goal's pass wrote
-	CmdLoopQualifying  string // takes the spec path
+	CompactNothingToDo      string
+	CmdImage                string
+	CmdImageArgs            string
+	ImageUsage              string
+	ImageAttached           string
+	ImageFailed             string
+	ImageUnsupported        string
+	ImagePasted             string
+	ImageTooBig             string
+	ClipboardEmpty          string
+	ClipboardMissing        string
+	UndoRestored            string
+	UndoRefused             string
+	UndoNothing             string
+	UndoFailed              string
+	KeyArrows               string
+	KeyPage                 string
+	KeyTab                  string
+	KeyEsc                  string
+	KeyPanel                string
+	KeyDequeue              string
+	KeyEditing              string
+	KeyInterrupt            string
+	KeyQuit                 string
+	CmdHelp                 string
+	CmdInit                 string
+	CmdClear                string
+	CmdPlan                 string
+	CmdPlanArgs             string
+	CmdConfig               string
+	CmdConfigArgs           string
+	CmdModel                string
+	CmdModelArgs            string
+	CmdResume               string
+	CmdResumeArgs           string
+	CmdMode                 string
+	CmdModeArgs             string
+	CmdModeCurrent          string // takes a mode name
+	CmdModeUnnamed          string // the boundary in force is none of the three
+	CmdModeUnknown          string // takes the name that is not a mode
+	CmdLang                 string
+	CmdLangArgs             string
+	CmdLangCurrent          string // takes the language name
+	CmdLangUnknown          string // takes the name that is not a declared language
+	CmdLangSwitched         string // takes the language name; shown IN that language
+	CmdLoop                 string
+	CmdLoopArgs             string
+	CmdLoopUsage            string
+	CmdLoopFlag             string // takes the flag that is not one
+	CmdLoopOpened           string // takes the spec path and the criterion count
+	CmdLoopEmpty            string // takes the spec path
+	CmdLoopProposed         string // takes the criterion count, the file and the spec path
+	CmdLoopReviewAll        string // takes how many proposals the goal's pass wrote
+	CmdLoopWaiting          string // takes the arguments of the loop waiting for review
+	CmdLoopStopped          string
+	CmdLoopStoppedElsewhere string
+	CmdLoopQueueHeld        string // takes how many messages and the folder the loop went to
+	CmdLoopQueueBetween     string // takes how many messages are held
+	CmdLoopQueueKept        string // takes how many messages a stopped loop left
+	CmdLoopQualifying       string // takes the spec path
 	// CmdLoopFinished is the run ending, with what done says. It takes the
 	// number of specs worked and the state of the criteria.
 	CmdLoopFinished string // takes the spec count
@@ -447,81 +453,87 @@ var catalogue = map[Lang]Strings{
 		ApprovalEnterDenies:  "Enter denies.",
 		ApprovalHeading:      "Approvals",
 
-		HelpCommands:       "Commands",
-		HelpApprovals:      "Approvals",
-		HelpKeys:           "Keys",
-		HelpYours:          "Yours",
-		KeyEnter:           "send (queues while a turn is running)",
-		KeyNewline:         "break the line without sending",
-		KeyPasteImage:      "paste an image from the clipboard",
-		CmdUndo:            "put back the files the last turn changed",
-		CmdUpdate:          "install the latest release",
-		CmdCompact:         "compact now, whether or not the automatic trigger is on",
-		CompactNothingToDo: "nothing worth compacting yet",
-		CmdImage:           "show the model a picture with your next message",
-		CmdImageArgs:       "<path>",
-		ImageUsage:         "Usage: /image <path to a png, jpeg, gif or webp>",
-		ImageAttached:      "attached %s — %d image(s) will go with your next message",
-		ImageFailed:        "could not attach it:",
-		ImageUnsupported:   "%s does not read pictures. Switch with /model to one that does.",
-		ImagePasted:        "pasted the image — %d will go with your next message",
-		ImageTooBig:        "that image is %dMB and the limit is %dMB",
-		ClipboardEmpty:     "no image on the clipboard — copy one, or use /image <path>",
-		ClipboardMissing:   "this machine has no clipboard tool; install wl-clipboard or xclip, or use /image <path>",
-		UndoRestored:       "put back:",
-		UndoRefused:        "left alone, changed since the turn:",
-		UndoNothing:        "the last turn changed no files",
-		UndoFailed:         "could not undo:",
-		KeyArrows:          "history on an empty line, otherwise move through the stream",
-		KeyPage:            "scroll · Home and End jump to either end",
-		KeyTab:             "expand or collapse the selected entry",
-		KeyEsc:             "close the expansion, then the selection",
-		KeyPanel:           "show or hide the plan panel",
-		KeyDequeue:         "remove the oldest queued message",
-		KeyEditing:         "start, end, delete word, clear, cut to end",
-		KeyInterrupt:       "interrupt the turn, or quit when idle",
-		KeyQuit:            "quit",
-		CmdHelp:            "shortcuts and commands",
-		CmdInit:            "write DCODE.md for this workspace from what is already here",
-		CmdClear:           "end this session and open a fresh one",
-		CmdPlan:            "show the plan; with an argument, ask for a new one",
-		CmdPlanArgs:        "[what to change]",
-		CmdConfig:          "the effective value of a key and where it came from",
-		CmdConfigArgs:      "<key>",
-		CmdModel:           "switch model — opens a new session, since the prefix changes",
-		CmdModelArgs:       "<name>",
-		CmdResume:          "list sessions, or reattach to one",
-		CmdResumeArgs:      "[id]",
-		CmdMode:            "show the current mode, or switch to plan/assist/auto — shift+tab cycles",
-		CmdModeArgs:        "[plan|assist|auto]",
-		CmdModeCurrent:     "current mode: %s",
-		CmdModeUnnamed:     "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
-		CmdModeUnknown:     "%s is not a mode — want plan, assist or auto",
-		CmdLang:            "show the interface language, or switch it — en or pt-BR",
-		CmdLangArgs:        "[en|pt-BR]",
-		CmdLangCurrent:     "current language: %s",
-		CmdLangUnknown:     "%s is not a declared language — want en or pt-BR",
-		CmdLangSwitched:    "interface language: %s",
-		CmdLoop:            "work a spec folder, measured against its definition of done — opens a new session",
-		CmdLoopArgs:        "<path> [what to do] [--protect <glob>]",
-		CmdLoopUsage:       "Usage: /loop <path to a spec folder> [what to do] [--protect <glob>]",
-		CmdLoopFlag:        "%s is not a flag here — only --protect is",
-		LoopNoSpecs:        "no specs/ folder here, or nothing in it. /loop <path> works on one folder.",
-		LoopPlanHead:       "%d of %d specs have work left. One session each, in order — interrupt between them and what is finished stays finished.",
-		LoopSpecPending:    "%d of %d criteria not met",
-		LoopSpecDone:       "done — all %d criteria pass",
-		LoopSpecNoCriteria: "no definition of done; nothing says it is finished",
-		LoopSpecUnreadable: "could not be read: %s",
-		CmdLoopQualifying:  "loop: %s declares no criteria, so this turn works out what they should be. It cannot change anything — it proposes, and you review the file before any work runs against it.",
-		CmdLoopFinished:    "the loop is finished — %d %s worked",
-		CmdLoopUnfinished:  "not finished:",
-		CmdLoopStanding:    "done: %d of %d criteria met",
-		LoopSpecOne:        "spec",
-		LoopSpecMany:       "specs",
-		CmdLoopProposed:    "loop: %d criteria written to %s, measured before any work. Read it, change what is wrong, then /loop %s to work it.",
-		CmdLoopReviewAll:   "loop: %d folders declared nothing, and each now has a proposed done.toml. Review them, then /loop the goal again to work the backlog.",
-		CmdLoopOpened:      "loop: %s, %d criteria",
-		CmdLoopEmpty:       "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
+		HelpCommands:            "Commands",
+		HelpApprovals:           "Approvals",
+		HelpKeys:                "Keys",
+		HelpYours:               "Yours",
+		KeyEnter:                "send (queues while a turn is running)",
+		KeyNewline:              "break the line without sending",
+		KeyPasteImage:           "paste an image from the clipboard",
+		CmdUndo:                 "put back the files the last turn changed",
+		CmdUpdate:               "install the latest release",
+		CmdCompact:              "compact now, whether or not the automatic trigger is on",
+		CompactNothingToDo:      "nothing worth compacting yet",
+		CmdImage:                "show the model a picture with your next message",
+		CmdImageArgs:            "<path>",
+		ImageUsage:              "Usage: /image <path to a png, jpeg, gif or webp>",
+		ImageAttached:           "attached %s — %d image(s) will go with your next message",
+		ImageFailed:             "could not attach it:",
+		ImageUnsupported:        "%s does not read pictures. Switch with /model to one that does.",
+		ImagePasted:             "pasted the image — %d will go with your next message",
+		ImageTooBig:             "that image is %dMB and the limit is %dMB",
+		ClipboardEmpty:          "no image on the clipboard — copy one, or use /image <path>",
+		ClipboardMissing:        "this machine has no clipboard tool; install wl-clipboard or xclip, or use /image <path>",
+		UndoRestored:            "put back:",
+		UndoRefused:             "left alone, changed since the turn:",
+		UndoNothing:             "the last turn changed no files",
+		UndoFailed:              "could not undo:",
+		KeyArrows:               "history on an empty line, otherwise move through the stream",
+		KeyPage:                 "scroll · Home and End jump to either end",
+		KeyTab:                  "expand or collapse the selected entry",
+		KeyEsc:                  "close the expansion, then the selection",
+		KeyPanel:                "show or hide the plan panel",
+		KeyDequeue:              "remove the oldest queued message",
+		KeyEditing:              "start, end, delete word, clear, cut to end",
+		KeyInterrupt:            "interrupt the turn, or quit when idle",
+		KeyQuit:                 "quit",
+		CmdHelp:                 "shortcuts and commands",
+		CmdInit:                 "write DCODE.md for this workspace from what is already here",
+		CmdClear:                "end this session and open a fresh one",
+		CmdPlan:                 "show the plan; with an argument, ask for a new one",
+		CmdPlanArgs:             "[what to change]",
+		CmdConfig:               "the effective value of a key and where it came from",
+		CmdConfigArgs:           "<key>",
+		CmdModel:                "switch model — opens a new session, since the prefix changes",
+		CmdModelArgs:            "<name>",
+		CmdResume:               "list sessions, or reattach to one",
+		CmdResumeArgs:           "[id]",
+		CmdMode:                 "show the current mode, or switch to plan/assist/auto — shift+tab cycles",
+		CmdModeArgs:             "[plan|assist|auto]",
+		CmdModeCurrent:          "current mode: %s",
+		CmdModeUnnamed:          "this session's boundary is not one of the three modes; /mode plan, assist or auto picks one",
+		CmdModeUnknown:          "%s is not a mode — want plan, assist or auto",
+		CmdLang:                 "show the interface language, or switch it — en or pt-BR",
+		CmdLangArgs:             "[en|pt-BR]",
+		CmdLangCurrent:          "current language: %s",
+		CmdLangUnknown:          "%s is not a declared language — want en or pt-BR",
+		CmdLangSwitched:         "interface language: %s",
+		CmdLoop:                 "work a spec folder, measured against its definition of done — opens a new session",
+		CmdLoopArgs:             "<path> [what to do] [--protect <glob>]",
+		CmdLoopUsage:            "Usage: /loop <path to a spec folder> [what to do] [--protect <glob>]",
+		CmdLoopFlag:             "%s is not a flag here — only --protect is",
+		LoopNoSpecs:             "no specs/ folder here, or nothing in it. /loop <path> works on one folder.",
+		LoopPlanHead:            "%d of %d specs have work left. One session each, in order — interrupt between them and what is finished stays finished.",
+		LoopSpecPending:         "%d of %d criteria not met",
+		LoopSpecDone:            "done — all %d criteria pass",
+		LoopSpecNoCriteria:      "no definition of done; nothing says it is finished",
+		LoopSpecUnreadable:      "could not be read: %s",
+		CmdLoopQualifying:       "loop: %s declares no criteria, so this turn works out what they should be. It cannot change anything — it proposes, and you review the file before any work runs against it.",
+		CmdLoopFinished:         "the loop is finished — %d %s worked",
+		CmdLoopUnfinished:       "not finished:",
+		CmdLoopStanding:         "done: %d of %d criteria met",
+		LoopSpecOne:             "spec",
+		LoopSpecMany:            "specs",
+		CmdLoopProposed:         "loop: %d criteria written to %s, measured before any work. Read it, change what is wrong, then /loop %s to work it.",
+		CmdLoopReviewAll:        "loop: %d folders declared nothing, and each now has a proposed done.toml. Review them, then /loop the goal again to work the backlog.",
+		CmdLoopWaiting:          "loop: /loop %s is waiting for its proposal to be reviewed in this workspace. Type that again to go on with it, or stop it before starting another.",
+		CmdLoopStopped:          "loop: stopped. The turn was interrupted and no other folder opens — interrupting a loop's turn stops the loop instead of skipping to the next folder.",
+		CmdLoopStoppedElsewhere: "loop: stopped — no other folder opens.",
+		CmdLoopQueueHeld:        "%d queued message(s) were not sent; the loop moved on to %s. They go when the loop ends.",
+		CmdLoopQueueBetween:     "held — the loop is between folders, so this is not sent into the one it is leaving. %d message(s) go when the loop ends.",
+		CmdLoopQueueKept:        "%d message(s) left in the queue; send with ↵ on an empty line or discard with ctrl+x.",
+		CmdLoopOpened:           "loop: %s, %d criteria",
+		CmdLoopEmpty:            "loop: %s declares no runnable criterion, so this session has no definition of done. Give the folder a done.toml, or a verify: marker on a task.",
 
 		Usage: `dcode %s — an agentic coding harness
 
@@ -680,81 +692,87 @@ Environment:
 		ApprovalEnterDenies:  "Enter nega.",
 		ApprovalHeading:      "Aprovações",
 
-		HelpCommands:       "Comandos",
-		HelpApprovals:      "Aprovações",
-		HelpKeys:           "Teclas",
-		HelpYours:          "Seus",
-		KeyEnter:           "envia (enfileira enquanto um turno roda)",
-		KeyNewline:         "quebra a linha sem enviar",
-		KeyPasteImage:      "cola uma imagem da área de transferência",
-		CmdUndo:            "restaura os arquivos que o último turno mudou",
-		CmdUpdate:          "instala a release mais recente",
-		CmdCompact:         "compacta agora, ligado ou não o gatilho automático",
-		CompactNothingToDo: "nada que valesse a pena compactar ainda",
-		CmdImage:           "mostra uma imagem ao modelo junto da próxima mensagem",
-		CmdImageArgs:       "<caminho>",
-		ImageUsage:         "Uso: /image <caminho de png, jpeg, gif ou webp>",
-		ImageAttached:      "anexado %s — %d imagem(ns) vão com a próxima mensagem",
-		ImageFailed:        "não foi possível anexar:",
-		ImageUnsupported:   "%s não lê imagem. Troque com /model para um que leia.",
-		ImagePasted:        "imagem colada — %d vão com a próxima mensagem",
-		ImageTooBig:        "essa imagem tem %dMB e o limite é %dMB",
-		ClipboardEmpty:     "nenhuma imagem na área de transferência — copie uma, ou use /image <caminho>",
-		ClipboardMissing:   "esta máquina não tem ferramenta de clipboard; instale wl-clipboard ou xclip, ou use /image <caminho>",
-		UndoRestored:       "restaurado:",
-		UndoRefused:        "intocado, mudou depois do turno:",
-		UndoNothing:        "o último turno não mexeu em arquivo nenhum",
-		UndoFailed:         "não foi possível desfazer:",
-		KeyArrows:          "histórico em linha vazia; fora dela, navega no stream",
-		KeyPage:            "rola · Home e End vão para as pontas",
-		KeyTab:             "abre ou fecha a entrada selecionada",
-		KeyEsc:             "fecha a expansão, depois a seleção",
-		KeyPanel:           "mostra ou esconde o painel de plano",
-		KeyDequeue:         "descarta a mensagem mais antiga da fila",
-		KeyEditing:         "início, fim, apaga palavra, limpa, corta até o fim",
-		KeyInterrupt:       "interrompe o turno, ou sai quando ocioso",
-		KeyQuit:            "sai",
-		CmdHelp:            "atalhos e comandos",
-		CmdInit:            "escreve o DCODE.md deste workspace a partir do que já existe",
-		CmdClear:           "encerra esta sessão e abre uma nova",
-		CmdPlan:            "mostra o plano; com argumento, pede um novo",
-		CmdPlanArgs:        "[o que mudar]",
-		CmdConfig:          "o valor efetivo de uma chave e de onde ele veio",
-		CmdConfigArgs:      "<chave>",
-		CmdLoop:            "trabalha uma pasta de spec, medido contra a definição de pronto dela — abre sessão nova",
-		CmdLoopArgs:        "<caminho> [o que fazer] [--protect <glob>]",
-		CmdLoopUsage:       "Uso: /loop <caminho da pasta da spec> [o que fazer] [--protect <glob>]",
-		CmdLoopFlag:        "%s não é flag aqui — só --protect é",
-		LoopNoSpecs:        "não há pasta specs/ aqui, ou ela está vazia. /loop <caminho> trabalha uma pasta só.",
-		LoopPlanHead:       "%d de %d specs têm trabalho pendente. Uma sessão para cada, em ordem — interrompa entre elas e o que ficou pronto continua pronto.",
-		LoopSpecPending:    "%d de %d critérios não cumpridos",
-		LoopSpecDone:       "pronta — os %d critérios passam",
-		LoopSpecNoCriteria: "sem definição de pronto; nada afirma que está terminada",
-		LoopSpecUnreadable: "não deu para ler: %s",
-		CmdLoopQualifying:  "loop: %s não declara critério, então este turno descobre quais deveriam ser. Ele não pode mudar nada — propõe, e você revisa o arquivo antes de qualquer trabalho rodar contra ele.",
-		CmdLoopFinished:    "o laço terminou — %d %s trabalhada(s)",
-		CmdLoopUnfinished:  "não terminadas:",
-		CmdLoopStanding:    "pronto: %d de %d critérios cumpridos",
-		LoopSpecOne:        "spec",
-		LoopSpecMany:       "specs",
-		CmdLoopProposed:    "loop: %d critérios escritos em %s, medidos antes de qualquer trabalho. Leia, corrija o que estiver errado, e então /loop %s para trabalhá-la.",
-		CmdLoopReviewAll:   "loop: %d pastas não declaravam nada, e cada uma agora tem um done.toml proposto. Revise-os, e então /loop o objetivo de novo para trabalhar o backlog.",
-		CmdLoopOpened:      "loop: %s, %d critérios",
-		CmdLoopEmpty:       "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
-		CmdModel:           "troca de modelo — abre nova sessão, porque o prefixo muda",
-		CmdModelArgs:       "<nome>",
-		CmdResume:          "lista sessões, ou reconecta a uma",
-		CmdResumeArgs:      "[id]",
-		CmdMode:            "mostra o modo atual, ou troca para plan/assist/auto — shift+tab cicla",
-		CmdModeArgs:        "[plan|assist|auto]",
-		CmdModeCurrent:     "modo atual: %s",
-		CmdModeUnnamed:     "o limite desta sessão não é nenhum dos três modos; /mode plan, assist ou auto escolhe um",
-		CmdModeUnknown:     "%s não é um modo — use plan, assist ou auto",
-		CmdLang:            "mostra o idioma da interface, ou troca — en ou pt-BR",
-		CmdLangArgs:        "[en|pt-BR]",
-		CmdLangCurrent:     "idioma atual: %s",
-		CmdLangUnknown:     "%s não é um idioma declarado — use en ou pt-BR",
-		CmdLangSwitched:    "idioma da interface: %s",
+		HelpCommands:            "Comandos",
+		HelpApprovals:           "Aprovações",
+		HelpKeys:                "Teclas",
+		HelpYours:               "Seus",
+		KeyEnter:                "envia (enfileira enquanto um turno roda)",
+		KeyNewline:              "quebra a linha sem enviar",
+		KeyPasteImage:           "cola uma imagem da área de transferência",
+		CmdUndo:                 "restaura os arquivos que o último turno mudou",
+		CmdUpdate:               "instala a release mais recente",
+		CmdCompact:              "compacta agora, ligado ou não o gatilho automático",
+		CompactNothingToDo:      "nada que valesse a pena compactar ainda",
+		CmdImage:                "mostra uma imagem ao modelo junto da próxima mensagem",
+		CmdImageArgs:            "<caminho>",
+		ImageUsage:              "Uso: /image <caminho de png, jpeg, gif ou webp>",
+		ImageAttached:           "anexado %s — %d imagem(ns) vão com a próxima mensagem",
+		ImageFailed:             "não foi possível anexar:",
+		ImageUnsupported:        "%s não lê imagem. Troque com /model para um que leia.",
+		ImagePasted:             "imagem colada — %d vão com a próxima mensagem",
+		ImageTooBig:             "essa imagem tem %dMB e o limite é %dMB",
+		ClipboardEmpty:          "nenhuma imagem na área de transferência — copie uma, ou use /image <caminho>",
+		ClipboardMissing:        "esta máquina não tem ferramenta de clipboard; instale wl-clipboard ou xclip, ou use /image <caminho>",
+		UndoRestored:            "restaurado:",
+		UndoRefused:             "intocado, mudou depois do turno:",
+		UndoNothing:             "o último turno não mexeu em arquivo nenhum",
+		UndoFailed:              "não foi possível desfazer:",
+		KeyArrows:               "histórico em linha vazia; fora dela, navega no stream",
+		KeyPage:                 "rola · Home e End vão para as pontas",
+		KeyTab:                  "abre ou fecha a entrada selecionada",
+		KeyEsc:                  "fecha a expansão, depois a seleção",
+		KeyPanel:                "mostra ou esconde o painel de plano",
+		KeyDequeue:              "descarta a mensagem mais antiga da fila",
+		KeyEditing:              "início, fim, apaga palavra, limpa, corta até o fim",
+		KeyInterrupt:            "interrompe o turno, ou sai quando ocioso",
+		KeyQuit:                 "sai",
+		CmdHelp:                 "atalhos e comandos",
+		CmdInit:                 "escreve o DCODE.md deste workspace a partir do que já existe",
+		CmdClear:                "encerra esta sessão e abre uma nova",
+		CmdPlan:                 "mostra o plano; com argumento, pede um novo",
+		CmdPlanArgs:             "[o que mudar]",
+		CmdConfig:               "o valor efetivo de uma chave e de onde ele veio",
+		CmdConfigArgs:           "<chave>",
+		CmdLoop:                 "trabalha uma pasta de spec, medido contra a definição de pronto dela — abre sessão nova",
+		CmdLoopArgs:             "<caminho> [o que fazer] [--protect <glob>]",
+		CmdLoopUsage:            "Uso: /loop <caminho da pasta da spec> [o que fazer] [--protect <glob>]",
+		CmdLoopFlag:             "%s não é flag aqui — só --protect é",
+		LoopNoSpecs:             "não há pasta specs/ aqui, ou ela está vazia. /loop <caminho> trabalha uma pasta só.",
+		LoopPlanHead:            "%d de %d specs têm trabalho pendente. Uma sessão para cada, em ordem — interrompa entre elas e o que ficou pronto continua pronto.",
+		LoopSpecPending:         "%d de %d critérios não cumpridos",
+		LoopSpecDone:            "pronta — os %d critérios passam",
+		LoopSpecNoCriteria:      "sem definição de pronto; nada afirma que está terminada",
+		LoopSpecUnreadable:      "não deu para ler: %s",
+		CmdLoopQualifying:       "loop: %s não declara critério, então este turno descobre quais deveriam ser. Ele não pode mudar nada — propõe, e você revisa o arquivo antes de qualquer trabalho rodar contra ele.",
+		CmdLoopFinished:         "o laço terminou — %d %s trabalhada(s)",
+		CmdLoopUnfinished:       "não terminadas:",
+		CmdLoopStanding:         "pronto: %d de %d critérios cumpridos",
+		LoopSpecOne:             "spec",
+		LoopSpecMany:            "specs",
+		CmdLoopProposed:         "loop: %d critérios escritos em %s, medidos antes de qualquer trabalho. Leia, corrija o que estiver errado, e então /loop %s para trabalhá-la.",
+		CmdLoopReviewAll:        "loop: %d pastas não declaravam nada, e cada uma agora tem um done.toml proposto. Revise-os, e então /loop o objetivo de novo para trabalhar o backlog.",
+		CmdLoopWaiting:          "loop: /loop %s está esperando a revisão da proposta neste workspace. Digite isso de novo para seguir com ele, ou pare-o antes de começar outro.",
+		CmdLoopStopped:          "loop: parado. O turno foi interrompido e nenhuma outra pasta abre — interromper o turno de um loop para o loop em vez de pular para a próxima pasta.",
+		CmdLoopStoppedElsewhere: "loop: parado — nenhuma outra pasta abre.",
+		CmdLoopQueueHeld:        "%d mensagem(ns) na fila não foram enviadas; o loop foi para %s. Elas vão quando o loop terminar.",
+		CmdLoopQueueBetween:     "retida — o loop está entre pastas, então isto não vai para a que ele está deixando. %d mensagem(ns) vão quando o loop terminar.",
+		CmdLoopQueueKept:        "%d mensagem(ns) ficaram na fila; envie com ↵ numa linha vazia ou descarte com ctrl+x.",
+		CmdLoopOpened:           "loop: %s, %d critérios",
+		CmdLoopEmpty:            "loop: %s não declara critério executável, então esta sessão não tem definição de pronto. Dê um done.toml à pasta, ou um marcador verify: numa tarefa.",
+		CmdModel:                "troca de modelo — abre nova sessão, porque o prefixo muda",
+		CmdModelArgs:            "<nome>",
+		CmdResume:               "lista sessões, ou reconecta a uma",
+		CmdResumeArgs:           "[id]",
+		CmdMode:                 "mostra o modo atual, ou troca para plan/assist/auto — shift+tab cicla",
+		CmdModeArgs:             "[plan|assist|auto]",
+		CmdModeCurrent:          "modo atual: %s",
+		CmdModeUnnamed:          "o limite desta sessão não é nenhum dos três modos; /mode plan, assist ou auto escolhe um",
+		CmdModeUnknown:          "%s não é um modo — use plan, assist ou auto",
+		CmdLang:                 "mostra o idioma da interface, ou troca — en ou pt-BR",
+		CmdLangArgs:             "[en|pt-BR]",
+		CmdLangCurrent:          "idioma atual: %s",
+		CmdLangUnknown:          "%s não é um idioma declarado — use en ou pt-BR",
+		CmdLangSwitched:         "idioma da interface: %s",
 
 		Usage: `dcode %s — um harness de programação agêntica
 

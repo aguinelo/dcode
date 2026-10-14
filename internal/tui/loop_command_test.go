@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -39,74 +38,6 @@ func TestLoopCannotBeShadowed(t *testing.T) {
 	}
 }
 
-func TestParseLoopArgs(t *testing.T) {
-	for _, c := range []struct {
-		name    string
-		in      string
-		spec    string
-		protect []string
-		task    string
-		wantErr string // the message, or "" for no error
-	}{
-		{name: "just a path", in: "specs/home-page", spec: "specs/home-page"},
-		{name: "protect", in: "specs/x --protect **/*_test.go",
-			spec: "specs/x", protect: []string{"**/*_test.go"}},
-		{name: "protect with equals", in: "specs/x --protect=**/*_test.go",
-			spec: "specs/x", protect: []string{"**/*_test.go"}},
-		{name: "protect twice", in: "specs/x --protect a --protect b",
-			spec: "specs/x", protect: []string{"a", "b"}},
-		{name: "flag before path", in: "--protect a specs/x",
-			spec: "specs/x", protect: []string{"a"}},
-		{name: "nothing", in: "", wantErr: ""},
-		{name: "unknown flag", in: "specs/x --max-iterations 3", wantErr: "--max-iterations"},
-		{name: "protect with nothing after it", in: "specs/x --protect", wantErr: "--protect needs a glob"},
-		{name: "a task after the path", in: "specs/x refaça só o header",
-			spec: "specs/x", task: "refaça só o header"},
-		{name: "task and protect", in: "specs/x --protect a implemente tudo",
-			spec: "specs/x", protect: []string{"a"}, task: "implemente tudo"},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			got, err := ParseLoopArgs(c.in)
-			if c.name == "nothing" || c.wantErr != "" {
-				if err == nil {
-					t.Fatalf("expected an error, got %+v", got)
-				}
-				if c.wantErr != "" && !strings.Contains(err.Error(), c.wantErr) {
-					t.Fatalf("error %q does not name %q", err, c.wantErr)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.Spec != c.spec {
-				t.Errorf("spec = %q, want %q", got.Spec, c.spec)
-			}
-			if got.Task != c.task {
-				t.Errorf("task = %q, want %q", got.Task, c.task)
-			}
-			if len(got.Protect) != len(c.protect) {
-				t.Fatalf("protect = %v, want %v", got.Protect, c.protect)
-			}
-			for i := range c.protect {
-				if got.Protect[i] != c.protect[i] {
-					t.Errorf("protect = %v, want %v", got.Protect, c.protect)
-				}
-			}
-		})
-	}
-}
-
-// A mistyped flag stops the command rather than being ignored.
-//
-// Ignoring it opens a session measured against a definition of done the person
-// did not ask for, and they find out at the end of the turn.
-func TestAMistypedFlagStopsTheCommand(t *testing.T) {
-	if _, err := ParseLoopArgs("specs/x --protct a"); err == nil {
-		t.Fatal("a mistyped flag was accepted")
-	}
-}
-
 // It appears in /help and in the completion menu, or nobody discovers it.
 func TestLoopIsDiscoverable(t *testing.T) {
 	help := HelpText(config.CommandSet{}, En)
@@ -121,84 +52,6 @@ func TestLoopIsDiscoverable(t *testing.T) {
 	}
 	if !found {
 		t.Error("/loop does not complete from /lo")
-	}
-}
-
-// A word after the path is what to do, not a mistyped flag.
-//
-// Someone typed `/loop <path> implementar ...` and was told "implementar is
-// not a flag here". It never was one: only a thing that looks like a flag can
-// be a mistyped flag, and the command was refusing a sentence.
-func TestAWordAfterThePathIsTheTaskAndNotAFlag(t *testing.T) {
-	got, err := ParseLoopArgs("specs/home-page implementar absolutamente tudo")
-	if err != nil {
-		t.Fatalf("a sentence after the path was refused: %v", err)
-	}
-	if got.Spec != "specs/home-page" {
-		t.Errorf("spec = %q", got.Spec)
-	}
-	if got.Task != "implementar absolutamente tudo" {
-		t.Errorf("task = %q", got.Task)
-	}
-}
-
-// /loop submits a turn. Loading a definition of done and then waiting is the
-// command doing half its job.
-func TestLoopSubmitsSomethingToDo(t *testing.T) {
-	got := LoopTask(LoopArgs{Spec: "specs/x"})
-	if got == "" {
-		t.Fatal("/loop with no task submits nothing at all")
-	}
-	if !strings.Contains(got, "specs/x") {
-		t.Errorf("the default task does not name the spec: %q", got)
-	}
-	// It must not restate the criteria: they are the session's, the loop
-	// checks them, and a copy in the first message is a second statement of
-	// something that can move.
-	if strings.Contains(strings.ToLower(got), "done.toml") {
-		t.Errorf("the default task restates where the criteria live: %q", got)
-	}
-	// What the person said wins over the default, whole.
-	if got := LoopTask(LoopArgs{Spec: "specs/x", Task: "só o header"}); got != "só o header" {
-		t.Errorf("the person's own words were changed: %q", got)
-	}
-}
-
-// A sentence is a goal, and a path is a path.
-//
-// `/loop implemente todas as specs pendentes` went looking for
-// `implemente/tasks.md`: the first word became a folder name. Prose became a
-// path, which is the same defect as prose becoming a criterion, pointing the
-// other way.
-func TestASentenceIsAGoalAndAPathIsAPath(t *testing.T) {
-	for _, c := range []struct {
-		in   string
-		goal bool
-		spec string
-		task string
-	}{
-		{in: "specs/home-page", spec: "specs/home-page"},
-		{in: "specs/home-page refaça o header", spec: "specs/home-page", task: "refaça o header"},
-		{in: "home-page", spec: "home-page"},
-		{in: "implemente todas as specs pendentes", goal: true, task: "implemente todas as specs pendentes"},
-		{in: "termine o que falta", goal: true, task: "termine o que falta"},
-		{in: "implemente todas --protect tests/**", goal: true, task: "implemente todas"},
-	} {
-		t.Run(c.in, func(t *testing.T) {
-			got, err := ParseLoopArgs(c.in)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.Goal != c.goal {
-				t.Fatalf("goal = %v, want %v (%+v)", got.Goal, c.goal, got)
-			}
-			if got.Spec != c.spec {
-				t.Errorf("spec = %q, want %q", got.Spec, c.spec)
-			}
-			if got.Task != c.task {
-				t.Errorf("task = %q, want %q", got.Task, c.task)
-			}
-		})
 	}
 }
 
@@ -236,63 +89,31 @@ func TestAnEmptyPlanSaysSo(t *testing.T) {
 	}
 }
 
-// The loop qualifies a folder that declares nothing, before working it.
-//
-// Reading, projecting and qualifying come before executing, and the LOOP owns
-// that order: a model that chose when to qualify would be choosing when to be
-// measured.
-func TestTheLoopQualifiesAFolderThatDeclaresNothing(t *testing.T) {
-	// The default task for a qualifying run is a different job, and says so.
-	got := LoopTask(LoopArgs{Spec: "specs/x", Qualify: true})
-	for _, want := range []string{"specs/x", "done_propose", "plan mode", "Propose, and stop"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the qualifying task does not carry %q:\n%s", want, got)
-		}
-	}
-	// And it does not tell the model to do the work.
-	if strings.Contains(strings.ToLower(got), "implement the specification") {
-		t.Errorf("the qualifying task asks for the work:\n%s", got)
-	}
-}
-
-// What the person typed is not carried into a qualifying turn.
-//
-// `/loop specs/x refaça o header` says what the WORK is. Handing it to the
-// turn that decides how the work will be measured would let the instruction
-// shape the ruler.
-func TestAQualifyingTurnDoesNotCarryTheTask(t *testing.T) {
-	got := LoopTask(LoopArgs{Spec: "specs/x", Qualify: true, Task: "refaça só o header"})
-	if strings.Contains(got, "refaça só o header") {
-		t.Errorf("the person's instruction reached the qualifying turn:\n%s", got)
-	}
-}
-
 // The loop asks what a folder declares BEFORE opening anything, and opens a
 // qualifying session when it declares nothing.
 //
 // Asking first is what keeps a discarded session and its record off the disk
 // for every spec that needs qualifying.
 func TestTheLoopAsksBeforeItOpens(t *testing.T) {
-	p, tr := newProgram(t)
-	tr.specs = []protocol.SpecFolder{
+	specs := []protocol.SpecFolder{
 		{Path: "specs/empty", Criteria: 0},
 		{Path: "specs/ready", Criteria: 3},
 	}
 
 	// A folder with nothing declared: the session opened is a qualifying one.
-	msg := p.loopOne(LoopArgs{Spec: "specs/empty"})()
-	opened, ok := msg.(loopOpenedMsg)
-	if !ok {
-		t.Fatalf("got %T, want a session", msg)
-	}
-	if !opened.qualify {
-		t.Error("a folder declaring nothing was opened as work rather than qualified")
+	p, tr := loopProgram(t, specs...)
+	typeLoop(t, p, "specs/empty")
+	followLoop(t, p, func() bool { return tr.lastLoop(t).State == protocol.LoopAwaitingReview })
+	if len(tr.created) != 1 || !tr.created[0].Qualify {
+		t.Errorf("a folder declaring nothing was opened as work rather than qualified: %+v", tr.created)
 	}
 
 	// A folder that declares criteria is worked, not qualified.
-	msg = p.loopOne(LoopArgs{Spec: "specs/ready"})()
-	if opened, ok := msg.(loopOpenedMsg); !ok || opened.qualify {
-		t.Errorf("a folder with criteria was qualified anyway: %+v", msg)
+	p, tr = loopProgram(t, specs...)
+	typeLoop(t, p, "specs/ready")
+	followLoop(t, p, nil)
+	if len(tr.created) != 1 || tr.created[0].Qualify {
+		t.Errorf("a folder with criteria was qualified anyway: %+v", tr.created)
 	}
 }
 
@@ -301,28 +122,27 @@ func TestTheLoopAsksBeforeItOpens(t *testing.T) {
 // Refusing the work because the survey failed would be the survey holding the
 // work hostage.
 func TestASurveyThatFailsDoesNotStopTheWork(t *testing.T) {
-	p, tr := newProgram(t)
+	p, tr := loopProgram(t)
 	tr.specsErr = errors.New("no")
-	if _, ok := p.loopOne(LoopArgs{Spec: "specs/x"})().(loopOpenedMsg); !ok {
-		t.Error("a failed survey stopped the command")
+	typeLoop(t, p, "specs/x")
+	followLoop(t, p, nil)
+	if len(tr.created) != 1 || tr.created[0].Qualify {
+		t.Errorf("a failed survey stopped the command: %+v", tr.created)
 	}
 }
 
 // The proposal is committed by the LOOP, after the turn, and what comes back
 // is a note plus the measurement — not the start of the work.
 func TestCommittingAProposalReportsAndStops(t *testing.T) {
-	p, tr := newProgram(t)
+	p, tr := loopProgram(t, protocol.SpecFolder{Path: "specs/x"})
 	tr.committed = protocol.CommitDoneResponse{
 		Path: "specs/x/done.toml", Criteria: 2, Summary: "two of them, one red",
 	}
-	msg := p.commitProposal("s1", "specs/x")()
-	written, ok := msg.(proposalWrittenMsg)
-	if !ok {
-		t.Fatalf("got %T", msg)
-	}
+	typeLoop(t, p, "specs/x")
+	followLoop(t, p, func() bool { return sawEntry(p, "specs/x/done.toml") })
 	for _, want := range []string{"specs/x/done.toml", "two of them, one red"} {
-		if !strings.Contains(written.note, want) {
-			t.Errorf("the note does not carry %q: %s", want, written.note)
+		if !sawEntry(p, want) {
+			t.Errorf("the note does not carry %q: %q", want, summaries(p))
 		}
 	}
 }
@@ -330,109 +150,36 @@ func TestCommittingAProposalReportsAndStops(t *testing.T) {
 // A commit that fails says so rather than leaving the loop believing a file
 // was written.
 func TestAFailedCommitSaysSo(t *testing.T) {
-	p, tr := newProgram(t)
+	p, tr := loopProgram(t, protocol.SpecFolder{Path: "specs/x"})
 	tr.commitErr = errors.New("disk is full")
-	msg := p.commitProposal("s1", "specs/x")()
-	note, ok := msg.(noteMsg)
-	if !ok || !strings.Contains(string(note), "disk is full") {
-		t.Errorf("got %T %v", msg, msg)
+	typeLoop(t, p, "specs/x")
+	followLoop(t, p, nil)
+	if !sawEntry(p, "disk is full") {
+		t.Errorf("a failed commit was not said: %q", summaries(p))
 	}
 }
 
 // A goal turns into the specs it is about, and the plan is what the daemon
 // said rather than what the client guessed.
 func TestAGoalBecomesTheSpecsItIsAbout(t *testing.T) {
-	p, tr := newProgram(t)
-	tr.specs = []protocol.SpecFolder{{Path: "specs/a", Criteria: 1, Unmet: 1, Pending: true, Measured: true}}
-	msg := p.loopEverySpec(LoopArgs{Goal: true, Task: "termine tudo"})()
-	found, ok := msg.(specsFoundMsg)
-	if !ok {
-		t.Fatalf("got %T", msg)
-	}
-	if found.goal != "termine tudo" || len(found.specs) != 1 {
-		t.Errorf("got %+v", found)
+	p, tr := loopProgram(t, protocol.SpecFolder{Path: "specs/a", Criteria: 1, Unmet: 1, Pending: true, Measured: true})
+	typeLoop(t, p, "termine tudo")
+	followLoop(t, p, func() bool { return sawEntry(p, "specs/a") })
+	if run := tr.lastLoop(t); run.Goal != "termine tudo" || len(run.Specs) != 1 {
+		t.Errorf("got %+v", run)
 	}
 }
 
 // An empty queue ends the run rather than looping on nothing.
 func TestAnEmptyQueueEndsTheRun(t *testing.T) {
-	p, _ := newProgram(t)
-	p.loopGoal = "termine tudo"
-	if cmd := p.nextSpec(); cmd != nil {
+	p, tr := loopProgram(t, protocol.SpecFolder{Path: "specs/a", Criteria: 1})
+	typeLoop(t, p, "termine tudo")
+	followLoop(t, p, nil)
+	if len(tr.created) != 0 {
 		t.Error("an empty queue produced more work")
 	}
-	if p.loopGoal != "" {
-		t.Error("the run did not end")
-	}
-}
-
-// A goal with no spec folder anywhere is qualified, not refused.
-//
-// `/loop revise o projeto até entender` answered "no specs/ folder here, or
-// nothing in it. /loop <path> works on one folder." — the command telling
-// someone their request was the wrong shape, in a product whose done-qualifier
-// family exists for exactly this case. Its own .r names the prose request as
-// what motivated it: "Faça um cadastro de clientes" carries no tasks.md, and
-// the constructive answer is to raise the criteria, measure them, and ask for a
-// signature.
-//
-// `/loop <path>` already does that when the folder declares nothing. Only the
-// sentence route dead-ended.
-func TestAGoalWithNoSpecFolderIsQualified(t *testing.T) {
-	got, ok := GoalToQualify(LoopArgs{Goal: true, Task: "revise o projeto até entender"}, nil)
-	if !ok {
-		t.Fatal("a goal with no spec folders must be qualified rather than refused")
-	}
-	if !got.Qualify {
-		t.Error("the session has to be the qualifying one")
-	}
-	if !got.Goal {
-		t.Error("the qualifying session lost the fact that its subject is a sentence")
-	}
-	if got.Task != "revise o projeto até entender" {
-		t.Errorf("the sentence is the whole brief and it did not survive: %q", got.Task)
-	}
-	// Anchored where a workspace's definition of done already lives, and not in
-	// a folder invented from the sentence. The loop-command .r records the
-	// opposite defect — prose becoming a path — and inventing
-	// `revise-o-projeto/` would be that defect again.
-	if got.Spec != ".dcode" {
-		t.Errorf("the proposal is anchored at %q, want .dcode", got.Spec)
-	}
-}
-
-// With folders present, nothing changes: the goal still selects among them.
-func TestAGoalWithSpecFoldersStillWorksThroughThem(t *testing.T) {
-	found := []protocol.SpecFolder{{Path: "specs/home", Pending: true, Criteria: 3}}
-	if _, ok := GoalToQualify(LoopArgs{Goal: true, Task: "implemente o que falta"}, found); ok {
-		t.Error("a goal with folders to work must not be diverted into qualifying")
-	}
-}
-
-// An empty sentence is not a brief. It cannot happen through ParseLoopArgs,
-// which refuses an empty argument, and a qualifying turn whose subject is ""
-// would ask the model to work out how nothing is finished.
-func TestAnEmptyGoalIsNotQualified(t *testing.T) {
-	if _, ok := GoalToQualify(LoopArgs{Goal: true, Task: "   "}, nil); ok {
-		t.Error("an empty sentence was accepted as a brief")
-	}
-}
-
-// The qualifying turn names the sentence, and does not send the model looking
-// for a specification that does not exist.
-func TestTheQualifyingTurnForAGoalNamesTheSentence(t *testing.T) {
-	task := LoopTask(LoopArgs{Qualify: true, Goal: true, Task: "revise o projeto", Spec: ".dcode"})
-	if !strings.Contains(task, "revise o projeto") {
-		t.Errorf("the turn does not name what it is about:\n%s", task)
-	}
-	if strings.Contains(task, ".dcode") {
-		t.Errorf("the turn names the anchor instead of the request:\n%s", task)
-	}
-	if strings.Contains(task, "Read the specification") {
-		t.Errorf("it sends the model to read a specification that does not exist:\n%s", task)
-	}
-	if !strings.Contains(task, "done_propose") {
-		t.Errorf("a qualifying turn that never mentions the tool proposes nothing:\n%s", task)
+	if run := tr.lastLoop(t); run.State != protocol.LoopFinished {
+		t.Errorf("the run did not end: %s", run.State)
 	}
 }
 
@@ -443,15 +190,16 @@ func TestTheQualifyingTurnForAGoalNamesTheSentence(t *testing.T) {
 // the product still refuses. This one goes through Update, which is where the
 // refusal was rendered.
 func TestTheHandlerDivertsAGoalWithNoFoldersInsteadOfRefusing(t *testing.T) {
-	p := &program{model: Model{Lang: En, State: protocol.SessionStateIdle}}
-	_, cmd := p.Update(specsFoundMsg{goal: "revise o projeto até entender"})
+	p, tr := loopProgram(t)
+	typeLoop(t, p, "revise o projeto até entender")
+	followLoop(t, p, func() bool { return tr.lastLoop(t).State == protocol.LoopAwaitingReview })
 
 	for _, e := range p.model.Entries {
 		if strings.Contains(e.Summary, "no specs/") {
 			t.Fatalf("the goal was refused instead of qualified: %q", e.Summary)
 		}
 	}
-	if cmd == nil {
+	if len(tr.created) == 0 {
 		t.Fatal("nothing was started; the goal went nowhere at all")
 	}
 }
@@ -459,93 +207,32 @@ func TestTheHandlerDivertsAGoalWithNoFoldersInsteadOfRefusing(t *testing.T) {
 // And a goal that DID find folders still draws the plan. The diversion must not
 // swallow the case it was never about.
 func TestTheHandlerStillDrawsThePlanWhenFoldersExist(t *testing.T) {
-	p := &program{model: Model{Lang: En, State: protocol.SessionStateIdle}}
-	p.Update(specsFoundMsg{goal: "implemente o que falta", specs: []protocol.SpecFolder{
-		{Path: "specs/home", Pending: true, Criteria: 3},
-	}})
-	found := false
-	for _, e := range p.model.Entries {
-		if strings.Contains(e.Summary, "specs/home") {
-			found = true
-		}
-	}
-	if !found {
+	p, _ := loopProgram(t, protocol.SpecFolder{Path: "specs/home", Pending: true, Criteria: 3, Unmet: 3})
+	typeLoop(t, p, "implemente o que falta")
+	followLoop(t, p, func() bool { return sawEntry(p, "specs/home") })
+	if !sawEntry(p, "specs/home") {
 		t.Errorf("the plan was not drawn: %+v", p.model.Entries)
-	}
-}
-
-// `/loop oi` is a goal, not a folder called oi.
-//
-// specArgument says a single word is a path, because "one word is what a folder
-// name looks like and the error names it when it is not there". The error it
-// names is this:
-//
-//	could not open a session: invalid_input: loopcommand: read
-//	/Users/…/dcode_test/oi/tasks.md: open /Users/…/oi/tasks.md: no such file
-//
-// A raw daemon error, the absolute path twice, for someone who typed a word.
-// The rule that a goal with no folder gets qualified never applied, because a
-// bare word never became a goal in the first place.
-func TestABareWordThatNamesNoFolderBecomesAGoal(t *testing.T) {
-	spec, err := ParseLoopArgs("oi")
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, ok := ArgumentToQualify(spec, nil)
-	if !ok {
-		t.Fatal("a bare word naming no folder must be qualified, not read as a path")
-	}
-	if got.Task != "oi" {
-		t.Errorf("the word is the brief and it did not survive: %q", got.Task)
-	}
-	if !got.Qualify || !got.Goal {
-		t.Errorf("it did not become a qualifying goal: %+v", got)
-	}
-}
-
-// A word that names a folder the survey found is still a path. The diversion is
-// for arguments that name nothing, not for every single word.
-func TestABareWordThatNamesAFolderStaysAPath(t *testing.T) {
-	spec, _ := ParseLoopArgs("home")
-	found := []protocol.SpecFolder{{Path: "home", Criteria: 3, Pending: true}}
-	if _, ok := ArgumentToQualify(spec, found); ok {
-		t.Error("an argument naming a real spec folder was diverted into qualifying")
-	}
-}
-
-// Something written as a path stays an error when it is not there.
-//
-// `specs/hoem` is a typo, and a typo answered by qualifying it as a goal is a
-// typo hidden. The separator is what separates the two cases: a person who
-// wrote one meant a path.
-func TestAMistypedPathIsNotQualifiedAway(t *testing.T) {
-	spec, _ := ParseLoopArgs("specs/hoem")
-	if _, ok := ArgumentToQualify(spec, nil); ok {
-		t.Error("a mistyped path was turned into a goal, which hides the typo")
 	}
 }
 
 // Through loopOne, which is where the survey already happens and where the
 // fall-through opened a session against a path that was never there.
 func TestLoopOneDivertsABareWordThatNamesNothing(t *testing.T) {
-	p := &program{model: Model{Lang: En, State: protocol.SessionStateIdle},
-		opts: Options{Transport: newFakeTransport()}}
-	spec, _ := ParseLoopArgs("oi")
+	p, tr := loopProgram(t)
+	typeLoop(t, p, "oi")
+	followLoop(t, p, func() bool { return tr.lastLoop(t).State != protocol.LoopSurveying && len(tr.submits()) > 0 })
 
-	msg := p.loopOne(spec)()
-	note, refused := msg.(noteMsg)
-	if refused {
-		t.Fatalf("the word was refused instead of qualified: %v", string(note))
+	if !tr.lastLoop(t).Live() && tr.lastLoop(t).State == protocol.LoopFailed {
+		t.Fatalf("the word was refused instead of qualified: %q", tr.lastLoop(t).Error)
 	}
-	opened, ok := msg.(loopOpenedMsg)
-	if !ok {
-		t.Fatalf("got %T, want a session opened for the qualifying turn", msg)
+	if len(tr.created) == 0 {
+		t.Fatal("no session was opened for the qualifying turn")
 	}
-	if !opened.qualify {
+	if !tr.created[0].Qualify {
 		t.Error("a session was opened, and it is not the qualifying one")
 	}
-	if !strings.Contains(opened.task, "oi") {
-		t.Errorf("the turn does not name what it is about:\n%s", opened.task)
+	if task := tr.submits()[0]; !strings.Contains(task, "oi") {
+		t.Errorf("the turn does not name what it is about:\n%s", task)
 	}
 }
 
@@ -556,23 +243,24 @@ func TestLoopOneDivertsABareWordThatNamesNothing(t *testing.T) {
 // one that stalled on the fourth — and "it is over" reads exactly like "it is
 // thinking".
 func TestTheLoopSaysItFinishedAndWhereDoneStands(t *testing.T) {
-	p := &program{ctx: context.Background(),
-		model: Model{Lang: En, State: protocol.SessionStateIdle},
-		opts:  Options{Transport: newFakeTransport()}}
-
-	p.Update(loopFinishedMsg{worked: 4, results: []loopResult{{
-		spec: "docs/specs/architecture/one",
-		standing: &protocol.Completion{
-			Met:         []string{"tests", "vet"},
-			Unmet:       []string{"coverage"},
-			Unavailable: []string{"integration"},
-		},
-	}}})
-
-	if len(p.model.Entries) != 1 {
-		t.Fatalf("the run ended and drew %d entries", len(p.model.Entries))
+	var specs []protocol.SpecFolder
+	for i := 0; i < 4; i++ {
+		specs = append(specs, protocol.SpecFolder{Path: specPath(i), Criteria: 4, Unmet: 1, Pending: true})
 	}
-	got := p.model.Entries[0].Summary
+	p, tr := loopProgram(t, specs...)
+	tr.completions = map[string]*protocol.Completion{specPath(0): {
+		Met:         []string{"tests", "vet"},
+		Unmet:       []string{"coverage"},
+		Unavailable: []string{"integration"},
+	}}
+	typeLoop(t, p, "finish the backlog")
+	followLoop(t, p, nil)
+
+	// The end draws one notice, after the line of the session it ended in.
+	if n := len(p.model.Entries); n < 2 || !strings.Contains(p.model.Entries[n-2].Summary, specPath(3)) {
+		t.Fatalf("the run ended and drew more than its notice: %q", summaries(p))
+	}
+	got := p.model.Entries[len(p.model.Entries)-1].Summary
 	for _, want := range []string{"finished", "4", "2 of 4", "coverage", "integration"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the notice does not carry %q:\n%s", want, got)
@@ -584,23 +272,24 @@ func TestTheLoopSaysItFinishedAndWhereDoneStands(t *testing.T) {
 // including the ones where there was never a queue — and a line announcing the
 // end of a run that never ran is a line about the feature, not the session.
 func TestARunThatWorkedNothingSaysNothing(t *testing.T) {
-	p := &program{ctx: context.Background(), model: Model{Lang: En},
-		opts: Options{Transport: newFakeTransport()}}
-	if cmd := p.nextSpec(); cmd != nil {
-		t.Error("an empty run announced itself")
+	p, _ := loopProgram(t, protocol.SpecFolder{Path: "specs/a", Criteria: 2})
+	typeLoop(t, p, "termine tudo")
+	followLoop(t, p, nil)
+	if sawEntry(p, "the loop is finished") {
+		t.Errorf("an empty run announced itself: %q", summaries(p))
 	}
 }
 
 // And the standing report survives a completion with nothing left: "4 of 4" is
 // the answer somebody wants at the end, not an omission.
 func TestAFinishedRunWithEverythingMetStillReportsIt(t *testing.T) {
-	p := &program{ctx: context.Background(), model: Model{Lang: En},
-		opts: Options{Transport: newFakeTransport()}}
-	p.Update(loopFinishedMsg{worked: 1, results: []loopResult{{
-		spec:     "docs/specs/architecture/one",
-		standing: &protocol.Completion{Met: []string{"a", "b", "c", "d"}},
-	}}})
-	got := p.model.Entries[0].Summary
+	p, tr := loopProgram(t, protocol.SpecFolder{Path: "docs/specs/architecture/one", Criteria: 4, Unmet: 4, Pending: true})
+	tr.completions = map[string]*protocol.Completion{
+		"docs/specs/architecture/one": {Met: []string{"a", "b", "c", "d"}},
+	}
+	typeLoop(t, p, "finish the backlog")
+	followLoop(t, p, nil)
+	got := p.model.Entries[len(p.model.Entries)-1].Summary
 	if !strings.Contains(got, "4 of 4") {
 		t.Errorf("a fully met run does not say so:\n%s", got)
 	}

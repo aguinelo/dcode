@@ -174,6 +174,7 @@ type StartLoopRequest struct {
 
 type LoopRun struct {
     ID        string        `json:"id"`
+    Args      string        `json:"args,omitempty"` // o que foi digitado depois de /loop
     Workspace string        `json:"workspace"`
     Goal      string        `json:"goal,omitempty"`
     Protect   []string      `json:"protect,omitempty"`
@@ -191,7 +192,16 @@ type LoopSpecRun struct {
     Path      string      `json:"path"`
     Phase     string      `json:"phase"` // pending | qualifying | proposed | working | done | unfinished | skipped
     SessionID string      `json:"session_id,omitempty"`
-    Proposal  string      `json:"proposal,omitempty"` // o done.toml escrito
+    // O que a pergunta achou da pasta antes de qualquer sessão abrir: o plano
+    // que um cliente desenha sem medir de novo. Unmet e Unavailable só quando
+    // um objetivo mediu as pastas.
+    Criteria    int    `json:"criteria,omitempty"` // ausente é zero
+    Unmet       int    `json:"unmet,omitempty"`
+    Unavailable int    `json:"unavailable,omitempty"`
+    Error       string `json:"error,omitempty"`
+    Proposal         string `json:"proposal,omitempty"` // o done.toml escrito
+    ProposalCriteria int    `json:"proposal_criteria,omitempty"`
+    ProposalSummary  string `json:"proposal_summary,omitempty"`
     Standing  *Completion `json:"standing,omitempty"` // a última palavra desta pasta
 }
 
@@ -663,4 +673,5 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610140900 — A assinatura que nunca viajou sai do fio](changelog/202610140900-a-assinatura-que-nunca-viajou.md)
 - [202610141000 — A proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)
 - [202610141200 — O loop é um recurso do daemon](changelog/202610141200-o-loop-e-um-recurso-do-daemon.md)
+- [202610141700 — O loop diz o que a pergunta e a proposta acharam](changelog/202610141700-o-loop-diz-o-que-achou.md)
 - [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)

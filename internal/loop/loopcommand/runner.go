@@ -72,7 +72,7 @@ func NewRunner(id string, req protocol.StartLoopRequest, t Transport, publish fu
 		publish = func(protocol.LoopRun) {}
 	}
 	run := protocol.LoopRun{
-		ID: id, Workspace: req.Workspace, Protect: args.Protect,
+		ID: id, Workspace: req.Workspace, Args: req.Args, Protect: args.Protect,
 		State: protocol.LoopSurveying, Specs: []protocol.LoopSpecRun{}, Current: -1,
 		Started: now(),
 	}
@@ -202,7 +202,8 @@ func (r *Runner) one(ctx context.Context) error {
 				q.Qualify, q.Task = true, ""
 				return r.qualify(ctx, q, a)
 			}
-			break
+			i := r.addFolder(surveyed(f, protocol.SpecPending))
+			return r.work(ctx, i, a)
 		}
 	}
 	i := r.addSpec(a.Spec, protocol.SpecPending)
@@ -223,8 +224,10 @@ func (r *Runner) goal(ctx context.Context) error {
 	if q, ok := GoalToQualify(a, found); ok {
 		return r.qualify(ctx, q, LoopArgs{Spec: q.Spec, Task: a.Task, Protect: a.Protect})
 	}
+	// Every folder at once, so a client never sees half a plan.
 	var pending, empty []int
-	for _, f := range found {
+	folders := make([]protocol.LoopSpecRun, 0, len(found))
+	for i, f := range found {
 		phase := protocol.SpecDone
 		switch {
 		case f.Error != "":
@@ -232,7 +235,7 @@ func (r *Runner) goal(ctx context.Context) error {
 		case f.Pending:
 			phase = protocol.SpecPending
 		}
-		i := r.addSpec(f.Path, phase)
+		folders = append(folders, surveyed(f, phase))
 		if f.Pending {
 			pending = append(pending, i)
 		}
@@ -240,6 +243,7 @@ func (r *Runner) goal(ctx context.Context) error {
 			empty = append(empty, i)
 		}
 	}
+	r.change(func(run *protocol.LoopRun) { run.Specs = append(run.Specs, folders...) })
 	// Every pending folder that declares nothing is qualified first, in one
 	// pass, and the run stops with the files written: one sitting to review
 	// them all, before any work runs against a ruler nobody read.
@@ -314,6 +318,7 @@ func (r *Runner) propose(ctx context.Context, i int, q LoopArgs) error {
 	// honours a stop that landed while it was being written.
 	r.change(func(run *protocol.LoopRun) {
 		run.Specs[i].Phase, run.Specs[i].Proposal = protocol.SpecProposed, out.Path
+		run.Specs[i].ProposalCriteria, run.Specs[i].ProposalSummary = out.Criteria, out.Summary
 	})
 	return ctx.Err()
 }
@@ -428,12 +433,22 @@ func (r *Runner) end(err error) {
 }
 
 func (r *Runner) addSpec(path, phase string) int {
+	return r.addFolder(protocol.LoopSpecRun{Path: path, Phase: phase})
+}
+
+func (r *Runner) addFolder(f protocol.LoopSpecRun) int {
 	var i int
 	r.change(func(run *protocol.LoopRun) {
-		run.Specs = append(run.Specs, protocol.LoopSpecRun{Path: path, Phase: phase})
+		run.Specs = append(run.Specs, f)
 		i = len(run.Specs) - 1
 	})
 	return i
+}
+
+// surveyed is a folder as the survey left it.
+func surveyed(f protocol.SpecFolder, phase string) protocol.LoopSpecRun {
+	return protocol.LoopSpecRun{Path: f.Path, Phase: phase,
+		Criteria: f.Criteria, Unmet: f.Unmet, Unavailable: f.Unavailable, Error: f.Error}
 }
 
 func (r *Runner) stopAsked() bool {

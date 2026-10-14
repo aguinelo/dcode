@@ -52,6 +52,9 @@ const (
 type LoopRun struct {
 	ID        string `json:"id"`
 	Workspace string `json:"workspace"`
+	// Args is what was typed after `/loop`, as it was typed: how a client tells
+	// "the loop I asked for" from another one waiting in the same workspace.
+	Args string `json:"args,omitempty"`
 	// Goal is the sentence of a `/loop <goal>`; empty for a folder.
 	Goal    string        `json:"goal,omitempty"`
 	Protect []string      `json:"protect,omitempty"`
@@ -81,8 +84,21 @@ type LoopSpecRun struct {
 	Path      string `json:"path"`
 	Phase     string `json:"phase"`
 	SessionID string `json:"session_id,omitempty"`
-	// Proposal is the done.toml written for review, when one was.
-	Proposal string `json:"proposal,omitempty"`
+	// Criteria, Unmet, Unavailable and Error are what the survey said of the
+	// folder before anything opened: the plan a client draws, from the one
+	// measurement the run made rather than a second one of its own. Unmet and
+	// Unavailable are counted only when a goal measured the folders; absent is
+	// zero. Criteria 0 with an Error means unknown — the folder could not be
+	// read — never "declares nothing".
+	Criteria    int    `json:"criteria,omitempty"`
+	Unmet       int    `json:"unmet,omitempty"`
+	Unavailable int    `json:"unavailable,omitempty"`
+	Error       string `json:"error,omitempty"`
+	// Proposal is the done.toml written for review, when one was, with how
+	// many criteria went into it and the summary a person reads.
+	Proposal         string `json:"proposal,omitempty"`
+	ProposalCriteria int    `json:"proposal_criteria,omitempty"`
+	ProposalSummary  string `json:"proposal_summary,omitempty"`
 	// Reason is how the folder's last turn ended (a TurnCompleted reason). A
 	// turn that did not end normally leaves the folder unfinished and fails
 	// the run, whatever its criteria say.

@@ -135,7 +135,7 @@ func (f *fakeDaemon) CommitDone(_ context.Context, id string) (protocol.CommitDo
 		return protocol.CommitDoneResponse{}, f.commitErr
 	}
 	f.committed = append(f.committed, id)
-	return protocol.CommitDoneResponse{Path: filepath.Join(req.LoopSpec, "done.toml"), Criteria: 2}, nil
+	return protocol.CommitDoneResponse{Path: filepath.Join(req.LoopSpec, "done.toml"), Criteria: 2, Summary: "two, measured"}, nil
 }
 
 func (f *fakeDaemon) Interrupt(id string) {
@@ -689,4 +689,34 @@ func TestAStopDuringTheCommitKeepsTheFileItWrote(t *testing.T) {
 			t.Error("a stopped run said it was waiting for a review")
 		}
 	}
+}
+
+// The run carries what a client needs to say it without asking twice: what
+// was typed, what the survey said of each folder, and what each proposal
+// wrote — so no client measures a second time or reads the disk.
+func TestTheRunCarriesWhatTheSurveyAndTheCommitSaid(t *testing.T) {
+	f := newFake(
+		protocol.SpecFolder{Path: "specs/a", Criteria: 3, Unmet: 2, Unavailable: 1, Pending: true},
+		protocol.SpecFolder{Path: "specs/b", Criteria: 0, Pending: true},
+		protocol.SpecFolder{Path: "specs/c", Error: "no tasks.md"},
+	)
+	r, w := looping(t, f, "implemente  o que falta --protect t/**")
+	go r.Run(context.Background())
+	got := w.until(t, protocol.LoopAwaitingReview)
+
+	if got.Args != "implemente  o que falta --protect t/**" {
+		t.Errorf("args %q, want what was typed", got.Args)
+	}
+	if len(got.Specs) != 3 {
+		t.Fatalf("specs %+v", got.Specs)
+	}
+	a, b, c := got.Specs[0], got.Specs[1], got.Specs[2]
+	if a.Criteria != 3 || a.Unmet != 2 || a.Unavailable != 1 || c.Error != "no tasks.md" {
+		t.Errorf("the survey is not on the run: %+v / %+v", a, c)
+	}
+	if b.Proposal != "specs/b/done.toml" || b.ProposalCriteria != 2 || b.ProposalSummary == "" {
+		t.Errorf("the proposal is not on the run: %+v", b)
+	}
+	r.Stop(protocol.StopNow)
+	w.until(t, protocol.LoopStopped)
 }

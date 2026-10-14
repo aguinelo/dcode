@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -18,52 +17,23 @@ import (
 // Each entry in `outcomes` is one spec's completion, in queue order.
 func runLoop(t *testing.T, outcomes []*protocol.Completion) *program {
 	t.Helper()
-	p := &program{
-		ctx: context.Background(),
-		// Running, not idle: the idle branch of Update advances the run by
-		// itself, and this driver advances it explicitly so it can see the
-		// message the last advance produces. That branch has its own test.
-		model: Model{Lang: En, State: protocol.SessionStateRunning},
-		opts:  Options{Transport: newFakeTransport(), Lang: En},
-	}
-
 	specs := make([]protocol.SpecFolder, 0, len(outcomes))
-	for i := range outcomes {
+	completions := map[string]*protocol.Completion{}
+	for i, c := range outcomes {
 		specs = append(specs, protocol.SpecFolder{
 			Path:     specPath(i),
 			Criteria: 3,
 			Pending:  true,
 			Unmet:    1,
 		})
+		completions[specPath(i)] = c
 	}
-	p.Update(specsFoundMsg{goal: "finish the backlog", specs: specs})
-
-	for i, c := range outcomes {
-		// Recorded and advanced directly, which is what Update does when a
-		// turn completes and the session goes idle.
-		//
-		// Not through Update here, and the reason is worth stating: the
-		// completion event itself turns the session idle, so Update records
-		// AND advances in one pass — including the final advance, whose
-		// message it hands back inside a batch that also waits on the event
-		// channel. Executing that batch to reach the message would block on a
-		// channel no fake fills. So the branch that fires is asserted in
-		// TestAnIdleSessionWithAnEmptyQueueEndsTheRun, and what the run says
-		// when it fires is asserted here.
-		p.recordLoopResult(c)
-		cmd := p.nextSpec()
-		if i < len(outcomes)-1 {
-			continue // the command opens the next session; this test feeds completions itself
-		}
-		if cmd == nil {
-			t.Fatal("the last spec finished and the run produced no ending")
-		}
-		msg, ok := cmd().(loopFinishedMsg)
-		if !ok {
-			t.Fatalf("the run ended with %T, want loopFinishedMsg", msg)
-		}
-		p.Update(msg)
-	}
+	p, tr := loopProgram(t, specs...)
+	tr.completions = completions
+	// The daemon works every spec and keeps where each was left; the TUI
+	// follows it to the end and says it.
+	typeLoop(t, p, "finish the backlog")
+	followLoop(t, p, nil)
 	return p
 }
 
@@ -148,21 +118,14 @@ func TestARunThatMetNothingStillSaysSo(t *testing.T) {
 // its one observable side effect — the run is cleared — without executing the
 // batch it returns, which waits on the event channel.
 func TestAnIdleSessionWithAnEmptyQueueEndsTheRun(t *testing.T) {
-	p := &program{
-		ctx:   context.Background(),
-		model: Model{Lang: En, State: protocol.SessionStateIdle},
-		opts:  Options{Transport: newFakeTransport(), Lang: En},
+	p, tr := loopProgram(t, protocol.SpecFolder{Path: specPath(0), Criteria: 2, Pending: true, Unmet: 2})
+	tr.completions = map[string]*protocol.Completion{specPath(0): {Unmet: []string{"tests"}}}
+	typeLoop(t, p, "one spec")
+	followLoop(t, p, nil)
+	if run := tr.lastLoop(t); run.State != protocol.LoopFinished || run.Verdict == nil || run.Verdict.Worked != 1 {
+		t.Fatalf("the first spec is not counted as worked, or the run did not end: %+v", run)
 	}
-	p.Update(specsFoundMsg{goal: "one spec", specs: []protocol.SpecFolder{
-		{Path: specPath(0), Criteria: 2, Pending: true, Unmet: 2},
-	}})
-	if p.loopWorked != 1 {
-		t.Fatalf("the first spec is not counted as worked: %d", p.loopWorked)
-	}
-	p.model.State = protocol.SessionStateIdle
-	p.Update(eventMsg{ev: completedEvent(t, &protocol.Completion{Unmet: []string{"tests"}})})
-	if p.loopWorked != 0 || p.loopGoal != "" {
-		t.Errorf("the session went idle with an empty queue and the run did not end: worked=%d goal=%q",
-			p.loopWorked, p.loopGoal)
+	if !sawEntry(p, "finished", "tests") {
+		t.Errorf("the session went idle with an empty queue and the run did not end: %q", summaries(p))
 	}
 }

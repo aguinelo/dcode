@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 220 changelogs de decisão |
+| famílias de spec | 19, com 222 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,21 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O `/loop` da TUI pede ao daemon que o rode.** O terminal deixa de
+  conduzir o próprio loop: manda o que foi digitado para `POST /v1/loops`,
+  segue o fluxo do loop e diz o que mudou — o plano, a sessão para onde o loop
+  foi, cada proposta, o fim — com as palavras de sempre. Digitar o mesmo
+  `/loop` de novo depois de uma proposta segue o loop que espera aquela
+  revisão; um diferente é recusado, nomeando o loop que espera. Interromper o
+  turno do loop agora para o loop em vez de pular para a próxima pasta, e uma
+  mensagem enfileirada na sessão de um loop espera o loop em vez de abrir um
+  turno na pasta que o daemon está deixando; ela sai sozinha só quando o loop
+  termina, e depois de uma parada fica até ↵ mandá-la. O loop
+  carrega o que foi digitado, o que a pergunta achou de cada pasta e o que cada
+  proposta escreveu (`args`, `criteria`, `unmet`, `unavailable`, `error`,
+  `proposal_criteria`, `proposal_summary`), para nenhum cliente medir duas
+  vezes. Dois clientes agora veem um loop só; a TUI não guarda cópia da
+  sequência nem da gramática.
 - **Um loop parado enquanto grava a proposta ainda diz onde o arquivo está, e
   um loop em `/` contém toda árvore.** Uma parada que chegava durante a
   gravação deixava um `done.toml` no disco e nenhuma proposta no loop; agora o

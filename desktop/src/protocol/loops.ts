@@ -19,7 +19,13 @@ const SPEC_RUN: Shape<P.LoopSpecRun> = {
   path: req('string'),
   phase: req('string'),
   session_id: opt('string'),
+  criteria: opt('number'),
+  unmet: opt('number'),
+  unavailable: opt('number'),
+  error: opt('string'),
   proposal: opt('string'),
+  proposal_criteria: opt('number'),
+  proposal_summary: opt('string'),
   reason: opt('string'),
   standing: opt('object', COMPLETION),
 };
@@ -27,6 +33,7 @@ const SPEC_RUN: Shape<P.LoopSpecRun> = {
 const RUN: Shape<P.LoopRun> = {
   id: req('string'),
   workspace: req('string'),
+  args: opt('string'),
   goal: opt('string'),
   protect: opt('array', 'string'),
   state: req('string'),

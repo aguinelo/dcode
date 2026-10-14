@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/loop/qualifier"
-	"github.com/aguinelo/dcode/internal/tui"
 )
 
 func proposal(criteria ...map[string]any) ce.ToolCall {
@@ -183,7 +183,7 @@ func TestAQualifyingFixtureTakesItsTaskFromTheProduct(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := tui.LoopTask(tui.LoopArgs{Qualify: true, Spec: "specs/slugify"}); f.Task != want {
+	if want := loopcommand.LoopTask(loopcommand.LoopArgs{Qualify: true, Spec: "specs/slugify"}); f.Task != want {
 		t.Errorf("the task is not the product's:\n got %q\nwant %q", f.Task, want)
 	}
 }
