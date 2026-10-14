@@ -246,6 +246,17 @@ const (
     EventDoneProposed EventType = "done.proposed"
 )
 
+// DoneProposal is a measured definition of done, written for review. It is
+// announced in the qualifying session's log once the file is written, never
+// before, and it waits for nothing.
+type DoneProposal struct {
+    ProposalID   string          `json:"proposal_id"`
+    Path         string          `json:"path"` // o done.toml escrito
+    Criteria     []DoneCriterion `json:"criteria"`
+    Protected    []string        `json:"protected,omitempty"`
+    NoAcceptance bool            `json:"no_acceptance,omitempty"`
+}
+
 // DoneCriterion is one criterion as the operator sees it: what was proposed,
 // what was claimed about it, and what running it actually did.
 type DoneCriterion struct {
@@ -261,9 +272,14 @@ type DoneCriterion struct {
 }
 ```
 
-`done.proposed` e `DoneProposal` ainda descrevem o desenho antigo e não têm
-emissor; o passo seguinte da proposta `desktop/docs/proposals/loop.md` (§8,
-passo 2) os religa como aviso depois que o arquivo é escrito.
+**`done.proposed` é aviso, não pergunta.** O commit da proposta
+(`POST /v1/sessions/{id}/done`) mede, escreve o `done.toml` e só então emite
+`done.proposed` no log da sessão qualificadora, com o mesmo que o arquivo
+carrega: a classe de cada critério, a discordância, o que é protegido e onde o
+arquivo está. O turno qualificador já terminou; nada espera resposta, e por isso
+não há `TurnID`, `Round` nem `ExpiresAt`. É o que permite a um cliente desenhar
+a revisão sem ler o `Summary` em prosa. Proposta que não chegou a ser escrita
+não é anunciada: o aviso diz que existe um arquivo para revisar.
 
 **Saíram, sem nunca terem tido emissor:** `done.signed`, `SignDoneRequest`,
 `qualifier.Sign` com o `Asker`, o `SignedAnswer`, o `ErrRefused` e o teto de
@@ -407,6 +423,8 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 - Critério quebrado é **gravado comentado**: fica no arquivo para ser lido e não vira critério do próximo turno.
 - Saída enorme de critério é cortada antes de chegar ao arquivo e ao resumo.
 - A condição do conjunto é mostrada junto dele, no arquivo, para ser revisada sabendo.
+- Escrever a proposta emite `done.proposed` uma vez no log da sessão qualificadora, com a medição e o caminho do arquivo.
+- Proposta que não chegou a ser escrita não é anunciada.
 
 ## 10. Invariantes previstas
 
@@ -460,3 +478,4 @@ derivação boa também não vale nada.
 - [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)
 - [202608280200 — o cenário que mudou embaixo do número](changelog/202608280200-o-cenario-que-mudou-embaixo.md)
 - [202610140900 — a assinatura é o arquivo, e o ida-e-volta sai](changelog/202610140900-a-assinatura-e-o-arquivo.md)
+- [202610141000 — a proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)
