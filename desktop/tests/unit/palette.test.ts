@@ -9,7 +9,7 @@ import { HELP_KEYS } from '../../src/state/help';
 describe('the / menu', () => {
   it('opens on a bare slash at the start of the field, with every command and !', () => {
     const all = completions('/');
-    expect(all.map((c) => c.name)).toEqual(['help', 'init', 'plan', 'undo', 'compact', 'mode', '!']);
+    expect(all.map((c) => c.name)).toEqual(['help', 'init', 'plan', 'undo', 'compact', 'mode', 'loop', '!']);
     expect(all).toHaveLength(COMMANDS.length);
   });
 
@@ -31,6 +31,7 @@ describe('the / menu', () => {
     expect(by.undo).toMatchObject({ insert: '/undo', ready: true });
     expect(by.plan).toMatchObject({ insert: '/plan', ready: true });
     expect(by.mode).toMatchObject({ insert: '/mode ', ready: false });
+    expect(by.loop).toMatchObject({ insert: '/loop ', ready: false });
     expect(by['!']).toMatchObject({ insert: '!', ready: false });
   });
 });

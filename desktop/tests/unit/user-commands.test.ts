@@ -43,7 +43,7 @@ describe('a command the person wrote, typed in the field', () => {
 describe('the / menu with the person’s commands', () => {
   it('lists them after the field’s own, without the shadowed one', () => {
     const names = completions('/', user).map((c) => c.name);
-    expect(names).toEqual(['help', 'init', 'plan', 'undo', 'compact', 'mode', '!', 'fix-issue', 'review']);
+    expect(names).toEqual(['help', 'init', 'plan', 'undo', 'compact', 'mode', 'loop', '!', 'fix-issue', 'review']);
   });
 
   it('describes each by what its file says, or by whose it is', () => {
