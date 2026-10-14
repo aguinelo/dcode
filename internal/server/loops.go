@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,56 +35,94 @@ type loopRegistry struct {
 	stop context.CancelFunc
 	wg   sync.WaitGroup
 
-	// log receives what the registry drops or cannot do.
+	// log receives what the registry drops or cannot do. Nil silences it,
+	// which is what a test wants and what a daemon must not do.
 	log func(string)
 
 	mu    sync.Mutex
 	runs  map[string]*loopcommand.Runner
 	order []string
+	// roots is each run's workspace with its links resolved, so two spellings
+	// of one tree are one tree.
+	roots map[string]string
 	subs  map[chan protocol.LoopChange]struct{}
 }
 
 func newLoopRegistry(transport func(loopID string) loopcommand.Transport) *loopRegistry {
 	ctx, stop := context.WithCancel(context.Background())
 	return &loopRegistry{transport: transport, ctx: ctx, stop: stop,
-		runs: map[string]*loopcommand.Runner{}, subs: map[chan protocol.LoopChange]struct{}{}}
+		runs: map[string]*loopcommand.Runner{}, roots: map[string]string{},
+		subs: map[chan protocol.LoopChange]struct{}{}}
 }
 
-// start refuses a second live run in a workspace, then starts one.
-func (g *loopRegistry) start(req protocol.StartLoopRequest) (protocol.LoopRun, error) {
-	if req.Workspace == "" || !filepath.IsAbs(req.Workspace) {
-		return protocol.LoopRun{}, protocol.Errorf(protocol.CodeWorkspaceInvalid,
-			"workspace must be an absolute path, got %q", req.Workspace)
+// loopRoot checks a workspace the way a session's is checked — absolute, there,
+// a folder — and resolves its links.
+func loopRoot(ws string) (string, error) {
+	if ws == "" || !filepath.IsAbs(ws) {
+		return "", protocol.Errorf(protocol.CodeWorkspaceInvalid,
+			"workspace must be an absolute path, got %q", ws)
 	}
-	ws := filepath.Clean(req.Workspace)
-	req.Workspace = ws
-
-	g.mu.Lock()
-	for _, id := range g.order {
-		if run := g.runs[id].Snapshot(); run.Workspace == ws && run.Live() {
-			g.mu.Unlock()
-			// Two loops in one tree measure each other's work.
-			return protocol.LoopRun{}, protocol.Errorf(protocol.CodeLoopAlreadyRunning,
-				"loop %s is already running in %s; stop it before starting another", id, ws)
-		}
-	}
-	id := session.NewID(time.Now, randomUint32)
-	r, err := loopcommand.NewRunner(id, req, g.transport(id), func(protocol.LoopRun) { g.changed(id) }, time.Now)
+	info, err := os.Stat(ws)
 	if err != nil {
-		g.mu.Unlock()
+		return "", protocol.Errorf(protocol.CodeWorkspaceInvalid, "workspace %s cannot be read: %v", ws, err)
+	}
+	if !info.IsDir() {
+		return "", protocol.Errorf(protocol.CodeWorkspaceInvalid, "workspace %s is not a folder", ws)
+	}
+	root, err := filepath.EvalSymlinks(ws)
+	if err != nil {
+		return "", protocol.Errorf(protocol.CodeWorkspaceInvalid, "workspace %s cannot be resolved: %v", ws, err)
+	}
+	return root, nil
+}
+
+// overlaps reports two trees where one holds the other.
+func overlaps(a, b string) bool {
+	sep := string(filepath.Separator)
+	return a == b || strings.HasPrefix(a, b+sep) || strings.HasPrefix(b, a+sep)
+}
+
+// start refuses a second live run in, inside or around a live run's tree, then
+// starts one.
+func (g *loopRegistry) start(req protocol.StartLoopRequest) (protocol.LoopRun, error) {
+	root, err := loopRoot(req.Workspace)
+	if err != nil {
 		return protocol.LoopRun{}, err
 	}
-	g.runs[id] = r
-	g.order = append(g.order, id)
-	g.mu.Unlock()
+	req.Workspace = filepath.Clean(req.Workspace)
 
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.ctx.Err() != nil {
+		return protocol.LoopRun{}, protocol.Errorf(protocol.CodeInternal,
+			"the daemon is shutting down; no loop starts now")
+	}
+	for _, id := range g.order {
+		if g.runs[id].Snapshot().Live() && overlaps(g.roots[id], root) {
+			// Two loops in one tree measure each other's work.
+			return protocol.LoopRun{}, protocol.Errorf(protocol.CodeLoopAlreadyRunning,
+				"loop %s is already running in %s; stop it before starting another", id, g.roots[id])
+		}
+	}
+	id, err := newLoopID()
+	if err != nil {
+		return protocol.LoopRun{}, err
+	}
+	r, err := loopcommand.NewRunner(id, req, g.transport(id), func(protocol.LoopRun) { g.changed(id) }, time.Now)
+	if err != nil {
+		return protocol.LoopRun{}, err
+	}
+	g.runs[id], g.roots[id] = r, root
+	g.order = append(g.order, id)
+	// Under the lock that checked the context: close cannot slip between the
+	// check and the Add and wait for a group that has not counted this run.
 	g.wg.Add(1)
 	go func() {
 		defer g.wg.Done()
 		r.Run(g.ctx)
 	}()
 	snap := r.Snapshot()
-	g.changed(id)
+	g.sendLocked(id)
 	return snap, nil
 }
 
@@ -100,6 +140,10 @@ func (g *loopRegistry) get(id string) (*loopcommand.Runner, error) {
 func (g *loopRegistry) list(workspace string) []protocol.LoopRun {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.listLocked(workspace)
+}
+
+func (g *loopRegistry) listLocked(workspace string) []protocol.LoopRun {
 	out := []protocol.LoopRun{}
 	for _, id := range g.order {
 		run := g.runs[id].Snapshot()
@@ -116,6 +160,10 @@ func (g *loopRegistry) list(workspace string) []protocol.LoopRun {
 func (g *loopRegistry) changed(id string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.sendLocked(id)
+}
+
+func (g *loopRegistry) sendLocked(id string) {
 	r, ok := g.runs[id]
 	if !ok {
 		return
@@ -126,18 +174,24 @@ func (g *loopRegistry) changed(id string) {
 		case sub <- protocol.LoopChange{Kind: protocol.LoopChanged, Loop: &run}:
 		default:
 			// A subscriber that stopped reading is dropped, never waited for:
-			// a loop must not hold up on a list.
+			// a loop must not hold up on a list. Said, because a client left
+			// behind sees a list that stopped moving.
 			delete(g.subs, sub)
 			close(sub)
+			if g.log != nil {
+				g.log(fmt.Sprintf("a subscriber to the list of loops stopped reading and was dropped (at loop %s)", id))
+			}
 		}
 	}
 }
 
-// subscribe opens the stream with every run, then each change.
+// subscribe opens the stream with every run, then each change. The snapshot
+// and the registration are one critical section: a change between them would
+// be in neither.
 func (g *loopRegistry) subscribe(ctx context.Context) ([]protocol.LoopRun, <-chan protocol.LoopChange) {
 	ch := make(chan protocol.LoopChange, 64)
-	snapshot := g.list("")
 	g.mu.Lock()
+	snapshot := g.listLocked("")
 	g.subs[ch] = struct{}{}
 	g.mu.Unlock()
 	go func() {
@@ -154,19 +208,23 @@ func (g *loopRegistry) subscribe(ctx context.Context) ([]protocol.LoopRun, <-cha
 
 // close stops every run and waits for them: the daemon is going away.
 func (g *loopRegistry) close() {
+	g.mu.Lock()
 	g.stop()
+	g.mu.Unlock()
 	g.wg.Wait()
 }
 
 // randRead draws the entropy of a loop id; a variable so a test can fail it.
 var randRead = rand.Read
 
-func randomUint32() uint32 {
+// newLoopID is a time-ordered id, or the reason there is none. Never zeroes in
+// place of the entropy: two loops in one millisecond would share a name.
+func newLoopID() (string, error) {
 	var b [4]byte
 	if _, err := randRead(b[:]); err != nil {
-		return 0
+		return "", protocol.Errorf(protocol.CodeInternal, "a loop id could not be drawn: %v", err)
 	}
-	return binary.BigEndian.Uint32(b[:])
+	return session.NewID(time.Now, func() uint32 { return binary.BigEndian.Uint32(b[:]) }), nil
 }
 
 // serverLoops is the daemon as a loop sees it: the same sessions, specs and
@@ -201,6 +259,12 @@ func (sl serverLoops) RunTurn(ctx context.Context, id, text string) (protocol.Tu
 	if err != nil {
 		return protocol.TurnCompleted{}, err
 	}
+	// A stopped loop submits nothing: the context is checked before the turn
+	// exists, not only while it runs.
+	if err := ctx.Err(); err != nil {
+		return protocol.TurnCompleted{}, err
+	}
+	stopped := ctx
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	events, unsubscribe, err := sess.Log.Subscribe(ctx, sess.Log.LastSeq()+1)
@@ -208,6 +272,13 @@ func (sl serverLoops) RunTurn(ctx context.Context, id, text string) (protocol.Tu
 		return protocol.TurnCompleted{}, err
 	}
 	defer unsubscribe()
+	// Cancelled once the turn is under way, the turn is interrupted: the loop
+	// saying stopped must not leave the session working behind it.
+	defer func() {
+		if stopped.Err() != nil {
+			sess.Interrupt()
+		}
+	}()
 	if err := sess.Submit(text); err != nil {
 		return protocol.TurnCompleted{}, err
 	}

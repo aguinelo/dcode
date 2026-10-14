@@ -274,7 +274,10 @@ existe para impedir exatamente isso.
   sequência e a fila viviam na memória da TUI, então um segundo cliente não
   conseguia começar nem ver um loop, e reimplementá-la seria uma segunda cópia
   da regra. A TUI não muda aqui e segue rodando o próprio loop até passar a
-  usar estas rotas.
+  usar estas rotas. Turno que termina em erro ou num teto faz o loop falhar
+  com o motivo em vez de contar a pasta como pronta, parar não deixa sessão
+  trabalhando, e um loop que só qualificou espera o continue onde a TUI espera
+  o /loop ser digitado de novo.
 - **Cada conferência da definição de pronto dentro do turno é um evento.** O
   laço re-entra no turno enquanto os critérios não cumpridos encolhem, e cada
   uma dessas conferências corria em silêncio: o cliente só sabia onde os

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -50,6 +52,10 @@ func (c *Client) StopLoop(ctx context.Context, id, when string) (protocol.LoopRu
 	return out, err
 }
 
+// ErrUnreadableLoopFrame is a frame of the stream of loops this client could
+// not read. It ends the watch: a list missing a change is a list that lies.
+var ErrUnreadableLoopFrame = errors.New("a frame of the list of loops could not be read")
+
 // WatchLoops streams the runs: a snapshot, then each change. Reconnecting
 // opens with a new snapshot, as WatchConversations does; a refusal the daemon
 // will give again is sent on the error channel, and the watch ends.
@@ -68,7 +74,7 @@ func (c *Client) WatchLoops(ctx context.Context) (<-chan protocol.LoopChange, <-
 			if got {
 				backoff = 200 * time.Millisecond
 			}
-			if _, refused := protocol.AsError(err); refused {
+			if _, refused := protocol.AsError(err); refused || errors.Is(err, ErrUnreadableLoopFrame) {
 				errs <- err
 				return
 			}
@@ -109,7 +115,9 @@ func (c *Client) watchLoopsOnce(ctx context.Context, out chan<- protocol.LoopCha
 		}
 		var ch protocol.LoopChange
 		if err := json.Unmarshal([]byte(strings.TrimSpace(strings.TrimPrefix(line, "data:"))), &ch); err != nil {
-			continue
+			// Skipping it would leave a list that silently disagrees with the
+			// daemon; the watch ends and says why.
+			return got, fmt.Errorf("%w: %v", ErrUnreadableLoopFrame, err)
 		}
 		select {
 		case out <- ch:

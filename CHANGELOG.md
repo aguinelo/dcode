@@ -276,6 +276,10 @@ exists to stop exactly that.
   in the TUI's memory, so a second client could neither start a loop nor see
   one, and reimplementing it would be a second copy of the rule. The TUI is
   unchanged here and still runs its own loop until it moves to these routes.
+  A turn that ends in error or at a ceiling fails the run with the reason
+  rather than counting its folder done, a stop leaves no session working, and
+  a run that only qualified waits for continue where the TUI waits to be typed
+  again.
 - **Each check of the definition of done inside a turn is an event.** The loop
   re-enters a turn while the unmet criteria shrink, and every one of those
   checks ran in silence: a client learned where the criteria stood only at

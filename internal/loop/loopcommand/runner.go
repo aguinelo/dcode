@@ -159,11 +159,14 @@ func (r *Runner) Stop(when string) (protocol.LoopRun, error) {
 		default:
 		}
 	case when == protocol.StopNow:
-		if session != "" {
-			r.t.Interrupt(session)
-		}
+		// Cancel first: whatever the runner does next sees the stop, so a turn
+		// that ends on its own right now is not followed by a commit or by the
+		// next folder.
 		if cancel != nil {
 			cancel()
+		}
+		if session != "" {
+			r.t.Interrupt(session)
 		}
 	}
 	return r.Snapshot(), nil
@@ -173,6 +176,16 @@ func (r *Runner) Stop(when string) (protocol.LoopRun, error) {
 func (r *Runner) one(ctx context.Context) error {
 	a := r.args
 	found, err := r.t.ListSpecs(ctx, r.req.Workspace, false)
+	if ctx.Err() != nil {
+		// Cancelled is the stop, not a survey that failed.
+		return ctx.Err()
+	}
+	if err != nil {
+		r.change(func(run *protocol.LoopRun) {
+			run.Warnings = append(run.Warnings,
+				fmt.Sprintf("could not ask what %s declares (%v); the session opened anyway", a.Spec, err))
+		})
+	}
 	if err == nil {
 		// Not fatal when it fails: if the daemon cannot say, the session opens
 		// and answers. Refusing the work because the survey failed would be the
@@ -201,6 +214,9 @@ func (r *Runner) one(ctx context.Context) error {
 func (r *Runner) goal(ctx context.Context) error {
 	a := r.args
 	found, err := r.t.ListSpecs(ctx, r.req.Workspace, true)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if err != nil {
 		return fmt.Errorf("could not look for specs: %w", err)
 	}
@@ -244,12 +260,26 @@ func (r *Runner) qualify(ctx context.Context, q, work LoopArgs) error {
 	if err != nil {
 		return err
 	}
-	if _, err := r.t.RunTurn(ctx, id, LoopTask(q)); err != nil {
+	done, err := r.t.RunTurn(ctx, id, LoopTask(q))
+	if err != nil {
 		return err
+	}
+	if ctx.Err() != nil {
+		// Stopped while the turn ended on its own: nothing is written.
+		return ctx.Err()
+	}
+	if !endedNormally(done.Reason) {
+		r.change(func(run *protocol.LoopRun) {
+			run.Specs[i].Phase, run.Specs[i].Reason = protocol.SpecUnfinished, done.Reason
+		})
+		return fmt.Errorf("the qualifying turn on %s ended %s", q.Spec, done.Reason)
 	}
 	out, err := r.t.CommitDone(ctx, id)
 	if err != nil {
 		return fmt.Errorf("could not write the proposed definition of done: %w", err)
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 	r.change(func(run *protocol.LoopRun) {
 		run.Specs[i].Phase, run.Specs[i].Proposal = protocol.SpecProposed, out.Path
@@ -289,18 +319,40 @@ func (r *Runner) work(ctx context.Context, i int, a LoopArgs) error {
 	if err != nil {
 		return err
 	}
+	normal := endedNormally(done.Reason)
 	r.change(func(run *protocol.LoopRun) {
 		// The last word for a folder wins: what matters is where it was left.
-		run.Specs[i].Standing = done.Completion
+		run.Specs[i].Standing, run.Specs[i].Reason = done.Completion, done.Reason
 		run.Specs[i].Phase = protocol.SpecDone
-		if unfinished(done.Completion) {
+		if !normal || unfinished(done.Completion) {
 			run.Specs[i].Phase = protocol.SpecUnfinished
 		}
 	})
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if !normal {
+		// Not a folder done, and not one to walk past: the run stops here with
+		// the reason in sight rather than opening the next folder on top of it.
+		return fmt.Errorf("the turn on %s ended %s", a.Spec, done.Reason)
+	}
 	return nil
 }
 
+// endedNormally reports a turn that ended as a result rather than a failure.
+// Unverified and incomplete are results: the criteria say where things stand.
+func endedNormally(reason string) bool {
+	switch reason {
+	case protocol.StopDone, protocol.StopUnverified, protocol.StopIncomplete:
+		return true
+	}
+	return false
+}
+
 func (r *Runner) open(ctx context.Context, i int, a LoopArgs) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	s, err := r.t.Open(ctx, protocol.CreateSessionRequest{
 		Workspace: r.req.Workspace, Model: r.req.Model, SandboxMode: r.req.SandboxMode,
 		LoopSpec: a.Spec, Protect: a.Protect, Qualify: a.Qualify,
@@ -311,6 +363,11 @@ func (r *Runner) open(ctx context.Context, i int, a LoopArgs) (string, error) {
 	r.change(func(run *protocol.LoopRun) {
 		run.Specs[i].SessionID, run.SessionID = s.ID, s.ID
 	})
+	// Opening does not watch the context: a stop that arrived meanwhile is
+	// honoured here, before any turn is submitted.
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	return s.ID, nil
 }
 
@@ -400,6 +457,7 @@ func unfinished(c *protocol.Completion) bool {
 
 func copyRun(r protocol.LoopRun) protocol.LoopRun {
 	r.Specs = append(make([]protocol.LoopSpecRun, 0, len(r.Specs)), r.Specs...)
+	r.Warnings = append([]string(nil), r.Warnings...)
 	if r.Verdict != nil {
 		v := *r.Verdict
 		r.Verdict = &v

@@ -116,6 +116,7 @@ func New(cfg Config) *Server {
 
 	s := &Server{cfg: cfg, mux: http.NewServeMux()}
 	s.loops = newLoopRegistry(func(id string) loopcommand.Transport { return serverLoops{s: s, loopID: id} })
+	s.loops.log = cfg.Log
 	s.routes()
 	s.http = &http.Server{Handler: s.mux, ReadHeaderTimeout: 10 * time.Second}
 	return s

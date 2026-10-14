@@ -471,6 +471,11 @@ export interface LoopRun {
   session_id?: string;
   verdict?: LoopVerdict;
   /**
+   * Warnings say what went wrong without stopping the run — a survey that
+   * failed before the session opened anyway. Going on is not staying quiet.
+   */
+  warnings?: string[];
+  /**
    * Error says why a failed run could not go on.
    */
   error?: string;
@@ -488,6 +493,12 @@ export interface LoopSpecRun {
    * Proposal is the done.toml written for review, when one was.
    */
   proposal?: string;
+  /**
+   * Reason is how the folder's last turn ended (a TurnCompleted reason). A
+   * turn that did not end normally leaves the folder unfinished and fails
+   * the run, whatever its criteria say.
+   */
+  reason?: string;
   /**
    * Standing is the last completion of this folder's work: the last word for
    * a folder wins, because a folder can complete several turns.
