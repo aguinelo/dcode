@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 215 changelogs de decisão |
+| famílias de spec | 19, com 216 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -259,6 +259,21 @@ existe para impedir exatamente isso.
 
 ---
 
+## Não publicado
+
+- **Cada conferência da definição de pronto dentro do turno é um evento.** O
+  laço re-entra no turno enquanto os critérios não cumpridos encolhem, e cada
+  uma dessas conferências corria em silêncio: o cliente só sabia onde os
+  critérios estavam no `turn.completed`, e "ciclo 3, dois de cinco, parado 1 de
+  3" não existia no fio. `done.checked` agora leva, a cada conferência, o ciclo
+  dentro do turno, os critérios que passaram, os que não passaram e os que não
+  puderam rodar, para onde a conferência andou (`first`, `forward`, `stalled`,
+  `backward`), o contador sem avanço contra o teto, o que o laço desfez e o
+  protegido escrito. `moved` e `stall` são os valores sobre os quais o laço age,
+  lidos de volta em vez de decididos duas vezes; nomes, nunca contagem de
+  testes, porque contar o que passou exigiria ler a saída do comando. Turno que
+  não escreveu nada continua sem conferir e sem emitir. O desktop lê o evento e
+  ainda não o mostra.
 - **Uma proposta escrita é anunciada como `done.proposed`.** O commit da
   proposta de uma sessão qualificadora mede, escreve o `done.toml` e só então
   emite `done.proposed` no log dela, com a classe de cada critério, o que o

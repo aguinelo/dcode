@@ -371,6 +371,11 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
       return onApprovalResolved(view, ev);
     case 'progress':
       return onProgress(view, ev);
+    case 'done.checked':
+      // Read and validated, and not shown yet: the criteria lights still
+      // move at turn.completed. Folding each check into them is its own
+      // change (step 6 of desktop/docs/proposals/loop.md).
+      return view;
     case 'plan.updated':
       return onPlan(view, ev);
     case 'done.proposed':
