@@ -263,6 +263,10 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The end of a `/loop` run counts the specs once.** It read "the loop is
+  finished — 2 2 specs worked": the sentence put the count in front of a noun
+  that `plural()` had already counted. The sentence now takes what `plural()`
+  says, count included, in both languages.
 - **A loop continued after its review says its end once.** Continuing
   answers with the run as it was when it went on, and the follow on screen
   keeps hearing the run until that answer arrives; a run that ended in between

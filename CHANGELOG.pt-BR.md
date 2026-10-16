@@ -261,6 +261,10 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O fim de um `/loop` conta as specs uma vez só.** Lia "o laço terminou —
+  2 2 specs trabalhada(s)": a frase punha o número na frente de um substantivo
+  que `plural()` já tinha contado. A frase agora recebe o que `plural()` diz,
+  número incluído, nas duas línguas.
 - **Um loop seguido depois da revisão diz o próprio fim uma vez só.** Seguir
   responde com o loop como estava quando seguiu, e o acompanhamento na tela
   continua ouvindo o loop até essa resposta chegar; um loop que terminava

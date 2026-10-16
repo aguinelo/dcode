@@ -129,3 +129,28 @@ func TestAnIdleSessionWithAnEmptyQueueEndsTheRun(t *testing.T) {
 		t.Errorf("the session went idle with an empty queue and the run did not end: %q", summaries(p))
 	}
 }
+
+// The end of a run says how many specs it worked once, in either language.
+//
+// It said "the loop is finished — 2 2 specs worked": the sentence put the
+// count in front of a noun that plural() had already counted.
+func TestTheEndOfARunCountsTheSpecsOnce(t *testing.T) {
+	for _, c := range []struct {
+		lang   Lang
+		worked int
+		want   string
+	}{
+		{En, 2, "the loop is finished — 2 specs worked"},
+		{En, 1, "the loop is finished — 1 spec worked"},
+		{PtBR, 2, "o laço terminou — 2 specs trabalhada(s)"},
+		{PtBR, 1, "o laço terminou — 1 spec trabalhada(s)"},
+	} {
+		p, _ := loopProgram(t)
+		p.model.Lang = c.lang
+		p.loopEnded(protocol.LoopRun{State: protocol.LoopFinished, Goal: "the backlog",
+			Verdict: &protocol.LoopVerdict{Worked: c.worked}})
+		if got := summaries(p); len(got) != 1 || got[0] != c.want {
+			t.Errorf("%s, %d worked: the end reads %q, want %q", c.lang, c.worked, got, c.want)
+		}
+	}
+}

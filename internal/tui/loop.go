@@ -390,7 +390,7 @@ func (p *program) loopEnded(run protocol.LoopRun) {
 	if run.Goal == "" || v == nil || v.Worked == 0 {
 		return
 	}
-	text := fmt.Sprintf(t.CmdLoopFinished, v.Worked, plural(v.Worked, t.LoopSpecOne, t.LoopSpecMany))
+	text := fmt.Sprintf(t.CmdLoopFinished, plural(v.Worked, t.LoopSpecOne, t.LoopSpecMany))
 	if v.Total > 0 {
 		text += " · " + fmt.Sprintf(t.CmdLoopStanding, v.Met, v.Total)
 	}
