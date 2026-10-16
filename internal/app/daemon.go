@@ -130,6 +130,9 @@ func applyModelRequest(opts Options, name string) Options {
 	if p.MaxIterations > 0 {
 		opts.Limits.MaxIterations = p.MaxIterations
 	}
+	if p.AnthropicWorkspace != "" {
+		opts.AnthropicWorkspace = p.AnthropicWorkspace
+	}
 	return opts
 }
 

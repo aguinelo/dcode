@@ -279,6 +279,7 @@ family    = ""             # DCODE_FAMILY     — força uma, pula a resolução
 transport = ""             # DCODE_TRANSPORT  — "openai" ou "anthropic"; vazio usa o dialeto preferido da família
 base_url  = ""             # DCODE_BASE_URL   — um endpoint diferente para a mesma família
 window    = 0              # DCODE_WINDOW     — sobrescreve a janela de contexto que a família devolve; 0 é "pergunte à família"
+anthropic_workspace = ""   # DCODE_ANTHROPIC_WORKSPACE — o id do workspace (wrkspc_...) que uma chave sem escopo de workspace precisa nomear; vai só no dialeto anthropic
 ```
 
 Um nome de modelo desconhecido é erro, nomeando as famílias que existem —

@@ -281,6 +281,7 @@ family    = ""             # DCODE_FAMILY     — force one, skip prefix resolut
 transport = ""             # DCODE_TRANSPORT  — "openai" or "anthropic"; empty uses the family's preferred dialect
 base_url  = ""             # DCODE_BASE_URL   — a different endpoint for the same family
 window    = 0              # DCODE_WINDOW     — override the context window the family reports; 0 means "ask the family"
+anthropic_workspace = ""   # DCODE_ANTHROPIC_WORKSPACE — the workspace id (wrkspc_...) a key not scoped to one must name; sent only on the anthropic dialect
 ```
 
 An unknown model name is an error naming the families that exist — it never

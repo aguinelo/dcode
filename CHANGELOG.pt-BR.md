@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 222 changelogs de decisão |
+| famílias de spec | 19, com 223 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,13 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma chave Anthropic sem escopo de workspace nomeia um.** Chave nova,
+  `model.anthropic_workspace` / `DCODE_ANTHROPIC_WORKSPACE`, mandada no
+  cabeçalho `anthropic-workspace-id` só no dialeto anthropic, mostrada por
+  `dcode config` e configurável por perfil em `models.toml`. Uma chave assim
+  tinha toda requisição recusada com uma mensagem sobre um cabeçalho que
+  ninguém configura no dcode; a recusa agora nomeia a chave que resolve. O
+  nome evita `workspace`, que já é a pasta em que a sessão roda.
 - **O `/loop` da TUI pede ao daemon que o rode.** O terminal deixa de
   conduzir o próprio loop: manda o que foi digitado para `POST /v1/loops`,
   segue o fluxo do loop e diz o que mudou — o plano, a sessão para onde o loop

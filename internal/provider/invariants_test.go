@@ -35,6 +35,7 @@ var providerInvariants = map[string]string{
 	"vira erro `tool_schema`":        "TestATruncatedToolCallIsAnErrorRatherThanAnEmptyCall",
 	"nem no histórico (RN-10)":       "TestReasoningNeverBecomesAnswerText",
 	"marcador de raciocínio e esp":   "TestAFrameOfPureFramingProducesNothing",
+	"anthropic-workspace-id` só sai": "TestTheWorkspaceHeaderGoesOnlyOnTheAnthropicTransport",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
@@ -47,8 +48,12 @@ func TestEveryInvariantHasATest(t *testing.T) {
 	// cannot import that one — evals imports provider, so the dependency only
 	// runs the other way. Asserting it here would mean a second copy of the
 	// measurements, which is the thing the rule exists to prevent.
+	//
+	// The workspace header is asserted in internal/app for the same kind of
+	// reason: the transport that sends it lives there, and this package runs
+	// with the network off.
 	findings, err := specguard.Check(root, "provider-adapter",
-		[]string{".", filepath.Join("..", "evals")}, providerInvariants)
+		[]string{".", filepath.Join("..", "evals"), filepath.Join("..", "app")}, providerInvariants)
 	if err != nil {
 		t.Fatal(err)
 	}

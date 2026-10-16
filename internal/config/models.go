@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -104,9 +105,30 @@ func LoadModels(root string) (map[string]Profile, error) {
 			return nil, err
 		}
 		p.MaxIterations = mi
+		p.AnthropicWorkspace = strings.TrimSpace(fields["anthropic_workspace"])
+		if err := CheckAnthropicWorkspace(p.AnthropicWorkspace); err != nil {
+			return nil, fmt.Errorf("config: %s: profile %q: %w", ModelsFile, name, err)
+		}
 		out[name] = p
 	}
 	return out, nil
+}
+
+// workspaceID is what an Anthropic workspace id is made of.
+var workspaceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+
+// CheckAnthropicWorkspace refuses a workspace that is not an id. Empty is
+// valid: it means none is sent.
+//
+// Checked where the value enters, because it leaves as an HTTP header. A
+// value with a space or a newline in it would be refused by the HTTP client
+// at the first turn, as an error about a header nobody typed.
+func CheckAnthropicWorkspace(id string) error {
+	if id == "" || workspaceID.MatchString(id) {
+		return nil
+	}
+	return fmt.Errorf("model.anthropic_workspace %q is not a workspace id "+
+		"(letters, digits, '_' and '-', as in wrkspc_01...)", id)
 }
 
 // parseNonNegativeField reads an optional integer field. Empty is zero,
