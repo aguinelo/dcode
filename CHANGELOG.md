@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 226 decision changelogs |
+| spec families | 19, with 227 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The Claude window is declared per model.** The family reported 200K for
+  every model, while every model since `claude-opus-4-6` holds 1M, so a
+  session was compacted at a fifth of what it could keep. The window now
+  comes from the same per-model table as the output ceiling. A model the
+  table does not know keeps 200K, because a window that is too large is a
+  request refused mid-turn.
 - **Anthropic requests reuse the prompt cache.** The Claude family marks three
   `cache_control` breakpoints: the last tool, the system prompt and the last
   block of the conversation. With an append-only context, each round now reads

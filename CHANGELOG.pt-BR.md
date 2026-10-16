@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 226 changelogs de decisão |
+| famílias de spec | 19, com 227 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A janela Claude é declarada por modelo.** A família devolvia 200K para
+  todo modelo, e todo modelo desde `claude-opus-4-6` tem 1M, então a sessão
+  era compactada a um quinto do que cabia. A janela agora vem da mesma tabela
+  por modelo do teto de saída. Modelo que a tabela não conhece segue com 200K,
+  porque janela grande demais é requisição recusada no meio do turno.
 - **Requisições Anthropic reaproveitam o cache de prompt.** A família Claude
   marca três pontos `cache_control`: a última ferramenta, o system e o último
   bloco da conversa. Com o contexto append-only, cada rodada lê do cache o
