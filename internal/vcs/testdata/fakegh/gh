@@ -1,0 +1,42 @@
+#!/bin/sh
+# A stand-in for the GitHub CLI, for tests. It answers from the files in
+# $FAKE_GH and writes down every call it gets, with the arguments one per line
+# and a blank line after each call. Nothing here talks to a network.
+d="$FAKE_GH"
+for a in "$@"; do printf '%s\n' "$a" >>"$d/calls"; done
+printf '\n' >>"$d/calls"
+printf 'prompt=%s repo=%s tty=%s\n' "${GH_PROMPT_DISABLED-unset}" "${GH_REPO-unset}" "$([ -t 0 ] && echo yes || echo no)" >>"$d/env"
+if [ -f "$d/logged-out" ]; then
+	echo "You are not logged into any GitHub hosts. To log in, run: gh auth login" >&2
+	exit 4
+fi
+case "$1 $2" in
+"auth status")
+	echo "Logged in to github.com" >&2
+	exit 0
+	;;
+"repo view")
+	cat "$d/repo.json"
+	exit 0
+	;;
+"pr view")
+	if [ -f "$d/pr.json" ]; then
+		cat "$d/pr.json"
+		exit 0
+	fi
+	echo "no pull requests found for branch \"$3\"" >&2
+	exit 1
+	;;
+"pr create")
+	cat >"$d/body"
+	if [ -f "$d/create-fails" ]; then
+		cat "$d/create-fails" >&2
+		exit 1
+	fi
+	cp "$d/created.json" "$d/pr.json"
+	echo "https://github.com/o/r/pull/7"
+	exit 0
+	;;
+esac
+echo "fake gh: no answer for: $*" >&2
+exit 2
