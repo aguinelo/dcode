@@ -10,6 +10,24 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The daemon ruler runs a loop (step 9 of the loop proposal).** Two
+  scenarios join `check:daemon`, which now has 13: `loop-qualifies` starts a
+  loop from "Nova sessão" → "↻ loop" on a folder that declares no criteria
+  ("0 · qualifica antes"), sees the window's loop ruler read `qualifying`, the
+  `done.proposed` card wait in `awaiting_review` with nothing worked, "Começar o
+  trabalho" open the work session, the criteria lights move with the first
+  `done.checked` (✓ ola, ✗ tchau) before the turn ends, and the verdict "1 pasta
+  trabalhada · 3 de 3 critérios"; `loop-stops` types `/loop specs/ola` in a
+  field (no turn of that session starts) and "Parar agora" interrupts the work
+  turn and ends the run `stopped`, with nothing written. Each step is checked
+  against the daemon's `/v1/loops` and event log, with the scripted model
+  holding the replies the window is read between. Before, nothing drove a loop
+  through a real daemon from the window. `tests/daemon/**` is a protected path
+  of `docs/loop/done.toml`; the owner authorized changing it for this PR only
+  (2026-10-15). `docs/loop/tasks.md`, "O que a régua lê", is also protected and
+  was not authorized: the attributes the loop scenarios read (`data-pane-id`,
+  `data-loop-id`, `data-loop-state`, `data-loop-review`) are listed at the top
+  of `tests/daemon/loop.mjs` until that table is updated.
 - **`generated.ts` carries the loop's new fields.** The core's `LoopRun` gains
   `args` and each `LoopSpecRun` what the survey found (`criteria`, `unmet`,
   `unavailable`, `error`) and what its proposal wrote (`proposal_criteria`,

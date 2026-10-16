@@ -6,7 +6,7 @@ import { answerFolderPicker, daemonState, eventually, visible } from './app.mjs'
 import { text, toolCall } from './model.mjs';
 import { healthy, must } from './wire.mjs';
 
-function fail(message) {
+export function fail(message) {
   throw new Error(message);
 }
 
@@ -15,7 +15,7 @@ function row(page, id) {
 }
 
 /** Opens the session in the window and returns its composer field. */
-async function open(page, id) {
+export async function open(page, id) {
   await (await visible(row(page, id), 10_000, `the sidebar row of session ${id}`)).click();
   return visible(page.locator('main textarea'), 5_000, 'the composer of the opened session');
 }
@@ -26,7 +26,7 @@ async function rowState(page, id, state, timeoutMs) {
 }
 
 /** A daemon of the check with one session, and the window attached to it. */
-async function attached(ctx, script) {
+export async function attached(ctx, script) {
   const t = await ctx.fresh();
   const model = await ctx.model();
   script(model);
