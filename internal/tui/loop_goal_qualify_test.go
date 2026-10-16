@@ -110,3 +110,46 @@ func TestInterruptingALoopsTurnStopsTheLoop(t *testing.T) {
 		}
 	}
 }
+
+// A loop continued after its review that ends before this client hears back
+// from continuing it is said to have ended once.
+//
+// Continuing answers with the run as it was when it went on, and the follow
+// already on screen keeps hearing the run until that answer replaces it. When
+// the run ends first, the follow says the end — and the answer, arriving
+// after, followed the run again and said the end a second time.
+func TestALoopThatEndsBeforeItsContinueIsHeardEndsOnce(t *testing.T) {
+	p, tr := loopProgram(t,
+		protocol.SpecFolder{Path: "specs/a", Criteria: 2, Unmet: 1, Pending: true},
+		protocol.SpecFolder{Path: "specs/b", Criteria: 0, Pending: true},
+	)
+	tr.committed = protocol.CommitDoneResponse{Path: "done.toml", Criteria: 1, Summary: "written"}
+	tr.completions = map[string]*protocol.Completion{"specs/a": {Met: []string{"tests"}, Unmet: []string{"coverage"}}}
+	typeLoop(t, p, "implemente o que falta")
+	followLoop(t, p, func() bool { return p.loop != nil && p.loop.awaiting && p.loop.reviewed })
+
+	// Typed again: the daemon goes on and the run ends while the answer to
+	// continuing is still on its way — held here, so the order is this one.
+	_, cmd := p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "loop", Args: "implemente o que falta"})
+	answer := cmd()
+	if _, ok := answer.(loopStartedMsg); !ok {
+		t.Fatalf("continuing the loop answered %#v", answer)
+	}
+	followLoop(t, p, func() bool { return p.loop == nil })
+	if run := tr.lastLoop(t); run.State != protocol.LoopFinished {
+		t.Fatalf("the follow ended on a run that is %s", run.State)
+	}
+
+	_, cmd = p.Update(answer)
+	deliver(p, cmd)
+	followLoop(t, p, nil)
+	ends := 0
+	for _, s := range summaries(p) {
+		if strings.Contains(s, "the loop is finished") {
+			ends++
+		}
+	}
+	if ends != 1 {
+		t.Errorf("the end was said %d times, want once: %q", ends, summaries(p))
+	}
+}
