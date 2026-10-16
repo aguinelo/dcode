@@ -38,6 +38,8 @@ var providerInvariants = map[string]string{
 	"anthropic-workspace-id` só sai": "TestTheWorkspaceHeaderGoesOnlyOnTheAnthropicTransport",
 	"sem teto configurado leva":      "TestTheAnthropicRequestCarriesTheModelsCeiling",
 	"corta no teto de saída termina": "TestAnAnswerCutAtTheCeilingSaysSo",
+	"marca no máximo três pontos":    "TestTheClaudeRequestMarksTheCacheBreakpoints",
+	"uso do `message_start` chega":   "TestCacheUsageFromMessageStartReachesDone",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

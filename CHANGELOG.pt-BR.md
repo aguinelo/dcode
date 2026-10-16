@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 225 changelogs de decisão |
+| famílias de spec | 19, com 226 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Requisições Anthropic reaproveitam o cache de prompt.** A família Claude
+  marca três pontos `cache_control`: a última ferramenta, o system e o último
+  bloco da conversa. Com o contexto append-only, cada rodada lê do cache o
+  prefixo da anterior em vez de pagar preço cheio. O decoder lê o uso do
+  prompt no `message_start`, onde os números do cache de fato estão, e o laço
+  soma o que o cache escreveu além do que leu, então o cache que o desktop
+  mostra deixa de estar sempre em zero. O MiniMax M3 no mesmo dialeto não
+  manda marca, porque nada diz que o endpoint dele lê uma.
 - **O teto de saída Anthropic é do modelo, e a resposta cortada nele diz.**
   Requisição sem teto configurado levava um `max_tokens: 8192` fixo, um
   dezesseis avos do que a maioria dos modelos Claude atuais aceita, então

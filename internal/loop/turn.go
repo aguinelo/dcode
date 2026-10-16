@@ -408,9 +408,11 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 		out.Usage.InputTokens += usage.InputTokens
 		out.Usage.OutputTokens += usage.OutputTokens
 		out.Usage.CacheReadTokens += usage.CacheReadTokens
+		out.Usage.CacheWriteTokens += usage.CacheWriteTokens
 		out.Usage.InputTokens += e.delegated.InputTokens
 		out.Usage.OutputTokens += e.delegated.OutputTokens
 		out.Usage.CacheReadTokens += e.delegated.CacheReadTokens
+		out.Usage.CacheWriteTokens += e.delegated.CacheWriteTokens
 		e.delegated = provider.Usage{}
 
 		if perr != nil {

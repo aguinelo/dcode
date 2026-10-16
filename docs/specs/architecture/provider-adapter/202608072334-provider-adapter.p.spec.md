@@ -192,6 +192,8 @@ type Usage struct {
 }
 ```
 
+> **No dialeto anthropic o cache só existe se for pedido.** A família `claude` marca três pontos de cache (`cache_control: ephemeral`), abaixo dos quatro que a API aceita: a última ferramenta, o system e o último bloco da última mensagem. O provedor monta ferramentas, system e mensagens nessa ordem e guarda o prefixo até cada marca; como o contexto é append-only, a rodada seguinte reenvia esse prefixo sem mudança e o lê do cache. A marca não faz parte dos bytes guardados, então mudá-la para o novo último bloco a cada rodada não invalida prefixo nenhum. O system vira lista de blocos só quando carrega a marca. `minimax-m3` no mesmo dialeto não marca: nada diz que o endpoint dele lê a marca. O uso do prompt — entrada, leitura e escrita do cache — chega no `message_start`, e o decoder o guarda para o `EventDone`.
+
 > `CacheReadTokens` não é telemetria decorativa. É a única medida direta de que o contexto append-only está funcionando. Se ele ficar próximo de zero em sessão longa, o motor de contexto regrediu.
 
 > **O que "validado" quer dizer, exatamente.** `validateToolCall` confere **duas** coisas antes de a chamada chegar ao laço: que o nome está no conjunto declarado, e que os argumentos são JSON válido. Ela **não** confere o JSON Schema da ferramenta.
@@ -308,6 +310,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - O cabeçalho `anthropic-workspace-id` só sai no transporte `anthropic`, e só quando um workspace foi configurado.
 - Requisição Anthropic sem teto configurado leva o teto que a família declara para o modelo, nunca um número fixo.
 - Resposta que o provedor corta no teto de saída termina com `Truncated`, nos dois dialetos.
+- Requisição `claude` marca no máximo três pontos de cache — a última ferramenta, o system e o último bloco da conversa —, verificado contra arquivo golden; `minimax-m3` não marca nenhum.
+- O uso do `message_start` chega ao `EventDone`, com o que o cache leu e escreveu.
 
 ## 8. Changelog
 
@@ -320,3 +324,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202610151200 — Um turno carrega documentos](../client-server-protocol/changelog/202610151200-um-turno-carrega-documentos.md)
 - [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)
 - [202610151300 — O teto de saída é do modelo](changelog/202610151300-o-teto-de-saida-e-do-modelo.md)
+- [202610151400 — O prefixo Anthropic é lido do cache](changelog/202610151400-o-prefixo-anthropic-e-lido-do-cache.md)

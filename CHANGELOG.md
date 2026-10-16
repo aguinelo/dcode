@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 225 decision changelogs |
+| spec families | 19, with 226 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Anthropic requests reuse the prompt cache.** The Claude family marks three
+  `cache_control` breakpoints: the last tool, the system prompt and the last
+  block of the conversation. With an append-only context, each round now reads
+  the previous round's prefix instead of paying full price for it. The decoder
+  reads the prompt usage from `message_start`, where the cache numbers
+  actually are, and the loop sums cache writes as well as reads, so the cache
+  shown in the desktop is no longer always zero. MiniMax M3 on the same dialect
+  sends no marker, because nothing says its endpoint reads one.
 - **The Anthropic output ceiling belongs to the model, and an answer cut at it
   says so.** A request with no ceiling configured carried a fixed
   `max_tokens: 8192`, a sixteenth of what most current Claude models accept,

@@ -167,6 +167,7 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 	e.delegated.InputTokens += out.Usage.InputTokens
 	e.delegated.OutputTokens += out.Usage.OutputTokens
 	e.delegated.CacheReadTokens += out.Usage.CacheReadTokens
+	e.delegated.CacheWriteTokens += out.Usage.CacheWriteTokens
 
 	// The turn that asked for the work is the turn that can put it back. Undo
 	// is per turn and delegation happens inside one, so without this the
