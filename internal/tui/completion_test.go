@@ -102,6 +102,28 @@ func TestAChangeToTheMeasurementIsNeverFoldedAwaySilently(t *testing.T) {
 	}
 }
 
+// A verified turn says how many checks passed once, in either language.
+//
+// It said "verified — 3 3 checks passed": the sentence put the count in front
+// of a noun that plural() had already counted.
+func TestAVerifiedTurnCountsItsChecksOnce(t *testing.T) {
+	for _, c := range []struct {
+		lang Lang
+		met  []string
+		want string
+	}{
+		{En, []string{"tests", "vet", "build"}, "verified — 3 checks passed"},
+		{En, []string{"tests"}, "verified — 1 check passed"},
+		{PtBR, []string{"tests", "vet", "build"}, "conferido — 3 checks passaram"},
+		{PtBR, []string{"tests"}, "conferido — 1 check passaram"},
+	} {
+		got := completionSummary(&protocol.Completion{Verification: string(loop.VerificationPassed), Met: c.met}, c.lang)
+		if got != c.want {
+			t.Errorf("%s, %d met: the summary reads %q, want %q", c.lang, len(c.met), got, c.want)
+		}
+	}
+}
+
 // The seal is undroppable for the same reason the sandbox mode is: a guarantee
 // that vanishes on a narrow terminal is not a guarantee.
 func TestTheSealSurvivesANarrowTerminal(t *testing.T) {

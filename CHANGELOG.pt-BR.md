@@ -261,6 +261,10 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um turno conferido conta as verificações uma vez só.** Lia "conferido —
+  3 3 checks passaram", o mesmo defeito do fim de um `/loop`: a frase punha o
+  número na frente de um substantivo que `plural()` já tinha contado. Era a
+  última frase do catálogo que fazia isso, nas duas línguas.
 - **O fim de um `/loop` conta as specs uma vez só.** Lia "o laço terminou —
   2 2 specs trabalhada(s)": a frase punha o número na frente de um substantivo
   que `plural()` já tinha contado. A frase agora recebe o que `plural()` diz,

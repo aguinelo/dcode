@@ -189,7 +189,7 @@ type Strings struct {
 	UnverifiedLabel  string
 
 	// Completion report
-	VerifiedSummary     string // takes a count
+	VerifiedSummary     string // takes plural() of the checks met, count included
 	NotVerifiedSummary  string // takes the failing names
 	NothingCouldCheck   string
 	ChangedAfterCheck   string
@@ -434,7 +434,7 @@ var catalogue = map[Lang]Strings{
 		NotVerifiedLabel: "NOT VERIFIED",
 		UnverifiedLabel:  "unverified",
 
-		VerifiedSummary:     "verified — %d %s passed",
+		VerifiedSummary:     "verified — %s passed",
 		NotVerifiedSummary:  "NOT verified — %s did not pass",
 		NothingCouldCheck:   "not verified — nothing here could check this",
 		ChangedAfterCheck:   "not verified — files changed after the last check",
@@ -673,7 +673,7 @@ Environment:
 		NotVerifiedLabel: "NÃO CONFERIDO",
 		UnverifiedLabel:  "sem conferir",
 
-		VerifiedSummary:     "conferido — %d %s passaram",
+		VerifiedSummary:     "conferido — %s passaram",
 		NotVerifiedSummary:  "NÃO conferido — %s não passou",
 		NothingCouldCheck:   "sem conferir — não há aqui como conferir isto",
 		ChangedAfterCheck:   "sem conferir — arquivos mudaram depois da última conferência",

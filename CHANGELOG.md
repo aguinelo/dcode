@@ -263,6 +263,10 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A verified turn counts its checks once.** It read "verified — 3 3 checks
+  passed", the same defect as the end of a `/loop` run: the sentence put the
+  count in front of a noun that `plural()` had already counted. It was the
+  last sentence in the catalogue that did, in either language.
 - **The end of a `/loop` run counts the specs once.** It read "the loop is
   finished — 2 2 specs worked": the sentence put the count in front of a noun
   that `plural()` had already counted. The sentence now takes what `plural()`
