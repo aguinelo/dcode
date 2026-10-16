@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The plan stays pinned as a checklist while the turn runs (D57).** The
+  plan the running turn last revised (`plan.updated`) stands above the flow,
+  out of the scroll, and the flow leaves it out: a grid window gives it one
+  line ("passo 2 de 3 · ..."), the maximized conversation and the Crew the
+  whole checklist, with the step under way as a turning ring. When the turn
+  ends it goes back into the flow where it was. Before, the plan scrolled out
+  of view exactly while it moved. The plan entry now records the turn that
+  revised it, since the event carries none. The recording has no plan;
+  screens 02 and 03 stay at 0.00%.
 - **The daemon ruler runs a loop (step 9 of the loop proposal).** Two
   scenarios join `check:daemon`, which now has 13: `loop-qualifies` starts a
   loop from "Nova sessão" → "↻ loop" on a folder that declares no criteria

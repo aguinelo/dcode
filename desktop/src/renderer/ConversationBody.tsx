@@ -1,9 +1,11 @@
 import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { imagesOfEntries } from '../state/attachments';
 import { activity, flowBlocks } from '../state/flow';
+import { pinnedPlan, withoutPinned } from '../state/plan';
 import type { SessionView } from '../state/session';
 import { Composer } from './Composer';
 import { ActivityLine, FlowBlocks } from './Flow';
+import { PlanPin } from './PlanPin';
 import { useAttached } from './useImages';
 
 // xterm.js is most of a megabyte: loaded the first time a terminal opens, not with the window.
@@ -45,7 +47,9 @@ export function ConversationBody({
   onMissing: (what: string) => void;
   onMode?: (anchor: HTMLElement) => void;
 }) {
-  const blocks = useMemo(() => flowBlocks(session.entries), [session.entries]);
+  // The running turn's plan stands above the flow, and the flow leaves it out (D57).
+  const pin = useMemo(() => pinnedPlan(session), [session]);
+  const blocks = useMemo(() => flowBlocks(withoutPinned(session.entries, pin)), [session.entries, pin]);
   const act = useMemo(() => activity(session.entries), [session.entries]);
   // The pictures this window sent, on the messages they went with (D46): the events carry none.
   const sent = useAttached().sent[session.id];
@@ -68,6 +72,7 @@ export function ConversationBody({
 
   return (
     <>
+      {pin && <PlanPin pin={pin} compact={compact} />}
       <div
         className="flow-scroll"
         ref={scroller}
