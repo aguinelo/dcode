@@ -10,6 +10,25 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A régua do daemon roda um loop (passo 9 da proposta do loop).** Dois
+  cenários entram no `check:daemon`, que passa a ter 13: `loop-qualifies`
+  começa um loop por "Nova sessão" → "↻ loop" numa pasta que não declara
+  critério ("0 · qualifica antes"), vê a régua do loop na janela ler
+  `qualifying`, o card do `done.proposed` esperar em `awaiting_review` sem nada
+  trabalhado, "Começar o trabalho" abrir a sessão de trabalho, as luzes dos
+  critérios andarem com o primeiro `done.checked` (✓ ola, ✗ tchau) antes de o
+  turno terminar, e o veredito "1 pasta trabalhada · 3 de 3 critérios";
+  `loop-stops` digita `/loop specs/ola` num campo (nenhum turno daquela sessão
+  começa) e "Parar agora" interrompe o turno de trabalho e encerra o loop
+  `stopped`, sem nada escrito. Cada passo é conferido contra o `/v1/loops` e o
+  log de eventos do daemon, com o modelo roteirizado segurando as respostas
+  entre as quais a janela é lida. Antes, nada conduzia um loop por um daemon de
+  verdade a partir da janela. `tests/daemon/**` é caminho protegido do
+  `docs/loop/done.toml`; o dono autorizou mudá-lo só neste PR (2026-10-15). O
+  `docs/loop/tasks.md`, "O que a régua lê", também é protegido e não foi
+  autorizado: os atributos que os cenários do loop leem (`data-pane-id`,
+  `data-loop-id`, `data-loop-state`, `data-loop-review`) estão listados no topo
+  de `tests/daemon/loop.mjs` até aquela tabela ser atualizada.
 - **O `generated.ts` traz os campos novos do loop.** O `LoopRun` do núcleo
   ganha `args`, e cada `LoopSpecRun` o que a pergunta achou (`criteria`,
   `unmet`, `unavailable`, `error`) e o que a proposta escreveu

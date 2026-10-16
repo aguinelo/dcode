@@ -1,7 +1,7 @@
 // `npm run check:daemon`: does the window talk to a real daemon?
 //
 // Builds the app and `dcode` from this checkout, then runs each scenario in
-// scenarios.mjs against a fresh `dcode serve`, a fresh scripted model and a
+// scenarios.mjs and loop.mjs against a fresh `dcode serve`, a fresh scripted model and a
 // fresh copy of the window, launched as Electron. Prints one line per
 // scenario, writes report.json — with the window's logs and the daemon's
 // output — and a screenshot of each failure to test-results/daemon/, and exits
@@ -17,14 +17,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchApp } from './app.mjs';
 import { daemonEnv, dcodeBinary, startDaemon, workspace } from './daemon.mjs';
+import { loopScenarios } from './loop.mjs';
 import { startModel } from './model.mjs';
-import { scenarios } from './scenarios.mjs';
+import { scenarios as core } from './scenarios.mjs';
 import { follow } from './wire.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktop = path.resolve(here, '..', '..');
 const repo = path.resolve(desktop, '..');
 const out = path.join(desktop, 'test-results', 'daemon');
+const scenarios = [...core, ...loopScenarios];
 
 function buildApp() {
   const r = spawnSync(process.execPath, ['scripts/build.mjs'], { cwd: desktop, encoding: 'utf8' });
