@@ -139,6 +139,32 @@ func TestChildTokensAreDebitedFromTheParent(t *testing.T) {
 	}
 }
 
+// What the cache wrote is summed like what it read, the parent's rounds and
+// the child's alike. Dropped, the screen showed a cache that only ever read —
+// and the write is the half that costs more than an uncached prompt.
+func TestCacheWritesAreSummedLikeCacheReads(t *testing.T) {
+	cached := func(read, write int) provider.StreamEvent {
+		return provider.StreamEvent{Type: provider.EventDone, Usage: &provider.Usage{
+			InputTokens: 1, CacheReadTokens: read, CacheWriteTokens: write,
+		}}
+	}
+	e, _ := delegateEngine(t, [][]provider.StreamEvent{
+		{text("the child answer"), cached(100, 30)},
+		{text("the parent answer"), cached(1000, 7)},
+	})
+	if _, err := e.Delegate(context.Background(), "where is it", "", DelegateLimits{MaxIterations: 3}, nil); err != nil {
+		t.Fatal(err)
+	}
+	out, err := e.Run(context.Background(), "go on")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Usage.CacheReadTokens != 1100 || out.Usage.CacheWriteTokens != 37 {
+		t.Errorf("cache = %d read / %d written, want 1100 / 37",
+			out.Usage.CacheReadTokens, out.Usage.CacheWriteTokens)
+	}
+}
+
 // The mode is fixed where the sub-turn is built, so it is not a field the model
 // passes and not one a caller forgets.
 func TestReadOnlyIsNotSomethingTheInputCanCarry(t *testing.T) {
