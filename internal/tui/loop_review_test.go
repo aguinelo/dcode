@@ -37,7 +37,8 @@ func TestAQueuedMessageIsNotSentIntoALoopsSession(t *testing.T) {
 
 	p.model, _ = p.model.Enqueue("e o footer?", 3)
 	tr.events <- ev(t, 99, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t"})
-	runFor(t, p, 300*time.Millisecond)
+	followLoop(t, p, func() bool { return applied(p, 99) })
+	settle(t, p)
 	for _, s := range tr.submits() {
 		if strings.Contains(s, "e o footer?") {
 			t.Fatalf("the queued message went into the loop's session: %q", tr.submits())
@@ -102,7 +103,7 @@ func TestSwitchingAwayStopsFollowingTheLoop(t *testing.T) {
 	p.Update(switchedMsg{session: protocol.Session{ID: "elsewhere", Workspace: "/w"}})
 	close(tr.holdTurns)
 	followLoop(t, p, func() bool { return tr.lastLoop(t).State == protocol.LoopFinished })
-	runFor(t, p, 300*time.Millisecond)
+	settle(t, p)
 	if p.opts.SessionID != "elsewhere" {
 		t.Errorf("the loop pulled the person back to %s", p.opts.SessionID)
 	}
@@ -113,7 +114,6 @@ func TestSwitchingAwayStopsFollowingTheLoop(t *testing.T) {
 func TestAReplacedOrFailedFollowLeavesNothingWaiting(t *testing.T) {
 	p, tr := loopProgram(t, protocol.SpecFolder{Path: "specs/a", Criteria: 1, Unmet: 1, Pending: true})
 	tr.holdTurns = make(chan struct{})
-	tr.watchErrs = make(chan error, 1)
 	typeLoop(t, p, "implemente tudo")
 	followLoop(t, p, func() bool { return p.loop != nil })
 
@@ -123,13 +123,13 @@ func TestAReplacedOrFailedFollowLeavesNothingWaiting(t *testing.T) {
 	p.stopFollowingLoop()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("a replaced follow left its reader waiting")
+	case <-time.After(loopWait):
+		t.Fatalf("a replaced follow left its reader waiting %s", loopWait)
 	}
 
 	typeLoop(t, p, "implemente tudo")
 	followLoop(t, p, func() bool { return p.loop != nil })
-	tr.watchErrs <- errors.New("the daemon went away")
+	tr.failLoopStream(t, p, errors.New("the daemon went away"))
 	followLoop(t, p, func() bool { return sawEntry(p, "the daemon went away") })
 	followLoop(t, p, func() bool { return p.loop == nil })
 	close(tr.holdTurns)
@@ -150,11 +150,4 @@ func TestAStopFromElsewhereIsSaidPlainly(t *testing.T) {
 	if sawEntry(p, "interrupted") {
 		t.Errorf("a stop from elsewhere claimed this client's turn was interrupted: %q", summaries(p))
 	}
-}
-
-// runFor runs the program for a while, whatever arrives.
-func runFor(t *testing.T, p *program, d time.Duration) {
-	t.Helper()
-	start := time.Now()
-	followLoop(t, p, func() bool { return time.Since(start) > d })
 }

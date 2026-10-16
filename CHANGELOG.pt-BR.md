@@ -261,6 +261,18 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Os testes do `/loop` da TUI esperam o que o daemon falso faz, não o
+  relógio.** Falhavam de vez em quando no CI e sob carga, e uma execução do CI
+  travou: 150 ms de silêncio eram lidos como "o loop acabou", um loop que
+  terminava antes do primeiro quadro nunca contava como seguido, e todo fluxo
+  de loop dividia um canal só, então um fluxo sendo trocado podia levar o
+  quadro que o novo esperava. O daemon falso agora dá a cada fluxo os seus
+  quadros, abrindo com todos os loops como estão, como o daemon faz; uma
+  espera termina quando o programa está em repouso — todo comando que ele
+  rodou já entregou, só sobram os que esperam — e o relógio só a limita, então
+  um travamento falha dizendo onde parou. Cada teste encerra os loops, fluxos,
+  comandos e acompanhamentos que começou, ou falha nomeando o que sobrou.
+  Nenhuma asserção sobre o que a pessoa vê mudou.
 - **A janela Claude é declarada por modelo.** A família devolvia 200K para
   todo modelo, e todo modelo desde `claude-opus-4-6` tem 1M, então a sessão
   era compactada a um quinto do que cabia. A janela agora vem da mesma tabela
