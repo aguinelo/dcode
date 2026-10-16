@@ -113,7 +113,15 @@ func (p *program) startLoop(args string) tea.Cmd {
 
 // onLoopStarted follows a run: one stream, read in its own goroutine, with the
 // session the run moves into looked up there so the update loop never waits.
+//
+// Continuing answers with the run as it was when it went on, and the follow on
+// screen keeps hearing the run until that answer arrives. A run that ended in
+// between has had its end said by that follow; following it again would say
+// the end twice.
 func (p *program) onLoopStarted(msg loopStartedMsg) tea.Cmd {
+	if msg.continued && msg.run.ID == p.loopOver {
+		return nil
+	}
 	p.stopFollowingLoop()
 	f := &loopFollow{id: msg.run.ID, announced: map[string]bool{}, msgs: make(chan tea.Msg, 64)}
 	if msg.continued {
@@ -294,6 +302,7 @@ func (p *program) onLoopChanged(msg loopChangedMsg) tea.Cmd {
 	f.awaiting = run.State == protocol.LoopAwaitingReview
 	if !run.Live() {
 		p.loopEnded(run)
+		p.loopOver = run.ID
 		p.stopFollowingLoop()
 		// What the person queued while the loop ran waited for it. It goes
 		// on its own only when the loop finished: after a stop or a failure

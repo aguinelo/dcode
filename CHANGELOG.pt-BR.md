@@ -261,6 +261,12 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um loop seguido depois da revisão diz o próprio fim uma vez só.** Seguir
+  responde com o loop como estava quando seguiu, e o acompanhamento na tela
+  continua ouvindo o loop até essa resposta chegar; um loop que terminava
+  nesse meio tempo tinha o fim dito por esse acompanhamento, e a resposta
+  depois o seguia de novo e dizia o fim uma segunda vez. Uma resposta sobre um
+  loop cujo fim já foi dito não é seguida.
 - **O daemon lê e abre o PR de uma branch pelo `gh`.** `GET /v1/git/pr`
   responde o PR da branch que um workspace tem agora — número, endereço,
   estado, rascunho, e as checagens somadas em `pass`, `fail`, `pending` ou
