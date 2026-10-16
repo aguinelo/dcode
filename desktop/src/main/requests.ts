@@ -7,6 +7,7 @@ import {
   type StartLoopRequest,
   type StopLoopRequest,
   type SubmitTurnRequest,
+  type TurnDocument,
   type TurnImage,
   type UndoResult,
 } from '../protocol/generated';
@@ -104,9 +105,14 @@ export class Requests {
     return this.call('GET', `/${Version}/git/diff?workspace=${encodeURIComponent(workspace)}&path=${encodeURIComponent(path)}`);
   }
 
-  /** A turn, with the pictures shown with it (D46): sent only when there are some, as the daemon reads an absent list. */
-  submitTurn(sessionId: string, text: string, images: TurnImage[] = []): Promise<Answer<null>> {
-    const body: SubmitTurnRequest = images.length > 0 ? { text, images } : { text };
+  /**
+   * A turn, with the pictures (D46) and documents (D59) shown with it: each
+   * list sent only when there are some, as the daemon reads an absent list.
+   */
+  submitTurn(sessionId: string, text: string, images: TurnImage[] = [], documents: TurnDocument[] = []): Promise<Answer<null>> {
+    const body: SubmitTurnRequest = { text };
+    if (images.length > 0) body.images = images;
+    if (documents.length > 0) body.documents = documents;
     return this.command(`${sessionPath(sessionId)}/turns`, body);
   }
 

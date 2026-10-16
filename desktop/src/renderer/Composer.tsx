@@ -1,5 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
-import { imageSource, QUEUE_TAKES_TEXT, sizeOf } from '../state/attachments';
+import { isImage } from '../shared/api';
+import { documentKind, imageSource, QUEUE_TAKES_TEXT, sizeOf } from '../state/attachments';
 import { SheetContext } from './CommandSheet';
 import { useSlashMenu } from './SlashMenu';
 import { listOf } from './useUserCommands';
@@ -8,7 +9,7 @@ import { turnTelemetry, usageFact } from '../state/telemetry';
 import { ModeChip } from './ModeMenu';
 import { QueueChips } from './QueueChips';
 import { useFieldKeys } from './useFieldKeys';
-import { useAttached, useImages } from './useImages';
+import { useAttached, useAttachments } from './useAttachments';
 import { usePromptsContext } from './usePrompts';
 
 /**
@@ -28,33 +29,49 @@ function meterTone(pct: number): string {
   return 'tone-faint';
 }
 
-/** The pictures a paste carries: only images, since the text of a paste is the field's to take. */
-function imageFiles(data: DataTransfer): File[] {
-  return [...data.files].filter((f) => f.type.startsWith('image/'));
+/**
+ * The files a paste carries: pictures (D46) and documents (D59). A paste of
+ * plain text has no files, so the text stays the field's to take; what the
+ * files are is the main process's to say, by their bytes.
+ */
+function pastedFiles(data: DataTransfer): File[] {
+  return [...data.files];
 }
 
 /**
- * The pictures attached to the next message (D46), each with its ×, and the
- * last refusal under them. Nothing is drawn while there are neither.
+ * What is attached to the next message: each picture a thumbnail and each
+ * document a chip with its name and size (D59), each with its ×, and the last
+ * refusal under them. Nothing is drawn while there are neither.
  */
 function Attachments({ sessionId }: { sessionId: string }) {
-  const images = useImages();
+  const attachments = useAttachments();
   const attached = useAttached();
   const draft = attached.draft[sessionId] ?? [];
   const refusal = attached.refusal[sessionId];
-  if (!images || (draft.length === 0 && !refusal)) return null;
+  if (!attachments || (draft.length === 0 && !refusal)) return null;
   return (
     <div className="composer-images">
       {draft.length > 0 && (
         <div className="composer-thumbs">
-          {draft.map((img, i) => (
-            <figure key={`${i}-${img.name}`} className="composer-thumb" title={`${img.name} · ${sizeOf(img.bytes)}`}>
-              <img src={imageSource(img)} alt={img.name} />
-              <button type="button" className="composer-thumb-remove" aria-label={`Tirar ${img.name}`} onClick={() => images.remove(sessionId, i)}>
-                ×
-              </button>
-            </figure>
-          ))}
+          {draft.map((file, i) =>
+            isImage(file) ? (
+              <figure key={`${i}-${file.name}`} className="composer-thumb" title={`${file.name} · ${sizeOf(file.bytes)}`}>
+                <img src={imageSource(file)} alt={file.name} />
+                <button type="button" className="composer-thumb-remove" aria-label={`Tirar ${file.name}`} onClick={() => attachments.remove(sessionId, i)}>
+                  ×
+                </button>
+              </figure>
+            ) : (
+              <span key={`${i}-${file.name}`} className="composer-doc" data-document title={`${file.name} · ${sizeOf(file.bytes)}`}>
+                <span className="composer-doc-kind">{documentKind(file.mediaType)}</span>
+                <span className="composer-doc-name">{file.name}</span>
+                <span className="composer-doc-size">{sizeOf(file.bytes)}</span>
+                <button type="button" className="composer-doc-remove" aria-label={`Tirar ${file.name}`} onClick={() => attachments.remove(sessionId, i)}>
+                  ×
+                </button>
+              </span>
+            ),
+          )}
         </div>
       )}
       {refusal && (
@@ -83,7 +100,7 @@ export function Field({
   onText,
   onSubmit,
   onKeys,
-  onPasteImages,
+  onPasteFiles,
 }: {
   text: string;
   placeholder: string;
@@ -99,8 +116,8 @@ export function Field({
   onSubmit: (text?: string) => void;
   /** The conversation's own keys — history, queue (D47) — before ↵ sends; one that acts prevents the default. */
   onKeys?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
-  /** A paste that carries pictures (D46): they attach, and nothing is typed. */
-  onPasteImages?: (files: File[]) => void;
+  /** A paste that carries files — pictures (D46), documents (D59): they attach, and nothing is typed. */
+  onPasteFiles?: (files: File[]) => void;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
   const field = useContext(SheetContext);
@@ -138,10 +155,10 @@ export function Field({
           onText(e.target.value);
         }}
         onPaste={(e) => {
-          const files = imageFiles(e.clipboardData);
-          if (!onPasteImages || files.length === 0) return;
+          const files = pastedFiles(e.clipboardData);
+          if (!onPasteFiles || files.length === 0) return;
           e.preventDefault();
-          onPasteImages(files);
+          onPasteFiles(files);
         }}
         onKeyDown={(e) => {
           menu.keys(e);
@@ -213,18 +230,18 @@ export function Composer({
     keys.reset();
     onSend(t);
   };
-  // Pictures (D46): "+" opens the picker, a paste or a drop attaches.
-  const images = useImages();
+  // Pictures (D46) and documents (D59): "+" opens the picker, a paste or a drop attaches.
+  const attachments = useAttachments();
   const [dropping, setDropping] = useState(false);
-  const attach = images ? (files: File[]) => void images.addFiles(session.id, files) : undefined;
-  const carriesFiles = (e: DragEvent) => !!images && e.dataTransfer.types.includes('Files');
-  // The queue (D47) carries text: a message with pictures does not wait in it, and says why.
-  const withImages = (useAttached().draft[session.id]?.length ?? 0) > 0;
+  const attach = attachments ? (files: File[]) => void attachments.addFiles(session.id, files) : undefined;
+  const carriesFiles = (e: DragEvent) => !!attachments && e.dataTransfer.types.includes('Files');
+  // The queue (D47) carries text: a message with attachments does not wait in it, and says why.
+  const withFiles = (useAttached().draft[session.id]?.length ?? 0) > 0;
   const onKeys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const queueing = e.key === 'Enter' && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey && session.state === 'running';
-    if (queueing && withImages && images) {
+    if (queueing && withFiles && attachments) {
       e.preventDefault();
-      images.refuse(session.id, QUEUE_TAKES_TEXT);
+      attachments.refuse(session.id, QUEUE_TAKES_TEXT);
       return;
     }
     keys.onKeys(e);
@@ -263,15 +280,15 @@ export function Composer({
           onText={onText}
           onSubmit={send}
           onKeys={onKeys}
-          onPasteImages={attach}
+          onPasteFiles={attach}
         />
         <div className="composer-bar">
           {!compact && (
             <button
               type="button"
               className="composer-attach"
-              aria-label="Anexar imagens"
-              onClick={() => (images ? void images.pick(session.id) : onMissing('Anexar'))}
+              aria-label="Anexar imagens, PDFs ou textos"
+              onClick={() => (attachments ? void attachments.pick(session.id) : onMissing('Anexar'))}
             >
               +
             </button>

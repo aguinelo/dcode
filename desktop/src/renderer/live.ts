@@ -8,7 +8,7 @@ import { decodeEvent } from '../protocol/events';
 import { decodeModels } from '../protocol/models';
 import { CodeNoActiveTurn, CodeTurnAlreadyActive, type CompactResult, type UndoResult } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import type { Answer, DaemonStatus, DcodeApi, ImageAttachment, NewSessionOptions } from '../shared/api';
+import type { Answer, Attachment, DaemonStatus, DcodeApi, NewSessionOptions } from '../shared/api';
 import { STEER_TAKES_TEXT } from '../state/attachments';
 import { modeToSwitch, sandboxOf } from '../state/mode';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
@@ -152,9 +152,9 @@ export class LiveStore {
 
   readonly actions: WindowActions = {
     open: (row) => (row.state === 'recorded' ? this.continueRow(row) : this.follow(row.id)),
-    send: (id, text, steer, images) => this.send(id, text, steer, images ?? []),
-    pickImages: async () => ({ ok: true, value: await this.api.pickImages() }),
-    readImage: async (name, bytes) => outcome(await this.api.readImage(name, bytes), `${name} não foi anexada`),
+    send: (id, text, steer, attachments) => this.send(id, text, steer, attachments ?? []),
+    pickAttachments: async () => ({ ok: true, value: await this.api.pickAttachments() }),
+    readAttachment: async (name, bytes) => outcome(await this.api.readAttachment(name, bytes), `${name} não foi anexado`),
     stop: async (id) => outcome(await this.api.interrupt(id), 'O turno não foi interrompido'),
     answer: async (id, approvalId, decision) =>
       outcome(await this.api.resolveApproval(id, approvalId, decision), 'A resposta não foi enviada'),
@@ -270,16 +270,16 @@ export class LiveStore {
    * be on their way; when the daemon answers that the session is the other
    * way, it is the daemon that knows, and the message goes the other way.
    *
-   * Pictures go with a turn only (D46): a correction carries text, so a
-   * message with pictures is never turned into one — it is refused, said why,
-   * and kept for when the turn ends.
+   * Pictures (D46) and documents (D59) go with a turn only: a correction
+   * carries text, so a message with attachments is never turned into one — it
+   * is refused, said why, and kept for when the turn ends.
    */
-  private async send(id: string, text: string, steer: boolean, images: ImageAttachment[]): Promise<Outcome<null>> {
-    if (steer && images.length > 0) return { ok: false, why: STEER_TAKES_TEXT };
-    const first = steer ? await this.api.steer(id, text) : await this.api.submitTurn(id, text, images);
+  private async send(id: string, text: string, steer: boolean, attachments: Attachment[]): Promise<Outcome<null>> {
+    if (steer && attachments.length > 0) return { ok: false, why: STEER_TAKES_TEXT };
+    const first = steer ? await this.api.steer(id, text) : await this.api.submitTurn(id, text, attachments);
     const crossed = !first.ok && first.refusal.code === (steer ? CodeNoActiveTurn : CodeTurnAlreadyActive);
     if (!crossed) return outcome(first, steer ? 'A correção não foi enviada' : 'A mensagem não foi enviada');
-    if (!steer && images.length > 0) return { ok: false, why: STEER_TAKES_TEXT };
+    if (!steer && attachments.length > 0) return { ok: false, why: STEER_TAKES_TEXT };
     return steer
       ? outcome(await this.api.submitTurn(id, text), 'A mensagem não foi enviada')
       : outcome(await this.api.steer(id, text), 'A correção não foi enviada');

@@ -2,7 +2,7 @@ import { useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode 
 import { delegation, toolLine, VERBS, WORKING, type Activity, type Block, type Tone } from '../state/flow';
 import { elapsed, since } from '../state/format';
 import type { ImageAttachment } from '../shared/api';
-import { imageSource, sizeOf } from '../state/attachments';
+import { documentKind, imageSource, sizeOf } from '../state/attachments';
 import type { Entry, ToolCall } from '../state/session';
 import { toolDetail } from '../state/tooldetail';
 import { ApprovalCard } from './ApprovalCard';
@@ -179,14 +179,28 @@ function EntryView({
   switch (entry.kind) {
     case 'user': {
       const bubble = <div className={`bubble${entry.steer ? ' steer' : ''}`}>{entry.text}</div>;
-      if (!images || images.length === 0) return bubble;
+      const documents = entry.documents ?? [];
+      if ((!images || images.length === 0) && documents.length === 0) return bubble;
       return (
         <div className="bubble-with-images">
-          <div className="bubble-images">
-            {images.map((img, i) => (
-              <img key={`${i}-${img.name}`} className="bubble-image" src={imageSource(img)} alt={img.name} title={`${img.name} · ${sizeOf(img.bytes)}`} />
-            ))}
-          </div>
+          {images && images.length > 0 && (
+            <div className="bubble-images">
+              {images.map((img, i) => (
+                <img key={`${i}-${img.name}`} className="bubble-image" src={imageSource(img)} alt={img.name} title={`${img.name} · ${sizeOf(img.bytes)}`} />
+              ))}
+            </div>
+          )}
+          {documents.length > 0 && (
+            <div className="bubble-docs">
+              {documents.map((d, i) => (
+                <span key={`${i}-${d.name}`} className="bubble-doc" data-document title={`${d.name} · ${sizeOf(d.size)}`}>
+                  <span className="bubble-doc-kind">{documentKind(d.media_type)}</span>
+                  <span className="bubble-doc-name">{d.name}</span>
+                  <span className="bubble-doc-size">{sizeOf(d.size)}</span>
+                </span>
+              ))}
+            </div>
+          )}
           {bubble}
         </div>
       );

@@ -1,8 +1,10 @@
 import { BrowserWindow, clipboard, dialog, ipcMain, shell, type IpcMainEvent, type IpcMainInvokeEvent, type OpenDialogOptions } from 'electron';
-import { CHANNELS, type PickedImages } from '../shared/api';
+import { CHANNELS, type PickedAttachments } from '../shared/api';
 import type { Connection } from './connection';
 import { proposalToOpen } from './loops';
-import * as images from './images';
+import * as attachments from './attachments';
+import { DOCUMENT_EXTENSIONS } from './documents';
+import { IMAGE_EXTENSIONS } from './images';
 import * as input from './inputs';
 import type { Terminals } from './terminals';
 import { currentUser } from './user';
@@ -52,17 +54,22 @@ async function pickFolder(event: IpcMainInvokeEvent): Promise<string | null> {
 }
 
 /**
- * The system's file picker, for pictures (D46). Each picked file is read and
- * checked here; one refused is said by its reason and the rest still attach.
+ * The system's file picker, for pictures (D46) and documents (D59). Each
+ * picked file is read and checked here; one refused is said by its reason and
+ * the rest still attach.
  */
-async function pickImages(event: IpcMainInvokeEvent): Promise<PickedImages> {
+async function pickAttachments(event: IpcMainInvokeEvent): Promise<PickedAttachments> {
   const options: OpenDialogOptions = {
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'Imagens', extensions: [...images.IMAGE_EXTENSIONS] }],
+    filters: [
+      { name: 'Imagens, PDFs e textos', extensions: [...IMAGE_EXTENSIONS, ...DOCUMENT_EXTENSIONS] },
+      { name: 'Imagens', extensions: [...IMAGE_EXTENSIONS] },
+      { name: 'PDFs e textos', extensions: [...DOCUMENT_EXTENSIONS] },
+    ],
   };
   const win = BrowserWindow.fromWebContents(event.sender);
   const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
-  return picked.canceled ? { images: [], refused: [] } : images.readImageFiles(picked.filePaths);
+  return picked.canceled ? { attachments: [], refused: [] } : attachments.readAttachmentFiles(picked.filePaths);
 }
 
 export function serveTheWindows(daemon: Connection, terminals: Terminals): void {
@@ -143,13 +150,13 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     if (!session.ok) return session;
     const said = input.text(text);
     if (!said.ok) return said;
-    const shown = images.turnImages(attached);
-    return shown.ok ? ask.submitTurn(session.value, said.value, shown.value) : shown;
+    const shown = attachments.turnAttachments(attached);
+    return shown.ok ? ask.submitTurn(session.value, said.value, shown.value.images, shown.value.documents) : shown;
   });
-  // Pictures (D46): a picked file is read here, and pasted or dropped bytes are
-  // checked here the same way. The renderer never names a path.
-  handle(CHANNELS.pickImages, (event) => pickImages(event));
-  handle(CHANNELS.readImage, (_event, name, bytes) => images.imageFromBytes(name, bytes));
+  // Pictures (D46) and documents (D59): a picked file is read here, and pasted
+  // or dropped bytes are checked here the same way. The renderer never names a path.
+  handle(CHANNELS.pickAttachments, (event) => pickAttachments(event));
+  handle(CHANNELS.readAttachment, (_event, name, bytes) => attachments.attachmentFromBytes(name, bytes));
   handle(CHANNELS.steer, (_event, id, text) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

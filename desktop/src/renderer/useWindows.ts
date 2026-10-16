@@ -5,10 +5,10 @@ import type { Row } from '../state/sidebar';
 import { markSent, moveDraft, refuse, STEER_TAKES_TEXT } from '../state/attachments';
 import { compactText, parseInput, undoText } from '../state/commands';
 import { ENDED } from '../state/end';
-import { useImageStore } from './useImages';
+import { useAttachmentStore } from './useAttachments';
 
 // The window's pictures are kept with its windows (D46); App provides them to the fields.
-export { ImagesProvider } from './useImages';
+export { AttachmentsProvider } from './useAttachments';
 import type { Sheet } from './CommandSheet';
 import { listOf, type UserCommands } from './useUserCommands';
 import type { Outcome, StartOptions, WindowActions } from './window';
@@ -48,8 +48,8 @@ export function useWindows(o: {
 }) {
   const { actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized, maximize, sheet, commandsOf, startLoop } = o;
   // The pictures of the fields (D46): attached per conversation, sent with its next message.
-  const images = useImageStore(actions, say);
-  const attached = images.store;
+  const attachments = useAttachmentStore(actions, say);
+  const attached = attachments.store;
   const [focusId, setFocusId] = useState<string | null>(null);
   const [caret, setCaret] = useState<{ id: string; n: number } | null>(null);
   const [choosers, setChoosers] = useState<string[]>([]);
@@ -255,17 +255,17 @@ export function useWindows(o: {
           break;
         case 'message': {
           const running = sessions.byId[id]?.state === 'running';
-          // The pictures attached go with it (D46): to a turn, never to a correction.
-          const images = attached.get().draft[id] ?? [];
-          if (running && images.length > 0) {
+          // The pictures (D46) and documents (D59) attached go with it: to a turn, never to a correction.
+          const files = attached.get().draft[id] ?? [];
+          if (running && files.length > 0) {
             say(STEER_TAKES_TEXT);
             attached.update((a) => refuse(a, id, STEER_TAKES_TEXT));
             return;
           }
           const after = sessions.byId[id]?.lastSeq ?? 0;
-          const out = await once(`send:${id}`, () => (images.length > 0 ? actions.send(id, text, running, images) : actions.send(id, text, running)));
+          const out = await once(`send:${id}`, () => (files.length > 0 ? actions.send(id, text, running, files) : actions.send(id, text, running)));
           ok = !!out?.ok;
-          if (out && images.length > 0) attached.update((a) => (out.ok ? markSent(a, id, after, images) : refuse(a, id, out.why)));
+          if (out && files.length > 0) attached.update((a) => (out.ok ? markSent(a, id, after, files) : refuse(a, id, out.why)));
         }
       }
       // Emptied only once the daemon took it, and only if what is in the field
@@ -342,7 +342,7 @@ export function useWindows(o: {
   );
 
   return {
-    images,
+    attachments,
     focusId,
     setFocusId,
     caret,

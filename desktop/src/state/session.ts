@@ -43,7 +43,7 @@ interface Stamp {
 }
 
 export type Entry =
-  | (Stamp & { kind: 'user'; text: string; steer: boolean })
+  | (Stamp & { kind: 'user'; text: string; steer: boolean; documents?: P.AttachedDocument[] })
   | (Stamp & { kind: 'model'; turnId: string; round: number; text: string })
   | (Stamp & { kind: 'reasoning'; turnId: string; round: number; text: string })
   | (Stamp & { kind: 'tool'; call: ToolCall })
@@ -367,9 +367,12 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
       return withNote(view, ev.seq, ev.at, { kind: 'context', fraction: ev.payload.fraction });
     case 'turn.started': {
       const text = ev.payload.text ?? '';
-      const entries: Entry[] = text
-        ? [...view.entries, { kind: 'user', seq: ev.seq, at: ev.at, text, steer: false }]
-        : view.entries;
+      // The documents read with the question (D59), named by the event: what
+      // the flow shows of them is the same live and read back.
+      const documents = ev.payload.documents ?? [];
+      const asked: Entry = { kind: 'user', seq: ev.seq, at: ev.at, text, steer: false };
+      const entries: Entry[] =
+        text || documents.length > 0 ? [...view.entries, documents.length > 0 ? { ...asked, documents } : asked] : view.entries;
       return {
         ...view,
         entries,

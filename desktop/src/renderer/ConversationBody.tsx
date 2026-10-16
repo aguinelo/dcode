@@ -7,7 +7,7 @@ import { Composer } from './Composer';
 import { FlowBlocks } from './Flow';
 import { PlanPin } from './PlanPin';
 import { TurnActivity } from './TurnActivity';
-import { useAttached } from './useImages';
+import { useAttached } from './useAttachments';
 
 // xterm.js is most of a megabyte: loaded the first time a terminal opens, not with the window.
 const TerminalDock = lazy(() => import('./TerminalDock').then((m) => ({ default: m.TerminalDock })));
