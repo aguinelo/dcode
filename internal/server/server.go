@@ -208,6 +208,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/commands", s.listCommands)
 	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
 	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
+	s.mux.HandleFunc("GET "+p+"/git/pr", s.readGitPR)
+	s.mux.HandleFunc("POST "+p+"/git/pr", s.createGitPR)
 	s.mux.HandleFunc("POST "+p+"/sessions/{id}/done", s.commitDone)
 	s.mux.HandleFunc("POST "+p+"/loops", s.startLoop)
 	s.mux.HandleFunc("GET "+p+"/loops", s.listLoops)

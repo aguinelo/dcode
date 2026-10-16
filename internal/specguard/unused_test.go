@@ -33,6 +33,8 @@ var exportedWithoutUser = map[string]string{
 	"ListSkills":         "pkg/client is the public API; a consumer asks which skills a workspace has, as the desktop's crew view does over HTTP",
 	"ReadGit":            "pkg/client is the public API; a consumer asks where a workspace is in git and what changed, as the desktop's context panel does over HTTP",
 	"ReadGitDiff":        "pkg/client is the public API; a consumer asks for one changed file's diff, as the desktop's context panel does over HTTP",
+	"ReadGitPR":          "pkg/client is the public API; a consumer asks for a branch's PR and its checks, as the desktop's changes panel does over HTTP",
+	"CreateGitPR":        "pkg/client is the public API; a consumer opens the PR a person confirmed, as the desktop's changes panel does over HTTP",
 	"ListCommands":       "pkg/client is the public API; a consumer asks which user commands a workspace has, as the desktop's / menu does over HTTP",
 	"SubmitTurn":         "pkg/client is the public API; a consumer attaches documents to a turn, as the desktop's composer does over HTTP",
 

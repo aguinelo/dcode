@@ -253,6 +253,17 @@ export const CodeLoopNotAwaitingReview = "loop_not_awaiting_review";
  */
 export const CodeLoopNotFound = "loop_not_found";
 /**
+ * CodeGhUnavailable is the GitHub CLI missing where the daemon runs, or
+ * there without a login: the PR routes have nobody to ask GitHub.
+ */
+export const CodeGhUnavailable = "gh_unavailable";
+/**
+ * CodePRRefused is a branch that cannot become a PR as things stand — no
+ * branch, no origin, the base itself, nothing to propose, a PR already
+ * open, a push the remote refused — with the reason.
+ */
+export const CodePRRefused = "pr_refused";
+/**
  * Error codes. Section 8 of the planning spec.
  */
 export const CodeInternal = "internal";
@@ -369,6 +380,113 @@ export interface GitDiffResponse {
    * Limit is the cap the diff was cut at, in bytes (GitDiffLimit).
    */
   limit: number /* int */;
+}
+/**
+ * How a PR's checks add up, as GitChecks.State says it. A failure beats a
+ * check still running, which beats a pass: never pass over a red check.
+ */
+export const GitChecksPass = "pass";
+/**
+ * How a PR's checks add up, as GitChecks.State says it. A failure beats a
+ * check still running, which beats a pass: never pass over a red check.
+ */
+export const GitChecksFail = "fail";
+/**
+ * How a PR's checks add up, as GitChecks.State says it. A failure beats a
+ * check still running, which beats a pass: never pass over a red check.
+ */
+export const GitChecksPending = "pending";
+/**
+ * GitChecksNone is a PR with no check that passed, failed or waits —
+ * none at all, or only skipped ones.
+ */
+export const GitChecksNone = "none";
+/**
+ * How a PR stands, as GitPR.State says it.
+ */
+export const GitPROpen = "open";
+/**
+ * How a PR stands, as GitPR.State says it.
+ */
+export const GitPRClosed = "closed";
+/**
+ * How a PR stands, as GitPR.State says it.
+ */
+export const GitPRMerged = "merged";
+/**
+ * GitChecks is a PR's checks, counted and summed up in one word.
+ */
+export interface GitChecks {
+  /**
+   * State is one of the GitChecks* constants.
+   */
+  state: string;
+  passed: number /* int */;
+  failed: number /* int */;
+  pending: number /* int */;
+  /**
+   * Skipped counts checks that ended skipped or neutral: neither green nor red.
+   */
+  skipped: number /* int */;
+}
+/**
+ * GitPR is one pull request as GitHub has it, read through gh.
+ */
+export interface GitPR {
+  number: number /* int */;
+  url: string;
+  title: string;
+  /**
+   * State is one of the GitPR* constants.
+   */
+  state: string;
+  draft: boolean;
+  base: string;
+  head: string;
+  checks: GitChecks;
+}
+/**
+ * GitPRResponse answers GET /git/pr, and POST /git/pr once the PR is open:
+ * the branch checked out now, the base a new PR targets unless asked
+ * otherwise, and the branch's PR.
+ * Read when asked, never kept, like GitResponse: CI moves on GitHub, and the
+ * client asks again when it wants to know.
+ */
+export interface GitPRResponse {
+  branch: string;
+  /**
+   * Base is the repository's default branch, as the clone knows it or else
+   * as GitHub says.
+   */
+  base: string;
+  /**
+   * PR is absent when the branch has none — open, merged or closed.
+   */
+  pr?: GitPR;
+}
+/**
+ * CreateGitPRRequest is POST /git/pr: what a person confirmed, every field as
+ * they saw it. The daemon pushes Workspace's branch to origin, never by
+ * force, and opens the PR; it never merges and never turns auto-merge on.
+ */
+export interface CreateGitPRRequest {
+  /**
+   * Workspace is absolute; the branch is the one checked out there now.
+   */
+  workspace: string;
+  /**
+   * Title is one line, at most 256 characters.
+   */
+  title: string;
+  /**
+   * Body is at most 65536 bytes.
+   */
+  body: string;
+  /**
+   * Base empty is GitPRResponse.Base.
+   */
+  base: string;
+  draft: boolean;
 }
 
 //////////

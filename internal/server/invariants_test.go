@@ -125,6 +125,22 @@ var protocolInvariants = map[string]string{
 	"nunca um arquivo qualquer pelo nome":  "TestTheDiffRouteRefusesAFileThatDidNotChange",
 	"As rotas de git recusam":              "TestTheGitRoutesRefuseAWorkspaceTheyCannotRead",
 	"o `core.fsmonitor` é desligado":       "TestReadingTheTreeNeverRunsTheRepositorysFsmonitor",
+	// A branch's PR, through gh. Read and opened by vcs, against a real git
+	// and a stand-in gh; the codes are the route's.
+	"as checagens somadas numa palavra":               "TestThePullRequestOfTheBranchIsReadWithItsChecks",
+	"Branch sem PR é resposta":                        "TestABranchWithNoPullRequestSaysSo",
+	"só quando ele não sabe o `gh` pergunta":          "TestTheDefaultBranchComesFromGitHubWhenTheCloneDoesNotSay",
+	"nunca diz `pass` com uma checagem vermelha":      "TestOneFailingCheckMakesTheSummaryFail",
+	"nada faz merge nem liga auto-merge":              "TestCreatingAPRPushesTheBranchThenOpensIt",
+	"Rascunho pedido é aberto":                        "TestADraftIsOpenedAsADraft",
+	"lido de volta pelo `gh pr view`":                 "TestOpeningAPRAnswersIt",
+	"o remoto fica como estava":                       "TestARejectedPushIsSaidAndNeverForced",
+	"antes de qualquer push":                          "TestAPRThatCannotBeOpenedIsRefusedBeforeAnyPush",
+	"nunca respondem \"sem PR\"":                      "TestWithoutGhThePRIsNotReadOrOpened",
+	"o código de quem ela é":                          "TestThePRRoutesSayWhyWithACode",
+	"antes de o `gh` ou um push rodar":                "TestAPRRequestIsValidatedBeforeAnythingRuns",
+	"sem o `GH_REPO` do ambiente":                     "TestGhRunsWithoutAPromptOrAnInheritedRepository",
+	"As rotas de PR recusam, com `workspace_invalid`": "TestThePRRoutesRefuseAWorkspaceTheyCannotRead",
 	// The question itself. Emitted by the loop, rendered by the client, and
 	// the two assertions live where each half is.
 	"carrega o texto pedido":  "TestTheTurnAnnouncesWhatWasAsked",

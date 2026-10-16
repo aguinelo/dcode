@@ -203,3 +203,27 @@ func TestGoldenGitDiffResponse(t *testing.T) {
 		Truncated: true, Limit: GitDiffLimit,
 	})
 }
+
+// A branch's PR, its checks summed up. `draft` and every count are never
+// omitted — zero is an answer.
+func TestGoldenGitPRResponse(t *testing.T) {
+	golden(t, "git_pr_response", GitPRResponse{
+		Branch: "feat/protocol-git-pr", Base: "main",
+		PR: &GitPR{
+			Number: 481, URL: "https://github.com/aguinelo/dcode/pull/481", Title: "feat(protocol): the daemon opens a branch's PR",
+			State: GitPROpen, Base: "main", Head: "feat/protocol-git-pr",
+			Checks: GitChecks{State: GitChecksPending, Passed: 4, Pending: 1, Skipped: 1},
+		},
+	})
+}
+
+// A branch with no PR: no `pr` at all, rather than one full of zeros.
+func TestGoldenGitPRResponseWithoutAPR(t *testing.T) {
+	golden(t, "git_pr_response_none", GitPRResponse{Branch: "side", Base: "main"})
+}
+
+func TestGoldenCreateGitPRRequest(t *testing.T) {
+	golden(t, "create_git_pr_request", CreateGitPRRequest{
+		Workspace: "/src/dcode", Title: "Add b", Body: "It adds b.\n", Base: "main", Draft: true,
+	})
+}
