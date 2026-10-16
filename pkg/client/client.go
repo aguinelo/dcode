@@ -135,6 +135,12 @@ func (c *Client) Submit(ctx context.Context, id, text string, images ...protocol
 		protocol.SubmitTurnRequest{Text: text, Images: images}, nil)
 }
 
+// SubmitTurn sends a whole turn request.
+func (c *Client) SubmitTurn(ctx context.Context, id string, req protocol.SubmitTurnRequest) error {
+	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/turns",
+		protocol.SubmitTurnRequest{Text: req.Text}, nil)
+}
+
 // Interrupt cancels the running turn.
 func (c *Client) Interrupt(ctx context.Context, id string) error {
 	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/interrupt", nil, nil)

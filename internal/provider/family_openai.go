@@ -28,6 +28,7 @@ func (MiniMaxM3) Name() string { return "minimax-m3" }
 // AcceptsImages is true: M3 is natively multimodal and its OpenAI-compatible
 // surface takes an image as a data URL, up to ten megabytes each.
 func (MiniMaxM3) AcceptsImages() bool  { return true }
+func (MiniMaxM3) AcceptsPDF() bool     { return false }
 func (MiniMaxM3) Transports() []string { return []string{TransportOpenAI, TransportAnthropic} }
 func (MiniMaxM3) Models() []string     { return []string{"MiniMax-M3", "minimax-m3"} }
 
@@ -73,6 +74,7 @@ func (Claude) Name() string { return ClaudeName }
 
 // AcceptsImages is true, through a source block rather than a data URL.
 func (Claude) AcceptsImages() bool  { return true }
+func (Claude) AcceptsPDF() bool     { return false }
 func (Claude) Transports() []string { return []string{TransportAnthropic} }
 func (Claude) Models() []string     { return []string{"claude-"} }
 

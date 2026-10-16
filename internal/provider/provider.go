@@ -101,6 +101,8 @@ type Family interface {
 	// rejected thirty seconds later, for a reason they cannot connect to what
 	// they did.
 	AcceptsImages() bool
+	// AcceptsPDF reports whether this family's models read a PDF.
+	AcceptsPDF() bool
 	// NewDecoder builds a decoder for one stream.
 	//
 	// Decoding cannot be a pure function of one frame: a tool call's arguments

@@ -824,3 +824,8 @@ type Standing interface {
 	// Remember writes down an answer meant to outlive the session.
 	Remember(req protocol.ApprovalRequest, d protocol.ApprovalDecision) error
 }
+
+// SubmitAttached starts a turn with what was attached to it.
+func (s *Session) SubmitAttached(text string, att loop.Attachments) error {
+	return s.Submit(text, att.Images...)
+}

@@ -34,6 +34,10 @@ type Message struct {
 	// up, because a message is one thing the model reads and splitting it
 	// loses which picture went with which question.
 	Images []Image
+	// Documents are the PDFs read with this message, for the same reason.
+	// Text files are not here: they are written into Text, which every
+	// family reads, so only what a family has to declare rides apart.
+	Documents []Document
 	// Reminder marks a message the harness appended rather than the user
 	// typing it. It rides on the user role because that is the only channel
 	// every provider accepts mid-conversation, but a client must never render
@@ -50,6 +54,16 @@ type Image struct {
 	// MediaType is the wire type — image/png, image/jpeg, image/gif,
 	// image/webp. Named rather than sniffed at encode time so the one place
 	// that decides it is the one that read the file.
+	MediaType string
+	Data      []byte
+}
+
+// Document is a file read with a turn, carried as bytes for the reason Image
+// is. A text one is written into the message before it gets here; what a
+// Message carries in Documents is only ever a PDF.
+type Document struct {
+	// Name is what the person attached it as, shown to the model beside it.
+	Name      string
 	MediaType string
 	Data      []byte
 }
