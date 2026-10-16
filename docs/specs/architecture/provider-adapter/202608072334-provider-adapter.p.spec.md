@@ -117,6 +117,8 @@ nenhum.
 
 **O teto de uma resposta também é da família, por modelo.** O dialeto anthropic exige `max_tokens`, e o que ia nele era um 8.192 fixo — um dezesseis avos do que a maioria dos modelos atuais aceita, cortando resposta longa num tamanho que ninguém escolheu. `Claude.OutputCeiling(model)` responde pelo limite publicado de cada linha de modelos (128.000 nos atuais, 64.000 em `claude-haiku-4-5` e na linha 4.5, 32.000 em `claude-opus-4`/`4-1`, 4.096 em `claude-3-haiku`), casado pelo prefixo mais longo. Modelo que a tabela não conhece recebe 32.000, não o maior número da tabela: teto acima do aceito é requisição recusada, teto abaixo é só resposta que para antes e diz. `minimax-m3` no dialeto anthropic segue com 8.192, que é o que sempre mandou. `DCODE_MAX_OUTPUT_TOKENS` (`202608072335-agent-loop.config.spec.md`) vence os dois. A parada no teto vira `Truncated` no `EventDone` — `stop_reason: max_tokens` num dialeto, `finish_reason: length` no outro.
 
+**A janela também é por modelo, da mesma tabela.** `Claude.Window(model)` devolvia 200.000 fixo; todo modelo desde `claude-opus-4-6` tem 1.000.000, e a sessão era compactada a um quinto do que cabia. Linhas 4.5 e anteriores e `claude-haiku-4-5` seguem com 200.000, e modelo que a tabela não conhece também: janela pequena demais compacta cedo, grande demais é requisição recusada no meio do turno.
+
 `minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
 
 **Família desconhecida não existe.** Modelo que não casa com nenhum `Models()` falha na criação da sessão, listando as famílias disponíveis. O escape hatch é explícito — `--family generic` — e emite aviso de que os limiares não foram medidos para aquele modelo.
@@ -325,3 +327,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)
 - [202610151300 — O teto de saída é do modelo](changelog/202610151300-o-teto-de-saida-e-do-modelo.md)
 - [202610151400 — O prefixo Anthropic é lido do cache](changelog/202610151400-o-prefixo-anthropic-e-lido-do-cache.md)
+- [202610151500 — A janela Claude é por modelo](changelog/202610151500-a-janela-claude-e-por-modelo.md)
