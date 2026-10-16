@@ -355,3 +355,45 @@ aprovação, sem linha de atividade; as duas ficam a 0,00%.
 
 Descartados: a soma da conversa inteira (já é o painel da Crew); abrir o diff
 num painel à parte (tiraria o olho do turno).
+
+**D59. PDFs e arquivos de texto vão com o turno, como as imagens** (emenda
+D46). O núcleo aceita documentos num turno (`SubmitTurnRequest.documents`,
+#485): PDF, ou texto em UTF-8 — `text/plain`, `text/markdown`, `text/csv` —,
+com os limites declarados no protocolo, e o `turn.started` diz quais foram.
+
+- **O "+", a cola e o arrasto levam os três.** O seletor do sistema oferece
+  imagens, PDFs e textos juntos (e cada grupo à parte); colar ou arrastar um
+  arquivo o anexa, seja de que tipo for — colar texto puro não traz arquivo e
+  continua sendo do campo. O tipo vem dos bytes, nunca do nome: o processo
+  principal vê primeiro se é imagem, depois se começa com `%PDF-`, depois se é
+  UTF-8 sem NUL; a extensão só diz qual texto (`.md`, `.csv`, o resto
+  `text/plain`). Um `notas.png` que é PDF vai como PDF.
+- **Conferido no processo principal pelas regras do daemon.** Mesmos tipos,
+  mesmos tamanhos (10 MiB por PDF, 256 KiB de texto), mesma contagem (5 por
+  turno, além das 20 imagens) e o mesmo nome: o do arquivo, sem caminho, até
+  255 bytes, sem caractere de controle. Os números são as constantes do
+  `generated.ts`, não cópias. Arquivo maior que 10 MiB é recusado antes de ser
+  lido; o enviado é conferido de novo quando o turno sai. O renderer continua
+  sem nomear caminho (D2).
+- **Na caixa, um chip por documento** — o tipo curto (PDF, MD, CSV, TXT), o
+  nome, o tamanho e o ×, ao lado das miniaturas. Cada tipo tem a sua conta; o
+  que passa dela é recusado pelo nome, no campo e num aviso.
+- **Na conversa, os documentos vêm do `turn.started`.** Diferente das imagens,
+  que o evento não carrega, os documentos são nomeados pelo daemon: a mensagem
+  mostra o mesmo chip ao vivo e numa conversa lida do registro. A janela não
+  guarda nada deles depois do envio.
+- **A recusa do modelo é a do daemon.** Um PDF para um modelo cuja família não
+  lê PDF é recusado na submissão com `invalid_input` nomeando o modelo; a
+  janela diz isso no campo e num aviso, e o texto e os anexos ficam. Nunca some
+  em silêncio.
+- **Correção e fila levam só texto**, como em D46: mensagem com anexos durante
+  um turno fica, dizendo por quê. As frases passam a dizer "anexos".
+
+As réguas: as telas 02 e 03 não têm anexo e ficam a 0,00%; o `check:daemon`
+continua 13 de 13.
+
+Descartados: mandar texto como bloco `document` só para o Claude (o núcleo
+decidiu escrever texto na mensagem para toda família, e a janela segue);
+aceitar qualquer arquivo e deixar o daemon recusar (a recusa chegaria depois do
+envio, e o processo principal já sabe as regras); tipo pela extensão (o mesmo
+erro que D46 evitou nas imagens).

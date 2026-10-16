@@ -1,12 +1,11 @@
-import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { CodeInvalidInput, type TurnImage } from '../protocol/generated';
-import type { ImageAttachment, PickedImages, Refusal } from '../shared/api';
+import type { ImageAttachment, Refusal } from '../shared/api';
 
 // The pictures a turn carries (D46), checked here — in the main process, at
 // the boundary — before any of them reaches the daemon. The renderer never
-// names a file: a picked one is read here, and a pasted or dropped one arrives
-// as bytes that are checked exactly as a read one is.
+// names a file: a picked one is read in `attachments.ts`, and a pasted or
+// dropped one arrives as bytes that are checked exactly as a read one is.
 //
 // The media type comes from the bytes, never from the name, as the daemon's
 // own reader decides it (`session.ReadImage`): a shot.png that is a JPEG is
@@ -35,7 +34,7 @@ function invalid(message: string): { ok: false; refusal: Refusal } {
   return { ok: false, refusal: { code: CodeInvalidInput, message } };
 }
 
-function megabytes(n: number): string {
+export function megabytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
 }
 
@@ -69,41 +68,8 @@ export function imageFromBytes(name: unknown, bytes: unknown): Checked<ImageAtta
   return { ok: true, value: { name: shown, mediaType, data: Buffer.from(bytes).toString('base64'), bytes: bytes.length } };
 }
 
-/** A file the person picked, read here: its size known before it is read, so a huge one is never loaded. */
-export async function readImageFile(file: string): Promise<Checked<ImageAttachment>> {
-  const shown = nameOf(file);
-  try {
-    const info = await stat(file);
-    if (!info.isFile()) return invalid(`${shown} não é um arquivo.`);
-    if (info.size > MAX_IMAGE_BYTES) {
-      return invalid(`${shown} tem ${megabytes(info.size)}, e uma imagem vai ao modelo com até ${megabytes(MAX_IMAGE_BYTES)}.`);
-    }
-    return imageFromBytes(file, new Uint8Array(await readFile(file)));
-  } catch (err) {
-    return invalid(`${shown} não foi lida: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/**
- * The files a picker gave, each read and checked: one refused is said by its
- * reason, and the others still attach. More than a turn carries is refused by
- * name rather than cut silently.
- */
-export async function readImageFiles(files: readonly string[]): Promise<PickedImages> {
-  const out: PickedImages = { images: [], refused: [] };
-  for (const file of files) {
-    if (out.images.length >= MAX_IMAGES) {
-      out.refused.push(`${nameOf(file)} ficou de fora: um turno leva até ${MAX_IMAGES} imagens.`);
-      continue;
-    }
-    const read = await readImageFile(file);
-    if (read.ok) out.images.push(read.value);
-    else out.refused.push(read.refusal.message);
-  }
-  return out;
-}
-
-const BASE64 =/^[A-Za-z0-9+/]*={0,2}$/;
+/** Base64 as the daemon decodes it: the standard alphabet, padded. */
+export const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /**
  * The pictures a turn is sent with, as the window holds them: checked again

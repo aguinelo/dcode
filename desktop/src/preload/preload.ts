@@ -3,11 +3,11 @@ import type { ConversationChange, ModelsResponse, Session } from '../protocol/ge
 import {
   CHANNELS,
   type Answer,
+  type Attachment,
   type DaemonStatus,
   type DcodeApi,
-  type ImageAttachment,
   type LoopsPush,
-  type PickedImages,
+  type PickedAttachments,
   type SessionEvents,
   type StreamEnd,
   type TerminalOpened,
@@ -80,12 +80,12 @@ const api: DcodeApi = {
     options === undefined
       ? invoke<Answer<Session>>(CHANNELS.createSession, workspace)
       : invoke<Answer<Session>>(CHANNELS.createSession, workspace, options),
-  submitTurn: (sessionId, text, images) =>
-    images && images.length > 0
-      ? invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text, images)
+  submitTurn: (sessionId, text, attachments) =>
+    attachments && attachments.length > 0
+      ? invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text, attachments)
       : invoke<Answer<null>>(CHANNELS.submitTurn, sessionId, text),
-  pickImages: () => invoke<PickedImages>(CHANNELS.pickImages),
-  readImage: (name, bytes) => invoke<Answer<ImageAttachment>>(CHANNELS.readImage, name, bytes),
+  pickAttachments: () => invoke<PickedAttachments>(CHANNELS.pickAttachments),
+  readAttachment: (name, bytes) => invoke<Answer<Attachment>>(CHANNELS.readAttachment, name, bytes),
   steer: (sessionId, text) => invoke<Answer<null>>(CHANNELS.steer, sessionId, text),
   interrupt: (sessionId) => invoke<Answer<null>>(CHANNELS.interrupt, sessionId),
   resolveApproval: (sessionId, approvalId, decision) =>

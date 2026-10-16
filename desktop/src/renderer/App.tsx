@@ -34,7 +34,7 @@ import { useModelMenu } from './useModelMenu';
 import { PromptsProvider, usePrompts } from './usePrompts';
 import { useTheme } from './useTheme';
 import { useWindowKeys } from './useWindowKeys';
-import { ImagesProvider, useWindows } from './useWindows';
+import { AttachmentsProvider, useWindows } from './useWindows';
 import type { DaemonView, Outcome, WindowActions } from './window';
 
 const TOAST_MS = 6000;
@@ -482,7 +482,7 @@ export function App({
       <LoopContext.Provider value={loop.view}>
         <RenameProvider value={renames}>
           <PromptsProvider value={prompts}>
-            <ImagesProvider value={win.images}>{drawn}</ImagesProvider>
+            <AttachmentsProvider value={win.attachments}>{drawn}</AttachmentsProvider>
           </PromptsProvider>
         </RenameProvider>
       </LoopContext.Provider>

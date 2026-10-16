@@ -10,6 +10,20 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **PDFs and text files go with a turn, like pictures (D59, amending D46).**
+  The composer's "+" offers pictures, PDFs and text files; pasting or dropping
+  a file attaches it. The main process types each one by its bytes — a
+  picture, then `%PDF-`, then UTF-8 without NUL, the extension only saying
+  which text — and holds it to the daemon's rules from `generated.ts`: 10 MiB a
+  PDF, 256 KiB of text, 5 documents a turn besides 20 pictures, a file name and
+  never a path, checked again when the turn is sent. A document is a chip with
+  its kind, name, size and ×; past a count it is refused by name. The message
+  in the flow shows the documents `turn.started` names, so a conversation read
+  back from its record shows them too. A PDF for a model that does not read
+  one is refused by the daemon at submit, naming the model, and the window says
+  so in the field and a notice, keeping the text and the files. Before, the
+  "+" took pictures only. Screens 02 and 03 stay at 0.00%; `check:daemon` 13 of
+  13.
 - **`generated.ts` carries documents on a turn.** The core's
   `SubmitTurnRequest` gains `documents` (`TurnDocument`: name, media type,
   base64), `TurnStarted` gains `documents` (`AttachedDocument`: name, media

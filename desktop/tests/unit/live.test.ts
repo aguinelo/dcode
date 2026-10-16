@@ -71,11 +71,11 @@ function fakeApi() {
       return Promise.resolve(ok(session('new')));
     },
     submitTurn: (id, text, images) => answer(`turn ${id}: ${text}${images?.length ? ` with ${images.map((i) => i.name).join(', ')}` : ''}`),
-    pickImages: () => (asked.push('pick images'), Promise.resolve({ images: [picture('a.png')], refused: ['b.txt não é uma imagem que o modelo lê.'] })),
-    readImage: (name, bytes) => {
+    pickAttachments: () => (asked.push('pick attachments'), Promise.resolve({ attachments: [picture('a.png')], refused: ['b.bin não é um PDF nem um arquivo de texto que o modelo lê.'] })),
+    readAttachment: (name, bytes) => {
       asked.push(`read ${name} (${bytes.length} bytes)`);
       return Promise.resolve(
-        name.endsWith('.png') ? ok(picture(name)) : { ok: false, refusal: { code: 'invalid_input', message: `${name} não é uma imagem que o modelo lê.` } },
+        name.endsWith('.png') ? ok(picture(name)) : { ok: false, refusal: { code: 'invalid_input', message: `${name} não é um PDF nem um arquivo de texto que o modelo lê.` } },
       );
     },
     steer: (id, text) => answer(`steer ${id}: ${text}`),
@@ -362,16 +362,19 @@ describe('the window connected', () => {
     expect(f.asked).toEqual(['turn s1: olhe isto with a.png']);
   });
 
-  it('asks the main process to pick and to read pictures, and says a refusal by its reason (D46)', async () => {
+  it('asks the main process to pick and to read attachments, and says a refusal by its reason (D46, D59)', async () => {
     const f = fakeApi();
     const store = new LiveStore(f.api);
-    expect(await store.actions.pickImages()).toEqual({ ok: true, value: { images: [picture('a.png')], refused: ['b.txt não é uma imagem que o modelo lê.'] } });
-    expect(await store.actions.readImage('colada.png', new Uint8Array(8))).toEqual({ ok: true, value: picture('colada.png') });
-    expect(await store.actions.readImage('notas.txt', new Uint8Array(2))).toEqual({
-      ok: false,
-      why: 'notas.txt não foi anexada: notas.txt não é uma imagem que o modelo lê.',
+    expect(await store.actions.pickAttachments()).toEqual({
+      ok: true,
+      value: { attachments: [picture('a.png')], refused: ['b.bin não é um PDF nem um arquivo de texto que o modelo lê.'] },
     });
-    expect(f.asked).toEqual(['pick images', 'read colada.png (8 bytes)', 'read notas.txt (2 bytes)']);
+    expect(await store.actions.readAttachment('colada.png', new Uint8Array(8))).toEqual({ ok: true, value: picture('colada.png') });
+    expect(await store.actions.readAttachment('dados.bin', new Uint8Array(2))).toEqual({
+      ok: false,
+      why: 'dados.bin não foi anexado: dados.bin não é um PDF nem um arquivo de texto que o modelo lê.',
+    });
+    expect(f.asked).toEqual(['pick attachments', 'read colada.png (8 bytes)', 'read dados.bin (2 bytes)']);
   });
 
   it('asks the daemon to switch the mode, and says its reason when it refuses', async () => {

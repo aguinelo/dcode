@@ -23,8 +23,8 @@ const NOT_RECORDED = 'A gravação não tem o git desta pasta, e nada foi enviad
 export const fixtureActions: WindowActions = {
   open: async (row) => ({ ok: true, value: row.id }),
   send: unsent,
-  pickImages: async () => ({ ok: false, why: NOT_CONNECTED }),
-  readImage: async () => ({ ok: false, why: NOT_CONNECTED }),
+  pickAttachments: async () => ({ ok: false, why: NOT_CONNECTED }),
+  readAttachment: async () => ({ ok: false, why: NOT_CONNECTED }),
   stop: unsent,
   answer: unsent,
   newSession: async () => ({ ok: false, why: NOT_CONNECTED }),

@@ -263,6 +263,51 @@
   border-color: var(--dc-line-strong);
   color: var(--dc-emph);
 }
+/* A document attached (D59): a chip with its kind, name and size, beside the thumbnails. */
+.composer-doc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  background: var(--dc-panel);
+  font-size: 11.5px;
+}
+.composer-doc-kind {
+  font-family: var(--dc-mono);
+  font-size: 10px;
+  color: var(--dc-dim);
+}
+.composer-doc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dc-text);
+}
+.composer-doc-size {
+  font-family: var(--dc-mono);
+  font-size: 10px;
+  color: var(--dc-faint);
+  white-space: nowrap;
+}
+.composer-doc-remove {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-raised);
+  border: 1px solid var(--dc-line);
+  color: var(--dc-text);
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+}
+.composer-doc-remove:hover {
+  border-color: var(--dc-line-strong);
+  color: var(--dc-emph);
+}
 .composer-refusal {
   font-size: 11.5px;
   line-height: 1.45;

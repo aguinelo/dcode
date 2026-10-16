@@ -87,9 +87,37 @@ export interface ImageAttachment {
   bytes: number;
 }
 
-/** What the picker gave: the pictures read, and why each one refused was refused. */
-export interface PickedImages {
-  images: ImageAttachment[];
+/**
+ * A document attached to a turn (D59): a PDF, known by its bytes, or a text
+ * file, UTF-8 without NUL. Read and checked by the main process like a
+ * picture, and held by the renderer the same way: to show and to send.
+ */
+export interface DocumentAttachment {
+  /** The file's name, never a path: the daemon shows it on the message and to the model. */
+  name: string;
+  /** application/pdf, text/plain, text/markdown or text/csv. */
+  mediaType: string;
+  /** The bytes, in base64, as `TurnDocument.data` carries them. */
+  data: string;
+  /** How many bytes the file has. */
+  bytes: number;
+}
+
+/** What a field holds for its next message: pictures and documents, told apart by their type. */
+export type Attachment = ImageAttachment | DocumentAttachment;
+
+/**
+ * Whether an attachment is a picture. The main process typed it from its
+ * bytes. A plain boolean rather than a type guard: the two kinds have the same
+ * shape, so the type cannot tell them apart — only the media type does.
+ */
+export function isImage(a: Attachment): boolean {
+  return a.mediaType.startsWith('image/');
+}
+
+/** What the picker gave: the files read, and why each one refused was refused. */
+export interface PickedAttachments {
+  attachments: Attachment[];
   refused: string[];
 }
 
@@ -192,12 +220,12 @@ export interface DcodeApi {
   pickFolder(): Promise<string | null>;
   /** Opens a session in a workspace, on what was chosen, else with the daemon's defaults. */
   createSession(workspace: string, options?: NewSessionOptions): Promise<Answer<Session>>;
-  /** A turn, for an idle session, with the pictures attached to it (D46). */
-  submitTurn(sessionId: string, text: string, images?: ImageAttachment[]): Promise<Answer<null>>;
-  /** Asks for pictures through the system's picker, read by the main process (D46). Nothing picked is an empty list. */
-  pickImages(): Promise<PickedImages>;
-  /** A picture pasted or dropped, as bytes: the main process checks it as it checks a picked one (D46). */
-  readImage(name: string, bytes: Uint8Array): Promise<Answer<ImageAttachment>>;
+  /** A turn, for an idle session, with the pictures (D46) and documents (D59) attached to it. */
+  submitTurn(sessionId: string, text: string, attachments?: Attachment[]): Promise<Answer<null>>;
+  /** Asks for pictures and documents through the system's picker, read by the main process (D46, D59). Nothing picked is an empty list. */
+  pickAttachments(): Promise<PickedAttachments>;
+  /** A file pasted or dropped, as bytes: the main process checks it as it checks a picked one (D46, D59). */
+  readAttachment(name: string, bytes: Uint8Array): Promise<Answer<Attachment>>;
   /** A correction for the turn running (D23). */
   steer(sessionId: string, text: string): Promise<Answer<null>>;
   interrupt(sessionId: string): Promise<Answer<null>>;
@@ -258,8 +286,8 @@ export const CHANNELS = {
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',
-  pickImages: 'dcode:pick-images',
-  readImage: 'dcode:read-image',
+  pickAttachments: 'dcode:pick-attachments',
+  readAttachment: 'dcode:read-attachment',
   steer: 'dcode:steer',
   interrupt: 'dcode:interrupt',
   resolveApproval: 'dcode:resolve-approval',

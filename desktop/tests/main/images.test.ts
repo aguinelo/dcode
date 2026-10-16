@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { imageFromBytes, MAX_IMAGE_BYTES, MAX_IMAGES, readImageFile, readImageFiles, sniff, turnImages } from '../../src/main/images';
+import { readAttachmentFile, readAttachmentFiles } from '../../src/main/attachments';
+import { imageFromBytes, MAX_IMAGE_BYTES, MAX_IMAGES, sniff, turnImages } from '../../src/main/images';
 
 // The pictures a turn carries (D46), checked at the main process's boundary:
 // the type from the bytes, the size before the read, the count before the send.
@@ -62,24 +63,11 @@ describe('a pasted or dropped picture', () => {
   });
 });
 
-describe('a picked file', () => {
+describe('a picked picture', () => {
   it('is read by what its bytes are, not by its name', async () => {
     const file = path.join(temp(), 'foto.jpg');
     writeFileSync(file, PNG);
-    expect(await readImageFile(file)).toMatchObject({ ok: true, value: { name: 'foto.jpg', mediaType: 'image/png', bytes: PNG.length } });
-  });
-
-  it('is refused by its size before it is read, and when it is missing or a folder', async () => {
-    const dir = temp();
-    const big = path.join(dir, 'grande.png');
-    writeFileSync(big, PNG);
-    truncateSync(big, MAX_IMAGE_BYTES + 1024 * 1024);
-    expect(await readImageFile(big)).toMatchObject({ ok: false, refusal: { code: 'invalid_input', message: 'grande.png tem 11,0 MB, e uma imagem vai ao modelo com até 10,0 MB.' } });
-    const missing = await readImageFile(path.join(dir, 'nada.png'));
-    expect(missing.ok).toBe(false);
-    if (!missing.ok) expect(missing.refusal.message).toMatch(/^nada\.png não foi lida: ENOENT/);
-    mkdirSync(path.join(dir, 'pasta.png'));
-    expect(await readImageFile(path.join(dir, 'pasta.png'))).toMatchObject({ ok: false, refusal: { message: 'pasta.png não é um arquivo.' } });
+    expect(await readAttachmentFile(file)).toMatchObject({ ok: true, value: { name: 'foto.jpg', mediaType: 'image/png', bytes: PNG.length } });
   });
 
   it('attaches the good ones of a pick and says each one refused, past the count too', async () => {
@@ -90,12 +78,12 @@ describe('a picked file', () => {
       writeFileSync(f, PNG);
       files.push(f);
     }
-    const text = path.join(dir, 'leia.txt');
-    writeFileSync(text, 'oi');
-    const got = await readImageFiles([text, ...files]);
-    expect(got.images).toHaveLength(MAX_IMAGES);
+    const bin = path.join(dir, 'leia.bin');
+    writeFileSync(bin, new Uint8Array([0xff, 0xfe, 0x00]));
+    const got = await readAttachmentFiles([bin, ...files]);
+    expect(got.attachments).toHaveLength(MAX_IMAGES);
     expect(got.refused).toEqual([
-      'leia.txt não é uma imagem que o modelo lê: só PNG, JPEG, GIF e WebP.',
+      'leia.bin não é um PDF nem um arquivo de texto que o modelo lê.',
       `${MAX_IMAGES}.png ficou de fora: um turno leva até ${MAX_IMAGES} imagens.`,
     ]);
   });

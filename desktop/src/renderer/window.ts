@@ -3,7 +3,7 @@
 // mode, from a recording that sends nothing anywhere (fixture.ts).
 
 import type { LoopRun, ModelsResponse, SpecFolder } from '../protocol/generated';
-import type { DaemonStatus, ImageAttachment, PickedImages } from '../shared/api';
+import type { Attachment, DaemonStatus, PickedAttachments } from '../shared/api';
 import type { CommandsResponse, CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
 import type { Row } from '../state/sidebar';
@@ -28,13 +28,14 @@ export interface WindowActions {
   open(row: Row): Promise<Outcome<string>>;
   /**
    * Sends a message: a turn for an idle session, a correction for a running
-   * one (D23). Pictures go with a turn only (D46): a correction carries text.
+   * one (D23). Pictures (D46) and documents (D59) go with a turn only: a
+   * correction carries text.
    */
-  send(sessionId: string, text: string, steer: boolean, images?: ImageAttachment[]): Promise<Outcome<null>>;
-  /** Pictures through the system's picker, read and checked by the main process (D46). */
-  pickImages(): Promise<Outcome<PickedImages>>;
-  /** A picture pasted or dropped, checked by the main process as a picked one is (D46). */
-  readImage(name: string, bytes: Uint8Array): Promise<Outcome<ImageAttachment>>;
+  send(sessionId: string, text: string, steer: boolean, attachments?: Attachment[]): Promise<Outcome<null>>;
+  /** Pictures and documents through the system's picker, read and checked by the main process (D46, D59). */
+  pickAttachments(): Promise<Outcome<PickedAttachments>>;
+  /** A file pasted or dropped, checked by the main process as a picked one is (D46, D59). */
+  readAttachment(name: string, bytes: Uint8Array): Promise<Outcome<Attachment>>;
   stop(sessionId: string): Promise<Outcome<null>>;
   answer(sessionId: string, approvalId: string, decision: string): Promise<Outcome<null>>;
   /** Asks for a folder and opens a session there. Null when the person cancelled. */

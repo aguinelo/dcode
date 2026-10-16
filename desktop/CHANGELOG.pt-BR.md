@@ -10,6 +10,19 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **PDFs e arquivos de texto vão com o turno, como as imagens (D59, emenda
+  D46).** O "+" da caixa oferece imagens, PDFs e textos; colar ou arrastar um
+  arquivo o anexa. O processo principal tipa cada um pelos bytes — imagem,
+  depois `%PDF-`, depois UTF-8 sem NUL, a extensão só dizendo qual texto — e o
+  confere pelas regras do daemon, do `generated.ts`: 10 MiB por PDF, 256 KiB de
+  texto, 5 documentos por turno além de 20 imagens, nome de arquivo e nunca
+  caminho, conferido de novo quando o turno sai. Documento é um chip com tipo,
+  nome, tamanho e ×; passou da conta, é recusado pelo nome. A mensagem no fluxo
+  mostra os documentos que o `turn.started` nomeia, então uma conversa lida do
+  registro também os mostra. PDF para modelo que não lê PDF é recusado pelo
+  daemon na submissão, nomeando o modelo, e a janela diz isso no campo e num
+  aviso, mantendo o texto e os arquivos. Antes, o "+" só levava imagens. As
+  telas 02 e 03 ficam a 0,00%; `check:daemon` 13 de 13.
 - **O `generated.ts` carrega documentos num turno.** O `SubmitTurnRequest` do
   núcleo ganha `documents` (`TurnDocument`: nome, tipo, base64), o
   `TurnStarted` ganha `documents` (`AttachedDocument`: nome, tipo, tamanho), e
