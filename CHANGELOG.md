@@ -263,6 +263,17 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The TUI's `/loop` tests wait on what the fake daemon does, not on the
+  clock.** They flaked on CI and under load, and one CI run hung: a quiet spell
+  of 150 ms was read as "the loop is over", a run that ended before its first
+  frame was never seen as followed, and every loop stream shared one channel,
+  so a stream being replaced could take the frame the new one waited for. The
+  fake daemon now gives each stream its own frames, opening with every run as
+  it stands, as the daemon does; a wait ends when the program is at rest —
+  every command it ran has delivered, only its waiters are left — and the clock
+  only bounds it, so a hang fails saying where it stood. Each test ends the
+  runs, streams, commands and follows it started, or fails naming what was
+  left. No assertion on what the person sees changed.
 - **The Claude window is declared per model.** The family reported 200K for
   every model, while every model since `claude-opus-4-6` holds 1M, so a
   session was compacted at a fifth of what it could keep. The window now

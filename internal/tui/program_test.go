@@ -65,10 +65,8 @@ type fakeTransport struct {
 	// holdTurns makes a loop's work turns wait until it closes or they are
 	// stopped.
 	holdTurns chan struct{}
-	// getFails fails that many session lookups, and watchErrs is the error
-	// channel of the loop stream.
-	getFails  int
-	watchErrs chan error
+	// getFails fails that many session lookups.
+	getFails int
 	// watchFrames, when set, is the loop stream instead of the daemon's own,
 	// so a test can close it.
 	watchFrames chan protocol.LoopChange

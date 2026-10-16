@@ -3,12 +3,11 @@ package tui
 import (
 	"context"
 	"fmt"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	tea "charm.land/bubbletea/v2"
 
 	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -18,21 +17,59 @@ import (
 // loopcommand.Runner, run over this fake's sessions, specs and commits. The
 // sequence under the TUI is the daemon's own, so what these tests assert is
 // what the person sees when the daemon runs the loop — never a copy of it.
+//
+// Nothing here waits on the clock to decide anything. A wait ends on what the
+// fake daemon or the program did, and the clock only bounds it, so a hang is a
+// failure that says where it stood, never a test that blocks for good.
+
+// loopWait bounds every wait in these tests. It is a ceiling, not a guess at
+// how long the work takes: nothing here finishes by its expiry.
+const loopWait = 30 * time.Second
 
 func (f *fakeTransport) loopd() *fakeLoopDaemon {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.daemon == nil {
-		f.daemon = &fakeLoopDaemon{frames: make(chan protocol.LoopChange, 1024),
-			runs: map[string]*loopcommand.Runner{}}
+		ctx, cancel := context.WithCancel(context.Background())
+		f.daemon = &fakeLoopDaemon{runs: map[string]*loopcommand.Runner{},
+			watchers: map[int]*loopWatcher{}, ctx: ctx, cancel: cancel}
 	}
 	return f.daemon
 }
 
 type fakeLoopDaemon struct {
+	runs  map[string]*loopcommand.Runner
+	order []string
+	// watchers is every open loop stream. Each gets every frame, as each
+	// client of the daemon does: one channel shared by every stream let a
+	// stream being replaced take the frame the new one was waiting for.
+	watchers map[int]*loopWatcher
+	nextW    int
+	// ctx is the daemon's life: the runs and the streams end with it, and
+	// running is what has yet to.
+	ctx     context.Context
+	cancel  context.CancelFunc
+	running sync.WaitGroup
+}
+
+type loopWatcher struct {
+	ctx    context.Context
 	frames chan protocol.LoopChange
-	runs   map[string]*loopcommand.Runner
-	order  []string
+	errs   chan error
+}
+
+// publish is the daemon telling every stream that a run moved. A stream too
+// far behind to take it is a broken test, said, not a frame quietly lost.
+func (f *fakeTransport) publish(run protocol.LoopRun) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, w := range f.daemon.watchers {
+		select {
+		case w.frames <- protocol.LoopChange{Kind: protocol.LoopChanged, Loop: &run}:
+		default:
+			panic(fmt.Sprintf("a loop stream fell %d frames behind: the fake daemon cannot deliver %s", cap(w.frames), run.State))
+		}
+	}
 }
 
 func (f *fakeTransport) StartLoop(_ context.Context, req protocol.StartLoopRequest) (protocol.LoopRun, error) {
@@ -47,17 +84,23 @@ func (f *fakeTransport) StartLoop(_ context.Context, req protocol.StartLoopReque
 		}
 	}
 	f.mu.Unlock()
-	r, err := loopcommand.NewRunner(id, req, loopSide{f}, func(run protocol.LoopRun) {
-		d.frames <- protocol.LoopChange{Kind: protocol.LoopChanged, Loop: &run}
-	}, nil)
+	r, err := loopcommand.NewRunner(id, req, loopSide{f}, f.publish, nil)
 	if err != nil {
 		return protocol.LoopRun{}, err
 	}
 	f.mu.Lock()
+	if d.ctx.Err() != nil {
+		f.mu.Unlock()
+		return protocol.LoopRun{}, fmt.Errorf("the fake daemon has stopped: %w", d.ctx.Err())
+	}
 	d.runs[id] = r
 	d.order = append(d.order, id)
+	d.running.Add(1)
 	f.mu.Unlock()
-	go r.Run(context.Background())
+	go func() {
+		defer d.running.Done()
+		r.Run(d.ctx)
+	}()
 	return r.Snapshot(), nil
 }
 
@@ -72,17 +115,68 @@ func (f *fakeTransport) ListLoops(context.Context, string) ([]protocol.LoopRun, 
 	return out, nil
 }
 
-func (f *fakeTransport) WatchLoops(context.Context) (<-chan protocol.LoopChange, <-chan error) {
+// WatchLoops opens a stream the way the daemon does: every run as it stands
+// first, then every change. A stream opened after a run moved still learns
+// where it is.
+func (f *fakeTransport) WatchLoops(ctx context.Context) (<-chan protocol.LoopChange, <-chan error) {
+	d := f.loopd()
 	f.mu.Lock()
-	errs, frames := f.watchErrs, f.watchFrames
-	f.mu.Unlock()
-	if errs == nil {
-		errs = make(chan error)
+	defer f.mu.Unlock()
+	if f.watchFrames != nil {
+		return f.watchFrames, make(chan error)
 	}
-	if frames != nil {
+	if d.ctx.Err() != nil {
+		// The test is over: the stream ends, saying why.
+		frames, errs := make(chan protocol.LoopChange), make(chan error, 1)
+		errs <- d.ctx.Err()
+		close(frames)
 		return frames, errs
 	}
-	return f.loopd().frames, errs
+	w := &loopWatcher{ctx: ctx, frames: make(chan protocol.LoopChange, 1024), errs: make(chan error, 1)}
+	snap := protocol.LoopChange{Kind: protocol.LoopSnapshot, Loops: []protocol.LoopRun{}}
+	for _, id := range d.order {
+		snap.Loops = append(snap.Loops, d.runs[id].Snapshot())
+	}
+	w.frames <- snap
+	n := d.nextW
+	d.nextW++
+	d.watchers[n] = w
+	d.running.Add(1)
+	go func() {
+		defer d.running.Done()
+		select {
+		case <-ctx.Done():
+		case <-d.ctx.Done():
+		}
+		f.mu.Lock()
+		delete(d.watchers, n)
+		f.mu.Unlock()
+	}()
+	return w.frames, w.errs
+}
+
+// failLoopStream fails the stream of the follow on screen — that one, not a
+// stream being replaced — once it is open.
+func (f *fakeTransport) failLoopStream(t *testing.T, p *program, err error) {
+	t.Helper()
+	if p.loop == nil {
+		t.Fatal("no loop is followed, so there is no stream to fail")
+	}
+	d, ctx := f.loopd(), p.loop.ctx
+	deadline := time.Now().Add(loopWait)
+	for time.Now().Before(deadline) {
+		f.mu.Lock()
+		for _, w := range d.watchers {
+			if w.ctx == ctx {
+				w.errs <- err
+				f.mu.Unlock()
+				return
+			}
+		}
+		f.mu.Unlock()
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("the follow on screen never opened its loop stream in %s", loopWait)
 }
 
 func (f *fakeTransport) runner(id string) *loopcommand.Runner {
@@ -182,91 +276,6 @@ func (l loopSide) Interrupt(string) {
 	f.interrupts++
 }
 
-// runtime runs the commands Update returns, as the program would: each in its
-// own goroutine, their messages back through Update in arrival order. The
-// loop is followed through waitForLoop, the real path, never by reading the
-// follow's channel. One per program.
-type runtime struct {
-	msgs chan tea.Msg
-}
-
-var (
-	runtimesMu sync.Mutex
-	runtimes   = map[*program]*runtime{}
-)
-
-func runtimeOf(p *program) *runtime {
-	runtimesMu.Lock()
-	defer runtimesMu.Unlock()
-	rt, ok := runtimes[p]
-	if !ok {
-		rt = &runtime{msgs: make(chan tea.Msg, 1024)}
-		runtimes[p] = rt
-	}
-	return rt
-}
-
-func (rt *runtime) spawn(p *program, cmd tea.Cmd) {
-	if cmd == nil {
-		return
-	}
-	go func() {
-		m := cmd()
-		if batch, ok := m.(tea.BatchMsg); ok {
-			for _, c := range batch {
-				rt.spawn(p, c)
-			}
-			return
-		}
-		if m == nil {
-			return
-		}
-		select {
-		case rt.msgs <- m:
-		case <-p.ctx.Done():
-		}
-	}()
-}
-
-// typeLoop is the person typing `/loop <args>`.
-func typeLoop(t *testing.T, p *program, args string) {
-	t.Helper()
-	_, cmd := p.runBuiltin(Resolved{Kind: CmdBuiltin, Name: "loop", Args: args})
-	runtimeOf(p).spawn(p, cmd)
-}
-
-// deliver runs one command's messages through the program, as the runtime
-// would, without waiting for them to arrive.
-func deliver(p *program, cmd tea.Cmd) {
-	runtimeOf(p).spawn(p, cmd)
-}
-
-// followLoop runs the program until done says so or, with done nil, until it
-// no longer follows a loop and nothing more is arriving.
-func followLoop(t *testing.T, p *program, done func() bool) {
-	t.Helper()
-	rt := runtimeOf(p)
-	deadline := time.After(5 * time.Second)
-	seen := p.loop != nil
-	for {
-		if done != nil && done() {
-			return
-		}
-		select {
-		case m := <-rt.msgs:
-			_, cmd := p.Update(m)
-			rt.spawn(p, cmd)
-			seen = seen || p.loop != nil
-		case <-time.After(150 * time.Millisecond):
-			if done == nil && seen && p.loop == nil {
-				return
-			}
-		case <-deadline:
-			t.Fatalf("the loop never got there; entries: %q", summaries(p))
-		}
-	}
-}
-
 // sawEntry reports an entry carrying every one of the strings.
 func sawEntry(p *program, want ...string) bool {
 	for _, e := range p.model.Entries {
@@ -292,9 +301,69 @@ func summaries(p *program) []string {
 }
 
 // loopProgram is a program on a fake daemon, in a workspace, idle.
+//
+// When the test ends, everything it set going ends with it — the program's
+// commands and follows, the daemon's runs and streams — or the test fails
+// naming what was left. A goroutine left behind is the next test's flake.
 func loopProgram(t *testing.T, specs ...protocol.SpecFolder) (*program, *fakeTransport) {
 	t.Helper()
+	if _, checked := followChecked.LoadOrStore(t, true); !checked {
+		// Once per test, and first, so it runs after every program the test
+		// made has been ended.
+		t.Cleanup(func() {
+			followsEnded(t)
+			followChecked.Delete(t)
+		})
+	}
 	p, tr := newProgram(t)
 	tr.specs = specs
+	d, rt := tr.loopd(), runtimeOf(p)
+	t.Cleanup(func() {
+		p.cancel()
+		// Under the lock, so nothing starts a run or a stream once it is
+		// over: what is running is all the wait below has to see end.
+		tr.mu.Lock()
+		d.cancel()
+		tr.mu.Unlock()
+		ended("the fake daemon's runs and streams", &d.running, t)
+		ended("the program's commands", &rt.all, t)
+		runtimesMu.Lock()
+		delete(runtimes, p)
+		runtimesMu.Unlock()
+	})
 	return p, tr
+}
+
+func ended(what string, wg *sync.WaitGroup, t *testing.T) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(loopWait):
+		t.Errorf("%s were still running %s after the test ended", what, loopWait)
+	}
+}
+
+var followChecked sync.Map
+
+// followsEnded fails the test if a follow it started is still reading the
+// loop stream. The follow is the program's own goroutine, so it is looked for
+// where it runs; the tests in this package do not run in parallel, so any
+// follow there is this test's.
+func followsEnded(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(loopWait)
+	buf := make([]byte, 1<<20)
+	for {
+		stacks := buf[:goruntime.Stack(buf, true)]
+		if !strings.Contains(string(stacks), "tui.(*program).followLoop(") {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Errorf("a loop follow was still running %s after the test ended", loopWait)
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
 }

@@ -62,7 +62,7 @@ func TestTextTypedBetweenFoldersIsHeld(t *testing.T) {
 	p.model = p.model.SetInput("e o footer?")
 	_, cmd := p.onEnter()
 	deliver(p, cmd)
-	runFor(t, p, 200*1e6)
+	settle(t, p)
 	if submitted(tr, "e o footer?") {
 		t.Fatalf("text typed between folders was sent into the folder being left: %q", tr.submits())
 	}
@@ -86,7 +86,7 @@ func TestAStoppedLoopKeepsTheQueueAndSaysSo(t *testing.T) {
 		t.Fatal(err)
 	}
 	followLoop(t, p, func() bool { return sawEntry(p, "left in the queue") })
-	runFor(t, p, 200*1e6)
+	settle(t, p)
 	if submitted(tr, "e o footer?") || len(p.model.Queue) != 1 {
 		t.Fatalf("a stopped loop sent what it held: %q, queue %v", tr.submits(), p.model.Queue)
 	}
