@@ -61,7 +61,7 @@ func (f MiniMaxM3) Encode(req Request, transport string) (WireRequest, error) {
 	case TransportOpenAI:
 		return encodeOpenAI(req)
 	case TransportAnthropic:
-		return encodeAnthropic(req, m3AnthropicOutput)
+		return encodeAnthropic(req, m3AnthropicOutput, false)
 	}
 	return WireRequest{}, fmt.Errorf("family %s: unsupported transport %q", f.Name(), transport)
 }
@@ -98,7 +98,7 @@ func (f Claude) Encode(req Request, transport string) (WireRequest, error) {
 	if transport != TransportAnthropic {
 		return WireRequest{}, fmt.Errorf("family %s: unsupported transport %q", f.Name(), transport)
 	}
-	return encodeAnthropic(req, f.OutputCeiling(req.Model))
+	return encodeAnthropic(req, f.OutputCeiling(req.Model), true)
 }
 
 func (Claude) NewDecoder(tools []ce.ToolDef) Decoder {
@@ -464,8 +464,11 @@ func answerText(s string) (string, bool) {
 // ---------- Anthropic dialect ----------
 
 type anRequest struct {
-	Model     string      `json:"model"`
-	System    string      `json:"system,omitempty"`
+	Model string `json:"model"`
+	// System is a string, or a list of blocks when it carries a cache
+	// breakpoint: a block is what carries one. Both are valid on the wire, and
+	// a family that sends no breakpoint keeps the bytes it always sent.
+	System    any         `json:"system,omitempty"`
 	Messages  []anMessage `json:"messages"`
 	Tools     []anTool    `json:"tools,omitempty"`
 	Stream    bool        `json:"stream"`
@@ -489,6 +492,8 @@ type anContent struct {
 	Source    *anSource       `json:"source,omitempty"`
 	// Title names a document block: the file the person attached.
 	Title string `json:"title,omitempty"`
+	// CacheControl marks the end of a prefix the provider may cache.
+	CacheControl *anCacheControl `json:"cache_control,omitempty"`
 }
 
 // anSource is how the Anthropic surface carries a picture: raw base64 in a
@@ -500,9 +505,10 @@ type anSource struct {
 }
 
 type anTool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	InputSchema json.RawMessage `json:"input_schema"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	InputSchema  json.RawMessage `json:"input_schema"`
+	CacheControl *anCacheControl `json:"cache_control,omitempty"`
 }
 
 // m3AnthropicOutput is what MiniMax M3 asks for on the Anthropic dialect when
@@ -517,8 +523,13 @@ const m3AnthropicOutput = 8192
 //
 // ceiling fills max_tokens when the request names none: the dialect requires
 // the field, and what it may be is the family's to say, per model.
-func encodeAnthropic(req Request, ceiling int) (WireRequest, error) {
+//
+// cache marks the prompt-cache breakpoints (markCache). It is the family's to
+// ask for: the dialect carries the marker, and only a family that knows its
+// endpoint reads it should send one.
+func encodeAnthropic(req Request, ceiling int, cache bool) (WireRequest, error) {
 	body := anRequest{Model: req.Model, Stream: true, MaxTokens: req.MaxTokens}
+	var system string
 	if body.MaxTokens <= 0 {
 		body.MaxTokens = ceiling
 	}
@@ -526,7 +537,7 @@ func encodeAnthropic(req Request, ceiling int) (WireRequest, error) {
 	for _, m := range req.Messages {
 		switch m.Role {
 		case ce.RoleSystem:
-			body.System = m.Text
+			system = m.Text
 			continue
 		case ce.RoleTool:
 			if m.ToolResult == nil {
@@ -585,6 +596,12 @@ func encodeAnthropic(req Request, ceiling int) (WireRequest, error) {
 			Name: t.Name, Description: t.Description, InputSchema: t.Schema,
 		})
 	}
+	switch {
+	case cache:
+		markCache(&body, system)
+	case system != "":
+		body.System = system
+	}
 
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -616,12 +633,19 @@ type anEvent struct {
 		// matters here: the answer stopped at the ceiling, unfinished.
 		StopReason string `json:"stop_reason"`
 	} `json:"delta"`
-	Usage *struct {
-		InputTokens              int `json:"input_tokens"`
-		OutputTokens             int `json:"output_tokens"`
-		CacheReadInputTokens     int `json:"cache_read_input_tokens"`
-		CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
-	} `json:"usage"`
+	Usage *anUsage `json:"usage"`
+	// Message is set on message_start, the frame that carries the prompt's
+	// usage.
+	Message *struct {
+		Usage *anUsage `json:"usage"`
+	} `json:"message"`
+}
+
+type anUsage struct {
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
 }
 
 // anthropicDecoder assembles one stream in the Anthropic dialect.
@@ -636,6 +660,9 @@ type anthropicDecoder struct {
 	order      []int
 	flushed    bool
 	terminated bool
+	// started is the usage message_start reported, kept for the terminal
+	// event.
+	started anUsage
 }
 
 // Close is a no-op for this dialect: message_stop is explicit, so a stream that
@@ -657,6 +684,15 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 	}
 
 	switch e.Type {
+	case "message_start":
+		// The prompt side of the usage — what was read and written by the
+		// cache among it — is reported here and only here. message_delta
+		// carries the output.
+		if e.Message != nil && e.Message.Usage != nil {
+			d.started = *e.Message.Usage
+		}
+		return nil, nil
+
 	case "content_block_start":
 		if e.ContentBlock != nil && e.ContentBlock.Type == "tool_use" {
 			// Opened, not complete: the arguments are still coming.
@@ -706,13 +742,8 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		d.terminated = true
 		se := StreamEvent{Type: EventDone}
 		se.Truncated = e.Delta != nil && e.Delta.StopReason == "max_tokens"
-		if e.Usage != nil {
-			se.Usage = &Usage{
-				InputTokens:      e.Usage.InputTokens,
-				OutputTokens:     e.Usage.OutputTokens,
-				CacheReadTokens:  e.Usage.CacheReadInputTokens,
-				CacheWriteTokens: e.Usage.CacheCreationInputTokens,
-			}
+		if u, ok := d.usage(e.Usage); ok {
+			se.Usage = &u
 		}
 		return append(out, se), nil
 	}

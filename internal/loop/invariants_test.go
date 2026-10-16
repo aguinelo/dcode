@@ -51,6 +51,7 @@ var loopInvariants = map[string]string{
 	"nunca chega ao aprovador":      "TestTheChildIsReadOnlyEvenWithAWritingToolInReach",
 	"aparece no relatório do filho": "TestTheResultCarriesWhereItLookedAndWhatItCouldNotRead",
 	"debitados do orçamento do pai": "TestChildTokensAreDebitedFromTheParent",
+	"escritos no cache somam":       "TestCacheWritesAreSummedLikeCacheReads",
 	"acima do teto declara":         "TestALongReportIsCutAndSaysSo",
 }
 

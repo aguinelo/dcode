@@ -49,7 +49,11 @@ func TestTheAnthropicEncoderCarriesEveryKindOfMessage(t *testing.T) {
 	}
 
 	var body struct {
-		System   string `json:"system"`
+		// A block list rather than a string: the block is what carries the
+		// cache breakpoint.
+		System []struct {
+			Text string `json:"text"`
+		} `json:"system"`
 		Messages []struct {
 			Role    string `json:"role"`
 			Content []struct {
@@ -68,8 +72,8 @@ func TestTheAnthropicEncoderCarriesEveryKindOfMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if body.System != "be brief" {
-		t.Errorf("system = %q, want the system message hoisted out of the list", body.System)
+	if len(body.System) != 1 || body.System[0].Text != "be brief" {
+		t.Errorf("system = %+v, want the system message hoisted out of the list", body.System)
 	}
 	if len(body.Messages) != 3 {
 		t.Fatalf("got %d messages, want the three that carry something", len(body.Messages))
