@@ -128,11 +128,14 @@ export function ActivityLine({
   startedAt,
   now,
   tick,
+  touched,
 }: {
   activity: Activity;
   startedAt: string;
   now: number;
   tick: number;
+  /** What the turn touched, on the right of the elapsed time (D58). */
+  touched?: ReactNode;
 }) {
   const verbs = activity.phase ? VERBS[activity.phase] : null;
   // The verb never appears alone: with nothing running it is the plain word.
@@ -152,6 +155,7 @@ export function ActivityLine({
       <span className="activity-verb">{word.charAt(0).toUpperCase() + word.slice(1)}…</span>
       <span className="activity-fact">{fact}</span>
       <span className="activity-meta">{elapsed(since(startedAt, now))}</span>
+      {touched}
     </div>
   );
 }
