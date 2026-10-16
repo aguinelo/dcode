@@ -10,6 +10,13 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **`generated.ts` carries documents on a turn.** The core's
+  `SubmitTurnRequest` gains `documents` (`TurnDocument`: name, media type,
+  base64), `TurnStarted` gains `documents` (`AttachedDocument`: name, media
+  type, size), and the accepted types and limits are constants. Regenerated,
+  and the event decoder accepts `turn.started.documents` as optional; nothing
+  in the app sends or draws them yet — the composer does in its own
+  pull request.
 - **The activity line shows what the turn touched (D58).** Next to the verb
   and the elapsed time, the files the running turn wrote (the writing tools'
   `path`, from the turn's start) show as small chips, and the pictures sent

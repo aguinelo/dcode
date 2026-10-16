@@ -27,7 +27,12 @@ func (MiniMaxM3) Name() string { return "minimax-m3" }
 
 // AcceptsImages is true: M3 is natively multimodal and its OpenAI-compatible
 // surface takes an image as a data URL, up to ten megabytes each.
-func (MiniMaxM3) AcceptsImages() bool  { return true }
+func (MiniMaxM3) AcceptsImages() bool { return true }
+
+// AcceptsPDF is false. The OpenAI-compatible surface has no part for a file,
+// and nothing here has been measured reading one through the Anthropic
+// surface — the rule for this field is declared, not attempted.
+func (MiniMaxM3) AcceptsPDF() bool     { return false }
 func (MiniMaxM3) Transports() []string { return []string{TransportOpenAI, TransportAnthropic} }
 func (MiniMaxM3) Models() []string     { return []string{"MiniMax-M3", "minimax-m3"} }
 
@@ -49,6 +54,9 @@ func (MiniMaxM3) DefaultLimits() Limits {
 }
 
 func (f MiniMaxM3) Encode(req Request, transport string) (WireRequest, error) {
+	if err := refusePDF(f.Name(), req); err != nil {
+		return WireRequest{}, err
+	}
 	switch transport {
 	case TransportOpenAI:
 		return encodeOpenAI(req)
@@ -72,7 +80,11 @@ const ClaudeName = "claude"
 func (Claude) Name() string { return ClaudeName }
 
 // AcceptsImages is true, through a source block rather than a data URL.
-func (Claude) AcceptsImages() bool  { return true }
+func (Claude) AcceptsImages() bool { return true }
+
+// AcceptsPDF is true: the Anthropic surface reads a PDF as a document block,
+// its text and a picture of each page.
+func (Claude) AcceptsPDF() bool     { return true }
 func (Claude) Transports() []string { return []string{TransportAnthropic} }
 func (Claude) Models() []string     { return []string{"claude-"} }
 
@@ -160,6 +172,11 @@ type oaStreamOptions struct {
 }
 
 func encodeOpenAI(req Request) (WireRequest, error) {
+	// This dialect has no part for a file. Encoding the message without the
+	// PDF would ask about a document the model never saw.
+	if err := refusePDF("the openai dialect", req); err != nil {
+		return WireRequest{}, err
+	}
 	body := oaRequest{
 		Model: req.Model, Stream: true, MaxTokens: req.MaxTokens,
 		StreamOptions: &oaStreamOptions{IncludeUsage: true},
@@ -464,6 +481,8 @@ type anContent struct {
 	Content   string          `json:"content,omitempty"`
 	IsError   bool            `json:"is_error,omitempty"`
 	Source    *anSource       `json:"source,omitempty"`
+	// Title names a document block: the file the person attached.
+	Title string `json:"title,omitempty"`
 }
 
 // anSource is how the Anthropic surface carries a picture: raw base64 in a
@@ -519,6 +538,19 @@ func encodeAnthropic(req Request) (WireRequest, error) {
 					Type:      "base64",
 					MediaType: img.MediaType,
 					Data:      base64.StdEncoding.EncodeToString(img.Data),
+				},
+			})
+		}
+		// A PDF is a document block with the same base64 source a picture
+		// uses, titled with the name it was attached as.
+		for _, d := range m.Documents {
+			am.Content = append(am.Content, anContent{
+				Type:  "document",
+				Title: d.Name,
+				Source: &anSource{
+					Type:      "base64",
+					MediaType: d.MediaType,
+					Data:      base64.StdEncoding.EncodeToString(d.Data),
 				},
 			})
 		}
@@ -751,4 +783,19 @@ func toolNames(tools []ce.ToolDef) string {
 		names = append(names, t.Name)
 	}
 	return strings.Join(names, ", ")
+}
+
+// refusePDF fails an encoding that would have to leave a PDF out.
+//
+// The submit-time check is what a person meets; this is the floor under it, so
+// a path that reaches a family without asking it still cannot send the
+// question without the file it is about.
+func refusePDF(who string, req Request) error {
+	for _, m := range req.Messages {
+		if len(m.Documents) > 0 {
+			return fmt.Errorf("%s cannot carry a PDF (%s); only a family that reads one is sent one",
+				who, m.Documents[0].Name)
+		}
+	}
+	return nil
 }

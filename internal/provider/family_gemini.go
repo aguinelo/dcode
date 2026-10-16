@@ -41,6 +41,10 @@ func (Gemini) Transports() []string { return []string{TransportOpenAI} }
 // property this model family is best known for unavailable, silently.
 func (Gemini) AcceptsImages() bool { return true }
 
+// AcceptsPDF is false. Not a claim about Gemini: nothing here has run one
+// through the compatibility surface, and the field is declared, not hoped.
+func (Gemini) AcceptsPDF() bool { return false }
+
 // Window is one conservative number rather than a table.
 //
 // The current line is documented at 1,048,576 input tokens; this returns a

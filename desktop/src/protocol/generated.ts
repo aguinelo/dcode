@@ -1049,6 +1049,13 @@ export interface SubmitTurnRequest {
    * another machine, and a path only means something where it was typed.
    */
   images?: TurnImage[];
+  /**
+   * Documents are files read with this turn: a PDF, or plain text. By
+   * value, for the same reason as Images. Checked where they arrive —
+   * type, name, size and count — and a PDF for a model whose family does
+   * not read one refuses the turn rather than reaching it without the file.
+   */
+  documents?: TurnDocument[];
 }
 /**
  * TurnImage is one picture on the wire.
@@ -1056,6 +1063,95 @@ export interface SubmitTurnRequest {
 export interface TurnImage {
   media_type: string;
   data: string;
+}
+/**
+ * TurnDocument is one file on the wire.
+ * Name is what the person sees on the message, not a path: the daemon may be
+ * on another machine, and a path tells it nothing it can use and the log
+ * something it should not keep. A name with a separator in it is refused.
+ */
+export interface TurnDocument {
+  name: string;
+  media_type: string;
+  data: string;
+}
+/**
+ * The kinds of document a turn carries, and nothing else.
+ * A PDF goes to the model as a document, and only to a family that says it
+ * reads one. Text goes to every family, written into the message between
+ * markers that name the file: every model reads text, so there is nothing for
+ * a family to declare.
+ */
+export const DocumentPDF = "application/pdf";
+/**
+ * The kinds of document a turn carries, and nothing else.
+ * A PDF goes to the model as a document, and only to a family that says it
+ * reads one. Text goes to every family, written into the message between
+ * markers that name the file: every model reads text, so there is nothing for
+ * a family to declare.
+ */
+export const DocumentText = "text/plain";
+/**
+ * The kinds of document a turn carries, and nothing else.
+ * A PDF goes to the model as a document, and only to a family that says it
+ * reads one. Text goes to every family, written into the message between
+ * markers that name the file: every model reads text, so there is nothing for
+ * a family to declare.
+ */
+export const DocumentMarkdown = "text/markdown";
+/**
+ * The kinds of document a turn carries, and nothing else.
+ * A PDF goes to the model as a document, and only to a family that says it
+ * reads one. Text goes to every family, written into the message between
+ * markers that name the file: every model reads text, so there is nothing for
+ * a family to declare.
+ */
+export const DocumentCSV = "text/csv";
+/**
+ * What one turn may carry, declared here so a client can refuse before it
+ * sends and the daemon refuses the same numbers when it receives.
+ * A PDF is bounded like a picture is. Text is bounded far lower because all of
+ * it is read: 256 KiB is some sixty thousand tokens, a third of the smallest
+ * window a family declares, and a file larger than that is one to point the
+ * agent at rather than to paste.
+ */
+export const MaxDocumentsPerTurn = 5;
+/**
+ * What one turn may carry, declared here so a client can refuse before it
+ * sends and the daemon refuses the same numbers when it receives.
+ * A PDF is bounded like a picture is. Text is bounded far lower because all of
+ * it is read: 256 KiB is some sixty thousand tokens, a third of the smallest
+ * window a family declares, and a file larger than that is one to point the
+ * agent at rather than to paste.
+ */
+export const MaxPDFBytes = 10 << 20;
+/**
+ * What one turn may carry, declared here so a client can refuse before it
+ * sends and the daemon refuses the same numbers when it receives.
+ * A PDF is bounded like a picture is. Text is bounded far lower because all of
+ * it is read: 256 KiB is some sixty thousand tokens, a third of the smallest
+ * window a family declares, and a file larger than that is one to point the
+ * agent at rather than to paste.
+ */
+export const MaxTextDocumentBytes = 256 << 10;
+/**
+ * What one turn may carry, declared here so a client can refuse before it
+ * sends and the daemon refuses the same numbers when it receives.
+ * A PDF is bounded like a picture is. Text is bounded far lower because all of
+ * it is read: 256 KiB is some sixty thousand tokens, a third of the smallest
+ * window a family declares, and a file larger than that is one to point the
+ * agent at rather than to paste.
+ */
+export const MaxDocumentNameBytes = 255;
+/**
+ * AttachedDocument is what the log says about a document: which file, of what
+ * kind, how large. Never its bytes — the log is replayed to every client that
+ * attaches and kept on disk, and the conversation already has the content.
+ */
+export interface AttachedDocument {
+  name: string;
+  media_type: string;
+  size: number /* int */;
 }
 /**
  * UndoResult is what putting the last turn back changed, and what it would not
@@ -1362,6 +1458,11 @@ export interface TurnStarted {
    * session already under way saw answers to questions it never saw.
    */
   text?: string;
+  /**
+   * Documents names the files read with the question, so history shows
+   * what was attached to it and not only what was typed.
+   */
+  documents?: AttachedDocument[];
 }
 /**
  * MessageReasoning is a fragment of the model's thinking.

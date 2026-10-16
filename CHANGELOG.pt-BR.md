@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 223 changelogs de decisão |
+| famílias de spec | 19, com 224 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -260,6 +260,24 @@ existe para impedir exatamente isso.
 ---
 
 ## Não publicado
+
+- **Um turno carrega documentos: um PDF, ou um arquivo de texto.**
+  `SubmitTurnRequest` ganha `documents` — nome, tipo e bytes em base64 —
+  conferidos onde chegam: um conjunto fechado de tipos (`application/pdf`,
+  `text/plain`, `text/markdown`, `text/csv`), PDF pelos bytes `%PDF-` e nunca
+  pelo nome, texto UTF-8 sem NUL, nome de arquivo que não é caminho, e limites
+  declarados no protocolo (5 por turno, 10 MiB por PDF, 256 KiB de texto). Cada
+  família declara se lê PDF, como declara imagem, e só `claude` diz sim, como
+  bloco `document`; PDF para qualquer outro modelo recusa o turno na submissão
+  com `invalid_input` nomeando o modelo, e dialeto que não carrega PDF recusa
+  codificar em vez de mandar a pergunta sem ele. Texto vai para toda família,
+  escrito antes da pergunta entre marcadores que nomeiam o arquivo e levam uma
+  fronteira tirada dos bytes dele, para um corpo com `</document>` não fechar o
+  próprio bloco. PDF pesa no
+  contexto pelas páginas. `turn.started` nomeia os arquivos — nome, tipo,
+  tamanho, nunca os bytes — para o histórico mostrar o que foi anexado, e
+  `pkg/client` ganha `SubmitTurn`. Antes, um documento só chegava ao modelo
+  colado, ou por um caminho que o daemon podia não ter.
 
 - **Uma chave Anthropic sem escopo de workspace nomeia um.** Chave nova,
   `model.anthropic_workspace` / `DCODE_ANTHROPIC_WORKSPACE`, mandada no

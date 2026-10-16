@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 223 decision changelogs |
+| spec families | 19, with 224 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -262,6 +262,23 @@ exists to stop exactly that.
 ---
 
 ## Unreleased
+
+- **A turn carries documents: a PDF, or a text file.** `SubmitTurnRequest`
+  gains `documents` — name, media type and base64 bytes — checked where they
+  arrive: a closed set of types (`application/pdf`, `text/plain`,
+  `text/markdown`, `text/csv`), a PDF by its `%PDF-` bytes and never its name,
+  text as UTF-8 without NUL, a file name that is not a path, and limits
+  declared in the protocol (5 per turn, 10 MiB a PDF, 256 KiB of text). Each
+  family declares whether it reads a PDF, like it declares pictures, and only
+  `claude` says yes, as a `document` block; a PDF for any other model refuses
+  the turn at submit with `invalid_input` naming the model, and a dialect that
+  cannot carry one refuses to encode rather than send the question without
+  it. Text goes to every family, written ahead of the question between markers
+  that name the file and carry a boundary taken from its bytes, so a body
+  holding `</document>` cannot close its own block. A PDF costs context by its pages. `turn.started` names
+  the files — name, type, size, never the bytes — so history shows what was
+  attached, and `pkg/client` gains `SubmitTurn`. Before, a document reached
+  the model only by pasting it or naming a path the daemon might not have.
 
 - **An Anthropic key that is not scoped to a workspace names one.** New key
   `model.anthropic_workspace` / `DCODE_ANTHROPIC_WORKSPACE`, sent as the

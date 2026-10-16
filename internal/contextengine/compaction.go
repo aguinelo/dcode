@@ -27,6 +27,9 @@ func Estimate(msgs []Message, cfg Config) int {
 		// image by what it sees; how well the PNG compressed is the one thing
 		// that has nothing to do with it.
 		chars += len(m.Images) * charsPerImage
+		// A PDF costs by its pages, for the same reason. Text files are
+		// already in m.Text and counted with it.
+		chars += documentChars(m.Documents)
 	}
 	base := float64(chars) / cfg.CharsPerToken
 	return int(base * (1 + cfg.Margin))

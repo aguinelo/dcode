@@ -307,6 +307,15 @@ func (s *Session) State() protocol.SessionState {
 // The queue belongs to the client, which is what keeps the event log linearly
 // ordered and the append-only context coherent.
 func (s *Session) Submit(text string, images ...ce.Image) error {
+	return s.SubmitAttached(text, loop.Attachments{Images: images})
+}
+
+// SubmitAttached is Submit with what was attached to the question.
+//
+// A PDF for a model whose family does not read one is refused here, naming
+// the model, before the turn starts: the alternative is a provider error after
+// the upload, or the question going out without the file it is about.
+func (s *Session) SubmitAttached(text string, att loop.Attachments) error {
 	s.mu.Lock()
 	if s.state == protocol.SessionStateClosed {
 		s.mu.Unlock()
@@ -325,6 +334,16 @@ func (s *Session) Submit(text string, images ...ce.Image) error {
 	if s.engine == nil {
 		s.mu.Unlock()
 		return protocol.Errorf(protocol.CodeInternal, "session %s has no engine", s.ID)
+	}
+	if pdf := firstPDF(att.Documents); pdf != "" && !s.engine.AcceptsPDF() {
+		model := s.Model
+		if model == "" {
+			model = "this session's model"
+		}
+		s.mu.Unlock()
+		return protocol.Errorf(protocol.CodeInvalidInput,
+			"%s cannot read a PDF, so %s was not sent; attach it as text or start a session on a model that reads PDFs",
+			model, pdf)
 	}
 
 	// The turn's context is detached from any request: a client disconnecting
@@ -356,7 +375,7 @@ func (s *Session) Submit(text string, images ...ce.Image) error {
 			s.mu.Unlock()
 			cancel()
 		}()
-		_, _ = s.engine.Run(ctx, text, images...)
+		_, _ = s.engine.RunAttached(ctx, text, att)
 	}()
 	return nil
 }
@@ -823,4 +842,14 @@ type Standing interface {
 	Granted(req protocol.ApprovalRequest) protocol.ApprovalDecision
 	// Remember writes down an answer meant to outlive the session.
 	Remember(req protocol.ApprovalRequest, d protocol.ApprovalDecision) error
+}
+
+// firstPDF names the first PDF among docs, or is empty when there is none.
+func firstPDF(docs []ce.Document) string {
+	for _, d := range docs {
+		if d.MediaType == protocol.DocumentPDF {
+			return d.Name
+		}
+	}
+	return ""
 }

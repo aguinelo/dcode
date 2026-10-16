@@ -277,12 +277,64 @@ type SubmitTurnRequest struct {
 	// media type. Sent by value rather than as paths: the daemon may be on
 	// another machine, and a path only means something where it was typed.
 	Images []TurnImage `json:"images,omitempty"`
+	// Documents are files read with this turn: a PDF, or plain text. By
+	// value, for the same reason as Images. Checked where they arrive —
+	// type, name, size and count — and a PDF for a model whose family does
+	// not read one refuses the turn rather than reaching it without the file.
+	Documents []TurnDocument `json:"documents,omitempty"`
 }
 
 // TurnImage is one picture on the wire.
 type TurnImage struct {
 	MediaType string `json:"media_type"`
 	Data      string `json:"data"`
+}
+
+// TurnDocument is one file on the wire.
+//
+// Name is what the person sees on the message, not a path: the daemon may be
+// on another machine, and a path tells it nothing it can use and the log
+// something it should not keep. A name with a separator in it is refused.
+type TurnDocument struct {
+	Name      string `json:"name"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
+// The kinds of document a turn carries, and nothing else.
+//
+// A PDF goes to the model as a document, and only to a family that says it
+// reads one. Text goes to every family, written into the message between
+// markers that name the file: every model reads text, so there is nothing for
+// a family to declare.
+const (
+	DocumentPDF      = "application/pdf"
+	DocumentText     = "text/plain"
+	DocumentMarkdown = "text/markdown"
+	DocumentCSV      = "text/csv"
+)
+
+// What one turn may carry, declared here so a client can refuse before it
+// sends and the daemon refuses the same numbers when it receives.
+//
+// A PDF is bounded like a picture is. Text is bounded far lower because all of
+// it is read: 256 KiB is some sixty thousand tokens, a third of the smallest
+// window a family declares, and a file larger than that is one to point the
+// agent at rather than to paste.
+const (
+	MaxDocumentsPerTurn  = 5
+	MaxPDFBytes          = 10 << 20
+	MaxTextDocumentBytes = 256 << 10
+	MaxDocumentNameBytes = 255
+)
+
+// AttachedDocument is what the log says about a document: which file, of what
+// kind, how large. Never its bytes — the log is replayed to every client that
+// attaches and kept on disk, and the conversation already has the content.
+type AttachedDocument struct {
+	Name      string `json:"name"`
+	MediaType string `json:"media_type"`
+	Size      int    `json:"size"`
 }
 
 // UndoResult is what putting the last turn back changed, and what it would not
@@ -567,6 +619,9 @@ type (
 		// read, a session could not be titled, and a client attaching to a
 		// session already under way saw answers to questions it never saw.
 		Text string `json:"text,omitempty"`
+		// Documents names the files read with the question, so history shows
+		// what was attached to it and not only what was typed.
+		Documents []AttachedDocument `json:"documents,omitempty"`
 	}
 	// MessageReasoning is a fragment of the model's thinking.
 	MessageReasoning struct {

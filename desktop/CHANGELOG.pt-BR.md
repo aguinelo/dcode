@@ -10,6 +10,12 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O `generated.ts` carrega documentos num turno.** O `SubmitTurnRequest` do
+  núcleo ganha `documents` (`TurnDocument`: nome, tipo, base64), o
+  `TurnStarted` ganha `documents` (`AttachedDocument`: nome, tipo, tamanho), e
+  os tipos aceitos e os limites são constantes. Regenerado, e o decodificador
+  de eventos aceita `turn.started.documents` como opcional; nada no app manda
+  nem desenha isso ainda — o composer faz isso no PR dele.
 - **A linha de atividade mostra o que o turno tocou (D58).** Ao lado do verbo
   e do tempo decorrido, os arquivos que o turno em curso escreveu (o `path`
   das ferramentas de escrita, desde o início do turno) aparecem como chips

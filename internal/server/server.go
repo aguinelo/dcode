@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -373,7 +374,12 @@ func (s *Server) submitTurn(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, protocol.Errorf(protocol.CodeInternal, "%v", err))
 		return
 	}
-	if err := sess.Submit(req.Text, images...); err != nil {
+	documents, err := decodeDocuments(req.Documents)
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	if err := sess.SubmitAttached(req.Text, loop.Attachments{Images: images, Documents: documents}); err != nil {
 		writeErr(w, wrapErr(err))
 		return
 	}
