@@ -50,6 +50,10 @@ type StreamEvent struct {
 	Bytes    int
 	Usage    *Usage
 	Err      *ProviderError
+	// Truncated is set on EventDone when the provider stopped because the
+	// answer reached the output ceiling of the request, not because the model
+	// finished. The answer that came before it is real and incomplete.
+	Truncated bool
 }
 
 // Usage reports what the call consumed.

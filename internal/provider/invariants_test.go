@@ -36,6 +36,8 @@ var providerInvariants = map[string]string{
 	"nem no histórico (RN-10)":       "TestReasoningNeverBecomesAnswerText",
 	"marcador de raciocínio e esp":   "TestAFrameOfPureFramingProducesNothing",
 	"anthropic-workspace-id` só sai": "TestTheWorkspaceHeaderGoesOnlyOnTheAnthropicTransport",
+	"sem teto configurado leva":      "TestTheAnthropicRequestCarriesTheModelsCeiling",
+	"corta no teto de saída termina": "TestAnAnswerCutAtTheCeilingSaysSo",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

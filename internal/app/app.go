@@ -363,6 +363,7 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 			MaxIterations:     r.Int("limits.max_iterations", 0),
 			MaxIdenticalCalls: r.Int("limits.identical", 5),
 			MaxTurnTokens:     r.Int("limits.max_turn_tokens", 0),
+			MaxOutputTokens:   r.Int("limits.max_output_tokens", 0),
 		},
 	}
 	if err := config.CheckAnthropicWorkspace(opts.AnthropicWorkspace); err != nil {

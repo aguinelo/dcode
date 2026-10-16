@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 224 changelogs de decisão |
+| famílias de spec | 19, com 225 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O teto de saída Anthropic é do modelo, e a resposta cortada nele diz.**
+  Requisição sem teto configurado levava um `max_tokens: 8192` fixo, um
+  dezesseis avos do que a maioria dos modelos Claude atuais aceita, então
+  resposta longa parava no meio da frase e o turno terminava como pronto. A
+  família Claude agora declara o teto publicado de cada modelo (128K nos
+  atuais, 32K para um que ela não conhece), `limits.max_output_tokens` /
+  `DCODE_MAX_OUTPUT_TOKENS` sobrescreve nos dois dialetos, e a resposta que o
+  provedor corta (`stop_reason: max_tokens`, `finish_reason: length`)
+  encerra o turno em `max_tokens` em vez de passar por terminada.
 - **Um turno carrega documentos: um PDF, ou um arquivo de texto.**
   `SubmitTurnRequest` ganha `documents` — nome, tipo e bytes em base64 —
   conferidos onde chegam: um conjunto fechado de tipos (`application/pdf`,

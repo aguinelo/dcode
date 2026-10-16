@@ -35,6 +35,9 @@ type Limits struct {
 	// worse state than the one it started in. The iteration cap already bounds
 	// spend by construction.
 	MaxTurnTokens int
+	// MaxOutputTokens is the ceiling of ONE answer, sent as the request's
+	// max_tokens. Zero asks the family, which knows what each model allows.
+	MaxOutputTokens int
 }
 
 // DefaultLimits returns the documented defaults. MaxIterations stays zero so

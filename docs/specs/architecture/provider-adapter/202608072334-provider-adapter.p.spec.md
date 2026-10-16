@@ -115,6 +115,8 @@ mecanismo real e não muda com este número; o teto aqui só limita custo e
 tempo de parede, e um modelo local não paga o primeiro em dólar de API
 nenhum.
 
+**O teto de uma resposta também é da família, por modelo.** O dialeto anthropic exige `max_tokens`, e o que ia nele era um 8.192 fixo — um dezesseis avos do que a maioria dos modelos atuais aceita, cortando resposta longa num tamanho que ninguém escolheu. `Claude.OutputCeiling(model)` responde pelo limite publicado de cada linha de modelos (128.000 nos atuais, 64.000 em `claude-haiku-4-5` e na linha 4.5, 32.000 em `claude-opus-4`/`4-1`, 4.096 em `claude-3-haiku`), casado pelo prefixo mais longo. Modelo que a tabela não conhece recebe 32.000, não o maior número da tabela: teto acima do aceito é requisição recusada, teto abaixo é só resposta que para antes e diz. `minimax-m3` no dialeto anthropic segue com 8.192, que é o que sempre mandou. `DCODE_MAX_OUTPUT_TOKENS` (`202608072335-agent-loop.config.spec.md`) vence os dois. A parada no teto vira `Truncated` no `EventDone` — `stop_reason: max_tokens` num dialeto, `finish_reason: length` no outro.
+
 `minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
 
 **Família desconhecida não existe.** Modelo que não casa com nenhum `Models()` falha na criação da sessão, listando as famílias disponíveis. O escape hatch é explícito — `--family generic` — e emite aviso de que os limiares não foram medidos para aquele modelo.
@@ -304,6 +306,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Raciocínio nunca aparece em evento de texto nem no histórico (RN-10).
 - Frame que só carrega marcador de raciocínio e espaço em branco não produz evento algum.
 - O cabeçalho `anthropic-workspace-id` só sai no transporte `anthropic`, e só quando um workspace foi configurado.
+- Requisição Anthropic sem teto configurado leva o teto que a família declara para o modelo, nunca um número fixo.
+- Resposta que o provedor corta no teto de saída termina com `Truncated`, nos dois dialetos.
 
 ## 8. Changelog
 
@@ -315,3 +319,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
 - [202610151200 — Um turno carrega documentos](../client-server-protocol/changelog/202610151200-um-turno-carrega-documentos.md)
 - [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)
+- [202610151300 — O teto de saída é do modelo](changelog/202610151300-o-teto-de-saida-e-do-modelo.md)

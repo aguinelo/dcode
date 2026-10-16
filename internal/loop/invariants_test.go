@@ -34,6 +34,7 @@ var loopInvariants = map[string]string{
 	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
 	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
+	"encerra o turno em `StopMaxTokens`":          "TestAnAnswerCutAtTheOutputCeilingStopsAtTheCeiling",
 
 	// Definition of done.
 	"usa a reentrada da RN-10":          "TestNoProgressEndsTheTurnAsIncomplete",

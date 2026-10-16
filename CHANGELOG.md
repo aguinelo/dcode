@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 224 decision changelogs |
+| spec families | 19, with 225 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,15 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The Anthropic output ceiling belongs to the model, and an answer cut at it
+  says so.** A request with no ceiling configured carried a fixed
+  `max_tokens: 8192`, a sixteenth of what most current Claude models accept,
+  so long answers stopped mid-sentence and the turn ended as done. The Claude
+  family now declares each model's published ceiling (128K on current models,
+  32K for one it does not know), `limits.max_output_tokens` /
+  `DCODE_MAX_OUTPUT_TOKENS` overrides it on both dialects, and an answer the
+  provider cuts (`stop_reason: max_tokens`, `finish_reason: length`) ends the
+  turn as `max_tokens` rather than passing for finished.
 - **A turn carries documents: a PDF, or a text file.** `SubmitTurnRequest`
   gains `documents` — name, media type and base64 bytes — checked where they
   arrive: a closed set of types (`application/pdf`, `text/plain`,

@@ -37,6 +37,7 @@ var KnownKeys = map[string]string{
 	"sandbox.backend":               "DCODE_SANDBOX_BACKEND",
 	"limits.max_iterations":         "DCODE_MAX_ITERATIONS",
 	"limits.max_turn_tokens":        "DCODE_MAX_TURN_TOKENS",
+	"limits.max_output_tokens":      "DCODE_MAX_OUTPUT_TOKENS",
 	"limits.identical":              "DCODE_MAX_IDENTICAL_CALLS",
 	"limits.parallel":               "DCODE_TOOL_PARALLELISM",
 	"behavior.instructions_enabled": "DCODE_BEHAVIOR_INSTRUCTIONS_ENABLED",

@@ -63,6 +63,7 @@ var wiringTable = []configOption{
 	{"Limits", "limits.max_iterations", "Int", ""},
 	{"Limits", "limits.identical", "Int", ""},
 	{"Limits", "limits.max_turn_tokens", "Int", ""},
+	{"Limits", "limits.max_output_tokens", "Int", ""},
 
 	{"Reminders", "behavior.reminders_enabled", "Bool", "Reminders"},
 	{"CompactionEnabled", "compaction.enabled", "Bool", ""},
