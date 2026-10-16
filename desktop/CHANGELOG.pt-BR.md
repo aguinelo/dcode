@@ -10,6 +10,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O plano fica fixo como checklist enquanto o turno roda (D57).** O plano
+  que o turno em curso revisou por último (`plan.updated`) fica acima do
+  fluxo, fora da rolagem, e o fluxo o deixa de fora: uma janela da grade dá a
+  ele uma linha ("passo 2 de 3 · ..."), a conversa maximizada e a Crew a
+  checklist inteira, com o passo corrente num anel girando. Quando o turno
+  termina, ele volta ao fluxo, onde estava. Antes, o plano rolava para fora da
+  vista justamente enquanto andava. O bloco do plano agora guarda o turno que o
+  revisou, porque o evento não traz nenhum. A gravação não tem plano; as telas
+  02 e 03 ficam a 0,00%.
 - **A régua do daemon roda um loop (passo 9 da proposta do loop).** Dois
   cenários entram no `check:daemon`, que passa a ter 13: `loop-qualifies`
   começa um loop por "Nova sessão" → "↻ loop" numa pasta que não declara

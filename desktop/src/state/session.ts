@@ -48,7 +48,8 @@ export type Entry =
   | (Stamp & { kind: 'reasoning'; turnId: string; round: number; text: string })
   | (Stamp & { kind: 'tool'; call: ToolCall })
   | (Stamp & { kind: 'approval'; request: P.ApprovalRequest; decision: string | null })
-  | (Stamp & { kind: 'plan'; items: P.PlanItem[] })
+  // turnId: the turn under way at the plan's latest revision, null outside one (D57).
+  | (Stamp & { kind: 'plan'; items: P.PlanItem[]; turnId: string | null })
   | (Stamp & { kind: 'note'; note: Note })
   | (Stamp & { kind: 'error'; code: string; message: string });
 
@@ -259,13 +260,14 @@ function onApprovalResolved(view: SessionView, ev: EventOf<'tool.approval_resolv
 
 function onPlan(view: SessionView, ev: EventOf<'plan.updated'>): SessionView {
   const items = ev.payload.items ?? [];
+  const turnId = view.turn?.id ?? null;
   // One block, updated where it first appeared: every revision appended would
   // stack the same plan down the screen.
   const at = view.entries.findIndex((e) => e.kind === 'plan');
-  if (at < 0) return { ...view, entries: [...view.entries, { kind: 'plan', seq: ev.seq, at: ev.at, items }] };
+  if (at < 0) return { ...view, entries: [...view.entries, { kind: 'plan', seq: ev.seq, at: ev.at, items, turnId }] };
   const entries = view.entries.slice();
   const current = entries[at];
-  if (current?.kind === 'plan') entries[at] = { ...current, items };
+  if (current?.kind === 'plan') entries[at] = { ...current, items, turnId };
   return { ...view, entries };
 }
 

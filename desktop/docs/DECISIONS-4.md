@@ -301,3 +301,30 @@ Descartados: editar os critérios na janela (Q3 B — editar critério é editar
 régua, e merece desenho próprio); só o resumo em prosa (Q3 C — a discordância
 some no texto); abrir qualquer caminho que a janela mandasse (o renderer
 escolheria o que o sistema abre).
+
+**D57. O plano do turno fica fixo no alto, como checklist, enquanto o turno
+roda.** Inspiração do dono: a tela de turno do Claude Code desktop, com o plano
+como checklist presa no topo ("✓ Ler o PDF · ◌ Cruzar com a plataforma · ○
+Escrever a análise") e o passo corrente girando. Antes, o `plan.updated` era
+desenhado no fluxo, onde apareceu primeiro, e rolava para fora da vista
+justamente enquanto andava.
+
+- **Fixo é o plano do turno que roda.** O bloco do plano guarda o turno que o
+  revisou por último (`turnId`, da sessão no momento do evento — o evento não
+  traz turno). Enquanto esse turno roda, ou espera uma aprovação, o plano fica
+  acima do fluxo, fora da rolagem, e o fluxo o deixa de fora: desenhado uma vez,
+  não duas. Plano de um turno anterior continua no fluxo, onde estava.
+- **Os estados são os do evento.** `done` ✓, `active` um anel com uma
+  abertura, girando (desenhado em CSS, para nenhuma fonte o perder), `blocked`
+  ⊘ com o motivo, o resto ○. Com menos movimento pedido, o anel fica parado.
+- **O passo corrente** é o `active`; sem nenhum ativo, o primeiro não feito;
+  com todos feitos, o último.
+- **Na grade, uma linha**: "passo 2 de 3 · <o que ele diz>", com o plano todo
+  no title. **Maximizado e na Crew**, a checklist inteira.
+- **Quando o turno termina, o plano volta ao fluxo**, no lugar de sempre.
+
+As réguas: a gravação não tem plano, e as telas 02 e 03 ficam a 0,00%.
+
+Descartados: um plano novo no fluxo a cada revisão (empilharia o mesmo plano);
+fixar também o plano de um turno que já acabou (o alto da conversa diria que
+algo ainda anda).

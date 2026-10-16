@@ -47,6 +47,7 @@ As que estão nos outros arquivos:
 - [D54](DECISIONS-4.md) — As luzes dos critérios andam a cada conferência.
 - [D55](DECISIONS-4.md) — Um loop começa e para pela janela, e ocupa uma janela que segue a sessão corrente dele.
 - [D56](DECISIONS-4.md) — A definição de pronto proposta é revisada antes do trabalho, num card.
+- [D57](DECISIONS-4.md) — O plano do turno fica fixo no alto, como checklist, enquanto o turno roda.
 
 ## Decisões
 
