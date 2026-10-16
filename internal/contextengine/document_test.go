@@ -54,7 +54,7 @@ func TestADocumentBodyCannotForgeItsClosingMarker(t *testing.T) {
 	if open < 0 {
 		t.Fatalf("no opening marker:\n%s", text)
 	}
-	head := text[open:strings.Index(text[open:], ">")+open+1]
+	head := text[open : strings.Index(text[open:], ">")+open+1]
 	i := strings.Index(head, `boundary="`)
 	if i < 0 {
 		t.Fatalf("the opening marker carries no boundary: %s", head)

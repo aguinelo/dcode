@@ -2,6 +2,8 @@ package contextengine
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"html"
 	"strings"
 )
@@ -9,7 +11,9 @@ import (
 // InlineDocuments writes the text files into the question and hands back the
 // PDFs, which a family has to declare it reads.
 //
-// Text goes ahead of the question, each file between markers that name it:
+// Text goes ahead of the question, each file between markers that name it
+// and carry a boundary derived from its bytes, so the file cannot close its own
+// block — a body holding </document> is still inside the file:
 // every model reads text, so a text file needs no family to say yes, and
 // putting it first is the order a reader meets a document and then the
 // question about it. Pure, like Assemble — the same files and the same
@@ -24,18 +28,32 @@ func InlineDocuments(text string, docs []Document) (string, []Document) {
 		}
 		// Escaped, so a name with a quote in it is a name and not the start
 		// of an attribute of its own.
+		bound := boundary(d.Data)
 		b.WriteString(`<document name="` + html.EscapeString(d.Name) +
-			`" media_type="` + html.EscapeString(d.MediaType) + `">` + "\n")
+			`" media_type="` + html.EscapeString(d.MediaType) +
+			`" boundary="` + bound + `">` + "\n")
 		b.Write(d.Data)
 		if len(d.Data) > 0 && d.Data[len(d.Data)-1] != '\n' {
 			b.WriteByte('\n')
 		}
-		b.WriteString("</document>\n\n")
+		b.WriteString(`</document boundary="` + bound + `">` + "\n\n")
 	}
 	if b.Len() == 0 {
 		return text, pdfs
 	}
 	return b.String() + text, pdfs
+}
+
+// boundary is what closes one document's block and nothing else.
+//
+// From the content rather than random, so the same file gives the same
+// message — the prefix is a pure function of history. A body cannot contain
+// the closing marker without containing its own digest, which is the property
+// a boundary needs: the file is left whole, nothing in it escaped or altered,
+// and still nothing in it can end the block early.
+func boundary(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:12])
 }
 
 // PDFPages estimates how many pages a PDF has, from its page objects.

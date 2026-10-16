@@ -188,7 +188,7 @@ mesmos números que o daemon confere ao receber.
 | `media_type` | Constante | Limite | Conferência | Como chega ao modelo |
 |---|---|---|---|---|
 | `application/pdf` | `DocumentPDF` | `MaxPDFBytes` = 10 MiB | começa com `%PDF-` | bloco `document` (base64), só em família com `AcceptsPDF()` |
-| `text/plain` | `DocumentText` | `MaxTextDocumentBytes` = 256 KiB | UTF-8 válido, sem NUL | escrito na mensagem, antes da pergunta, entre `<document name=… media_type=…>` e `</document>` — toda família |
+| `text/plain` | `DocumentText` | `MaxTextDocumentBytes` = 256 KiB | UTF-8 válido, sem NUL | escrito na mensagem, antes da pergunta, entre `<document name=… media_type=… boundary=B>` e `</document boundary=B>`, com `B` = 24 hex do SHA-256 dos bytes — toda família |
 | `text/markdown` | `DocumentMarkdown` | idem | idem | idem |
 | `text/csv` | `DocumentCSV` | idem | idem | idem |
 
@@ -594,6 +594,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Cada família declara se lê PDF; só `claude` diz **sim**.
 - Claude recebe PDF como bloco `document` em base64, com o nome do arquivo como título.
 - Arquivo de texto vai para toda família, escrito antes da pergunta entre marcadores que o nomeiam.
+- Corpo de documento não fecha o próprio bloco: os marcadores carregam uma fronteira tirada dos bytes do arquivo, e o nome vai escapado.
 - PDF pesa no contexto pelas páginas, e PDF cujas páginas não se veem pesa uma.
 - `turn.started` nomeia os documentos — nome, tipo e tamanho — e nunca carrega os bytes.
 - Desfazer restaura o que o **último** turno mudou; turno novo substitui o conjunto.

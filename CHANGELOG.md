@@ -274,7 +274,8 @@ exists to stop exactly that.
   the turn at submit with `invalid_input` naming the model, and a dialect that
   cannot carry one refuses to encode rather than send the question without
   it. Text goes to every family, written ahead of the question between markers
-  that name the file. A PDF costs context by its pages. `turn.started` names
+  that name the file and carry a boundary taken from its bytes, so a body
+  holding `</document>` cannot close its own block. A PDF costs context by its pages. `turn.started` names
   the files — name, type, size, never the bytes — so history shows what was
   attached, and `pkg/client` gains `SubmitTurn`. Before, a document reached
   the model only by pasting it or naming a path the daemon might not have.

@@ -271,7 +271,9 @@ existe para impedir exatamente isso.
   bloco `document`; PDF para qualquer outro modelo recusa o turno na submissão
   com `invalid_input` nomeando o modelo, e dialeto que não carrega PDF recusa
   codificar em vez de mandar a pergunta sem ele. Texto vai para toda família,
-  escrito antes da pergunta entre marcadores que nomeiam o arquivo. PDF pesa no
+  escrito antes da pergunta entre marcadores que nomeiam o arquivo e levam uma
+  fronteira tirada dos bytes dele, para um corpo com `</document>` não fechar o
+  próprio bloco. PDF pesa no
   contexto pelas páginas. `turn.started` nomeia os arquivos — nome, tipo,
   tamanho, nunca os bytes — para o histórico mostrar o que foi anexado, e
   `pkg/client` ganha `SubmitTurn`. Antes, um documento só chegava ao modelo

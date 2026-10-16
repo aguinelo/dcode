@@ -183,6 +183,7 @@ var protocolInvariants = map[string]string{
 	"declara se lê PDF":                "TestEachFamilySaysWhetherItReadsPDFs",
 	"bloco `document` em base64":       "TestClaudeCarriesAPDFAsADocumentBlock",
 	"entre marcadores que o nomeiam":   "TestATextFileIsWrittenIntoTheMessageAndAPDFIsNot",
+	"não fecha o próprio bloco":        "TestADocumentBodyCannotForgeItsClosingMarker",
 	"pesa no contexto pelas páginas":   "TestAPDFCountsAgainstTheBudgetByItsPages",
 	"nunca carrega os bytes":           "TestATurnCarriesItsDocumentsAndSaysWhichTheyWere",
 }

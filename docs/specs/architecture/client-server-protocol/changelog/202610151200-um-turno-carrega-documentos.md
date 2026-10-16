@@ -46,9 +46,17 @@ pela sessão também não manda a pergunta sem o arquivo.
 como um bloco `document` de texto no dialeto Anthropic: todo modelo lê texto,
 então não há o que declarar, e uma forma só para todos é uma forma só a
 conferir. Vai antes da pergunta — a ordem em que se lê um documento e depois o
-que se pergunta dele — entre `<document name="…" media_type="…">` e
-`</document>`, com o nome escapado para não abrir atributo próprio. Por estar
-no texto, conta no orçamento com ele.
+que se pergunta dele — entre `<document name="…" media_type="…"
+boundary="B">` e `</document boundary="B">`, com o nome escapado para não abrir
+atributo próprio. Por estar no texto, conta no orçamento com ele.
+
+**O arquivo não fecha o próprio bloco.** Um corpo com `</document>` dentro —
+ou com um segundo marcador de abertura — encerraria o bloco antes da hora, e o
+modelo leria o resto como fora do arquivo, dito pela pessoa. `B` são 24
+dígitos hex do SHA-256 dos bytes: para fechar o bloco, o corpo teria de conter
+o próprio resumo, o que não acontece. Tirado do conteúdo, e não sorteado, para
+o mesmo arquivo dar a mesma mensagem — o prefixo continua função pura do
+histórico. Nada no corpo é escapado nem alterado: o arquivo chega inteiro.
 
 **256 KiB de texto, 10 MiB de PDF.** Texto é lido inteiro: 256 KiB são uns
 sessenta mil tokens, um terço da menor janela que uma família declara; maior
