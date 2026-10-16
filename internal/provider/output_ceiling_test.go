@@ -37,6 +37,37 @@ func TestTheClaudeFamilyDeclaresAnOutputCeilingPerModel(t *testing.T) {
 	}
 }
 
+// The window is per model too. Every model since claude-opus-4-6 has a 1M
+// window, and a fixed 200000 made dcode compact a session at a fifth of what
+// it could hold. A model the table does not know keeps 200000: too small
+// compacts early, too large is a request the provider refuses mid-turn.
+func TestTheClaudeFamilyDeclaresAWindowPerModel(t *testing.T) {
+	for _, tc := range []struct {
+		model string
+		want  int
+	}{
+		{"claude-opus-5-5", 1_000_000},
+		{"claude-fable-5-1", 1_000_000},
+		{"claude-sonnet-4-6", 1_000_000},
+		{"claude-opus-4-6", 1_000_000},
+		{"claude-haiku-5-5", 1_000_000},
+		{"claude-haiku-4-5-20251001", 200_000},
+		{"claude-opus-4-5", 200_000},
+		{"claude-sonnet-4-5", 200_000},
+		{"claude-opus-4-1", 200_000},
+		{"claude-3-haiku-20240307", 200_000},
+		{"claude-next", 200_000},
+	} {
+		got, err := Claude{}.Window(tc.model)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != tc.want {
+			t.Errorf("%s: window = %d, want %d", tc.model, got, tc.want)
+		}
+	}
+}
+
 func maxTokensOf(t *testing.T, wire WireRequest) int {
 	t.Helper()
 	var body struct {
