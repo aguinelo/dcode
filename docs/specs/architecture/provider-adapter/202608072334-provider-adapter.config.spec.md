@@ -18,6 +18,7 @@
 |---|---|---|---|
 | `DCODE_API_KEY` | string | — | Credencial. Lida uma vez na inicialização. **Nunca** registrada, nunca em mensagem de erro, nunca em evento (RN-6). |
 | `DCODE_BASE_URL` | URL | default da família | Endpoint alternativo — proxy corporativo, gateway, servidor compatível. Trocar isto **não** muda a família (RN-1). |
+| `DCODE_ANTHROPIC_WORKSPACE` | string | vazio | Workspace que uma chave Anthropic **sem escopo de workspace** precisa nomear em toda requisição. Vai no cabeçalho `anthropic-workspace-id`, só no transporte `anthropic`; vazio não manda nada, que é o certo para a chave comum, já presa a um workspace. Só letras, dígitos, `_` e `-`: o valor vira cabeçalho HTTP e é conferido na entrada. Um perfil pode trazer o seu (`anthropic_workspace`). Não é credencial — o id não abre nada sem a chave. |
 
 > Cada adaptador também aceita a variável convencional da sua família, se existir. `DCODE_API_KEY` tem precedência sobre ela, para que a configuração do dcode seja sempre explícita e previsível.
 
@@ -66,3 +67,4 @@ Registra contra o que os limiares foram medidos. Trocar qualquer valor aqui **in
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
 - [202609141800 — A janela agora pode ser dita](changelog/202609141800-a-janela-agora-pode-ser-dita.md)
+- [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)

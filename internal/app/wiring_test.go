@@ -49,6 +49,7 @@ var wiringTable = []configOption{
 	{"Family", "model.family", "String", ""},
 	{"BaseURL", "model.base_url", "String", ""},
 	{"Window", "model.window", "Int", ""},
+	{"AnthropicWorkspace", "model.anthropic_workspace", "String", ""},
 
 	{"SandboxMode", "sandbox.mode", "String", "Mode"},
 	{"Policy", "sandbox.approval_policy", "String", "Policy"},

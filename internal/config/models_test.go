@@ -103,3 +103,22 @@ func TestAProjectProfileOverridesAUserOneByName(t *testing.T) {
 		t.Error("a user profile the project did not name should still be reachable")
 	}
 }
+
+// A profile may name the Anthropic workspace its key needs, and the value is
+// checked as it is read: it becomes an HTTP header.
+func TestAProfileReadsItsAnthropicWorkspace(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, ModelsFile), "[profile.work]\nmodel = \"claude-opus-4-1\"\nanthropic_workspace = \"wrkspc_01abc\"\n")
+	got, err := LoadModels(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w := got["work"].AnthropicWorkspace; w != "wrkspc_01abc" {
+		t.Errorf("got %q", w)
+	}
+
+	write(t, filepath.Join(root, ModelsFile), "[profile.bad]\nmodel = \"claude-opus-4-1\"\nanthropic_workspace = \"a b\"\n")
+	if _, err := LoadModels(root); err == nil {
+		t.Error("a workspace that is not an id was accepted")
+	}
+}

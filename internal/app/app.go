@@ -50,6 +50,10 @@ type Options struct {
 	// otherwise be told it has room it does not have and find out from the
 	// provider erroring mid-turn rather than from dcode compacting in time.
 	Window int
+	// AnthropicWorkspace names the workspace an Anthropic key that is not
+	// scoped to one has to name on every request. Empty sends nothing, which
+	// is right for the ordinary, workspace-scoped key.
+	AnthropicWorkspace string
 	// Profiles are named bundles of Model/Family/Transport/BaseURL/Window,
 	// read from models.toml, project layered over user by name. `/model
 	// <name>` resolves against this before falling back to the ordinary path
@@ -334,31 +338,35 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 		InstructionNotice:      r.Bool("instruction.notice", true),
 		InstructionForeign: r.String("instruction.foreign",
 			strings.Join(ForeignDefault, ",")),
-		DoctrineOverlay:   r.Bool("doctrine.enabled", true),
-		DoctrineDir:       r.String("doctrine.dir", ""),
-		DoctrineMaxBytes:  r.Int("doctrine.max_bytes", 16<<10),
-		Workspace:         ws,
-		Model:             r.String("model.name", "MiniMax-M3"),
-		Transport:         r.String("model.transport", ""),
-		Family:            r.String("model.family", ""),
-		APIKey:            env("DCODE_API_KEY"),
-		BaseURL:           r.String("model.base_url", ""),
-		Window:            r.Int("model.window", 0),
-		SandboxMode:       mode,
-		Policy:            pol,
-		Backend:           r.String("sandbox.backend", sandbox.BackendAuto),
-		AllowNetwork:      r.Bool("sandbox.allow_network", true),
-		Parallel:          r.Int("limits.parallel", 4),
-		Memory:            r.Bool("memory.enabled", true),
-		MemoryMax:         r.Int("memory.max_entries", memory.DefaultMax),
-		DumpPrompt:        r.Bool("doctrine.dump", false),
-		CredentialBackend: r.String("credential.backend", ""),
-		Rules:             resolveRules(r),
+		DoctrineOverlay:    r.Bool("doctrine.enabled", true),
+		DoctrineDir:        r.String("doctrine.dir", ""),
+		DoctrineMaxBytes:   r.Int("doctrine.max_bytes", 16<<10),
+		Workspace:          ws,
+		Model:              r.String("model.name", "MiniMax-M3"),
+		Transport:          r.String("model.transport", ""),
+		Family:             r.String("model.family", ""),
+		APIKey:             env("DCODE_API_KEY"),
+		BaseURL:            r.String("model.base_url", ""),
+		Window:             r.Int("model.window", 0),
+		AnthropicWorkspace: strings.TrimSpace(r.String("model.anthropic_workspace", "")),
+		SandboxMode:        mode,
+		Policy:             pol,
+		Backend:            r.String("sandbox.backend", sandbox.BackendAuto),
+		AllowNetwork:       r.Bool("sandbox.allow_network", true),
+		Parallel:           r.Int("limits.parallel", 4),
+		Memory:             r.Bool("memory.enabled", true),
+		MemoryMax:          r.Int("memory.max_entries", memory.DefaultMax),
+		DumpPrompt:         r.Bool("doctrine.dump", false),
+		CredentialBackend:  r.String("credential.backend", ""),
+		Rules:              resolveRules(r),
 		Limits: loop.Limits{
 			MaxIterations:     r.Int("limits.max_iterations", 0),
 			MaxIdenticalCalls: r.Int("limits.identical", 5),
 			MaxTurnTokens:     r.Int("limits.max_turn_tokens", 0),
 		},
+	}
+	if err := config.CheckAnthropicWorkspace(opts.AnthropicWorkspace); err != nil {
+		return Options{}, r, err
 	}
 	roots, err := config.DiscoverRoots(env)
 	if err != nil {
@@ -812,7 +820,9 @@ func CredentialName(opts Options) string {
 func buildProvider(opts Options) (provider.Provider, error) {
 	reg := provider.NewRegistry()
 	reg.RegisterTransport(NewHTTPTransport(provider.TransportOpenAI, opts.BaseURL, opts.APIKey))
-	reg.RegisterTransport(NewHTTPTransport(provider.TransportAnthropic, opts.BaseURL, opts.APIKey))
+	anthropic := NewHTTPTransport(provider.TransportAnthropic, opts.BaseURL, opts.APIKey)
+	anthropic.workspace = opts.AnthropicWorkspace
+	reg.RegisterTransport(anthropic)
 	for _, f := range Families() {
 		if err := reg.RegisterFamily(f); err != nil {
 			return nil, err
@@ -978,6 +988,8 @@ type HTTPTransport struct {
 	baseURL string
 	apiKey  string
 	client  *http.Client
+	// workspace is sent as anthropic-workspace-id, on this dialect only.
+	workspace string
 }
 
 // NewHTTPTransport builds a transport for a wire format.
@@ -1035,6 +1047,9 @@ func (t *HTTPTransport) Do(ctx context.Context, wire provider.WireRequest) (<-ch
 	if t.name == provider.TransportAnthropic {
 		req.Header.Set("x-api-key", t.apiKey)
 		req.Header.Set("anthropic-version", "2023-06-01")
+		if t.workspace != "" {
+			req.Header.Set(workspaceHeader, t.workspace)
+		}
 	} else {
 		req.Header.Set("Authorization", "Bearer "+t.apiKey)
 	}
@@ -1055,6 +1070,9 @@ func (t *HTTPTransport) Do(ctx context.Context, wire provider.WireRequest) (<-ch
 		// The Retry-After header travels with the status. Read here because this
 		// is the only place holding the response; classification stays pure.
 		if pe := provider.ClassifyStatus(resp.StatusCode, string(body), resp.Header.Get("Retry-After")); pe != nil {
+			if t.name == provider.TransportAnthropic {
+				pe = explainWorkspaceRefusal(pe, string(body), t.workspace)
+			}
 			return nil, pe
 		}
 	}

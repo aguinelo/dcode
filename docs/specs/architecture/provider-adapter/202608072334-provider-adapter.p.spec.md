@@ -131,6 +131,10 @@ window         = 32000
 max_iterations = 5000
 ```
 
+Um perfil Anthropic pode também nomear o workspace que a chave dele exige,
+`anthropic_workspace = "wrkspc_..."`, com o mesmo sentido de
+`model.anthropic_workspace` (`.config`, seção 2). Ausente, o configurado vale.
+
 `model` é obrigatório; o resto é opcional, com o mesmo default de sempre —
 vazio deixa o prefixo do modelo resolver a família. Projeto **estende** usuário
 por nome: um perfil do projeto com o nome de um do usuário é a resposta do
@@ -142,7 +146,8 @@ tratá-lo como nome de modelo cru, através de `applyModelRequest` — função
 pura, testada separadamente de `build`, pela mesma razão que
 `Limits.withFamily` fica fora do laço do turno. Um nome que casa com um
 perfil aplica o pacote inteiro (`Model`, `Family`, `Transport`, `BaseURL`,
-`Window` e `MaxIterations`, cada um só quando maior que zero); um nome que
+`Window` e `MaxIterations`, cada um só quando maior que zero, e
+`AnthropicWorkspace`, só quando não vazio); um nome que
 não casa segue o caminho de sempre. Não há mudança de protocolo —
 `CreateSessionRequest.Model` continua sendo uma string — porque a resolução
 acontece inteiramente do lado do daemon, que já recarrega o `Provider` do
@@ -290,6 +295,7 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Call que o stream não terminou de emitir vira erro `tool_schema`, nunca execução.
 - Raciocínio nunca aparece em evento de texto nem no histórico (RN-10).
 - Frame que só carrega marcador de raciocínio e espaço em branco não produz evento algum.
+- O cabeçalho `anthropic-workspace-id` só sai no transporte `anthropic`, e só quando um workspace foi configurado.
 
 ## 8. Changelog
 
@@ -299,3 +305,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
 - [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)

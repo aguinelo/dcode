@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 222 decision changelogs |
+| spec families | 19, with 223 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An Anthropic key that is not scoped to a workspace names one.** New key
+  `model.anthropic_workspace` / `DCODE_ANTHROPIC_WORKSPACE`, sent as the
+  `anthropic-workspace-id` header on the anthropic dialect only, shown by
+  `dcode config` and settable per profile in `models.toml`. Such a key had
+  every request refused with a message about a header nobody can set in dcode;
+  that refusal now names the key that fixes it. The name avoids `workspace`,
+  which already means the folder a session runs in.
 - **The TUI's `/loop` asks the daemon to run it.** The terminal no longer
   conducts its own loop: it sends what was typed to `POST /v1/loops`, follows
   the run's stream and says what changed — the plan, the session the loop moved

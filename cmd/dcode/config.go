@@ -52,7 +52,7 @@ Flags:
 	fmt.Printf("workspace  %s\n\n", ws)
 
 	fmt.Println("model")
-	for _, k := range []string{"model.name", "model.transport", "model.base_url", "model.window"} {
+	for _, k := range []string{"model.name", "model.transport", "model.base_url", "model.window", "model.anthropic_workspace"} {
 		v, ok := resolved.Get(k)
 		if !ok || v.Value == "" {
 			continue

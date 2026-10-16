@@ -30,6 +30,7 @@ var KnownKeys = map[string]string{
 	"model.family":                  "DCODE_FAMILY",
 	"model.base_url":                "DCODE_BASE_URL",
 	"model.window":                  "DCODE_WINDOW",
+	"model.anthropic_workspace":     "DCODE_ANTHROPIC_WORKSPACE",
 	"sandbox.mode":                  "DCODE_SANDBOX_MODE",
 	"sandbox.approval_policy":       "DCODE_APPROVAL_POLICY",
 	"sandbox.allow_network":         "DCODE_ALLOW_NETWORK",
