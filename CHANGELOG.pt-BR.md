@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 227 changelogs de decisão |
+| famílias de spec | 19, com 228 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,19 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O daemon lê e abre o PR de uma branch pelo `gh`.** `GET /v1/git/pr`
+  responde o PR da branch que um workspace tem agora — número, endereço,
+  estado, rascunho, e as checagens somadas em `pass`, `fail`, `pending` ou
+  `none` e contadas — e a base que um PR novo teria. `POST /v1/git/pr` empurra
+  a branch com `git push -u origin <branch>`, nunca com força, e só depois roda
+  `gh pr create` com o título, o corpo, a base e o rascunho que uma pessoa
+  confirmou; nada faz merge e nada liga auto-merge. Toda recusa vem antes do
+  push e diz por quê: `gh_unavailable` para `gh` ausente ou sem login,
+  `pr_refused` para HEAD destacado, sem `origin`, a própria base, nada a
+  propor, base desconhecida, PR já aberto ou push que o remoto recusou. Pelo
+  `gh` porque ele já guarda o login da pessoa, e o daemon nunca toca num token;
+  no daemon para o painel de alterações do desktop e a TUI perguntarem ao mesmo
+  leitor. O cliente ganha `ReadGitPR` e `CreateGitPR`.
 - **Os testes do `/loop` da TUI esperam o que o daemon falso faz, não o
   relógio.** Falhavam de vez em quando no CI e sob carga, e uma execução do CI
   travou: 150 ms de silêncio eram lidos como "o loop acabou", um loop que

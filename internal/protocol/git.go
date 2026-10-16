@@ -69,3 +69,75 @@ type GitDiffResponse struct {
 	// Limit is the cap the diff was cut at, in bytes (GitDiffLimit).
 	Limit int `json:"limit"`
 }
+
+// How a PR's checks add up, as GitChecks.State says it. A failure beats a
+// check still running, which beats a pass: never pass over a red check.
+const (
+	GitChecksPass    = "pass"
+	GitChecksFail    = "fail"
+	GitChecksPending = "pending"
+	// GitChecksNone is a PR with no check that passed, failed or waits —
+	// none at all, or only skipped ones.
+	GitChecksNone = "none"
+)
+
+// How a PR stands, as GitPR.State says it.
+const (
+	GitPROpen   = "open"
+	GitPRClosed = "closed"
+	GitPRMerged = "merged"
+)
+
+// GitChecks is a PR's checks, counted and summed up in one word.
+type GitChecks struct {
+	// State is one of the GitChecks* constants.
+	State   string `json:"state"`
+	Passed  int    `json:"passed"`
+	Failed  int    `json:"failed"`
+	Pending int    `json:"pending"`
+	// Skipped counts checks that ended skipped or neutral: neither green nor red.
+	Skipped int `json:"skipped"`
+}
+
+// GitPR is one pull request as GitHub has it, read through gh.
+type GitPR struct {
+	Number int    `json:"number"`
+	URL    string `json:"url"`
+	Title  string `json:"title"`
+	// State is one of the GitPR* constants.
+	State  string    `json:"state"`
+	Draft  bool      `json:"draft"`
+	Base   string    `json:"base"`
+	Head   string    `json:"head"`
+	Checks GitChecks `json:"checks"`
+}
+
+// GitPRResponse answers GET /git/pr, and POST /git/pr once the PR is open:
+// the branch checked out now, the base a new PR targets unless asked
+// otherwise, and the branch's PR.
+//
+// Read when asked, never kept, like GitResponse: CI moves on GitHub, and the
+// client asks again when it wants to know.
+type GitPRResponse struct {
+	Branch string `json:"branch"`
+	// Base is the repository's default branch, as the clone knows it or else
+	// as GitHub says.
+	Base string `json:"base"`
+	// PR is absent when the branch has none — open, merged or closed.
+	PR *GitPR `json:"pr,omitempty"`
+}
+
+// CreateGitPRRequest is POST /git/pr: what a person confirmed, every field as
+// they saw it. The daemon pushes Workspace's branch to origin, never by
+// force, and opens the PR; it never merges and never turns auto-merge on.
+type CreateGitPRRequest struct {
+	// Workspace is absolute; the branch is the one checked out there now.
+	Workspace string `json:"workspace"`
+	// Title is one line, at most 256 characters.
+	Title string `json:"title"`
+	// Body is at most 65536 bytes.
+	Body string `json:"body"`
+	// Base empty is GitPRResponse.Base.
+	Base  string `json:"base"`
+	Draft bool   `json:"draft"`
+}

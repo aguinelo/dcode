@@ -10,6 +10,11 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **`generated.ts` carries a branch's PR.** The core gains `GET /v1/git/pr`
+  and `POST /v1/git/pr` (`GitPRResponse`, `GitPR`, `GitChecks`,
+  `CreateGitPRRequest`) and the codes `gh_unavailable` and `pr_refused`, so the
+  changes panel can show a branch's PR with its CI and open one a person
+  confirmed. Regenerated; nothing in the app calls them yet.
 - **PDFs and text files go with a turn, like pictures (D59, amending D46).**
   The composer's "+" offers pictures, PDFs and text files; pasting or dropping
   a file attaches it. The main process types each one by its bytes — a

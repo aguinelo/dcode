@@ -336,6 +336,62 @@ func TestAPRRequestIsValidatedBeforeAnythingRuns(t *testing.T) {
 	}
 }
 
+// A folder in no repository has no branch, so no PR: said, not answered empty.
+func TestAFolderOutsideARepositoryHasNoPR(t *testing.T) {
+	fakeGh(t)
+	_, err := ReadPR(context.Background(), t.TempDir())
+	var refusal *Refusal
+	if !errors.As(err, &refusal) || !strings.Contains(err.Error(), "no git repository") {
+		t.Errorf("got %v, want a refusal saying there is no repository", err)
+	}
+}
+
+// gh failing, or answering what is not a PR, is said with what it said — never
+// read as "no PR" — and a PR that failed to open after the push says the push
+// happened.
+func TestGhFailingIsSaidWithWhatItSaid(t *testing.T) {
+	gh := fakeGh(t)
+	dir, _ := prRepo(t)
+	for _, c := range []struct{ pr, want string }{
+		{`not json`, "not a PR"},
+		{strings.Replace(openPR, `"OPEN"`, `"LOCKED"`, 1), `"LOCKED"`},
+	} {
+		put(t, gh, "pr.json", c.pr)
+		if _, err := ReadPR(context.Background(), dir); err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("pr.json %.20q: %v, want %q", c.pr, err, c.want)
+		}
+	}
+	if err := os.Remove(filepath.Join(gh, "pr.json")); err != nil {
+		t.Fatal(err)
+	}
+	put(t, gh, "create-fails", "GraphQL: something broke\n")
+	_, err := CreatePR(context.Background(), dir, NewPR{Title: "Add b"})
+	if err == nil || !strings.Contains(err.Error(), "pushed") || !strings.Contains(err.Error(), "GraphQL: something broke") {
+		t.Errorf("a failed create came back as %v", err)
+	}
+
+	git(t, dir, "remote", "set-head", "origin", "--delete")
+	put(t, gh, "repo.json", `{}`)
+	if _, err := ReadPR(context.Background(), dir); err == nil || !strings.Contains(err.Error(), "default branch") {
+		t.Errorf("a repository with no default branch came back as %v", err)
+	}
+}
+
+// A read that runs out of time says so, rather than whatever the cancelled
+// command printed.
+func TestARunOutReadSaysItRanOut(t *testing.T) {
+	fakeGh(t)
+	dir, _ := prRepo(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := ReadPR(ctx, dir); err == nil || !strings.Contains(err.Error(), "did not answer within") {
+		t.Errorf("a cancelled read came back as %v", err)
+	}
+	if _, err := CreatePR(ctx, dir, NewPR{Title: "Add b"}); err == nil || !strings.Contains(err.Error(), "did not answer within") {
+		t.Errorf("a cancelled create came back as %v", err)
+	}
+}
+
 // gh runs with nobody to ask: no terminal on its input, prompts off, and the
 // repository it is pointed at is the folder's, never one the daemon's
 // environment names.

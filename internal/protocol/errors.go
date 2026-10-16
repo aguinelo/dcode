@@ -44,7 +44,14 @@ const (
 	CodeLoopNotAwaitingReview = "loop_not_awaiting_review"
 	// CodeLoopNotFound names a run id the daemon does not hold.
 	CodeLoopNotFound = "loop_not_found"
-	CodeInternal     = "internal"
+	// CodeGhUnavailable is the GitHub CLI missing where the daemon runs, or
+	// there without a login: the PR routes have nobody to ask GitHub.
+	CodeGhUnavailable = "gh_unavailable"
+	// CodePRRefused is a branch that cannot become a PR as things stand — no
+	// branch, no origin, the base itself, nothing to propose, a PR already
+	// open, a push the remote refused — with the reason.
+	CodePRRefused = "pr_refused"
+	CodeInternal  = "internal"
 )
 
 // httpStatus maps each code to its response status. Codes absent from the map
@@ -62,6 +69,8 @@ var httpStatus = map[string]int{
 	CodeLoopAlreadyRunning:    http.StatusConflict,
 	CodeLoopNotAwaitingReview: http.StatusConflict,
 	CodeLoopNotFound:          http.StatusNotFound,
+	CodeGhUnavailable:         http.StatusServiceUnavailable,
+	CodePRRefused:             http.StatusConflict,
 	CodeInternal:              http.StatusInternalServerError,
 }
 

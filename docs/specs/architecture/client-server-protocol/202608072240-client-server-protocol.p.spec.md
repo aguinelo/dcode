@@ -64,6 +64,8 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/commands` | `experimental` | Os comandos de barra que um cliente do workspace oferece: os do usuário e os do projeto, como a TUI os descobre, cada um com de onde vem e o texto que manda, e os do usuário que o projeto tomou pelo nome. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `CommandsResponse`. |
 | `GET` | `/git` | `experimental` | Onde o workspace está no git agora — topo da árvore, branch, commit, se é worktree ligada e de qual checkout — e cada arquivo mudado desde o último commit, com o estado e as linhas. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitResponse`. |
 | `GET` | `/git/diff` | `experimental` | O diff unificado de um arquivo que `/git` lista, com teto. Query `workspace` e `path` (como `/git` o lista). Só leitura. Devolve `GitDiffResponse`. |
+| `GET` | `/git/pr` | `experimental` | O PR da branch que o workspace tem agora, pelo `gh`: número, endereço, estado, rascunho e as checagens somadas; e a base que um PR novo teria. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitPRResponse`. |
+| `POST` | `/git/pr` | `experimental` | Empurra a branch de agora (`git push -u origin <branch>`, nunca com força) e abre o PR com `gh pr create`. Corpo `CreateGitPRRequest`, que é o que uma pessoa confirmou. Devolve `GitPRResponse` com `201`. Nunca faz merge nem liga auto-merge. `gh` ausente ou sem login → `gh_unavailable`; branch que não pode virar PR → `pr_refused`; pedido malformado → `invalid_input`. |
 | `POST` | `/loops` | `experimental` | Começa um `/loop` que o daemon conduz. Corpo `StartLoopRequest` (`args` como foi digitado depois de `/loop`). Devolve `LoopRun` com `201`. Workspace relativo → `workspace_invalid`; argumento sem palavra ou flag desconhecida → `invalid_input`; loop vivo no mesmo workspace → `loop_already_running`. |
 | `GET` | `/loops` | `experimental` | Os loops que o daemon guarda, do mais antigo ao mais novo. Query `workspace` (absoluto, opcional). Devolve `ListLoopsResponse`. |
 | `GET` | `/loops/events` | `experimental` | **SSE.** Todos os loops primeiro (`snapshot`), depois cada loop que mudou (`changed`). Sem `from`: reconectar recebe outro `snapshot`. Um loop não sai da lista enquanto o daemon vive — o veredito é o que o cliente mostra depois do fim. |
@@ -445,7 +447,8 @@ configuração ao lado.
 O que o painel de contexto do desktop mostra da pasta de uma conversa
 (`internal/protocol/git.go`), lido pelo `vcs.ReadTree` e pelo `vcs.FileDiff`
 quando alguém pergunta, e nunca guardado. Só leitura: nada aqui prepara,
-commita ou troca de branch.
+commita ou troca de branch. O que empurra é o PR (§5.5.1), e só a pedido que
+uma pessoa confirmou.
 
 ```go
 type GitFile struct {
@@ -482,6 +485,58 @@ A comparação é contra o último commit — contra a árvore vazia num reposit
 sem commit —, com o que está preparado e o que não está juntos: é o que a pasta
 tem que o commit não tem. Os arquivos são da pasta, não de uma conversa: duas
 conversas na mesma pasta veem a mesma lista.
+
+### 5.5.1 O PR de uma branch
+
+O PR da branch que a pasta tem agora (`internal/protocol/git.go`), lido e aberto
+pelo `vcs.ReadPR` e pelo `vcs.CreatePR` através do `gh` que a pessoa já tem
+logado. O daemon nunca vê o token: quem fala com o GitHub é o `gh`.
+
+```go
+type GitChecks struct {
+    State   string `json:"state"`   // pass, fail, pending ou none
+    Passed  int    `json:"passed"`
+    Failed  int    `json:"failed"`
+    Pending int    `json:"pending"`
+    Skipped int    `json:"skipped"` // terminou skipped ou neutral: nem verde nem vermelha
+}
+
+type GitPR struct {
+    Number int       `json:"number"`
+    URL    string    `json:"url"`
+    Title  string    `json:"title"`
+    State  string    `json:"state"` // open, closed ou merged
+    Draft  bool      `json:"draft"`
+    Base   string    `json:"base"`
+    Head   string    `json:"head"`
+    Checks GitChecks `json:"checks"`
+}
+
+type GitPRResponse struct {
+    Branch string `json:"branch"`       // a de agora
+    Base   string `json:"base"`         // a branch padrão: a do clone (origin/HEAD), ou a que o GitHub diz
+    PR     *GitPR `json:"pr,omitempty"` // ausente: a branch não tem PR
+}
+
+type CreateGitPRRequest struct {
+    Workspace string `json:"workspace"` // absoluto
+    Title     string `json:"title"`     // uma linha, até 256 caracteres
+    Body      string `json:"body"`      // até 65536 bytes
+    Base      string `json:"base"`      // vazia: GitPRResponse.Base
+    Draft     bool   `json:"draft"`
+}
+```
+
+A soma das checagens: falha vence pendente, pendente vence aprovada; `none` é
+PR sem checagem que passou, falhou ou espera. Uma palavra que o GitHub
+inventar depois conta como falha, nunca como aprovada.
+
+Abrir é a única rota de git que muda algo fora da máquina, e por isso o pedido
+é o que uma pessoa confirmou, campo por campo: o cliente mostra título, corpo,
+base e branch antes de mandar. A ordem é sempre a mesma — conferir o pedido,
+o `gh` e o login, a branch, o `origin`, a base, um PR já aberto e se há o que
+propor; só então `git push -u origin <branch>`; só então `gh pr create`. Tudo o
+que pode recusar recusa antes do push.
 
 ### 5.6 Os comandos de um workspace
 
@@ -550,6 +605,8 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 | `loop_already_running` | 409 | já há um `/loop` vivo no workspace (dois loops na mesma árvore medem o trabalho um do outro) |
 | `loop_not_awaiting_review` | 409 | `continue` num loop que não espera revisão — em geral, outro cliente continuou antes |
 | `loop_not_found` | 404 | id de loop que o daemon não guarda |
+| `gh_unavailable` | 503 | o `gh` não está no `PATH` do daemon, ou está sem login; a mensagem diz qual |
+| `pr_refused` | 409 | a branch não pode virar PR agora — HEAD destacado, sem `origin`, a própria base, nada a propor, base desconhecida no clone, PR já aberto, push recusado —, com o motivo |
 | `internal` | 500 | falha não classificada |
 
 ## 9. Invariantes verificáveis
@@ -677,6 +734,20 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Diff de caminho que o git não lista como mudado é recusado com `invalid_input`: a rota lê mudança, nunca um arquivo qualquer pelo nome.
 - As rotas de git recusam, com `workspace_invalid` e antes de rodar o git, workspace que falta, que é relativo ou que não existe.
 - Ler o git de uma pasta nunca roda programa que a configuração do repositório nomeia: o `core.fsmonitor` é desligado em toda leitura.
+- `GET /git/pr` responde o PR da branch de agora, com número, endereço, estado, rascunho e as checagens somadas numa palavra e em contagens.
+- Branch sem PR é resposta, não falha: `pr` ausente, e a base que um PR novo teria.
+- A base padrão é a que o clone conhece (`origin/HEAD`); só quando ele não sabe o `gh` pergunta ao GitHub.
+- A soma nunca diz `pass` com uma checagem vermelha: falha vence pendente, pendente vence aprovada, e palavra desconhecida conta como falha.
+- `POST /git/pr` empurra com `git push -u origin <branch>`, nunca com força, e só depois roda `gh pr create` com o título, o corpo e a base confirmados; nada faz merge nem liga auto-merge.
+- Rascunho pedido é aberto como rascunho.
+- `POST /git/pr` responde `201` com o PR aberto, lido de volta pelo `gh pr view`.
+- Push que o remoto recusa é dito com o que o git disse, nenhum PR é aberto, e o remoto fica como estava.
+- HEAD destacado, repositório sem `origin`, a própria base, branch sem commit que a base não tenha, base que o clone não conhece e branch com PR já aberto são recusados com `pr_refused` e o motivo, antes de qualquer push.
+- Sem `gh` no `PATH`, ou com `gh` sem login, ler e abrir PR falham dizendo qual dos dois, nunca respondem "sem PR".
+- Cada recusa das rotas de PR carrega o código de quem ela é: `gh_unavailable`, `pr_refused` ou `invalid_input`.
+- Título vazio, de mais de uma linha ou longo demais, corpo acima do teto e base que não é nome de branch são recusados com `invalid_input` antes de o `gh` ou um push rodar.
+- O `gh` roda sem shell, sem terminal na entrada, com as perguntas desligadas e sem o `GH_REPO` do ambiente do daemon.
+- As rotas de PR recusam, com `workspace_invalid` e antes de o git ou o `gh` rodarem, workspace que falta, que é relativo ou que não existe.
 - O caminho padrão do socket não depende do ambiente: sem `DCODE_SOCKET`, é `/tmp/dcode-<uid>/dcode.sock` para um terminal, uma sessão SSH e um app aberto pelo Dock.
 - A pasta do socket padrão é do usuário e só dele: de outro dono, aberta a outros ou symlink, é recusada com o motivo, e nada escuta nem conecta nela.
 - `dcode socket` imprime o caminho em uso, para um cliente perguntar ao binário em vez de copiar a regra.
@@ -724,3 +795,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610141700 — O loop diz o que a pergunta e a proposta acharam](changelog/202610141700-o-loop-diz-o-que-achou.md)
 - [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)
 - [202610151200 — Um turno carrega documentos](changelog/202610151200-um-turno-carrega-documentos.md)
+- [202610151300 — O PR de uma branch, lido e aberto pelo `gh`](changelog/202610151300-o-pr-de-uma-branch.md)

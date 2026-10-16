@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O `generated.ts` traz o PR de uma branch.** O núcleo ganha
+  `GET /v1/git/pr` e `POST /v1/git/pr` (`GitPRResponse`, `GitPR`, `GitChecks`,
+  `CreateGitPRRequest`) e os códigos `gh_unavailable` e `pr_refused`, para o
+  painel de alterações mostrar o PR de uma branch com o CI e abrir um que uma
+  pessoa confirmou. Regenerado; nada no app os chama ainda.
 - **PDFs e arquivos de texto vão com o turno, como as imagens (D59, emenda
   D46).** O "+" da caixa oferece imagens, PDFs e textos; colar ou arrastar um
   arquivo o anexa. O processo principal tipa cada um pelos bytes — imagem,

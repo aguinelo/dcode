@@ -1,9 +1,11 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/vcs"
@@ -15,6 +17,17 @@ func existingWorkspace(r *http.Request) (string, *protocol.Error) {
 	ws, perr := workspaceOf(r)
 	if perr != nil {
 		return "", perr
+	}
+	return existingFolder(ws)
+}
+
+// existingFolder is existingWorkspace for a workspace named in a body.
+func existingFolder(ws string) (string, *protocol.Error) {
+	if ws == "" {
+		return "", protocol.Errorf(protocol.CodeWorkspaceInvalid, "a workspace is required")
+	}
+	if !filepath.IsAbs(ws) {
+		return "", protocol.Errorf(protocol.CodeWorkspaceInvalid, "workspace must be an absolute path, got %q", ws)
 	}
 	info, err := os.Stat(ws)
 	if err != nil {
@@ -78,6 +91,84 @@ func (s *Server) readGit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// prErr says whose a PR route's failure is: gh's absence, the branch's, the
+// request's, or the daemon's.
+func prErr(err error) *protocol.Error {
+	var refusal *vcs.Refusal
+	switch {
+	case errors.Is(err, vcs.ErrNoGh), errors.Is(err, vcs.ErrGhLoggedOut):
+		return protocol.Errorf(protocol.CodeGhUnavailable, "%v", err)
+	case errors.Is(err, vcs.ErrInvalidPR):
+		return protocol.Errorf(protocol.CodeInvalidInput, "%v", err)
+	case errors.As(err, &refusal):
+		return protocol.Errorf(protocol.CodePRRefused, "%v", err)
+	}
+	return protocol.Errorf(protocol.CodeInternal, "%v", err)
+}
+
+// wirePRState and wireChecks are how a PR and its checks read on the wire,
+// spelled out for the reason wireStatus is.
+var wirePRState = map[string]string{
+	vcs.PROpen: protocol.GitPROpen, vcs.PRClosed: protocol.GitPRClosed, vcs.PRMerged: protocol.GitPRMerged,
+}
+
+var wireChecks = map[string]string{
+	vcs.ChecksPass: protocol.GitChecksPass, vcs.ChecksFail: protocol.GitChecksFail,
+	vcs.ChecksPending: protocol.GitChecksPending, vcs.ChecksNone: protocol.GitChecksNone,
+}
+
+func prOnWire(b *vcs.BranchPR) protocol.GitPRResponse {
+	out := protocol.GitPRResponse{Branch: b.Branch, Base: b.Base}
+	if p := b.PR; p != nil {
+		c := p.Checks
+		checks, ok := wireChecks[c.State]
+		if !ok {
+			checks = protocol.GitChecksFail // a summary the wire has no word for is never read as green
+		}
+		out.PR = &protocol.GitPR{Number: p.Number, URL: p.URL, Title: p.Title, State: wirePRState[p.State], Draft: p.Draft,
+			Base: p.Base, Head: p.Head, Checks: protocol.GitChecks{State: checks, Passed: c.Passed,
+				Failed: c.Failed, Pending: c.Pending, Skipped: c.Skipped}}
+	}
+	return out
+}
+
+// readGitPR answers the PR of the branch ?workspace= has checked out now.
+// Read only: it asks GitHub through gh and changes nothing.
+func (s *Server) readGitPR(w http.ResponseWriter, r *http.Request) {
+	ws, perr := existingWorkspace(r)
+	if perr != nil {
+		writeErr(w, perr)
+		return
+	}
+	b, err := vcs.ReadPR(r.Context(), ws)
+	if err != nil {
+		writeErr(w, prErr(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, prOnWire(b))
+}
+
+// createGitPR pushes the workspace's branch and opens the PR a person
+// confirmed. It never merges, never pushes by force, never turns auto-merge on.
+func (s *Server) createGitPR(w http.ResponseWriter, r *http.Request) {
+	var req protocol.CreateGitPRRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
+		return
+	}
+	ws, perr := existingFolder(req.Workspace)
+	if perr != nil {
+		writeErr(w, perr)
+		return
+	}
+	b, err := vcs.CreatePR(r.Context(), ws, vcs.NewPR{Title: req.Title, Body: req.Body, Base: req.Base, Draft: req.Draft})
+	if err != nil {
+		writeErr(w, prErr(err))
+		return
+	}
+	writeJSON(w, http.StatusCreated, prOnWire(b))
 }
 
 // readGitDiff answers one changed file's diff, ?path= as /git lists it.

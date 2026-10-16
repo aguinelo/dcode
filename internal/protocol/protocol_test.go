@@ -128,6 +128,8 @@ func TestHTTPStatus(t *testing.T) {
 		CodeEventsExpired:      http.StatusGone,
 		CodeWorkspaceInvalid:   http.StatusBadRequest,
 		CodeMaxSessionsReached: http.StatusServiceUnavailable,
+		CodeGhUnavailable:      http.StatusServiceUnavailable,
+		CodePRRefused:          http.StatusConflict,
 		CodeInternal:           http.StatusInternalServerError,
 	} {
 		if got := HTTPStatus(code); got != want {
