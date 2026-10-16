@@ -135,10 +135,13 @@ func (c *Client) Submit(ctx context.Context, id, text string, images ...protocol
 		protocol.SubmitTurnRequest{Text: text, Images: images}, nil)
 }
 
-// SubmitTurn sends a whole turn request.
+// SubmitTurn sends a whole turn request: text, pictures and documents.
+//
+// Submit stays for the common case. This is the one a client attaching files
+// uses, so a new kind of attachment is a field on the request rather than a
+// new parameter on every caller.
 func (c *Client) SubmitTurn(ctx context.Context, id string, req protocol.SubmitTurnRequest) error {
-	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/turns",
-		protocol.SubmitTurnRequest{Text: req.Text}, nil)
+	return c.do(ctx, http.MethodPost, "/sessions/"+id+"/turns", req, nil)
 }
 
 // Interrupt cancels the running turn.

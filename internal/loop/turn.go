@@ -321,17 +321,24 @@ func (e *Engine) Session() ce.Session { return e.session }
 // Run executes one turn: appends the input, then cycles until the model stops
 // asking for tools.
 func (e *Engine) Run(ctx context.Context, input string, images ...ce.Image) (Outcome, error) {
+	return e.RunAttached(ctx, input, Attachments{Images: images})
+}
+
+// RunAttached is Run with what was attached to the question: pictures and
+// documents.
+func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments) (Outcome, error) {
 	// Before anything is appended, so the whole turn runs under one boundary.
 	e.takePendingPrompt()
 	e.turnSeq++
 	turnID := fmt.Sprintf("t%d", e.turnSeq)
 	e.turnID, e.checks = turnID, 0
-	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: turnID, Text: input})
+	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{
+		TurnID: turnID, Text: input, Documents: att.named(),
+	})
 
-	// The pictures ride with the question, in one message. Splitting them
-	// would lose which one the question is about.
-	e.session.History = append(e.session.History,
-		ce.Message{Role: ce.RoleUser, Text: input, Images: images})
+	// The pictures and the files ride with the question, in one message.
+	// Splitting them would lose which one the question is about.
+	e.session.History = append(e.session.History, att.message(input))
 
 	// Skill bodies are appended, never prefixed. The index in the prefix is
 	// what the model reads every turn; the body is only paid for in the turns

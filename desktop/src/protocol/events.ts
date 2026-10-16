@@ -89,6 +89,12 @@ const PLAN_ITEM: Shape<P.PlanItem> = {
   blocked: opt('string'),
 };
 
+const ATTACHED_DOCUMENT: Shape<P.AttachedDocument> = {
+  name: req('string'),
+  media_type: req('string'),
+  size: req('number'),
+};
+
 const DONE_CRITERION: Shape<P.DoneCriterion> = {
   name: req('string'),
   command: req('string'),
@@ -123,7 +129,11 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
   'session.error': { code: req('string'), message: req('string') } satisfies Shape<P.Error>,
   'skill.loaded': { name: req('string'), when_to_use: opt('string') } satisfies Shape<P.SkillLoaded>,
   'context.band': { band: req('number'), fraction: req('number') } satisfies Shape<P.ContextBand>,
-  'turn.started': { turn_id: req('string'), text: opt('string') } satisfies Shape<P.TurnStarted>,
+  'turn.started': {
+    turn_id: req('string'),
+    text: opt('string'),
+    documents: opt('array', ATTACHED_DOCUMENT),
+  } satisfies Shape<P.TurnStarted>,
   'turn.steered': { turn_id: req('string'), text: req('string') } satisfies Shape<P.TurnSteered>,
   'turn.completed': {
     turn_id: req('string'),

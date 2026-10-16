@@ -45,6 +45,14 @@ type Family interface {
     // Encode serializa o contexto neutro no corpo esperado pelo transporte.
     Encode(req Request, transport string) (WireRequest, error)
 
+    // AcceptsImages e AcceptsPDF dizem o que os modelos desta família leem
+    // além de texto. Declarados, nunca tentados: o que uma família não declara
+    // é recusado na submissão do turno, nomeando o modelo, em vez de virar
+    // erro do provedor depois do envio. Texto não se declara — arquivo de texto
+    // vai escrito na mensagem, e toda família lê texto. Só `claude` lê PDF.
+    AcceptsImages() bool
+    AcceptsPDF() bool
+
     // NewDecoder cria o decoder de UM stream.
     //
     // Decodificar não pode ser função pura de um frame: os argumentos de uma
@@ -305,4 +313,5 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
 - [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610151200 — Um turno carrega documentos](../client-server-protocol/changelog/202610151200-um-turno-carrega-documentos.md)
 - [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)

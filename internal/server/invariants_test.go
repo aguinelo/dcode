@@ -175,6 +175,16 @@ var protocolInvariants = map[string]string{
 	"recusado na borda":    "TestAMalformedImageIsRefused",
 	"conta no orçamento":   "TestAnImageCostsContext",
 	"declara se lê imagem": "TestEachFamilySaysWhetherItReadsPictures",
+	// Documents.
+	"conferido na borda":               "TestADocumentIsCheckedAtTheBoundary",
+	"reconhecido pelos bytes":          "TestADocumentIsCheckedAtTheBoundary",
+	"recusa o turno na submissão":      "TestAPDFForAModelThatCannotReadItIsRefusedNamingTheModel",
+	"em vez de mandá-la sem o arquivo": "TestADialectThatCannotCarryAPDFRefusesRatherThanDroppingIt",
+	"declara se lê PDF":                "TestEachFamilySaysWhetherItReadsPDFs",
+	"bloco `document` em base64":       "TestClaudeCarriesAPDFAsADocumentBlock",
+	"entre marcadores que o nomeiam":   "TestATextFileIsWrittenIntoTheMessageAndAPDFIsNot",
+	"pesa no contexto pelas páginas":   "TestAPDFCountsAgainstTheBudgetByItsPages",
+	"nunca carrega os bytes":           "TestATurnCarriesItsDocumentsAndSaysWhichTheyWere",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

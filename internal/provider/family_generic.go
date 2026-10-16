@@ -40,6 +40,9 @@ func (Generic) Transports() []string { return []string{TransportOpenAI} }
 // which is a decision with a name on it rather than a hope.
 func (Generic) AcceptsImages() bool { return false }
 
+// AcceptsPDF is false, for the reason AcceptsImages is.
+func (Generic) AcceptsPDF() bool { return false }
+
 // Window is the conservative guess.
 //
 // Under-guessing compacts early and costs a summary; over-guessing overruns the

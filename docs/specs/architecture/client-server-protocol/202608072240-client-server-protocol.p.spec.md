@@ -131,7 +131,29 @@ type CreateSessionRequest struct {
 }
 
 type SubmitTurnRequest struct {
-    Text string `json:"text"`
+    Text      string         `json:"text"`
+    Images    []TurnImage    `json:"images,omitempty"`    // por valor, nunca caminho
+    Documents []TurnDocument `json:"documents,omitempty"` // idem; conferidos na borda
+}
+
+type TurnImage struct {
+    MediaType string `json:"media_type"`
+    Data      string `json:"data"` // base64
+}
+
+// TurnDocument é um arquivo lido com o turno. Name é o que a pessoa vê na
+// mensagem, nunca um caminho: nome com separador é recusado.
+type TurnDocument struct {
+    Name      string `json:"name"`
+    MediaType string `json:"media_type"` // ver tabela abaixo
+    Data      string `json:"data"`       // base64
+}
+
+// AttachedDocument é o que turn.started diz de um documento. Nunca os bytes.
+type AttachedDocument struct {
+    Name      string `json:"name"`
+    MediaType string `json:"media_type"`
+    Size      int    `json:"size"` // bytes, depois de decodificado
 }
 
 type ApprovalDecision string
@@ -158,6 +180,22 @@ type Error struct {
     Message string         `json:"message"` // inglês, legível por humano — ver nota
 }
 ```
+
+**Documentos de um turno.** Os tipos são um conjunto fechado, e os limites são
+constantes do pacote `protocol`, para o cliente recusar antes de mandar pelos
+mesmos números que o daemon confere ao receber.
+
+| `media_type` | Constante | Limite | Conferência | Como chega ao modelo |
+|---|---|---|---|---|
+| `application/pdf` | `DocumentPDF` | `MaxPDFBytes` = 10 MiB | começa com `%PDF-` | bloco `document` (base64), só em família com `AcceptsPDF()` |
+| `text/plain` | `DocumentText` | `MaxTextDocumentBytes` = 256 KiB | UTF-8 válido, sem NUL | escrito na mensagem, antes da pergunta, entre `<document name=… media_type=…>` e `</document>` — toda família |
+| `text/markdown` | `DocumentMarkdown` | idem | idem | idem |
+| `text/csv` | `DocumentCSV` | idem | idem | idem |
+
+`MaxDocumentsPerTurn` = 5. `MaxDocumentNameBytes` = 255; nome vazio, com `/`
+ou `\`, ou com caractere de controle é recusado. Toda recusa da borda é
+`invalid_input` e diz o que estava errado. PDF para modelo cuja família não lê
+PDF é recusado na submissão, também `invalid_input`, nomeando o modelo.
 
 ### 5.0 O `/loop` como recurso do daemon
 
@@ -231,7 +269,7 @@ a grade sabem que uma conversa pertence a um loop sem ler outro fluxo.
 | `type` | Payload | Quando |
 |---|---|---|
 | `session.created` | `Session` | criação |
-| `turn.started` | `{"turn_id":string,"text":string}` | entrada aceita; `text` é o que foi pedido |
+| `turn.started` | `{"turn_id":string,"text":string,"documents"?:[]AttachedDocument}` | entrada aceita; `text` é o que foi pedido, `documents` os arquivos lidos com ele |
 | `message.delta` | `{"turn_id":string,"text":string}` | fragmento de texto do modelo |
 | `tool.requested` | `{"turn_id":string,"tool_call_id":string,"name":string,"input":object}` | modelo pediu ferramenta |
 | `tool.approval_required` | `ApprovalRequest` | cruzou fronteira do sandbox (RN-4) |
@@ -549,6 +587,15 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 - Base64 malformado é recusado na borda, não chega à sessão como bytes vazios.
 - Imagem conta no orçamento de contexto; faixa que a ignora deriva em silêncio.
 - Cada família declara se lê imagem; a genérica diz **não**, porque nada aqui pode saber.
+- Documento de turno é conferido na borda — tipo, nome, tamanho e quantidade, pelos limites que o protocolo declara — e cada recusa é `invalid_input` dizendo o quê.
+- PDF é reconhecido pelos bytes (`%PDF-`), nunca pelo nome; texto tem de ser UTF-8 sem NUL.
+- PDF para modelo cuja família não lê PDF recusa o turno na submissão, nomeando o modelo; o arquivo nunca some em silêncio.
+- Dialeto que não carrega PDF recusa codificar a mensagem em vez de mandá-la sem o arquivo.
+- Cada família declara se lê PDF; só `claude` diz **sim**.
+- Claude recebe PDF como bloco `document` em base64, com o nome do arquivo como título.
+- Arquivo de texto vai para toda família, escrito antes da pergunta entre marcadores que o nomeiam.
+- PDF pesa no contexto pelas páginas, e PDF cujas páginas não se veem pesa uma.
+- `turn.started` nomeia os documentos — nome, tipo e tamanho — e nunca carrega os bytes.
 - Desfazer restaura o que o **último** turno mudou; turno novo substitui o conjunto.
 - Arquivo alterado depois do turno é recusado, nunca sobrescrito — e a recusa é por arquivo, não do lote.
 - Desfazer durante um turno em curso é recusado.
@@ -675,3 +722,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610141200 — O loop é um recurso do daemon](changelog/202610141200-o-loop-e-um-recurso-do-daemon.md)
 - [202610141700 — O loop diz o que a pergunta e a proposta acharam](changelog/202610141700-o-loop-diz-o-que-achou.md)
 - [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)
+- [202610151200 — Um turno carrega documentos](changelog/202610151200-um-turno-carrega-documentos.md)
