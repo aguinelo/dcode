@@ -263,6 +263,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A loop continued after its review says its end once.** Continuing
+  answers with the run as it was when it went on, and the follow on screen
+  keeps hearing the run until that answer arrives; a run that ended in between
+  had its end said by that follow, and the answer then followed it again and
+  said the end a second time. An answer about a run whose end was already said
+  is not followed.
 - **The daemon reads and opens a branch's PR through `gh`.** `GET /v1/git/pr`
   answers the PR of the branch a workspace has checked out now — number,
   address, state, draft, and its checks summed up as `pass`, `fail`, `pending`

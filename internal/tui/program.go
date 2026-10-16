@@ -170,6 +170,9 @@ type program struct {
 
 	// loop is the daemon's `/loop` this client follows, when there is one.
 	loop *loopFollow
+	// loopOver is the last run whose end this client said: a run that ended
+	// never goes on, so an answer about it arriving later is not followed.
+	loopOver string
 
 	// generation counts subscriptions, so a message from one that has been
 	// replaced can be told from one that is current. Switching sessions cancels
