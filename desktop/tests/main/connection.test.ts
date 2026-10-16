@@ -331,6 +331,15 @@ describe('requests', () => {
     expect(daemon.bodies).toEqual([{ text: 'o que é isto?', images }, { text: 'e agora?' }]);
   });
 
+  it('sends a turn’s documents in its body beside the pictures, and no list when there are none (D59)', async () => {
+    const { daemon, conn, r } = await setUp({ sessions: { s1: 1 } });
+    conn.start();
+    await until(() => connected(r), 'connected');
+    const documents = [{ name: 'spec.pdf', media_type: 'application/pdf', data: 'JVBERi0=' }];
+    expect(await conn.requests.submitTurn('s1', 'leia', [], documents)).toEqual({ ok: true, value: null });
+    expect(daemon.bodies).toEqual([{ text: 'leia', documents }]);
+  });
+
   it('answers the daemon’s refusal as it came', async () => {
     const { conn, r } = await setUp();
     conn.start();
