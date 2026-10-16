@@ -4,7 +4,7 @@
 // One answer per folder, as the daemon gives it: the conversations in a folder
 // share its branch, whatever branch each started on.
 
-import type { GitDiffResponse, GitResponse } from '../protocol/generated';
+import type { GitDiffResponse, GitPRResponse, GitResponse } from '../protocol/generated';
 
 const DCODE = '/Users/aguinelo/work/dcode';
 const BIZPACK = '/Users/aguinelo/work/bizpack';
@@ -88,4 +88,28 @@ export const recordedDiffs: Readonly<Record<string, GitDiffResponse>> = {
       '',
     ].join('\n'),
   ),
+};
+
+/**
+ * What the recording's daemon answers about each folder's PR (D60): the dcode
+ * worktree's branch has one open with CI still running, bizpack is on its base
+ * and has none, and eva, in no repository, has no branch to ask about.
+ */
+export const recordedPRs: Readonly<Record<string, GitPRResponse | string>> = {
+  [DCODE]: {
+    branch: 'feat/catalogo',
+    base: 'main',
+    pr: {
+      number: 212,
+      url: 'https://github.com/aguinelo/dcode/pull/212',
+      title: 'Catalogar chamadas de .Save',
+      state: 'open',
+      draft: false,
+      base: 'main',
+      head: 'feat/catalogo',
+      checks: { state: 'pending', passed: 3, failed: 0, pending: 1, skipped: 0 },
+    },
+  },
+  [BIZPACK]: { branch: 'main', base: 'main' },
+  [EVA]: 'the folder is in no git repository',
 };

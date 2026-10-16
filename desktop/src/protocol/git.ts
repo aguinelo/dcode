@@ -4,7 +4,7 @@
 // say, never a list to guess from.
 
 import type * as P from './generated';
-import { check, isRecord, req, type Shape } from './validate';
+import { check, isRecord, opt, req, type Shape } from './validate';
 
 const FILE: Shape<P.GitFile> = {
   path: req('string'),
@@ -66,4 +66,43 @@ export function decodeGitDiff(raw: unknown): Decoded<P.GitDiffResponse> {
   const why = check(shape, raw, 'diff');
   if (why) return fail(why);
   return { ok: true, value: raw as unknown as P.GitDiffResponse };
+}
+
+const CHECKS: Shape<P.GitChecks> = {
+  state: req('string'),
+  passed: req('number'),
+  failed: req('number'),
+  pending: req('number'),
+  skipped: req('number'),
+};
+
+const PR: Shape<P.GitPR> = {
+  number: req('number'),
+  url: req('string'),
+  title: req('string'),
+  state: req('string'),
+  draft: req('boolean'),
+  base: req('string'),
+  head: req('string'),
+  checks: req('object', CHECKS),
+};
+
+const PR_RESPONSE: Shape<P.GitPRResponse> = {
+  branch: req('string'),
+  base: req('string'),
+  pr: opt('object', PR),
+};
+
+/**
+ * Reads the answer of `GET /v1/git/pr` and of `POST /v1/git/pr` (D60). A PR
+ * whose address is not https is refused here: the line opens it in the
+ * browser, and only an https link ever leaves the window.
+ */
+export function decodeGitPR(raw: unknown): Decoded<P.GitPRResponse> {
+  const why = check(PR_RESPONSE, raw, 'pr');
+  if (why) return { ok: false, reason: `PR da branch: ${why}` };
+  const got = raw as unknown as P.GitPRResponse;
+  if (!got.pr) return { ok: true, value: { branch: got.branch, base: got.base } };
+  if (!got.pr.url.startsWith('https://')) return { ok: false, reason: `PR da branch: o endereço não é https: ${got.pr.url}` };
+  return { ok: true, value: got };
 }

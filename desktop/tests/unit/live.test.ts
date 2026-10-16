@@ -93,8 +93,7 @@ function fakeApi() {
     exec: (id, c) => answer(`exec ${id}: ${c}`),
     undo: (id) => (asked.push(`undo ${id}`), Promise.resolve(crew.undo)),
     compact: (id) => (asked.push(`compact ${id}`), Promise.resolve(crew.compact)),
-    loops: quietLoops(),
-    pr: quietPr(),
+    loops: quietLoops(), pr: quietPr(), // the loops (D55) and the PR (D60) are not asked about here
   };
   return {
     api,

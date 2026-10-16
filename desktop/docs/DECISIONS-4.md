@@ -397,3 +397,49 @@ decidiu escrever texto na mensagem para toda família, e a janela segue);
 aceitar qualquer arquivo e deixar o daemon recusar (a recusa chegaria depois do
 envio, e o processo principal já sabe as regras); tipo pela extensão (o mesmo
 erro que D46 evitou nas imagens).
+**D60. O painel de mudanças cria o PR e mostra o CI dele, sempre confirmado.**
+Pedido do dono, de 2026-10-15: o painel "Alterações" ganha "Criar PR" e o
+estado do CI por sessão, como o do Claude Code desktop (diff +N −M, "Criar PR",
+os PRs com o ponto do CI). Regra do dono: criar PR **sempre** pede confirmação
+explícita no app, com título, corpo, base e branch à vista e a pessoa clicando
+Confirmar; o app **nunca** faz merge, nunca empurra com força, nunca liga
+auto-merge. O núcleo ganhou as rotas no registro 202610151300
+(`GET`/`POST /v1/git/pr`, pelo `gh` que a pessoa já tem logado).
+
+- **Onde aparece:** no alto da aba Mudanças da Crew e do cartão de contexto da
+  grade (o mesmo componente nos dois), acima de "Na pasta, desde o último
+  commit". Pasta fora de repositório não mostra nada de PR: o git já disse.
+- **Com PR:** uma linha com `#N` e o título, que abre o PR no navegador (só
+  `https`, conferido na borda), o ponto e a palavra do CI (verde, vermelho,
+  rodando, sem CI) com as contagens, e o estado (aberto, rascunho, merged,
+  fechado). PR fechado ou merged mostra a linha **e** "Criar PR": a branch pode
+  ter outro.
+- **Sem PR aberto:** "Criar PR". Fica desligado, com o motivo, em HEAD
+  destacado ou com a pasta na própria base; o resto (sem `origin`, nada a
+  propor, base desconhecida) o daemon recusa e a folha diz com as palavras dele.
+- **A folha de confirmação** abre preenchida e editável: o título da conversa
+  (uma linha, até 256), o corpo com a última resposta do modelo na conversa e
+  os arquivos que ela escreveu, a base padrão do repositório (a que o daemon
+  lê); a branch que será empurrada aparece fixa, ao lado. Diz o que Confirmar
+  faz — `git push -u origin <branch>`, nunca com força, e o PR pelo gh; nunca
+  merge — e quantos arquivos mudados na pasta ficam fora, por não estarem em
+  commit. Nada sai antes de Confirmar; Cancelar e Esc fecham sem enviar. O
+  processo principal confere o rascunho de novo, e o daemon de novo.
+- **Atualização:** ao abrir o painel, no botão ↻, e ao voltar o foco para a
+  janela — no máximo uma vez a cada 30 s, porque o gh vai ao GitHub. Enquanto o
+  CI roda e o painel está à vista, de novo a cada 60 s; nunca mais rápido, e
+  nada lê com o painel fechado.
+- **Falha no tom de quem é:** gh ausente ou sem login em amarelo, com o que o
+  daemon disse; branch que não pode ter PR (HEAD destacado, sem `origin`) em
+  cinza; falha em vermelho. Nunca "sem PR" no lugar de uma falha.
+- **Um popover cede a uma folha aberta de dentro dele:** o cartão da grade não
+  se fecha com o clique ou o Esc da folha "Criar PR".
+
+As réguas: o PR só aparece no painel da Crew e no cartão da grade, que as telas
+02 e 03 não abrem; as duas ficam a 0,00%. A régua do daemon passa 13 de 13.
+
+Descartados: o selo do PR/CI nas linhas da barra lateral — custaria uma ida ao
+GitHub por conversa e mudaria a tela 02 medida, então fica para quando houver
+uma leitura em lote; ler o CI num laço contínuo (o pedido é no foco e sob
+demanda, com 30 s no mínimo); o app rodar o gh ele mesmo (o daemon já é quem
+lê o git da pasta, e a TUI ganha a mesma superfície).

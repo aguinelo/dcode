@@ -3,7 +3,7 @@
 // says that nothing was sent (D5). Reading is answered from the recording:
 // a folder's git, as the recorded daemon would give it (D41).
 
-import { recordedDiffs, recordedGit } from '../fixtures/git';
+import { recordedDiffs, recordedGit, recordedPRs } from '../fixtures/git';
 import { recording } from '../fixtures/recording';
 import { NOT_CONNECTED } from './text';
 import type { Outcome, WindowActions } from './window';
@@ -54,6 +54,13 @@ export const fixtureActions: WindowActions = {
     const git = recordedGit[recordedWorkspace(id) ?? ''];
     return git ? { ok: true, value: git } : { ok: false, why: NOT_RECORDED };
   },
+  // A refusal is the recorded daemon's own words, as the panel would get them.
+  readGitPR: async (id) => {
+    const pr = recordedPRs[recordedWorkspace(id) ?? ''];
+    if (pr === undefined) return { ok: false, why: NOT_RECORDED, kind: 'failed' };
+    return typeof pr === 'string' ? { ok: false, why: pr, kind: 'refused' } : { ok: true, value: pr };
+  },
+  openGitPR: async () => ({ ok: false, why: NOT_CONNECTED, kind: 'failed' }),
   startLoop: async () => ({ ok: false, why: NOT_CONNECTED }),
   stopLoop: async () => ({ ok: false, why: NOT_CONNECTED }),
   listSpecs: async () => ({ ok: false, why: NOT_CONNECTED }),

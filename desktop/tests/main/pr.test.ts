@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PR_BODY_LIMIT, PR_TITLE_LIMIT, prDraft } from '../../src/main/inputs';
 import { PR_CREATE_TIMEOUT_MS, PR_READ_TIMEOUT_MS } from '../../src/main/requests';
 
-// A new PR as the confirmation sheet sends it (D59), checked before it reaches
+// A new PR as the confirmation sheet sends it (D60), checked before it reaches
 // the daemon: what the person saw goes as they saw it, or is refused with why.
 
 function refused(got: { ok: boolean; refusal?: { code: string; message: string } }): string {

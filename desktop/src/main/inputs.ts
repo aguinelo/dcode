@@ -13,7 +13,7 @@ import {
   StopNow,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import type { NewSessionOptions, Refusal } from '../shared/api';
+import type { NewSessionOptions, PrDraft, Refusal } from '../shared/api';
 
 // What the renderer hands the main process is checked here, at the boundary,
 // before any of it reaches the daemon. A bad argument is a refusal the window
@@ -188,6 +188,32 @@ export function repoPath(v: unknown): Checked<string> {
   if (!filled(v)) return invalid(`O arquivo precisa ser um caminho, e veio ${shown(v)}.`);
   if (v.length > 4096 || v.includes('\0')) return invalid(`O caminho do arquivo não é um caminho que o git lista: ${shown(v)}.`);
   return { ok: true, value: v };
+}
+
+/** GitHub's own caps on a PR, which the daemon also holds (D60). */
+export const PR_TITLE_LIMIT = 256;
+export const PR_BODY_LIMIT = 65536;
+
+/**
+ * A new PR as the confirmation sheet sent it (D60): a one-line title, a body
+ * within GitHub's cap, a base that could be a branch name or empty for the
+ * default, and whether it is a draft. The daemon checks again; nothing here
+ * trims or fills in what the person saw.
+ */
+export function prDraft(v: unknown): Checked<PrDraft> {
+  if (!isRecord(v)) return invalid(`O PR precisa vir como título, corpo, base e rascunho, e veio ${shown(v)}.`);
+  const { title, body, base, draft } = v;
+  if (typeof title !== 'string' || title.trim() === '') return invalid('O PR precisa de um título.');
+  if (/[\r\n]/.test(title)) return invalid('O título do PR é uma linha só.');
+  if ([...title].length > PR_TITLE_LIMIT) return invalid(`O título do PR tem ${[...title].length} caracteres, e o GitHub aceita até ${PR_TITLE_LIMIT}.`);
+  if (typeof body !== 'string') return invalid(`O corpo do PR precisa ser texto, e veio ${shown(body)}.`);
+  const bytes = Buffer.byteLength(body, 'utf8');
+  if (bytes > PR_BODY_LIMIT) return invalid(`O corpo do PR tem ${bytes} bytes, e o GitHub aceita até ${PR_BODY_LIMIT}.`);
+  if (typeof base !== 'string' || base.length > 255 || base.startsWith('-') || /[\s\0~^:?*[\\]/.test(base)) {
+    return invalid(`A base do PR precisa ser o nome de uma branch, e veio ${shown(base)}.`);
+  }
+  if (typeof draft !== 'boolean') return invalid(`Rascunho precisa ser sim ou não, e veio ${shown(draft)}.`);
+  return { ok: true, value: { title, body, base, draft } };
 }
 
 /**

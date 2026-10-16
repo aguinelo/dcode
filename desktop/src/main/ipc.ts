@@ -145,6 +145,21 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const where = input.gitWorkspaceOf(daemon.listed(), which.value);
     return where.ok ? ask.readGitDiff(where.value, path.value) : where;
   });
+  // A conversation's PR (D60), by the same rule: the folder is the daemon's.
+  handle(CHANNELS.readGitPR, (_event, id) => {
+    const which = input.id(id, 'O id da conversa');
+    if (!which.ok) return which;
+    const where = input.gitWorkspaceOf(daemon.listed(), which.value);
+    return where.ok ? ask.readGitPR(where.value) : where;
+  });
+  handle(CHANNELS.createGitPR, (_event, id, draft) => {
+    const which = input.id(id, 'O id da conversa');
+    if (!which.ok) return which;
+    const pr = input.prDraft(draft);
+    if (!pr.ok) return pr;
+    const where = input.gitWorkspaceOf(daemon.listed(), which.value);
+    return where.ok ? ask.createGitPR(where.value, pr.value) : where;
+  });
   handle(CHANNELS.submitTurn, (_event, id, text, attached) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

@@ -10,6 +10,19 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O painel de mudanças abre o PR e mostra o CI dele, sempre confirmado
+  (D60).** A aba Mudanças da Crew e o cartão de contexto da grade mostram o PR
+  da branch — `#N` e o título, que abre no navegador, o CI com ponto, palavra e
+  contagens, e se está aberto, em rascunho, merged ou fechado — ou "Criar PR",
+  desligado com o motivo em HEAD destacado ou na própria base. "Criar PR" abre
+  uma folha preenchida com o título da conversa, a última resposta dela e os
+  arquivos que escreveu, e a base padrão do repositório, tudo editável, ao lado
+  da branch que será empurrada; diz o que Confirmar faz (`git push -u origin`,
+  nunca com força, e o PR pelo gh; nunca merge) e o que fica fora por não estar
+  em commit. Nada sai antes de Confirmar. Lido ao abrir o painel, no ↻ e no
+  foco no máximo a cada 30 s, e a cada 60 s enquanto o CI roda e o painel está
+  à vista. Pedido e regra do dono; o selo na barra lateral fica de fora (uma
+  ida ao GitHub por linha, e mudaria a tela medida).
 - **O `generated.ts` traz o PR de uma branch.** O núcleo ganha
   `GET /v1/git/pr` e `POST /v1/git/pr` (`GitPRResponse`, `GitPR`, `GitChecks`,
   `CreateGitPRRequest`) e os códigos `gh_unavailable` e `pr_refused`, para o

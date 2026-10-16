@@ -45,7 +45,7 @@ export function quietLoops(): LoopApi {
   return { on: () => () => {}, start: no, stop: no, specs: no, continue: no, openProposal: no };
 }
 
-/** A main process with no PR to tell of, and none asked about (D59). */
+/** A main process with no PR to tell of, and none asked about (D60). */
 export function quietPr(): PrApi {
   const no = () => Promise.resolve({ ok: false as const, refusal: { code: 'internal', message: 'not under test' } });
   return { read: no, open: no };

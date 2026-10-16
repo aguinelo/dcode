@@ -1,0 +1,83 @@
+/* ---- a branch's PR beside what changed, and the sheet that opens one (D60) */
+
+.pr-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.pr-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: var(--dc-radius-sm);
+  font-size: 12.5px;
+}
+.pr-line .pr-meta {
+  grid-column: 1 / -1;
+}
+.pr-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--dc-text);
+  text-decoration: none;
+}
+.pr-link:hover .pr-title {
+  text-decoration: underline;
+}
+.pr-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pr-meta {
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--dc-dim);
+}
+.pr-dot {
+  font-size: 9px;
+  vertical-align: 1px;
+}
+.pr-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.start-open.pr-create {
+  align-self: center;
+  padding: 2px 10px;
+  font-size: 11.5px;
+}
+.pr-sheet {
+  min-width: min(560px, 80vw);
+}
+.pr-body {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.45;
+}
+.pr-branches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pr-head {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dc-dim);
+}
+.pr-draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dc-dim);
+}

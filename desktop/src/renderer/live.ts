@@ -6,7 +6,7 @@
 import { decodeChange } from '../protocol/conversations';
 import { decodeEvent } from '../protocol/events';
 import { decodeModels } from '../protocol/models';
-import { CodeNoActiveTurn, CodeTurnAlreadyActive, type CompactResult, type UndoResult } from '../protocol/generated';
+import { CodeGhUnavailable, CodeNoActiveTurn, CodePRRefused, CodeTurnAlreadyActive, type CompactResult, type GitPRResponse, type UndoResult } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
 import type { Answer, Attachment, DaemonStatus, DcodeApi, NewSessionOptions } from '../shared/api';
 import { STEER_TAKES_TEXT } from '../state/attachments';
@@ -17,13 +17,13 @@ import { readHistory } from '../state/history';
 import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeCommands } from '../protocol/commands';
 import { decodeMemory, decodeSkills } from '../protocol/crew';
-import { decodeGit, decodeGitDiff } from '../protocol/git';
+import { decodeGit, decodeGitDiff, decodeGitPR } from '../protocol/git';
 import { decodeLoopChange, decodeLoopRun, decodeSpecs } from '../protocol/loops';
 import { applyLoopChange, emptyLoops, loopsUnavailable, startRefusal, type LoopsState } from '../state/loop';
 import { continueRefusal } from '../state/review';
 import type { LoopsPush } from '../shared/api';
 import { notExposed } from './text';
-import type { Outcome, StartOptions, WindowActions } from './window';
+import type { Outcome, PrOutcome, StartOptions, WindowActions } from './window';
 
 export interface LiveSnapshot {
   daemon: DaemonStatus;
@@ -87,6 +87,17 @@ function read<T>(
   }
   const got = decode(answer.value);
   return got.ok ? got : { ok: false, why: `Resposta ilegível do daemon: ${got.reason}` };
+}
+
+/**
+ * A PR answer (D60): the daemon's refusal kept with whose it is — gh not ready,
+ * or a branch that cannot have a PR — so the panel says each in its tone.
+ */
+export function prOutcome(answer: Answer<unknown>, what: string, failed: string): PrOutcome<GitPRResponse> {
+  if (!answer.ok && answer.refusal.code === CodeGhUnavailable) return { ok: false, why: answer.refusal.message, kind: 'gh' };
+  if (!answer.ok && answer.refusal.code === CodePRRefused) return { ok: false, why: answer.refusal.message, kind: 'refused' };
+  const got = read(answer, decodeGitPR, what, failed);
+  return got.ok ? got : { ...got, kind: 'failed' };
 }
 
 export class LiveStore {
@@ -206,6 +217,8 @@ export class LiveStore {
     readGit: async (id) => read(await this.api.readGit(id), decodeGit, 'o git da pasta (GET /v1/git)', 'O daemon não leu o git da pasta'),
     readGitDiff: async (id, path) =>
       read(await this.api.readGitDiff(id, path), decodeGitDiff, 'o diff de um arquivo (GET /v1/git/diff)', 'O daemon não deu o diff'),
+    readGitPR: async (id) => prOutcome(await this.api.pr.read(id), 'o PR da branch (GET /v1/git/pr)', 'O PR da branch não foi lido'),
+    openGitPR: async (id, draft) => prOutcome(await this.api.pr.open(id, draft), 'abrir um PR (POST /v1/git/pr)', 'O PR não foi aberto'),
     startLoop: async (workspace, args) => {
       const got = await this.api.loops.start(workspace, args);
       if (!got.ok) return { ok: false, why: startRefusal(got.refusal.code, got.refusal.message) };

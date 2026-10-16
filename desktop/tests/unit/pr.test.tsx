@@ -11,7 +11,7 @@ import { NOT_CONNECTED } from '../../src/renderer/text';
 import { cannotOpen, checksView, draftFor, draftProblem, failureTone, prStateView, uncommittedNote, PR_BODY_LIMIT, PR_TITLE_LIMIT } from '../../src/state/pr';
 import { log, done } from './helpers';
 
-// A conversation's branch on GitHub (D59): its PR and CI, said in words, and
+// A conversation's branch on GitHub (D60): its PR and CI, said in words, and
 // "Criar PR", which only ever sends what a person confirmed in the sheet.
 
 const checks = (state: string, passed = 0, failed = 0, pending = 0, skipped = 0): P.GitChecks => ({ state, passed, failed, pending, skipped });
