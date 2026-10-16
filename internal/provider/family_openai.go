@@ -90,6 +90,10 @@ func (Claude) Models() []string     { return []string{"claude-"} }
 
 func (Claude) Window(string) (int, error) { return 200_000, nil }
 
+// OutputCeiling is the max_tokens a request for model carries when the
+// configuration names none.
+func (Claude) OutputCeiling(model string) int { return 0 }
+
 // DefaultLimits is sized from the case that shaped it: a refactor across ten
 // files runs thirty to fifty tool calls.
 func (Claude) DefaultLimits() Limits { return Limits{MaxIterations: 50} }

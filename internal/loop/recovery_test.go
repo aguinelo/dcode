@@ -202,6 +202,34 @@ func TestUnresolvablePathIsTreatedAsOutside(t *testing.T) {
 	}
 }
 
+// An answer the provider cut at the output ceiling ends the turn at that
+// ceiling, never as done: a cut answer read as a finished one is the silent
+// cap this exists to stop. And the configured ceiling is what the request asks
+// for, so the person's number is the one in force.
+func TestAnAnswerCutAtTheOutputCeilingStopsAtTheCeiling(t *testing.T) {
+	reg := tools.NewRegistry(tools.Read{})
+	p := &scriptedProvider{turns: [][]provider.StreamEvent{
+		{text("the first half of"), {Type: provider.EventDone, Truncated: true}},
+	}}
+	e, _ := newEngine(t, p, reg, func(c *Config) {
+		c.Limits = Limits{MaxIterations: 10, MaxOutputTokens: 1234}
+	})
+
+	out, err := e.Run(context.Background(), "go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Reason != protocol.StopMaxTokens {
+		t.Errorf("reason = %s, want %s", out.Reason, protocol.StopMaxTokens)
+	}
+	if len(p.seen) == 0 {
+		t.Fatal("no request was made")
+	}
+	if got := p.seen[0].MaxTokens; got != 1234 {
+		t.Errorf("request max tokens = %d, want the configured 1234", got)
+	}
+}
+
 func TestMaxTurnTokensStopsTheTurn(t *testing.T) {
 	reg := tools.NewRegistry(tools.Read{})
 	usage := provider.StreamEvent{Type: provider.EventDone, Usage: &provider.Usage{OutputTokens: 500}}
