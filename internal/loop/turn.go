@@ -404,7 +404,7 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 		// at a percentage the screen never showed.
 		out.ContextTokens = ce.Estimate(msgs, e.ctxConfig())
 
-		text, calls, usage, perr := e.stream(ctx, turnID, msgs)
+		text, calls, usage, cut, perr := e.stream(ctx, turnID, msgs)
 		out.Usage.InputTokens += usage.InputTokens
 		out.Usage.OutputTokens += usage.OutputTokens
 		out.Usage.CacheReadTokens += usage.CacheReadTokens
@@ -480,6 +480,14 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 			// next turn.
 			if ctx.Err() != nil {
 				return e.finishInterrupted(out), nil
+			}
+
+			// The provider stopped the answer at the output ceiling. It stays
+			// in the history as what it is, and the turn ends at the ceiling:
+			// checked as done, a cut answer would pass for a finished one, and
+			// nothing on the screen would say a number stopped it.
+			if cut {
+				return e.finish(out, protocol.StopMaxTokens), nil
 			}
 
 			// Step 4. The turn does not end merely because the model stopped
@@ -562,22 +570,22 @@ func summaryMark(s ce.Session) int {
 }
 
 // stream consumes one model call.
+//
+// cut reports that the provider stopped the answer at the request's output
+// ceiling: what arrived is real, and it is not the whole answer.
 func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
-	string, []ce.ToolCall, provider.Usage, *provider.ProviderError,
+	text string, calls []ce.ToolCall, usage provider.Usage, cut bool, perr *provider.ProviderError,
 ) {
-	var (
-		text  strings.Builder
-		calls []ce.ToolCall
-		usage provider.Usage
-	)
+	var answer strings.Builder
 
 	ch, err := e.cfg.Provider.Stream(ctx, provider.Request{
-		Model:    e.cfg.Model,
-		Messages: msgs,
-		Tools:    e.cfg.Tools.Defs(),
+		Model:     e.cfg.Model,
+		Messages:  msgs,
+		Tools:     e.cfg.Tools.Defs(),
+		MaxTokens: e.cfg.Limits.MaxOutputTokens,
 	})
 	if err != nil {
-		return "", nil, usage, toProviderError(err)
+		return "", nil, usage, false, toProviderError(err)
 	}
 
 	// How much of each arriving call has already been reported, so the next
@@ -587,7 +595,7 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 	for ev := range ch {
 		switch ev.Type {
 		case provider.EventTextDelta:
-			text.WriteString(ev.Text)
+			answer.WriteString(ev.Text)
 			e.emit(protocol.EventMessageDelta, protocol.MessageDelta{
 				TurnID: turnID, Text: ev.Text,
 			})
@@ -641,6 +649,7 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 			if ev.Usage != nil {
 				usage = *ev.Usage
 			}
+			cut = ev.Truncated
 		case provider.EventError:
 			// A tool-schema failure is the model's to fix, so it comes back as
 			// a tool result rather than ending the turn.
@@ -654,10 +663,10 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 				})
 				continue
 			}
-			return text.String(), calls, usage, ev.Err
+			return answer.String(), calls, usage, false, ev.Err
 		}
 	}
-	return text.String(), calls, usage, nil
+	return answer.String(), calls, usage, cut, nil
 }
 
 // execute runs the calls and returns their results in emission order.

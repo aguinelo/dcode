@@ -230,7 +230,13 @@ func (e *Engine) childConfig(lim DelegateLimits, owns []string) (Config, error) 
 		Parallel:  e.cfg.Parallel,
 		CtxConfig: e.cfg.CtxConfig,
 		Rules:     e.cfg.Rules,
-		Limits:    Limits{MaxIterations: lim.MaxIterations, MaxIdenticalCalls: e.cfg.Limits.MaxIdenticalCalls},
+		// The output ceiling is the parent's: it is a property of the model
+		// and of what the person configured, and a delegate talks to the same
+		// model under the same configuration.
+		Limits: Limits{
+			MaxIterations: lim.MaxIterations, MaxIdenticalCalls: e.cfg.Limits.MaxIdenticalCalls,
+			MaxOutputTokens: e.cfg.Limits.MaxOutputTokens,
+		},
 		Reminders: e.cfg.Reminders,
 	}, nil
 }

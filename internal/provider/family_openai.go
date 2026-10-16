@@ -61,7 +61,7 @@ func (f MiniMaxM3) Encode(req Request, transport string) (WireRequest, error) {
 	case TransportOpenAI:
 		return encodeOpenAI(req)
 	case TransportAnthropic:
-		return encodeAnthropic(req)
+		return encodeAnthropic(req, m3AnthropicOutput)
 	}
 	return WireRequest{}, fmt.Errorf("family %s: unsupported transport %q", f.Name(), transport)
 }
@@ -90,10 +90,6 @@ func (Claude) Models() []string     { return []string{"claude-"} }
 
 func (Claude) Window(string) (int, error) { return 200_000, nil }
 
-// OutputCeiling is the max_tokens a request for model carries when the
-// configuration names none.
-func (Claude) OutputCeiling(model string) int { return 0 }
-
 // DefaultLimits is sized from the case that shaped it: a refactor across ten
 // files runs thirty to fifty tool calls.
 func (Claude) DefaultLimits() Limits { return Limits{MaxIterations: 50} }
@@ -102,7 +98,7 @@ func (f Claude) Encode(req Request, transport string) (WireRequest, error) {
 	if transport != TransportAnthropic {
 		return WireRequest{}, fmt.Errorf("family %s: unsupported transport %q", f.Name(), transport)
 	}
-	return encodeAnthropic(req)
+	return encodeAnthropic(req, f.OutputCeiling(req.Model))
 }
 
 func (Claude) NewDecoder(tools []ce.ToolDef) Decoder {
@@ -277,6 +273,9 @@ type openAIDecoder struct {
 	finished bool
 	// terminated records that the terminal event has already gone out.
 	terminated bool
+	// truncated records a finish_reason of length: the answer reached the
+	// request's output ceiling, and the terminal event has to say so.
+	truncated bool
 }
 
 type partialCall struct {
@@ -344,6 +343,9 @@ func (d *openAIDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 			// frame that repeats this one. Terminating here is what threw the
 			// token accounting away.
 			d.finished = true
+			if *ch.FinishReason == "length" {
+				d.truncated = true
+			}
 		}
 	}
 
@@ -372,7 +374,7 @@ func (d *openAIDecoder) terminal(u *Usage) []StreamEvent {
 		return nil
 	}
 	d.terminated = true
-	return []StreamEvent{{Type: EventDone, Usage: u}}
+	return []StreamEvent{{Type: EventDone, Usage: u, Truncated: d.truncated}}
 }
 
 // Close ends a stream that simply stopped. Only a stream that reported a finish
@@ -503,13 +505,22 @@ type anTool struct {
 	InputSchema json.RawMessage `json:"input_schema"`
 }
 
+// m3AnthropicOutput is what MiniMax M3 asks for on the Anthropic dialect when
+// nothing is configured. It is the number this dialect always sent, kept
+// because no limit was published that would justify another; an answer that
+// reaches it now says so (Truncated) instead of passing for a finished one.
+const m3AnthropicOutput = 8192
+
 // encodeAnthropic hoists the system message out of the message list, which is
 // where this dialect expects it. Same rules, different placement — exactly the
 // difference the two-axis design exists to absorb.
-func encodeAnthropic(req Request) (WireRequest, error) {
+//
+// ceiling fills max_tokens when the request names none: the dialect requires
+// the field, and what it may be is the family's to say, per model.
+func encodeAnthropic(req Request, ceiling int) (WireRequest, error) {
 	body := anRequest{Model: req.Model, Stream: true, MaxTokens: req.MaxTokens}
-	if body.MaxTokens == 0 {
-		body.MaxTokens = 8192 // this dialect requires the field
+	if body.MaxTokens <= 0 {
+		body.MaxTokens = ceiling
 	}
 
 	for _, m := range req.Messages {
@@ -601,6 +612,9 @@ type anEvent struct {
 		PartialJSON string `json:"partial_json"`
 		// Thinking is the reasoning channel of this dialect.
 		Thinking string `json:"thinking"`
+		// StopReason arrives on message_delta. max_tokens is the one that
+		// matters here: the answer stopped at the ceiling, unfinished.
+		StopReason string `json:"stop_reason"`
 	} `json:"delta"`
 	Usage *struct {
 		InputTokens              int `json:"input_tokens"`
@@ -691,6 +705,7 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		}
 		d.terminated = true
 		se := StreamEvent{Type: EventDone}
+		se.Truncated = e.Delta != nil && e.Delta.StopReason == "max_tokens"
 		if e.Usage != nil {
 			se.Usage = &Usage{
 				InputTokens:      e.Usage.InputTokens,
