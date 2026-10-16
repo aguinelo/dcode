@@ -50,6 +50,10 @@ type Options struct {
 	// otherwise be told it has room it does not have and find out from the
 	// provider erroring mid-turn rather than from dcode compacting in time.
 	Window int
+	// AnthropicWorkspace names the workspace an Anthropic key that is not
+	// scoped to one has to name on every request. Empty sends nothing, which
+	// is right for the ordinary, workspace-scoped key.
+	AnthropicWorkspace string
 	// Profiles are named bundles of Model/Family/Transport/BaseURL/Window,
 	// read from models.toml, project layered over user by name. `/model
 	// <name>` resolves against this before falling back to the ordinary path
@@ -978,6 +982,8 @@ type HTTPTransport struct {
 	baseURL string
 	apiKey  string
 	client  *http.Client
+	// workspace is sent as anthropic-workspace-id, on this dialect only.
+	workspace string
 }
 
 // NewHTTPTransport builds a transport for a wire format.

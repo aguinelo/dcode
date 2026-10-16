@@ -47,6 +47,9 @@ type Profile struct {
 	// for a fast profile, looser for one running a local model with no API
 	// cost to bound.
 	MaxIterations int
+	// AnthropicWorkspace overrides model.anthropic_workspace for this
+	// profile. Empty means unset: the configured one stands.
+	AnthropicWorkspace string
 }
 
 // LoadModels reads models.toml from root. An absent file is an empty map, the
