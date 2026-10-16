@@ -119,6 +119,10 @@ const api: DcodeApi = {
     continue: (loopId) => invoke<Answer<unknown>>(CHANNELS.continueLoop, loopId),
     openProposal: (loopId, file) => invoke<Answer<null>>(CHANNELS.openProposal, loopId, file),
   },
+  pr: {
+    read: (conversationId) => invoke<Answer<unknown>>(CHANNELS.readGitPR, conversationId),
+    open: (conversationId, draft) => invoke<Answer<unknown>>(CHANNELS.createGitPR, conversationId, draft),
+  },
 };
 
 contextBridge.exposeInMainWorld('dcode', api);

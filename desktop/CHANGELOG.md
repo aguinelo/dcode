@@ -10,6 +10,20 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The changes panel opens a PR and shows its CI, always confirmed (D60).**
+  Crew's Mudanças tab and the grid's context card show the branch's PR — `#N`
+  and title, opening in the browser, its CI as a dot, a word and counts, and
+  whether it is open, a draft, merged or closed — or "Criar PR", held with the
+  reason on a detached head or on the base itself. "Criar PR" opens a sheet
+  prefilled with the conversation's title, its last answer and the files it
+  wrote, and the repository's default base, all editable, beside the branch
+  that will be pushed; it says what Confirmar does (`git push -u origin`,
+  never forced, and the PR through gh; never a merge) and what stays out
+  because it is not committed. Nothing is sent before Confirmar. Read when the
+  panel opens, on ↻ and on focus at most every 30 s, and every 60 s while CI
+  runs and the panel is shown. The owner's request and rule; sidebar badges
+  are left out (a GitHub call per row, and they would change the measured
+  screen).
 - **`generated.ts` carries a branch's PR.** The core gains `GET /v1/git/pr`
   and `POST /v1/git/pr` (`GitPRResponse`, `GitPR`, `GitChecks`,
   `CreateGitPRRequest`) and the codes `gh_unavailable` and `pr_refused`, so the

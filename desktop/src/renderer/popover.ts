@@ -8,13 +8,17 @@ import { useEffect, type RefObject } from 'react';
  */
 export function usePopover(box: RefObject<HTMLDivElement | null>, anchor: HTMLElement, onClose: () => void, selector: string, items: unknown): void {
   useEffect(() => {
+    // A sheet opened from inside the menu (D60: "Criar PR" in the context
+    // card) is above it: its clicks and keys are the sheet's, not the menu's.
+    const sheetOpen = () => document.querySelector('.sheet-veil') !== null;
     const away = (e: MouseEvent) => {
       const at = e.target as Node;
       // A click on the button is the button's, not a click away.
-      if (box.current?.contains(at) || anchor.contains(at)) return;
+      if (box.current?.contains(at) || anchor.contains(at) || sheetOpen()) return;
       onClose();
     };
     const key = (e: KeyboardEvent) => {
+      if (sheetOpen()) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();

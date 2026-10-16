@@ -7,6 +7,7 @@ import { placeBy, usePopover } from '../popover';
 import { useGit } from '../useGit';
 import { GitChanges } from './GitChanges';
 import { GitFacts } from './GitFacts';
+import { PullRequest } from './PullRequest';
 
 const WIDTH = 460;
 
@@ -36,6 +37,7 @@ export function ContextCard({
       <div className="ctx-card-title">{row.title}</div>
       <GitFacts row={row} sessionState={session?.state} startedOn={session?.info?.branch ?? row.branch} state={state} />
       <div className="ctx-card-changes">
+        <PullRequest conversationId={row.id} title={row.title} entries={session?.entries} git={state} />
         <GitChanges conversationId={row.id} state={state} moved={moved} wrote={wrote} onRefresh={refresh} />
       </div>
     </div>

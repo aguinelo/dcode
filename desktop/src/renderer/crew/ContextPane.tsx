@@ -12,6 +12,7 @@ import { tokens, turnTelemetry, usageFact } from '../../state/telemetry';
 import type { Row } from '../../state/sidebar';
 import { GitChanges } from '../context/GitChanges';
 import { GitFacts } from '../context/GitFacts';
+import { PullRequest } from '../context/PullRequest';
 import { ModeChip } from '../ModeMenu';
 import { LoopSection } from '../LoopRuler';
 import { DoneRow } from '../Pane';
@@ -272,6 +273,7 @@ export function ContextPane({
           <p className="crew-quiet">Nenhuma conversa em foco.</p>
         ) : tab === 'mudancas' ? (
           <>
+            <PullRequest conversationId={row.id} title={row.title} entries={session?.entries} git={git.state} />
             <GitChanges conversationId={row.id} state={git.state} moved={moved} wrote={wrotePaths} onRefresh={git.refresh} />
             <div className="ctx-divider" />
             <Wrote session={session} row={row} history={history} />

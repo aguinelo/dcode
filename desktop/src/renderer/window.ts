@@ -3,8 +3,8 @@
 // mode, from a recording that sends nothing anywhere (fixture.ts).
 
 import type { LoopRun, ModelsResponse, SpecFolder } from '../protocol/generated';
-import type { Attachment, DaemonStatus, PickedAttachments } from '../shared/api';
-import type { CommandsResponse, CompactResult, GitDiffResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
+import type { Attachment, DaemonStatus, PickedAttachments, PrDraft } from '../shared/api';
+import type { CommandsResponse, CompactResult, GitDiffResponse, GitPRResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
 import type { Row } from '../state/sidebar';
 
@@ -19,6 +19,13 @@ export interface StartOptions {
 
 /** Done, or why not — in the window's language, to be said where the person looks. */
 export type Outcome<T> = { ok: true; value: T } | { ok: false; why: string };
+
+/**
+ * A PR read or opened, or why not (D60), with whose the reason is: gh not
+ * ready where the daemon runs, a branch that cannot have one as things stand,
+ * or a failure. The panel says each in its own tone.
+ */
+export type PrOutcome<T> = { ok: true; value: T } | { ok: false; why: string; kind: 'gh' | 'refused' | 'failed' };
 
 export interface WindowActions {
   /**
@@ -90,6 +97,10 @@ export interface WindowActions {
   readGit(conversationId: string): Promise<Outcome<GitResponse>>;
   /** One changed file's diff in a conversation's folder (`GET /v1/git/diff`, D41), or why not. */
   readGitDiff(conversationId: string, path: string): Promise<Outcome<GitDiffResponse>>;
+  /** The PR of the branch a conversation's folder has now, with its checks (`GET /v1/git/pr`, D60), or why not. */
+  readGitPR(conversationId: string): Promise<PrOutcome<GitPRResponse>>;
+  /** Pushes that branch and opens the PR a person confirmed (`POST /v1/git/pr`, D60). Only the sheet calls it. */
+  openGitPR(conversationId: string, draft: PrDraft): Promise<PrOutcome<GitPRResponse>>;
   /** Starts `/loop` in a project with its argument as typed (D55); a refusal says the daemon's reason. */
   startLoop(workspace: string, args: string): Promise<Outcome<LoopRun>>;
   /** Stops a run now, or after the folder it is in (D55). */

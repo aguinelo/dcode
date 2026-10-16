@@ -162,6 +162,26 @@ export interface LoopApi {
   openProposal(loopId: string, file: string): Promise<Answer<null>>;
 }
 
+/** A new PR as a person saw it and confirmed it (D60), every field as shown. */
+export interface PrDraft {
+  title: string;
+  body: string;
+  /** Empty: the repository's default branch, as the daemon reads it. */
+  base: string;
+  draft: boolean;
+}
+
+/** A conversation's branch on GitHub, through the daemon's gh (D60). Named by the conversation, never by a folder. */
+export interface PrApi {
+  /** The PR of the branch the conversation's folder has now, with its checks (`GET /git/pr`), as it came. */
+  read(conversationId: string): Promise<Answer<unknown>>;
+  /**
+   * Pushes that branch and opens the PR a person confirmed (`POST /git/pr`),
+   * as it came. Only ever sent from the confirmation sheet; it never merges.
+   */
+  open(conversationId: string, draft: PrDraft): Promise<Answer<unknown>>;
+}
+
 export interface DcodeApi {
   /** process.platform of the main process: decides where the native window controls are. */
   readonly platform: string;
@@ -261,6 +281,8 @@ export interface DcodeApi {
   compact(sessionId: string): Promise<Answer<unknown>>;
   /** The `/loop` runs: their stream, and starting and stopping one (D55). */
   readonly loops: LoopApi;
+  /** A conversation's PR: reading it, and opening one a person confirmed (D60). */
+  readonly pr: PrApi;
 }
 
 /** The channels, one per request and one per push. */
@@ -283,6 +305,8 @@ export const CHANNELS = {
   conversationEvents: 'dcode:conversation-events',
   readGit: 'dcode:read-git',
   readGitDiff: 'dcode:read-git-diff',
+  readGitPR: 'dcode:read-git-pr',
+  createGitPR: 'dcode:create-git-pr',
   pickFolder: 'dcode:pick-folder',
   createSession: 'dcode:create-session',
   submitTurn: 'dcode:submit-turn',

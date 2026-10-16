@@ -1,6 +1,7 @@
 import {
   Version,
   type CompactResult,
+  type CreateGitPRRequest,
   type CreateSessionRequest,
   type ModelsResponse,
   type Session,
@@ -12,8 +13,13 @@ import {
   type UndoResult,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import { UNREACHABLE, type Answer, type DaemonStatus, type NewSessionOptions, type Refusal } from '../shared/api';
+import { UNREACHABLE, type Answer, type DaemonStatus, type NewSessionOptions, type PrDraft, type Refusal } from '../shared/api';
 import { UNEXPECTED, request, shown } from './wire';
+
+/** The daemon reads a PR within 20 s (gh goes to GitHub); a little more here, so its own answer arrives. */
+export const PR_READ_TIMEOUT_MS = 25_000;
+/** The daemon opens one within 2 min: a push and two calls to GitHub. */
+export const PR_CREATE_TIMEOUT_MS = 130_000;
 
 // The window's requests to the daemon, one route each. Every one ends in an
 // Answer, and none is sent while the daemon is not connected: saying so, with
@@ -105,6 +111,21 @@ export class Requests {
     return this.call('GET', `/${Version}/git/diff?workspace=${encodeURIComponent(workspace)}&path=${encodeURIComponent(path)}`);
   }
 
+  /** The PR of the folder's branch, with its checks (D60). gh asks GitHub, so it may take longer than a local read. Passed on as it came. */
+  readGitPR(workspace: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/git/pr?workspace=${encodeURIComponent(workspace)}`, undefined, PR_READ_TIMEOUT_MS);
+  }
+
+  /**
+   * Pushes the folder's branch and opens the PR a person confirmed (D60): a
+   * push and two calls to GitHub, given the daemon's own two minutes and a
+   * little more. Passed on as it came.
+   */
+  createGitPR(workspace: string, draft: PrDraft): Promise<Answer<unknown>> {
+    const body: CreateGitPRRequest = { workspace, ...draft };
+    return this.call('POST', `/${Version}/git/pr`, body, PR_CREATE_TIMEOUT_MS);
+  }
+
   /**
    * A turn, with the pictures (D46) and documents (D59) shown with it: each
    * list sent only when there are some, as the daemon reads an absent list.
@@ -187,10 +208,10 @@ export class Requests {
     return this.call('GET', `/${Version}/specs?workspace=${encodeURIComponent(workspace)}&measure=false`);
   }
 
-  private async call(method: string, path: string, body?: unknown): Promise<Answer<unknown>> {
+  private async call(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<Answer<unknown>> {
     const now = this.status();
     if (now.state !== 'connected') return { ok: false, refusal: notConnected(now) };
-    return request(now.socket, method, path, body);
+    return request(now.socket, method, path, body, timeoutMs);
   }
 
   private async open(body: CreateSessionRequest): Promise<Answer<Session>> {
