@@ -48,6 +48,7 @@ As que estão nos outros arquivos:
 - [D55](DECISIONS-4.md) — Um loop começa e para pela janela, e ocupa uma janela que segue a sessão corrente dele.
 - [D56](DECISIONS-4.md) — A definição de pronto proposta é revisada antes do trabalho, num card.
 - [D57](DECISIONS-4.md) — O plano do turno fica fixo no alto, como checklist, enquanto o turno roda.
+- [D58](DECISIONS-4.md) — A linha de atividade mostra o que o turno tocou.
 
 ## Decisões
 

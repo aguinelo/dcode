@@ -328,3 +328,30 @@ As réguas: a gravação não tem plano, e as telas 02 e 03 ficam a 0,00%.
 Descartados: um plano novo no fluxo a cada revisão (empilharia o mesmo plano);
 fixar também o plano de um turno que já acabou (o alto da conversa diria que
 algo ainda anda).
+
+**D58. A linha de atividade mostra o que o turno tocou.** A outra metade da
+inspiração de D57: na tela de turno do Claude Code desktop, ao lado do tempo
+decorrido, miniaturas pequenas do que o turno produziu, com um "+N". Antes, o
+que o turno escreveu só se lia descendo pelas linhas das ferramentas, ou no
+painel da Crew, que soma a conversa inteira.
+
+- **Os arquivos são os que as ferramentas de escrita receberam neste turno**:
+  o mesmo `path` que o painel da Crew lê (`filesTouched`), recortado às
+  entradas a partir do instante em que o turno começou — as chamadas, já
+  dobradas, não guardam o turno, e tudo de um turno anterior veio antes do
+  `turn.completed` dele. Nada do texto de uma saída.
+- **As imagens são as que esta janela mandou com a mensagem do turno** (D46):
+  o evento não as traz, então uma conversa lida do registro não as mostra.
+- **Um chip por arquivo, o nome curto**, o caminho e as linhas no title; as
+  imagens em miniatura antes deles. Cabem cinco (três numa janela da grade); o
+  resto vira "+N", com os nomes no title, e clicar mostra todos.
+- **Clicar um arquivo abre o diff dele embaixo da linha**: o mesmo detalhe que
+  a linha da ferramenta abre (D45), da última chamada que o escreveu. Escrita
+  ainda sem resultado não abre nada, e diz isso.
+- **Sem nada tocado, a linha é a de antes**, sem espaço reservado.
+
+As réguas: na tela 02 o turno não escreveu nada, e na 03 ele espera uma
+aprovação, sem linha de atividade; as duas ficam a 0,00%.
+
+Descartados: a soma da conversa inteira (já é o painel da Crew); abrir o diff
+num painel à parte (tiraria o olho do turno).

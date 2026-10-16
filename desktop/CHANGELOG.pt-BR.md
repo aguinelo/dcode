@@ -10,6 +10,15 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A linha de atividade mostra o que o turno tocou (D58).** Ao lado do verbo
+  e do tempo decorrido, os arquivos que o turno em curso escreveu (o `path`
+  das ferramentas de escrita, desde o início do turno) aparecem como chips
+  pequenos, e as imagens mandadas com a mensagem dele em miniatura; passando de
+  cinco (três numa janela da grade), um "+N" nomeia o resto e o mostra. Clicar
+  um arquivo abre o diff dele embaixo da linha, o mesmo detalhe que a linha da
+  ferramenta abre. Antes, o que o turno escreveu só se lia descendo pelas
+  linhas das ferramentas, ou no painel da Crew, que soma a conversa inteira. As
+  telas 02 e 03 não têm nada escrito numa linha em curso e ficam a 0,00%.
 - **O plano fica fixo como checklist enquanto o turno roda (D57).** O plano
   que o turno em curso revisou por último (`plan.updated`) fica acima do
   fluxo, fora da rolagem, e o fluxo o deixa de fora: uma janela da grade dá a

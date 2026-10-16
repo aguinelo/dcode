@@ -96,3 +96,68 @@
     animation: none;
   }
 }
+
+/* ---- what the turn touched, on its activity line (D58) --------------------- */
+
+.turn-touched {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+.turn-thumb {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-sunken);
+}
+.turn-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 140px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  background: var(--dc-sunken);
+  color: var(--dc-dim);
+  font-family: var(--dc-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+.turn-chip:hover:not(:disabled) {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}
+.turn-chip:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.turn-chip.open {
+  border-color: var(--dc-accent);
+  color: var(--dc-text);
+}
+.turn-chip.failed {
+  color: var(--dc-err);
+}
+.turn-chip.more {
+  color: var(--dc-faint);
+  font-variant-numeric: tabular-nums;
+}
+.turn-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pane .turn-chip {
+  max-width: 96px;
+}
+/* The diff a chip opens sits close under the line it came from. */
+.activity + .tool-detail {
+  margin-top: -8px;
+}

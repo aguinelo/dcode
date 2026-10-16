@@ -4,8 +4,9 @@ import { activity, flowBlocks } from '../state/flow';
 import { pinnedPlan, withoutPinned } from '../state/plan';
 import type { SessionView } from '../state/session';
 import { Composer } from './Composer';
-import { ActivityLine, FlowBlocks } from './Flow';
+import { FlowBlocks } from './Flow';
 import { PlanPin } from './PlanPin';
+import { TurnActivity } from './TurnActivity';
 import { useAttached } from './useImages';
 
 // xterm.js is most of a megabyte: loaded the first time a terminal opens, not with the window.
@@ -84,7 +85,7 @@ export function ConversationBody({
         <div className="flow">
           <FlowBlocks blocks={blocks} now={now} onAnswer={onAnswer} imagesAt={imagesAt} onRun={(command) => setTerminal((t) => ({ command, n: (t?.n ?? 0) + 1 }))} />
           {session.state === 'running' && session.turn && (
-            <ActivityLine activity={act} startedAt={session.turn.startedAt} now={now} tick={verbTick} />
+            <TurnActivity session={session} activity={act} now={now} tick={verbTick} compact={compact} imagesAt={imagesAt} />
           )}
         </div>
       </div>

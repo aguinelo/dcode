@@ -22,22 +22,33 @@ function pathOf(input: unknown): string | null {
   return typeof p === 'string' && p !== '' ? p : null;
 }
 
-/** Each file written or edited, once, the most recently touched first. */
-export function filesTouched(entries: readonly Entry[]): TouchedFile[] {
-  const byPath = new Map<string, TouchedFile>();
+/** A file touched, with the call that last wrote it: what opening it shows (D58). */
+export interface TouchedByCall extends TouchedFile {
+  callId: string;
+}
+
+/** Each file written or edited, once, the most recently touched first, with its last call. */
+export function filesTouchedByCall(entries: readonly Entry[]): TouchedByCall[] {
+  const byPath = new Map<string, TouchedByCall>();
   for (const e of entries) {
     if (e.kind !== 'tool' || !WRITERS.has(e.call.name)) continue;
     const path = pathOf(e.call.input);
     if (!path) continue;
     const r = e.call.result;
-    const before = byPath.get(path) ?? { path, added: 0, removed: 0, failed: false };
+    const before = byPath.get(path) ?? { path, added: 0, removed: 0, failed: false, callId: e.call.id };
     byPath.delete(path);
     byPath.set(path, {
       path,
       added: before.added + (r?.added ?? 0),
       removed: before.removed + (r?.removed ?? 0),
       failed: r ? !r.ok : before.failed,
+      callId: e.call.id,
     });
   }
   return [...byPath.values()].reverse();
+}
+
+/** Each file written or edited, once, the most recently touched first. */
+export function filesTouched(entries: readonly Entry[]): TouchedFile[] {
+  return filesTouchedByCall(entries).map(({ path, added, removed, failed }) => ({ path, added, removed, failed }));
 }

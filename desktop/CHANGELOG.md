@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The activity line shows what the turn touched (D58).** Next to the verb
+  and the elapsed time, the files the running turn wrote (the writing tools'
+  `path`, from the turn's start) show as small chips, and the pictures sent
+  with its message as thumbnails; past five (three on a grid window) a "+N"
+  names the rest and shows them. Clicking a file opens its diff under the line,
+  the same detail its tool line opens. Before, what the turn wrote was read
+  only by scrolling its tool lines, or in the Crew's panel, which sums the
+  whole conversation. Screens 02 and 03 have nothing written on a running line
+  and stay at 0.00%.
 - **The plan stays pinned as a checklist while the turn runs (D57).** The
   plan the running turn last revised (`plan.updated`) stands above the flow,
   out of the scroll, and the flow leaves it out: a grid window gives it one
