@@ -90,6 +90,11 @@ can be recognised before it repeats rather than after.
 
 ### A push is not finished until CI is read
 
+- **CI confirms; it does not find.** `.githooks/pre-push` runs the gate CI runs
+  on the commit being pushed, in a throwaway worktree, and refuses the push if
+  it fails. Enable it once per clone with `make hooks`; it covers every
+  worktree. **Never push with `--no-verify`.** A red gate is fixed, not
+  skipped. The gate takes minutes: give the push a long enough timeout.
 - After every push, check CI (`gh pr checks`). A push whose result was never
   read is a push that was never finished.
 - **Never report green from a local run alone.** `make check` passing locally

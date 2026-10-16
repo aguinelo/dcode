@@ -263,6 +263,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A push runs the CI gate here before it leaves.** `.githooks/pre-push`,
+  enabled with `make hooks`, runs on the pushed commit, in a throwaway
+  worktree, what CI runs: the Go gate when anything outside `desktop/` changed,
+  the desktop gate when `desktop/` or `internal/protocol/` did. Seven pull
+  request runs failed in one night, one of them on gofmt, which a local gate
+  catches in a second; the gate was a rule nothing enforced.
 - **A verified turn counts its checks once.** It read "verified — 3 3 checks
   passed", the same defect as the end of a `/loop` run: the sentence put the
   count in front of a noun that `plural()` had already counted. It was the

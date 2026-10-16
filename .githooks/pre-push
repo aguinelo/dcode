@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# The gate CI runs, run here first, on the commit being pushed.
+#
+# Six pull requests failed CI in one night; one of them on gofmt, which the
+# local gate catches in a second. A push that has not passed the gate does not
+# leave this machine. Enabled with `make hooks`.
+#
+# It checks out each pushed commit into a throwaway worktree and runs the gate
+# there, not in the working tree: a file that is present here but ignored or
+# unstaged is exactly what a local run cannot see and CI can.
+#
+# What runs follows what changed, as in CI: the Go gate for anything outside
+# desktop/, the desktop gate for desktop/ and internal/protocol/.
+set -euo pipefail
+
+zero=0000000000000000000000000000000000000000
+root=$(git rev-parse --show-toplevel)
+# Git runs a hook with GIT_DIR and its kin exported. The suite has tests that
+# make a directory outside any repository and expect git to find none there;
+# with GIT_DIR set, every git they start finds this one.
+unset $(git rev-parse --local-env-vars)
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+	[ "$local_sha" = "$zero" ] && continue # a deleted branch has nothing to test
+
+	if [ "$remote_sha" = "$zero" ]; then
+		base=$(git merge-base "$local_sha" origin/main)
+	else
+		base=$remote_sha
+	fi
+	changed=$(git diff --name-only "$base" "$local_sha")
+	[ -z "$changed" ] && continue
+
+	go_gate=no desktop_gate=no
+	grep -qv '^desktop/' <<<"$changed" && go_gate=yes
+	grep -qE '^(desktop|internal/protocol)/' <<<"$changed" && desktop_gate=yes
+
+	tree=$(mktemp -d "${TMPDIR:-/tmp}/dcode-pre-push.XXXXXX")
+	trap 'git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1 || true' EXIT
+	git worktree add --quiet --detach "$tree" "$local_sha"
+
+	echo "pre-push: ${local_ref#refs/heads/} at ${local_sha:0:7} — go gate: $go_gate, desktop gate: $desktop_gate"
+
+	if [ "$go_gate" = yes ]; then
+		# make check without the separate race run: cover already runs the
+		# suite under -race, and running it twice is only waiting.
+		make -C "$tree" lint eval-build cover build
+	fi
+
+	if [ "$desktop_gate" = yes ]; then
+		if [ ! -d "$root/desktop/node_modules" ]; then
+			echo "pre-push: desktop/node_modules is missing; run npm ci in desktop/ first" >&2
+			exit 1
+		fi
+		ln -s "$root/desktop/node_modules" "$tree/desktop/node_modules"
+		(
+			cd "$tree/desktop"
+			npm run --silent typecheck
+			npm run --silent lint
+			npm test --silent
+			npm run --silent build
+			npm run --silent check:protocol
+		)
+	fi
+
+	git -C "$root" worktree remove --force "$tree"
+	trap - EXIT
+done
+
+echo "pre-push: gate green"
