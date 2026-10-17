@@ -186,6 +186,8 @@ var protocolInvariants = map[string]string{
 	"nunca um id de zeros":                  "TestALoopIDThatCannotBeDrawnIsAnError",
 	"Inscrito lento no fluxo de loops":      "TestASlowLoopSubscriberIsDroppedAndSaid",
 	"vale também na raiz":                   "TestOverlapsHoldsAtTheRoot",
+	"acha o loop que o bloqueia":            "TestTheListFindsTheLoopThatBlocksTheWorkspace",
+	"nunca respondida vazia":                "TestTheListRefusesAWorkspaceItCannotRead",
 	// Images.
 	"imagem por valor":     "TestAnImageArrivesOnATurn",
 	"recusado na borda":    "TestAMalformedImageIsRefused",
