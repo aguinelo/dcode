@@ -502,6 +502,6 @@ Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de
 As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 
 ## 16. Changelog
-
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
+- [202610172300 — A sessão gravada reabre sob o próprio id](changelog/202610172300-a-sessao-gravada-reabre-sob-o-proprio-id.md)
 - [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)

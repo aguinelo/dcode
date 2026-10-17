@@ -10,9 +10,14 @@ import (
 // Documents holds every file, text and PDF alike, as it was attached: which
 // of them is written into the question and which rides apart is decided when
 // the message is built, in one place, rather than by every caller.
+//
+// Origin is not a file but rides here for the same reason the files do: it is
+// part of what the turn starts with, and turn.started is where it is said.
+// Empty is the person; protocol.OriginChildren is the harness.
 type Attachments struct {
 	Images    []ce.Image
 	Documents []ce.Document
+	Origin    string
 }
 
 // named is what turn.started says about the documents: name, kind and size,

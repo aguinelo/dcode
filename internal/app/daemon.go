@@ -316,15 +316,10 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 				sess.Emit(t, payload)
 			}
 		}),
-		deadlineApprover{
-			approverFunc: func(ctx context.Context, r protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
-				if sess == nil {
-					return protocol.ApprovalDeny, nil
-				}
-				return sess.Approve(ctx, r)
-			},
-			timeout: d.opts.ApprovalTimeout,
-		},
+		// The daemon's timeout, never zero here (New defaults it): a question
+		// with no deadline is for a session that asks for one, which the
+		// orchestrator's children do.
+		session.NewApprover(func() *session.Session { return sess }, d.opts.ApprovalTimeout),
 	)
 	if err != nil {
 		return nil, err
@@ -401,19 +396,6 @@ type approverFunc func(context.Context, protocol.ApprovalRequest) (protocol.Appr
 func (f approverFunc) Approve(ctx context.Context, r protocol.ApprovalRequest) (protocol.ApprovalDecision, error) {
 	return f(ctx, r)
 }
-
-// deadlineApprover answers through the session and names when a question put
-// now lapses into a denial (loop.Deadliner).
-//
-// The timeout is the daemon's, so the instant is named here and nowhere else:
-// the loop stamps it on the question before announcing it, and the session
-// holds the question to what it carries.
-type deadlineApprover struct {
-	approverFunc
-	timeout time.Duration
-}
-
-func (a deadlineApprover) Deadline() time.Time { return time.Now().Add(a.timeout) }
 
 func randomUint32() uint32 {
 	var b [4]byte

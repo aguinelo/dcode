@@ -12,8 +12,9 @@
 | 0 — changelog em fragmentos | **feito** (#515) |
 | 1 — `.p`, `.config`, `.i` desta fatia | **feito** (#516) — aprovado pelo dono em 2026-10-17, com as seis decisões do fim |
 | 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
+| 3 — a sessão gravada reabre sob o próprio id | **feito** (#519), com os três itens do fio que o passo 2 deixou |
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
-| 3, 5 a 14 | **não feito** |
+| 5 a 14 | **não feito** |
 
 ## Pré-requisitos
 
