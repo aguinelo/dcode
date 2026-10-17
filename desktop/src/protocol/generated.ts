@@ -1559,6 +1559,17 @@ export const StopUnverified = "unverified";
  */
 export const StopIncomplete = "incomplete";
 /**
+ * StopDaemonRestart ends a turn the record shows open when its session is
+ * reopened: the daemon stopped while it ran, and the turn is closed with
+ * that reason before anything new is said, so it never vanishes.
+ */
+export const StopDaemonRestart = "daemon_restart";
+/**
+ * OriginChildren is TurnStarted.Origin for a turn the harness opened with the
+ * reports of an orchestrator's children.
+ */
+export const OriginChildren = "children";
+/**
  * DoneMovedFirst is the first check of a turn: there was nothing before it
  * to compare against. Calling it forward would claim progress nobody made.
  */
@@ -1632,6 +1643,13 @@ export interface TurnStarted {
    * what was attached to it and not only what was typed.
    */
   documents?: AttachedDocument[];
+  /**
+   * Origin is who started the turn: empty is the person, OriginChildren
+   * is the harness bringing a child's report to the orchestrator. Said on
+   * the event because a turn nobody typed must not read as one somebody
+   * did.
+   */
+  origin?: string;
 }
 /**
  * MessageReasoning is a fragment of the model's thinking.

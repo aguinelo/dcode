@@ -586,7 +586,15 @@ const (
 	// easy way out becomes switching the checking off.
 	StopUnverified = "unverified"
 	StopIncomplete = "incomplete"
+	// StopDaemonRestart ends a turn the record shows open when its session is
+	// reopened: the daemon stopped while it ran, and the turn is closed with
+	// that reason before anything new is said, so it never vanishes.
+	StopDaemonRestart = "daemon_restart"
 )
+
+// OriginChildren is TurnStarted.Origin for a turn the harness opened with the
+// reports of an orchestrator's children.
+const OriginChildren = "children"
 
 // What one check did to the unmet criteria, carried in DoneChecked.Moved. A
 // closed set, so a client says it in the reader's language.
@@ -662,6 +670,11 @@ type (
 		// Documents names the files read with the question, so history shows
 		// what was attached to it and not only what was typed.
 		Documents []AttachedDocument `json:"documents,omitempty"`
+		// Origin is who started the turn: empty is the person, OriginChildren
+		// is the harness bringing a child's report to the orchestrator. Said on
+		// the event because a turn nobody typed must not read as one somebody
+		// did.
+		Origin string `json:"origin,omitempty"`
 	}
 	// MessageReasoning is a fragment of the model's thinking.
 	MessageReasoning struct {
