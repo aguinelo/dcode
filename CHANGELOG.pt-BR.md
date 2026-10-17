@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 230 changelogs de decisão |
+| famílias de spec | 19, com 231 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`memory.enabled` e `memory.max_entries` são configuráveis.** O código lia
+  as duas, mas nenhuma era chave conhecida, então um `config.toml` que as
+  escrevia era recusado e `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES`
+  nunca eram consultadas. Uma guarda nova confere também a outra direção: toda
+  chave que uma fonte de produto lê pelo nome tem de estar em `KnownKeys`.
 - **Pedido que o daemon não consegue ler responde `400 invalid_input`, em toda
   rota.** Corpo malformado, imagem que não é base64 e `from` que não é número
   respondiam `500 internal` na maior parte das rotas de sessão (e

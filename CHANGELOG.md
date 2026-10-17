@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 230 decision changelogs |
+| spec families | 19, with 231 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`memory.enabled` and `memory.max_entries` are configurable.** The code
+  read both, but neither was a known key, so a `config.toml` setting them was
+  refused and `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES` were never
+  looked up. A new guard checks the other direction too: every key a product
+  source reads by name must be in `KnownKeys`.
 - **A request the daemon cannot read answers `400 invalid_input`, on every
   route.** A malformed body, an image that is not base64 and a `from` that is
   not a number answered `500 internal` on most session routes (and
