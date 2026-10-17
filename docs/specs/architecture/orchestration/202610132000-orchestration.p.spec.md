@@ -363,9 +363,13 @@ um projeto vazio no lugar dele.
 `main.health`, `ceiling.reached`, `forge.local`, `worktree.removed`, `child.closed`,
 `daemon.restart`.
 
-Nenhuma linha passa de 64 KiB: o campo maior é cortado com `…[N bytes cortados]`. `hooks.changed`
-sai quando `core.hooksPath`, lido depois de criar uma worktree, difere do lido antes, com os dois
-valores; a orquestradora não o reescreve.
+Nenhuma linha passa de 64 KiB: o maior entre `why`, `claim`, `measured` e `data` é cortado com
+`…[N bytes cortados]` (`measured` ou `data` cortados viram string JSON); o que nem assim cabe é erro.
+`hooks.changed` sai quando `core.hooksPath`, lido depois de criar uma worktree, difere do lido antes,
+com os dois valores; a orquestradora não o reescreve. **Durabilidade:** `Record` só devolve o `seq`
+depois do `fsync`; escrita que falha é erro, é desfeita e não gasta `seq`. Ao reabrir, a linha final
+sem fim de linha (queda no meio do `Record`) é cortada e devolvida por `Torn`; linha completa
+ilegível ou `seq` fora de ordem impede o log de abrir, com o número da linha.
 
 ### 9.2 `dcode decisions`
 
@@ -432,11 +436,15 @@ da `.i`.
 Os sete do `.r` §9 são mediados e entram na segunda fatia, com fixture, juiz e limiar. A metade
 determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate verde — já é desta.
 
-## 13. Invariantes verificáveis (previstas)
+## 13. Invariantes verificáveis
 
-> **Previstas**: nenhuma tem teste ainda, e este título não é o que o `specguard`
-> lê. O PR do primeiro passo com teste cria "Invariantes verificáveis" com as
-> linhas que já têm teste e um `invariants_test.go` que nomeia `orchestration`.
+- `seq` do log é contínuo por projeto, através de reinícios.
+- Decisão sem `why`, ou de `kind` fora da lista da §9.1, é recusada e nada é escrito.
+- Escrita do log que falha é erro devolvido e não gasta `seq`; nunca uma linha perdida em silêncio.
+- Última linha sem fim de linha é cortada ao reabrir e devolvida por `Torn`; linha completa ilegível ou `seq` fora de ordem impede o log de abrir.
+- Nenhuma linha do log passa de 64 KiB; o campo maior é cortado e diz quantos bytes perdeu.
+
+## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
 
 - Um projeto tem **uma** orquestradora: dois `POST /v1/projects` da mesma árvore, por caminhos diferentes, devolvem o mesmo `Project`.
 - A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
@@ -463,14 +471,13 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Nenhum caminho do código desta fatia roda `rebase`, `push --force` ou `commit --amend`.
 - A integração nunca acontece numa worktree que a pessoa usa.
 - Toda transição da §6 tem linha no log antes do evento; linha que não grava impede a transição.
-- `seq` do log é contínuo por projeto, através de reinícios.
 - Turno de filho aberto no reinício termina com `daemon_restart`, dito na lista e no log, e nunca some.
 - Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
 - Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
 - Fechado sai da lista depois da retenção; `failed` não sai sozinho.
 - `dcode decisions` lê o log sem daemon, e linha ilegível é dita com o número.
 
-## 14. Ordem de entrega
+## 15. Ordem de entrega
 
 Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de cada passo na `.i`.
 
@@ -494,6 +501,7 @@ Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de
 
 As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 
-## 15. Changelog
+## 16. Changelog
 
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
+- [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)
