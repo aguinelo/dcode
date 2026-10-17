@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 240 decision changelogs |
+| spec families | 19, with 241 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,19 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The orchestration requirements state the owner's vision.** The approved
+  research of #461 had a conversation split one request into children and
+  gather their reports; the owner wants dcode to be the project's orchestrator:
+  one conversation per project, alive in the daemon across restarts, answering
+  at once while children work in their own worktrees, with three autonomy
+  levels, an always-ask list the harness enforces, a gate the orchestrator runs
+  itself on the commit it merges, a serial merge queue, declared deploys, a
+  live agent list and a decision log. Rewritten because running the workflow by
+  hand on 2026-10-16 showed each failure these rules now prevent. The owner
+  decided the open questions — the daemon becomes a launchd user agent, each
+  child is a PR squash-merged against the measured commit, a child's approval
+  always waits for the person, and design questions are asked or recorded per
+  autonomy level — and approved the requirements; nothing is built yet.
 - **Every proposal of a qualifying turn reaches the operator.** The daemon
   kept one slot, replaced on each `done_propose`, so the history the
   done-qualifier promises as its defence against a re-proposal that swaps a
