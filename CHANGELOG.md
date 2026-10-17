@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 232 decision changelogs |
+| spec families | 19, with 233 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`memory.enabled` and `memory.max_entries` are configurable.** The code
+  read both, but neither was a known key, so a `config.toml` setting them was
+  refused and `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES` were never
+  looked up. A new guard checks the other direction too: every key a product
+  source reads by name must be in `KnownKeys`.
 - **The pre-push gate picks its gates from what the branch changes against
   `main`.** It compared with the branch's old remote head, so a branch brought
   up to date with `main` ran the desktop gate for protocol changes that came
