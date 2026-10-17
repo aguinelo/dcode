@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 236 changelogs de decisão |
+| famílias de spec | 19, com 238 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -269,6 +269,17 @@ existe para impedir exatamente isso.
   turno termina com o motivo novo `refused`, depois de um `session.error` de
   código `refused` com as palavras do provedor, e o TUI diz que o modelo
   recusou nas duas línguas.
+- **O desfazer nunca remove um arquivo que não conseguiu ler antes do turno.**
+  Instantâneo cuja leitura falhava por qualquer motivo que não ausência era
+  registrado como "não existia", e o `/undo` e o desfazer automático do ciclo
+  removiam um arquivo que existia e só não pôde ser lido. Agora só ausência é
+  ausência: instantâneo não lido é recusado e nomeado pelo desfazer, e `write`
+  e `edit` avisam na hora, como a RN-6 do `recoverable-cycle` sempre disse.
+- **Um `package.json` ou `Makefile` que não se lê é dito.** A sondagem lia
+  um manifesto malformado como "não declara nada", em silêncio, e o prompt
+  ficava igual ao de um projeto sem portão. A sessão agora avisa ao abrir
+  (`manifest_unreadable`, nomeando o arquivo e o erro); manifesto ausente
+  continua sem dizer nada, e um arquivo ilegível não esconde mais o outro.
 - **Uma falha da Anthropic chega ao laço com a sua própria classe.** Um 400
   que diz que o prompt é longo demais agora é `context_size`, que compacta e
   repete, em vez de `bad_request`, que abortava o turno justo na falha que a

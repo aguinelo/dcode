@@ -311,6 +311,7 @@ Os limiares **não** desceram para encontrar o resultado.
 - `Probe` não executa nenhum portão que encontra.
 - `Probe` lê apenas `package.json` e `Makefile`; nenhuma outra fonte vira `Gate`.
 - `Probe` num diretório sem nenhuma das duas devolve lista vazia, não erro.
+- `Probe` com `package.json` ou `Makefile` presente e ilegível devolve o arquivo e o motivo, e a sessão avisa ao abrir.
 - `Makefile` com alvo começando por `.` não vira `Gate`.
 - O bloco de portões declara que nada ali afirma que eles passam.
 - Workspace sem portão declarado não renderiza bloco nenhum.
@@ -340,3 +341,4 @@ onde o texto morar.
 - [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)
 - [202608271200 — o piso medido](changelog/202608271200-o-piso-medido.md)
 - [202608280200 — verificação impossível não cancela o trabalho](changelog/202608280200-verificacao-impossivel.md)
+- [202610162300 — manifesto ilegível é dito](changelog/202610162300-manifesto-ilegivel-e-dito.md)

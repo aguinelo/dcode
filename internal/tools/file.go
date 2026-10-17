@@ -177,9 +177,13 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 	// How it stood before, so the turn can be undone. Taken here rather than
 	// at the top because everything above can still refuse, and a snapshot of
 	// a write that never happened is a file undo would rewrite for nothing.
-	s.Snapshot(abs)
+	var warnings []string
+	if serr := s.Snapshot(abs); serr != nil {
+		warnings = append(warnings, serr.Error())
+	}
 	if err := writeFile(abs, in.Content, s.Limits.AtomicWrite); err != nil {
-		return errf(w.Name(), CodeNotFound, "", "could not write %s: %v", in.Path, err).Result(), nil
+		return errf(w.Name(), CodeNotFound, "", "%s", withWarnings(
+			fmt.Sprintf("could not write %s: %v", in.Path, err), warnings)).Result(), nil
 	}
 	s.MarkRead(abs, in.Content, 0)
 	s.MarkWritten(abs)
@@ -197,7 +201,7 @@ func (w Write) Execute(_ context.Context, input json.RawMessage, s *State) (Resu
 	}
 	meta.Diff = UnifiedDiff(previous, in.Content, in.Path)
 	return Result{
-		Output: fmt.Sprintf("%s %s (%d bytes)", verb, in.Path, len(in.Content)),
+		Output: withWarnings(fmt.Sprintf("%s %s (%d bytes)", verb, in.Path, len(in.Content)), warnings),
 		Meta:   meta,
 	}, nil
 }
@@ -283,7 +287,8 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	if terr != nil {
 		return terr.Result(), nil
 	}
-	if terr := commit(e.Name(), planned, s); terr != nil {
+	warnings, terr := commit(e.Name(), planned, s)
+	if terr != nil {
 		return terr.Result(), nil
 	}
 
@@ -293,7 +298,9 @@ func (e Edit) Execute(_ context.Context, input json.RawMessage, s *State) (Resul
 	if len(planned) == 1 {
 		echo = echoDiff(s.Limits.EditEchoDiff, ops[0].ReplaceAll, planned[0].changes)
 	}
-	return report(planned, echo), nil
+	res := report(planned, echo)
+	res.Output = withWarnings(res.Output, warnings)
+	return res, nil
 }
 
 // ---------- shared ----------

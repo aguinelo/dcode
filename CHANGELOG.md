@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 236 decision changelogs |
+| spec families | 19, with 238 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -271,6 +271,17 @@ exists to stop exactly that.
   with the new stop reason `refused`, after a `session.error` with code
   `refused` and the provider's words, and the TUI says the model refused in
   both languages.
+- **Undo never removes a file it could not read before the turn.** A snapshot
+  whose read failed for any reason but absence was recorded as "did not exist",
+  so `/undo` and the loop's automatic cycle undo removed a file that existed
+  and was merely unreadable. Now only absence counts as absence: an unread
+  snapshot is refused and named by the undo, and `write` and `edit` warn when it
+  happens, as the recoverable-cycle RN-6 always said.
+- **A `package.json` or `Makefile` that does not parse is said.** The probe
+  read a malformed manifest as "declares nothing", silently, so the prompt
+  looked exactly like a project with no gate. The session now warns at open
+  (`manifest_unreadable`, naming the file and the error); an absent manifest
+  still says nothing, and one unreadable file no longer hides the other.
 - **An Anthropic failure reaches the loop with its own class.** A 400 that says
   the prompt is too long is now `context_size`, which compacts and retries,
   instead of `bad_request`, which aborted the turn on the one failure

@@ -1,14 +1,37 @@
 package tools
 
 import (
+	"fmt"
 	"os"
 	"sort"
 )
 
 // snapshot is a file as it stood before a turn touched it.
+//
+// unread is set when the file could not be read for a reason other than not
+// being there. Such a snapshot is no return point: existed and content mean
+// nothing, and Undo refuses the path rather than guess.
 type snapshot struct {
 	content []byte
 	existed bool
+	unread  error
+}
+
+// takeSnapshot reads how path stands now.
+//
+// Only absence counts as absence. Folding every read error into "not there"
+// is what made undo remove a file that existed and could not be read: a turn
+// that "created" it is a turn whose undo deletes it.
+func takeSnapshot(path string) snapshot {
+	body, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		return snapshot{content: body, existed: true}
+	case os.IsNotExist(err):
+		return snapshot{existed: false}
+	default:
+		return snapshot{unread: err}
+	}
 }
 
 // BeginTurn starts a new set of undoable changes.
@@ -30,21 +53,27 @@ func (s *State) BeginTurn() {
 //
 // A file that is not there is recorded as not there, which is what makes
 // undoing a creation mean removing it.
-func (s *State) Snapshot(path string) {
+//
+// A file that is there and could not be read is recorded as unread, and the
+// error says so to the tool about to write it. The write still goes ahead —
+// refusing the work because the insurance failed would hold the work hostage —
+// but the caller has to say that this write cannot be undone, because the
+// alternative is a turn that believes it has a return point it does not.
+func (s *State) Snapshot(path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.snaps == nil {
 		s.snaps = map[string]snapshot{}
 	}
 	if _, ok := s.snaps[path]; ok {
-		return
+		return nil
 	}
-	body, err := os.ReadFile(path)
-	if err != nil {
-		s.snaps[path] = snapshot{existed: false}
-		return
+	sn := takeSnapshot(path)
+	s.snaps[path] = sn
+	if sn.unread != nil {
+		return fmt.Errorf("could not snapshot %s before writing it, so undo will leave it as it is: %w", path, sn.unread)
 	}
-	s.snaps[path] = snapshot{content: body, existed: true}
+	return nil
 }
 
 // BeginCycle marks a point inside a turn that UndoCycle can come back to.
@@ -61,17 +90,17 @@ func (s *State) Snapshot(path string) {
 // Two layers because they answer different questions: the turn's is "how did
 // this look before the model started", the cycle's is "how did it look before
 // this attempt".
+//
+// A path it cannot read is recorded as unread, the same as Snapshot does, and
+// UndoCycle refuses it and names it. That refusal is where this failure is
+// said: a cycle snapshot only matters when the cycle is undone, and a cycle
+// that is never undone never needed it.
 func (s *State) BeginCycle() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.cycleSnaps = make(map[string]snapshot, len(s.snaps))
 	for p := range s.snaps {
-		body, err := os.ReadFile(p)
-		if err != nil {
-			s.cycleSnaps[p] = snapshot{existed: false}
-			continue
-		}
-		s.cycleSnaps[p] = snapshot{content: body, existed: true}
+		s.cycleSnaps[p] = takeSnapshot(p)
 	}
 	s.cycleWrote = map[string]struct{}{}
 }
@@ -146,7 +175,9 @@ func (s *State) Undo() (restored, refused []string, err error) {
 		if !changedByTheTurn(path, files) {
 			continue
 		}
-		if movedSince(path, files) {
+		// Never read, so nothing to put back — and removing it would delete a
+		// file the turn did not create.
+		if sn.unread != nil || movedSince(path, files) {
 			refused = append(refused, path)
 			continue
 		}
