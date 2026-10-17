@@ -12,8 +12,9 @@
 | 0 — changelog em fragmentos | **feito** (#515) |
 | 1 — `.p`, `.config`, `.i` desta fatia | **feito** (#516) — aprovado pelo dono em 2026-10-17, com as seis decisões do fim |
 | 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
-| 3 — a sessão gravada reabre sob o próprio id | **este PR** (#519), com os três itens do fio que o passo 2 deixou |
-| 4 a 14 | **não feito** |
+| 3 — a sessão gravada reabre sob o próprio id | **feito** (#519), com os três itens do fio que o passo 2 deixou |
+| 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
+| 5 a 14 | **não feito** |
 
 ## Pré-requisitos
 
@@ -83,9 +84,10 @@ Em `internal/session/`. A orquestradora e os filhos precisam voltar com o id que
 Pacote novo `internal/orchestrate/`: `DecisionLog`, `Decision`, o esquema da `.p` §9.1. Lê
 `orchestrator.dir`.
 
-- [ ] `Record` escreve uma linha, com `fsync`, e devolve o `seq`; `why` vazio é erro.
-- [ ] `seq` continua do último do arquivo ao reabrir.
-- [ ] Linha acima de 64 KiB corta o campo maior e diz quanto.
+- [x] `Record` escreve uma linha, com `fsync`, e devolve o `seq`; `why` vazio é erro.
+- [x] `seq` continua do último do arquivo ao reabrir; linha final cortada por uma queda é cortada
+      e devolvida por `Torn`, e linha completa ilegível ou `seq` fora de ordem impede o log de abrir.
+- [x] Linha acima de 64 KiB corta o campo maior e diz quanto.
 
 **Testes obrigatórios:**
 
@@ -291,11 +293,15 @@ projeto, ao lado da conversa comum, que continua o padrão (decisão 4).
 
 ### Fechamento — as invariantes deixam de ser previstas
 
-No primeiro PR acima que tiver teste para uma linha da `.p` §13, a seção passa a se chamar
-"Invariantes verificáveis" só com as linhas que já têm teste — as outras ficam numa lista
-"previstas" abaixo dela — e um `invariants_test.go` no pacote passa a nomear `orchestration` no
-`specguard.Check`, como `internal/loop/invariants_test.go` faz para as outras famílias. No passo 12,
-nenhuma linha fica prevista.
+**Feito no passo 4**, que testou as linhas do log: a `.p` §13 é "Invariantes verificáveis", a §14
+as previstas, e `internal/orchestrate/invariants_test.go` nomeia `orchestration`. Cada passo
+seguinte sobe para a §13 as linhas a que dá teste.
+
+A regra, como foi escrita: no primeiro PR acima que tiver teste para uma linha da `.p` §13, a seção
+passa a se chamar "Invariantes verificáveis" só com as linhas que já têm teste — as outras ficam
+numa lista "previstas" abaixo dela — e um `invariants_test.go` no pacote passa a nomear
+`orchestration` no `specguard.Check`, como `internal/loop/invariants_test.go` faz para as outras
+famílias. No passo 12, nenhuma linha fica prevista.
 
 ## Diferenças da ordem do `.r` §10
 
