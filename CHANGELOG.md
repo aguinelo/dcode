@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 230 decision changelogs |
+| spec families | 19, with 231 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,16 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The `/loop` limit flags and the four `loop.*` keys leave the spec, which
+  now follows the code.** At least MINOR: a declared configuration surface is
+  removed. The spec declared `--max-iterations`, `--max-identical`,
+  `--max-tokens`, `--max-stall` and `--done-timeout`, which `/loop` never
+  accepted, and `DCODE_LOOP_SPEC_PATH`, `_SOURCE`, `_PROTECT` and
+  `_SESSION_PREFIX`, which were in `KnownKeys` and read only by a function with
+  no caller — one that turned an invalid source into `auto` in silence. The
+  keys, that function and `SessionConfig` are gone; the only flag is
+  `--protect`, and a loop's limits come from the family and the configuration
+  like any session's.
 - **A request the daemon cannot read answers `400 invalid_input`, on every
   route.** A malformed body, an image that is not base64 and a `from` that is
   not a number answered `500 internal` on most session routes (and

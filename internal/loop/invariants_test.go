@@ -189,9 +189,6 @@ var loopCommandInvariants = map[string]string{
 	"cai no `verifyCommand` legado":                "TestLoadSourceAutoMissingSpecFallsThroughToVerify",
 	"presente e ilegível":                          "TestLoadSourceAutoMalformedSpecIsAnError",
 	"mesmos argumentos, mesma `DoneSet`":           "TestLoadIsDeterministic",
-	"igual ao `DoneSet` da `LoopSpec`":             "TestSessionConfigDoneMatchesSpec",
-	"se e só se há ao menos um critério":           "TestSessionConfigDoneEnabledReflectsCriteria",
-	"carrega prefixo, basename e instante":         "TestSessionConfigNameCarriesPrefixSpecAndInstant",
 	// The daemon conducts the loop.
 	"**uma** sessão que carrega":                        "TestALoopOnAFolderWorksItAndSaysWhereItEnded",
 	"só o `continue` abre":                              "TestAFolderThatDeclaresNothingIsQualifiedAndWaitsForReview",
@@ -226,7 +223,6 @@ var loopCommandInvariants = map[string]string{
 	"Fluxo de loops que fecha":                          "TestALoopStreamThatClosesEndsTheFollowSaid",
 	"ociosa entre pastas fica retido":                   "TestTextTypedBetweenFoldersIsHeld",
 	"guarda a fila retida":                              "TestAStoppedLoopKeepsTheQueueAndSaysSo",
-	"a fachada não tem orçamento próprio":               "TestSessionConfigCarriesTheLimitsUntouched",
 }
 
 // This replaces a test that claimed the same family and asserted nothing: it
