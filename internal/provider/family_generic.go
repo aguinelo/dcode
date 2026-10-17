@@ -1,5 +1,7 @@
 package provider
 
+import "fmt"
+
 // GenericName is the escape hatch a user names explicitly.
 const GenericName = "generic"
 
@@ -28,6 +30,22 @@ func (Generic) Name() string { return GenericName }
 func (Generic) Models() []string { return nil }
 
 func (Generic) Transports() []string { return []string{TransportOpenAI} }
+
+// Encode refuses a transport this family does not declare, as Gemini's does.
+//
+// Inherited from MiniMaxM3 it serialised the Anthropic dialect for a family
+// whose Transports() names one, and its PDF refusal spoke as minimax-m3 to a
+// user who had typed `--family generic`. Inheriting the encoding is not
+// inheriting the declaration.
+func (f Generic) Encode(req Request, transport string) (WireRequest, error) {
+	if transport != TransportOpenAI {
+		return WireRequest{}, fmt.Errorf("family %s: unsupported transport %q", f.Name(), transport)
+	}
+	if err := refusePDF(f.Name(), req); err != nil {
+		return WireRequest{}, err
+	}
+	return encodeOpenAI(req)
+}
 
 // AcceptsImages is false, and the reason is that nothing here can know.
 //

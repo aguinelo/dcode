@@ -40,6 +40,8 @@ var providerInvariants = map[string]string{
 	"corta no teto de saída termina": "TestAnAnswerCutAtTheCeilingSaysSo",
 	"marca no máximo três pontos":    "TestTheClaudeRequestMarksTheCacheBreakpoints",
 	"uso do `message_start` chega":   "TestCacheUsageFromMessageStartReachesDone",
+	"prompt não cabe na janela vira": "TestATooLongPromptIsAContextSizeAndNotABadRequest",
+	"classe do seu par HTTP e a":     "TestAnInStreamErrorKeepsTheProvidersClassAndMessage",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
