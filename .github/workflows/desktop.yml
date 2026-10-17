@@ -1,10 +1,8 @@
 name: desktop
 on:
-  pull_request:
-    paths:
-      - 'desktop/**'
-      - 'internal/protocol/**'
-      - '.github/workflows/desktop.yml'
+  # Pull requests are gated by .githooks/pre-push, on this machine; CI here
+  # confirms main after the merge, and runs on a branch only when asked.
+  workflow_dispatch:
   push:
     branches: [main]
     paths:

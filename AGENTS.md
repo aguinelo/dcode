@@ -88,20 +88,25 @@ can be recognised before it repeats rather than after.
 - Run `git status` before committing and account for **every** listed file. A
   file you cannot explain is a file that does not belong in the commit.
 
-### A push is not finished until CI is read
+### The gate runs here; CI confirms on main
 
-- **CI confirms; it does not find.** `.githooks/pre-push` runs the gate CI runs
-  on the commit being pushed, in a throwaway worktree, and refuses the push if
-  it fails. Enable it once per clone with `make hooks`; it covers every
-  worktree. **Never push with `--no-verify`.** A red gate is fixed, not
-  skipped. The gate takes minutes: give the push a long enough timeout.
-- After every push, check CI (`gh pr checks`). A push whose result was never
-  read is a push that was never finished.
-- **Never report green from a local run alone.** `make check` passing locally
-  and CI passing are different claims. When they disagree it is usually because
-  the working tree and the repository differ — which is precisely the failure
-  local runs cannot see.
-- Never merge a red PR, and never merge without having read the checks.
+- **The local gate is what a pull request is merged on.** `.githooks/pre-push`
+  runs the gate CI runs on the commit being pushed, in a throwaway worktree —
+  never the working tree, so an ignored or unstaged file cannot make it pass —
+  and refuses the push if it fails. Enable it once per clone with
+  `make hooks`; it covers every worktree. **Never push with `--no-verify`.** A
+  red gate is fixed, not skipped. The gate takes minutes: give the push a long
+  enough timeout.
+- Pull requests do not run CI: minutes spent finding on GitHub what a local run
+  finds in seconds are minutes wasted. A pull request can still run it on
+  demand (`gh workflow run ci --ref <branch>`), and should when it touches what
+  only Linux exercises — the bubblewrap sandbox.
+- A change to `desktop/` also runs the rulers the hook does not:
+  `npm run check:visual` and `npm run check:daemon`, when it touches what they
+  measure. Say in the PR that they ran.
+- Never merge a pull request whose push did not go through the hook.
+- **CI runs on `main`, after the merge, and its result is read.** A red `main`
+  is the next thing fixed, before anything else merges.
 
 ### What the build depends on must be in the repository
 
@@ -120,7 +125,8 @@ make cover   # the suite with the coverage gate
 make install # build and install into ~/.local/bin
 ```
 
-`make check` is the local approximation of CI, and CI is the claim that counts.
+`make check` is the Go half of the gate the pre-push hook runs; the hook runs it
+on the pushed commit, which is the claim that counts.
 
 Behavioural contracts live behind the `eval` build tag and are **not run** by
 `make check`: each scenario runs against a real model and costs money. Run them
