@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 231 changelogs de decisão |
+| famílias de spec | 19, com 232 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,15 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Compactação cujo resumo falhou mantém o histórico e diz por quê.** O
+  resumidor aceitava como resumo inteiro um stream que terminava em erro ou no
+  teto de saída, e o loop trocava resumo que falhou ou veio vazio por uma frase
+  fixa, cortava o trecho e anunciava `session.compacted` — um 429 ou uma
+  credencial revogada apagava parte da sessão atrás de um aviso dizendo que ela
+  fora resumida. Agora nada é cortado sem resumo de verdade, e `session.error`
+  `compaction_failed` nomeia a causa: o gatilho automático deixa o turno
+  seguir, `/compact` devolve o erro, e a recusa `context_size` que não consegue
+  compactar encerra o turno e diz isso.
 - **As flags de limite do `/loop` e as quatro chaves `loop.*` saem da spec,
   que agora segue o código.** No mínimo MINOR: sai uma superfície de
   configuração declarada. A spec declarava `--max-iterations`,

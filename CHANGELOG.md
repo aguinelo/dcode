@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 231 decision changelogs |
+| spec families | 19, with 232 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,15 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A compaction whose summary failed keeps the history and says so.** The
+  summariser took a stream that ended in an error or at the output ceiling as a
+  whole summary, and the loop swapped a failed or empty one for a fixed
+  sentence, cut the span and announced `session.compacted` — so a 429 or a
+  revoked credential dropped part of the session behind a notice that said it
+  was summarised. Now nothing is cut without a real summary, and
+  `session.error` `compaction_failed` names the cause: the automatic trigger
+  lets the turn go on, `/compact` returns the error, and a `context_size`
+  refusal that cannot compact ends the turn and says so.
 - **The `/loop` limit flags and the four `loop.*` keys leave the spec, which
   now follows the code.** At least MINOR: a declared configuration surface is
   removed. The spec declared `--max-iterations`, `--max-identical`,

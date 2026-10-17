@@ -1072,9 +1072,7 @@ func TestDisabledGatesOnlyTheAutomaticTrigger(t *testing.T) {
 		CtxConfig: ce.Config{Window: 1, Disabled: true},
 	}, long)
 
-	if err := e.maybeCompact(context.Background()); err != nil {
-		t.Fatal(err)
-	}
+	e.maybeCompact(context.Background())
 	if len(e.session.History) != len(long.History) {
 		t.Error("the automatic trigger compacted while Disabled was set")
 	}

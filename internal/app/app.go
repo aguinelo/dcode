@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -859,13 +860,28 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 		if err != nil {
 			return "", err
 		}
+		// Only a stream that ended done and whole is a summary. The text that
+		// arrived before an error or the output ceiling is real and partial,
+		// and the loop drops the span on the strength of what this returns: a
+		// half summary accepted as whole is history lost with nothing said.
 		var out strings.Builder
 		for ev := range ch {
-			if ev.Type == provider.EventTextDelta {
+			switch ev.Type {
+			case provider.EventTextDelta:
 				out.WriteString(ev.Text)
+			case provider.EventError:
+				if ev.Err != nil {
+					return "", ev.Err
+				}
+				return "", errors.New("the summary stream failed without saying why")
+			case provider.EventDone:
+				if ev.Truncated {
+					return "", errors.New("the summary was cut at the output ceiling")
+				}
+				return out.String(), nil
 			}
 		}
-		return out.String(), nil
+		return "", errors.New("the summary stream ended without finishing")
 	}
 }
 
