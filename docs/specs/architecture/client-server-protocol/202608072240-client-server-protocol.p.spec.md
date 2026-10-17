@@ -66,8 +66,8 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/git/diff` | `experimental` | O diff unificado de um arquivo que `/git` lista, com teto. Query `workspace` e `path` (como `/git` o lista). Só leitura. Devolve `GitDiffResponse`. |
 | `GET` | `/git/pr` | `experimental` | O PR da branch que o workspace tem agora, pelo `gh`: número, endereço, estado, rascunho e as checagens somadas; e a base que um PR novo teria. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitPRResponse`. |
 | `POST` | `/git/pr` | `experimental` | Empurra a branch de agora (`git push -u origin <branch>`, nunca com força) e abre o PR com `gh pr create`. Corpo `CreateGitPRRequest`, que é o que uma pessoa confirmou. Devolve `GitPRResponse` com `201`. Nunca faz merge nem liga auto-merge. `gh` ausente ou sem login → `gh_unavailable`; branch que não pode virar PR → `pr_refused`; pedido malformado → `invalid_input`. |
-| `POST` | `/loops` | `experimental` | Começa um `/loop` que o daemon conduz. Corpo `StartLoopRequest` (`args` como foi digitado depois de `/loop`). Devolve `LoopRun` com `201`. Workspace relativo → `workspace_invalid`; argumento sem palavra ou flag desconhecida → `invalid_input`; loop vivo no mesmo workspace → `loop_already_running`. |
-| `GET` | `/loops` | `experimental` | Os loops que o daemon guarda, do mais antigo ao mais novo. Query `workspace` (absoluto, opcional). Devolve `ListLoopsResponse`. |
+| `POST` | `/loops` | `experimental` | Começa um `/loop` que o daemon conduz. Corpo `StartLoopRequest` (`args` como foi digitado depois de `/loop`). Devolve `LoopRun` com `201`. Workspace relativo → `workspace_invalid`; argumento sem palavra ou flag desconhecida → `invalid_input`; loop vivo na mesma árvore — o mesmo workspace, dentro ou em volta dele, com os links resolvidos → `loop_already_running`. |
+| `GET` | `/loops` | `experimental` | Os loops que o daemon guarda, do mais antigo ao mais novo. Query `workspace` (absoluto, opcional) guarda os loops da mesma árvore pela regra da recusa de `POST /loops` — dentro, em volta, links resolvidos —, para o cliente achar o loop que o bloqueia; workspace que não pode ser lido → `workspace_invalid`. Devolve `ListLoopsResponse`. |
 | `GET` | `/loops/events` | `experimental` | **SSE.** Todos os loops primeiro (`snapshot`), depois cada loop que mudou (`changed`). Sem `from`: reconectar recebe outro `snapshot`. Um loop não sai da lista enquanto o daemon vive — o veredito é o que o cliente mostra depois do fim. |
 | `POST` | `/loops/{id}/continue` | `experimental` | Tira o loop de `awaiting_review` e abre o trabalho. Fora desse estado → `loop_not_awaiting_review`; id desconhecido → `loop_not_found`. Devolve `LoopRun`. |
 | `POST` | `/loops/{id}/stop` | `experimental` | Corpo `StopLoopRequest{when: "now" \| "after_spec"}`. `now` interrompe o turno e encerra; `after_spec` deixa a pasta corrente terminar e não abre a próxima. Loop já terminado responde como terminou. Devolve `LoopRun`. |
@@ -604,7 +604,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 | `events_expired` | 410 | `from` anterior à retenção |
 | `workspace_invalid` | 400 | caminho não absoluto ou inacessível |
 | `max_sessions_reached` | 503 | limite do `.config.spec.md` |
-| `loop_already_running` | 409 | já há um `/loop` vivo no workspace (dois loops na mesma árvore medem o trabalho um do outro) |
+| `loop_already_running` | 409 | já há um `/loop` vivo na árvore do workspace — nele, dentro ou em volta dele (dois loops na mesma árvore medem o trabalho um do outro) |
 | `loop_not_awaiting_review` | 409 | `continue` num loop que não espera revisão — em geral, outro cliente continuou antes |
 | `loop_not_found` | 404 | id de loop que o daemon não guarda |
 | `gh_unavailable` | 503 | o `gh` não está no `PATH` do daemon, ou está sem login; a mensagem diz qual |
@@ -759,6 +759,8 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Conferência que quebrou critério sai como `backward` e nomeia o que o laço desfez.
 - Turno que não escreveu nada não anuncia conferência.
 - Um segundo `/loop` vivo no mesmo workspace é recusado com `loop_already_running`; outro workspace é outra árvore.
+- A lista de loops de um workspace acha o loop que o bloqueia: de uma subpasta, em volta da árvore ou por um link.
+- Lista de loops de um workspace que não pode ser lido é recusada com `workspace_invalid`, nunca respondida vazia.
 - As rotas de loop recusam com o código que diz o que houve: `workspace_invalid`, `invalid_input`, `loop_not_found`, `loop_not_awaiting_review`.
 - `/loops/events` abre com todos os loops e segue cada mudança até o fim do loop.
 - Sessão aberta por um loop carrega `loop_id` desde o `session.created`; sessão aberta por um cliente não carrega.

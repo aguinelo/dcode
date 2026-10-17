@@ -2,7 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -176,5 +179,66 @@ func TestOverlapsHoldsAtTheRoot(t *testing.T) {
 		if got := overlaps(c.a, c.b); got != c.want {
 			t.Errorf("overlaps(%q, %q) = %v, want %v", c.a, c.b, got, c.want)
 		}
+	}
+}
+
+// The list keeps a workspace's loops by the rule that refuses a second one:
+// from a folder inside the loop's tree, around it, or through a link to it, a
+// client finds the loop that blocks it. It kept only the exact spelling, and a
+// /loop typed again from a subfolder found nothing to continue and was refused
+// with loop_already_running instead.
+func TestTheListFindsTheLoopThatBlocksTheWorkspace(t *testing.T) {
+	h := &heldDaemon{found: []protocol.SpecFolder{{Path: "specs/a", Criteria: 1}}, release: make(chan struct{})}
+	srv := loopServer(t, h)
+	root := t.TempDir()
+	ws := filepath.Join(root, "proj")
+	sub := filepath.Join(ws, "sub")
+	elsewhere := filepath.Join(root, "other")
+	for _, dir := range []string{sub, elsewhere} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(ws, link); err != nil {
+		t.Fatal(err)
+	}
+	run, err := srv.loops.start(protocol.StartLoopRequest{Workspace: ws, Args: "specs/a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer close(h.release)
+
+	listed := func(ws string) []protocol.LoopRun {
+		t.Helper()
+		rec := get(srv, "/loops?"+url.Values{"workspace": {ws}}.Encode())
+		if rec.Code != http.StatusOK {
+			t.Fatalf("listing %s gave %d %s", ws, rec.Code, rec.Body.String())
+		}
+		var list protocol.ListLoopsResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+			t.Fatal(err)
+		}
+		return list.Loops
+	}
+	for _, from := range []string{ws, sub, root, link, filepath.Join(link, "sub")} {
+		if got := listed(from); len(got) != 1 || got[0].ID != run.ID {
+			t.Errorf("listing from %s gave %+v, want the loop that blocks it", from, got)
+		}
+	}
+	if got := listed(elsewhere); len(got) != 0 {
+		t.Errorf("listing a tree of its own gave %+v, want nothing", got)
+	}
+}
+
+// A workspace the list cannot read is refused with workspace_invalid, never
+// answered with an empty list that reads as "no loop here".
+func TestTheListRefusesAWorkspaceItCannotRead(t *testing.T) {
+	h := &heldDaemon{release: make(chan struct{})}
+	srv := loopServer(t, h)
+	missing := filepath.Join(t.TempDir(), "missing")
+	rec := get(srv, "/loops?"+url.Values{"workspace": {missing}}.Encode())
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), protocol.CodeWorkspaceInvalid) {
+		t.Errorf("listing a missing workspace gave %d %s, want workspace_invalid", rec.Code, rec.Body.String())
 	}
 }

@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 233 decision changelogs |
+| spec families | 19, with 234 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The loop list finds the loop that blocks a workspace.** `GET /loops?workspace=`
+  now keeps the runs in, inside or around that tree, links resolved — the rule
+  that refuses a second loop — and refuses a workspace it cannot read with
+  `workspace_invalid`. It matched the exact path only, so a `/loop` typed again
+  from a subfolder, or through a link, found nothing to continue and was
+  refused with `loop_already_running`.
 - **`memory.enabled` and `memory.max_entries` are configurable.** The code
   read both, but neither was a known key, so a `config.toml` setting them was
   refused and `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES` were never
