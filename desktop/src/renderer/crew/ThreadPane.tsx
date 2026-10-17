@@ -5,12 +5,28 @@ import type { PaneView } from '../../state/pane';
 import { ContextLine } from '../context/ContextLine';
 import { emptySession, type SessionView } from '../../state/session';
 import type { Row } from '../../state/sidebar';
+import type { Measure } from '../../state/models';
 import { ConversationBody } from '../ConversationBody';
+import { LoopRuler } from '../LoopRuler';
+import { DoneRow } from '../Pane';
 import { MascotFigure, MascotGlyph } from '../Mascot';
 import { RecordedBody } from '../RecordedBody';
 import { ConversationTitle } from '../RenameTitle';
 import { ActionsButton } from '../SessionActions';
 import type { CrewHandlers } from './handlers';
+
+/**
+ * The proof above the conversation, as in the maximized window (D63): the
+ * loop's ruler with its review card, and the criteria as the turn checks them.
+ */
+export function ThreadProof({ sessionId, view, now, measure }: { sessionId: string; view: PaneView; now: number; measure: Measure | null }) {
+  return (
+    <div className="crew-proof">
+      <LoopRuler sessionId={sessionId} now={now} />
+      <DoneRow view={view} measure={measure} />
+    </div>
+  );
+}
 
 /**
  * The middle of the Painel: the conversation in focus, whole (D31) — its flow,
@@ -29,6 +45,7 @@ export function ThreadPane({
   onRetryHistory,
   on,
   git,
+  measure,
 }: {
   row: Row | null;
   view: PaneView | null;
@@ -43,6 +60,8 @@ export function ThreadPane({
   on: CrewHandlers;
   /** The folder's git, for the line under the title (D41). */
   git: GitState;
+  /** What the daemon's list says of the family it runs on, beside the criteria. */
+  measure: Measure | null;
 }) {
   if (!row || !view) {
     return (
@@ -59,7 +78,8 @@ export function ThreadPane({
   const ended = row.state === 'recorded' && !session;
   const model = session?.info?.model ?? row.model;
   return (
-    <section className="crew-thread" aria-label={row.title}>
+    // data-pane-id: the conversation's window, as the grid's (D63) — what the daemon ruler reads.
+    <section className="crew-thread" aria-label={row.title} data-pane-id={row.id}>
       <header className="crew-head">
         <MascotGlyph state={view.mascot} live={view.live} size={16} className={`pane-glyph tone-${view.tone}`} />
         <span className="crew-head-text">
@@ -75,6 +95,7 @@ export function ThreadPane({
         )}
         {session?.info && <ActionsButton title={row.title} onOpen={(anchor) => on.actions(row.id, anchor)} />}
       </header>
+      <ThreadProof sessionId={row.id} view={view} now={now} measure={measure} />
       {ended ? (
         <RecordedBody
           row={row}

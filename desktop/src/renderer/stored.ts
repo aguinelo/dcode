@@ -6,14 +6,22 @@ import type { Look } from './TopBar';
 // the version of the screen and the sidebar's arrangement. A storage that
 // cannot be read is said, never a silent default.
 
-/** Which version of the screen, per window, as a convenience: the grid when unknown (D32). */
+/** Which version of the screen, per window, as a convenience (D32): the Crew when unknown (D63). */
 export const LOOK_KEY = 'dcode.desktop.look.v1';
 
-export function loadLook(): Look {
+/** The Crew is the main screen (D63); the grid is the alternative, kept when chosen. */
+export const DEFAULT_LOOK: Look = 'crew';
+
+/** What a stored value comes to: either version as chosen, else the fallback. */
+export function lookOf(raw: string | null, fallback: Look = DEFAULT_LOOK): Look {
+  return raw === 'crew' || raw === 'grade' ? raw : fallback;
+}
+
+export function loadLook(fallback: Look = DEFAULT_LOOK): Look {
   try {
-    return window.localStorage.getItem(LOOK_KEY) === 'crew' ? 'crew' : 'grade';
+    return lookOf(window.localStorage.getItem(LOOK_KEY), fallback);
   } catch {
-    return 'grade';
+    return fallback;
   }
 }
 

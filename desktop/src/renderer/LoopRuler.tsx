@@ -26,7 +26,18 @@ function phaseGlyph(phase: string): string {
  * ends, its verdict; when it fails, why. Nothing at all for a conversation
  * that is not a loop's.
  */
-export function LoopRuler({ sessionId, now, unfolded = false }: { sessionId: string; now: number; unfolded?: boolean }) {
+export function LoopRuler({
+  sessionId,
+  now,
+  unfolded = false,
+  withReview = true,
+}: {
+  sessionId: string;
+  now: number;
+  unfolded?: boolean;
+  /** Draws the review card; off where another ruler of the same window draws it (D63). */
+  withReview?: boolean;
+}) {
   const loops = useContext(LoopContext);
   const [open, setOpen] = useState(unfolded);
   const run = loops?.of(sessionId) ?? null;
@@ -66,7 +77,8 @@ export function LoopRuler({ sessionId, now, unfolded = false }: { sessionId: str
           ))}
         </div>
       )}
-      {review && <ProposalReview review={review} onOpen={loops.openProposal} onStop={loops.stopNow} onStart={loops.startWork} />}
+      {review && withReview && <ProposalReview review={review} onOpen={loops.openProposal} onStop={loops.stopNow} onStart={loops.startWork} />}
+      {review && !withReview && <div className="loop-note tone-warn">A proposta espera revisão no alto da conversa.</div>}
       {v.verdict && <div className={`loop-note tone-${v.tone}`}>{v.verdict}</div>}
       {v.error && <div className="loop-note tone-err">{v.error}</div>}
       {v.warnings.map((w) => (
@@ -88,7 +100,10 @@ export function LoopRuler({ sessionId, now, unfolded = false }: { sessionId: str
   );
 }
 
-/** The Crew's Pronto tab gets the loop of the conversation in focus (D56, Figure 4): nothing when it has none. */
+/**
+ * The Crew's Pronto tab gets the loop of the conversation in focus (D56, Figure 4), its folders open:
+ * nothing when it has none. The review card is the thread's, at the top of the conversation (D63), drawn once.
+ */
 export function LoopSection({ sessionId }: { sessionId: string }) {
   const loops = useContext(LoopContext);
   const now = useNow(1000);
@@ -96,7 +111,7 @@ export function LoopSection({ sessionId }: { sessionId: string }) {
   return (
     <section className="crew-loop" aria-label="Loop">
       <h3 className="crew-loop-title">Loop</h3>
-      <LoopRuler sessionId={sessionId} now={now} unfolded />
+      <LoopRuler sessionId={sessionId} now={now} unfolded withReview={false} />
     </section>
   );
 }

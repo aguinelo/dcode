@@ -22,6 +22,8 @@ export interface CrewHandlers {
   newSession: () => void;
   /** Opens a session in a known project, or from the folder picker with null; it takes the middle. */
   startIn: (workspace: string | null, options?: StartOptions) => void;
+  /** Opens the "Começar loop" sheet in a known project (D55, D63). */
+  loop: (workspace: string) => void;
   look: (look: Look) => void;
   theme: (theme: ThemeChoice) => void;
 }
