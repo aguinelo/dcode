@@ -107,6 +107,21 @@ const DONE_CRITERION: Shape<P.DoneCriterion> = {
   mismatch: opt('boolean'),
 };
 
+const PROPOSED_CRITERION: Shape<P.ProposedCriterion> = {
+  name: req('string'),
+  command: req('string'),
+  exit_code: req('number'),
+  expects: opt('string'),
+  why: opt('string'),
+};
+
+const EARLIER_PROPOSAL: Shape<P.EarlierProposal> = {
+  sequence: req('number'),
+  proposed_at: req('string'),
+  criteria: req('array', PROPOSED_CRITERION),
+  protected: opt('array', 'string'),
+};
+
 const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
   'session.created': SESSION,
   'session.resumed': {
@@ -207,10 +222,13 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
   'plan.updated': { items: req('array', PLAN_ITEM) } satisfies Shape<P.PlanUpdated>,
   'done.proposed': {
     proposal_id: req('string'),
+    sequence: req('number'),
+    proposed_at: req('string'),
     path: req('string'),
     criteria: req('array', DONE_CRITERION),
     protected: opt('array', 'string'),
     no_acceptance: opt('boolean'),
+    earlier: opt('array', EARLIER_PROPOSAL),
   } satisfies Shape<P.DoneProposal>,
 };
 

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/aguinelo/dcode/internal/config"
@@ -179,47 +178,6 @@ func sessionDoneSet(opts Options) (loop.DoneSet, error) {
 	return spec.DoneSet(), nil
 }
 
-// Proposal is a definition of done the model derived, recorded and not yet
-// written down.
-//
-// Recorded rather than written because the turn that produces it runs in plan
-// mode: working out what you will be measured by is reading, and read-only
-// denies every write with no exception. The loop takes it from here — it
-// measures the criteria under the boundary the WORK will run under, which is
-// also the only place they can actually run, and writes the file.
-type Proposal struct {
-	Spec      string
-	Criteria  []qualifier.Proposed
-	Protected []string
-}
-
-// Proposals is where a qualifying session keeps what the model proposed.
-//
-// One slot, replaced. A model that proposes twice has changed its mind, and
-// keeping both would leave the loop choosing between them.
-type Proposals struct {
-	mu      sync.Mutex
-	current *Proposal
-}
-
-// Take removes the recorded proposal and returns it. Nil when there is none.
-//
-// Take rather than Get: committing it is the end of its life, and a proposal
-// that survived being written would be written again by the next commit.
-func (p *Proposals) Take() *Proposal {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	out := p.current
-	p.current = nil
-	return out
-}
-
-func (p *Proposals) put(v *Proposal) {
-	p.mu.Lock()
-	p.current = v
-	p.mu.Unlock()
-}
-
 // QualifyingTool builds the done_propose tool for a qualifying turn.
 //
 // The turn runs in PLAN mode: read-only, and no approval to grant. The tool
@@ -238,7 +196,9 @@ func QualifyingTool(specDir string, into *Proposals) tools.DonePropose {
 					Why:      strings.TrimSpace(c.Why),
 				})
 			}
-			into.put(p)
+			if err := into.put(p); err != nil {
+				return "", err
+			}
 			return fmt.Sprintf("recorded %d criteria for %s.\n\n"+
 				"They are NOT measured or written yet: this turn cannot write, and the "+
 				"loop runs them and records the result once it ends. You are done — "+

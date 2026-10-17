@@ -40,9 +40,10 @@ internal/loop/qualifier/
     measure_test.go
     render.go         # o done.toml que a pessoa revisa, e o resumo
     render_test.go
-    record.go         # Record: o que aconteceu, para o relatório
 internal/tools/
     done_propose.go   # a ferramenta pela qual a proposta chega
+internal/app/
+    proposals.go      # Proposals, MaxProposals: o histórico do turno, e o commit
 ```
 
 **Por que em `internal/loop/qualifier/` e não dentro da `loopcommand`.** A
@@ -121,24 +122,29 @@ de fazê-lo.
 |---|---|
 | Nome | `done_propose` |
 | Disponível | **apenas** no turno de qualificação |
-| Declara | nenhuma escrita, nenhuma rede; executa comandos pelo mesmo caminho de `Config.RunCriterion` |
-| Resultado | a medição da §5, de volta ao modelo |
+| Declara | nenhuma escrita, nenhuma rede, nenhum comando: só registra |
+| Resultado | quantos critérios foram registrados, sem medição; no teto, a recusa com o motivo |
 
 **Disponível apenas no turno de qualificação** é invariante, não conveniência.
 Uma ferramenta que redefine a definição de pronto, ao alcance de um turno de
 trabalho, é a saída curta da RN-7: o agente reescreve a régua em vez de cumpri-la.
 
-**Reproposta.** O modelo pode chamar `done_propose` de novo depois de ver a
-medição, até `qualifier.max_proposals`. É deliberado, e serve a um caso real: um
-critério que voltou `broken` porque o comando tem erro de digitação deve ser
-corrigido por quem o escreveu, não pelo humano.
+**Reproposta.** O modelo pode chamar `done_propose` de novo no mesmo turno, até
+`MaxProposals` vezes (`internal/app/proposals.go`, hoje 8). É deliberado, e
+serve a um caso real: um critério que o próprio proponente viu errado deve ser
+corrigido por quem o escreveu, não pelo humano. A medição acontece **depois**
+do turno (§7), então quem repropõe o faz pelo que leu, não pelo número.
 
-Isso abre um caminho de manipulação — ver "passou quando você disse que
-falharia" e responder com um critério mais fraco que falha. A mitigação **não** é
-proibir a reproposta: é o operador receber **todas** as propostas, em ordem, e
-não só a última. Estreitar um critério depois de vê-lo passar é o comportamento
-certo; trocá-lo por um trivial é o errado; e as duas coisas são visíveis lado a
-lado. O histórico é a defesa, não a proibição.
+Isso abre um caminho de manipulação — trocar um critério que mede de verdade
+por um mais fraco. A mitigação **não** é proibir a reproposta: é o operador
+receber **todas** as propostas, em ordem, e não só a última. Estreitar um
+critério é o comportamento certo; trocá-lo por um trivial é o errado; e as duas
+coisas são visíveis lado a lado. O histórico é a defesa, não a proibição.
+
+**O teto reprova, nunca descarta.** A proposta que passaria de `MaxProposals` é
+recusada ao modelo com o motivo, e o commit seguinte não grava nada e diz por
+quê. Abrir espaço apagando a mais antiga tiraria do histórico justamente a
+sequência que ele existe para mostrar.
 
 ## 5. A medição em t=0 e a classificação
 
@@ -250,11 +256,31 @@ const (
 // announced in the qualifying session's log once the file is written, never
 // before, and it waits for nothing.
 type DoneProposal struct {
-    ProposalID   string          `json:"proposal_id"`
-    Path         string          `json:"path"` // o done.toml escrito
-    Criteria     []DoneCriterion `json:"criteria"`
-    Protected    []string        `json:"protected,omitempty"`
-    NoAcceptance bool            `json:"no_acceptance,omitempty"`
+    ProposalID   string            `json:"proposal_id"`
+    Sequence     int               `json:"sequence"`    // de 1; sempre a última do turno
+    ProposedAt   time.Time         `json:"proposed_at"` // quando o modelo mandou
+    Path         string            `json:"path"`        // o done.toml escrito
+    Criteria     []DoneCriterion   `json:"criteria"`
+    Protected    []string          `json:"protected,omitempty"`
+    NoAcceptance bool              `json:"no_acceptance,omitempty"`
+    Earlier      []EarlierProposal `json:"earlier,omitempty"` // as anteriores, da mais antiga
+}
+
+// EarlierProposal is a proposal the qualifying turn replaced with a later one.
+type EarlierProposal struct {
+    Sequence   int                 `json:"sequence"`
+    ProposedAt time.Time           `json:"proposed_at"`
+    Criteria   []ProposedCriterion `json:"criteria"`
+    Protected  []string            `json:"protected,omitempty"`
+}
+
+// ProposedCriterion is a criterion as the model proposed it: nothing measured.
+type ProposedCriterion struct {
+    Name     string `json:"name"`
+    Command  string `json:"command"`
+    ExitCode int    `json:"exit_code"`
+    Expects  string `json:"expects,omitempty"`
+    Why      string `json:"why,omitempty"`
 }
 
 // DoneCriterion is one criterion as the operator sees it: what was proposed,
@@ -281,6 +307,13 @@ não há `TurnID`, `Round` nem `ExpiresAt`. É o que permite a um cliente desenh
 a revisão sem ler o `Summary` em prosa. Proposta que não chegou a ser escrita
 não é anunciada: o aviso diz que existe um arquivo para revisar.
 
+**As anteriores vão junto, sem medição.** `Earlier` traz cada proposta que o
+turno fez antes da escrita, da mais antiga à mais nova, como o modelo a mandou.
+Só a última é medida e escrita, então as anteriores não têm `Class`, `Exit` nem
+`Mismatch`: dizer uma medição que não aconteceu seria inventá-la. O
+`CommitDoneResponse` ganha `Proposals` (quantas o turno fez) e o `Summary` lista
+as anteriores embaixo do que foi escrito, que é o que a TUI mostra.
+
 **Saíram, sem nunca terem tido emissor:** `done.signed`, `SignDoneRequest`,
 `qualifier.Sign` com o `Asker`, o `SignedAnswer`, o `ErrRefused` e o teto de
 rodadas, e as chaves `DCODE_QUALIFIER_MAX_SIGN_ROUNDS` e
@@ -290,38 +323,55 @@ ida-e-volta bloqueante dentro do turno, e o desenho que ganhou
 revisão no arquivo. Não há prazo que aprova porque não há prazo: a RN-6 da `.r`
 é cumprida pelo laço que para e espera a pessoa, sem relógio nenhum.
 
-## 7. O congelamento e a quarta origem
+## 7. O histórico e o congelamento
 
 ```go
-// Qualify is the whole phase: propose → measure → sign → freeze.
-func Qualify(ctx context.Context, req Request) (loop.DoneSet, Record, error)
+// Package: internal/app
 
-// Record is what happened, kept for the final report.
-//
-// Every proposal, not just the signed one: narrowing a criterion after seeing
-// it pass is the right move and replacing it with a trivial one is the wrong
-// move, and only the sequence tells them apart.
-type Record struct {
-    Proposals []Proposal
-    Measured  [][]Measured
-    Signed    loop.DoneSet
-    SignedAt  time.Time
+// MaxProposals is how many times one qualifying turn may propose.
+const MaxProposals = 8
+
+// ErrTooManyProposals is a qualifying turn that tried to propose past MaxProposals.
+var ErrTooManyProposals = errors.New("too many proposals")
+
+// Proposal is one call to done_propose, recorded and not yet written.
+type Proposal struct {
+    Spec      string
+    Criteria  []qualifier.Proposed
+    Protected []string
+    Sequence  int       // de 1, posto ao gravar
+    At        time.Time // quando chegou
 }
+
+// Proposals keeps every proposal of a qualifying turn, oldest first.
+type Proposals struct{ /* ... */ }
+
+// Take removes every recorded proposal and returns them, oldest first; a turn
+// that crossed MaxProposals comes back as ErrTooManyProposals.
+func (p *Proposals) Take() ([]*Proposal, error)
 ```
 
-A `DoneSet` assinada entra em `Config.Done` quando a sessão nasce, e é imutável
-pelo resto do turno — mesma propriedade que a `loop-command` RN-2 já dá às
-outras origens, e pelo mesmo motivo.
+**Toda proposta, não só a escrita.** O daemon guarda cada chamada de
+`done_propose` do turno qualificador na ordem em que chegou, com o número e a
+hora dela. Quando o turno termina, o laço chama o commit
+(`POST /v1/sessions/{id}/done`): ele toma o histórico inteiro, mede e escreve a
+**última**, e anuncia `done.proposed` com as anteriores em `Earlier` (§6.1).
+Tomar é o fim da vida do histórico — um commit seguinte não grava nada duas
+vezes.
 
-Na `loopcommand`, uma constante nova:
+**A última é a que o trabalho usa.** O laço fica em `awaiting_review`, e
+`POST /v1/loops/{id}/continue` abre a sessão de trabalho, que lê o `done.toml`
+escrito como lê qualquer um (`202608252000-loop-command`). A `DoneSet` entra em
+`Config.Done` quando a sessão nasce, e é imutável pelo resto do turno — mesma
+propriedade que a `loop-command` RN-2 já dá às outras origens, e pelo mesmo
+motivo.
 
-```go
-SourceQualified // derived by the qualifier and signed by the operator
-```
-
-Ela **não** entra em `SourceAuto`. Qualificar é interativo e custa um turno de
-modelo; cair nela por omissão surpreenderia quem só queria rodar o comando
-legado. É escolha explícita, sempre.
+**Não há uma quarta origem.** Este `.p` previa um `Qualify` que fazia a fase
+inteira, um `Record` para o relatório e uma `SourceQualified` na
+`loopcommand`. Nenhum dos três foi construído, e nenhum faz falta: a fase é o
+laço chamando o turno e o commit, o histórico é `Proposals`, e a régua
+qualificada chega pela origem que já lê o `done.toml` da pasta — escolhida
+explicitamente pelo `/loop <pasta>`, nunca por `SourceAuto`.
 
 ## 8. Contratos comportamentais
 
@@ -415,7 +465,8 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 - O turno qualificador roda em modo planejamento, e o pedido não muda isso.
 - A sessão qualificadora não carrega definição de pronto nenhuma.
 - A proposta é **gravada**, não escrita: o turno registra e termina.
-- Uma segunda proposta substitui a primeira.
+- Toda proposta do turno qualificador é guardada, em ordem, com o número e a hora dela; a última é a gravada.
+- Passar de `MaxProposals` reprova o turno qualificador às claras: a proposta é recusada ao modelo, e nada é gravado nem anunciado.
 - Tomar a proposta é o fim da vida dela — não sobrevive para ser gravada duas vezes.
 - A medição acontece **fora** do turno, sob a fronteira em que o trabalho vai rodar.
 - Gravar nada é erro, nunca arquivo vazio.
@@ -424,6 +475,7 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 - Saída enorme de critério é cortada antes de chegar ao arquivo e ao resumo.
 - A condição do conjunto é mostrada junto dele, no arquivo, para ser revisada sabendo.
 - Escrever a proposta emite `done.proposed` uma vez no log da sessão qualificadora, com a medição e o caminho do arquivo.
+- O aviso `done.proposed` leva as propostas anteriores, da mais antiga à mais nova, como o modelo as mandou e sem medição.
 - Proposta que não chegou a ser escrita não é anunciada.
 
 ## 10. Invariantes previstas
@@ -433,10 +485,8 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 
 - `Measure` nunca escreve, e o runner injetado é o mesmo `Config.RunCriterion`.
 - `done_propose` não existe no registro de um turno que não é de qualificação.
-- Toda proposta é guardada no `Record`, não só a assinada.
 - A `DoneSet` congelada é, campo a campo, a que voltou na assinatura.
 - Nada muta `Config.Done` depois da assinatura.
-- `SourceQualified` nunca é escolhida por `SourceAuto`.
 
 ## 11. O que medir antes de construir a derivação
 
@@ -479,3 +529,4 @@ derivação boa também não vale nada.
 - [202608280200 — o cenário que mudou embaixo do número](changelog/202608280200-o-cenario-que-mudou-embaixo.md)
 - [202610140900 — a assinatura é o arquivo, e o ida-e-volta sai](changelog/202610140900-a-assinatura-e-o-arquivo.md)
 - [202610141000 — a proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)
+- [202610161200 — toda proposta do turno é guardada e chega ao operador](changelog/202610161200-toda-proposta-e-guardada.md)

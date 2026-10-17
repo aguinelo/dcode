@@ -15,7 +15,6 @@ import (
 	"github.com/aguinelo/dcode/internal/loop/loopcommand"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
-	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/server"
 	"github.com/aguinelo/dcode/internal/session"
 )
@@ -532,73 +531,4 @@ func (d *Daemon) qualifyOptions(workspace string, req protocol.CreateSessionRequ
 	opts.LoopSpec = specPath
 	opts.Protect = req.Protect
 	return QualifyMode(opts, req.Qualify), nil
-}
-
-// commitDone writes what a qualifying session proposed.
-//
-// The measurement happens HERE and not inside that session, under the boundary
-// the work will actually run under. A qualifying turn is read-only, and
-// measuring there would call a criterion broken because the sandbox refused it
-// a cache directory — a proposal born with a false measurement is worse than
-// none.
-// holdProposals keeps a qualifying session's proposal until the loop takes it.
-func (d *Daemon) holdProposals(id string, p *Proposals) {
-	d.proposalMu.Lock()
-	if d.proposalBy == nil {
-		d.proposalBy = map[string]*Proposals{}
-	}
-	d.proposalBy[id] = p
-	d.proposalMu.Unlock()
-}
-
-func (d *Daemon) proposals(id string) *Proposals {
-	d.proposalMu.Lock()
-	defer d.proposalMu.Unlock()
-	return d.proposalBy[id]
-}
-
-func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.CommitDoneResponse, error) {
-	sess, err := d.manager.Get(sessionID)
-	if err != nil {
-		return protocol.CommitDoneResponse{}, err
-	}
-	holder := d.proposals(sessionID)
-	if holder == nil {
-		return protocol.CommitDoneResponse{}, protocol.Errorf(protocol.CodeInvalidInput,
-			"session %s is not a qualifying session", sessionID)
-	}
-	p := holder.Take()
-	if p == nil {
-		return protocol.CommitDoneResponse{}, protocol.Errorf(protocol.CodeInvalidInput,
-			"nothing was proposed for %s", sessionID)
-	}
-
-	opts, oerr := d.optionsFor(sess.Workspace)
-	if oerr != nil {
-		return protocol.CommitDoneResponse{}, oerr
-	}
-	sb, serr := qualifyingSandbox(opts)
-	if serr != nil {
-		return protocol.CommitDoneResponse{}, serr
-	}
-	done, cerr := CommitProposal(ctx, p, criterionRunner(sb, opts), opts.DoneTimeout)
-	if cerr != nil {
-		return protocol.CommitDoneResponse{}, cerr
-	}
-	// Announced only now, with the file on disk: the notice says there is a
-	// file to review, and it waits for nothing — the turn that proposed has
-	// already ended.
-	done.Proposal.ProposalID = session.NewID(time.Now, randomUint32)
-	sess.Emit(protocol.EventDoneProposed, done.Proposal)
-	return protocol.CommitDoneResponse{
-		Path:     done.Proposal.Path,
-		Summary:  done.Summary,
-		Criteria: len(p.Criteria),
-	}, nil
-}
-
-// qualifyingSandbox builds the boundary a proposal is measured under: the
-// project's own, not the read-only one the proposing turn ran in.
-func qualifyingSandbox(opts Options) (sandbox.Sandbox, error) {
-	return sandbox.New(sandboxConfig(opts, func() bool { return opts.AllowNetwork }), opts.SandboxMode)
 }

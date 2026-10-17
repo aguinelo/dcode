@@ -446,6 +446,12 @@ type ApprovalRequest struct {
 // parsing the summary's prose.
 type DoneProposal struct {
 	ProposalID string `json:"proposal_id"`
+	// Sequence is this proposal's place among those the qualifying turn made,
+	// from 1. It is always the last of them: the last is what was measured and
+	// written, and what continuing the loop works against.
+	Sequence int `json:"sequence"`
+	// ProposedAt is when the model sent it, not when it was measured.
+	ProposedAt time.Time `json:"proposed_at"`
 	// Path is the done.toml the proposal was written to.
 	Path      string          `json:"path"`
 	Criteria  []DoneCriterion `json:"criteria"`
@@ -454,6 +460,32 @@ type DoneProposal struct {
 	// without anything having to change — usually a defect, and legitimately a
 	// refactor. Named, never refused.
 	NoAcceptance bool `json:"no_acceptance,omitempty"`
+	// Earlier is every proposal the same turn made before this one, oldest
+	// first, as the model sent it. Absent when there was only one.
+	//
+	// The history is the defence against a manipulated re-proposal: narrowing
+	// a criterion after seeing it pass is right, swapping it for a trivial one
+	// is wrong, and only the sequence tells the two apart. Earlier proposals
+	// were never measured — only the last one is — so they carry no class.
+	Earlier []EarlierProposal `json:"earlier,omitempty"`
+}
+
+// EarlierProposal is a proposal the qualifying turn replaced with a later one.
+type EarlierProposal struct {
+	Sequence   int                 `json:"sequence"`
+	ProposedAt time.Time           `json:"proposed_at"`
+	Criteria   []ProposedCriterion `json:"criteria"`
+	Protected  []string            `json:"protected,omitempty"`
+}
+
+// ProposedCriterion is a criterion as the model proposed it, before any run:
+// what it is and what the proposer claimed about it, and nothing measured.
+type ProposedCriterion struct {
+	Name     string `json:"name"`
+	Command  string `json:"command"`
+	ExitCode int    `json:"exit_code"`
+	Expects  string `json:"expects,omitempty"`
+	Why      string `json:"why,omitempty"`
 }
 
 // DoneCriterion is one criterion as the operator sees it: what was proposed,
@@ -481,6 +513,9 @@ type CommitDoneResponse struct {
 	Summary string `json:"summary"`
 	// Criteria is how many were written.
 	Criteria int `json:"criteria"`
+	// Proposals is how many times the qualifying turn proposed; the last one
+	// is what was written, and Summary lists the earlier ones.
+	Proposals int `json:"proposals"`
 }
 
 // SpecFolder is one spec folder and where it stands.

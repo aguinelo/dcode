@@ -1361,6 +1361,16 @@ export interface ApprovalRequest {
 export interface DoneProposal {
   proposal_id: string;
   /**
+   * Sequence is this proposal's place among those the qualifying turn made,
+   * from 1. It is always the last of them: the last is what was measured and
+   * written, and what continuing the loop works against.
+   */
+  sequence: number /* int */;
+  /**
+   * ProposedAt is when the model sent it, not when it was measured.
+   */
+  proposed_at: string;
+  /**
    * Path is the done.toml the proposal was written to.
    */
   path: string;
@@ -1372,6 +1382,35 @@ export interface DoneProposal {
    * refactor. Named, never refused.
    */
   no_acceptance?: boolean;
+  /**
+   * Earlier is every proposal the same turn made before this one, oldest
+   * first, as the model sent it. Absent when there was only one.
+   * The history is the defence against a manipulated re-proposal: narrowing
+   * a criterion after seeing it pass is right, swapping it for a trivial one
+   * is wrong, and only the sequence tells the two apart. Earlier proposals
+   * were never measured — only the last one is — so they carry no class.
+   */
+  earlier?: EarlierProposal[];
+}
+/**
+ * EarlierProposal is a proposal the qualifying turn replaced with a later one.
+ */
+export interface EarlierProposal {
+  sequence: number /* int */;
+  proposed_at: string;
+  criteria: ProposedCriterion[];
+  protected?: string[];
+}
+/**
+ * ProposedCriterion is a criterion as the model proposed it, before any run:
+ * what it is and what the proposer claimed about it, and nothing measured.
+ */
+export interface ProposedCriterion {
+  name: string;
+  command: string;
+  exit_code: number /* int */;
+  expects?: string;
+  why?: string;
 }
 /**
  * DoneCriterion is one criterion as the operator sees it: what was proposed,
@@ -1409,6 +1448,11 @@ export interface CommitDoneResponse {
    * Criteria is how many were written.
    */
   criteria: number /* int */;
+  /**
+   * Proposals is how many times the qualifying turn proposed; the last one
+   * is what was written, and Summary lists the earlier ones.
+   */
+  proposals: number /* int */;
 }
 /**
  * SpecFolder is one spec folder and where it stands.

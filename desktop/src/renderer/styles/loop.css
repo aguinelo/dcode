@@ -244,6 +244,23 @@
   font-size: 11px;
   color: var(--dc-dim);
 }
+/* The proposals the turn replaced (D62): folded, as the model sent them, nothing measured. */
+.loop-proposal-earlier > summary {
+  cursor: pointer;
+  color: var(--dc-faint);
+}
+.loop-earlier {
+  margin: 4px 0 0 12px;
+}
+.loop-earlier-title {
+  color: var(--dc-dim);
+}
+.loop-earlier .loop-criterion {
+  grid-template-columns: minmax(0, 1fr);
+}
+.loop-earlier .loop-criterion > * {
+  grid-column: 1;
+}
 .loop-review-actions {
   display: flex;
   justify-content: flex-end;

@@ -41,11 +41,24 @@ func propose(t *testing.T, dir string, run loop.CriterionRunner, in tools.DonePr
 	// The tool records; the LOOP measures and writes. Doing both here is what
 	// the caller is testing, and doing them separately is the whole point of
 	// the split: the turn cannot write, so the write happens after it.
-	out, cerr := CommitProposal(context.Background(), held.Take(), run, 0)
+	out, cerr := CommitProposal(context.Background(), last(t, held), run, 0)
 	if cerr != nil {
 		return res.Output, cerr
 	}
 	return out.Summary, nil
+}
+
+// last takes what was held and returns the proposal a commit would write.
+func last(t *testing.T, held *Proposals) *Proposal {
+	t.Helper()
+	every, err := held.Take()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(every) == 0 {
+		return nil
+	}
+	return every[len(every)-1]
 }
 
 type toolErr struct{ msg string }
@@ -206,7 +219,7 @@ func TestAProposalIsMeasuredWhereItsCriteriaCanRun(t *testing.T) {
 	// A runner that refuses everything stands in for read-only; one that lets
 	// it through stands in for the workspace boundary. The same proposal
 	// measures differently, which is exactly why the loop chooses.
-	p := held.Take()
+	p := last(t, held)
 	if p == nil {
 		t.Fatal("nothing was recorded")
 	}
@@ -241,24 +254,11 @@ func TestTheDaemonHoldsAProposalUntilTheLoopTakesIt(t *testing.T) {
 	}
 
 	held.put(&Proposal{Spec: "/w/specs/x"})
-	if got := held.Take(); got == nil || got.Spec != "/w/specs/x" {
+	if got := last(t, held); got == nil || got.Spec != "/w/specs/x" {
 		t.Fatalf("took %+v", got)
 	}
-	if got := held.Take(); got != nil {
+	if got := last(t, held); got != nil {
 		t.Errorf("a proposal survived being taken: %+v", got)
-	}
-}
-
-// A second proposal replaces the first. A model that proposes twice has
-// changed its mind, and keeping both would leave the loop choosing between
-// them.
-func TestASecondProposalReplacesTheFirst(t *testing.T) {
-	held := &Proposals{}
-	held.put(&Proposal{Spec: "a"})
-	held.put(&Proposal{Spec: "b"})
-	got := held.Take()
-	if got == nil || got.Spec != "b" {
-		t.Fatalf("took %+v, want the later one", got)
 	}
 }
 

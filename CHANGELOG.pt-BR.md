@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 238 changelogs de decisão |
+| famílias de spec | 19, com 240 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Toda proposta de um turno qualificador chega ao operador.** O daemon
+  guardava um slot só, trocado a cada `done_propose`, e o histórico que a
+  `done-qualifier` promete como defesa contra uma reproposta que troca um
+  critério por um trivial nunca existiu. Agora guarda cada proposta em ordem,
+  com o número e a hora; a última é medida e escrita, e o `done.proposed` leva
+  as anteriores como o modelo as mandou. Um turno que propõe além de
+  `MaxProposals` (8) é recusado com o motivo e nada é gravado — nunca a mais
+  antiga descartada para abrir espaço.
 - **A recusa é dita, e nunca contada como pronta.** Uma resposta Claude que
   termina em `stop_reason: "refusal"` era lida como término limpo, e o turno
   tomava a recusa, ou a meia resposta enviada antes dela, pela resposta. Agora

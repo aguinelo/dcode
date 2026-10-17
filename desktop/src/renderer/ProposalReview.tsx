@@ -55,6 +55,33 @@ export function ProposalReview({
             </div>
           ))}
           {p.noAcceptance && <p className="loop-note tone-warn">⚠ {p.noAcceptance}</p>}
+          {p.earlierLabel && (
+            <details className="loop-proposal-earlier" data-earlier-proposals={p.earlier.length}>
+              <summary>
+                {p.earlierLabel} · o turno repropôs; só a última foi medida e escrita
+              </summary>
+              {p.earlier.map((e) => (
+                <div key={e.sequence} className="loop-earlier">
+                  <span className="loop-earlier-title">{e.title}</span>
+                  {e.criteria.map((c, i) => (
+                    <div key={i} className="loop-criterion">
+                      <span className="loop-criterion-name">{c.name}</span>
+                      <span className="mono loop-criterion-command" title={c.command}>
+                        {c.command}
+                      </span>
+                      {c.said && <span className="loop-criterion-why">{c.said}</span>}
+                      {c.why && <span className="loop-criterion-why">{c.why}</span>}
+                    </div>
+                  ))}
+                  {e.protected.length > 0 && (
+                    <p className="loop-note">
+                      Protegido: <span className="mono">{e.protected.join(', ')}</span>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </details>
+          )}
           {p.protected.length > 0 && (
             <p className="loop-note">
               Protegido: <span className="mono">{p.protected.join(', ')}</span>

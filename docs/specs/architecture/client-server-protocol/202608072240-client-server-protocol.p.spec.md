@@ -278,7 +278,7 @@ a grade sabem que uma conversa pertence a um loop sem ler outro fluxo.
 | `tool.approval_resolved` | `{"approval_id":string,"decision":ApprovalDecision}` | decisão registrada |
 | `tool.completed` | `{"tool_call_id":string,"ok":bool,"output":string,"truncated":bool}` | ferramenta terminou |
 | `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error`, `refused` (o modelo recusou responder; um `session.error` de código `refused` vem antes, com o que o provedor disse) |
-| `done.proposed` | `DoneProposal` (`done-qualifier` §6.1) | a proposta de definição de pronto foi medida e escrita no `done.toml`; aviso, nada espera resposta |
+| `done.proposed` | `DoneProposal` (`done-qualifier` §6.1) | a última proposta do turno qualificador foi medida e escrita no `done.toml`, com o número dela e as anteriores em `earlier`, sem medição; aviso, nada espera resposta |
 | `plan.updated` | `{"items":[{"id":int,"text":string,"status":string,"blocked":string}]}` | plano criado ou alterado |
 | `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
 | `progress` | `{"turn_id":string,"tool_call_id":string?,"kind":string,"done":int,"total":int?}` | quão longe algo que roda já foi |
@@ -801,5 +801,6 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)
 - [202610151200 — Um turno carrega documentos](changelog/202610151200-um-turno-carrega-documentos.md)
 - [202610151300 — O PR de uma branch, lido e aberto pelo `gh`](changelog/202610151300-o-pr-de-uma-branch.md)
+- [202610161200 — A proposta anunciada leva as anteriores](changelog/202610161200-a-proposta-leva-as-anteriores.md)
 - [202610161400 — Pedido ilegível é erro de quem pediu](changelog/202610161400-pedido-ilegivel-e-erro-de-quem-pediu.md)
 - [202610162300 — A recusa do modelo é dita](../provider-adapter/changelog/202610162300-a-recusa-do-modelo-e-dita.md)

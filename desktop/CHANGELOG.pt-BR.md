@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O card da revisão mostra as propostas anteriores do turno qualificador
+  (D62).** Quando o turno propôs mais de uma vez, o título do card diz qual
+  proposta foi escrita ("3ª proposta do turno"), e uma seção recolhida embaixo
+  lista cada anterior, da mais antiga, como o modelo a mandou — o comando de
+  cada critério, o que o proponente disse que ele faria e por quê, e quanto
+  antes da escrita ela veio. Nada medido, porque só a última rodou. O histórico
+  é a defesa da `done-qualifier` contra uma reproposta que troca um critério
+  por um trivial, e o daemon agora o leva no `done.proposed`.
 - **Turno recusado diz que o modelo recusou.** Um turno que termina com o
   motivo novo do núcleo, `refused`, ganha a linha "Parou: o modelo recusou
   responder" depois da entrada de erro com as palavras do provedor, em vez de

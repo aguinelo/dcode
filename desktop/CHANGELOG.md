@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The review card shows the qualifying turn's earlier proposals (D62).** When
+  the turn proposed more than once, the card's heading names which proposal
+  was written ("3ª proposta do turno"), and a folded section below lists every
+  earlier one, oldest first, as the model sent it — each criterion's command,
+  what the proposer said it would do and why, and how long before the written
+  one it came. Nothing measured, because only the last proposal was run. The
+  history is the done-qualifier's defence against a re-proposal that swaps a
+  criterion for a trivial one, and the daemon now carries it in
+  `done.proposed`.
 - **A refused turn says the model refused.** A turn that ends with the core's
   new stop reason `refused` gets the line "Parou: o modelo recusou responder"
   after the error entry carrying the provider's words, instead of ending with

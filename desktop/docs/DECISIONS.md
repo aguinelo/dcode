@@ -10,7 +10,8 @@ D30); desde 2026-10-13 a régua visual mede contra capturas da janela aprovada (
 Quatro partes: o que foi decidido, o que ficou em aberto, o que o design pede e o
 protocolo não traz, e o que o desktop pede ao núcleo. As decisões de D21 em
 diante estão em [`DECISIONS-2.md`](DECISIONS-2.md), D39 em
-[`DECISIONS-3.md`](DECISIONS-3.md) e D49 em [`DECISIONS-4.md`](DECISIONS-4.md), para que cada arquivo fique abaixo de 500
+[`DECISIONS-3.md`](DECISIONS-3.md), D49 em [`DECISIONS-4.md`](DECISIONS-4.md) e D62 em
+[`DECISIONS-5.md`](DECISIONS-5.md), para que cada arquivo fique abaixo de 500
 linhas; a numeração é uma só, e uma referência a "D29" vale em todos.
 
 As que estão nos outros arquivos:
@@ -52,6 +53,7 @@ As que estão nos outros arquivos:
 - [D59](DECISIONS-4.md) — PDFs e arquivos de texto vão com o turno, como as imagens.
 - [D60](DECISIONS-4.md) — O painel de mudanças cria o PR e mostra o CI dele, sempre confirmado.
 - [D61](DECISIONS-4.md) — As cores do PR e do CI seguem a gramática de D52.
+- [D62](DECISIONS-5.md) — A revisão mostra as propostas anteriores do turno, recolhidas embaixo da escrita.
 
 ## Decisões
 
