@@ -103,7 +103,11 @@ function stateOf(entry, config) {
 
 async function act(page, step) {
   if (typeof step.press === 'string') return page.keyboard.press(step.press);
-  if (typeof step.click === 'string') return page.locator(step.click).first().click({ timeout: 5_000 });
+  if (typeof step.click === 'string') {
+    await page.locator(step.click).first().click({ timeout: 5_000 });
+    // The pointer leaves what it clicked: a hover is not part of a state.
+    return page.mouse.move(0, 0);
+  }
   // What a click asks for may arrive a moment later, as the recorded daemon's answer does.
   if (typeof step.waitFor === 'string') return page.locator(step.waitFor).first().waitFor({ state: 'visible', timeout: 5_000 });
   throw new Error(`a step in states.json is not press, click or waitFor: ${JSON.stringify(step)}`);

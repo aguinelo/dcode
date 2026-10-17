@@ -14,20 +14,19 @@ const state = applyRaw(emptySessions, recording.events);
 const now = Date.parse(RECORDED_AT);
 
 describe('the recording behind the reference states', () => {
-  it('opens each reference on its own session, or on the grid', () => {
-    const sessions = Object.fromEntries(Object.entries(referenceStates).map(([name, s]) => [name, s.session]));
-    expect(sessions).toEqual({
-      '02-janela-principal-rodando': 's-catalogar',
-      '03-janela-principal-aprovacao': 's-tokens',
-      '05-grade-em-repouso': null,
-      '06-grade-vazia': null,
-      '11-plano-fixo-e-atividade': 's-frete',
-      '12-loop-ciclo-e-regua': 's-carrinho',
-      '13-loop-revisao-propostas': 's-qualificar',
+  it('opens 02 and 03 maximized on the grid, and the rest on the Crew', () => {
+    const opens = Object.fromEntries(Object.entries(referenceStates).map(([name, s]) => [name, [s.look ?? 'crew', s.session]]));
+    expect(opens).toEqual({
+      '02-janela-principal-rodando': ['grade', 's-catalogar'],
+      '03-janela-principal-aprovacao': ['grade', 's-tokens'],
+      crew: ['crew', null],
+      'crew-vazia': ['crew', null],
+      'crew-loop': ['crew', null],
     });
     // 02 and 03 replay the first recording untouched: a session added to it would move their sidebar.
     expect(referenceStates['02-janela-principal-rodando']!.recording).toBe(recording);
-    expect(referenceStates['06-grade-vazia']!.recording.events).toEqual([]);
+    expect(referenceStates['crew-vazia']!.recording.events).toEqual([]);
+    expect(referenceStates['crew-loop']!.loops).toBe(recordedLoops);
   });
 
   it('gives the second recording a pinned plan, seven files written, a loop at check 4 and a third proposal', () => {

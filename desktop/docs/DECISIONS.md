@@ -182,9 +182,10 @@ o screenshot dela, a borda é a do PNG antigo. Foram recapturadas do mesmo jeito
 duas vezes, cada uma com autorização do dono no PR: a 03 com as respostas da
 aprovação (D39), e as duas com o mascote e o Laranja (D49, D52). O piso medido
 é 0 px nos dois estados, em execuções repetidas; os outros PNGs da pasta continuam os do handoff. Em 2026-10-17, com
-a autorização do dono para estender a régua, entraram de 05 a 14 — as telas
-feitas desde D41, que não tinham referência —, capturados do mesmo jeito da
-`main` em `d44ebcc`, à espera do visto do dono em cada uma. O `states.json`
+a autorização do dono para estender a régua, entraram de 05 a 12 — as telas
+feitas desde D41, que não tinham referência, na Crew que D63 fez tela
+principal, cada uma no claro e no escuro —, capturados do mesmo jeito sobre o
+PR da D63, à espera do visto do dono em cada uma. O `states.json`
 passou a dizer, por estado, o esquema de cores, o que a janela acha no
 armazenamento dela e as teclas e cliques antes da captura; o que a primeira
 gravação não mostra sem mexer na 02 e na 03 vem de uma segunda
