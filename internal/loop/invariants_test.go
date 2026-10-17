@@ -13,7 +13,10 @@ import (
 // it live: every tool declares a request the evaluator can rule on, and the
 // loop has exactly one place a tool runs. Re-stating it here would give two
 // places to keep in step.
-var loopDirs = []string{".", filepath.Join("..", "tools")}
+//
+// The summariser is in internal/app, because it is a model call and the loop
+// only receives it; what counts as a summary is asserted where it is made.
+var loopDirs = []string{".", filepath.Join("..", "tools"), filepath.Join("..", "app")}
 
 var loopInvariants = map[string]string{
 	"muda o **veredito** da próxima chamada":      "TestSetModeChangesTheVerdict",
@@ -33,6 +36,10 @@ var loopInvariants = map[string]string{
 	"resposta sem chamada termina":                "TestAnInterruptAsTheAnswerEndsRunsNoCriterion",
 	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
 	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
+	"no gatilho automático não aplica o plano":    "TestAFailedSummaryKeepsTheHistoryAndSaysSo_CompactionFailure",
+	"`/compact` com resumo que falha":             "TestAFailedSummaryFailsTheForcedCompaction_CompactionFailure",
+	"compactação forçada falha":                   "TestAContextSizeRefusalWithAFailedSummaryEndsTheTurn_CompactionFailure",
+	"terminado em `done` e inteiro":               "TestSummariserRefusesAnIncompleteSummary_CompactionFailure",
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
 	"encerra o turno em `StopMaxTokens`":          "TestAnAnswerCutAtTheOutputCeilingStopsAtTheCeiling",
 
