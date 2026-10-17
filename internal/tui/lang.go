@@ -98,6 +98,34 @@ type Strings struct {
 	SideRecent     string
 	SideBarScale   string
 
+	// The orchestrator's live list, the top pane of its side column
+	// (agents_side.go). The states are the eight of RN-9; AgentNoState is a
+	// row an event named before the child's own event said what it is.
+	SideAgents         string
+	AgentsNone         string
+	AgentsTokens       string
+	AgentsMore         string
+	AgentsMain         string
+	AgentsQuestionOne  string
+	AgentsQuestionMany string
+	AgentsUnreadable   string
+	AgentDispatched    string
+	AgentWorking       string
+	AgentAwaiting      string
+	AgentInReview      string
+	AgentPR            string
+	AgentMerged        string
+	AgentClosed        string
+	AgentFailed        string
+	AgentNoState       string
+	AgentWaits         string
+	AgentWaitsApproval string
+	AgentWaitsQuestion string
+	AgentWaitsMerge    string
+	AgentEnded         string
+	AgentRefused       string
+	AgentLocal         string
+
 	// The lane legend.
 	LaneYou     string
 	LaneProcess string
@@ -379,6 +407,30 @@ var catalogue = map[Lang]Strings{
 		SideAllowed:            "allowed",
 		SideRecent:             "recent",
 		SideBarScale:           "bars scaled to",
+		SideAgents:             "agents",
+		AgentsNone:             "no agents yet",
+		AgentsTokens:           "tokens in/out/cache",
+		AgentsMore:             "+%d more",
+		AgentsMain:             "main",
+		AgentsQuestionOne:      "1 question waits for you",
+		AgentsQuestionMany:     "%d questions wait for you",
+		AgentsUnreadable:       "an orchestrator event could not be read: %s: %v",
+		AgentDispatched:        "dispatched",
+		AgentWorking:           "working",
+		AgentAwaiting:          "waiting for you",
+		AgentInReview:          "in review",
+		AgentPR:                "PR",
+		AgentMerged:            "merged",
+		AgentClosed:            "closed",
+		AgentFailed:            "failed",
+		AgentNoState:           "not yet said",
+		AgentWaits:             "waits on",
+		AgentWaitsApproval:     "approval",
+		AgentWaitsQuestion:     "a question",
+		AgentWaitsMerge:        "the merge",
+		AgentEnded:             "ended",
+		AgentRefused:           "merge refused",
+		AgentLocal:             "local",
 		LaneYou:                "you",
 		LaneProcess:            "work",
 		LaneAnswer:             "answer",
@@ -550,6 +602,7 @@ Usage:
   dcode login [flags]        store the model credential, read without echo
   dcode config [key]         the effective configuration and where it came from
   dcode sessions [show <id>] what dcode has done here, and what it did
+  dcode decisions [flags]    the orchestrator's decisions here, read without the daemon
   dcode socket               the daemon's socket path
   dcode -c                   continue the most recent session here
   dcode -r                   choose which session to continue
@@ -620,6 +673,30 @@ Environment:
 		SideAllowed:            "permitido",
 		SideRecent:             "recentes",
 		SideBarScale:           "barras na escala de",
+		SideAgents:             "agentes",
+		AgentsNone:             "nenhum agente ainda",
+		AgentsTokens:           "tokens entrada/saída/cache",
+		AgentsMore:             "+%d mais",
+		AgentsMain:             "main",
+		AgentsQuestionOne:      "1 pergunta espera você",
+		AgentsQuestionMany:     "%d perguntas esperam você",
+		AgentsUnreadable:       "um evento da orquestradora não pôde ser lido: %s: %v",
+		AgentDispatched:        "despachado",
+		AgentWorking:           "trabalhando",
+		AgentAwaiting:          "esperando você",
+		AgentInReview:          "em revisão",
+		AgentPR:                "PR",
+		AgentMerged:            "merged",
+		AgentClosed:            "fechado",
+		AgentFailed:            "falhou",
+		AgentNoState:           "ainda não dito",
+		AgentWaits:             "espera",
+		AgentWaitsApproval:     "aprovação",
+		AgentWaitsQuestion:     "uma pergunta",
+		AgentWaitsMerge:        "o merge",
+		AgentEnded:             "terminou",
+		AgentRefused:           "merge recusado",
+		AgentLocal:             "local",
 		LaneYou:                "você",
 		LaneProcess:            "trabalho",
 		LaneAnswer:             "resposta",
@@ -791,6 +868,7 @@ Uso:
   dcode login [flags]        guarda a credencial do modelo, lida sem eco
   dcode config [chave]       a configuração efetiva e de onde ela veio
   dcode sessions [show <id>] o que o dcode fez aqui, e o que ele fez
+  dcode decisions [flags]    as decisões da orquestradora daqui, lidas sem o daemon
   dcode socket               o caminho do socket do daemon
   dcode -c                   continua a sessão mais recente daqui
   dcode -r                   escolhe qual sessão continuar

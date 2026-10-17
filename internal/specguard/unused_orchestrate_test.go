@@ -11,13 +11,8 @@ const orchestrationClient = "pkg/client is the public API; a consumer conducts t
 
 func init() {
 	for _, name := range []string{
-		"Answered", "CI", "Checked", "ChildChanged", "ChildCompleted", "Ended",
-		"EventChildCompleted", "EventChildStarted", "EventChildState", "EventGateMeasured",
-		"EventMainHealth", "EventMergeCompleted", "EventMergeRefused", "EventQuestionAnswered",
-		"EventQuestionAsked", "EventReviewVerdict", "Forge", "GateMeasured", "MainHealth",
-		"MergeCompleted", "MergeRefused", "Merged", "Method", "OutputPath",
-		"OutputTail", "Recommended", "Returned", "Review", "ReviewVerdict", "Sensitive", "ValidRole",
-		"Waiting", "What",
+		"Checked", "Ended", "Forge", "Merged", "Method",
+		"OutputPath", "OutputTail", "Recommended", "Returned", "Sensitive", "ValidRole", "What",
 	} {
 		exportedWithoutUser[name] = orchestrationAhead
 	}

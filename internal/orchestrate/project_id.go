@@ -1,41 +1,52 @@
 package orchestrate
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-// ResolveProject answers which project dir belongs to: the root of the main
-// worktree, links resolved, and Project.ID, the first 24 hex of the sha256 of
-// that root. Every worktree of one tree, a subdirectory of it, and a link to
-// it are the same project, because they share one git common directory.
+// ResolveProject is the project a folder belongs to: the root of the tree's
+// main worktree, links resolved, and Project.ID, 24 hex of its sha256.
 //
-// The common directory's parent is the root; a bare repository has no working
-// tree of its own, and its common directory is the root.
+// Every way into the same tree — the root, a subfolder, a link to it, a linked
+// worktree — is the same project, because the root is read from git's common
+// directory rather than from the folder that was named. A folder in no git
+// tree is an error: a project is a tree.
 //
-// Spec: docs/specs/architecture/orchestration/202610132000-orchestration.p.spec.md §5.2, §9.2.
+// POST /v1/projects and `dcode decisions` resolve through this, so the log a
+// reader opens is the one the orchestrator writes.
+//
+// Spec: docs/specs/architecture/orchestration/202610132000-orchestration.config.spec.md (Project.ID).
 func ResolveProject(ctx context.Context, dir string) (root, id string, err error) {
-	if !filepath.IsAbs(dir) {
-		return "", "", fmt.Errorf("orchestrate: %q is not an absolute path", dir)
+	if _, err := exec.LookPath("git"); err != nil {
+		return "", "", errors.New("orchestrate: git is not on the PATH, and a project is resolved by it")
 	}
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--path-format=absolute", "--git-common-dir")
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-common-dir")
 	cmd.Dir = dir
-	cmd.Env = append(cmd.Environ(), "GIT_OPTIONAL_LOCKS=0", "LC_ALL=C")
+	cmd.Env = gitEnv(cmd.Environ())
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		said := err.Error()
-		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
-			said = strings.TrimSpace(string(ee.Stderr))
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
 		}
-		return "", "", fmt.Errorf("orchestrate: %s is not in a git repository: %s", dir, said)
+		return "", "", fmt.Errorf("orchestrate: %s is not a project: git does not find a tree there (%s)", dir, msg)
 	}
-	common := filepath.Clean(strings.TrimSpace(string(out)))
-	root = common
+	common := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(dir, common)
+	}
+	common = filepath.Clean(common)
+	root = common // a bare repository has no working tree of its own
 	if filepath.Base(common) == ".git" {
 		root = filepath.Dir(common)
 	}
@@ -44,4 +55,16 @@ func ResolveProject(ctx context.Context, dir string) (root, id string, err error
 	}
 	sum := sha256.Sum256([]byte(root))
 	return root, hex.EncodeToString(sum[:])[:24], nil
+}
+
+// gitEnv drops what would make git answer for another tree than the folder's.
+func gitEnv(env []string) []string {
+	drop := map[string]bool{"GIT_DIR": true, "GIT_WORK_TREE": true, "GIT_COMMON_DIR": true, "GIT_INDEX_FILE": true}
+	out := env[:0:0]
+	for _, kv := range env {
+		if k, _, _ := strings.Cut(kv, "="); !drop[k] {
+			out = append(out, kv)
+		}
+	}
+	return out
 }

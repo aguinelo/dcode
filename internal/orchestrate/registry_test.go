@@ -2,10 +2,13 @@ package orchestrate
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -13,6 +16,36 @@ import (
 
 	"github.com/aguinelo/dcode/internal/protocol"
 )
+
+// gitRepo makes a repository with one commit on main and returns its root,
+// links resolved.
+func gitRepo(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	git(t, root, "init", "-q", "-b", "main")
+	git(t, root, "commit", "-q", "--allow-empty", "-m", "first")
+	return root
+}
+
+// Spec: orchestration .config §4 — Project.ID is the first 24 hex of the
+// sha256 of the resolved root, so it is stable across restarts.
+func TestTheProjectIDIsTheSha256OfTheResolvedRoot(t *testing.T) {
+	root := gitRepo(t)
+	sum := sha256.Sum256([]byte(root))
+	gotRoot, id, err := ResolveProject(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotRoot != root || id != hex.EncodeToString(sum[:])[:24] {
+		t.Errorf("ResolveProject = %s, %s", gotRoot, id)
+	}
+}
 
 // fakeSpawner stands in for the daemon: it hands out session ids and says
 // what it was asked.
