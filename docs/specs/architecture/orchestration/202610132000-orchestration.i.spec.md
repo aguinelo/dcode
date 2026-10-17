@@ -13,7 +13,8 @@
 | 1 — `.p`, `.config`, `.i` desta fatia | **feito** (#516) — aprovado pelo dono em 2026-10-17, com as seis decisões do fim |
 | 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
 | 3 — a sessão gravada reabre sob o próprio id | **este PR** (#519), com os três itens do fio que o passo 2 deixou |
-| 4 a 14 | **não feito** |
+| 4 a 12, e 14 | **não feito** |
+| 13 — a orquestradora lista os agentes | **em parte**: a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate`, `^Q`, `^R` e a leitura de `/children` ao abrir ficam para o resto do passo |
 
 ## Pré-requisitos
 
@@ -272,6 +273,13 @@ sob a orquestradora; escolher um anexa a TUI a ele, onde a aprovação é respon
 - `child.state` muda a linha sem reler `/children`.
 - Fechado some quando a resposta do daemon não o traz mais; `failed` fica.
 - `^Q` responde a pergunta pelo `POST`, e `question_already_answered` é dito.
+
+**Feito na primeira parte** (a lista, sem tecla nova): os três primeiros testes acima —
+`TestTheColumnDrawsAChildInEachOfTheEightStates`,
+`TestAChildStateChangesItsRowWithoutRereadingTheList` e
+`TestAClosedChildLeavesWhenTheDaemonNoLongerListsItAndAFailedOneStays`, em
+`internal/tui/agents_test.go`. A forma da coluna está na `client-tui.p` §2.2. O do `^Q` vem com a
+tecla.
 
 ### Passo 14 — `feat(desktop): the live agent list`
 

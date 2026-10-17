@@ -20,7 +20,7 @@ func orchestratorModel(t *testing.T, lang Lang) Model {
 	}))
 }
 
-func child(id, title, state string, in, out, cache int) protocol.Child {
+func orchChild(id, title, state string, in, out, cache int) protocol.Child {
 	return protocol.Child{
 		ID: id, ParentID: "orq", Title: title, State: state,
 		Usage: protocol.Usage{InputTokens: in, OutputTokens: out, CacheReadTokens: cache},
@@ -40,23 +40,23 @@ func agentsGeometry() Geometry {
 
 func eightStates(t *testing.T) Model {
 	m := orchestratorModel(t, PtBR)
-	tela := child("c3", "tela", "awaiting_person", 9000, 800, 0)
+	tela := orchChild("c3", "tela", "awaiting_person", 9000, 800, 0)
 	tela.Waiting = "approval"
-	busca := child("c5", "busca", "pr", 5000, 1000, 0)
+	busca := orchChild("c5", "busca", "pr", 5000, 1000, 0)
 	busca.PR = &protocol.ChildPR{Number: 518, CI: protocol.GitChecksPass}
-	cache := child("c6", "cache", "merged", 3000, 200, 0)
+	cache := orchChild("c6", "cache", "merged", 3000, 200, 0)
 	cache.PR = &protocol.ChildPR{Number: 517, CI: protocol.GitChecksPass}
-	lint := child("c8", "lint", "failed", 7000, 2000, 0)
+	lint := orchChild("c8", "lint", "failed", 7000, 2000, 0)
 	lint.Reason = "incomplete"
 	lint.PR = &protocol.ChildPR{Number: 519, CI: protocol.GitChecksFail}
 	return apply(t, m,
-		started(t, 2, child("c1", "índice", "dispatched", 0, 0, 0)),
-		started(t, 3, child("c2", "api", "working", 41200, 3100, 12000)),
+		started(t, 2, orchChild("c1", "índice", "dispatched", 0, 0, 0)),
+		started(t, 3, orchChild("c2", "api", "working", 41200, 3100, 12000)),
 		started(t, 4, tela),
-		started(t, 5, child("c4", "docs", "in_review", 2000, 300, 1000)),
+		started(t, 5, orchChild("c4", "docs", "in_review", 2000, 300, 1000)),
 		started(t, 6, busca),
 		started(t, 7, cache),
-		started(t, 8, child("c7", "flags", "closed", 100, 10, 0)),
+		started(t, 8, orchChild("c7", "flags", "closed", 100, 10, 0)),
 		started(t, 9, lint),
 		ev(t, 10, protocol.EventQuestionAsked, protocol.Question{ID: "q1", Kind: "merge", Text: "merge busca?"}),
 		ev(t, 11, protocol.EventQuestionAsked, protocol.Question{ID: "q2", Kind: "design", Text: "qual índice?"}),
@@ -102,10 +102,10 @@ func TestTheColumnDrawsAChildInEachOfTheEightStates(t *testing.T) {
 // /children: the event carries the whole child.
 func TestAChildStateChangesItsRowWithoutRereadingTheList(t *testing.T) {
 	m := apply(t, orchestratorModel(t, En),
-		started(t, 2, child("a", "index", "working", 100, 10, 0)),
-		started(t, 3, child("b", "api", "working", 200, 20, 0)),
+		started(t, 2, orchChild("a", "index", "working", 100, 10, 0)),
+		started(t, 3, orchChild("b", "api", "working", 200, 20, 0)),
 	)
-	moved := child("a", "index", "pr", 5000, 500, 0)
+	moved := orchChild("a", "index", "pr", 5000, 500, 0)
 	moved.PR = &protocol.ChildPR{Number: 7, CI: protocol.GitChecksPending}
 	m = apply(t, m, ev(t, 4, protocol.EventChildState, protocol.ChildChanged{Child: moved}))
 
@@ -128,12 +128,12 @@ func TestAChildStateChangesItsRowWithoutRereadingTheList(t *testing.T) {
 // of the client's; failed stays, because failed waits for someone.
 func TestAClosedChildLeavesWhenTheDaemonNoLongerListsItAndAFailedOneStays(t *testing.T) {
 	m := apply(t, orchestratorModel(t, En),
-		started(t, 2, child("gone", "old", "closed", 1, 1, 0)),
-		started(t, 3, child("merged", "done", "merged", 1, 1, 0)),
-		started(t, 4, child("broken", "lint", "failed", 1, 1, 0)),
-		started(t, 5, child("live", "api", "working", 1, 1, 0)),
+		started(t, 2, orchChild("gone", "old", "closed", 1, 1, 0)),
+		started(t, 3, orchChild("merged", "done", "merged", 1, 1, 0)),
+		started(t, 4, orchChild("broken", "lint", "failed", 1, 1, 0)),
+		started(t, 5, orchChild("live", "api", "working", 1, 1, 0)),
 	)
-	m = m.LoadAgents([]protocol.Child{child("live", "api", "working", 9, 9, 0)}, nil)
+	m = m.loadAgents([]protocol.Child{orchChild("live", "api", "working", 9, 9, 0)}, nil)
 
 	var ids []string
 	for _, a := range m.Agents.Children {
@@ -162,7 +162,7 @@ func TestAQuestionWaitsUntilItIsAnswered(t *testing.T) {
 	if len(m.Agents.Questions) != 0 {
 		t.Errorf("an answered question still waits: %+v", m.Agents.Questions)
 	}
-	m = m.LoadAgents(nil, []protocol.Question{{ID: "q2"}, {ID: "q3", Answered: &now}})
+	m = m.loadAgents(nil, []protocol.Question{{ID: "q2"}, {ID: "q3", Answered: &now}})
 	if len(m.Agents.Questions) != 1 || m.Agents.Questions[0].ID != "q2" {
 		t.Errorf("the daemon's list did not leave only the unanswered: %+v", m.Agents.Questions)
 	}
@@ -171,7 +171,7 @@ func TestAQuestionWaitsUntilItIsAnswered(t *testing.T) {
 // Review, gate and merge land on the child they name.
 func TestPipelineEventsLandOnTheirChild(t *testing.T) {
 	m := apply(t, orchestratorModel(t, PtBR),
-		started(t, 2, child("a", "api", "in_review", 1, 1, 0)),
+		started(t, 2, orchChild("a", "api", "in_review", 1, 1, 0)),
 		ev(t, 3, protocol.EventReviewVerdict, protocol.ReviewVerdict{ChildID: "a",
 			Verdict: protocol.Verdict{Commit: "c1", Verdict: "approve"}}),
 		ev(t, 4, protocol.EventGateMeasured, protocol.GateMeasured{ChildID: "a",
@@ -219,7 +219,7 @@ func TestAnUnreadableOrchestratorEventIsSaid(t *testing.T) {
 
 // A state the client does not know is drawn as it came, never as one it knows.
 func TestAnUnknownStateIsDrawnAsItCame(t *testing.T) {
-	m := apply(t, orchestratorModel(t, En), started(t, 2, child("a", "api", "paused", 1, 1, 0)))
+	m := apply(t, orchestratorModel(t, En), started(t, 2, orchChild("a", "api", "paused", 1, 1, 0)))
 	out := strings.Join(renderAgentsPane(m, agentsGeometry(), 40, 40), "\n")
 	if !strings.Contains(out, "paused") {
 		t.Errorf("an unknown state was not drawn as it came:\n%s", out)
