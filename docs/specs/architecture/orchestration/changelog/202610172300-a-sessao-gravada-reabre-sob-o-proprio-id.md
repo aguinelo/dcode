@@ -16,8 +16,9 @@ traz a sessão de volta com o mesmo id, o histórico, a sequência e o arquivo.
 - **O que volta é o que o registro diz que a sessão era.** `Reopening.Origin` é o
   `session.created` — `protocol.Session`, o tipo do fio —, com o modo do último
   `session.mode_changed`; `Title` é o último `session.renamed`. Por ser o tipo do fio, o
-  `parent_id`, `project_id`, `role` e `owns` que o passo 2 acrescenta à `Session` voltam junto, sem
-  segunda lista aqui: **essa é a costura** para o passo 2, e nada deste passo os declara.
+  `parent_id`, `project_id`, `role` e `owns` que o passo 2 (#518) pôs na `Session` voltam junto,
+  sem segunda lista aqui; a `session.Session` ganha os quatro para os devolver no `Describe`, e um
+  teste confere que a sessão reaberta continua sob a mesma mãe.
 - **Turno aberto ganha fim.** O turno que o registro mostra começado e não terminado recebe
   `turn.completed{reason: daemon_restart}` antes de a sessão entrar no `Manager`, como primeiro
   evento novo; ninguém começa um turno à frente dele. O motor reaberto numera o próximo turno
@@ -28,9 +29,9 @@ traz a sessão de volta com o mesmo id, o histórico, a sequência e o arquivo.
 - **Aprovador sem prazo.** `session.Approver` substitui o `deadlineApprover` do `app` — o mesmo
   comportamento com o tempo do daemon, que nunca é zero ali — e, com tempo zero, anuncia
   `ExpiresAt` zero: a pergunta espera a pessoa o quanto for, para o filho da orquestradora.
-- **No fio**, só os três itens do passo 2 de que este depende, combinados com quem faz o passo 2:
+- **No fio**, só os três itens do passo 2 de que este depende, combinados com quem fez o passo 2:
   `TurnStarted.Origin` (`omitempty`), `OriginChildren` e `StopDaemonRestart`. `generated.ts`
-  regenerado.
+  regenerado, e o texto deles na `client-server-protocol.p` §5.1.
 
 ## O que é recusado, e como é dito
 

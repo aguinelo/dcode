@@ -34,8 +34,8 @@ type Reopening struct {
 	// Origin is the session as it announced itself (session.created), with
 	// the mode as the record last left it. It is the wire type on purpose: a
 	// field the session announces — the model bundle, the loop, and the
-	// parent, project, role and owns that the orchestrator adds — comes back
-	// with it, with no second list here to keep in step.
+	// parent, project, role and owns that place it under an orchestrator —
+	// comes back with it, with no second list here to keep in step.
 	Origin protocol.Session
 	// Title is the last name the record gave the conversation; empty is none.
 	Title string
@@ -206,6 +206,7 @@ func NewReopened(r Reopening, engine *loop.Engine, log *EventLog, clock Clock) *
 	s := New(r.ID, o.Workspace, o.Model, o.SandboxMode, engine, log, clock)
 	s.Family, s.Transport, s.BaseURL, s.Branch = o.Family, o.Transport, o.BaseURL, o.Branch
 	s.LoopID, s.ContextWindow, s.CreatedAt = o.LoopID, o.ContextWindow, o.CreatedAt
+	s.ParentID, s.ProjectID, s.Role, s.Owns = o.ParentID, o.ProjectID, o.Role, o.Owns
 	if engine != nil {
 		engine.ContinueTurns(r.Turns)
 	} else if o.Mode != "" {

@@ -34,10 +34,15 @@ type Session struct {
 	Branch string
 	// LoopID is the `/loop` run that opened this session, when one did. Set
 	// by the daemon before the session is announced.
-	LoopID        string
-	Mode          string
-	behaviourMode string
-	CreatedAt     time.Time
+	LoopID string
+	// ParentID, ProjectID, Role and Owns place the session under an
+	// orchestrator, as protocol.Session names them. Set by the daemon before
+	// the session is announced, and given back by NewReopened from the record.
+	ParentID, ProjectID, Role string
+	Owns                      []string
+	Mode                      string
+	behaviourMode             string
+	CreatedAt                 time.Time
 	// ContextWindow is the model's window, so a client can turn a token count
 	// into the percentage a person can act on.
 	ContextWindow int
@@ -185,6 +190,7 @@ func (s *Session) Describe() protocol.Session {
 		ContextWindow: s.ContextWindow,
 		DoneCriteria:  criteria,
 		LoopID:        s.LoopID,
+		ParentID:      s.ParentID, ProjectID: s.ProjectID, Role: s.Role, Owns: s.Owns,
 	}
 }
 

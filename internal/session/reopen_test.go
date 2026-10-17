@@ -43,6 +43,8 @@ func recordSession(t *testing.T, dir string, open bool) {
 		Model: "m-1", Family: "minimax", Transport: "anthropic", BaseURL: "http://x",
 		Branch: "main", SandboxMode: "read-only", Mode: "plan", CreatedAt: reopenCreated,
 		ContextWindow: 200000, LoopID: "loop-1",
+		ParentID: "0199aabbccd00000000", ProjectID: "a1b2c3d4e5f6a1b2c3d4e5f6",
+		Role: protocol.RoleChild, Owns: []string{"internal/session/", "changelog.d/x.md"},
 	}))
 	must(l.Append(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1", Text: "hello"}))
 	must(l.Append(protocol.EventMessageDelta, protocol.MessageDelta{TurnID: "t1", Text: "hi there"}))
@@ -145,6 +147,25 @@ func TestAReopenedSessionKeepsItsIdHistoryAndSequence(t *testing.T) {
 	}
 	if d.LoopID != "loop-1" || d.Workspace != "/w" || !d.CreatedAt.Equal(reopenCreated) || d.Branch != "main" {
 		t.Errorf("identity lost: %+v", d)
+	}
+}
+
+// The orchestrator and its children are named by these: a reopen that lost
+// them would bring back a session nobody's tree points at.
+func TestAReopenedSessionKeepsItsPlaceUnderTheOrchestrator(t *testing.T) {
+	dir := t.TempDir()
+	recordSession(t, dir, false)
+	s, _, err := reopenBare(NewManager(4), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	d := s.Describe()
+	if d.ParentID != "0199aabbccd00000000" || d.ProjectID != "a1b2c3d4e5f6a1b2c3d4e5f6" || d.Role != protocol.RoleChild {
+		t.Errorf("placement lost: parent %q project %q role %q", d.ParentID, d.ProjectID, d.Role)
+	}
+	if len(d.Owns) != 2 || d.Owns[0] != "internal/session/" || d.Owns[1] != "changelog.d/x.md" {
+		t.Errorf("owns %v, want the two the record holds", d.Owns)
 	}
 }
 
