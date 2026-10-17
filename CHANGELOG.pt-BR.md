@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O gate de pre-push escolhe os gates pelo que a branch muda em relação à
+  `main`.** Ele comparava com o head antigo da branch no remoto, então uma
+  branch atualizada com a `main` rodava o gate do desktop por mudanças de
+  protocolo que vieram da `main`, e recusava o push onde faltava
+  `desktop/node_modules`.
 - **Compactação cujo resumo falhou mantém o histórico e diz por quê.** O
   resumidor aceitava como resumo inteiro um stream que terminava em erro ou no
   teto de saída, e o loop trocava resumo que falhou ou veio vazio por uma frase

@@ -263,6 +263,10 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The pre-push gate picks its gates from what the branch changes against
+  `main`.** It compared with the branch's old remote head, so a branch brought
+  up to date with `main` ran the desktop gate for protocol changes that came
+  from `main`, and refused the push where `desktop/node_modules` was missing.
 - **A compaction whose summary failed keeps the history and says so.** The
   summariser took a stream that ended in an error or at the output ceiling as a
   whole summary, and the loop swapped a failed or empty one for a fixed
