@@ -1,0 +1,49 @@
+{
+  "id": "s-2",
+  "parent_id": "s-1",
+  "title": "index",
+  "profile": "fast",
+  "model": "MiniMax-M3",
+  "state": "pr",
+  "owns": [
+    "internal/index/"
+  ],
+  "branch": "dcode/index-s2a1b3",
+  "worktree": "/o/p/children/s-2",
+  "base": "6ec45f1",
+  "head": "9a8b7c6",
+  "returned": 1,
+  "return": {
+    "why": "review",
+    "phase": "fix",
+    "paths": [
+      "internal/index/a.go"
+    ]
+  },
+  "review": {
+    "session_id": "s-3",
+    "commit": "9a8b7c6",
+    "verdict": "approve"
+  },
+  "gate": {
+    "commit": "1f2e3d4",
+    "tree": "5a6b7c8",
+    "base": "6ec45f1",
+    "command": "make check",
+    "exit_code": 0,
+    "duration_ms": 81000,
+    "result": "green",
+    "at": "2026-08-11T12:00:00Z"
+  },
+  "pr": {
+    "number": 518,
+    "url": "https://github.com/o/r/pull/518",
+    "ci": "passing"
+  },
+  "usage": {
+    "input_tokens": 41000,
+    "output_tokens": 2000
+  },
+  "started": "2026-08-11T12:00:00Z",
+  "ended": "2026-08-11T13:00:00Z"
+}

@@ -54,6 +54,25 @@ const (
 	CodeInternal  = "internal"
 )
 
+// Orchestration codes, .p §5.4 of the orchestration family, which says where
+// each is given and when. A tool's refusal reaches the model as an ok:false
+// result with the code in its text.
+const (
+	CodeProjectNotFound         = "project_not_found"
+	CodeOrchestratorUnavailable = "orchestrator_unavailable"
+	CodeOwnsOverlap             = "owns_overlap"
+	CodeOutsideOwns             = "outside_owns"
+	CodeMaxChildrenReached      = "max_children_reached"
+	CodeModelNotAllowed         = "model_not_allowed"
+	CodeMainRed                 = "main_red"
+	CodeGateStale               = "gate_stale"
+	CodeGateUndeclared          = "gate_undeclared"
+	CodeCeilingReached          = "ceiling_reached"
+	CodeChildInPipeline         = "child_in_pipeline"
+	CodeQuestionNotFound        = "question_not_found"
+	CodeQuestionAlreadyAnswered = "question_already_answered"
+)
+
 // httpStatus maps each code to its response status. Codes absent from the map
 // are a programming error and surface as 500 rather than silently as 200.
 var httpStatus = map[string]int{
@@ -72,6 +91,20 @@ var httpStatus = map[string]int{
 	CodeGhUnavailable:         http.StatusServiceUnavailable,
 	CodePRRefused:             http.StatusConflict,
 	CodeInternal:              http.StatusInternalServerError,
+
+	CodeProjectNotFound:         http.StatusNotFound,
+	CodeOrchestratorUnavailable: http.StatusServiceUnavailable,
+	CodeOwnsOverlap:             http.StatusConflict,
+	CodeOutsideOwns:             http.StatusConflict,
+	CodeMaxChildrenReached:      http.StatusServiceUnavailable,
+	CodeModelNotAllowed:         http.StatusBadRequest,
+	CodeMainRed:                 http.StatusConflict,
+	CodeGateStale:               http.StatusConflict,
+	CodeGateUndeclared:          http.StatusConflict,
+	CodeCeilingReached:          http.StatusConflict,
+	CodeChildInPipeline:         http.StatusConflict,
+	CodeQuestionNotFound:        http.StatusNotFound,
+	CodeQuestionAlreadyAnswered: http.StatusConflict,
 }
 
 // HTTPStatus returns the status for a code, or 500 for an unmapped one.

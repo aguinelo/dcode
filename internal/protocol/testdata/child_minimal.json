@@ -1,0 +1,19 @@
+{
+  "id": "s-2",
+  "parent_id": "s-1",
+  "title": "index",
+  "profile": "",
+  "model": "",
+  "state": "dispatched",
+  "owns": [
+    "internal/index/"
+  ],
+  "branch": "dcode/index-s2a1b3",
+  "worktree": "/o/p/children/s-2",
+  "base": "6ec45f1",
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "started": "2026-08-11T12:00:00Z"
+}

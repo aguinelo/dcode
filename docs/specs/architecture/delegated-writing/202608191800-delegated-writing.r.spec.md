@@ -181,4 +181,4 @@ ser disjuntos — e esse caso fica fora de escopo até que apareça um de verdad
 
 ## 7. Changelog
 
-_Sem alterações desde a criação._
+- [202610171900 — O filho-sessão pergunta; o filho delegado continua sem perguntar](changelog/202610171900-o-filho-sessao-pergunta.md)

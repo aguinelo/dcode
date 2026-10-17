@@ -124,6 +124,15 @@ export interface Conversation {
    * a list can group a loop's sessions without reading another stream.
    */
   loop_id?: string;
+  /**
+   * ParentID, ProjectID, Role and Owns are the session's own (Session),
+   * read from its session.created, so a recorded child still says whose it
+   * was after the daemon that ran it is gone.
+   */
+  parent_id?: string;
+  project_id?: string;
+  role?: string;
+  owns?: string[];
 }
 /**
  * ListConversationsResponse answers GET /conversations: newest activity first.
@@ -267,6 +276,84 @@ export const CodePRRefused = "pr_refused";
  * Error codes. Section 8 of the planning spec.
  */
 export const CodeInternal = "internal";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeProjectNotFound = "project_not_found";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeOrchestratorUnavailable = "orchestrator_unavailable";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeOwnsOverlap = "owns_overlap";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeOutsideOwns = "outside_owns";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeMaxChildrenReached = "max_children_reached";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeModelNotAllowed = "model_not_allowed";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeMainRed = "main_red";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeGateStale = "gate_stale";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeGateUndeclared = "gate_undeclared";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeCeilingReached = "ceiling_reached";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeChildInPipeline = "child_in_pipeline";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeQuestionNotFound = "question_not_found";
+/**
+ * Orchestration codes, .p §5.4 of the orchestration family, which says where
+ * each is given and when. A tool's refusal reaches the model as an ok:false
+ * result with the code in its text.
+ */
+export const CodeQuestionAlreadyAnswered = "question_already_answered";
 
 //////////
 // source: git.go
@@ -840,6 +927,330 @@ export interface ModelsResponse {
 }
 
 //////////
+// source: orchestrate.go
+
+/**
+ * Roles a session can have under an orchestrator (Session.Role). Empty is a
+ * session nobody orchestrates.
+ */
+export const RoleOrchestrator = "orchestrator";
+/**
+ * Roles a session can have under an orchestrator (Session.Role). Empty is a
+ * session nobody orchestrates.
+ */
+export const RoleChild = "child";
+/**
+ * Roles a session can have under an orchestrator (Session.Role). Empty is a
+ * session nobody orchestrates.
+ */
+export const RoleReviewer = "reviewer";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventChildStarted: EventType = "child.started";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventChildState: EventType = "child.state";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventChildCompleted: EventType = "child.completed";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventReviewVerdict: EventType = "review.verdict";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventGateMeasured: EventType = "gate.measured";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventQuestionAsked: EventType = "question.asked";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventQuestionAnswered: EventType = "question.answered";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventMergeCompleted: EventType = "merge.completed";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventMergeRefused: EventType = "merge.refused";
+/**
+ * Events of an orchestrator's log. A child's own progress stays in the child's
+ * log; these are what the live list and the conversation need.
+ */
+export const EventMainHealth: EventType = "main.health";
+/**
+ * Project is one tree conducted by one orchestrator.
+ */
+export interface Project {
+  /**
+   * ID is 24 hex characters of the sha256 of Root.
+   */
+  id: string;
+  /**
+   * Root is the main worktree's root, links resolved: every worktree of the
+   * same tree is the same project.
+   */
+  root: string;
+  main: string;
+  /**
+   * Forge is "github" or "local".
+   */
+  forge: string;
+  /**
+   * Autonomy is "step", always, in this slice.
+   */
+  autonomy: string;
+  orchestrator_id: string;
+  created: string;
+}
+/**
+ * Child is one child of an orchestrator, as the live list shows it. ID is the
+ * child's session id.
+ */
+export interface Child {
+  id: string;
+  parent_id: string;
+  title: string;
+  profile: string;
+  model: string;
+  /**
+   * State is one of the eight of the state machine (.p §6).
+   */
+  state: string;
+  /**
+   * Reason is how the last turn ended; Waiting is "approval", "question" or
+   * "merge" while the child waits for the person.
+   */
+  reason?: string;
+  waiting?: string;
+  owns: string[];
+  branch: string;
+  worktree: string;
+  /**
+   * Base is the main commit the branch left from; Head the last commit the
+   * harness made on it.
+   */
+  base: string;
+  head?: string;
+  returned?: number /* int */;
+  return?: Return;
+  review?: Verdict;
+  gate?: GateResult;
+  pr?: ChildPR;
+  /**
+   * Usage is summed over the child's turns.
+   */
+  usage: Usage;
+  started: string;
+  ended?: string;
+}
+/**
+ * Return is why a child was handed its work back.
+ */
+export interface Return {
+  /**
+   * Why is outside_owns, review, conflict, gate_red or person.
+   */
+  why: string;
+  /**
+   * Phase is red or fix, for a return that asks for a red test first.
+   */
+  phase?: string;
+  paths?: string[];
+}
+/**
+ * Verdict is what the reviewer said of one commit: approve,
+ * changes_requested, or missing when it ended without saying.
+ */
+export interface Verdict {
+  session_id: string;
+  commit: string;
+  verdict: string;
+  findings?: Finding[];
+}
+/**
+ * Finding is one defect the reviewer pointed at, with why it is one.
+ */
+export interface Finding {
+  path: string;
+  line?: number /* int */;
+  what: string;
+  why: string;
+}
+/**
+ * GateResult is one run of the gate on one commit.
+ */
+export interface GateResult {
+  /**
+   * Commit is the commit measured, Tree its tree, Base the main under it.
+   */
+  commit: string;
+  tree: string;
+  base: string;
+  command: string;
+  exit_code: number /* int */;
+  duration_ms: number /* int */;
+  /**
+   * Result is green, red, timeout or undeclared.
+   */
+  result: string;
+  /**
+   * OutputTail is the last 4 KiB; OutputPath the whole output on disk.
+   */
+  output_tail?: string;
+  output_path?: string;
+  at: string;
+}
+/**
+ * ChildPR is a child's pull request. Number is 0 for a local merge; CI is in
+ * GitChecks' grammar.
+ */
+export interface ChildPR {
+  number?: number /* int */;
+  url?: string;
+  ci?: string;
+}
+/**
+ * MainHealth is what the forge says of main at one commit: green, red, pending
+ * or unknown.
+ */
+export interface MainHealth {
+  commit: string;
+  health: string;
+  checked: string;
+}
+/**
+ * Question is one thing waiting for the person. Kind is merge, design or
+ * ceiling; Recommended is the ID of one of Options.
+ */
+export interface Question {
+  id: string;
+  kind: string;
+  text: string;
+  recommended: string;
+  why: string;
+  child_id?: string;
+  options: QuestionOption[];
+  /**
+   * Sensitive are the paths of the diff that make a merge ask with care.
+   */
+  sensitive?: string[];
+  asked: string;
+  answer?: string;
+  note?: string;
+  answered?: string;
+}
+/**
+ * QuestionOption is one answer a question offers.
+ */
+export interface QuestionOption {
+  id: string;
+  label: string;
+}
+/**
+ * OpenProjectRequest opens, or finds, the project of a workspace.
+ */
+export interface OpenProjectRequest {
+  workspace: string;
+}
+/**
+ * ListProjectsResponse answers GET /projects.
+ */
+export interface ListProjectsResponse {
+  projects: Project[];
+}
+/**
+ * ListChildrenResponse answers GET /sessions/{id}/children: the live ones, and
+ * the closed ones still inside their retention.
+ */
+export interface ListChildrenResponse {
+  children: Child[];
+}
+/**
+ * ListQuestionsResponse answers GET /sessions/{id}/questions.
+ */
+export interface ListQuestionsResponse {
+  questions: Question[];
+}
+/**
+ * AnswerQuestionRequest answers one question; the first answer wins.
+ */
+export interface AnswerQuestionRequest {
+  answer: string;
+  note?: string;
+}
+/**
+ * ChildChanged is the payload of child.started and child.state.
+ */
+export interface ChildChanged {
+  child: Child;
+}
+/**
+ * ChildCompleted is the payload of child.completed, sent for every child turn
+ * that ends. Conclusion is cut at DelegateMaxResultBytes, and Truncated says so.
+ */
+export interface ChildCompleted {
+  child_id: string;
+  turn_id: string;
+  reason: string;
+  conclusion: string;
+  truncated?: boolean;
+  wrote?: string[];
+  unwritten?: string[];
+  usage: Usage;
+}
+/**
+ * ReviewVerdict is the payload of review.verdict: the verdict, flat, with the
+ * child it is about.
+ */
+export interface ReviewVerdict extends Verdict {
+  child_id: string;
+}
+/**
+ * GateMeasured is the payload of gate.measured: the result, flat, with the
+ * child it is about. Sent for every measurement, green or not.
+ */
+export interface GateMeasured extends GateResult {
+  child_id: string;
+}
+/**
+ * MergeCompleted is the payload of merge.completed. Merged is the commit on
+ * main; Measured the one the gate ran on. PR is 0 for a local merge.
+ */
+export interface MergeCompleted {
+  child_id: string;
+  method: string;
+  pr?: number /* int */;
+  merged: string;
+  measured: string;
+}
+/**
+ * MergeRefused is the payload of merge.refused: main_red, gate_stale,
+ * gate_undeclared, or the forge's own refusal, with the reason.
+ */
+export interface MergeRefused {
+  child_id: string;
+  code: string;
+  reason: string;
+}
+
+//////////
 // source: protocol.go
 /*
 Package protocol is the shared vocabulary between the dcode daemon and its
@@ -1100,6 +1511,15 @@ export interface Session {
    * LoopID is the `/loop` run that opened this session, when one did.
    */
   loop_id?: string;
+  /**
+   * ParentID, ProjectID, Role and Owns place a session under an
+   * orchestrator (orchestrate.go). All empty for a session nobody
+   * orchestrates, which is every session a person opens.
+   */
+  parent_id?: string;
+  project_id?: string;
+  role?: string;
+  owns?: string[];
 }
 /**
  * CreateSessionRequest opens a session. Workspace must be absolute.

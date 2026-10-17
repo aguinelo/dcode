@@ -10,8 +10,9 @@
 | Passo | Estado |
 |---|---|
 | 0 — changelog em fragmentos | **feito** (#515) |
-| 1 — `.p`, `.config`, `.i` desta fatia | **este PR** — aprovado pelo dono em 2026-10-17, com as seis decisões do fim |
-| 2 a 14 | **não feito** |
+| 1 — `.p`, `.config`, `.i` desta fatia | **feito** (#516) — aprovado pelo dono em 2026-10-17, com as seis decisões do fim |
+| 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
+| 3 a 14 | **não feito** |
 
 ## Pré-requisitos
 

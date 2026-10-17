@@ -217,6 +217,13 @@ type Session struct {
 	DoneCriteria int `json:"done_criteria"`
 	// LoopID is the `/loop` run that opened this session, when one did.
 	LoopID string `json:"loop_id,omitempty"`
+	// ParentID, ProjectID, Role and Owns place a session under an
+	// orchestrator (orchestrate.go). All empty for a session nobody
+	// orchestrates, which is every session a person opens.
+	ParentID  string   `json:"parent_id,omitempty"`
+	ProjectID string   `json:"project_id,omitempty"`
+	Role      string   `json:"role,omitempty"`
+	Owns      []string `json:"owns,omitempty"`
 }
 
 // CreateSessionRequest opens a session. Workspace must be absolute.
