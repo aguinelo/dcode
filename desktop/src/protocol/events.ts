@@ -148,6 +148,7 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
     turn_id: req('string'),
     text: opt('string'),
     documents: opt('array', ATTACHED_DOCUMENT),
+    origin: opt('string'),
   } satisfies Shape<P.TurnStarted>,
   'turn.steered': { turn_id: req('string'), text: req('string') } satisfies Shape<P.TurnSteered>,
   'turn.completed': {
