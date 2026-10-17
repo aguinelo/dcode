@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 228 decision changelogs |
+| spec families | 19, with 229 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A release is built only on a commit CI has passed on `main`.** A new
+  first job checks that the tag is on `main` and that CI passed at that exact
+  commit, waiting while it still runs and failing, with the reason, when it
+  ended red or never ran. With pull requests no longer running CI, a `main`
+  commit can be red, and the release trusted that none was.
 - **Pull requests no longer run CI; `main` does, after the merge.** The
   pre-push hook already runs the same gate here, on the pushed commit, in
   seconds, and paying GitHub minutes to find again what a local run found is

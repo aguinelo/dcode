@@ -12,9 +12,60 @@ permissions:
   # private key anywhere — which would otherwise be the highest-value item in
   # the entire repository.
   id-token: write
+  # main-green reads the CI runs of the tagged commit.
+  actions: read
 
 jobs:
+  # Pull requests do not run CI: the pre-push hook gates them, and CI confirms
+  # main after the merge. That moves the one measurement this workflow trusts
+  # instead of repeating — the union coverage gate, see verify — to after the
+  # merge, so a tag pushed onto a main that CI has not passed would ship it.
+  # Nothing is built until CI on main has passed on this exact commit.
+  main-green:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: the tag is on main
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not on main; a release is cut from main only"
+            exit 1
+          fi
+      # A tag pushed right after the merge finds CI still running, which is
+      # the ordinary case: wait for it rather than fail. What fails is a run
+      # that ended red, or no run at all — never a release on an unmeasured
+      # commit.
+      - name: CI passed on main at this commit
+        run: |
+          runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&event=push"
+          for attempt in $(seq 1 80); do
+            state=$(gh api "$runs" --jq '.workflow_runs | sort_by(.created_at) | last | if . == null then "none" else "\(.status) \(.conclusion) \(.html_url)" end')
+            case "$state" in
+              "completed success "*)
+                echo "CI on main passed at $GITHUB_SHA: ${state##* }"
+                exit 0 ;;
+              completed*)
+                echo "::error::CI on main did not pass at $GITHUB_SHA ($state); fix main before releasing"
+                exit 1 ;;
+              none)
+                if [ "$attempt" -ge 6 ]; then
+                  echo "::error::CI never ran on main at $GITHUB_SHA; a release needs a commit CI has measured"
+                  exit 1
+                fi ;;
+            esac
+            echo "waiting for CI on main at $GITHUB_SHA ($state), attempt $attempt of 80"
+            sleep 30
+          done
+          echo "::error::CI on main at $GITHUB_SHA did not finish in 40 minutes"
+          exit 1
+
   verify:
+    needs: main-green
     strategy:
       fail-fast: false
       matrix:
@@ -79,8 +130,9 @@ jobs:
       # aqui, por plataforma, é rodar exatamente a forma que reprovava por
       # geografia — e no pior momento, com a tag já criada.
       #
-      # A união já foi medida: uma tag só existe sobre um commit da main, e
-      # todo commit da main passou pelo job `coverage` da CI. Repetir a versão
+      # A união já foi medida: o job `main-green` acima só deixa a release
+      # seguir sobre um commit da main em que a CI — e com ela o job
+      # `coverage` — passou. Repetir a versão
       # quebrada da verificação não acrescenta garantia, só acrescenta uma
       # maneira de o release falhar sem que nada esteja errado.
 
