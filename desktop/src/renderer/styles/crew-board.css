@@ -262,6 +262,9 @@
   gap: 6px;
   padding: 8px 18px 10px;
   border-bottom: 1px solid var(--dc-line-soft);
+  /* A review card with its earlier proposals open never pushes the field out of the window. */
+  max-height: 55%;
+  overflow-y: auto;
 }
 .crew-proof .loop-ruler {
   margin: 0;
