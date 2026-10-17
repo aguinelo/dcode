@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 229 decision changelogs |
+| spec families | 19, with 231 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Every proposal of a qualifying turn reaches the operator.** The daemon
+  kept one slot, replaced on each `done_propose`, so the history the
+  done-qualifier promises as its defence against a re-proposal that swaps a
+  criterion for a trivial one never existed. It now keeps every proposal in
+  order, with its number and time; the last is measured and written, and
+  `done.proposed` carries the earlier ones as the model sent them. A turn that
+  proposes past `MaxProposals` (8) is refused with the reason and nothing is
+  written — never the oldest dropped to make room.
 - **A release is built only on a commit CI has passed on `main`.** A new
   first job checks that the tag is on `main` and that CI passed at that exact
   commit, waiting while it still runs and failing, with the reason, when it

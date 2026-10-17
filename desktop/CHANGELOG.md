@@ -10,6 +10,15 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The review card shows the qualifying turn's earlier proposals (D62).** When
+  the turn proposed more than once, the card's heading names which proposal
+  was written ("3ª proposta do turno"), and a folded section below lists every
+  earlier one, oldest first, as the model sent it — each criterion's command,
+  what the proposer said it would do and why, and how long before the written
+  one it came. Nothing measured, because only the last proposal was run. The
+  history is the done-qualifier's defence against a re-proposal that swaps a
+  criterion for a trivial one, and the daemon now carries it in
+  `done.proposed`.
 - **The changes panel opens a PR and shows its CI, always confirmed (D60).**
   Crew's Mudanças tab and the grid's context card show the branch's PR — `#N`
   and title, opening in the browser, its CI as a dot, a word and counts, and

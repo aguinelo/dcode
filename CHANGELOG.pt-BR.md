@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 229 changelogs de decisão |
+| famílias de spec | 19, com 231 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Toda proposta de um turno qualificador chega ao operador.** O daemon
+  guardava um slot só, trocado a cada `done_propose`, e o histórico que a
+  `done-qualifier` promete como defesa contra uma reproposta que troca um
+  critério por um trivial nunca existiu. Agora guarda cada proposta em ordem,
+  com o número e a hora; a última é medida e escrita, e o `done.proposed` leva
+  as anteriores como o modelo as mandou. Um turno que propõe além de
+  `MaxProposals` (8) é recusado com o motivo e nada é gravado — nunca a mais
+  antiga descartada para abrir espaço.
 - **Um release só é construído sobre um commit em que a CI passou na
   `main`.** Um primeiro job novo confere que a tag está na `main` e que a CI
   passou exatamente naquele commit, esperando enquanto ela ainda roda e

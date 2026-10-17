@@ -45,9 +45,11 @@ pergunta da §10 do `.p` com dados de uso real.
 
 ### 1.2 Tetos da fase — etapas 1 e 2
 
-**`DCODE_QUALIFIER_MAX_PROPOSALS`**, inteiro, default `3` (etapa 3). Quantas
-vezes o modelo pode chamar `done_propose` no mesmo turno. Esgotado, a última
-proposta medida vai ao operador com a contagem à vista.
+`DCODE_QUALIFIER_MAX_PROPOSALS` **saiu** antes de existir (changelog
+`202610161200`): o teto de propostas por turno é a constante `MaxProposals` da
+§5, e esgotá-lo reprova o turno em vez de mandar a última ao operador. Mandar a
+última com a contagem à vista seria tratar o teto como fim normal, e um turno
+que repropôs sem parar é exatamente o que a pessoa precisa ver falhar.
 
 `DCODE_QUALIFIER_MAX_SIGN_ROUNDS` e `DCODE_QUALIFIER_SIGN_TIMEOUT` **saíram**
 (changelog `202610140900`): eram o teto e o prazo de um ida-e-volta de
@@ -109,9 +111,10 @@ separa as duas. Nenhuma das duas primeiras entrou em `measured.go`.
 | Proposta vazia é erro | sempre | `DoneSet` vazia é "sem definição de pronto", que o ciclo relata como pronto. Ausência de definição não é definição permissiva. |
 | `NoAcceptance` é aviso, nunca recusa | sempre | Refatoração legítima não tem critério de aceitação. O harness não sabe distinguir isso de proposta vazia de conteúdo, então nomeia e o operador assina sabendo. |
 | Critério editado é medido de novo | sempre | Sem isso a edição do operador escapa da regra que a família existe para aplicar. |
-| Toda proposta fica no `Record` | sempre | Apertar depois de ver passar é certo; trocar por trivial é errado; só a sequência distingue. |
+| Toda proposta do turno é guardada, em ordem, e vai ao operador | sempre | Apertar um critério é certo; trocá-lo por trivial é errado; só a sequência distingue. |
+| `MaxProposals` | 8 | Toda proposta é guardada e mostrada, então o histórico precisa de fim. Passar dele reprova o turno qualificador às claras; descartar a mais antiga apagaria a sequência que o histórico existe para mostrar. Muito acima do que corrigir um comando ou apertar um critério pede. |
 | `done_propose` só no turno de qualificação | sempre | Uma ferramenta que redefine o pronto ao alcance de um turno de trabalho é a saída curta da RN-7. |
-| `SourceQualified` fora do `SourceAuto` | sempre | Qualificar é interativo e custa um turno. Cair nela por omissão surpreende quem só queria o comando legado. |
+| A régua qualificada nunca vem do `SourceAuto` | sempre | Qualificar custa um turno e espera a pessoa. Ela chega pela pasta que o `/loop <pasta>` nomeou, nunca por omissão. |
 | A `DoneSet` assinada é imutável no turno | sempre | O relatório do fim tem que ser sobre a régua que o operador viu no começo. |
 
 ## 6. Changelog
@@ -119,3 +122,4 @@ separa as duas. Nenhuma das duas primeiras entrou em `measured.go`.
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
 - [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)
+- [202610161200 — toda proposta do turno é guardada e chega ao operador](changelog/202610161200-toda-proposta-e-guardada.md)

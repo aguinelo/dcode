@@ -10,6 +10,14 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **O card da revisão mostra as propostas anteriores do turno qualificador
+  (D62).** Quando o turno propôs mais de uma vez, o título do card diz qual
+  proposta foi escrita ("3ª proposta do turno"), e uma seção recolhida embaixo
+  lista cada anterior, da mais antiga, como o modelo a mandou — o comando de
+  cada critério, o que o proponente disse que ele faria e por quê, e quanto
+  antes da escrita ela veio. Nada medido, porque só a última rodou. O histórico
+  é a defesa da `done-qualifier` contra uma reproposta que troca um critério
+  por um trivial, e o daemon agora o leva no `done.proposed`.
 - **O painel de mudanças abre o PR e mostra o CI dele, sempre confirmado
   (D60).** A aba Mudanças da Crew e o cartão de contexto da grade mostram o PR
   da branch — `#N` e o título, que abre no navegador, o CI com ponto, palavra e

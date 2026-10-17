@@ -89,6 +89,22 @@ func TestTheProposalNoteNamesTheCommandThatGoesOn(t *testing.T) {
 	}
 }
 
+// A turn that proposed more than once shows how many times and the earlier
+// proposals, in the summary the daemon wrote: the terminal reads the history
+// where it already reads the proposal.
+func TestTheProposalNoteShowsTheEarlierProposals(t *testing.T) {
+	p, tr := loopProgram(t,
+		protocol.SpecFolder{Path: "specs/b", Criteria: 0, Pending: true},
+	)
+	tr.committed = protocol.CommitDoneResponse{Path: "specs/b/done.toml", Criteria: 1, Proposals: 2,
+		Summary: "written\n\nThe turn proposed 2 times; the last is what was written. Earlier, oldest first:\n\n  #1 at 10:01:00"}
+	typeLoop(t, p, "specs/b")
+	followLoop(t, p, func() bool { return sawEntry(p, "specs/b/done.toml") })
+	if !sawEntry(p, "specs/b/done.toml", "proposed 2 times", "#1 at 10:01:00") {
+		t.Errorf("the note does not show the earlier proposals: %q", summaries(p))
+	}
+}
+
 // Switching to another session on purpose stops following the loop: its
 // next session does not pull the person back.
 func TestSwitchingAwayStopsFollowingTheLoop(t *testing.T) {
