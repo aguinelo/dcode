@@ -597,6 +597,8 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 |---|---|---|
 | `session_not_found` | 404 | id inexistente ou já encerrada |
 | `turn_already_active` | 409 | viola RN-8 |
+| `no_active_turn` | 409 | correção (`steer`) para um turno que não está rodando — mande como mensagem |
+| `invalid_input` | 400 | pedido que o daemon não consegue ler ou que viola uma regra de entrada (corpo malformado, base64 inválido, parâmetro fora do formato), com o que estava errado |
 | `approval_already_resolved` | 409 | outro cliente decidiu antes |
 | `approval_expired` | 410 | prazo esgotado; já negado |
 | `events_expired` | 410 | `from` anterior à retenção |
@@ -696,6 +698,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - A linha viva e a linha gravada de uma conversa são dobradas pelo mesmo código: terminar não muda o que a lista diz dela além de que terminou.
 - Conversa gravada é lida do registro sem ser carregada, a cadeia inteira e numerada de 1 sob o id dela, como uma sessão que a continuasse a reproduziria.
 - Id de conversa é nome de arquivo dentro da pasta de registros e nada mais: fora do alfabeto fechado, é recusado com `invalid_input` antes de tocar o disco.
+- Corpo ou parâmetro que o daemon não consegue ler é erro de quem pediu, em toda rota: `400 invalid_input` com o que estava errado, nunca `500 internal`.
 - Marcador `session.resumed` que nomeia id fora da pasta não é seguido.
 - Página de conversa gravada tem teto; `limit` acima dele é recusado, não aparado, e página que não chega ao fim diz onde continuar.
 - Ler conversa sem registro diz que ela não existe; daemon sem transcrições recusa dizendo por quê, nunca responde conversa vazia.
@@ -796,3 +799,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610141200 — Cada conferência dentro do turno é um evento](changelog/202610141200-cada-conferencia-e-um-evento.md)
 - [202610151200 — Um turno carrega documentos](changelog/202610151200-um-turno-carrega-documentos.md)
 - [202610151300 — O PR de uma branch, lido e aberto pelo `gh`](changelog/202610151300-o-pr-de-uma-branch.md)
+- [202610161400 — Pedido ilegível é erro de quem pediu](changelog/202610161400-pedido-ilegivel-e-erro-de-quem-pediu.md)
