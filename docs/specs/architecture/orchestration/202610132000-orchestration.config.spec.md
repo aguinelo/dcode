@@ -4,11 +4,12 @@
 > Precedência: flag > variável de ambiente > arquivo de config > default.
 > Contrato técnico em `202610132000-orchestration.p.spec.md`.
 
-> **Estado.** Nada daqui é lido ainda: a fatia está planejada, não construída. Cada chave entra em
-> `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo da `.i` que a
-> nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
+> **Estado.** Só `orchestrator.dir` é lida (passo 4); o resto está planejado, não construído. Cada
+> chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
+> da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
 > `TestEveryKeyTheSpecsDeclareIsReadSomewhere` existe para pegar. Por isso as tabelas abaixo abrem
-> pela chave, não pela variável.
+> pela chave, não pela variável — o guarda só lê a linha que abre pela variável —, e a chave lida
+> passa à tabela "Lidas", que abre pela variável, no PR que a lê.
 
 Todas as chaves são da seção `[orchestrator]` do `config.toml`, com a variável `DCODE_ORCHESTRATOR_*`
 correspondente, bijetora como o resto do esquema. Listas são texto separado por vírgula, como
@@ -17,16 +18,28 @@ na abertura do daemon**, com a chave e o valor — nunca o default em silêncio.
 
 ## 1. Ligar, e onde mora
 
+Lidas:
+
+| Variável | Chave | Default | Validação | Passo |
+|---|---|---|---|---|
+| `DCODE_ORCHESTRATOR_DIR` | `orchestrator.dir` | `<state>/orchestrate` | absoluto; criado `0700`; fora de qualquer projeto que o daemon conduz | 4 |
+
+Por ler:
+
 | Chave | Variável | Default | Validação | Passo |
 |---|---|---|---|---|
 | `orchestrator.enabled` | `DCODE_ORCHESTRATOR_ENABLED` | `false` | booleano | 5 |
-| `orchestrator.dir` | `DCODE_ORCHESTRATOR_DIR` | `<state>/orchestrate` | absoluto; criado `0700`; fora de qualquer projeto que o daemon conduz | 4 |
 | `orchestrator.closed_retention` | `DCODE_ORCHESTRATOR_CLOSED_RETENTION` | `1h` | de `0s` a `24h`; `0s` tira o fechado na hora | 6 |
 
 `false` por padrão nesta fatia: a orquestradora é opt-in até a segunda fatia, e `POST /v1/projects`
 responde `orchestrator_unavailable` dizendo a chave. `<state>` é o `Roots.State` de
 `config.DiscoverRoots` (`DCODE_STATE_DIR`, XDG, ou `~/Library/Application Support/dcode` no macOS).
 A orquestradora também exige `record.enabled`, já declarada em `configuration`.
+
+`orchestrator.dir` é lida por `orchestrate.Dir` (`internal/orchestrate/dir.go`): relativa é erro
+com a chave e o valor, nunca resolvida contra o diretório onde o daemon nasceu; sem raiz de estado
+não há default, e isso também é erro. "Fora do projeto" é conferido quando o log de um projeto
+abre (`OpenDecisionLog`), porque só ali se sabe a raiz dele.
 
 `1h` é a decisão do dono em Q-E. O log de decisões guarda o fechado para sempre; a retenção é só da
 lista.
@@ -127,3 +140,4 @@ segunda fatia, pelas chaves `eval.*` de `202608072334-provider-adapter.config.sp
 ## 6. Changelog
 
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
+- [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)

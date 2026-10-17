@@ -122,6 +122,7 @@ var nonSession = map[string]string{
 	"eval.enabled":     "read by the eval harness, which measures the product rather than running it",
 	"eval.model":       "read by the eval harness, which measures the product rather than running it",
 	"eval.runs":        "read by the eval harness, which measures the product rather than running it",
+	"orchestrator.dir": "read by the orchestrator, which conducts sessions and is not one",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.
@@ -183,7 +184,8 @@ func TestNonSessionKeysAreReadSomewhere(t *testing.T) {
 
 // nonSessionDirs are the places a key excused from the wiring table may be
 // consumed. Each one is a consumer that is not a session: the command layer,
-// and the eval harness that measures the product rather than running it.
+// the eval harness that measures the product rather than running it, and the
+// orchestrator, which opens sessions and outlives every one of them.
 //
 // Adding a directory here widens the escape hatch, so the list stays short and
 // each entry names something that genuinely reads configuration.
@@ -191,6 +193,7 @@ var nonSessionDirs = [][]string{
 	{"..", "..", "cmd", "dcode"},
 	{"..", "evals"},
 	{"..", "loop", "loopcommand"},
+	{"..", "orchestrate"},
 }
 
 // readNonSessionSources concatenates the non-test Go sources of every consumer
