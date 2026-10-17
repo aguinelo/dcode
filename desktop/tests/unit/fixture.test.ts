@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { asOf } from '../../src/fixtures/record';
-import { RECORDED_AT, recording, referenceStates } from '../../src/fixtures/recording';
+import { loopRecording, recordedLoops } from '../../src/fixtures/loop-recording';
+import { RECORDED_AT, recording } from '../../src/fixtures/recording';
+import { referenceStates } from '../../src/fixtures/scenes';
 import { nameParts } from '../../src/renderer/host';
 import { delegation, flowBlocks, toolSummary } from '../../src/state/flow';
 import { clock, elapsed, since } from '../../src/state/format';
@@ -12,11 +14,36 @@ const state = applyRaw(emptySessions, recording.events);
 const now = Date.parse(RECORDED_AT);
 
 describe('the recording behind the reference states', () => {
-  it('opens each reference on its own session', () => {
-    expect(referenceStates).toEqual({
-      '02-janela-principal-rodando': 's-catalogar',
-      '03-janela-principal-aprovacao': 's-tokens',
+  it('opens 02 and 03 maximized on the grid, and the rest on the Crew', () => {
+    const opens = Object.fromEntries(Object.entries(referenceStates).map(([name, s]) => [name, [s.look ?? 'crew', s.session]]));
+    expect(opens).toEqual({
+      '02-janela-principal-rodando': ['grade', 's-catalogar'],
+      '03-janela-principal-aprovacao': ['grade', 's-tokens'],
+      crew: ['crew', null],
+      'crew-vazia': ['crew', null],
+      'crew-loop': ['crew', null],
     });
+    // 02 and 03 replay the first recording untouched: a session added to it would move their sidebar.
+    expect(referenceStates['02-janela-principal-rodando']!.recording).toBe(recording);
+    expect(referenceStates['crew-vazia']!.recording.events).toEqual([]);
+    expect(referenceStates['crew-loop']!.loops).toBe(recordedLoops);
+  });
+
+  it('gives the second recording a pinned plan, seven files written, a loop at check 4 and a third proposal', () => {
+    const second = applyRaw(emptySessions, loopRecording.events);
+    const frete = second.byId['s-frete']!;
+    expect(frete.state).toBe('running');
+    expect(frete.entries.find((e) => e.kind === 'plan')).toMatchObject({ turnId: 't-1' });
+    expect(frete.entries.filter((e) => e.kind === 'tool')).toHaveLength(7);
+    const carrinho = second.byId['s-carrinho']!;
+    expect(carrinho.check).toMatchObject({ cycle: 4, stall: 1, stall_limit: 3 });
+    const proposal = second.byId['s-qualificar']!.proposal;
+    expect(proposal?.sequence).toBe(3);
+    expect(proposal?.earlier).toHaveLength(2);
+    expect(Object.values(recordedLoops.byId).map((r) => [r.session_id, r.state])).toEqual([
+      ['s-carrinho', 'working'],
+      ['s-qualificar', 'awaiting_review'],
+    ]);
   });
 
   it('shows 02 running for 1m42s, delegated to four children of which two came back', () => {

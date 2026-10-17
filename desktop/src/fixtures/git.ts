@@ -9,6 +9,7 @@ import type { GitDiffResponse, GitPRResponse, GitResponse } from '../protocol/ge
 const DCODE = '/Users/aguinelo/work/dcode';
 const BIZPACK = '/Users/aguinelo/work/bizpack';
 const EVA = '/Users/aguinelo/work/eva';
+const LOJA = '/Users/aguinelo/work/loja';
 
 const LIMIT = 262144;
 
@@ -40,6 +41,20 @@ export const recordedGit: Readonly<Record<string, GitResponse>> = {
     truncated: false,
   },
   [EVA]: { repository: false, detached: false, worktree: false, files: [], truncated: false },
+  // The second recording's shop (loop-recording.ts): the frete work in the folder, not yet committed.
+  [LOJA]: {
+    repository: true,
+    root: LOJA,
+    branch: 'feat/frete',
+    detached: false,
+    head: '1c0d2e7',
+    worktree: false,
+    files: [
+      { path: 'internal/frete/tabela.go', status: 'untracked', added: 88, removed: 0, binary: false },
+      { path: 'internal/checkout/total.go', status: 'modified', added: 12, removed: 0, binary: false },
+    ],
+    truncated: false,
+  },
 };
 
 const diff = (path: string, status: string, text: string): GitDiffResponse => ({
@@ -112,4 +127,19 @@ export const recordedPRs: Readonly<Record<string, GitPRResponse | string>> = {
   },
   [BIZPACK]: { branch: 'main', base: 'main' },
   [EVA]: 'the folder is in no git repository',
+  // The shop's branch has a PR whose CI passed: the green D61 keeps for what was measured.
+  [LOJA]: {
+    branch: 'feat/frete',
+    base: 'main',
+    pr: {
+      number: 48,
+      url: 'https://github.com/aguinelo/loja/pull/48',
+      title: 'Tabela de frete do contrato',
+      state: 'open',
+      draft: false,
+      base: 'main',
+      head: 'feat/frete',
+      checks: { state: 'pass', passed: 6, failed: 0, pending: 0, skipped: 1 },
+    },
+  },
 };

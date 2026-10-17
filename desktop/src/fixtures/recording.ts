@@ -268,9 +268,3 @@ export const recordedClient: { prefs: Prefs; userName: string } = {
   prefs: { order: [], labels: {}, collapsed: { [EVA]: true } },
   userName: 'Aguinelo Koczkodai',
 };
-
-/** The reference states of the handoff, by screenshot name, and the session each one shows. */
-export const referenceStates: Readonly<Record<string, string>> = {
-  '02-janela-principal-rodando': 's-catalogar',
-  '03-janela-principal-aprovacao': 's-tokens',
-};

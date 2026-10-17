@@ -4,6 +4,7 @@
 // a folder's git, as the recorded daemon would give it (D41).
 
 import { recordedDiffs, recordedGit, recordedPRs } from '../fixtures/git';
+import { loopRecording } from '../fixtures/loop-recording';
 import { recording } from '../fixtures/recording';
 import { NOT_CONNECTED } from './text';
 import type { Outcome, WindowActions } from './window';
@@ -12,7 +13,7 @@ const unsent = async (): Promise<Outcome<null>> => ({ ok: false, why: NOT_CONNEC
 
 /** The folder a recorded conversation runs in, from its `session.created`. */
 function recordedWorkspace(id: string): string | undefined {
-  for (const e of recording.events) {
+  for (const e of [...recording.events, ...loopRecording.events]) {
     if (e.session_id === id && e.type === 'session.created') return e.payload.workspace;
   }
   return undefined;
