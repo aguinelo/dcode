@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Pull requests não rodam mais CI; a `main` roda, depois do merge.** O hook
+  de pre-push já roda aqui o mesmo gate, no commit enviado, em segundos, e
+  pagar minutos do GitHub para achar de novo o que a execução local já achou é
+  desperdício. A CI continua rodando em todo push na `main`, único lugar onde o
+  Linux e o sandbox bubblewrap são exercitados, e numa branch quando pedida.
 - **Um push roda aqui o gate da CI antes de sair.** `.githooks/pre-push`,
   ligado com `make hooks`, roda no commit enviado, num worktree descartável, o
   que a CI roda: o gate de Go quando algo fora de `desktop/` mudou, o do

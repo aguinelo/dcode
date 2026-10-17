@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Pull requests no longer run CI; `main` does, after the merge.** The
+  pre-push hook already runs the same gate here, on the pushed commit, in
+  seconds, and paying GitHub minutes to find again what a local run found is
+  waste. CI still runs on every push to `main`, the only place Linux and its
+  bubblewrap sandbox are exercised, and on a branch on demand.
 - **A push runs the CI gate here before it leaves.** `.githooks/pre-push`,
   enabled with `make hooks`, runs on the pushed commit, in a throwaway
   worktree, what CI runs: the Go gate when anything outside `desktop/` changed,
