@@ -66,8 +66,8 @@ Todos sob `/v1`. Estabilidade individual declarada.
 | `GET` | `/git/diff` | `experimental` | O diff unificado de um arquivo que `/git` lista, com teto. Query `workspace` e `path` (como `/git` o lista). Só leitura. Devolve `GitDiffResponse`. |
 | `GET` | `/git/pr` | `experimental` | O PR da branch que o workspace tem agora, pelo `gh`: número, endereço, estado, rascunho e as checagens somadas; e a base que um PR novo teria. Query `workspace` (absoluto, obrigatória). Só leitura. Devolve `GitPRResponse`. |
 | `POST` | `/git/pr` | `experimental` | Empurra a branch de agora (`git push -u origin <branch>`, nunca com força) e abre o PR com `gh pr create`. Corpo `CreateGitPRRequest`, que é o que uma pessoa confirmou. Devolve `GitPRResponse` com `201`. Nunca faz merge nem liga auto-merge. `gh` ausente ou sem login → `gh_unavailable`; branch que não pode virar PR → `pr_refused`; pedido malformado → `invalid_input`. |
-| `POST` | `/loops` | `experimental` | Começa um `/loop` que o daemon conduz. Corpo `StartLoopRequest` (`args` como foi digitado depois de `/loop`). Devolve `LoopRun` com `201`. Workspace relativo → `workspace_invalid`; argumento sem palavra ou flag desconhecida → `invalid_input`; loop vivo no mesmo workspace → `loop_already_running`. |
-| `GET` | `/loops` | `experimental` | Os loops que o daemon guarda, do mais antigo ao mais novo. Query `workspace` (absoluto, opcional). Devolve `ListLoopsResponse`. |
+| `POST` | `/loops` | `experimental` | Começa um `/loop` que o daemon conduz. Corpo `StartLoopRequest` (`args` como foi digitado depois de `/loop`). Devolve `LoopRun` com `201`. Workspace relativo → `workspace_invalid`; argumento sem palavra ou flag desconhecida → `invalid_input`; loop vivo na mesma árvore — o mesmo workspace, dentro ou em volta dele, com os links resolvidos → `loop_already_running`. |
+| `GET` | `/loops` | `experimental` | Os loops que o daemon guarda, do mais antigo ao mais novo. Query `workspace` (absoluto, opcional) guarda os loops da mesma árvore pela regra da recusa de `POST /loops` — dentro, em volta, links resolvidos —, para o cliente achar o loop que o bloqueia; workspace que não pode ser lido → `workspace_invalid`. Devolve `ListLoopsResponse`. |
 | `GET` | `/loops/events` | `experimental` | **SSE.** Todos os loops primeiro (`snapshot`), depois cada loop que mudou (`changed`). Sem `from`: reconectar recebe outro `snapshot`. Um loop não sai da lista enquanto o daemon vive — o veredito é o que o cliente mostra depois do fim. |
 | `POST` | `/loops/{id}/continue` | `experimental` | Tira o loop de `awaiting_review` e abre o trabalho. Fora desse estado → `loop_not_awaiting_review`; id desconhecido → `loop_not_found`. Devolve `LoopRun`. |
 | `POST` | `/loops/{id}/stop` | `experimental` | Corpo `StopLoopRequest{when: "now" \| "after_spec"}`. `now` interrompe o turno e encerra; `after_spec` deixa a pasta corrente terminar e não abre a próxima. Loop já terminado responde como terminou. Devolve `LoopRun`. |
@@ -277,7 +277,7 @@ a grade sabem que uma conversa pertence a um loop sem ler outro fluxo.
 | `tool.approval_required` | `ApprovalRequest` | cruzou fronteira do sandbox (RN-4) |
 | `tool.approval_resolved` | `{"approval_id":string,"decision":ApprovalDecision}` | decisão registrada |
 | `tool.completed` | `{"tool_call_id":string,"ok":bool,"output":string,"truncated":bool}` | ferramenta terminou |
-| `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error` |
+| `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error`, `refused` (o modelo recusou responder; um `session.error` de código `refused` vem antes, com o que o provedor disse) |
 | `done.proposed` | `DoneProposal` (`done-qualifier` §6.1) | a última proposta do turno qualificador foi medida e escrita no `done.toml`, com o número dela e as anteriores em `earlier`, sem medição; aviso, nada espera resposta |
 | `plan.updated` | `{"items":[{"id":int,"text":string,"status":string,"blocked":string}]}` | plano criado ou alterado |
 | `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
@@ -597,12 +597,14 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 |---|---|---|
 | `session_not_found` | 404 | id inexistente ou já encerrada |
 | `turn_already_active` | 409 | viola RN-8 |
+| `no_active_turn` | 409 | correção (`steer`) para um turno que não está rodando — mande como mensagem |
+| `invalid_input` | 400 | pedido que o daemon não consegue ler ou que viola uma regra de entrada (corpo malformado, base64 inválido, parâmetro fora do formato), com o que estava errado |
 | `approval_already_resolved` | 409 | outro cliente decidiu antes |
 | `approval_expired` | 410 | prazo esgotado; já negado |
 | `events_expired` | 410 | `from` anterior à retenção |
 | `workspace_invalid` | 400 | caminho não absoluto ou inacessível |
 | `max_sessions_reached` | 503 | limite do `.config.spec.md` |
-| `loop_already_running` | 409 | já há um `/loop` vivo no workspace (dois loops na mesma árvore medem o trabalho um do outro) |
+| `loop_already_running` | 409 | já há um `/loop` vivo na árvore do workspace — nele, dentro ou em volta dele (dois loops na mesma árvore medem o trabalho um do outro) |
 | `loop_not_awaiting_review` | 409 | `continue` num loop que não espera revisão — em geral, outro cliente continuou antes |
 | `loop_not_found` | 404 | id de loop que o daemon não guarda |
 | `gh_unavailable` | 503 | o `gh` não está no `PATH` do daemon, ou está sem login; a mensagem diz qual |
@@ -696,6 +698,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - A linha viva e a linha gravada de uma conversa são dobradas pelo mesmo código: terminar não muda o que a lista diz dela além de que terminou.
 - Conversa gravada é lida do registro sem ser carregada, a cadeia inteira e numerada de 1 sob o id dela, como uma sessão que a continuasse a reproduziria.
 - Id de conversa é nome de arquivo dentro da pasta de registros e nada mais: fora do alfabeto fechado, é recusado com `invalid_input` antes de tocar o disco.
+- Corpo ou parâmetro que o daemon não consegue ler é erro de quem pediu, em toda rota: `400 invalid_input` com o que estava errado, nunca `500 internal`.
 - Marcador `session.resumed` que nomeia id fora da pasta não é seguido.
 - Página de conversa gravada tem teto; `limit` acima dele é recusado, não aparado, e página que não chega ao fim diz onde continuar.
 - Ler conversa sem registro diz que ela não existe; daemon sem transcrições recusa dizendo por quê, nunca responde conversa vazia.
@@ -756,6 +759,8 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - Conferência que quebrou critério sai como `backward` e nomeia o que o laço desfez.
 - Turno que não escreveu nada não anuncia conferência.
 - Um segundo `/loop` vivo no mesmo workspace é recusado com `loop_already_running`; outro workspace é outra árvore.
+- A lista de loops de um workspace acha o loop que o bloqueia: de uma subpasta, em volta da árvore ou por um link.
+- Lista de loops de um workspace que não pode ser lido é recusada com `workspace_invalid`, nunca respondida vazia.
 - As rotas de loop recusam com o código que diz o que houve: `workspace_invalid`, `invalid_input`, `loop_not_found`, `loop_not_awaiting_review`.
 - `/loops/events` abre com todos os loops e segue cada mudança até o fim do loop.
 - Sessão aberta por um loop carrega `loop_id` desde o `session.created`; sessão aberta por um cliente não carrega.
@@ -797,3 +802,5 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610151200 — Um turno carrega documentos](changelog/202610151200-um-turno-carrega-documentos.md)
 - [202610151300 — O PR de uma branch, lido e aberto pelo `gh`](changelog/202610151300-o-pr-de-uma-branch.md)
 - [202610161200 — A proposta anunciada leva as anteriores](changelog/202610161200-a-proposta-leva-as-anteriores.md)
+- [202610161400 — Pedido ilegível é erro de quem pediu](changelog/202610161400-pedido-ilegivel-e-erro-de-quem-pediu.md)
+- [202610162300 — A recusa do modelo é dita](../provider-adapter/changelog/202610162300-a-recusa-do-modelo-e-dita.md)

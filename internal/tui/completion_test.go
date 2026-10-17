@@ -31,6 +31,7 @@ func TestATurnStoppedMidWorkSaysWhy(t *testing.T) {
 		{protocol.StopMaxIterations, "50/50"},
 		{protocol.StopRepeatLoop, "repeated"},
 		{protocol.StopMaxTokens, "token ceiling"},
+		{protocol.StopRefused, "refused"},
 	} {
 		e, ok := stopReasonEntry(tc.reason, 50, 50, En)
 		if !ok {
@@ -39,6 +40,23 @@ func TestATurnStoppedMidWorkSaysWhy(t *testing.T) {
 		if !strings.Contains(e.Summary, tc.want) {
 			t.Errorf("%s: got %q, want it to contain %q", tc.reason, e.Summary, tc.want)
 		}
+	}
+}
+
+// A refusal is said in both languages, and in each in its own words: the
+// session.error before it carries what the provider said, and this is the
+// sentence a person reads for why the turn ended.
+func TestARefusedTurnSaysTheModelRefused(t *testing.T) {
+	en, ok := stopReasonEntry(protocol.StopRefused, 3, 50, En)
+	if !ok {
+		t.Fatal("a refused turn produced no entry")
+	}
+	pt, ok := stopReasonEntry(protocol.StopRefused, 3, 50, PtBR)
+	if !ok {
+		t.Fatal("a refused turn produced no entry in Portuguese")
+	}
+	if !strings.Contains(en.Summary, "model refused") || !strings.Contains(pt.Summary, "modelo recusou") {
+		t.Errorf("en %q, pt %q: want each to say the model refused", en.Summary, pt.Summary)
 	}
 }
 

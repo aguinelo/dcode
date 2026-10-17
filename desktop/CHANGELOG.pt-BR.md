@@ -18,6 +18,16 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
   antes da escrita ela veio. Nada medido, porque só a última rodou. O histórico
   é a defesa da `done-qualifier` contra uma reproposta que troca um critério
   por um trivial, e o daemon agora o leva no `done.proposed`.
+- **Turno recusado diz que o modelo recusou.** Um turno que termina com o
+  motivo novo do núcleo, `refused`, ganha a linha "Parou: o modelo recusou
+  responder" depois da entrada de erro com as palavras do provedor, em vez de
+  terminar sem linha própria. Os tipos do protocolo são regenerados para
+  `StopRefused`.
+- **As cores do PR e do CI seguem D52 (D61).** CI rodando fica em cinza, não
+  no amarelo de espera, e PR merged ou fechado fica em cinza, não verde: D52
+  guarda o amarelo para o que espera você e o verde e o vermelho para o que
+  foi medido. CI que passou continua verde, que falhou vermelho, PR aberto
+  laranja.
 - **O painel de mudanças abre o PR e mostra o CI dele, sempre confirmado
   (D60).** A aba Mudanças da Crew e o cartão de contexto da grade mostram o PR
   da branch — `#N` e o título, que abre no navegador, o CI com ponto, palavra e

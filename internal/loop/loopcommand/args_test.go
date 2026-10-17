@@ -31,6 +31,12 @@ func TestParseLoopArgs(t *testing.T) {
 			spec: "specs/x", protect: []string{"a"}},
 		{name: "nothing", in: "", wantErr: ""},
 		{name: "unknown flag", in: "specs/x --max-iterations 3", wantErr: "--max-iterations"},
+		// The limit flags an earlier spec declared are not flags: the limits
+		// come from the family and the configuration, never from /loop.
+		{name: "no max-identical", in: "specs/x --max-identical 2", wantErr: "--max-identical"},
+		{name: "no max-tokens", in: "specs/x --max-tokens 1000", wantErr: "--max-tokens"},
+		{name: "no max-stall", in: "specs/x --max-stall 1", wantErr: "--max-stall"},
+		{name: "no done-timeout", in: "specs/x --done-timeout 5s", wantErr: "--done-timeout"},
 		{name: "protect with nothing after it", in: "specs/x --protect", wantErr: "--protect needs a glob"},
 		{name: "a task after the path", in: "specs/x refaça só o header",
 			spec: "specs/x", task: "refaça só o header"},

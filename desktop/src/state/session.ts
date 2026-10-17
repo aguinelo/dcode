@@ -298,7 +298,9 @@ function onChecked(view: SessionView, ev: EventOf<'done.checked'>): SessionView 
 
 // The stop reasons that end a turn abruptly and say nothing else about it.
 // `error` already arrived as session.error; `done` is the answer itself.
-const ABRUPT = new Set(['max_iterations', 'repeat_loop', 'max_tokens', 'interrupted']);
+// `refused` arrived as session.error too, but that line is the provider's words;
+// this one is why the turn ended, and what streamed before it was not an answer.
+const ABRUPT = new Set(['max_iterations', 'repeat_loop', 'max_tokens', 'interrupted', 'refused']);
 
 function onTurnCompleted(view: SessionView, ev: EventOf<'turn.completed'>): SessionView {
   const d = ev.payload;

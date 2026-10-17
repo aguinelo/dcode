@@ -40,7 +40,7 @@ describe('a PR’s checks, in words', () => {
   it('is never green over a red check, and says the counts behind the word', () => {
     expect(checksView(checks('pass', 3, 0, 0, 1))).toEqual({ tone: 'ok', word: 'CI verde', detail: '3 de 4 passaram · 1 pulada' });
     expect(checksView(checks('fail', 2, 1, 1))).toMatchObject({ tone: 'err', word: 'CI vermelho', detail: '1 de 4 falhou' });
-    expect(checksView(checks('pending', 2, 0, 1))).toMatchObject({ tone: 'warn', word: 'CI rodando', detail: '1 de 3 ainda roda' });
+    expect(checksView(checks('pending', 2, 0, 1))).toMatchObject({ tone: 'dim', word: 'CI rodando', detail: '1 de 3 ainda roda' });
     expect(checksView(checks('none'))).toMatchObject({ tone: 'faint', word: 'sem CI', detail: 'nenhuma checagem neste PR' });
     expect(checksView(checks('purple'))).toMatchObject({ tone: 'err' });
   });
@@ -48,9 +48,19 @@ describe('a PR’s checks, in words', () => {
   it('says how the PR stands', () => {
     expect(prStateView(pr())).toEqual({ tone: 'accent', word: 'aberto' });
     expect(prStateView(pr({ draft: true }))).toEqual({ tone: 'dim', word: 'rascunho' });
-    expect(prStateView(pr({ state: 'merged' })).word).toBe('merged');
-    expect(prStateView(pr({ state: 'closed' })).word).toBe('fechado');
+    expect(prStateView(pr({ state: 'merged' }))).toEqual({ tone: 'dim', word: 'merged' });
+    expect(prStateView(pr({ state: 'closed' }))).toEqual({ tone: 'dim', word: 'fechado' });
     expect(prStateView(pr({ state: 'locked' })).tone).toBe('err');
+  });
+
+  // D61, after D52: the waiting tone is for what waits for you, and green and
+  // red are for what was measured. CI that still runs waits for no one, and a
+  // merged PR is history, not a measurement.
+  it('keeps the waiting tone and green off what is neither waiting for you nor measured', () => {
+    expect(checksView(checks('pending', 0, 0, 2)).tone).not.toBe('warn');
+    expect(checksView(checks('pass', 2)).tone).toBe('ok');
+    expect(checksView(checks('fail', 1, 1)).tone).toBe('err');
+    expect(prStateView(pr({ state: 'merged' })).tone).not.toBe('ok');
   });
 });
 

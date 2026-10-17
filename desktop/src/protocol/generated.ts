@@ -1541,6 +1541,13 @@ export const StopMaxTokens = "max_tokens";
  */
 export const StopError = "error";
 /**
+ * StopRefused is a turn whose model declined to answer. A failure with its
+ * own name rather than error: nothing in this side went wrong, retrying
+ * asks the same question of the same model, and the person needs to know
+ * it was a refusal to decide what to ask instead.
+ */
+export const StopRefused = "refused";
+/**
  * StopUnverified and StopIncomplete are RESULTS, not errors. They are the
  * honest state of work delivered without a check having passed.
  * Treating them as failure would create exactly the wrong incentive: the

@@ -627,9 +627,11 @@ type anEvent struct {
 		PartialJSON string `json:"partial_json"`
 		// Thinking is the reasoning channel of this dialect.
 		Thinking string `json:"thinking"`
-		// StopReason arrives on message_delta. max_tokens is the one that
-		// matters here: the answer stopped at the ceiling, unfinished.
-		StopReason string `json:"stop_reason"`
+		// StopReason arrives on message_delta. Two matter here: max_tokens,
+		// the answer stopped at the ceiling, unfinished; and refusal, the
+		// model declined, with StopDetails saying why when it says anything.
+		StopReason  string         `json:"stop_reason"`
+		StopDetails *anStopDetails `json:"stop_details"`
 	} `json:"delta"`
 	Usage *anUsage `json:"usage"`
 	// Message is set on message_start, the frame that carries the prompt's
@@ -637,6 +639,9 @@ type anEvent struct {
 	Message *struct {
 		Usage *anUsage `json:"usage"`
 	} `json:"message"`
+	// Error is set on an error frame: a failure that arrives inside a stream
+	// that already answered 200.
+	Error *anError `json:"error"`
 }
 
 type anUsage struct {
@@ -729,7 +734,13 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 			return []StreamEvent{{Type: EventTextDelta, Text: e.Delta.Text}}, nil
 		}
 
+	case "error":
+		return nil, classifyStreamError(e.Error)
+
 	case "message_delta", "message_stop":
+		if !d.terminated && e.Delta != nil && e.Delta.StopReason == "refusal" {
+			return d.refuse(e), nil
+		}
 		out, err := d.flush()
 		if err != nil {
 			return out, err

@@ -2,6 +2,7 @@ package loop
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -387,9 +388,7 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 		// else. A second check point is how compaction becomes incremental by
 		// accident, which invalidates the cache every turn.
 		before := summaryMark(e.session)
-		if err := e.maybeCompact(ctx); err != nil {
-			return e.finish(out, protocol.StopError), err
-		}
+		e.maybeCompact(ctx)
 		compacted = compacted || summaryMark(e.session) != before
 
 		msgs, err := ce.Assemble(e.session)
@@ -415,6 +414,17 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 		out.Usage.CacheWriteTokens += e.delegated.CacheWriteTokens
 		e.delegated = provider.Usage{}
 
+		if perr != nil && perr.Class == provider.ErrClassRefused {
+			// The model declined. Its own reason, so neither the person nor a
+			// loop reading the outcome takes it for a failure of ours — and
+			// never a retry, which asks the same model the same question.
+			// What streamed before the refusal stays out of the history: it
+			// is not an answer, and the next turn must not build on it.
+			e.emit(protocol.EventSessionError, protocol.Error{
+				Code: string(perr.Class), Message: perr.Message,
+			})
+			return e.finish(out, protocol.StopRefused), perr
+		}
 		if perr != nil {
 			switch provider.Decide(perr) {
 			case provider.DecisionSilent:
@@ -423,6 +433,12 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 				if e.forceCompact(ctx) {
 					continue
 				}
+				// Said here because nothing else says it: the session
+				// discards what Run returns, so a turn that ended on a
+				// refused context was otherwise a turn that just stopped.
+				e.emit(protocol.EventSessionError, protocol.Error{
+					Code: string(perr.Class), Message: perr.Message,
+				})
 				return e.finish(out, protocol.StopError), perr
 			case provider.DecisionWait, provider.DecisionRetry:
 				// Both were falling through to abort, so a rate limit or a
@@ -664,6 +680,11 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 					},
 				})
 				continue
+			}
+			// A refused answer is billed like any other, and the error is
+			// what carries its usage.
+			if ev.Usage != nil {
+				usage = *ev.Usage
 			}
 			return answer.String(), calls, usage, false, ev.Err
 		}
@@ -1029,23 +1050,49 @@ func (e *Engine) ctxConfig() ce.Config {
 // caller that reads cfg.Disabled — a forced compaction is the person asking
 // directly, and the switch that turns automatic compaction off was never
 // about that.
-func (e *Engine) maybeCompact(ctx context.Context) error {
+//
+// It returns nothing because nothing it meets ends the turn. A summary that
+// could not be made leaves the history whole, is said where the person sees
+// it, and the turn goes on: the trigger fires at a fraction of the budget, so
+// there is still room, and ending the turn would throw away the work in it
+// over a cut that was not needed yet. If the room does run out, the provider
+// refuses the context, forceCompact tries again, and that path is the one
+// that ends the turn.
+func (e *Engine) maybeCompact(ctx context.Context) {
 	cfg := e.ctxConfig()
 	if cfg.Disabled {
-		return nil
+		return
 	}
 	plan, ok := ce.Plan(e.session, cfg)
 	if !ok {
-		return nil
+		return
 	}
-	return e.applyCompaction(ctx, plan)
+	if err := e.applyCompaction(ctx, plan); err != nil {
+		e.compactionFailed(err)
+	}
 }
 
 // forceCompact is the recovery path when the provider says the context is too
 // large: compact even if the local estimate disagreed.
 func (e *Engine) forceCompact(ctx context.Context) bool {
-	ok, _ := e.Compact(ctx)
+	ok, err := e.Compact(ctx)
+	if err != nil {
+		e.compactionFailed(err)
+	}
 	return ok
+}
+
+// CodeCompactionFailed is the session.error code for a compaction that was
+// not applied because its summary could not be made.
+const CodeCompactionFailed = "compaction_failed"
+
+// compactionFailed says, where the person sees it, that compaction did not
+// happen and why. Not a stop: what follows is each caller's to decide.
+func (e *Engine) compactionFailed(err error) {
+	e.emit(protocol.EventSessionError, protocol.Error{
+		Code:    CodeCompactionFailed,
+		Message: "the context was not compacted and the history is kept whole: " + err.Error(),
+	})
 }
 
 // Compact forces compaction outside any turn — the /compact command's path,
@@ -1055,7 +1102,8 @@ func (e *Engine) forceCompact(ctx context.Context) bool {
 // 80%-threshold trigger off, and a person typing /compact or a provider
 // refusing the context is neither of those. The caller here wants to know
 // whether anything happened and why not, which is why this returns an error
-// rather than swallowing one — forceCompact still only wants the bool.
+// rather than swallowing one — forceCompact wants the bool, and says the error
+// itself.
 func (e *Engine) Compact(ctx context.Context) (bool, error) {
 	cfg := e.ctxConfig()
 	cfg.Window = 1 // force the trigger; the estimate cannot be below this
@@ -1069,13 +1117,28 @@ func (e *Engine) Compact(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// applyCompaction applies plan with a summary of its span, or applies nothing.
+//
+// A failed or empty summary is an error and the session is left untouched. It
+// used to be replaced by a fixed sentence and the plan applied anyway, so a
+// rate limit or a revoked credential at the wrong moment dropped the span and
+// announced session.compacted as if it had been summarised.
+//
+// The sentence survives only for an engine wired with no summariser at all,
+// which no product path builds: there, compacting without one is what the
+// caller configured, not a failure that happened.
 func (e *Engine) applyCompaction(ctx context.Context, plan ce.CompactionPlan) error {
 	text := "Earlier work in this session was summarised to save room."
 	if e.cfg.Summarise != nil {
 		span := e.session.History[plan.FromIdx:plan.ToIdx]
-		if s, err := e.cfg.Summarise(ctx, span); err == nil && strings.TrimSpace(s) != "" {
-			text = s
+		s, err := e.cfg.Summarise(ctx, span)
+		if err != nil {
+			return fmt.Errorf("the summary failed: %w", err)
 		}
+		if strings.TrimSpace(s) == "" {
+			return errors.New("the summary came back empty")
+		}
+		text = s
 	}
 	before := len(e.session.History)
 	e.session = ce.Apply(e.session, plan, text)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -48,8 +49,10 @@ type StreamEvent struct {
 	CallID   string
 	CallName string
 	Bytes    int
-	Usage    *Usage
-	Err      *ProviderError
+	// Usage is set on EventDone, and on an EventError whose answer was billed
+	// all the same — a refusal.
+	Usage *Usage
+	Err   *ProviderError
 	// Truncated is set on EventDone when the provider stopped because the
 	// answer reached the output ceiling of the request, not because the model
 	// finished. The answer that came before it is real and incomplete.
@@ -81,6 +84,11 @@ const (
 	ErrClassTransport   ErrorClass = "transport"
 	ErrClassProvider    ErrorClass = "provider"
 	ErrClassCanceled    ErrorClass = "canceled"
+	// ErrClassRefused is the model declining to answer, on a response that
+	// otherwise succeeded. Not the provider failing and not our request being
+	// wrong: the same request sent again is the same request refused, so
+	// nothing retries it, and what came before the refusal is not an answer.
+	ErrClassRefused ErrorClass = "refused"
 )
 
 // ProviderError is a classified failure. A bare string would force the loop to
@@ -132,6 +140,11 @@ func Decide(e *ProviderError) Decision {
 		return DecisionRetry
 	case ErrClassCanceled:
 		return DecisionSilent
+	case ErrClassRefused:
+		// Named rather than left to the default: a refusal is the one failure
+		// a retry is guaranteed to repeat, and abort is the decision, not a
+		// fallthrough.
+		return DecisionAbort
 	default: // auth, quota, bad_request
 		return DecisionAbort
 	}
@@ -197,10 +210,34 @@ func ClassifyStatus(status int, body, retryAfter string) *ProviderError {
 		}
 	case status == 413:
 		return &ProviderError{Class: ErrClassContextSize, Message: "request exceeds the context window", Retryable: true}
+	case status == 400 && overflowsTheWindow(body):
+		return &ProviderError{Class: ErrClassContextSize, Message: sanitize(body), Retryable: true}
 	case status >= 400 && status < 500:
 		return &ProviderError{Class: ErrClassBadRequest, Message: sanitize(body)}
 	case status >= 500:
 		return &ProviderError{Class: ErrClassProvider, Message: sanitize(body), Retryable: true}
 	}
 	return nil
+}
+
+// windowOverflow is how a provider says, inside a 400, that the request does
+// not fit the window. Anthropic never answers an overlong prompt with 413: it
+// answers invalid_request_error with one of these, and as a bad_request the
+// turn aborted on the one failure compaction exists to solve.
+//
+// Phrases rather than "any 400": every other 400 is still our bug, and a
+// bad_request compacted and retried would hide it behind a smaller context.
+var windowOverflow = []string{
+	"prompt is too long",
+	"exceed context limit",
+}
+
+func overflowsTheWindow(body string) bool {
+	low := strings.ToLower(body)
+	for _, p := range windowOverflow {
+		if strings.Contains(low, p) {
+			return true
+		}
+	}
+	return false
 }

@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -697,7 +698,16 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	// without re-reading instruction files, re-probing the repository or
 	// re-indexing skills. Everything except the boundary is frozen at session
 	// creation, so rebuilding from anything else would be rebuilding a session.
-	gates := declaredGates(opts.Workspace, opts.WorkspaceGates)
+	gates, unreadable := declaredGates(opts.Workspace, opts.WorkspaceGates)
+	// A manifest that is there and does not parse is said, like a memory
+	// nobody can read: worth a warning, not worth refusing the session. Left
+	// unsaid, it read exactly like a project that declares no gate.
+	for _, u := range unreadable {
+		emitter.Emit(protocol.EventSessionError, protocol.Error{
+			Code:    "manifest_unreadable",
+			Message: u.String() + " — its declared checks are not in the prompt",
+		})
+	}
 	names, idx, family := registry.Names(), behavior.Index(skills), CredentialName(opts)
 	reprompt := func(mode policy.SandboxMode, pol policy.ApprovalPolicy) (string, error) {
 		return behaviorBuild(names, instructions, idx, overlay, family, repo, gates, boundaryOf(mode, pol))
@@ -859,13 +869,28 @@ func summariser(p provider.Provider, model string) func(context.Context, []ce.Me
 		if err != nil {
 			return "", err
 		}
+		// Only a stream that ended done and whole is a summary. The text that
+		// arrived before an error or the output ceiling is real and partial,
+		// and the loop drops the span on the strength of what this returns: a
+		// half summary accepted as whole is history lost with nothing said.
 		var out strings.Builder
 		for ev := range ch {
-			if ev.Type == provider.EventTextDelta {
+			switch ev.Type {
+			case provider.EventTextDelta:
 				out.WriteString(ev.Text)
+			case provider.EventError:
+				if ev.Err != nil {
+					return "", ev.Err
+				}
+				return "", errors.New("the summary stream failed without saying why")
+			case provider.EventDone:
+				if ev.Truncated {
+					return "", errors.New("the summary was cut at the output ceiling")
+				}
+				return out.String(), nil
 			}
 		}
-		return out.String(), nil
+		return "", errors.New("the summary stream ended without finishing")
 	}
 }
 
@@ -906,13 +931,17 @@ func behaviorBuild(toolNames []string, instructions []behavior.Instruction, inde
 // Returns nil when the key is off or nothing was declared. Nil renders nothing,
 // and nothing is right: a project with no declared gate is ordinary, and the
 // prefix must not claim it declares none — it must simply not mention them.
-func declaredGates(dir string, enabled bool) *behavior.Workspace {
+//
+// The manifests that exist and could not be read come back separately, for the
+// caller to say. They are not "nothing declared", and folding them into nil is
+// the defect this second return exists to stop.
+func declaredGates(dir string, enabled bool) (*behavior.Workspace, []workspace.Unreadable) {
 	if !enabled {
-		return nil
+		return nil, nil
 	}
-	found := workspace.Probe(context.Background(), dir)
+	found, unreadable := workspace.Probe(context.Background(), dir)
 	if len(found) == 0 {
-		return nil
+		return nil, unreadable
 	}
 	ws := &behavior.Workspace{}
 	if len(found) > workspace.MaxGates {
@@ -922,7 +951,7 @@ func declaredGates(dir string, enabled bool) *behavior.Workspace {
 	for _, g := range found {
 		ws.Gates = append(ws.Gates, behavior.Gate{Name: g.Name, Command: g.Command, Source: g.Source})
 	}
-	return ws
+	return ws, unreadable
 }
 
 // loadInstructions builds the frozen instruction chain.

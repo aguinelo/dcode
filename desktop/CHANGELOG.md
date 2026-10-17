@@ -19,6 +19,14 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
   history is the done-qualifier's defence against a re-proposal that swaps a
   criterion for a trivial one, and the daemon now carries it in
   `done.proposed`.
+- **A refused turn says the model refused.** A turn that ends with the core's
+  new stop reason `refused` gets the line "Parou: o modelo recusou responder"
+  after the error entry carrying the provider's words, instead of ending with
+  no line of its own. The protocol types are regenerated for `StopRefused`.
+- **PR and CI colours follow D52 (D61).** Running CI is neutral, not the
+  waiting yellow, and a merged or closed PR is neutral, not green: D52 keeps
+  yellow for what waits for you and green and red for what was measured. CI
+  that passed stays green, failed red, an open PR orange.
 - **The changes panel opens a PR and shows its CI, always confirmed (D60).**
   Crew's Mudanças tab and the grid's context card show the branch's PR — `#N`
   and title, opening in the browser, its CI as a dot, a word and counts, and

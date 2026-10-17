@@ -18,6 +18,7 @@ var tuiInvariants = map[string]string{
 	"a regra nova é estreita":                     "TestAModelsCommandStaysCollapsed",
 	"`exit N` aparece **uma vez**":                "TestTheExitCodeIsNotPrintedTwice",
 	"mesma entrada, mesma saída":                  "TestRenderIsPureOverTheModelAndTheGeometry",
+	"termina em `refused` ganha nota":             "TestARefusedTurnSaysTheModelRefused",
 	"contada em bytes de si mesma":                "TestAnArrivingCallIsCountedInBytesAndSaysSo",
 	"nunca desenha uma segunda":                   "TestTheCompleteCallFillsTheLineRatherThanAddingOne",
 	"continua desenhando no":                      "TestAProviderThatSaysNothingStillDrawsTheCall",
