@@ -46,7 +46,7 @@ describe('the agents panel', () => {
   it('says why a child cannot be opened when its conversation is not listed', () => {
     const html = render(orq.agents, () => false);
     expect(html).toContain('disabled');
-    expect(html).toContain('A conversa deste agente não está na lista');
+    expect(html).toContain('sem conversa na lista desta janela');
   });
 
   it('says an orchestrator with no agents yet', () => {

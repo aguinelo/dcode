@@ -9,6 +9,7 @@ import type { LoopsState } from '../state/loop';
 import { emptyLoops } from '../state/loop';
 import type { Look } from '../renderer/TopBar';
 import { loopRecording, recordedLoops } from './loop-recording';
+import { emptyOrchestraRecording, orchestraRecording } from './orchestra-recording';
 import type { Recording } from './record';
 import { recording, RECORDED_AT } from './recording';
 
@@ -30,8 +31,11 @@ export const referenceStates: Readonly<Record<string, Scene>> = {
   // The grid's maximized window, captured before the Crew became the main screen (D63).
   '02-janela-principal-rodando': { recording, look: 'grade', session: 's-catalogar', loops: emptyLoops },
   '03-janela-principal-aprovacao': { recording, look: 'grade', session: 's-tokens', loops: emptyLoops },
-  // The Crew (D63), over the first recording, over none, and over the second.
+  // The Crew (D63), over the first recording, over none, over the second, and over the third.
   crew: crew(recording),
   'crew-vazia': crew(emptyRecording),
   'crew-loop': crew(loopRecording, recordedLoops),
+  // An orchestrator's conversation with its live agent list (RN-9): busy, and before its first dispatch.
+  'crew-orquestra': crew(orchestraRecording),
+  'crew-orquestra-vazia': crew(emptyOrchestraRecording),
 };

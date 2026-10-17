@@ -55,6 +55,7 @@ As que estão nos outros arquivos:
 - [D61](DECISIONS-4.md) — As cores do PR e do CI seguem a gramática de D52.
 - [D62](DECISIONS-5.md) — A revisão mostra as propostas anteriores do turno, recolhidas embaixo da escrita.
 - [D63](DECISIONS-5.md) — A Crew é a tela principal e leva todo elemento novo; a grade fica como alternativa.
+- [D64](DECISIONS-5.md) — A conversa orquestradora mostra a lista viva dos agentes na aba Agentes da Crew.
 
 ## Decisões
 
