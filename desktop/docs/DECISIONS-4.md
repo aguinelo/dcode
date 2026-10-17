@@ -397,6 +397,7 @@ decidiu escrever texto na mensagem para toda família, e a janela segue);
 aceitar qualquer arquivo e deixar o daemon recusar (a recusa chegaria depois do
 envio, e o processo principal já sabe as regras); tipo pela extensão (o mesmo
 erro que D46 evitou nas imagens).
+
 **D60. O painel de mudanças cria o PR e mostra o CI dele, sempre confirmado.**
 Pedido do dono, de 2026-10-15: o painel "Alterações" ganha "Criar PR" e o
 estado do CI por sessão, como o do Claude Code desktop (diff +N −M, "Criar PR",
@@ -443,3 +444,29 @@ GitHub por conversa e mudaria a tela 02 medida, então fica para quando houver
 uma leitura em lote; ler o CI num laço contínuo (o pedido é no foco e sob
 demanda, com 30 s no mínimo); o app rodar o gh ele mesmo (o daemon já é quem
 lê o git da pasta, e a TUI ganha a mesma superfície).
+
+**D61. As cores do PR e do CI seguem a gramática de D52** (emenda D60).
+Decisão do dono, de 2026-10-16. D60 pôs o PR e o CI no painel de mudanças sem
+fixar cores, e o código escolheu duas que D52 não permite: "CI rodando" no
+amarelo de espera e "merged" em verde. D52 guarda o amarelo para o que espera
+você e o verde e o vermelho para o que os critérios mediram; CI rodando não
+espera ninguém, e um PR merged é história, não medida.
+
+- **CI:** rodando em cinza (`dim`); verde (`ok`) quando passou e vermelho
+  (`err`) quando falhou, porque aí é medida; sem CI continua apagado (`faint`).
+- **PR:** aberto no acento laranja, como o que está trabalhando; merged e
+  fechado em cinza (`dim`), como o rascunho. Nenhuma decisão anterior dava cor
+  ao fechado, e ele passa de `faint` a `dim`, junto com o merged.
+- **O que fica:** as falhas de leitura no tom de quem é (D60) — gh ausente em
+  amarelo, porque pede algo à pessoa; branch que não pode ter PR em cinza;
+  falha em vermelho. Estado desconhecido do daemon continua vermelho.
+
+As réguas: o PR só aparece no painel da Crew e no cartão da grade, que as telas
+02 e 03 não abrem; as duas ficam a 0,00%.
+
+Descartados: manter o amarelo para "rodando" (faria CI rodando e "esperando
+você" o mesmo tom na janela, o que D52 tirou do laranja exatamente para
+evitar); merged em verde (verde passaria a dizer "acabou" e não "mediu", e um
+PR merged com CI vermelho ficaria verde ao lado do ponto vermelho); merged em
+laranja (o acento é do que está trabalhando, e um PR merged não está mais);
+um roxo para merged, como o GitHub (uma cor nova fora da paleta de D52).
