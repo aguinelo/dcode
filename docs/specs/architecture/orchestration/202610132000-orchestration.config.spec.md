@@ -42,6 +42,7 @@ lista.
 | `orchestrator.reviewer_profiles` | `DCODE_ORCHESTRATOR_REVIEWER_PROFILES` | vazio = o primeiro de `child_profiles` | idem | 8 |
 | `orchestrator.branch_prefix` | `DCODE_ORCHESTRATOR_BRANCH_PREFIX` | `dcode/` | passa em `git check-ref-format --branch` com um nome depois | 6 |
 | `orchestrator.report_debounce` | `DCODE_ORCHESTRATOR_REPORT_DEBOUNCE` | `2s` | de `0s` a `1m` | 7 |
+| `orchestrator.token_ceiling` | `DCODE_ORCHESTRATOR_TOKEN_CEILING` | `20000000` | inteiro de 100000 a 1000000000 | 6 |
 
 `max_children` conta filhos **vivos** (não terminais) do projeto, e o lote que passaria dele é
 recusado inteiro. Quatro porque é o que o dia à mão de 2026-10-16 sustentou com uma pessoa lendo os
@@ -51,6 +52,13 @@ revisor.
 Os perfis são os de hoje (`models.toml`, `config.Profile`): a lista por papel é a **lista
 permitida** da RN-8, e o `model` de um item do lote que não está nela é `model_not_allowed`. A
 escalada para um perfil mais forte é do modelo, dentro da lista, e vai ao log com o porquê.
+
+`token_ceiling` é o teto de tokens da RN-3, trazido para esta fatia pelo dono em 2026-10-17: lido
+no passo 6, conferido no `delegate` contra `State.Spent` (input, output e cache lidos de toda sessão
+do projeto). Atingido, o despacho para com `ceiling_reached`, dito na conversa e no log, e uma
+pergunta oferece `continue` (zera a janela) ou `stop`. Vinte milhões são a ordem de uma noite de
+quatro filhos no modelo de hoje; é um freio, não um orçamento. Os tetos de custo e de tempo, e
+parar filho vivo com `budget`, ficam na segunda fatia (§5).
 
 O nome da branch é `<branch_prefix><slug do title>-<6 primeiros do id do filho>`.
 
@@ -108,9 +116,8 @@ e nenhum passo da `.i` as lê.
 | Chave | Default proposto | Regra |
 |---|---|---|
 | `orchestrator.autonomy` | `step` | RN-3: `step`, `supervised`, `autonomous`; padrão por projeto |
-| `orchestrator.cost_ceiling` | `10` (dólares) | RN-3; pede a tabela de preços que o produto não tem |
+| `orchestrator.cost_ceiling` | `10` (dólares) | RN-3; pede a tabela de preços, que entra junto, e o custo em dólares na lista |
 | `orchestrator.time_ceiling` | `6h` | RN-3 |
-| `orchestrator.token_ceiling` | `20000000` | RN-3; o teto que se mede sem preço |
 | `orchestrator.deploy_command`, `orchestrator.deploy_env`, `orchestrator.deploy_when` | vazios | RN-13 |
 | `orchestrator.notify` | `true` | RN-10 |
 

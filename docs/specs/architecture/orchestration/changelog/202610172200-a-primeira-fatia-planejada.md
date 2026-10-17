@@ -2,7 +2,25 @@
 
 O `.r` aprovado em 2026-10-17 (#514) ganhou `.p`, `.config` e `.i` para a primeira fatia da §10
 dele — o núcleo observável. Nada é construído aqui; o que segue são as decisões que o `.p` toma onde
-o `.r` deixava a forma em aberto, cada uma com o porquê.
+o `.r` deixava a forma em aberto, cada uma com o porquê. **O dono aprovou o plano em 2026-10-17** e
+respondeu as seis perguntas da `.i` com a recomendação de cada uma (abaixo).
+
+## O que o dono decidiu sobre o plano
+
+1. Custo na lista é tokens nesta fatia; dólares e a tabela de preços vêm com o teto de custo.
+2. Revisão, gate e merge são passos do harness, sempre em ordem; o modelo lê e decide. **Isto muda
+   o `.r` §6**, que os chamava de ferramentas da orquestradora: o `.r` §2 põe do lado
+   determinístico tudo que decide a entrada na main, e uma ferramenta é algo que o modelo pode não
+   chamar. O `.r` fica como foi aprovado; este registro é a emenda.
+3. A orquestradora roda em modo `plan` e nunca escreve na árvore.
+4. A entrada é `dcode orchestrate`, e o desktop ganha a opção; `dcode` continua a conversa comum
+   até o log da primeira fatia ser lido. O `.r` §7 dizia que `dcode` num projeto abriria a
+   orquestradora: trocar o padrão antes de ver o comportamento seria trocar às cegas.
+5. O teto de **tokens** vem para esta fatia, no passo que despacha: atingido, o despacho para com
+   `ceiling_reached` e diz por quê. É o único teto que se mede sem tabela de preços, e uma noite
+   sem teto nenhum era o risco que a RN-3 existe para frear. Custo e tempo ficam na segunda.
+6. O harness faz o git de cada filho — commit do teste vermelho e do conserto, merge da main, push
+   —, e o git que grava é negado ao filho com o porquê.
 
 ## O que o `.p` decide
 
@@ -31,8 +49,6 @@ o `.r` deixava a forma em aberto, cada uma com o porquê.
   mexe na árvore de alguém.
 - **Os oito estados da RN-9 bastam.** Revisão, atualização e gate cabem em `in_review`; o passo
   corrente se lê pelo que está preenchido.
-- **Custo é tokens nesta fatia.** O produto não tem tabela de preços; dólares entram com o teto de
-  custo, que precisa da mesma tabela.
 - **O comando é `dcode decisions`**, e lê o arquivo sem daemon: o log tem de ser legível quando o
   que falhou foi o daemon.
 - **As invariantes são previstas.** A seção do `.p` tem um título que o `specguard` não lê, até o
@@ -41,9 +57,9 @@ o `.r` deixava a forma em aberto, cada uma com o porquê.
 
 ## O que fica para a segunda fatia
 
-`launchd`, supervisionado e autônomo, a lista "sempre perguntar" como negação, os tetos, o deploy,
-as notificações e os sete contratos com modelo real. As chaves dos tetos, da autonomia e do deploy
-estão declaradas no `.config` §5 e não são lidas.
+`launchd`, supervisionado e autônomo, a lista "sempre perguntar" como negação, os tetos de custo e
+de tempo, o deploy, as notificações e os sete contratos com modelo real. As chaves desses tetos, da
+autonomia e do deploy estão declaradas no `.config` §5 e não são lidas.
 
 ## Ordem
 

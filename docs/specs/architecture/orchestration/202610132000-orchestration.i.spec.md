@@ -10,7 +10,7 @@
 | Passo | Estado |
 |---|---|
 | 0 — changelog em fragmentos | **feito** (#515) |
-| 1 — `.p`, `.config`, `.i` desta fatia | **este PR** — aguarda o visto do dono |
+| 1 — `.p`, `.config`, `.i` desta fatia | **este PR** — aprovado pelo dono em 2026-10-17, com as seis decisões do fim |
 | 2 a 14 | **não feito** |
 
 ## Pré-requisitos
@@ -31,8 +31,8 @@
 | daemon como LaunchAgent do `launchd`, emenda de D19 | RN-2, Q-C | passo 11 do `.r` §10, na segunda fatia |
 | supervisionado, autônomo, a troca de nível, `autonomy.changed` | RN-3 | segunda fatia; `.config` §5 |
 | a lista "sempre perguntar" como negação de `internal/policy`, `always_ask` | RN-4 | segunda fatia |
-| tetos de custo, tempo e tokens; `ceiling.reached`; fins `budget` e `deadline` | RN-3 | segunda fatia; `.config` §5 |
-| custo em dinheiro na lista | RN-9 | depois de uma tabela de preços (pergunta 1 abaixo) |
+| tetos de custo e de tempo; parar filho vivo com `budget` ou `deadline` | RN-3 | segunda fatia; `.config` §5 — o de tokens é desta, passo 6 |
+| custo em dinheiro na lista, e a tabela de preços | RN-9 | segunda fatia, com o teto de custo (decisão 1) |
 | deploy declarado, `deploy.*` | RN-13 | segunda fatia |
 | notificação do macOS e do celular | RN-10, Q-B | segunda fatia |
 | os sete contratos com modelo real (`make eval`) | §9 do `.r` | segunda fatia, depois do log lido |
@@ -115,8 +115,9 @@ implementa a `Spawner`. Lê `orchestrator.enabled`, `orchestrator.profile`,
 `Leases`, `OwnsOverlap`, o trecho de `worktree.go` que cria e remove a worktree do filho, as
 ferramentas `delegate`, `children`, `steer_child`, `close_child` em `internal/tools/` (ao lado de
 `internal/tools/explore.go`), `GET /v1/sessions/{id}/children`, `DELETE` de filho, `child.started`,
-`child.state`, `child.completed`. Estados `dispatched`, `working`, `awaiting_person`, `failed`,
-`closed`. Lê `max_children`, `child_profiles`, `branch_prefix`, `closed_retention`.
+`child.state`, `child.completed`, o teto de tokens (`.p` §10). Estados `dispatched`, `working`,
+`awaiting_person`, `failed`, `closed`. Lê `max_children`, `child_profiles`, `branch_prefix`,
+`closed_retention`, `token_ceiling`.
 
 - [ ] `delegate` tudo ou nada, validando o lote antes da primeira worktree.
 - [ ] Worktree a partir da ponta da main, em `children/<id>/`, branch `<prefix><slug>-<id6>`.
@@ -125,6 +126,9 @@ ferramentas `delegate`, `children`, `steer_child`, `close_child` em `internal/to
 - [ ] Commit do harness ao fim de cada turno, com os caminhos nomeados (a conferência de `owns`
       entra no passo 8; aqui, o commit).
 - [ ] Fechado sai da resposta de `/children` depois de `closed_retention`.
+- [ ] `State.Spent` soma os tokens de toda sessão do projeto; no teto, `delegate` é recusado com
+      `ceiling_reached`, `ceiling.reached` vai ao log, a conversa diz, e `Question{kind: ceiling}`
+      oferece `continue` (zera a janela) ou `stop`. Filho vivo não é parado.
 
 **Testes obrigatórios:**
 
@@ -137,6 +141,8 @@ ferramentas `delegate`, `children`, `steer_child`, `close_child` em `internal/to
 - Pedido de aprovação do filho fica pendente além de `ApprovalTimeout`, e o filho fica
   `awaiting_person`.
 - Criar filhos volta com os ids e a orquestradora fica `idle` com eles rodando.
+- `Spent` no teto: `delegate` recusado com `ceiling_reached`, nenhuma worktree, `ceiling.reached` no
+  log; `continue` zera e o próximo lote passa.
 - `OwnsOverlap` em tabela: prefixo contém prefixo, separador, metacaractere, o caso conservador.
 
 ### Passo 7 — `feat(orchestrate): a child's report starts the orchestrator's turn`
@@ -252,7 +258,8 @@ Cada cenário termina lendo o `decisions.jsonl` e conferindo os `kind` esperados
 ### Passo 13 — `feat(tui): the orchestrator lists its agents`
 
 Em `internal/tui/` (arquivo novo `agents.go`) e `cmd/dcode/`. `dcode orchestrate` abre a
-orquestradora do projeto corrente pelo `POST /v1/projects`. A coluna lateral (`side.go`) troca o
+orquestradora do projeto corrente pelo `POST /v1/projects`; `dcode` sozinho continua a conversa
+comum (decisão 4). A coluna lateral (`side.go`) troca o
 diff pela lista: `● índice  trabalhando  41k tok  #518 ✓`, e `◆ 2 perguntas esperam você`. `^Q` abre
 a pergunta mais antiga, com as opções e a recomendada marcada; Enter responde. `^R` lista os filhos
 sob a orquestradora; escolher um anexa a TUI a ele, onde a aprovação é respondida.
@@ -270,7 +277,8 @@ sob a orquestradora; escolher um anexa a TUI a ele, onde a aprovação é respon
 uma linha por filho, a marca do estado, título, estado, tokens; PR e CI à direita como D60 e D61.
 No topo, "passo a passo" e "◆ N perguntas", que abre a fila. Clicar abre o filho na grade; **a
 grade não muda**, e as telas de referência 02 e 03 continuam a 0,00%. Só o fio (D8). D-número no
-PR; fragmento em `desktop/changelog.d/`.
+PR; fragmento em `desktop/changelog.d/`. O desktop ganha a opção de abrir a orquestradora do
+projeto, ao lado da conversa comum, que continua o padrão (decisão 4).
 
 **Testes obrigatórios:**
 
@@ -296,21 +304,22 @@ nenhuma linha fica prevista.
 - **11, o comando, saiu do log.** É cliente do log, e o log é útil antes dele.
 - **`launchd`** (passo 11 do `.r`) é da segunda fatia.
 
-## Perguntas ao dono, com recomendação
+## Decisões do dono, 2026-10-17
 
-1. **Custo na lista.** O produto não tem tabela de preços; a RN-9 pede custo. *Recomendo* tokens
-   nesta fatia e dólares na segunda, junto com o teto de custo que precisa da mesma tabela.
-2. **A esteira é do harness.** O `.r` §6 listava `review`, `gate` e `merge` como ferramentas do
-   modelo. *Recomendo* passos do harness (`.p` §7): o que decide a entrada na main fica
-   determinístico, como o `.r` §2 pede.
-3. **A orquestradora não escreve.** *Recomendo* modo `plan` na raiz: só filhos escrevem, em
-   worktree, e "merge só do que foi medido" fica sem exceção.
-4. **`dcode` abre a orquestradora?** O `.r` §7 diz que `dcode` num projeto abre a orquestradora.
-   *Recomendo* `dcode orchestrate` nesta fatia, com `orchestrator.enabled` falso por padrão, e
-   trocar o padrão de `dcode` depois de o log da primeira fatia ser lido.
-5. **Tetos nesta fatia.** Declarados e não impostos. *Recomendo* trazer só a recusa de despacho por
-   `orchestrator.token_ceiling` para o passo 6, se uma noite sem teto preocupa já: é uma conferência
-   no `delegate`.
-6. **O filho não faz commit.** O sandbox não deixa o filho gravar no `.git` comum sem abrir os hooks
-   e a config. *Recomendo* o harness fazer todo git que grava (`.p` §10), com o filho negado com o
-   porquê.
+As seis perguntas deste plano, respondidas pelo dono com a recomendação de cada uma; o porquê está
+no changelog da família (`202610172200`).
+
+1. **Custo na lista é tokens** — entrada, saída e cache — nesta fatia. Dólares e a tabela de preços
+   entram na segunda, com o teto de custo, que precisa da mesma tabela.
+2. **Revisão, gate e merge são passos do harness**, que correm sempre e em ordem quando um filho
+   termina (`.p` §7); o modelo lê os resultados e decide. Isto muda a redação do `.r` §6, que os
+   chamava de ferramentas: um modelo que chama o gate pode não chamar.
+3. **A orquestradora roda em modo `plan` e nunca escreve na árvore**; só filhos escrevem, nas
+   worktrees deles.
+4. **A entrada é `dcode orchestrate`** nesta fatia, e o desktop ganha a opção; `dcode` continua a
+   conversa comum. O padrão troca depois de o log da primeira fatia ser lido.
+5. **O teto de tokens é desta fatia**, no passo 6, que despacha filhos: chegar nele para o despacho
+   e diz por quê. `orchestrator.token_ceiling` é lida no passo 6. Tetos de custo e de tempo ficam na
+   segunda.
+6. **O harness faz o git de cada filho** — commit (teste vermelho, conserto), merge da main e push
+   —, e os comandos git que gravam são negados ao filho com o porquê.

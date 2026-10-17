@@ -8,10 +8,9 @@
 
 ## 1. Nível de estabilidade
 
-**`experimental`**, inteiro. A superfície pública que esta fatia cria é do protocolo
-(`202608072240-client-server-protocol`, `experimental`, abaixo de 1.0): tudo aditivo, todo campo
-novo `omitempty`, nenhum muda de sentido — **MINOR**. Promoção para `stable` pede a segunda fatia
-construída e um projeto real rodado de ponta a ponta com o log lido (RN-11), nesta ordem.
+**`experimental`**. A superfície pública é do protocolo (`202608072240-client-server-protocol`,
+abaixo de 1.0): aditiva, campos novos `omitempty`, nenhum muda de sentido — **MINOR**. `stable`
+pede a segunda fatia e um projeto real de ponta a ponta com o log lido (RN-11).
 
 ## 2. O que esta fatia é, e o que fica para a segunda
 
@@ -22,14 +21,15 @@ descreve; o filho escreve o fragmento dele em `changelog.d/`, dentro do próprio
 `parent_id`, worktree e branch próprias, `owns` disjuntos; `child.*` no fio; o log de decisões em
 JSONL e `dcode decisions`; revisor só leitura; o gate rodado pela orquestradora no commit exato;
 lugar de integração próprio; merge **só em passo a passo** — PR por filho, squash pelo `gh` com
-`--match-head-commit`, merge local sem forge; a lista viva (painel do desktop, texto na TUI); os
-cenários com modelo roteirizado.
+`--match-head-commit`, merge local sem forge; o teto de tokens, que para o despacho; a lista viva
+(painel do desktop, texto na TUI); os cenários com modelo roteirizado. Decisões do dono de
+2026-10-17 sobre este plano: no changelog da família, `202610172200`.
 
 **Fora — segunda fatia (§10 do `.r`), com ponteiro na `.i`:** `launchd` (RN-2); supervisionado e
 autônomo (RN-3); a lista "sempre perguntar" como negação de `internal/policy` (RN-4); tetos de custo
-e de tempo (RN-3); custo em dinheiro (RN-9); deploy (RN-13); notificações (RN-10); contratos com
-modelo real (§12). Em passo a passo todo merge pergunta, e nada desta fatia faz deploy, tag, release
-ou force-push: o que a RN-4 lista já passa pela pessoa.
+e de tempo (RN-3); custo em dinheiro e a tabela de preços (RN-9); deploy (RN-13); notificações
+(RN-10); contratos com modelo real (§12). Em passo a passo todo merge pergunta, e nada desta fatia
+faz deploy, tag, release ou force-push: o que a RN-4 lista já passa pela pessoa.
 
 ## 3. Onde mora o código
 
@@ -73,6 +73,7 @@ type State struct { // state.json, um por projeto
 	Queue          []string            `json:"queue"` // ids de filho, serial
 	Main           protocol.MainHealth `json:"main"`
 	LogSeq         uint64              `json:"log_seq"`
+	Spent          int64               `json:"spent"` // tokens na janela do teto, §10
 	PendingReports []string            `json:"pending_reports,omitempty"`
 }
 type Store struct{ /* path */ }
@@ -114,9 +115,7 @@ type Forge interface {
 `DELETE /v1/sessions/{id}` num filho é o fechar da pessoa: `closed`, worktree removida, `owns`
 liberado, linha no log. Na orquestradora é `invalid_input` nesta fatia; arquivá-la é da segunda.
 `/children` de uma sessão sem filhos é lista vazia; o filho `explore` não é sessão e não aparece.
-
-**O `POST` cria; o `GET` só lê.** O `.r` §5 dizia "criada na primeira vez" num `GET`. Uma leitura
-que cria estado faria uma sonda — a TUI perguntando se há orquestradora — abrir uma.
+Quem cria é o `POST`, não o `GET` que o `.r` §5 descrevia; o porquê está no changelog da família.
 
 ### 5.2 Tipos no fio
 
@@ -168,7 +167,7 @@ type GateResult struct {
 type ChildPR struct{ Number?, URL?, CI? } // CI na gramática de vcs.Checks; Number 0 no local
 type MainHealth struct{ Commit, Health string; Checked time.Time } // Health: green | red | pending | unknown
 type Question struct {
-	ID, Kind, Text, Recommended, Why string // Kind "merge" | "design"; Recommended é um Option.ID
+	ID, Kind, Text, Recommended, Why string // Kind "merge" | "design" | "ceiling"; Recommended é um Option.ID
 	ChildID?                          string
 	Options                           []QuestionOption
 	Sensitive?                        []string // §7.5
@@ -210,6 +209,7 @@ lista viva e a conversa precisam.
 | `main_red` | 409 | esteira | merge com a main vermelha ou desconhecida |
 | `gate_stale` | 409 | esteira | main ou branch andou entre o gate e o merge |
 | `gate_undeclared` | 409 | esteira | nem `orchestrator.gate_command` nem `verify.command` |
+| `ceiling_reached` | 409 | `delegate` | `State.Spent` chegou a `orchestrator.token_ceiling` (§10) |
 | `child_in_pipeline` | 409 | `steer_child` | filho em `in_review` ou `pr`: a esteira é dona dele |
 | `question_not_found` | 404 | rota | id que a fila não tem |
 | `question_already_answered` | 409 | rota | o primeiro que responde leva |
@@ -219,12 +219,8 @@ vai à pessoa como `session.error` na orquestradora.
 
 ## 6. A máquina de estados de um filho (RN-9)
 
-| Estado | Rótulo | | Estado | Rótulo |
-|---|---|---|---|---|
-| `dispatched` | despachado | | `pr` | PR |
-| `working` | trabalhando | | `merged` | merged — terminal |
-| `awaiting_person` | esperando você | | `closed` | fechado — terminal |
-| `in_review` | em revisão | | `failed` | falhou — espera decisão |
+`dispatched` (despachado), `working` (trabalhando), `awaiting_person` (esperando você), `in_review`
+(em revisão), `pr` (PR), `merged` e `closed` (fechado), terminais, e `failed` (falhou), que espera.
 
 | De | Para | Quando |
 |---|---|---|
@@ -250,14 +246,16 @@ orquestradora.
 ## 7. A esteira — o que decide se algo entra na main
 
 Roda **no harness**: ao fim `done` de um turno do filho, os passos correm em ordem e nenhum é
-pulado. O `.r` §6 listava `review`, `gate` e `merge` como ferramentas; aqui são passos, porque o
+pulado; o modelo lê os resultados e decide o que fazer com eles. **Isto muda o `.r` §6**, que
+listava `review`, `gate` e `merge` como ferramentas — decidido pelo dono em 2026-10-17 —, porque o
 `.r` §2 põe do lado determinístico tudo que decide a entrada na main, e um modelo que chama o gate é
 um modelo que pode não chamar. A orquestradora os vê por `children` e pelos relatos.
 
 **7.1 Commit e `owns`.** O filho não faz commit; o harness faz, ao fim de cada turno. Lê
 `git status --porcelain` na worktree: caminho fora do `owns` (`policy.Glob`) devolve **sem commit e
-sem revisão** (`Return{outside_owns, paths}`). Dentro, adiciona **os caminhos nomeados** — nunca `-A` — e commita com `pr_title` (ou
-`title`) como mensagem; `Head` é esse commit. Log: `owns.checked`, com os caminhos.
+sem revisão** (`Return{outside_owns, paths}`). Dentro, adiciona **os caminhos nomeados** — nunca
+`-A` — e commita com `pr_title` (ou `title`) como mensagem; `Head` é esse commit. Log:
+`owns.checked`, com os caminhos.
 
 **7.2 Revisão.** Uma sessão `RoleReviewer`, filha da orquestradora, na worktree do filho, com
 `read`, `glob`, `grep`, `symbol` e `verdict` — sem escrita, sem `bash`. Recebe a tarefa, o `owns` e
@@ -289,7 +287,8 @@ nunca a da pessoa:
 **7.5 PR e a pergunta de merge.** Gate `green`: o harness empurra a branch
 (`git push -u origin <branch>`, nunca `--force`) e abre o PR com `pr_title` e `pr_body` mais um
 bloco fixo de evidência (commit medido, comando, resultado, veredito). Forge `local`: sem push, sem
-PR. Então `Question{kind: merge, options: merge | return | close, recommended: merge}`, com `Sensitive` preenchido quando o diff toca `orchestrator.sensitive` ou passa de
+PR. Então `Question{kind: merge, options: merge | return | close, recommended: merge}`, com
+`Sensitive` preenchido quando o diff toca `orchestrator.sensitive` ou passa de
 `orchestrator.sensitive_diff_lines`. Só a pessoa responde: a orquestradora não tem ferramenta para
 isso.
 
@@ -314,9 +313,9 @@ reescreve um commit que existe.
 
 ## 8. Persistência e reinício
 
-Em `<orchestrator.dir>/<project-id>/`: `state.json` (o `State`, reescrito atômico a cada
-transição), `decisions.jsonl` (§9, só acréscimo), `gates/<child-id>-<commit>.log`, `integration/`
-(o lugar de integração) e `children/<child-id>/` (a worktree de cada filho).
+Em `<orchestrator.dir>/<project-id>/`: `state.json` (o `State`, reescrito atômico a cada transição),
+`decisions.jsonl` (§9, só acréscimo), `gates/<child-id>-<commit>.log`, `integration/` (o lugar de
+integração) e `children/<child-id>/` (a worktree de cada filho).
 
 **A ordem de cada transição:** linha no log → `state.json` → evento no fio. Linha que não grava
 impede a transição, e a falha vai à conversa como `session.error`. O estado em disco nunca está à
@@ -344,11 +343,6 @@ um projeto vazio no lugar dele.
 
 ### 9.1 Esquema — uma linha por decisão
 
-```json
-{"v":1,"seq":42,"at":"2026-10-17T21:04:05.123Z","project":"9f…","kind":"gate.measured",
- "child":"s-…","session":"s-…","why":"…","claim":"…","measured":{},"data":{}}
-```
-
 | Campo | Tipo | Obrigatório | Sentido |
 |---|---|---|---|
 | `v` | int | sim | versão do formato: 1 |
@@ -366,7 +360,8 @@ um projeto vazio no lugar dele.
 `hooks.changed`, `child.state`, `child.completed`, `child.returned`, `owns.checked`,
 `review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`,
 `question.asked`, `question.answered`, `merge.queued`, `merge.completed`, `merge.refused`,
-`main.health`, `forge.local`, `worktree.removed`, `child.closed`, `daemon.restart`.
+`main.health`, `ceiling.reached`, `forge.local`, `worktree.removed`, `child.closed`,
+`daemon.restart`.
 
 Nenhuma linha passa de 64 KiB: o campo maior é cortado com `…[N bytes cortados]`. `hooks.changed`
 sai quando `core.hooksPath`, lido depois de criar uma worktree, difere do lido antes, com os dois
@@ -399,8 +394,16 @@ escreve na árvore**. Quem escreve é filho, numa worktree. Tem as ferramentas d
 | `ask` | `{text, options, recommended, why, child_id}` | o id da pergunta |
 
 `delegate` é **tudo ou nada**: valida o lote inteiro — `owns` não vazio e dentro da raiz,
-`OwnsOverlap` entre itens e contra `Leases`, `max_children`, perfil na lista do papel — antes de
-criar qualquer worktree. `model` vazio é o primeiro de `orchestrator.child_profiles`.
+`OwnsOverlap` entre itens e contra `Leases`, `max_children`, perfil na lista do papel, teto de
+tokens — antes de criar qualquer worktree. `model` vazio é o primeiro de
+`orchestrator.child_profiles`.
+
+**O teto de tokens** (RN-3, trazido para esta fatia pelo dono). `State.Spent` soma `input`, `output`
+e `cache_read` de toda sessão do projeto — orquestradora, filhos, revisores. Ao chegar a
+`orchestrator.token_ceiling`, `delegate` é recusado com `ceiling_reached`, o fato vai ao log
+(`ceiling.reached`) e à conversa, e entra `Question{kind: ceiling, options: continue | stop}`;
+`continue` zera `Spent` e abre outra janela. Filho vivo termina o que faz: parar filho por teto, com
+`budget`, é da segunda fatia, com os tetos de custo e de tempo.
 
 **O filho** tem o registro de uma sessão comum **menos** `explore`, `delegate`, `children`,
 `steer_child`, `close_child`, `ask` e `verdict`; `red_test` só na fase `red`. Tem `bash` na
@@ -421,13 +424,13 @@ Só do fio: `GET /v1/sessions/{orq}/children` ao abrir, depois `child.*`, `quest
 `main.health` do SSE da orquestradora — nada de texto (D8). Fechado sai
 `orchestrator.closed_retention` depois de `Ended`, pela resposta do daemon, não por relógio do
 cliente; `failed` não sai sozinho. A forma no desktop (`AgentsPanel`, gramática de D41, PR e CI de
-D60 e D61) e na TUI (`dcode orchestrate`, `^Q`, `^R`) está nos passos 13 e 14 da `.i`.
+D60 e D61) e na TUI (`dcode orchestrate`; `dcode` continua a conversa comum) está nos passos 13 e 14
+da `.i`.
 
 ## 12. Contratos comportamentais
 
-Os sete do `.r` §9 são mediados e **entram na segunda fatia**, com fixture, juiz e limiar numa
-tabela desta seção. A metade determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem
-gate verde medido — já é desta fatia, pela esteira, faça o modelo o que fizer.
+Os sete do `.r` §9 são mediados e entram na segunda fatia, com fixture, juiz e limiar. A metade
+determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate verde — já é desta.
 
 ## 13. Invariantes verificáveis (previstas)
 
@@ -463,6 +466,7 @@ gate verde medido — já é desta fatia, pela esteira, faça o modelo o que fiz
 - `seq` do log é contínuo por projeto, através de reinícios.
 - Turno de filho aberto no reinício termina com `daemon_restart`, dito na lista e no log, e nunca some.
 - Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
+- Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
 - Fechado sai da lista depois da retenção; `failed` não sai sozinho.
 - `dcode decisions` lê o log sem daemon, e linha ilegível é dita com o número.
 
