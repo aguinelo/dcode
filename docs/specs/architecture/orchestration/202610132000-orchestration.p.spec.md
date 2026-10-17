@@ -496,4 +496,4 @@ As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
 - [202610172300 — A sessão gravada reabre sob o próprio id](changelog/202610172300-a-sessao-gravada-reabre-sob-o-proprio-id.md)
 - [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)
-- [202610172345 — O log de decisões se lê sem o daemon](changelog/202610172345-o-log-de-decisoes-se-le-sem-o-daemon.md)
+- [202610172350 — O log de decisões se lê sem o daemon](changelog/202610172350-o-log-de-decisoes-se-le-sem-o-daemon.md)

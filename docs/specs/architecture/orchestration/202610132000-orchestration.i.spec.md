@@ -16,7 +16,9 @@
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
 | 5 a 10 | **não feito** |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
-| 12 a 14 | **não feito** |
+| 12 | **não feito** |
+| 13 — a orquestradora lista os agentes | **em parte**: a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate`, `^Q`, `^R` e a leitura de `/children` ao abrir ficam para o resto do passo |
+| 14 | **não feito** |
 
 ## Pré-requisitos
 
@@ -276,6 +278,13 @@ sob a orquestradora; escolher um anexa a TUI a ele, onde a aprovação é respon
 - `child.state` muda a linha sem reler `/children`.
 - Fechado some quando a resposta do daemon não o traz mais; `failed` fica.
 - `^Q` responde a pergunta pelo `POST`, e `question_already_answered` é dito.
+
+**Feito na primeira parte** (a lista, sem tecla nova): os três primeiros testes acima —
+`TestTheColumnDrawsAChildInEachOfTheEightStates`,
+`TestAChildStateChangesItsRowWithoutRereadingTheList` e
+`TestAClosedChildLeavesWhenTheDaemonNoLongerListsItAndAFailedOneStays`, em
+`internal/tui/agents_test.go`. A forma da coluna está na `client-tui.p` §2.2. O do `^Q` vem com a
+tecla.
 
 ### Passo 14 — `feat(desktop): the live agent list`
 
