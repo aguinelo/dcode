@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 229 decision changelogs |
+| spec families | 19, with 230 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A request the daemon cannot read answers `400 invalid_input`, on every
+  route.** A malformed body, an image that is not base64 and a `from` that is
+  not a number answered `500 internal` on most session routes (and
+  `workspace_invalid` on create), which tells a client the daemon broke and
+  that retrying might help. The git and loop routes already answered
+  `invalid_input`; now all do. The error table in the protocol spec also lists
+  `no_active_turn` and `invalid_input`, which the daemon already answered.
 - **The `generic` family refuses the anthropic dialect, and speaks in its own
   name.** It inherited MiniMax's `Encode`, which serialised anthropic for a
   family whose `Transports()` names only openai, and its PDF refusal said

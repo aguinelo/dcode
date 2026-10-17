@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 229 changelogs de decisão |
+| famílias de spec | 19, com 230 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Pedido que o daemon não consegue ler responde `400 invalid_input`, em toda
+  rota.** Corpo malformado, imagem que não é base64 e `from` que não é número
+  respondiam `500 internal` na maior parte das rotas de sessão (e
+  `workspace_invalid` na criação), o que diz ao cliente que o daemon quebrou e
+  que tentar de novo pode adiantar. As rotas de git e de loop já respondiam
+  `invalid_input`; agora todas respondem. A tabela de erros da spec do
+  protocolo passa a listar `no_active_turn` e `invalid_input`, que o daemon já
+  respondia.
 - **A família `generic` recusa o dialeto anthropic, e fala em nome próprio.**
   Ela herdava o `Encode` da MiniMax, que serializava anthropic para uma família
   cujo `Transports()` só nomeia openai, e a recusa de PDF dizia `minimax-m3` a
