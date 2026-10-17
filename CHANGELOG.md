@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 229 decision changelogs |
+| spec families | 19, with 230 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An Anthropic failure reaches the loop with its own class.** A 400 that says
+  the prompt is too long is now `context_size`, which compacts and retries,
+  instead of `bad_request`, which aborted the turn on the one failure
+  compaction exists to solve. An in-stream `error` frame, such as
+  `overloaded_error`, now ends the stream with the class of its HTTP twin and
+  the provider's message, instead of being ignored and ending as `transport`
+  with the message lost.
 - **A release is built only on a commit CI has passed on `main`.** A new
   first job checks that the tag is on `main` and that CI passed at that exact
   commit, waiting while it still runs and failing, with the reason, when it

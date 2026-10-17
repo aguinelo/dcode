@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 229 changelogs de decisão |
+| famílias de spec | 19, com 230 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,13 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma falha da Anthropic chega ao laço com a sua própria classe.** Um 400
+  que diz que o prompt é longo demais agora é `context_size`, que compacta e
+  repete, em vez de `bad_request`, que abortava o turno justo na falha que a
+  compactação existe para resolver. Um frame `error` dentro do stream, como
+  `overloaded_error`, agora termina o stream com a classe do seu par HTTP e a
+  mensagem do provedor, em vez de ser ignorado e terminar como `transport`,
+  com a mensagem perdida.
 - **Um release só é construído sobre um commit em que a CI passou na
   `main`.** Um primeiro job novo confere que a tag está na `main` e que a CI
   passou exatamente naquele commit, esperando enquanto ela ainda roda e
