@@ -10,6 +10,19 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **The visual ruler measures ten more states (D18), pending the owner's
+  approval of each capture.** `check:visual` measured only 02 and 03, so every
+  screen built since D41 had no reference and "0.00%" proved nothing about it.
+  New references 05–14: the grid at rest with six windows in six mascot states,
+  the empty grid, 02 and 03 in the light theme, the Crew panel, the ⌘K palette,
+  the pinned plan with activity chips and attached documents, a loop at "ciclo
+  4" with its ruler open, the review card with earlier proposals, and the
+  context card with PR and CI. Each is captured by the check itself, opened in
+  fixture mode — a second recording for what the first cannot show without
+  moving 02 and 03 — and reached by what `states.json` now says per state: the
+  colour scheme, what the window finds in its storage, and the keys and clicks
+  before the capture. Every state opens in its own browser context. 02, 03,
+  the limit and pixelmatch are unchanged.
 - **The review card shows the qualifying turn's earlier proposals (D62).** When
   the turn proposed more than once, the card's heading names which proposal
   was written ("3ª proposta do turno"), and a folded section below lists every

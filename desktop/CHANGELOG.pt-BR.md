@@ -10,6 +10,20 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **A régua visual mede mais dez estados (D18), esperando o visto do dono em
+  cada captura.** O `check:visual` media só a 02 e a 03, então toda tela feita
+  desde D41 não tinha referência e "0,00%" não provava nada sobre ela.
+  Referências novas, de 05 a 14: a grade em repouso com seis janelas em seis
+  estados do mascote, a grade vazia, a 02 e a 03 no tema claro, o painel da
+  Crew, a paleta do ⌘K, o plano fixo com os chips de atividade e os documentos
+  anexados, um loop no "ciclo 4" com a régua aberta, o card da revisão com as
+  propostas anteriores, e o cartão de contexto com PR e CI. Cada uma é
+  capturada pela própria verificação, aberta em modo fixture — uma segunda
+  gravação para o que a primeira não mostra sem mexer na 02 e na 03 — e
+  alcançada pelo que o `states.json` passa a dizer por estado: o esquema de
+  cores, o que a janela acha no armazenamento dela, e as teclas e cliques
+  antes da captura. Cada estado abre num contexto de navegador próprio. A 02, a
+  03, o limite e o pixelmatch não mudam.
 - **O card da revisão mostra as propostas anteriores do turno qualificador
   (D62).** Quando o turno propôs mais de uma vez, o título do card diz qual
   proposta foi escrita ("3ª proposta do turno"), e uma seção recolhida embaixo
