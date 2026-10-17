@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { forgetMissing, markSeen } from '../state/attention';
 import { capacityFor, gridShape } from '../state/grid';
-import { emptyLoops, planWithLoops, type LoopsState } from '../state/loop';
+import { emptyLoops, followLoop, planWithLoops, type LoopsState } from '../state/loop';
 import { measureOf } from '../state/models';
 import { paneView } from '../state/pane';
 import { dropBefore, moveProject, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
@@ -54,6 +54,7 @@ export function App({
   actions,
   notices,
   initialSelection,
+  initialLook,
   loops = emptyLoops,
 }: {
   host: Host;
@@ -67,6 +68,8 @@ export function App({
   notices?: (say: (text: string) => void) => () => void;
   /** The conversation maximized at first; null opens on the grid. */
   initialSelection: string | null;
+  /** The version of the screen when none was chosen yet; the Crew if not given (D63). */
+  initialLook?: Look;
   /** The `/loop` runs the daemon conducts (D55); none in a recording. */
   loops?: LoopsState;
 }) {
@@ -88,7 +91,7 @@ export function App({
   const [toasts, setToasts] = useState<Toast[]>(() => boot.notes.map((text, i) => ({ id: i + 1, text })));
   const [userName, setUserName] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
-  const [look, setLook] = useState<Look>(loadLook);
+  const [look, setLook] = useState<Look>(() => loadLook(initialLook));
   // Requests still on their way, so a second ↵ or click does not repeat one.
   const pending = useRef(new Set<string>());
 
@@ -183,8 +186,12 @@ export function App({
   };
 
   const sheet = useCommandSheet(sessions, actions);
-  const loop = useLoops({ loops, actions, once, say, updateAttention, show, sessions, rowById });
+  // In the Crew a loop's session takes the thread, not a maximized window of a grid that is not drawn (D63).
+  const crewFocus = useRef<(id: string) => void>(() => {});
+  const showLoop = useCallback((id: string | null) => (look === 'crew' && id ? crewFocus.current(id) : show(id)), [look, show]);
+  const loop = useLoops({ loops, actions, once, say, updateAttention, show: showLoop, sessions, rowById, arrive: look === 'crew' ? (id) => crewFocus.current(id) : undefined });
   const win = useWindows({ actions, rowById, sessions, updateAttention, once, say, setDrafts, maximized: selectedId, maximize: show, sheet: sheet.show, commandsOf: sheet.of, startLoop: loop.view.start });
+  useEffect(() => void (crewFocus.current = win.focus), [win.focus]);
   const models = useModelMenu(actions, sessions, once, win.replace);
   const modes = useModeMenu(actions, sessions, once, say);
   const prompts = usePrompts(actions, sessions, once, say);
@@ -243,8 +250,9 @@ export function App({
   const crewNew = useCallback(() => void win.startIn(null), [win]);
   const isConversation = useCallback((id: string) => rowById.has(id) || id in sessions.byId, [rowById, sessions]);
 
-  // Crew shows one conversation in the middle: the one in focus, else the first that wants attention.
-  const crewId = win.focusId && isConversation(win.focusId) ? win.focusId : (plan.ids[0] ?? null);
+  // Crew shows one conversation in the middle: the one in focus — a loop's followed to where it is now (D63) —, else the first that wants attention.
+  const crewFocusId = followLoop(loops, win.focusId);
+  const crewId = crewFocusId && isConversation(crewFocusId) ? crewFocusId : (plan.ids[0] ?? null);
   const crewRow = crewId ? (rowById.get(crewId) ?? (sessions.byId[crewId] ? rowOfSession(sessions.byId[crewId]) : null)) : null;
 
   // What is drawn — Crew's thread, the maximized one, else the grid's windows — and ended has its history read (D42).
@@ -341,6 +349,7 @@ export function App({
               missing,
               newSession: crewNew,
               startIn: (workspace, options) => void win.startIn(workspace, options),
+              loop: loop.sheet,
               look: chooseLook,
               theme: chooseTheme,
             }}

@@ -75,6 +75,15 @@
 .crew-new-menu button:hover {
   background: var(--dc-hover);
 }
+/* The projects are the grid's places (D63), drawn as the menu's own items. */
+.crew-new-menu button.place {
+  display: block;
+  border: 0;
+  background: none;
+}
+.crew-new-menu button.place:hover {
+  background: var(--dc-hover);
+}
 
 .crew-search {
   flex: none;
@@ -244,6 +253,18 @@
   gap: 10px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--dc-line-soft);
+}
+/* The proof under the title (D63): the loop's ruler and the criteria, as checked. */
+.crew-proof {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 18px 10px;
+  border-bottom: 1px solid var(--dc-line-soft);
+}
+.crew-proof .loop-ruler {
+  margin: 0;
 }
 .crew-head-text {
   flex: 1;

@@ -103,6 +103,29 @@ export function planWithLoops(rows: readonly Row[], a: Attention, previous: read
 }
 
 /**
+ * The Crew has one thread (D63): a session a loop opened is followed to the
+ * one that loop is in now, as the grid's window follows it (D55). A session
+ * of no loop is itself.
+ */
+export function followLoop(s: LoopsState, id: string | null): string | null {
+  if (!id) return id;
+  return loopOfSession(s, id)?.session_id || id;
+}
+
+/**
+ * The sessions the given loops are in now and were not in before: a loop
+ * started from this window, arriving at its first session or moving on.
+ */
+export function arrivedSessions(before: LoopsState, after: LoopsState, loopIds: Iterable<string>): string[] {
+  const out: string[] = [];
+  for (const id of loopIds) {
+    const now = after.byId[id]?.session_id;
+    if (now && now !== before.byId[id]?.session_id) out.push(now);
+  }
+  return out;
+}
+
+/**
  * A window the person held stays held when its loop moves on: the hold goes
  * to the session the loop is in now. The same attention back when nothing
  * moved, so it can be applied on every change.

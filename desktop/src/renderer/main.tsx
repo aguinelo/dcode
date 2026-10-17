@@ -91,6 +91,8 @@ if (wanted !== null && fixtureSession === null) {
             daemon={{ state: 'recording', version: recording.daemonVersion }}
             actions={fixtureActions}
             initialSelection={fixtureSession}
+            // The handoff's reference states are the grid's maximized window, captured before the Crew became the main screen (D63).
+            initialLook={fixtureSession ? 'grade' : undefined}
           />
         </GitReaderContext.Provider>
       </StrictMode>,
