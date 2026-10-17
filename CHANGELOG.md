@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The `generic` family refuses the anthropic dialect, and speaks in its own
+  name.** It inherited MiniMax's `Encode`, which serialised anthropic for a
+  family whose `Transports()` names only openai, and its PDF refusal said
+  `minimax-m3` to someone who had typed `--family generic`. Gemini already had
+  this fix; generic now mirrors it.
 - **A release is built only on a commit CI has passed on `main`.** A new
   first job checks that the tag is on `main` and that CI passed at that exact
   commit, waiting while it still runs and failing, with the reason, when it
