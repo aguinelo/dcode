@@ -53,6 +53,13 @@ type Conversation struct {
 	// LoopID is the `/loop` run this conversation belongs to, when it does, so
 	// a list can group a loop's sessions without reading another stream.
 	LoopID string `json:"loop_id,omitempty"`
+	// ParentID, ProjectID, Role and Owns are the session's own (Session),
+	// read from its session.created, so a recorded child still says whose it
+	// was after the daemon that ran it is gone.
+	ParentID  string   `json:"parent_id,omitempty"`
+	ProjectID string   `json:"project_id,omitempty"`
+	Role      string   `json:"role,omitempty"`
+	Owns      []string `json:"owns,omitempty"`
 }
 
 // ListConversationsResponse answers GET /conversations: newest activity first.

@@ -2,6 +2,7 @@ package session
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -101,7 +102,7 @@ func TestALiveSummaryMatchesItsRecord(t *testing.T) {
 	}
 	got := live
 	got.Live, got.State, got.Started, got.LastActivity = false, "", time.Time{}, time.Time{}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("the live row reads\n  %+v\nwant\n  %+v", got, want)
 	}
 
@@ -111,7 +112,7 @@ func TestALiveSummaryMatchesItsRecord(t *testing.T) {
 		t.Fatalf("the ended row reads %+v, want recorded", recorded)
 	}
 	recorded.Live, recorded.State = live.Live, live.State
-	if recorded != live {
+	if !reflect.DeepEqual(recorded, live) {
 		t.Errorf("the conversation changed when it ended:\n  live     %+v\n  recorded %+v", live, recorded)
 	}
 }

@@ -91,19 +91,19 @@ func TestGoldenQuestion(t *testing.T) {
 // know, so a code added without its line would ship as an internal failure.
 func TestEveryOrchestrationCodeHasItsStatus(t *testing.T) {
 	for code, want := range map[string]int{
-		CodeProjectNotFound:          http.StatusNotFound,
-		CodeOrchestratorUnavailable:  http.StatusServiceUnavailable,
-		CodeOwnsOverlap:              http.StatusConflict,
-		CodeOutsideOwns:              http.StatusConflict,
-		CodeMaxChildrenReached:       http.StatusServiceUnavailable,
-		CodeModelNotAllowed:          http.StatusBadRequest,
-		CodeMainRed:                  http.StatusConflict,
-		CodeGateStale:                http.StatusConflict,
-		CodeGateUndeclared:           http.StatusConflict,
-		CodeCeilingReached:           http.StatusConflict,
-		CodeChildInPipeline:          http.StatusConflict,
-		CodeQuestionNotFound:         http.StatusNotFound,
-		CodeQuestionAlreadyAnswered:  http.StatusConflict,
+		CodeProjectNotFound:         http.StatusNotFound,
+		CodeOrchestratorUnavailable: http.StatusServiceUnavailable,
+		CodeOwnsOverlap:             http.StatusConflict,
+		CodeOutsideOwns:             http.StatusConflict,
+		CodeMaxChildrenReached:      http.StatusServiceUnavailable,
+		CodeModelNotAllowed:         http.StatusBadRequest,
+		CodeMainRed:                 http.StatusConflict,
+		CodeGateStale:               http.StatusConflict,
+		CodeGateUndeclared:          http.StatusConflict,
+		CodeCeilingReached:          http.StatusConflict,
+		CodeChildInPipeline:         http.StatusConflict,
+		CodeQuestionNotFound:        http.StatusNotFound,
+		CodeQuestionAlreadyAnswered: http.StatusConflict,
 	} {
 		if _, mapped := httpStatus[code]; !mapped {
 			t.Errorf("%s has no line in httpStatus", code)

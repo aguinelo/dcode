@@ -1,0 +1,19 @@
+{
+  "id": "s-2",
+  "state": "running",
+  "workspace": "/p/children/s-2",
+  "model": "MiniMax-M3",
+  "branch": "dcode/index-s2a1b3",
+  "sandbox_mode": "workspace-write",
+  "mode": "assist",
+  "created_at": "2026-08-11T12:00:00Z",
+  "last_seq": 0,
+  "done_criteria": 0,
+  "parent_id": "s-1",
+  "project_id": "a1b2c3d4e5f6a1b2c3d4e5f6",
+  "role": "child",
+  "owns": [
+    "internal/index/",
+    "changelog.d/202610171300-index.md"
+  ]
+}
