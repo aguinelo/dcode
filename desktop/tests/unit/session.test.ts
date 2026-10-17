@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyEvent, emptySession } from '../../src/state/session';
+import { applyEvent, emptySession, type Note } from '../../src/state/session';
+import { noteText } from '../../src/renderer/text';
 import { created, done, log } from './helpers';
 
 describe('a turn', () => {
@@ -163,6 +164,18 @@ describe('the log', () => {
       .add('turn.completed', { turn_id: 't', reason: 'max_iterations' })
       .fold();
     expect(ceiling.entries.at(-1)).toMatchObject({ note: { kind: 'stopped', reason: 'max_iterations', rounds: 100 } });
+  });
+
+  it('ends a refused turn with the error the provider gave and a line saying the model refused', () => {
+    const refused = log()
+      .add('turn.started', { turn_id: 't' })
+      .add('session.error', { code: 'refused', message: 'the model refused (category cyber)' })
+      .add('turn.completed', { turn_id: 't', reason: 'refused' })
+      .fold();
+    expect(refused.entries.at(-2)).toMatchObject({ kind: 'error', code: 'refused' });
+    const last = refused.entries.at(-1);
+    expect(last).toMatchObject({ note: { kind: 'stopped', reason: 'refused' } });
+    expect(noteText((last as { note: Note }).note)).toEqual({ text: 'Parou: o modelo recusou responder', tone: 'warn' });
   });
 
   it('takes the session facts from session.created and follows a mode switch', () => {

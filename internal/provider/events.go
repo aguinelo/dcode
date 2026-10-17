@@ -82,6 +82,11 @@ const (
 	ErrClassTransport   ErrorClass = "transport"
 	ErrClassProvider    ErrorClass = "provider"
 	ErrClassCanceled    ErrorClass = "canceled"
+	// ErrClassRefused is the model declining to answer, on a response that
+	// otherwise succeeded. Not the provider failing and not our request being
+	// wrong: the same request sent again is the same request refused, so
+	// nothing retries it, and what came before the refusal is not an answer.
+	ErrClassRefused ErrorClass = "refused"
 )
 
 // ProviderError is a classified failure. A bare string would force the loop to
