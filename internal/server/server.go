@@ -244,7 +244,7 @@ func (s *Server) version(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) createSession(w http.ResponseWriter, r *http.Request) {
 	var req protocol.CreateSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeWorkspaceInvalid, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	if req.Workspace == "" || !filepath.IsAbs(req.Workspace) {
@@ -313,7 +313,7 @@ func (s *Server) renameSession(w http.ResponseWriter, r *http.Request) {
 	}
 	var req protocol.RenameSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	id := r.PathValue("id")
@@ -368,12 +368,12 @@ func (s *Server) submitTurn(w http.ResponseWriter, r *http.Request) {
 	}
 	var req protocol.SubmitTurnRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	images, err := decodeImages(req.Images)
 	if err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "%v", err))
+		writeErr(w, wrapErr(err))
 		return
 	}
 	documents, err := decodeDocuments(req.Documents)
@@ -403,7 +403,7 @@ func (s *Server) exec(w http.ResponseWriter, r *http.Request) {
 	}
 	var req protocol.ExecRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	if err := sess.Exec(r.Context(), req.Command); err != nil {
@@ -443,7 +443,7 @@ func decodeImages(in []protocol.TurnImage) ([]ce.Image, error) {
 	for _, img := range in {
 		body, err := base64.StdEncoding.DecodeString(img.Data)
 		if err != nil {
-			return nil, fmt.Errorf("an image could not be decoded: %v", err)
+			return nil, protocol.Errorf(protocol.CodeInvalidInput, "an image could not be decoded: %v", err)
 		}
 		out = append(out, ce.Image{MediaType: img.MediaType, Data: body})
 	}
@@ -474,7 +474,7 @@ func (s *Server) steer(w http.ResponseWriter, r *http.Request) {
 	}
 	var req protocol.SteerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	if err := sess.Steer(req.Text); err != nil {
@@ -513,7 +513,7 @@ func (s *Server) setMode(w http.ResponseWriter, r *http.Request) {
 		Mode string `json:"mode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	if err := sess.SetMode(req.Mode); err != nil {
@@ -531,7 +531,7 @@ func (s *Server) resolveApproval(w http.ResponseWriter, r *http.Request) {
 	}
 	var req protocol.ResolveApprovalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, protocol.Errorf(protocol.CodeInternal, "malformed request: %v", err))
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
 		return
 	}
 	if err := sess.Resolve(r.PathValue("approvalID"), req.Decision); err != nil {
@@ -557,7 +557,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("from"); v != "" {
 		n, perr := strconv.ParseUint(v, 10, 64)
 		if perr != nil {
-			writeErr(w, protocol.Errorf(protocol.CodeInternal, "invalid from: %q", v))
+			writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "from must be a whole number, got %q", v))
 			return
 		}
 		from = n

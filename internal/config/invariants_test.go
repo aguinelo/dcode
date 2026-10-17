@@ -43,6 +43,7 @@ var configInvariants = map[string]string{
 	"mapeamento é bijetivo":            "TestKeyToEnvMappingIsBijective",
 	"é lida por alguém":                "TestEveryKnownKeyIsAccountedFor",
 	"parte de `KnownKeys`":             "TestNonSessionKeysAreReadSomewhere",
+	"que o código lê pelo nome":        "TestEveryKeyReadIsAKnownKey",
 	"por par de camadas adjacentes":    "TestPrecedenceChain",
 	"devolve o valor travado":          "TestLockedOverrideIsWarnedAboutNotSwallowed",
 	"pura sobre camadas já carregadas": "TestResolveIsPureOverTheLayersItIsGiven",

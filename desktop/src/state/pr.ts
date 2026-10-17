@@ -29,7 +29,11 @@ export function failureTone(kind: 'gh' | 'refused' | 'failed'): 'warn' | 'dim' |
   return kind === 'gh' ? 'warn' : kind === 'refused' ? 'dim' : 'err';
 }
 
-/** A PR's checks as a dot's tone, a word and the counts behind it. */
+/**
+ * A PR's checks as a dot's tone, a word and the counts behind it. Green and red
+ * are what the checks measured; CI that still runs waits for no one, so it is
+ * neutral, never the tone of what waits for you (D52, D61).
+ */
 export function checksView(c: GitChecks): { tone: string; word: string; detail: string } {
   const total = c.passed + c.failed + c.pending + c.skipped;
   const skipped = c.skipped > 0 ? ` · ${c.skipped} ${c.skipped === 1 ? 'pulada' : 'puladas'}` : '';
@@ -39,7 +43,7 @@ export function checksView(c: GitChecks): { tone: string; word: string; detail: 
     case 'fail':
       return { tone: 'err', word: 'CI vermelho', detail: `${c.failed} de ${total} ${c.failed === 1 ? 'falhou' : 'falharam'}` };
     case 'pending':
-      return { tone: 'warn', word: 'CI rodando', detail: `${c.pending} de ${total} ainda ${c.pending === 1 ? 'roda' : 'rodam'}` };
+      return { tone: 'dim', word: 'CI rodando', detail: `${c.pending} de ${total} ainda ${c.pending === 1 ? 'roda' : 'rodam'}` };
     case 'none':
       return { tone: 'faint', word: 'sem CI', detail: total === 0 ? 'nenhuma checagem neste PR' : `nenhuma passou nem falhou${skipped}` };
     default:
@@ -47,15 +51,15 @@ export function checksView(c: GitChecks): { tone: string; word: string; detail: 
   }
 }
 
-/** How the PR stands, in a word. */
+/** How the PR stands, in a word: open in the accent, what is over (merged, closed) neutral (D61). */
 export function prStateView(pr: GitPR): { tone: string; word: string } {
   switch (pr.state) {
     case 'open':
       return pr.draft ? { tone: 'dim', word: 'rascunho' } : { tone: 'accent', word: 'aberto' };
     case 'merged':
-      return { tone: 'ok', word: 'merged' };
+      return { tone: 'dim', word: 'merged' };
     case 'closed':
-      return { tone: 'faint', word: 'fechado' };
+      return { tone: 'dim', word: 'fechado' };
     default:
       return { tone: 'err', word: `estado desconhecido: ${pr.state}` };
   }

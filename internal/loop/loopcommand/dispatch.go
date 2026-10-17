@@ -26,21 +26,6 @@ const (
 	SourceLoopSpec
 )
 
-// ParseSource turns the textual value (DCODE_LOOP_SOURCE or a flag) into a
-// Source. Anything else is an error — silent defaulting would hide a typo
-// the same way a misread configuration would.
-func ParseSource(s string) (Source, error) {
-	switch s {
-	case "", "auto":
-		return SourceAuto, nil
-	case "done_file":
-		return SourceDoneFile, nil
-	case "loop_spec":
-		return SourceLoopSpec, nil
-	}
-	return SourceAuto, fmt.Errorf("loopcommand: unknown source %q (want auto|done_file|loop_spec)", s)
-}
-
 // Load resolves the source and returns the DoneSet.
 //
 // Same inputs → same DoneSet. Reading the filesystem is the only I/O.
@@ -146,38 +131,6 @@ func atoi(v string) int {
 		return 0
 	}
 	return n
-}
-
-// Options holds the four loop.* settings the daemon reads from configuration.
-//
-// Typed surface for the `loop.spec_path`, `loop.source`, `loop.protect`
-// and `loop.session_prefix` keys in KnownKeys. Keys are read by name in
-// OptionsFromConfig so the wiring guard sees them in source.
-type Options struct {
-	SpecPath      string
-	Source        Source
-	Protect       []string
-	SessionPrefix string
-}
-
-// OptionsFromConfig builds an Options from the resolved layer values.
-//
-// The wiring guard looks for the literal key names ("loop.spec_path" etc.)
-// in source; this is the function that reads them. Keeping the literals
-// here is what makes the configuration surface checkable — a key declared
-// in KnownKeys and not referenced by this name in any consumer would fail
-// the wiring test even with this function present.
-func OptionsFromConfig(values map[string]string) Options {
-	src, err := ParseSource(values["loop.source"])
-	if err != nil {
-		src = SourceAuto
-	}
-	return Options{
-		SpecPath:      values["loop.spec_path"],
-		Source:        src,
-		Protect:       splitList(values["loop.protect"]),
-		SessionPrefix: values["loop.session_prefix"],
-	}
 }
 
 // doneFileName is what a spec folder calls its own definition of done. The

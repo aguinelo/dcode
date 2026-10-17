@@ -3,6 +3,8 @@ package provider
 import (
 	"strings"
 	"testing"
+
+	ce "github.com/aguinelo/dcode/internal/contextengine"
 )
 
 // An unknown model must NOT land here by accident. Silently treating an
@@ -72,5 +74,38 @@ func TestTheWarningSaysWhatIsNotKnown(t *testing.T) {
 		if !strings.Contains(GenericWarning, want) {
 			t.Errorf("the warning does not carry %q: %s", want, GenericWarning)
 		}
+	}
+}
+
+// It speaks one dialect and refuses the other, as Gemini does. Inherited from
+// MiniMaxM3, Encode serialised Anthropic for a family whose Transports() names
+// only OpenAI, and the refusal it did make spoke in MiniMax's name rather than
+// the one the user typed.
+func TestGenericEncodesOpenAIAndRefusesTheOther(t *testing.T) {
+	f := Generic{}
+	if got := f.Transports(); len(got) != 1 || got[0] != TransportOpenAI {
+		t.Fatalf("Transports() = %v", got)
+	}
+	req := Request{Model: "local-model", Messages: []ce.Message{{Role: ce.RoleUser, Text: "hi"}}}
+
+	if _, err := f.Encode(req, TransportOpenAI); err != nil {
+		t.Fatalf("the dialect it declares must encode: %v", err)
+	}
+	if _, err := f.Encode(req, TransportAnthropic); err == nil {
+		t.Error("a transport this family does not declare must be refused, not encoded")
+	} else if !strings.Contains(err.Error(), TransportAnthropic) || !strings.Contains(err.Error(), GenericName) {
+		t.Errorf("the refusal must name the transport and the family: %v", err)
+	}
+
+	pdf := Request{Model: "local-model", Messages: []ce.Message{{
+		Role: ce.RoleUser, Text: "read this",
+		Documents: []ce.Document{{Name: "spec.pdf", MediaType: "application/pdf", Data: []byte("%PDF-1.7")}},
+	}}}
+	_, err := f.Encode(pdf, TransportOpenAI)
+	if err == nil {
+		t.Fatal("a PDF must be refused by a family that does not read one")
+	}
+	if !strings.HasPrefix(err.Error(), GenericName+" ") || strings.Contains(err.Error(), "minimax") {
+		t.Errorf("the PDF refusal must speak for the family the user named: %v", err)
 	}
 }
