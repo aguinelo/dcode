@@ -25,7 +25,8 @@ import './styles/pr.css';
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import { asOf } from '../fixtures/record';
-import { recording, referenceStates } from '../fixtures/recording';
+import { recording } from '../fixtures/recording';
+import { referenceStates } from '../fixtures/scenes';
 import { applyRaw, emptySessions } from '../state/sessions';
 import { rowsOfSessions } from '../state/sidebar';
 import { App } from './App';
@@ -58,10 +59,10 @@ const host = currentHost();
 // `?fixture=<state>` opens one of the handoff's reference states — what the
 // visual check loads. An unknown name is an error on screen, never a default.
 const wanted = new URLSearchParams(window.location.search).get('fixture');
-const fixtureSession = wanted === null ? null : (referenceStates[wanted] ?? null);
+const scene = wanted === null ? null : (referenceStates[wanted] ?? null);
 const api = window.dcode;
 
-if (wanted !== null && fixtureSession === null) {
+if (wanted !== null && scene === null) {
   root.textContent = `Estado de referência desconhecido: ${wanted}. Os que existem: ${Object.keys(referenceStates).join(', ')}.`;
   document.documentElement.dataset.ready = 'error';
 } else {
@@ -79,7 +80,8 @@ if (wanted !== null && fixtureSession === null) {
   } else {
     // In a browser — fixture mode — the window shows a recording, replayed as
     // if it had just happened. The bottom bar says so (D5).
-    const sessions = applyRaw(emptySessions, asOf(recording, Date.now()));
+    const shown = scene?.recording ?? recording;
+    const sessions = applyRaw(emptySessions, asOf(shown, Date.now()));
     const rows = rowsOfSessions(sessions);
     createRoot(root).render(
       <StrictMode>
@@ -88,11 +90,12 @@ if (wanted !== null && fixtureSession === null) {
             host={host}
             rows={rows}
             sessions={sessions}
-            daemon={{ state: 'recording', version: recording.daemonVersion }}
+            daemon={{ state: 'recording', version: shown.daemonVersion }}
             actions={fixtureActions}
-            initialSelection={fixtureSession}
-            // The handoff's reference states are the grid's maximized window, captured before the Crew became the main screen (D63).
-            initialLook={fixtureSession ? 'grade' : undefined}
+            initialSelection={scene?.session ?? null}
+            // 02 and 03 are the grid's maximized window, captured before the Crew became the main screen (D63).
+            initialLook={scene?.look}
+            loops={scene?.loops}
           />
         </GitReaderContext.Provider>
       </StrictMode>,
