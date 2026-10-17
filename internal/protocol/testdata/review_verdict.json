@@ -1,0 +1,14 @@
+{
+  "child_id": "s-2",
+  "session_id": "s-3",
+  "commit": "9a8b7c6",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "path": "internal/index/a.go",
+      "line": 12,
+      "what": "no test",
+      "why": "TESTING.md"
+    }
+  ]
+}

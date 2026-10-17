@@ -2,6 +2,7 @@ package session
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -101,7 +102,7 @@ func TestALiveSummaryMatchesItsRecord(t *testing.T) {
 	}
 	got := live
 	got.Live, got.State, got.Started, got.LastActivity = false, "", time.Time{}, time.Time{}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("the live row reads\n  %+v\nwant\n  %+v", got, want)
 	}
 
@@ -111,7 +112,7 @@ func TestALiveSummaryMatchesItsRecord(t *testing.T) {
 		t.Fatalf("the ended row reads %+v, want recorded", recorded)
 	}
 	recorded.Live, recorded.State = live.Live, live.State
-	if recorded != live {
+	if !reflect.DeepEqual(recorded, live) {
 		t.Errorf("the conversation changed when it ended:\n  live     %+v\n  recorded %+v", live, recorded)
 	}
 }
@@ -129,4 +130,23 @@ func find(t *testing.T, x *Conversations, id string) protocol.Conversation {
 	}
 	t.Fatalf("%s is not in the list: %+v", id, list)
 	return protocol.Conversation{}
+}
+
+// A child's place under its orchestrator is part of its record: the list reads
+// it from session.created, so it is the same after the daemon restarts as it
+// was live.
+func TestARecordedConversationKeepsItsParent(t *testing.T) {
+	dir := t.TempDir()
+	liveRecord(t, dir, "c", func(l *EventLog) {
+		_, _ = l.Append(protocol.EventSessionCreated, protocol.Session{
+			ID: "c", State: protocol.SessionStateIdle, Workspace: "/p/children/c", Model: "MiniMax-M3",
+			ParentID: "o", ProjectID: "a1b2c3d4e5f6a1b2c3d4e5f6", Role: protocol.RoleChild,
+			Owns: []string{"internal/index/"},
+		})
+	})
+	got := find(t, NewConversations(dir), "c")
+	if got.ParentID != "o" || got.ProjectID != "a1b2c3d4e5f6a1b2c3d4e5f6" || got.Role != protocol.RoleChild ||
+		len(got.Owns) != 1 || got.Owns[0] != "internal/index/" {
+		t.Errorf("the recorded child reads %+v, want its parent, project, role and owns", got)
+	}
 }

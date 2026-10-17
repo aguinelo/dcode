@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -210,5 +211,5 @@ func next(t *testing.T, changes <-chan protocol.ConversationChange) protocol.Con
 // person reads.
 func sameConversation(a, b protocol.Conversation) bool {
 	a.LastActivity, b.LastActivity = time.Time{}, time.Time{}
-	return a == b
+	return reflect.DeepEqual(a, b)
 }

@@ -1,0 +1,13 @@
+{
+  "child_id": "s-2",
+  "commit": "1f2e3d4",
+  "tree": "5a6b7c8",
+  "base": "6ec45f1",
+  "command": "make check",
+  "exit_code": 2,
+  "duration_ms": 4000,
+  "result": "red",
+  "output_tail": "FAIL",
+  "output_path": "/o/p/gates/s-2-1f2e3d4.log",
+  "at": "2026-08-11T12:00:00Z"
+}

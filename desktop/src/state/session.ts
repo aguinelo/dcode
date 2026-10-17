@@ -426,6 +426,21 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
         criteria: (ev.payload.criteria ?? []).length,
         noAcceptance: !!ev.payload.no_acceptance,
       });
+    // The orchestrator's own events. They are read and checked at the
+    // boundary; what they change is the live agent list, which is not a
+    // session's transcript and is built in a later step (orchestration .i,
+    // step 14). Named here so the switch stays exhaustive.
+    case 'child.started':
+    case 'child.state':
+    case 'child.completed':
+    case 'review.verdict':
+    case 'gate.measured':
+    case 'question.asked':
+    case 'question.answered':
+    case 'merge.completed':
+    case 'merge.refused':
+    case 'main.health':
+      return view;
   }
 }
 

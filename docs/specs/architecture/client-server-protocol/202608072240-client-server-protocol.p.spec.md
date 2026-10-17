@@ -124,6 +124,15 @@ type Session struct {
     // LoopID é o /loop que abriu a sessão, quando foi um. Posto antes do
     // session.created, então a lista de conversas o lê de lá.
     LoopID string `json:"loop_id,omitempty"`
+    // ParentID, ProjectID, Role e Owns põem a sessão sob uma orquestradora
+    // (202610132000-orchestration.p.spec.md §5.2). Role é "orchestrator",
+    // "child" ou "reviewer" (RoleOrchestrator, RoleChild, RoleReviewer;
+    // ValidRole recusa o resto). Todos vazios numa sessão que ninguém
+    // orquestra — os bytes dela são os de antes.
+    ParentID  string   `json:"parent_id,omitempty"`
+    ProjectID string   `json:"project_id,omitempty"`
+    Role      string   `json:"role,omitempty"`
+    Owns      []string `json:"owns,omitempty"`
 }
 
 type CreateSessionRequest struct {
@@ -287,6 +296,12 @@ a grade sabem que uma conversa pertence a um loop sem ler outro fluxo.
 | `done.checked` | `{"turn_id":string,"cycle":int,"met":[string]?,"unmet":[string]?,"unavailable":[string]?,"moved":string,"stall":int,"stall_limit":int,"undone":[string]?,"touched_protected":[string]?}` | cada conferência da definição de pronto dentro de um turno (`agent-loop` RN-10); `cycle` conta de 1 dentro do turno; `moved` é `first`, `forward`, `stalled` ou `backward`; `stall` é o contador de conferências sem avanço contra `stall_limit`; `undone`, os arquivos que o laço devolveu numa conferência que quebrou critério. Nomes, nunca contagem de testes. Turno que não escreveu nada não confere e não emite |
 | `session.error` | `Error` | falha não atribuível a um turno |
 
+Os eventos da orquestradora — `child.started`, `child.state`, `child.completed`, `review.verdict`,
+`gate.measured`, `question.asked`, `question.answered`, `merge.completed`, `merge.refused`,
+`main.health` — e os tipos que eles carregam (`Project`, `Child`, `Question` e o resto) moram em
+`internal/protocol/orchestrate.go` e são definidos na `202610132000-orchestration.p.spec.md`
+§§5.2–5.3; não se repetem aqui. Vão só no log de uma sessão `role: orchestrator`.
+
 ```go
 type ApprovalRequest struct {
     ApprovalID      string    `json:"approval_id"`
@@ -325,6 +340,13 @@ type Conversation struct {
     LastActivity  time.Time    `json:"last_activity"`
     LastEvent     EventType    `json:"last_event,omitempty"` // o último que moveu a conversa, nunca um fragmento de texto
     ContinuedFrom string       `json:"continued_from,omitempty"`
+    LoopID        string       `json:"loop_id,omitempty"`
+    // Os quatro da Session, lidos do session.created dela: um filho gravado
+    // continua dizendo de quem é depois que o daemon que o rodou se foi.
+    ParentID      string       `json:"parent_id,omitempty"`
+    ProjectID     string       `json:"project_id,omitempty"`
+    Role          string       `json:"role,omitempty"`
+    Owns          []string     `json:"owns,omitempty"`
 }
 
 type ConversationChange struct {
@@ -609,7 +631,24 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 | `loop_not_found` | 404 | id de loop que o daemon não guarda |
 | `gh_unavailable` | 503 | o `gh` não está no `PATH` do daemon, ou está sem login; a mensagem diz qual |
 | `pr_refused` | 409 | a branch não pode virar PR agora — HEAD destacado, sem `origin`, a própria base, nada a propor, base desconhecida no clone, PR já aberto, push recusado —, com o motivo |
+| `project_not_found` | 404 | id de projeto que o daemon não tem |
+| `orchestrator_unavailable` | 503 | `orchestrator.enabled` falso, ou gravação de sessões desligada; a mensagem diz qual |
+| `owns_overlap` | 409 | `owns` que se cruzam, no lote ou com filho vivo; os caminhos na mensagem |
+| `outside_owns` | 409 | diff do filho fora do `owns`; os caminhos na mensagem |
+| `max_children_reached` | 503 | o lote passaria de `orchestrator.max_children` vivos |
+| `model_not_allowed` | 400 | perfil fora da lista do papel |
+| `main_red` | 409 | merge com a main vermelha ou desconhecida |
+| `gate_stale` | 409 | main ou branch andou entre o gate e o merge |
+| `gate_undeclared` | 409 | nem `orchestrator.gate_command` nem `verify.command` |
+| `ceiling_reached` | 409 | o gasto do projeto chegou a `orchestrator.token_ceiling` |
+| `child_in_pipeline` | 409 | `steer_child` num filho em `in_review` ou `pr` |
+| `question_not_found` | 404 | id que a fila de perguntas não tem |
+| `question_already_answered` | 409 | o primeiro que responde leva |
 | `internal` | 500 | falha não classificada |
+
+Os treze acima de `internal` são da orquestração (`202610132000-orchestration.p.spec.md` §5.4), que
+diz onde cada um é dado; estão aqui porque todo código tem uma linha nesta tabela e um status em
+`httpStatus`.
 
 ## 9. Invariantes verificáveis
 
@@ -804,3 +843,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610161200 — A proposta anunciada leva as anteriores](changelog/202610161200-a-proposta-leva-as-anteriores.md)
 - [202610161400 — Pedido ilegível é erro de quem pediu](changelog/202610161400-pedido-ilegivel-e-erro-de-quem-pediu.md)
 - [202610162300 — A recusa do modelo é dita](../provider-adapter/changelog/202610162300-a-recusa-do-modelo-e-dita.md)
+- [202610171900 — Uma sessão pode ter mãe](changelog/202610171900-uma-sessao-pode-ter-mae.md)

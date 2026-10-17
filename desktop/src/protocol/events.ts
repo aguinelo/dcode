@@ -8,8 +8,9 @@
 
 import type * as P from './generated';
 import { check, isRecord, opt, req, type AnyShape, type Shape } from './validate';
+import { ORCHESTRATE_SHAPES, USAGE, type OrchestratePayloadByType } from './orchestrate';
 
-export interface PayloadByType {
+export interface PayloadByType extends OrchestratePayloadByType {
   'session.created': P.Session;
   'session.resumed': P.SessionResumed;
   'session.renamed': P.SessionRenamed;
@@ -64,14 +65,10 @@ const SESSION: Shape<P.Session> = {
   context_window: opt('number'),
   done_criteria: req('number'),
   loop_id: opt('string'),
-};
-
-const USAGE: Shape<P.Usage> = {
-  input_tokens: req('number'),
-  output_tokens: req('number'),
-  cache_read_tokens: opt('number'),
-  cache_write_tokens: opt('number'),
-  context_tokens: opt('number'),
+  parent_id: opt('string'),
+  project_id: opt('string'),
+  role: opt('string'),
+  owns: opt('array', 'string'),
 };
 
 export const COMPLETION: Shape<P.Completion> = {
@@ -230,6 +227,7 @@ const SHAPES: { readonly [K in EventKind]: AnyShape | null } = {
     no_acceptance: opt('boolean'),
     earlier: opt('array', EARLIER_PROPOSAL),
   } satisfies Shape<P.DoneProposal>,
+  ...ORCHESTRATE_SHAPES,
 };
 
 /** Every event type this desktop knows how to read. */

@@ -24,6 +24,10 @@ const CONVERSATION: Shape<P.Conversation> = {
   last_event: opt('string'),
   continued_from: opt('string'),
   loop_id: opt('string'),
+  parent_id: opt('string'),
+  project_id: opt('string'),
+  role: opt('string'),
+  owns: opt('array', 'string'),
 };
 
 /** One frame of the list's stream, read. */

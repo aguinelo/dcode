@@ -1,0 +1,19 @@
+{
+  "id": "q-1",
+  "kind": "merge",
+  "text": "Merge #518?",
+  "recommended": "merge",
+  "why": "gate green on 1f2e3d4",
+  "child_id": "s-2",
+  "options": [
+    {
+      "id": "merge",
+      "label": "Merge"
+    },
+    {
+      "id": "return",
+      "label": "Return"
+    }
+  ],
+  "asked": "2026-08-11T12:00:00Z"
+}

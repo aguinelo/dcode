@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -321,6 +323,7 @@ func (r *row) fold(ev protocol.Event) {
 		var s protocol.Session
 		if json.Unmarshal(ev.Payload, &s) == nil {
 			c.Workspace, c.Branch, c.Model, c.LoopID = s.Workspace, s.Branch, s.Model, s.LoopID
+			c.ParentID, c.ProjectID, c.Role, c.Owns = s.ParentID, s.ProjectID, s.Role, s.Owns
 			if s.State != "" && c.Live {
 				c.State = s.State
 			}
@@ -392,5 +395,11 @@ func inheritTitles(list []protocol.Conversation) {
 // frame that changes only that changes nothing a person reads.
 func sameRow(a, b protocol.Conversation) bool {
 	a.LastActivity, b.LastActivity = time.Time{}, time.Time{}
-	return a == b
+	if !slices.Equal(a.Owns, b.Owns) {
+		return false
+	}
+	// Owns is the one field == cannot compare; equal as a list, it is dropped
+	// so nil and empty read as the same row.
+	a.Owns, b.Owns = nil, nil
+	return reflect.DeepEqual(a, b)
 }
