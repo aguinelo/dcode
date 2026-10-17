@@ -290,8 +290,11 @@ func TestUndoNeverRemovesAFileItCouldNotRead(t *testing.T) {
 
 	s.BeginTurn()
 	restore := unreadable(t, path)
-	s.Snapshot(path)
+	serr := s.Snapshot(path)
 	restore()
+	if serr == nil {
+		t.Error("a snapshot that could not be taken was not said")
+	}
 	put(t, s, path, "written by the turn\n")
 
 	restored, refused, err := s.Undo()

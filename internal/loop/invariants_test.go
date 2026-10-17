@@ -343,18 +343,20 @@ func TestEveryFailureFeedbackInvariantHasATest(t *testing.T) {
 var cycleDirs = []string{".", filepath.Join("..", "behavior"), filepath.Join("..", "tools")}
 
 var cycleInvariants = map[string]string{
-	"distingue avanço, empate e regressão":       "TestMovedTellsForwardFromNowhereFromBackward",
-	"Trocar uma falha por outra é **regressão**": "TestSwappingAFailureIsRegressionAndNotADraw",
-	"Conjunto que esvazia é avanço":              "TestMovedTellsForwardFromNowhereFromBackward",
-	"não apaga o que o turno guardou":            "TestUndoCycleKeepsTheTurnUndoable",
-	"restaura só o que **este ciclo escreveu**":  "TestUndoCycleLeavesTheEarlierCyclesAlone",
-	"volta ao que o ciclo anterior deixou":       "TestUndoCycleLeavesTheEarlierCyclesAlone",
-	"recusa, por arquivo":                        "TestUndoCycleLeavesTheEarlierCyclesAlone",
-	"desfaz em regressão":                        "TestTheLoopUndoesARegressionAndNotADraw",
-	"continua contando como ciclo parado":        "TestARolledBackCycleStillCountsAsAStall",
-	"informado de que foi desfeito":              "TestARolledBackCycleIsToldToTheModel",
-	"Nada é restaurado sem dizer":                "TestNoRollbackNoNotice",
-	"não tem ferramenta que desfaça":             "TestUndoIsNotATheModelCanCall",
+	"distingue avanço, empate e regressão":         "TestMovedTellsForwardFromNowhereFromBackward",
+	"Trocar uma falha por outra é **regressão**":   "TestSwappingAFailureIsRegressionAndNotADraw",
+	"Conjunto que esvazia é avanço":                "TestMovedTellsForwardFromNowhereFromBackward",
+	"não apaga o que o turno guardou":              "TestUndoCycleKeepsTheTurnUndoable",
+	"restaura só o que **este ciclo escreveu**":    "TestUndoCycleLeavesTheEarlierCyclesAlone",
+	"volta ao que o ciclo anterior deixou":         "TestUndoCycleLeavesTheEarlierCyclesAlone",
+	"recusa, por arquivo":                          "TestUndoCycleLeavesTheEarlierCyclesAlone",
+	"o `Undo` recusa e nomeia o caminho":           "TestUndoNeverRemovesAFileItCouldNotRead",
+	"Instantâneo de ciclo que não pôde ser tirado": "TestUndoCycleNeverRemovesAFileItCouldNotRead",
+	"desfaz em regressão":                          "TestTheLoopUndoesARegressionAndNotADraw",
+	"continua contando como ciclo parado":          "TestARolledBackCycleStillCountsAsAStall",
+	"informado de que foi desfeito":                "TestARolledBackCycleIsToldToTheModel",
+	"Nada é restaurado sem dizer":                  "TestNoRollbackNoNotice",
+	"não tem ferramenta que desfaça":               "TestUndoIsNotATheModelCanCall",
 }
 
 func TestEveryRecoverableCycleInvariantHasATest(t *testing.T) {

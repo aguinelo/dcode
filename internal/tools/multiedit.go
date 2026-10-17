@@ -121,13 +121,19 @@ func plan(tool string, ops []editOp, s *State) ([]*pending, *ToolError) {
 // and what has landed by then has landed. That is not the failure the batch is
 // for: undo covers the turn, and refusing to write anything because the last
 // write might fail would mean never writing at all.
-func commit(tool string, planned []*pending, s *State) *ToolError {
+//
+// The warnings are the snapshots that could not be taken. They come back with
+// the result rather than stopping the write, and the caller says them.
+func commit(tool string, planned []*pending, s *State) ([]string, *ToolError) {
+	var warnings []string
 	for _, p := range planned {
-		s.Snapshot(p.abs)
+		if err := s.Snapshot(p.abs); err != nil {
+			warnings = append(warnings, err.Error())
+		}
 		if err := writeFile(p.abs, p.after, s.Limits.AtomicWrite); err != nil {
-			return &ToolError{
+			return nil, &ToolError{
 				Tool: tool, Code: CodeNotFound,
-				Reason: fmt.Sprintf("could not write %s: %v", p.shown, err),
+				Reason: withWarnings(fmt.Sprintf("could not write %s: %v", p.shown, err), warnings),
 			}
 		}
 		// Re-marking with the new content is what lets a later edit follow
@@ -136,7 +142,16 @@ func commit(tool string, planned []*pending, s *State) *ToolError {
 		s.MarkRead(p.abs, p.after, 0)
 		s.MarkWritten(p.abs)
 	}
-	return nil
+	return warnings, nil
+}
+
+// withWarnings appends what went wrong without stopping the call to what it
+// reports, so a write that cannot be undone never reads like one that can.
+func withWarnings(out string, warnings []string) string {
+	if len(warnings) == 0 {
+		return out
+	}
+	return out + "\n\nwarning: " + strings.Join(warnings, "\nwarning: ")
 }
 
 // report accounts for every file, because which file moved how far is what a

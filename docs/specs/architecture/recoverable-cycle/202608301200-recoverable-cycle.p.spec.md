@@ -144,6 +144,8 @@ se ninguém souber que é meio.
 - `UndoCycle` restaura só o que **este ciclo escreveu**, e ao estado do começo dele.
 - Caminho escrito em dois ciclos volta ao que o ciclo anterior deixou, não ao começo do turno.
 - `UndoCycle` recusa, por arquivo, o que mudou no disco desde então.
+- Instantâneo que não pôde ser tirado é dito na hora, e o `Undo` recusa e nomeia o caminho em vez de removê-lo.
+- Instantâneo de ciclo que não pôde ser tirado faz o `UndoCycle` recusar o caminho, nunca removê-lo.
 - O laço desfaz em regressão e **não** desfaz em empate.
 - Regressão desfeita continua contando como ciclo parado.
 - O modelo é informado de que foi desfeito, de quais critérios regrediram, e de quais arquivos ficaram.
@@ -230,3 +232,4 @@ sozinho, pela mesma razão que a etapa 2 da `failure-feedback` foi sozinha.
 - [202608301200 — o laço não sabia voltar](changelog/202608301200-o-laco-nao-sabia-voltar.md)
 - [202608301400 — o laço desfaz o ciclo que quebrou algo](changelog/202608301400-o-laco-desfaz.md)
 - [202608301800 — a conta que faltava no teto de rodadas](changelog/202608301800-a-conta-do-ciclo.md)
+- [202610161200 — o instantâneo que não se tirou não vira arquivo criado](changelog/202610161200-o-instantaneo-que-nao-se-tirou.md)
