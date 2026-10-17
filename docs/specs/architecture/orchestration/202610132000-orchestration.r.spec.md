@@ -146,30 +146,34 @@ orquestradora e os filhos. Um filho que estava no meio de um turno quando o
 daemon caiu termina esse turno com o motivo `daemon_restart`, dito na lista e no
 log; a orquestradora decide continuar ou redespachar — nunca um filho que some.
 
+**O daemon é um LaunchAgent de usuário do macOS (`launchd`)** (Q-C, decidido):
+sobe no login, reinicia se cair, e não depende do app; app e TUI são só
+clientes. Isto **emenda D19**: o app deixa de subir um daemon que morre com ele
+e deixa de parar o daemon ao fechar. A decisão do desktop é escrita quando for
+construída.
+
 *Por quê:* o dcode é para execuções longas com o dono longe; o que morre com a
-janela não é longo. Isto **muda D19** do desktop (o daemon que o app sobe morre
-com ele): a mudança é do desktop, com D-número próprio (Q-C).
+janela não é longo.
 
 ### RN-3 — Autonomia em três níveis, trocável a qualquer momento
 
 | Nível | Merge | Para em |
 |---|---|---|
 | **passo a passo** | a pessoa aprova cada merge | todo merge, toda decisão de desenho |
-| **supervisionado** | por regras do projeto | o que as regras marcam como sensível, e a lista da RN-4 |
+| **supervisionado** | por regras do projeto | o sensível, decisão de desenho, e a lista da RN-4 |
 | **autônomo** | sem perguntar | só a lista da RN-4 |
 
-O nível tem padrão por projeto e pode ser trocado na conversa, a qualquer
-momento, inclusive no meio de uma execução: vale a partir da **próxima decisão**
-(um merge já começado termina sob o nível em que começou), e a troca vai para o
-log.
+O nível tem padrão por projeto e se troca na conversa a qualquer momento,
+inclusive no meio de uma execução: vale a partir da **próxima decisão** (um
+merge começado termina sob o nível em que começou), e a troca vai ao log.
 
 Toda execução longa tem **teto de custo e teto de tempo**. Atingido um, a
 orquestradora **para de despachar e diz qual**; os filhos vivos terminam o turno
 corrente e param com `budget` ou `deadline` — nunca mortos no meio de uma
 escrita.
 
-*Por quê:* autonomia é confiança, e confiança se dá em medida e se retira na
-hora; um teto que só avisa depois é decoração.
+*Por quê:* autonomia é confiança, dada em medida e retirada na hora; um teto
+que só avisa depois é decoração.
 
 ### RN-4 — O que sempre pergunta, e o que se decide sem a pessoa
 
@@ -182,15 +186,15 @@ hora; um teto que só avisa depois é decoração.
 
 **Decisão de desenho que a spec não resolve:** em autônomo, a orquestradora
 escolhe a opção recomendada e **a registra** para revisão depois; em passo a
-passo, pergunta com as opções e a recomendação. (Supervisionado: Q-D.)
+passo e em supervisionado (Q-D, decidido), pergunta com as opções e a
+recomendação, e **só aquela tarefa espera**.
 
 **Perguntas pendentes fazem fila na conversa orquestradora**, cada uma com
 opções e recomendação; o trabalho que não depende delas **continua**. O pedido
 de aprovação de ferramenta de um filho continua da RN-7.
 
-*Por quê:* o que não volta não pode depender de o modelo lembrar que deve
-perguntar; e parar tudo por uma pergunta é o que fazia o dono voltar para uma
-fila parada em 2026-10-16.
+*Por quê:* o que não volta não pode depender de o modelo lembrar de perguntar;
+e parar tudo por uma pergunta deixou a fila parada em 2026-10-16.
 
 ### RN-5 — Evidência é o que o orquestrador mediu
 
@@ -211,6 +215,10 @@ tinha passado. Só o que se mede no lugar do merge diz o que entra.
 ### RN-6 — Merge: lugar próprio, fila serial, main verde
 
 - A **política** de merge é a do nível (RN-3).
+- **Cada filho vira um PR no forge** (Q-G, decidido), e a orquestradora faz
+  **squash-merge** pelo `gh` com `--match-head-commit` no commit medido. Sem
+  forge configurado, merge local na main — e perde-se o PR para ler, o CI do
+  forge e a trava do commit medido no servidor, o que é dito.
 - A integração acontece num **lugar próprio** do daemon, por projeto — nunca a
   worktree que a pessoa usa.
 - Branches são atualizadas **com merge da main**, nunca reescrevendo histórico;
@@ -241,15 +249,15 @@ que transforma "cada parte passou" em "a main passa".
   final é conferido contra o `owns` (RN-5).
 - O filho **pergunta à pessoa**, na janela dele, e o pedido **não expira**: sem
   o `ApprovalTimeout`, fora do prazo do filho, e visível na lista como
-  "esperando você". A orquestradora **nunca responde** aprovação de filho
-  (ADR-02).
+  "esperando você", **com notificação** — também em autônomo (Q-I, decidido).
+  A orquestradora **nunca responde** aprovação de filho (ADR-02): segue com os
+  outros filhos e pode replanejar aquela tarefa por um caminho sem aprovação.
 - O registro do filho não tem as ferramentas de orquestrar, de merge, de push
   para a main nem de deploy: **não há neto**, e filho não integra.
 - Quem empurra a branch e abre o PR é a orquestradora, depois do revisor.
 - Todo fim de filho tem nome: `done`, `incomplete`, `max_iterations`, `error`,
   `interrupted`, `cancelled`, `deadline`, `budget`, `daemon_restart`.
-- Fechar um filho não toca a orquestradora; arquivar a orquestradora encerra
-  os filhos.
+- Fechar um filho não toca a orquestradora; arquivá-la encerra os filhos.
 
 *Por quê:* teste vermelho primeiro e gate antes do merge pedem um filho que roda
 testes num lugar só dele; `owns` continua porque evita o conflito antes de ele
@@ -309,10 +317,8 @@ decisão; e a régua grátis é a que roda em todo PR.
 
 ### RN-12 — O que o dia à mão já decidiu
 
-A tabela de 2026-10-16 (§1) é requisito, não sugestão. Changelog em
-**fragmentos** — um arquivo por mudança, montado na release, contagens
-derivadas da árvore — é **mudança própria** (Q-A); até ela, o conflito no topo
-do changelog é esperado e volta ao filho (RN-6).
+A tabela de 2026-10-16 (§1) é requisito. Changelog em **fragmentos** (um
+arquivo por mudança, montado na release, contagens derivadas) é PR próprio (Q-A).
 
 ### RN-13 — Deploy declarado pelo projeto
 
@@ -419,7 +425,8 @@ respondida pela orquestradora; toda decisão com entrada no log.
 
 ## 10. Ordem de entrega
 
-**Primeira fatia — núcleo observável:** a orquestradora por projeto, viva e em
+**Primeira fatia — núcleo observável**, depois do changelog em fragmentos (Q-A,
+passo 0): a orquestradora por projeto, viva e em
 disco; filhos com worktree; `child.*` no fio; o log de decisões; o gate rodado
 pela orquestradora; merge **só em passo a passo**; a lista viva (painel e TUI);
 os cenários roteirizados. **Segunda fatia**, quando o log mostrar que a
@@ -427,6 +434,7 @@ primeira se comporta: supervisionado e autônomo, deploy e notificações.
 
 | # | Lado | PR | Depende |
 |---|---|---|---|
+| 0 | changelog | `docs: the changelog is assembled from fragments` (Q-A) | — |
 | 1 | spec | `.p`, `.config`, `.i` desta família | o visto neste `.r` |
 | 2 | núcleo | `feat(protocol): a session can have a parent` | 1 |
 | 3 | núcleo | `feat(orchestrate): a project has one orchestrator that survives the daemon` | 2 |
@@ -437,7 +445,7 @@ primeira se comporta: supervisionado e autônomo, deploy e notificações.
 | 8 | testes | `test(orchestrate): scripted scenarios` | 7 |
 | 9 | TUI | `feat(tui): the orchestrator lists its agents` | 3 |
 | 10 | desktop | `feat(desktop): the live agent list` | 3 |
-| 11 | desktop | `feat(desktop): the daemon outlives the app` (emenda D19) | — |
+| 11 | núcleo + desktop | `feat: the daemon is a launchd agent` (emenda D19) | — |
 | — | segunda fatia | autonomia, deploy, notificações, contratos `make eval` | 8 e o log lido |
 
 Cada passo do núcleo: `CHANGELOG.md` (duas edições) e changelog de família,
@@ -447,41 +455,35 @@ MINOR; os do desktop: changelog do desktop e D-números.
 
 - **Custo de uma noite:** os tetos da RN-3 freiam, e o gasto fica na lista.
 - **Filho parado esperando aprovação** com o dono longe: ninguém responde por
-  ele (RN-7); fica à vista e notificado (Q-I).
+  ele (RN-7); fica à vista e notificado, e a tarefa pode ser replanejada.
 - **O revisor concordar com o filho:** por isso o gate não é dele, e
   `reviewer-finds-the-defect` mede o quanto ele acha.
 - **A `delegated-writing` RN-3 muda de sentido para um tipo de filho:** o
   changelog dela tem de dizer, ou quem ler "filho não pergunta" conclui errado.
 - **Worktrees esquecidas:** removidas quando o filho fecha, e isso vai ao log.
 
-## 12. Perguntas em aberto
+## 12. Decisões e perguntas
 
-- **Q-A. Changelog em fragmentos.** Decidido pelo dono; a migração é **mudança
-  própria**. *Recomendação:* PR próprio logo depois deste, antes da 2ª fatia.
-- **Q-B. O app de celular.** Como avisa, o que deixa responder (só ver? aprovar
-  merge? nunca produção?) — em aberto, a decidir com o app.
-- **Q-C. O daemon que sobrevive ao app** (D19). A: o app o sobe desligado
-  dele; B: serviço do sistema (`launchd`). *Recomendação:* A agora, B com o celular.
-- **Q-D. Decisão de desenho em supervisionado.** *Recomendação:* como autônomo
-  (escolhe e registra), salvo quando toca o que as regras marcam como sensível
-  — aí pergunta.
-- **Q-E. O que é "sensível" em supervisionado, e quanto tempo um fechado fica na
-  lista.** *Recomendação:* sensível = caminho declarado sensível, veredito do
-  revisor com ressalva, dependência nova ou diff acima de um limite do
-  `.config`; o fechado sai depois de uma hora.
-- **Q-F. A memória de uma conversa que nunca termina.** A compactação de hoje
-  basta, ou a orquestradora relê o próprio log de decisões em vez do histórico
-  inteiro? *Recomendação:* medir na primeira fatia antes de decidir.
-- **Q-G. Como o merge acontece.** Pelo forge (`gh pr merge` conferindo o commit
-  medido) ou merge local e push da main? Squash ou commit de merge?
-  *Recomendação:* pelo forge, conferindo o commit, no método que o projeto já usa.
-- **Q-H. Quem resolve conflito em arquivo só de acréscimo** (o topo do
-  changelog, enquanto Q-A não vem): o filho (RN-6) ou a orquestradora no lugar
-  de integração? *Recomendação:* o filho, até os fragmentos tornarem a pergunta
-  vazia.
-- **Q-I. Aprovação de filho em autônomo.** Ela nunca é respondida pela
-  orquestradora (ADR-02). O dono quer regras de projeto (`allow_project`) que
-  evitem o filho parado, ou prefere o filho parado e notificado?
+**Decididas pelo dono, 2026-10-17:** Q-C — o daemon é LaunchAgent do `launchd`,
+emendando D19 (RN-2); Q-G — um PR por filho, squash-merge pelo `gh` com
+`--match-head-commit`, merge local sem forge (RN-6); Q-I — em autônomo a
+aprovação do filho espera a pessoa, notificada, e a orquestradora segue e pode
+replanejar a tarefa (RN-7); Q-D — em supervisionado a decisão de desenho é
+perguntada e só aquela tarefa espera (RN-4).
+
+- **Q-A. Changelog em fragmentos.** Decidido; a migração é PR próprio e o
+  **primeiro pré-requisito da primeira fatia** (§10).
+- **Q-B. O app de celular.** Como avisa e o que deixa responder — em aberto.
+- **Q-E. O que é "sensível", e quanto um fechado fica na lista.**
+  *Recomendação — a confirmar pelo dono:* sensível = caminho declarado
+  sensível, veredito do revisor com ressalva, dependência nova ou diff acima de
+  um limite do `.config`; o fechado sai uma hora depois de fechar.
+- **Q-F. A memória de uma conversa que nunca termina.** *Recomendação — a
+  confirmar pelo dono:* a compactação de hoje, com o log de decisões e a lista
+  viva reinjetados como estado a cada compactação; medido na primeira fatia.
+- **Q-H. Conflito em arquivo só de acréscimo** (o topo do changelog, até Q-A).
+  *Recomendação — a confirmar pelo dono:* volta ao filho dono da branch (RN-6);
+  a orquestradora não resolve conteúdo no lugar de integração.
 
 ## 13. Fora de escopo
 
@@ -493,5 +495,5 @@ MINOR; os do desktop: changelog do desktop e D-números.
 ## 14. Changelog
 
 - 2026-10-13 — aprovada a versão da #461 (Q1–Q8).
-- 2026-10-17 — reescrito com a visão do dono; o que caiu da #461 e por quê:
-  `changelog/202610171200-o-orquestrador-e-o-do-dono.md`. Aguarda aprovação.
+- 2026-10-17 — reescrito com a visão do dono, e Q-C, Q-D, Q-G e Q-I decididas;
+  o porquê: `changelog/202610171200-o-orquestrador-e-o-do-dono.md`. Aguarda aprovação.

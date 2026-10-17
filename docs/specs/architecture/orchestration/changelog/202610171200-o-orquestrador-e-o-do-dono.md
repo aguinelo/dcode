@@ -39,8 +39,7 @@ decisões chegaram no meio do trabalho, parando a fila.
   custo **e** de tempo, e atingir um para o despacho (RN-3).
 - **A observação de que o harness de eval não roda filho.** Ele roda desde
   `delegated-writing/changelog/202608200100`; a seção "O que existe hoje" foi
-  corrigida. A entrada correspondente em `docs/ROADMAP.md` parece velha e fica
-  para quem a revisar.
+  corrigida.
 
 ## O que continua da #461
 
@@ -64,10 +63,34 @@ decisões em JSONL e cenários roteirizados de graça (RN-11); deploy declarado
 pelo projeto (RN-13); e a entrega em duas fatias, a primeira só com passo a
 passo.
 
+## O que o dono decidiu na revisão do rascunho
+
+Quatro perguntas da §12 viraram requisito, cada uma com o porquê:
+
+- **Q-C — o daemon é um LaunchAgent de usuário do `launchd`**: sobe no login,
+  reinicia se cair, independe do app; app e TUI são só clientes. Emenda D19 —
+  o app deixa de parar o daemon que subiu —, porque uma execução longa não pode
+  morrer com a janela. A decisão do desktop é escrita quando for construída.
+- **Q-G — cada filho vira um PR no forge, e a orquestradora faz squash-merge
+  pelo `gh` com `--match-head-commit`**: o servidor recusa o merge se a branch
+  andou depois da medição. Sem forge, merge local, dizendo o que se perde (o PR
+  para ler, o CI do forge, a trava no servidor).
+- **Q-I — em autônomo a aprovação do filho espera a pessoa, com notificação**:
+  a orquestradora nunca a responde (ADR-02), segue com os outros filhos e pode
+  replanejar aquela tarefa por um caminho sem aprovação.
+- **Q-D — em supervisionado a decisão de desenho é perguntada**, com opções e
+  recomendação, e só aquela tarefa espera.
+
 ## O que fica em aberto
 
-Listado na §12 do `.r`: o changelog em fragmentos como mudança própria, o app
-de celular, como o daemon sobrevive ao app (emenda D19), o desenho em
-supervisionado, o que é sensível, a memória de uma conversa que nunca termina,
-como o merge acontece no forge, quem resolve conflito em arquivo de acréscimo,
-e a aprovação de filho em autônomo.
+Q-A (fragmentos) é PR próprio e o primeiro pré-requisito da primeira fatia;
+Q-B (o app de celular) espera o app. Q-E (o que é sensível, quanto um fechado
+fica na lista), Q-F (a memória de uma conversa que nunca termina) e Q-H
+(conflito em arquivo só de acréscimo) têm recomendação no `.r`, a confirmar
+pelo dono.
+
+## Para depois
+
+A entrada de `docs/ROADMAP.md` (perto da linha 345) ainda diz que o harness de
+eval não responde chamada delegada; ele responde desde
+`delegated-writing/changelog/202608200100`. Fica para um PR próprio, não este.
