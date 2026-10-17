@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 234 decision changelogs |
+| spec families | 19, with 235 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,13 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **An Anthropic failure reaches the loop with its own class.** A 400 that says
+  the prompt is too long is now `context_size`, which compacts and retries,
+  instead of `bad_request`, which aborted the turn on the one failure
+  compaction exists to solve. An in-stream `error` frame, such as
+  `overloaded_error`, now ends the stream with the class of its HTTP twin and
+  the provider's message, instead of being ignored and ending as `transport`
+  with the message lost.
 - **The loop list finds the loop that blocks a workspace.** `GET /loops?workspace=`
   now keeps the runs in, inside or around that tree, links resolved — the rule
   that refuses a second loop — and refuses a workspace it cannot read with

@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 234 changelogs de decisão |
+| famílias de spec | 19, com 235 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,13 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Uma falha da Anthropic chega ao laço com a sua própria classe.** Um 400
+  que diz que o prompt é longo demais agora é `context_size`, que compacta e
+  repete, em vez de `bad_request`, que abortava o turno justo na falha que a
+  compactação existe para resolver. Um frame `error` dentro do stream, como
+  `overloaded_error`, agora termina o stream com a classe do seu par HTTP e a
+  mensagem do provedor, em vez de ser ignorado e terminar como `transport`,
+  com a mensagem perdida.
 - **A lista de loops acha o loop que bloqueia um workspace.** `GET
   /loops?workspace=` agora guarda os loops na árvore, dentro ou em volta dela,
   com os links resolvidos — a regra que recusa um segundo loop — e recusa com
