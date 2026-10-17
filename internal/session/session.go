@@ -705,6 +705,9 @@ type Manager struct {
 	sessions map[string]*Session
 	max      int
 	order    []string
+	// reopening holds the ids a Reopen is bringing back, so two cannot write
+	// one record at once.
+	reopening map[string]bool
 }
 
 // NewManager builds a manager with a ceiling on live sessions.

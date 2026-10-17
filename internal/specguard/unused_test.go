@@ -66,6 +66,13 @@ var exportedWithoutUser = map[string]string{
 	"NewReplayTransport": "replay harness; the suite runs on recorded frames",
 	"ParseSSE":           "replay harness; the suite runs on recorded frames",
 
+	// The orchestrator's first slice is built one pull request per step
+	// (orchestration .i). Step 3 gives the session package its reopen; the
+	// daemon's Spawner calls it in step 5, which deletes these three lines.
+	"Reopen":       "orchestration step 3; app.Daemon's Spawner.Reopen calls it in step 5",
+	"NewReopened":  "orchestration step 3; the daemon's ReopenBuilder calls it in step 5",
+	"SubmitOrigin": "orchestration step 3; Spawner.Submit calls it in step 5, and the report turn in step 7",
+
 	// The eval harness, behind its own build tag and run by `make eval`.
 	"ContractByID": "eval harness, behind the eval build tag",
 }
