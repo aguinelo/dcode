@@ -69,8 +69,7 @@ async function buildRenderer(dir) {
   });
 }
 
-async function serve(context, dir) {
-  const blocked = [];
+async function serve(context, dir, blocked) {
   await context.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     if (url.origin !== ORIGIN) {
@@ -87,7 +86,27 @@ async function serve(context, dir) {
       return route.fulfill({ status: 404, body: `not found: ${url.pathname}` });
     }
   });
-  return blocked;
+}
+
+/**
+ * One entry of states.json's list: a name alone is the reference state drawn
+ * as the window opens; an object can also say which colour scheme the browser
+ * reports, what the window finds in its own storage at first, and what the
+ * person does before the capture — keys and clicks, as a person would, and
+ * what to wait for after them.
+ */
+function stateOf(entry, config) {
+  if (typeof entry === 'string') return { name: entry, colorScheme: config.colorScheme, storage: {}, steps: [] };
+  if (!entry || typeof entry.name !== 'string') throw new Error(`a state in states.json has no name: ${JSON.stringify(entry)}`);
+  return { colorScheme: config.colorScheme, storage: {}, steps: [], ...entry };
+}
+
+async function act(page, step) {
+  if (typeof step.press === 'string') return page.keyboard.press(step.press);
+  if (typeof step.click === 'string') return page.locator(step.click).first().click({ timeout: 5_000 });
+  // What a click asks for may arrive a moment later, as the recorded daemon's answer does.
+  if (typeof step.waitFor === 'string') return page.locator(step.waitFor).first().waitFor({ state: 'visible', timeout: 5_000 });
+  throw new Error(`a step in states.json is not press, click or waitFor: ${JSON.stringify(step)}`);
 }
 
 async function capture(context, state, config) {
@@ -98,12 +117,23 @@ async function capture(context, state, config) {
   });
   page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
   await page.clock.setFixedTime(new Date(config.clock));
-  await page.goto(`${ORIGIN}/index.html?fixture=${encodeURIComponent(state)}`);
+  await page.goto(`${ORIGIN}/index.html?fixture=${encodeURIComponent(state.fixture ?? state.name)}`);
   await page.waitForFunction(() => ['true', 'error'].includes(document.documentElement.dataset.ready ?? ''), null, {
     timeout: 20_000,
   });
   const ready = await page.evaluate(() => [document.documentElement.dataset.ready, document.documentElement.dataset.error ?? '', document.body.innerText.slice(0, 300)]);
   if (ready[0] !== 'true') problems.push(`the window did not become ready: ${ready[1] || ready[2]}`);
+  for (const step of state.steps) {
+    try {
+      await act(page, step);
+    } catch (err) {
+      problems.push(`step ${JSON.stringify(step)} failed: ${err.message.split('\n')[0]}`);
+    }
+  }
+  if (state.steps.length > 0) {
+    // What a step changed is drawn before it is measured: two frames, as the window waits for its first.
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  }
   const shot = PNG.sync.read(await page.screenshot({ animations: 'disabled', caret: 'hide' }));
   await page.close();
   return { shot, problems };
@@ -126,22 +156,34 @@ async function main() {
     });
   }
   const { width, height } = config.viewport;
-  const context = await browser.newContext({
-    viewport: { width, height },
-    deviceScaleFactor: 1,
-    colorScheme: config.colorScheme,
-    reducedMotion: config.reducedMotion,
-  });
-  const blocked = await serve(context, rendered);
+  const blocked = [];
+  // A context per state: each opens on its own storage and colour scheme, so
+  // no state is drawn from what an earlier one left behind.
+  async function contextFor(state) {
+    const context = await browser.newContext({
+      viewport: { width, height },
+      deviceScaleFactor: 1,
+      colorScheme: state.colorScheme,
+      reducedMotion: config.reducedMotion,
+    });
+    await serve(context, rendered, blocked);
+    await context.addInitScript((storage) => {
+      for (const [k, v] of Object.entries(storage)) window.localStorage.setItem(k, v);
+    }, state.storage);
+    return context;
+  }
 
   const report = { generatedAt: new Date().toISOString(), references: refs, limit: config.maxMismatchRatio, states: {} };
   let failed = false;
-  for (const state of config.states) {
+  for (const listed of config.states) {
+    const spec = stateOf(listed, config);
+    const state = spec.name;
     const entry = { pass: false };
     report.states[state] = entry;
     try {
       const reference = await readReference(refs, state, config.reference.crop);
-      const { shot, problems } = await capture(context, state, config);
+      const context = await contextFor(spec);
+      const { shot, problems } = await capture(context, spec, config).finally(() => context.close());
       if (shot.width !== reference.width || shot.height !== reference.height) {
         throw new Error(`screenshot is ${shot.width}×${shot.height}, reference crop is ${reference.width}×${reference.height}`);
       }

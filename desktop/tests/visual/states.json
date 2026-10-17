@@ -1,6 +1,24 @@
 {
   "about": "The ruler of `npm run check:visual`: which reference states are measured, how, and how far from them still passes. Changing this file changes the measurement, which is why docs/loop/done.toml protects it.",
-  "states": ["02-janela-principal-rodando", "03-janela-principal-aprovacao"],
+  "states": [
+    "02-janela-principal-rodando",
+    "03-janela-principal-aprovacao",
+    { "name": "05-grade-em-repouso", "storage": { "dcode.desktop.attention.v1": "{\"pinned\":[\"s-done-check\",\"s-rebuild\",\"s-specguard\"],\"seen\":{},\"since\":\"2026-09-28T18:00:00.000Z\"}" } },
+    "06-grade-vazia",
+    { "name": "07-janela-principal-rodando-claro", "fixture": "02-janela-principal-rodando", "colorScheme": "light", "storage": { "dcode.desktop.theme.v1": "claro" } },
+    { "name": "08-janela-principal-aprovacao-claro", "fixture": "03-janela-principal-aprovacao", "colorScheme": "light", "storage": { "dcode.desktop.theme.v1": "claro" } },
+    { "name": "09-crew-painel", "fixture": "05-grade-em-repouso", "storage": { "dcode.desktop.look.v1": "crew" } },
+    { "name": "10-busca-cmd-k", "fixture": "05-grade-em-repouso", "steps": [{ "press": "Meta+k" }] },
+    "11-plano-fixo-e-atividade",
+    { "name": "12-loop-ciclo-e-regua", "steps": [{ "click": ".loop-step" }] },
+    { "name": "13-loop-revisao-propostas", "steps": [{ "click": ".loop-proposal-earlier > summary" }] },
+    { "name": "14-contexto-pr-ci", "fixture": "02-janela-principal-rodando", "steps": [{ "click": ".branch-chip" }, { "waitFor": ".pr-line" }] }
+  ],
+  "statesNote": [
+    "A name alone opens ?fixture=<name> as the window draws it at first. An object can add: fixture (the reference state of src/fixtures/scenes.ts to open, when the PNG has another name), colorScheme (what the browser reports, else the one below), storage (what the window finds in its own localStorage before it starts: the theme, the version of the screen, the grid's memory) and steps (press a key, click a selector, wait for a selector, in order, before the capture). Every state opens in a browser context of its own, so none is drawn from what an earlier one left behind.",
+    "05 pins three ended conversations in the grid's memory, as a person who had opened them would have: the window draws finished conversations from the recording as rows without the daemon's last_event, so 'terminated since you looked' cannot come from the recording alone. 07 and 08 choose Claro in storage and report a light system; the default without a stored choice is still Escuro (D35). 11, 12 and 13 replay src/fixtures/loop-recording.ts, the second recording, so that 02 and 03 keep the first untouched.",
+    "Not measured, and why: attachments in the field (D46/D59) — attaching goes through the main process, which fixture mode does not have, and a fixture that pretended to read a file would draw a check that never happened; the attachments in a message are measured in 11, from turn.started."
+  ],
   "viewport": { "width": 1600, "height": 960 },
   "colorScheme": "dark",
   "reducedMotion": "reduce",
@@ -11,7 +29,7 @@
     "dir": "refs/design/desktop/screenshots",
     "dirNote": "Relative to the repository root, where the images are committed. Override with --refs <dir> or DCODE_DESIGN_SCREENSHOTS.",
     "crop": { "x": 1, "y": 1, "width": 1600, "height": 960 },
-    "source": "Captures of the approved window, not the handoff mock. On 2026-10-13 the owner approved the new look (grafite, the grid's windows, Crew), and 02 and 03 were captured from the top of that stack, main at 9656919 (#433, the same tree as the commit captured), by this check itself: fixture mode, this Chromium, dark, reduced motion, the fixed clock below, 1600×960. On 2026-10-13 03 alone was recaptured the same way, in the PR that gives the approval card the TUI's answers (D39): the owner saw the new card and authorized replacing 03 there; 02 is still the 9656919 capture. On 2026-10-13 both were recaptured the same way, in the PR that gives the window the mascot's Laranja palette (D52, stacked on the mascot's states, D49): the owner decided the new palette and authorized replacing 02 and 03 there, and only there. The other PNGs in the folder are still the handoff v2's and are not measured. A future visual change replaces these captures in its own PR, after the person who approves the look has seen it; changing them in the PR that changes the window is moving the ruler to the work.",
+    "source": "Captures of the approved window, not the handoff mock. On 2026-10-13 the owner approved the new look (grafite, the grid's windows, Crew), and 02 and 03 were captured from the top of that stack, main at 9656919 (#433, the same tree as the commit captured), by this check itself: fixture mode, this Chromium, dark, reduced motion, the fixed clock below, 1600×960. On 2026-10-13 03 alone was recaptured the same way, in the PR that gives the approval card the TUI's answers (D39): the owner saw the new card and authorized replacing 03 there; 02 is still the 9656919 capture. On 2026-10-13 both were recaptured the same way, in the PR that gives the window the mascot's Laranja palette (D52, stacked on the mascot's states, D49): the owner decided the new palette and authorized replacing 02 and 03 there, and only there. On 2026-10-17, with the owner's authorization to extend the ruler, 05 to 14 were captured the same way from main at d44ebcc (#512) — the window's code as merged, with only the second recording, the scenes and this check's per-state options added — by this check itself; they are pending the owner's approval of each capture, and until then they measure that nothing moved since d44ebcc, not that the screens are right. 01 and 04 are still the handoff v2's and are not measured. A future visual change replaces these captures in its own PR, after the person who approves the look has seen it; changing them in the PR that changes the window is moving the ruler to the work.",
     "cropNote": "The references are 1602×962: the capture at (1,1) inside the 1px border ring kept from the handoff's PNGs, the mock's window element. The comparison reads the 1600×960 inside, which is what the renderer draws; the ring is never compared."
   },
   "windowControls": "drawn: in fixture mode (a plain browser, no native controls) the renderer draws the same three 12px placeholders the mock draws, so the title-bar strip is compared, not masked.",
