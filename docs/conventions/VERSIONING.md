@@ -58,8 +58,9 @@ Commits here already follow [Conventional Commits][cc] — `feat:`, `fix:`,
 
 ```bash
 ./scripts/version.sh      # the next version, from the commits since the last tag
-./scripts/changelog.sh v0.0.1 en   # the skeleton, in English
+./scripts/changelog.sh v0.0.1 en   # the pull requests that landed, in English
 ./scripts/changelog.sh v0.0.1 pt   # and in Portuguese
+make changelog                     # Unreleased, assembled from the fragments
 ```
 
 | commit | effect |
@@ -75,26 +76,38 @@ convention is an error, not a patch-by-default; a tag that is not `vX.Y.Z` is an
 error, not an arithmetic attempt. A version chosen by a silent guess is worse
 than a script that stops.
 
-## 5. The changelog is generated as a skeleton, never as prose
+## 5. The changelog is assembled from fragments, never generated as prose
+
+Each change is a fragment written on its own branch —
+`changelog.d/<yyyymmddhhmm>-<slug>.md`, or `desktop/changelog.d/` for the
+desktop app — carrying the entry in both editions. No pull request edits a line
+another one edits, so none conflicts on the changelog. `Unreleased` is
+assembled from them; `scripts/changelog-assemble.sh` renders it.
 
 `scripts/changelog.sh` produces what mechanically exists: which pull requests
-landed, grouped, numbered.
+landed, grouped, numbered. At release it is the cross-check that every one of
+them left a fragment.
 
 It does not produce the **why**, and it must not. "The refusal was honest but it
 instructed abandonment" is in no commit subject and comes out of no generator. A
 tool that tried would write a plausible sentence about a decision nobody took,
 which is worse than a list with no sentence at all.
 
-So: generate the skeleton, then write the reason on each line by hand.
+So: the reason is written by hand, in the fragment, by whoever made the change.
 
 ## 6. Releasing
 
 1. `make check` green, and CI green on `main`.
 2. `./scripts/version.sh` for the number.
-3. `./scripts/changelog.sh` in **both languages** for the skeletons; write the
-   reasons; move the entries out of `Unreleased` into the new section and
-   rewrite the status. The changelog is bilingual like the README, English
-   canonical — see `LANGUAGE.md`.
+3. `./scripts/changelog-assemble.sh release X.Y.Z` folds the fragments into a
+   `## X.Y.Z` section of **both editions**, deletes them, and recounts the state
+   table from the tree. Compare with `./scripts/changelog.sh` that no pull
+   request was left without a fragment, then rewrite the status heading and its
+   prose. With no fragment pending, the state-table guard holds the table to the
+   tree exactly, so this commit's CI is where a stale number fails. The
+   changelog is bilingual like the README, English canonical — see
+   `LANGUAGE.md`. The desktop app folds the same way, with `release X.Y.Z
+   desktop`, at its own `desktop-v*` tags.
 4. Merge that, then tag the merge commit: `git tag -a vX.Y.Z -m 'vX.Y.Z'`.
 5. `git push origin vX.Y.Z` — this publishes. The workflow builds every
    platform, checksums, signs with cosign, and creates the GitHub release.

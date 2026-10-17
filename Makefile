@@ -1,4 +1,4 @@
-.PHONY: test race cover lint build install install-fast uninstall clean tidy check eval eval-build hooks
+.PHONY: test race cover lint build install install-fast uninstall clean tidy check eval eval-build hooks changelog
 
 GO      ?= go
 PKGS    := ./...
@@ -88,6 +88,20 @@ tidy:
 	$(GO) mod tidy
 
 check: lint eval-build race cover build
+
+# The Unreleased sections as the next release would fold them, assembled from
+# the fragments under changelog.d/ and desktop/changelog.d/, and the state
+# table's rows that the tree has moved since the last release counted them.
+# Nothing is written: `scripts/changelog-assemble.sh release` is what writes.
+changelog:
+	@for set in root desktop; do for lang in en pt; do \
+	  echo "== $$set, $$lang"; ./scripts/changelog-assemble.sh show $$set $$lang || exit 1; echo; \
+	done; done
+	@echo "== state table, counted now"
+	@out="$$($(GO) test ./internal/evals -run '^TestTheStateTableIsCountedAndNotCarried$$' -count=1 -v 2>&1)" \
+	  || { printf '%s\n' "$$out" | tail -20; echo "make changelog: the state-table guard failed" >&2; exit 1; }; \
+	drift="$$(printf '%s\n' "$$out" | sed -n 's/.*counted now: /  /p' | sort -u)"; \
+	if [ -n "$$drift" ]; then printf '%s\n' "$$drift"; else echo "  the table matches the tree"; fi
 
 # Liga o gate de .githooks/pre-push: um push só sai depois de passar, nesta
 # máquina, pelo que a CI roda. A configuração vale para todos os worktrees do
