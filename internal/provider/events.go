@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
@@ -197,10 +198,34 @@ func ClassifyStatus(status int, body, retryAfter string) *ProviderError {
 		}
 	case status == 413:
 		return &ProviderError{Class: ErrClassContextSize, Message: "request exceeds the context window", Retryable: true}
+	case status == 400 && overflowsTheWindow(body):
+		return &ProviderError{Class: ErrClassContextSize, Message: sanitize(body), Retryable: true}
 	case status >= 400 && status < 500:
 		return &ProviderError{Class: ErrClassBadRequest, Message: sanitize(body)}
 	case status >= 500:
 		return &ProviderError{Class: ErrClassProvider, Message: sanitize(body), Retryable: true}
 	}
 	return nil
+}
+
+// windowOverflow is how a provider says, inside a 400, that the request does
+// not fit the window. Anthropic never answers an overlong prompt with 413: it
+// answers invalid_request_error with one of these, and as a bad_request the
+// turn aborted on the one failure compaction exists to solve.
+//
+// Phrases rather than "any 400": every other 400 is still our bug, and a
+// bad_request compacted and retried would hide it behind a smaller context.
+var windowOverflow = []string{
+	"prompt is too long",
+	"exceed context limit",
+}
+
+func overflowsTheWindow(body string) bool {
+	low := strings.ToLower(body)
+	for _, p := range windowOverflow {
+		if strings.Contains(low, p) {
+			return true
+		}
+	}
+	return false
 }

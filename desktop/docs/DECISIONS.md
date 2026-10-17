@@ -50,6 +50,8 @@ As que estão nos outros arquivos:
 - [D57](DECISIONS-4.md) — O plano do turno fica fixo no alto, como checklist, enquanto o turno roda.
 - [D58](DECISIONS-4.md) — A linha de atividade mostra o que o turno tocou.
 - [D59](DECISIONS-4.md) — PDFs e arquivos de texto vão com o turno, como as imagens.
+- [D60](DECISIONS-4.md) — O painel de mudanças cria o PR e mostra o CI dele, sempre confirmado.
+- [D61](DECISIONS-4.md) — As cores do PR e do CI seguem a gramática de D52.
 
 ## Decisões
 

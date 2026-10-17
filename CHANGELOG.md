@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 230 decision changelogs |
+| spec families | 19, with 237 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -269,6 +269,64 @@ exists to stop exactly that.
   and was merely unreadable. Now only absence counts as absence: an unread
   snapshot is refused and named by the undo, and `write` and `edit` warn when it
   happens, as the recoverable-cycle RN-6 always said.
+- **A `package.json` or `Makefile` that does not parse is said.** The probe
+  read a malformed manifest as "declares nothing", silently, so the prompt
+  looked exactly like a project with no gate. The session now warns at open
+  (`manifest_unreadable`, naming the file and the error); an absent manifest
+  still says nothing, and one unreadable file no longer hides the other.
+- **An Anthropic failure reaches the loop with its own class.** A 400 that says
+  the prompt is too long is now `context_size`, which compacts and retries,
+  instead of `bad_request`, which aborted the turn on the one failure
+  compaction exists to solve. An in-stream `error` frame, such as
+  `overloaded_error`, now ends the stream with the class of its HTTP twin and
+  the provider's message, instead of being ignored and ending as `transport`
+  with the message lost.
+- **The loop list finds the loop that blocks a workspace.** `GET /loops?workspace=`
+  now keeps the runs in, inside or around that tree, links resolved — the rule
+  that refuses a second loop — and refuses a workspace it cannot read with
+  `workspace_invalid`. It matched the exact path only, so a `/loop` typed again
+  from a subfolder, or through a link, found nothing to continue and was
+  refused with `loop_already_running`.
+- **`memory.enabled` and `memory.max_entries` are configurable.** The code
+  read both, but neither was a known key, so a `config.toml` setting them was
+  refused and `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES` were never
+  looked up. A new guard checks the other direction too: every key a product
+  source reads by name must be in `KnownKeys`.
+- **The pre-push gate picks its gates from what the branch changes against
+  `main`.** It compared with the branch's old remote head, so a branch brought
+  up to date with `main` ran the desktop gate for protocol changes that came
+  from `main`, and refused the push where `desktop/node_modules` was missing.
+- **A compaction whose summary failed keeps the history and says so.** The
+  summariser took a stream that ended in an error or at the output ceiling as a
+  whole summary, and the loop swapped a failed or empty one for a fixed
+  sentence, cut the span and announced `session.compacted` — so a 429 or a
+  revoked credential dropped part of the session behind a notice that said it
+  was summarised. Now nothing is cut without a real summary, and
+  `session.error` `compaction_failed` names the cause: the automatic trigger
+  lets the turn go on, `/compact` returns the error, and a `context_size`
+  refusal that cannot compact ends the turn and says so.
+- **The `/loop` limit flags and the four `loop.*` keys leave the spec, which
+  now follows the code.** At least MINOR: a declared configuration surface is
+  removed. The spec declared `--max-iterations`, `--max-identical`,
+  `--max-tokens`, `--max-stall` and `--done-timeout`, which `/loop` never
+  accepted, and `DCODE_LOOP_SPEC_PATH`, `_SOURCE`, `_PROTECT` and
+  `_SESSION_PREFIX`, which were in `KnownKeys` and read only by a function with
+  no caller — one that turned an invalid source into `auto` in silence. The
+  keys, that function and `SessionConfig` are gone; the only flag is
+  `--protect`, and a loop's limits come from the family and the configuration
+  like any session's.
+- **A request the daemon cannot read answers `400 invalid_input`, on every
+  route.** A malformed body, an image that is not base64 and a `from` that is
+  not a number answered `500 internal` on most session routes (and
+  `workspace_invalid` on create), which tells a client the daemon broke and
+  that retrying might help. The git and loop routes already answered
+  `invalid_input`; now all do. The error table in the protocol spec also lists
+  `no_active_turn` and `invalid_input`, which the daemon already answered.
+- **The `generic` family refuses the anthropic dialect, and speaks in its own
+  name.** It inherited MiniMax's `Encode`, which serialised anthropic for a
+  family whose `Transports()` names only openai, and its PDF refusal said
+  `minimax-m3` to someone who had typed `--family generic`. Gemini already had
+  this fix; generic now mirrors it.
 - **A release is built only on a commit CI has passed on `main`.** A new
   first job checks that the tag is on `main` and that CI passed at that exact
   commit, waiting while it still runs and failing, with the reason, when it

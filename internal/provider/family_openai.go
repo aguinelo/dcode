@@ -637,6 +637,9 @@ type anEvent struct {
 	Message *struct {
 		Usage *anUsage `json:"usage"`
 	} `json:"message"`
+	// Error is set on an error frame: a failure that arrives inside a stream
+	// that already answered 200.
+	Error *anError `json:"error"`
 }
 
 type anUsage struct {
@@ -728,6 +731,9 @@ func (d *anthropicDecoder) Decode(ev WireEvent) ([]StreamEvent, error) {
 		if e.Delta.Text != "" {
 			return []StreamEvent{{Type: EventTextDelta, Text: e.Delta.Text}}, nil
 		}
+
+	case "error":
+		return nil, classifyStreamError(e.Error)
 
 	case "message_delta", "message_stop":
 		out, err := d.flush()

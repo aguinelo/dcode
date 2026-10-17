@@ -3,55 +3,11 @@ package loopcommand
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/aguinelo/dcode/internal/config"
 )
-
-// TestOptionsFromConfigReadsAllFourKeys covers the four keys the function
-// reads by name. The wiring guard looks for the literals in source; this
-// test makes sure the function actually returns them on a values map.
-func TestOptionsFromConfigReadsAllFourKeys(t *testing.T) {
-	values := map[string]string{
-		"loop.spec_path":      "/some/spec",
-		"loop.source":         "loop_spec",
-		"loop.protect":        "**/*_test.go,**/*.go",
-		"loop.session_prefix": "my-",
-	}
-	got := OptionsFromConfig(values)
-	if got.SpecPath != "/some/spec" {
-		t.Errorf("SpecPath = %q, want %q", got.SpecPath, "/some/spec")
-	}
-	if got.Source != SourceLoopSpec {
-		t.Errorf("Source = %d, want SourceLoopSpec (%d)", got.Source, SourceLoopSpec)
-	}
-	if len(got.Protect) != 2 || got.Protect[0] != "**/*_test.go" || got.Protect[1] != "**/*.go" {
-		t.Errorf("Protect = %v, want the two globs split", got.Protect)
-	}
-	if got.SessionPrefix != "my-" {
-		t.Errorf("SessionPrefix = %q, want %q", got.SessionPrefix, "my-")
-	}
-}
-
-// TestOptionsFromConfigEmptyValuesReturnsZeroValue covers the zero case.
-// Every missing key is an empty string or a zero Source, which is what the
-// caller sees when the user set nothing.
-func TestOptionsFromConfigEmptyValuesReturnsZeroValue(t *testing.T) {
-	got := OptionsFromConfig(map[string]string{})
-	if got.SpecPath != "" || got.Source != SourceAuto || got.Protect != nil || got.SessionPrefix != "" {
-		t.Errorf("expected zero value, got %+v", got)
-	}
-}
-
-// TestOptionsFromConfigInvalidSourceFallsBackToAuto covers the error path:
-// ParseSource rejects unknown values and OptionsFromConfig falls back to
-// SourceAuto, which is the documented behaviour.
-func TestOptionsFromConfigInvalidSourceFallsBackToAuto(t *testing.T) {
-	got := OptionsFromConfig(map[string]string{"loop.source": "unknown_mode"})
-	if got.Source != SourceAuto {
-		t.Errorf("invalid source resolved to %d, want SourceAuto (%d)", got.Source, SourceAuto)
-	}
-}
 
 // TestLoadDoneTOMLMissingFileFallsBackToVerify covers the not-found path:
 // loadDoneTOML returns doneFromVerify(verifyCommand) when the file does
@@ -146,15 +102,20 @@ func TestAtoiParsesInteger(t *testing.T) {
 	}
 }
 
-// TestConfigKeysAlignWithLoopKeys is the consistency check: the keys we
-// declared in KnownKeys are exactly the ones OptionsFromConfig reads. If
-// one drifts from the other, the wiring guard catches the wiring side but
-// the read side would silently produce a zero value.
-func TestConfigKeysAlignWithLoopKeys(t *testing.T) {
-	keys := []string{"loop.spec_path", "loop.source", "loop.protect", "loop.session_prefix"}
-	for _, k := range keys {
-		if _, ok := config.KnownKeys[k]; !ok {
-			t.Errorf("OptionsFromConfig reads %q but it is not in config.KnownKeys", k)
+// /loop has no configuration of its own. The four loop.* keys were declared,
+// accepted and shown by `dcode config`, and read by a function nothing called;
+// a key that is accepted and changes nothing promises a control that is not
+// there. They stay out of the schema, so a config.toml naming one is refused
+// rather than silently ignored.
+func TestLoopHasNoConfigurationKeys(t *testing.T) {
+	for _, k := range []string{"loop.spec_path", "loop.source", "loop.protect", "loop.session_prefix"} {
+		if _, ok := config.KnownKeys[k]; ok {
+			t.Errorf("%q is a configuration key again; /loop reads its folder and --protect, nothing else", k)
+		}
+	}
+	for env := range config.EnvToKey {
+		if strings.HasPrefix(env, "DCODE_LOOP_") {
+			t.Errorf("%s is a configuration variable again; /loop has none", env)
 		}
 	}
 }

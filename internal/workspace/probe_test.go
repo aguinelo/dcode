@@ -1,9 +1,11 @@
 package workspace
 
 import (
+	"bufio"
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +18,14 @@ func at(t *testing.T, files map[string]string) string {
 		}
 	}
 	return dir
+}
+
+// gatesOf is the gates of a probe that must have read every manifest it found.
+func gatesOf(gs []Gate, unreadable []Unreadable) []Gate {
+	if len(unreadable) > 0 {
+		panic("unexpected unreadable manifest: " + unreadable[0].String())
+	}
+	return gs
 }
 
 func names(gs []Gate) []string {
@@ -33,7 +43,7 @@ func TestPackageScriptsBecomeGates(t *testing.T) {
 	dir := at(t, map[string]string{
 		"package.json": `{"scripts":{"test":"vitest run","lint":"next lint","test:coverage":"vitest run --coverage"}}`,
 	})
-	got := Probe(context.Background(), dir)
+	got := gatesOf(Probe(context.Background(), dir))
 	if len(got) != 3 {
 		t.Fatalf("got %d gates: %+v", len(got), got)
 	}
@@ -56,9 +66,9 @@ func TestProbeIsStable(t *testing.T) {
 	dir := at(t, map[string]string{
 		"package.json": `{"scripts":{"a":"1","b":"2","c":"3","d":"4","e":"5","f":"6"}}`,
 	})
-	first := names(Probe(context.Background(), dir))
+	first := names(gatesOf(Probe(context.Background(), dir)))
 	for i := 0; i < 10; i++ {
-		got := names(Probe(context.Background(), dir))
+		got := names(gatesOf(Probe(context.Background(), dir)))
 		for j := range first {
 			if got[j] != first[j] {
 				t.Fatalf("run %d disagreed: %v vs %v", i, got, first)
@@ -80,7 +90,7 @@ func TestMakefileTargetsBecomeGates(t *testing.T) {
 			"# a comment\n" +
 			"lint:\n\tgolangci-lint run\n",
 	})
-	got := names(Probe(context.Background(), dir))
+	got := names(gatesOf(Probe(context.Background(), dir)))
 	want := []string{"check", "test", "lint"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v, want %v", got, want)
@@ -104,7 +114,7 @@ func TestMakefileNoiseIsNotAGate(t *testing.T) {
 			"$(BIN): main.go\n\tgo build\n" +
 			"real:\n\techo yes\n",
 	})
-	got := names(Probe(context.Background(), dir))
+	got := names(gatesOf(Probe(context.Background(), dir)))
 	if len(got) != 1 || got[0] != "real" {
 		t.Fatalf("got %v, want only [real]", got)
 	}
@@ -114,18 +124,46 @@ func TestMakefileNoiseIsNotAGate(t *testing.T) {
 // this is ordinary and inconsequential, and the prefix must simply not mention
 // gates rather than claim there are none.
 func TestNothingDeclaredIsNoGates(t *testing.T) {
-	if got := Probe(context.Background(), t.TempDir()); got != nil {
+	if got := gatesOf(Probe(context.Background(), t.TempDir())); got != nil {
 		t.Errorf("got %+v, want nothing", got)
 	}
 }
 
-// Malformed package.json is the project's problem, not a reason to fail a
-// session. It reads as "declared nothing", which is what an unreadable
-// declaration honestly is.
-func TestMalformedPackageJSONIsNotAnError(t *testing.T) {
-	dir := at(t, map[string]string{"package.json": "{not json at all"})
-	if got := Probe(context.Background(), dir); got != nil {
-		t.Errorf("got %+v, want nothing", got)
+// A malformed package.json is the project's problem, not a reason to fail a
+// session — and not "declared nothing" either. It used to read exactly like a
+// project with no gate, which is the claim that it declares none made on the
+// strength of a failure. It comes back named, with why.
+func TestAMalformedPackageJSONIsUnreadableNotEmpty(t *testing.T) {
+	dir := at(t, map[string]string{
+		"package.json": "{not json at all",
+		"Makefile":     "check:\n\techo x\n",
+	})
+	gates, unreadable := Probe(context.Background(), dir)
+	if len(unreadable) != 1 || unreadable[0].Source != "package.json" || unreadable[0].Err == nil {
+		t.Fatalf("unreadable = %+v, want package.json with its parse error", unreadable)
+	}
+	if !strings.Contains(unreadable[0].String(), "package.json: invalid character") {
+		t.Errorf("the notice does not name the file and the error: %q", unreadable[0])
+	}
+	// The other manifest is still read: one unreadable file does not erase the
+	// declarations beside it.
+	if len(gates) != 1 || gates[0].Source != "Makefile" {
+		t.Errorf("gates = %+v, want the Makefile's", gates)
+	}
+}
+
+// A Makefile the scanner cannot finish is unreadable too, and what was read
+// before the failure is not offered as the whole list.
+func TestAMakefileThatCannotBeScannedIsUnreadable(t *testing.T) {
+	dir := at(t, map[string]string{
+		"Makefile": "early:\n\techo x\n" + strings.Repeat("x", bufio.MaxScanTokenSize+1) + "\n",
+	})
+	gates, unreadable := Probe(context.Background(), dir)
+	if len(unreadable) != 1 || unreadable[0].Source != "Makefile" {
+		t.Fatalf("unreadable = %+v, want the Makefile", unreadable)
+	}
+	if gates != nil {
+		t.Errorf("a partial read was offered as the list: %+v", gates)
 	}
 }
 
@@ -136,7 +174,7 @@ func TestACancelledProbeReadsNothing(t *testing.T) {
 	dir := at(t, map[string]string{"package.json": `{"scripts":{"test":"x"}}`})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if got := Probe(ctx, dir); got != nil {
+	if got := gatesOf(Probe(ctx, dir)); got != nil {
 		t.Errorf("a cancelled probe returned %+v", got)
 	}
 }
@@ -149,7 +187,7 @@ func TestALongCommandIsCut(t *testing.T) {
 		long += "x"
 	}
 	dir := at(t, map[string]string{"package.json": `{"scripts":{"big":"` + long + `"}}`})
-	got := Probe(context.Background(), dir)
+	got := gatesOf(Probe(context.Background(), dir))
 	if len(got) != 1 {
 		t.Fatal("expected one gate")
 	}
@@ -164,7 +202,7 @@ func TestBothSourcesAreRead(t *testing.T) {
 		"package.json": `{"scripts":{"test":"vitest"}}`,
 		"Makefile":     "check:\n\techo x\n",
 	})
-	got := Probe(context.Background(), dir)
+	got := gatesOf(Probe(context.Background(), dir))
 	if len(got) != 2 {
 		t.Fatalf("got %+v, want one from each source", got)
 	}

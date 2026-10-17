@@ -10,6 +10,11 @@ quê, uma entrada cada; o detalhe de uma decisão está em `docs/DECISIONS.md`.
 
 ## Não publicado
 
+- **As cores do PR e do CI seguem D52 (D61).** CI rodando fica em cinza, não
+  no amarelo de espera, e PR merged ou fechado fica em cinza, não verde: D52
+  guarda o amarelo para o que espera você e o verde e o vermelho para o que
+  foi medido. CI que passou continua verde, que falhou vermelho, PR aberto
+  laranja.
 - **O painel de mudanças abre o PR e mostra o CI dele, sempre confirmado
   (D60).** A aba Mudanças da Crew e o cartão de contexto da grade mostram o PR
   da branch — `#N` e o título, que abre no navegador, o CI com ponto, palavra e

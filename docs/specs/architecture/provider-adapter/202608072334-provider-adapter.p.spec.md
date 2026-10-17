@@ -240,12 +240,23 @@ func (e *ProviderError) Error() string
 | `auth` | não | aborta o turno, erro ao usuário |
 | `quota` | não | aborta o turno, erro ao usuário |
 | `rate_limit` | sim | espera `RetryAfter`, repete a mesma requisição |
-| `context_size` | sim | força compactação e repete |
+| `context_size` | sim | força compactação e repete; sem o que compactar, ou com resumo que falha, aborta o turno, erro ao usuário |
 | `bad_request` | não | aborta; é bug nosso, precisa aparecer |
 | `tool_schema` | sim | devolve erro ao modelo como resultado de ferramenta (RN-8) |
 | `transport` | sim | repete com recuo exponencial, até o teto |
 | `provider` | sim | repete com recuo exponencial, até o teto |
 | `canceled` | não | encerra silenciosamente |
+
+**De onde a classe sai quando o status não basta.** A Anthropic não responde
+prompt longo demais com 413: responde 400 `invalid_request_error`, com
+`prompt is too long` ou `exceed context limit` na mensagem. Esse 400 é
+`context_size`; qualquer outro 400 continua `bad_request`, porque é bug nosso e
+compactar o esconderia. E um erro pode chegar **dentro** de um stream que já
+respondeu 200 — um frame `type: "error"`. Ele recebe a classe do seu par HTTP
+(`overloaded_error` e `api_error` → `provider`, `rate_limit_error` →
+`rate_limit`, `authentication_error` → `auth`, `billing_error` → `quota`,
+`invalid_request_error` → `bad_request` ou `context_size`) e leva a mensagem do
+provedor; tipo desconhecido vai para `provider`, nomeado.
 
 ## 5. Registro e resolução
 
@@ -314,6 +325,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Resposta que o provedor corta no teto de saída termina com `Truncated`, nos dois dialetos.
 - Requisição `claude` marca no máximo três pontos de cache — a última ferramenta, o system e o último bloco da conversa —, verificado contra arquivo golden; `minimax-m3` não marca nenhum.
 - O uso do `message_start` chega ao `EventDone`, com o que o cache leu e escreveu.
+- Um 400 que diz que o prompt não cabe na janela vira `context_size` e força compactação; qualquer outro 400 continua `bad_request`.
+- Frame de erro no meio de um stream Anthropic termina com a classe do seu par HTTP e a mensagem do provedor, nunca como `transport`.
 
 ## 8. Changelog
 
@@ -328,3 +341,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202610151300 — O teto de saída é do modelo](changelog/202610151300-o-teto-de-saida-e-do-modelo.md)
 - [202610151400 — O prefixo Anthropic é lido do cache](changelog/202610151400-o-prefixo-anthropic-e-lido-do-cache.md)
 - [202610151500 — A janela Claude é por modelo](changelog/202610151500-a-janela-claude-e-por-modelo.md)
+- [202610161630 — O erro Anthropic diz a sua classe](changelog/202610161630-o-erro-anthropic-diz-a-sua-classe.md)
