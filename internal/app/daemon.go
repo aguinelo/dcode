@@ -567,8 +567,11 @@ func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.Com
 		return protocol.CommitDoneResponse{}, protocol.Errorf(protocol.CodeInvalidInput,
 			"session %s is not a qualifying session", sessionID)
 	}
-	p := holder.Take()
-	if p == nil {
+	every, terr := holder.Take()
+	if terr != nil {
+		return protocol.CommitDoneResponse{}, terr
+	}
+	if len(every) == 0 {
 		return protocol.CommitDoneResponse{}, protocol.Errorf(protocol.CodeInvalidInput,
 			"nothing was proposed for %s", sessionID)
 	}
@@ -581,6 +584,7 @@ func (d *Daemon) commitDone(ctx context.Context, sessionID string) (protocol.Com
 	if serr != nil {
 		return protocol.CommitDoneResponse{}, serr
 	}
+	p := every[len(every)-1]
 	done, cerr := CommitProposal(ctx, p, criterionRunner(sb, opts), opts.DoneTimeout)
 	if cerr != nil {
 		return protocol.CommitDoneResponse{}, cerr

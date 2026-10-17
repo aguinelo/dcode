@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as P from '../../src/protocol/generated';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ProposalReview } from '../../src/renderer/ProposalReview';
 import { continueRefusal, reviewOf } from '../../src/state/review';
 import type { SessionView } from '../../src/state/session';
 import { created, log } from './helpers';
@@ -11,6 +13,8 @@ const FILE = '/w/dcode/specs/checkout/done.toml';
 
 const proposal: P.DoneProposal = {
   proposal_id: 'p1',
+  sequence: 1,
+  proposed_at: '2026-10-14T10:05:00Z',
   path: FILE,
   protected: ['tests/**', 'specs/**/done.toml'],
   criteria: [
@@ -100,6 +104,54 @@ describe('the review card', () => {
       ],
     });
     expect(reviewOf(two, {})?.proposals.map((p) => p.folder)).toEqual(['specs/a', 'specs/c']);
+  });
+});
+
+// Every proposal the qualifying turn made reaches the card (D62): the last one
+// is what was measured and written, and the earlier ones are there to be read,
+// oldest first, as the model sent them — the history is the defence against a
+// re-proposal that swapped a criterion for a trivial one.
+describe('the earlier proposals', () => {
+  const third: P.DoneProposal = {
+    ...proposal,
+    sequence: 3,
+    earlier: [
+      {
+        sequence: 1,
+        proposed_at: '2026-10-14T10:01:00Z',
+        criteria: [{ name: 'checkout total', command: 'go test ./cart', exit_code: 0, expects: 'fail', why: 'solto demais' }],
+        protected: ['tests/**'],
+      },
+      { sequence: 2, proposed_at: '2026-10-14T10:03:30Z', criteria: [{ name: 'checkout total', command: 'true', exit_code: 0, expects: 'pass' }] },
+    ],
+  };
+
+  it('are counted and listed oldest first, as the model sent them, with how long before the last', () => {
+    const p = reviewOf(run(), { s2: qualifier('s2', third) })?.proposals[0];
+    expect(p?.heading).toBe('4 critérios · medidos antes do trabalho · 3ª proposta do turno');
+    expect(p?.earlierLabel).toBe('2 propostas anteriores');
+    expect(p?.earlier.map((e) => e.title)).toEqual(['#1 · 1 critério · 4m00s antes da última', '#2 · 1 critério · 1m30s antes da última']);
+    expect(p?.earlier[0]?.criteria).toEqual([{ name: 'checkout total', command: 'go test ./cart', said: 'disse que falharia', why: 'solto demais' }]);
+    expect(p?.earlier[0]?.protected).toEqual(['tests/**']);
+    expect(p?.earlier[1]?.criteria[0]?.said).toBe('disse que passaria');
+  });
+
+  it('say nothing when the turn proposed once', () => {
+    const p = reviewOf(run(), { s2: qualifier('s2', proposal) })?.proposals[0];
+    expect(p?.earlier).toEqual([]);
+    expect(p?.earlierLabel).toBeNull();
+    expect(p?.heading).toBe('4 critérios · medidos antes do trabalho');
+  });
+
+  it('are drawn folded under the written one, and only when there are any', () => {
+    const card = reviewOf(run(), { s2: qualifier('s2', third) });
+    const html = renderToStaticMarkup(<ProposalReview review={card!} onOpen={() => {}} onStop={() => {}} onStart={() => {}} />);
+    expect(html).toContain('data-earlier-proposals="2"');
+    expect(html).toContain('2 propostas anteriores');
+    expect(html).toContain('#1 · 1 critério · 4m00s antes da última');
+    expect(html).toContain('go test ./cart');
+    const once = reviewOf(run(), { s2: qualifier('s2', proposal) });
+    expect(renderToStaticMarkup(<ProposalReview review={once!} onOpen={() => {}} onStop={() => {}} onStart={() => {}} />)).not.toContain('data-earlier-proposals');
   });
 });
 
