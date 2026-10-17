@@ -256,3 +256,87 @@ func put(t *testing.T, s *State, path, body string) {
 	s.MarkRead(path, body, 0)
 	s.MarkWritten(path)
 }
+
+// unreadable makes an existing file impossible to read until the test puts it
+// back, and skips where that cannot be arranged.
+//
+// Root reads through mode 000, so under root this cannot reproduce anything
+// and the test says so instead of passing for the wrong reason.
+func unreadable(t *testing.T, path string) (restore func()) {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: mode 000 does not stop root from reading, so an unreadable file cannot be arranged")
+	}
+	if err := os.Chmod(path, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	restore = func() {
+		if err := os.Chmod(path, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := os.ReadFile(path); err == nil {
+		restore()
+		t.Skip("this filesystem still reads a mode 000 file, so an unreadable file cannot be arranged")
+	}
+	return restore
+}
+
+// A file that existed but could not be read is not a file the turn created.
+// Treating the failed read as absence makes undo remove the person's file.
+func TestUndoNeverRemovesAFileItCouldNotRead(t *testing.T) {
+	s, ws := setup(t)
+	path := writeFileT(t, ws, "kept.go", "the person's file\n")
+
+	s.BeginTurn()
+	restore := unreadable(t, path)
+	serr := s.Snapshot(path)
+	restore()
+	if serr == nil {
+		t.Error("a snapshot that could not be taken was not said")
+	}
+	put(t, s, path, "written by the turn\n")
+
+	restored, refused, err := s.Undo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("undo removed a file it had never read: %v", err)
+	}
+	if len(restored) != 0 {
+		t.Errorf("restored %v with no snapshot to restore from", restored)
+	}
+	if len(refused) != 1 || refused[0] != path {
+		t.Errorf("refused %v, want the unread file named", refused)
+	}
+}
+
+// The cycle's layer is a second read, and it can fail the same way.
+func TestUndoCycleNeverRemovesAFileItCouldNotRead(t *testing.T) {
+	s, ws := setup(t)
+	path := writeFileT(t, ws, "kept.go", "before the turn\n")
+
+	s.BeginTurn()
+	s.Snapshot(path)
+	put(t, s, path, "cycle one\n")
+
+	restore := unreadable(t, path)
+	s.BeginCycle()
+	restore()
+	put(t, s, path, "cycle two\n")
+
+	restored, refused, err := s.UndoCycle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("undoing the cycle removed a file it had never read: %v", err)
+	}
+	if len(restored) != 0 {
+		t.Errorf("restored %v with no snapshot to restore from", restored)
+	}
+	if len(refused) != 1 || refused[0] != path {
+		t.Errorf("refused %v, want the unread file named", refused)
+	}
+}

@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 236 decision changelogs |
+| spec families | 19, with 237 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,12 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **Undo never removes a file it could not read before the turn.** A snapshot
+  whose read failed for any reason but absence was recorded as "did not exist",
+  so `/undo` and the loop's automatic cycle undo removed a file that existed
+  and was merely unreadable. Now only absence counts as absence: an unread
+  snapshot is refused and named by the undo, and `write` and `edit` warn when it
+  happens, as the recoverable-cycle RN-6 always said.
 - **A `package.json` or `Makefile` that does not parse is said.** The probe
   read a malformed manifest as "declares nothing", silently, so the prompt
   looked exactly like a project with no gate. The session now warns at open

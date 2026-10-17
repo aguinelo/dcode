@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 236 changelogs de decisão |
+| famílias de spec | 19, com 237 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,12 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O desfazer nunca remove um arquivo que não conseguiu ler antes do turno.**
+  Instantâneo cuja leitura falhava por qualquer motivo que não ausência era
+  registrado como "não existia", e o `/undo` e o desfazer automático do ciclo
+  removiam um arquivo que existia e só não pôde ser lido. Agora só ausência é
+  ausência: instantâneo não lido é recusado e nomeado pelo desfazer, e `write`
+  e `edit` avisam na hora, como a RN-6 do `recoverable-cycle` sempre disse.
 - **Um `package.json` ou `Makefile` que não se lê é dito.** A sondagem lia
   um manifesto malformado como "não declara nada", em silêncio, e o prompt
   ficava igual ao de um projeto sem portão. A sessão agora avisa ao abrir
