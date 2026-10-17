@@ -244,12 +244,30 @@ export const scenarios = [
   },
   {
     name: 'continues-recorded',
-    about: 'opening an ended conversation continues it in a new session, which the window opens',
+    about: 'an ended conversation opens on its history, and writing in it continues it in a new session, which the window opens',
     async run(ctx) {
-      const { t, env, session } = await endedConversation(ctx, 'conserte o parser');
+      // As endedConversation, with a second reply for the message that continues it.
+      const t = await ctx.fresh();
+      const model = await ctx.model();
+      model.reply(text('Feito.'));
+      model.reply(text('Continuei daqui.'));
+      const env = ctx.env(t, model);
+      await ctx.daemon(env, t.ws);
+      const session = await must(t.socket, 'POST', '/v1/sessions', { workspace: t.ws });
+      const ended = ctx.follow(t.socket, session.id);
+      await must(t.socket, 'POST', `/v1/sessions/${session.id}/turns`, { text: 'conserte o parser' });
+      await ended.until((e) => e.type === 'turn.completed', 15_000, 'turn.completed of “conserte o parser”');
+      await must(t.socket, 'DELETE', `/v1/sessions/${session.id}`);
       const ui = await ctx.launch(env, t);
       await daemonState(ui.page, 'connected', 15_000);
+      // The Crew, the main screen (D63), shows an ended conversation's history on a click (D33, D42): nothing continues yet.
       await (await visible(row(ui.page, session.id), 10_000, `the row of the ended conversation ${session.id}`)).click();
+      await visible(ui.page.locator('main').getByText('Feito.'), 10_000, 'the history of the ended conversation');
+      const early = ((await must(t.socket, 'GET', '/v1/conversations'))?.conversations ?? []).find((c) => c.continued_from === session.id);
+      if (early) fail(`opening the ended conversation continued it in ${early.id} before anything was written`);
+      const box = await visible(ui.page.locator('main textarea'), 5_000, 'the field of the ended conversation');
+      await box.fill('continue daqui');
+      await box.press('Enter');
       const continued = await eventually(
         async () => ((await must(t.socket, 'GET', '/v1/conversations'))?.conversations ?? []).find((c) => c.continued_from === session.id && c.live),
         10_000,
@@ -259,6 +277,9 @@ export const scenarios = [
         `the window did not open the continuation ${continued.id}`);
       const wire = ctx.follow(t.socket, continued.id);
       await wire.until((e) => e.type === 'session.resumed', 10_000, 'session.resumed');
+      // The continuation's log carries the history first: the turn that matters is the one with what was typed.
+      await wire.until((e) => e.type === 'turn.started' && e.payload?.text === 'continue daqui', 10_000, 'turn.started with what was typed');
+      await visible(ui.page.getByText('Continuei daqui.'), 15_000, 'the model’s answer in the continuation');
     },
   },
   {
