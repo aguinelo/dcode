@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 231 decision changelogs |
+| spec families | 19, with 233 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -268,6 +268,29 @@ exists to stop exactly that.
   refused and `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES` were never
   looked up. A new guard checks the other direction too: every key a product
   source reads by name must be in `KnownKeys`.
+- **The pre-push gate picks its gates from what the branch changes against
+  `main`.** It compared with the branch's old remote head, so a branch brought
+  up to date with `main` ran the desktop gate for protocol changes that came
+  from `main`, and refused the push where `desktop/node_modules` was missing.
+- **A compaction whose summary failed keeps the history and says so.** The
+  summariser took a stream that ended in an error or at the output ceiling as a
+  whole summary, and the loop swapped a failed or empty one for a fixed
+  sentence, cut the span and announced `session.compacted` — so a 429 or a
+  revoked credential dropped part of the session behind a notice that said it
+  was summarised. Now nothing is cut without a real summary, and
+  `session.error` `compaction_failed` names the cause: the automatic trigger
+  lets the turn go on, `/compact` returns the error, and a `context_size`
+  refusal that cannot compact ends the turn and says so.
+- **The `/loop` limit flags and the four `loop.*` keys leave the spec, which
+  now follows the code.** At least MINOR: a declared configuration surface is
+  removed. The spec declared `--max-iterations`, `--max-identical`,
+  `--max-tokens`, `--max-stall` and `--done-timeout`, which `/loop` never
+  accepted, and `DCODE_LOOP_SPEC_PATH`, `_SOURCE`, `_PROTECT` and
+  `_SESSION_PREFIX`, which were in `KnownKeys` and read only by a function with
+  no caller — one that turned an invalid source into `auto` in silence. The
+  keys, that function and `SessionConfig` are gone; the only flag is
+  `--protect`, and a loop's limits come from the family and the configuration
+  like any session's.
 - **A request the daemon cannot read answers `400 invalid_input`, on every
   route.** A malformed body, an image that is not base64 and a `from` that is
   not a number answered `500 internal` on most session routes (and
