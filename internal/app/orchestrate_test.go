@@ -161,7 +161,7 @@ func TestTheOrchestratorSurvivesADaemonRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(history) == 0 || !strings.Contains(history[0].Text,"plan the index") {
+	if len(history) == 0 || !strings.Contains(history[0].Text, "plan the index") {
 		t.Errorf("the history did not come back: %+v", history)
 	}
 	rec, err := os.ReadFile(filepath.Join(records, p.OrchestratorID+".jsonl"))

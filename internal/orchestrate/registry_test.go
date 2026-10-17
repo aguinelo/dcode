@@ -253,6 +253,19 @@ func TestATornLineIsSaidInTheRestart(t *testing.T) {
 	}
 }
 
+// Two daemons conducting one directory would reopen one orchestrator twice and
+// write one log with two sequences: the second is refused, and says why.
+func TestASecondDaemonOnTheSameDirectoryIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	newRegistry(t, dir, &fakeSpawner{})
+	if r, err := NewRegistry(RegistryOptions{Dir: dir, Spawner: &fakeSpawner{}}); err == nil {
+		r.Close()
+		t.Fatal("a second registry opened a directory the first holds")
+	} else if !strings.Contains(err.Error(), "another daemon") {
+		t.Errorf("refused with %v, want the reason", err)
+	}
+}
+
 func TestAnOpenOutsideAnyRepositoryIsRefused(t *testing.T) {
 	r := newRegistry(t, t.TempDir(), &fakeSpawner{})
 	_, _, err := r.Open(t.TempDir())

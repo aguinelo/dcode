@@ -34,7 +34,9 @@ type DaemonOptions struct {
 	// while the program is not running.
 	RecordBudget    session.PruneBudget
 	ApprovalTimeout time.Duration
-	Base            Options
+	// Orchestrator is whether this daemon conducts projects, and where.
+	Orchestrator OrchestratorOptions
+	Base         Options
 	// Log receives operational notices. Nil silences them, which a test wants
 	// and a daemon must not.
 	Log func(string)
@@ -54,6 +56,9 @@ type Daemon struct {
 	// loop's to collect, and the session that made it is read-only by then.
 	proposalMu sync.Mutex
 	proposalBy map[string]*Proposals
+
+	// projects are the projects this daemon conducts, one orchestrator each.
+	projects *daemonProjects
 }
 
 // NewDaemon builds the daemon.
@@ -74,6 +79,7 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 	}
 	d := &Daemon{opts: opts, manager: session.NewManager(opts.MaxSessions),
 		conversations: session.NewConversations(opts.RecordDir)}
+	d.projects = d.newProjects()
 	d.server = server.New(server.Config{
 		SocketPath: opts.SocketPath,
 		Manager:    d.manager,
@@ -91,6 +97,7 @@ func NewDaemon(opts DaemonOptions) *Daemon {
 		// Which slash commands a client offers there, discovered as the TUI
 		// discovers them.
 		Commands:    d.commands,
+		Projects:    d.projects,
 		CommitDone:  d.commitDone,
 		MaxSessions: opts.MaxSessions,
 		// Where transcripts live, so a conversation can be named without
@@ -175,6 +182,12 @@ func (d *Daemon) optionsFor(ws string) (Options, error) {
 // unit of confinement, so sharing any of it across sessions would let one
 // workspace's boundary apply to another.
 func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, error) {
+	return d.buildWith(req, nil)
+}
+
+// buildWith is build with adjust applied to the options last, before the
+// engine is made: how the orchestrator gets plan mode whatever the request.
+func (d *Daemon) buildWith(req protocol.CreateSessionRequest, adjust func(*Options)) (*session.Session, error) {
 	ws, err := validWorkspace(req.Workspace)
 	if err != nil {
 		return nil, err
@@ -268,6 +281,9 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		}
 		opts.SandboxMode = mode
 	}
+	if adjust != nil {
+		adjust(&opts)
+	}
 
 	id := session.NewID(time.Now, randomUint32)
 	log := session.NewEventLog(id, d.opts.EventRetention, time.Now)
@@ -297,54 +313,13 @@ func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, err
 		d.opts.Log(fmt.Sprintf("session %s is not being recorded: %v", id, err))
 	}
 
-	// The session is its own emitter and its own approver: the loop announces
-	// a crossing through the log and blocks until a client answers, which is
-	// what lets any attached client resolve it.
-	var sess *session.Session
-	// Bound late, like the emitter and the approver above it: the engine is
-	// built before the session that holds the queue exists.
-	opts.Steer = func() string {
-		if sess == nil {
-			return ""
-		}
-		return sess.TakeSteering()
-	}
-
-	appSession, err := New(opts,
-		emitterFunc(func(t protocol.EventType, payload any) {
-			if sess != nil {
-				sess.Emit(t, payload)
-			}
-		}),
-		// The daemon's timeout, never zero here (New defaults it): a question
-		// with no deadline is for a session that asks for one, which the
-		// orchestrator's children do.
-		session.NewApprover(func() *session.Session { return sess }, d.opts.ApprovalTimeout),
-	)
+	sess, err := d.assemble(opts, id, func(e *loop.Engine) *session.Session {
+		return session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode), e, log, time.Now)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	sess = session.New(id, opts.Workspace, opts.Model, string(opts.SandboxMode),
-		appSession.Engine, log, time.Now)
-	sess.OnState(d.conversations.StateChanged)
-	sess.ContextWindow = appSession.ContextWindow
-	sess.Family, sess.Transport, sess.BaseURL = opts.Family, opts.Transport, opts.BaseURL
-	sess.Branch = appSession.Branch
-	// What makes `/mode` reach the model rather than only the sandbox.
-	sess.Reprompt = appSession.Reprompt
 	sess.Carried, sess.CarriedFrom, sess.CarriedTurns = carried, carriedFrom, carriedTurns
-
-	// The same record the sandbox is asking, not a second copy: two would
-	// answer differently the moment one of them is granted.
-	sess.Standing = appSession.Standing
-	if appSession.Proposals != nil {
-		// Kept beside the session rather than inside it, because a proposal is
-		// the LOOP's to collect: the qualifying turn records one and ends, and
-		// the loop asks for it afterwards.
-		d.holdProposals(id, appSession.Proposals)
-	}
-
 	return sess, nil
 }
 
@@ -375,7 +350,14 @@ func validWorkspace(path string) (string, error) {
 }
 
 // Serve runs until the context is cancelled.
-func (d *Daemon) Serve(ctx context.Context) error { return d.server.Serve(ctx) }
+//
+// The projects on disk are reopened first, before any client is answered: a
+// client asking for its orchestrator gets the one it had, not a fresh one.
+func (d *Daemon) Serve(ctx context.Context) error {
+	d.reloadProjects(ctx)
+	defer d.closeProjects()
+	return d.server.Serve(ctx)
+}
 
 // Listen binds the socket ahead of Serve, so a caller can report the address
 // before the blocking call.

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/aguinelo/dcode/internal/app"
+	"github.com/aguinelo/dcode/internal/orchestrate"
 	"github.com/aguinelo/dcode/internal/version"
 )
 
@@ -56,7 +57,13 @@ func runServe(args []string) error {
 		return err
 	}
 
+	orch, err := orchestratorOptions(resolved)
+	if err != nil {
+		return err
+	}
+
 	d := app.NewDaemon(app.DaemonOptions{
+		Orchestrator:    orch,
 		Log:             func(msg string) { fmt.Fprintln(os.Stderr, msg) },
 		SocketPath:      path,
 		MaxSessions:     *maxSessions,
@@ -106,6 +113,22 @@ func runSocket(args []string) error {
 	}
 	fmt.Println(path)
 	return nil
+}
+
+// orchestratorOptions reads orchestrator.enabled and, when it is on,
+// orchestrator.dir. Only the shared daemon conducts projects: one embedded in a
+// terminal client dies with it, and two would reopen one orchestrator twice. A
+// value that does not read stops the daemon here, naming it.
+func orchestratorOptions(r config.Resolved) (app.OrchestratorOptions, error) {
+	on, err := orchestrate.Enabled(r)
+	if err != nil || !on {
+		return app.OrchestratorOptions{}, err
+	}
+	dir, err := orchestrate.Dir(r, os.Getenv)
+	if err != nil {
+		return app.OrchestratorOptions{}, err
+	}
+	return app.OrchestratorOptions{Enabled: true, Dir: dir}, nil
 }
 
 // spillDir is where trimmed events are kept.

@@ -4,7 +4,8 @@
 > Precedência: flag > variável de ambiente > arquivo de config > default.
 > Contrato técnico em `202610132000-orchestration.p.spec.md`.
 
-> **Estado.** Só `orchestrator.dir` é lida (passo 4); o resto está planejado, não construído. Cada
+> **Estado.** `orchestrator.dir` é lida desde o passo 4; `enabled`, `profile` e `main_branch`, desde o
+> passo 5; o resto está planejado, não construído. Cada
 > chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
 > da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
 > `TestEveryKeyTheSpecsDeclareIsReadSomewhere` existe para pegar. Por isso as tabelas abaixo abrem
@@ -23,16 +24,19 @@ Lidas:
 | Variável | Chave | Default | Validação | Passo |
 |---|---|---|---|---|
 | `DCODE_ORCHESTRATOR_DIR` | `orchestrator.dir` | `<state>/orchestrate` | absoluto; criado `0700`; fora de qualquer projeto que o daemon conduz | 4 |
+| `DCODE_ORCHESTRATOR_ENABLED` | `orchestrator.enabled` | `false` | booleano | 5 |
 
 Por ler:
 
 | Chave | Variável | Default | Validação | Passo |
 |---|---|---|---|---|
-| `orchestrator.enabled` | `DCODE_ORCHESTRATOR_ENABLED` | `false` | booleano | 5 |
 | `orchestrator.closed_retention` | `DCODE_ORCHESTRATOR_CLOSED_RETENTION` | `1h` | de `0s` a `24h`; `0s` tira o fechado na hora | 6 |
 
 `false` por padrão nesta fatia: a orquestradora é opt-in até a segunda fatia, e `POST /v1/projects`
-responde `orchestrator_unavailable` dizendo a chave. `<state>` é o `Roots.State` de
+responde `orchestrator_unavailable` dizendo a chave. `enabled` e `dir` são lidas onde o `dcode serve`
+nasce, por `orchestratorOptions` (`cmd/dcode/serve.go`): é o daemon que conduz, e um diretório só tem
+um daemon, que o trava (`daemon.lock`). O daemon embutido num cliente de terminal nunca conduz — morre
+com ele — e diz isso no `orchestrator_unavailable`. `<state>` é o `Roots.State` de
 `config.DiscoverRoots` (`DCODE_STATE_DIR`, XDG, ou `~/Library/Application Support/dcode` no macOS).
 A orquestradora também exige `record.enabled`, já declarada em `configuration`.
 
@@ -46,11 +50,22 @@ lista.
 
 ## 2. Filhos e perfis por papel (RN-7, RN-8)
 
+Lidas, na cadeia de configuração da raiz do projeto, quando ele abre:
+
+| Variável | Chave | Default | Validação | Passo |
+|---|---|---|---|---|
+| `DCODE_ORCHESTRATOR_PROFILE` | `orchestrator.profile` | vazio = `model.name` | nome de perfil de `models.toml`, ou vazio | 5 |
+| `DCODE_ORCHESTRATOR_MAIN_BRANCH` | `orchestrator.main_branch` | vazio = a que `vcs` detecta | nome de branch que existe | 5 |
+
+Valor inválido nestas duas é recusado no `POST /v1/projects` (`workspace_invalid`), com a chave e o
+valor: só ali se sabe a raiz cuja cadeia as declara.
+
+Por ler:
+
 | Chave | Variável | Default | Validação | Passo |
 |---|---|---|---|---|
 | `orchestrator.max_children` | `DCODE_ORCHESTRATOR_MAX_CHILDREN` | `4` | inteiro de 1 a 16, e menor que `daemon` `MaxSessions` menos 2 | 6 |
 | `orchestrator.max_returns` | `DCODE_ORCHESTRATOR_MAX_RETURNS` | `3` | inteiro de 1 a 10 | 8 |
-| `orchestrator.profile` | `DCODE_ORCHESTRATOR_PROFILE` | vazio = `model.name` | nome de perfil de `models.toml`, ou vazio | 5 |
 | `orchestrator.child_profiles` | `DCODE_ORCHESTRATOR_CHILD_PROFILES` | vazio = só o modelo da orquestradora | lista de perfis de `models.toml`; nome que não existe é erro | 6 |
 | `orchestrator.reviewer_profiles` | `DCODE_ORCHESTRATOR_REVIEWER_PROFILES` | vazio = o primeiro de `child_profiles` | idem | 8 |
 | `orchestrator.branch_prefix` | `DCODE_ORCHESTRATOR_BRANCH_PREFIX` | `dcode/` | passa em `git check-ref-format --branch` com um nome depois | 6 |
@@ -83,7 +98,6 @@ O nome da branch é `<branch_prefix><slug do title>-<6 primeiros do id do filho>
 | `orchestrator.gate_timeout` | `DCODE_ORCHESTRATOR_GATE_TIMEOUT` | `30m` | de `1m` a `6h` | 9 |
 | `orchestrator.review_max_diff_bytes` | `DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES` | `131072` | inteiro de 4096 a 1048576 | 8 |
 | `orchestrator.forge` | `DCODE_ORCHESTRATOR_FORGE` | `auto` | `auto`, `github` ou `local` | 10 |
-| `orchestrator.main_branch` | `DCODE_ORCHESTRATOR_MAIN_BRANCH` | vazio = a que `vcs` detecta | nome de branch que existe | 5 |
 | `orchestrator.ci_timeout` | `DCODE_ORCHESTRATOR_CI_TIMEOUT` | `45m` | de `1m` a `6h` | 10 |
 | `orchestrator.sensitive` | `DCODE_ORCHESTRATOR_SENSITIVE` | ver abaixo | lista de globs de `policy.Glob` | 10 |
 | `orchestrator.sensitive_diff_lines` | `DCODE_ORCHESTRATOR_SENSITIVE_DIFF_LINES` | `800` | inteiro de 50 a 100000 | 10 |

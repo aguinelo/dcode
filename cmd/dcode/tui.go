@@ -339,7 +339,12 @@ func startEmbedded(ctx context.Context, base app.Options, recordDir string, budg
 		EventRetention: 10000,
 		RecordDir:      recordDir,
 		RecordBudget:   budget,
-		Base:           base,
+		// It dies with this client, and two of them would reopen one
+		// orchestrator twice: projects are the shared daemon's.
+		Orchestrator: app.OrchestratorOptions{
+			Elsewhere: "this daemon runs inside one terminal client; projects are conducted by the shared daemon, dcode serve",
+		},
+		Base: base,
 	})
 	if err := d.Listen(); err != nil {
 		os.RemoveAll(dir)
