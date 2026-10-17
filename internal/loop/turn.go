@@ -334,7 +334,7 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 	turnID := fmt.Sprintf("t%d", e.turnSeq)
 	e.turnID, e.checks = turnID, 0
 	e.emit(protocol.EventTurnStarted, protocol.TurnStarted{
-		TurnID: turnID, Text: input, Documents: att.named(),
+		TurnID: turnID, Text: input, Documents: att.named(), Origin: att.Origin,
 	})
 
 	// The pictures and the files ride with the question, in one message.

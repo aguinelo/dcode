@@ -280,13 +280,13 @@ a grade sabem que uma conversa pertence a um loop sem ler outro fluxo.
 | `type` | Payload | Quando |
 |---|---|---|
 | `session.created` | `Session` | criação |
-| `turn.started` | `{"turn_id":string,"text":string,"documents"?:[]AttachedDocument}` | entrada aceita; `text` é o que foi pedido, `documents` os arquivos lidos com ele |
+| `turn.started` | `{"turn_id":string,"text":string,"documents"?:[]AttachedDocument,"origin"?:string}` | entrada aceita; `text` é o que foi pedido, `documents` os arquivos lidos com ele; `origin` é quem abriu o turno — ausente é a pessoa, `children` é o harness trazendo à orquestradora os relatos dos filhos (`orchestration` .p §10) |
 | `message.delta` | `{"turn_id":string,"text":string}` | fragmento de texto do modelo |
 | `tool.requested` | `{"turn_id":string,"tool_call_id":string,"name":string,"input":object}` | modelo pediu ferramenta |
 | `tool.approval_required` | `ApprovalRequest` | cruzou fronteira do sandbox (RN-4) |
 | `tool.approval_resolved` | `{"approval_id":string,"decision":ApprovalDecision}` | decisão registrada |
 | `tool.completed` | `{"tool_call_id":string,"ok":bool,"output":string,"truncated":bool}` | ferramenta terminou |
-| `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error`, `refused` (o modelo recusou responder; um `session.error` de código `refused` vem antes, com o que o provedor disse) |
+| `turn.completed` | `{"turn_id":string,"reason":string}` | `reason`: `done`, `interrupted`, `error`, `refused` (o modelo recusou responder; um `session.error` de código `refused` vem antes, com o que o provedor disse), `daemon_restart` (o daemon parou com o turno aberto; posto na reabertura da sessão sob o próprio id, como primeiro evento novo, para o turno nunca sumir) |
 | `done.proposed` | `DoneProposal` (`done-qualifier` §6.1) | a última proposta do turno qualificador foi medida e escrita no `done.toml`, com o número dela e as anteriores em `earlier`, sem medição; aviso, nada espera resposta |
 | `plan.updated` | `{"items":[{"id":int,"text":string,"status":string,"blocked":string}]}` | plano criado ou alterado |
 | `session.renamed` | `{"name":string}` | nome que uma pessoa deu à conversa; vazio devolve o título derivado |
@@ -844,3 +844,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610161400 — Pedido ilegível é erro de quem pediu](changelog/202610161400-pedido-ilegivel-e-erro-de-quem-pediu.md)
 - [202610162300 — A recusa do modelo é dita](../provider-adapter/changelog/202610162300-a-recusa-do-modelo-e-dita.md)
 - [202610171900 — Uma sessão pode ter mãe](changelog/202610171900-uma-sessao-pode-ter-mae.md)
+- [202610172300 — A sessão gravada reabre sob o próprio id](../orchestration/changelog/202610172300-a-sessao-gravada-reabre-sob-o-proprio-id.md)
