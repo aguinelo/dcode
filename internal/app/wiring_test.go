@@ -71,6 +71,9 @@ var wiringTable = []configOption{
 	{"Instructions", "behavior.instructions_enabled", "Bool", ""},
 	{"Skills", "behavior.skills_enabled", "Bool", ""},
 
+	{"Memory", "memory.enabled", "Bool", ""},
+	{"MemoryMax", "memory.max_entries", "Int", ""},
+
 	{"CredentialBackend", "credential.backend", "String", ""},
 
 	{"Rules", "rules.confirm_write", "String", "Rules"},
