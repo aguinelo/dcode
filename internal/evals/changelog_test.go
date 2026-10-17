@@ -1,6 +1,7 @@
 package evals
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,67 +30,130 @@ import (
 // tag that a test with no network cannot see. Naming them here is better than
 // a check that pretends.
 
-type edition struct {
-	path string
-	// families, changelogs, declared, needModel, byAssertion, everMeasured
-	rows map[string]int
-	// prose holds the two numbers the sentence beside the table carries.
-	proseNeedModel, proseNeverRun int
+// What changed with fragments (2026-10-17): the table is counted by the
+// release step, not by every pull request. Before, each pull request that
+// added a decision changelog edited the same row of both editions, and fifteen
+// of them in flight conflicted on it at once. Now the row holds the count taken
+// at the last release, and this test holds it to the tree in two ways:
+//
+//   - with no fragment pending — the state the release step leaves, before its
+//     commit can pass CI and be tagged — the table must equal the tree, row by
+//     row, exactly as before;
+//   - always, the table, rewritten from the tree by this file's own writer,
+//     must read back as the tree: the release step cannot be the one that
+//     fails to count. And the prose must agree with its own table, the two
+//     editions with each other.
+//
+// Between releases a table behind the tree is said in the test's log, never
+// passed over: the drift is what the next release recounts.
+//
+// `go test ./internal/evals -run TestTheStateTableIsCountedAndNotCarried
+// -args -write-state` rewrites both editions from the tree; it is what
+// `scripts/changelog-assemble.sh release` runs.
+var writeState = flag.Bool("write-state", false,
+	"rewrite the state table of both CHANGELOG editions from the tree (the release step)")
+
+// counted is what the tree says, keyed as the table rows are.
+type counted map[string]int
+
+func countTree(t *testing.T, root string) counted {
+	t.Helper()
+	declared := len(Contracts)
+	needModel := Measurable(Contracts)
+	// Sound ones. A run that lost an execution to a transport error measured
+	// nineteen things and reported a rate over twenty, and counting it here
+	// would put a number in the table that the record itself calls unreadable.
+	measured := 0
+	for _, m := range Measured {
+		if m.Sound {
+			measured++
+		}
+	}
+	return counted{
+		"families":     countDirs(t, filepath.Join(root, "docs", "specs", "architecture")),
+		"changelogs":   countChangelogs(t, filepath.Join(root, "docs", "specs", "architecture")),
+		"declared":     declared,
+		"needModel":    needModel,
+		"byAssertion":  declared - needModel,
+		"everMeasured": measured,
+		// A measurement that cannot say which prompt it saw. Counted here for
+		// the same reason "ever actually measured" is: the distance between a
+		// number and what it describes only stays visible while something
+		// counts it.
+		"unverifiable": unverifiable(Measured),
+	}
 }
 
 func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 	root := repoRootFromEvals(t)
+	want := countTree(t, root)
+	specs := editionSpecs()
 
-	wantFamilies := countDirs(t, filepath.Join(root, "docs", "specs", "architecture"))
-	wantChangelogs := countChangelogs(t, filepath.Join(root, "docs", "specs", "architecture"))
-	wantDeclared := len(Contracts)
-	wantNeedModel := Measurable(Contracts)
-	wantByAssertion := wantDeclared - wantNeedModel
-	// Sound ones. A run that lost an execution to a transport error measured
-	// nineteen things and reported a rate over twenty, and counting it here
-	// would put a number in the table that the record itself calls unreadable.
-	wantMeasured := 0
-	for _, m := range Measured {
-		if m.Sound {
-			wantMeasured++
+	if *writeState {
+		for _, spec := range specs {
+			path := filepath.Join(root, spec.path)
+			body, err := spec.write(readFile(t, path), want)
+			if err != nil {
+				t.Fatalf("%s: %v", spec.path, err)
+			}
+			if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("%s: state table rewritten from the tree", spec.path)
 		}
 	}
-	// A measurement that cannot say which prompt it saw. Counted here for the
-	// same reason "ever actually measured" is: the distance between a number
-	// and what it describes only stays visible while something counts it.
-	wantUnverifiable := unverifiable(Measured)
 
-	for _, e := range []edition{readEnglish(t, root), readPortuguese(t, root)} {
-		t.Run(filepath.Base(e.path), func(t *testing.T) {
-			for name, want := range map[string]int{
-				"families":     wantFamilies,
-				"changelogs":   wantChangelogs,
-				"declared":     wantDeclared,
-				"needModel":    wantNeedModel,
-				"byAssertion":  wantByAssertion,
-				"everMeasured": wantMeasured,
-				"unverifiable": wantUnverifiable,
-			} {
+	pending := len(readFragments(t, filepath.Join(root, "changelog.d")))
+
+	for _, spec := range specs {
+		t.Run(filepath.Base(spec.path), func(t *testing.T) {
+			body := readFile(t, filepath.Join(root, spec.path))
+			e := spec.read(t, body)
+
+			for _, name := range rowNames {
 				got, ok := e.rows[name]
 				if !ok {
 					t.Errorf("the state table carries no %s row; the pattern has drifted and this guard is reading nothing", name)
 					continue
 				}
-				if got != want {
-					t.Errorf("the state table says %s = %d and the tree says %d", name, got, want)
+				if got == want[name] {
+					continue
+				}
+				if pending == 0 {
+					t.Errorf("the state table says %s = %d and the tree says %d", name, got, want[name])
+				} else {
+					t.Logf("counted now: %s = %d, the table counted %d at the last release; the release recounts it", name, want[name], got)
 				}
 			}
 
 			// The sentence beside the table has to agree with the table.
 			// Prose is the weakest layer this repository recognises, and the
 			// half that went stale first was this one.
-			if e.proseNeedModel != wantNeedModel {
+			if e.proseNeedModel != e.rows["needModel"] {
 				t.Errorf("the prose says %d contracts need a model and the table says %d",
-					e.proseNeedModel, wantNeedModel)
+					e.proseNeedModel, e.rows["needModel"])
 			}
-			if want := wantNeedModel - wantMeasured; e.proseNeverRun != want {
-				t.Errorf("the prose says %d have never run and the numbers give %d",
-					e.proseNeverRun, want)
+			if w := e.rows["needModel"] - e.rows["everMeasured"]; e.proseNeverRun != w {
+				t.Errorf("the prose says %d have never run and the table gives %d",
+					e.proseNeverRun, w)
+			}
+
+			// The writer the release runs, run here on every change: the table
+			// it would write has to read back as the tree.
+			rewritten, err := spec.write(body, want)
+			if err != nil {
+				t.Fatalf("the release step could not rewrite this table: %v", err)
+			}
+			back := spec.read(t, rewritten)
+			for _, name := range rowNames {
+				if back.rows[name] != want[name] {
+					t.Errorf("rewritten from the tree, the table reads %s = %d where the tree says %d",
+						name, back.rows[name], want[name])
+				}
+			}
+			if back.proseNeedModel != want["needModel"] || back.proseNeverRun != want["needModel"]-want["everMeasured"] {
+				t.Errorf("rewritten from the tree, the prose reads (%d, %d) where the tree gives (%d, %d)",
+					back.proseNeedModel, back.proseNeverRun, want["needModel"], want["needModel"]-want["everMeasured"])
 			}
 		})
 	}
@@ -99,7 +163,9 @@ func TestTheStateTableIsCountedAndNotCarried(t *testing.T) {
 // differs between them is a reader being told two things.
 func TestBothEditionsCarryTheSameNumbers(t *testing.T) {
 	root := repoRootFromEvals(t)
-	en, pt := readEnglish(t, root), readPortuguese(t, root)
+	specs := editionSpecs()
+	en := specs[0].read(t, readFile(t, filepath.Join(root, specs[0].path)))
+	pt := specs[1].read(t, readFile(t, filepath.Join(root, specs[1].path)))
 
 	for name, a := range en.rows {
 		b, ok := pt.rows[name]
@@ -156,54 +222,6 @@ func TestEveryMeasurementNamesWhatProducedIt(t *testing.T) {
 		}
 		seen[m.ID] = true
 	}
-}
-
-// ---- reading the two editions ----
-
-func readEnglish(t *testing.T, root string) edition {
-	t.Helper()
-	body := readFile(t, filepath.Join(root, "CHANGELOG.md"))
-	e := edition{path: "CHANGELOG.md", rows: map[string]int{}}
-	e.rows["families"] = row(t, body, `\| spec families \| (\d+), with (\d+) decision changelogs \|`, 1)
-	e.rows["changelogs"] = row(t, body, `\| spec families \| (\d+), with (\d+) decision changelogs \|`, 2)
-	e.rows["declared"] = row(t, body, `\| behavioural contracts \| (\d+) declared \|`, 1)
-	e.rows["needModel"] = row(t, body, `\| contracts needing a model \| (\d+) of the (\d+); (\d+) are settled by assertion \|`, 1)
-	e.rows["byAssertion"] = row(t, body, `\| contracts needing a model \| (\d+) of the (\d+); (\d+) are settled by assertion \|`, 3)
-	e.rows["everMeasured"] = row(t, body, `\| \*\*contracts ever actually measured\*\* \| \*\*(\d+)\*\* \|`, 1)
-	e.rows["unverifiable"] = row(t, body,
-		`\| of those, \*\*against a prompt they cannot name\*\* \| \*\*(\d+)\*\* \|`, 1)
-
-	// "Of the forty-three contracts that need a model, thirty-eight have never
-	// run against one"
-	m := regexp.MustCompile(`Of the\s+([a-z-]+(?:\s+[a-z-]+)?)\s+contracts that need a model, \*\*([a-z-]+(?:\s+[a-z-]+)?) have never run`).FindStringSubmatch(body)
-	if m == nil {
-		t.Fatalf("CHANGELOG.md: the sentence beside the table did not match; this guard is reading nothing")
-	}
-	e.proseNeedModel = words(t, m[1])
-	e.proseNeverRun = words(t, m[2])
-	return e
-}
-
-func readPortuguese(t *testing.T, root string) edition {
-	t.Helper()
-	body := readFile(t, filepath.Join(root, "CHANGELOG.pt-BR.md"))
-	e := edition{path: "CHANGELOG.pt-BR.md", rows: map[string]int{}}
-	e.rows["families"] = row(t, body, `\| famílias de spec \| (\d+), com (\d+) changelogs de decisão \|`, 1)
-	e.rows["changelogs"] = row(t, body, `\| famílias de spec \| (\d+), com (\d+) changelogs de decisão \|`, 2)
-	e.rows["declared"] = row(t, body, `\| contratos comportamentais \| (\d+) declarados \|`, 1)
-	e.rows["needModel"] = row(t, body, `\| contratos que precisam de modelo \| (\d+) dos (\d+); (\d+) se resolvem por asserção \|`, 1)
-	e.rows["byAssertion"] = row(t, body, `\| contratos que precisam de modelo \| (\d+) dos (\d+); (\d+) se resolvem por asserção \|`, 3)
-	e.rows["everMeasured"] = row(t, body, `\| \*\*contratos de fato já medidos\*\* \| \*\*(\d+)\*\* \|`, 1)
-	e.rows["unverifiable"] = row(t, body,
-		`\| destes, \*\*contra um prompt que não sabem nomear\*\* \| \*\*(\d+)\*\* \|`, 1)
-
-	m := regexp.MustCompile(`Dos\s+([a-zç-]+(?:\s+e\s+[a-zê-]+)?)\s+contratos que precisam de modelo, \*\*([a-zê-]+(?:\s+e\s+[a-zô-]+)?) nunca rodaram`).FindStringSubmatch(body)
-	if m == nil {
-		t.Fatalf("CHANGELOG.pt-BR.md: the sentence beside the table did not match; this guard is reading nothing")
-	}
-	e.proseNeedModel = palavras(t, m[1])
-	e.proseNeverRun = palavras(t, m[2])
-	return e
 }
 
 func readFile(t *testing.T, path string) string {
