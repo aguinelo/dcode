@@ -133,6 +133,12 @@ type Model struct {
 	// installed, or a detached head. The bottom bar draws nothing for it
 	// then, the same reading every other segment without data already gets.
 	Branch string
+	// Role is the session's place under an orchestrator; "orchestrator" trades
+	// the side column's diff for the live list of its children (Agents).
+	Role string
+	// Agents is the orchestrator's live list, folded from its own log
+	// (agents.go). Empty on every other session.
+	Agents Agents
 	// Mode is the session behavioural mode (plan, assist, auto). Empty when
 	// the session has not yet announced its mode — older sessions reply
 	// without it and a missing label is the honest rendering.
@@ -297,6 +303,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 			m.Model, m.Sandbox, m.Mode, m.State = s.Model, s.SandboxMode, s.Mode, s.State
 			m.Window = s.ContextWindow
 			m.Branch = s.Branch
+			m.Role = s.Role
 		}
 
 	case protocol.EventSessionModeChanged:
@@ -674,6 +681,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.activeTurn = ""
 		m.TurnStartedAt = time.Time{}
 	}
+	m = m.applyAgents(ev)
 
 	// Every entry this event produced is stamped with the event's own clock.
 	// One place rather than at each append: a kind added later would otherwise
@@ -1045,7 +1053,8 @@ func (m Model) railHasContent() bool {
 	// from the first event: how much room is left. Asking only about files
 	// emptied it for the first minute of every session — the defect the file
 	// list had, arriving at the column that replaced it.
-	return len(FileTree(m.Entries)) > 0 || m.Window > 0 || m.Asked > 0
+	return len(FileTree(m.Entries)) > 0 || m.Window > 0 || m.Asked > 0 ||
+		m.Role == protocol.RoleOrchestrator
 }
 
 func plural(n int, one, many string) string {

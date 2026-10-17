@@ -190,6 +190,18 @@ var tuiInvariants = map[string]string{
 
 	// The side column.
 	"o painel de diff sobre o de sessão": "TestTheSideColumnIsTwoFifths",
+	// The orchestrator's live list (agents.go, agents_side.go).
+	"a lista dos filhos":                 "TestTheOrchestratorTradesTheDiffForTheList",
+	"estado entre os oito":               "TestTheColumnDrawsAChildInEachOfTheEightStates",
+	"muda a linha que nomeia":            "TestAChildStateChangesItsRowWithoutRereadingTheList",
+	"nunca por relógio do cliente":       "TestAClosedChildLeavesWhenTheDaemonNoLongerListsItAndAFailedOneStays",
+	"Pergunta espera até ser respondida": "TestAQuestionWaitsUntilItIsAnswered",
+	"pousam no filho que nomeiam":        "TestPipelineEventsLandOnTheirChild",
+	"abre a linha dele":                  "TestAnEventForAnUnknownChildStillShowsTheChild",
+	"nunca dobrado como nada":            "TestAnUnreadableOrchestratorEventIsSaid",
+	"desenhado como veio":                "TestAnUnknownStateIsDrawnAsItCame",
+	"nunca cortado em silêncio":          "TestChildrenThatDoNotFitAreCounted",
+	"os oito estados continuam":          "TestTheEightStatesStayDistinctInASCII",
 	"Ela aparece sozinha a partir de":    "TestTheSideColumnAppearsOnATerminalWideEnoughForIt",
 
 	// The column earns its width.

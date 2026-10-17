@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // The side column: what changed, and where the session stands.
@@ -28,13 +30,20 @@ func renderSide(m Model, g Geometry, height int) []string {
 	// keeps the odd row: it grows with the work, and the session does not.
 	bottom := (height - sidePaneGap) / 2
 	top := height - sidePaneGap - bottom
+
+	// An orchestrator never writes, so its diff would stay empty; the top
+	// half is its children instead (agents_side.go).
+	upper := renderDiffPane
+	if m.Role == protocol.RoleOrchestrator {
+		upper = renderAgentsPane
+	}
 	if top < 2 || bottom < 2 {
-		// Too short to be two panes. The diff alone, because it is the half
+		// Too short to be two panes. The upper alone, because it is the half
 		// that changes while a turn runs.
-		return clipTo(renderDiffPane(m, g, w, height), height, w)
+		return clipTo(upper(m, g, w, height), height, w)
 	}
 
-	out := clipTo(renderDiffPane(m, g, w, top), top, w)
+	out := clipTo(upper(m, g, w, top), top, w)
 	out = append(out, g.Palette.Apply(StyleChrome, strings.Repeat(gl.boxH, w)))
 	return append(out, clipTo(renderSessionPane(m, g, w, bottom), bottom, w)...)
 }
