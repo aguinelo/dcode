@@ -93,6 +93,8 @@ if (wanted !== null && scene === null) {
             daemon={{ state: 'recording', version: shown.daemonVersion }}
             actions={fixtureActions}
             initialSelection={scene?.session ?? null}
+            // 02 and 03 are the grid's maximized window, captured before the Crew became the main screen (D63).
+            initialLook={scene?.look}
             loops={scene?.loops}
           />
         </GitReaderContext.Provider>

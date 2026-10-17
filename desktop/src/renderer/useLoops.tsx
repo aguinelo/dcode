@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StopAfterSpec, StopNow, type LoopRun } from '../protocol/generated';
 import type { Attention } from '../state/attention';
-import { carryHolds, liveLoopIn, loopNews, loopOfSession, type LoopsState } from '../state/loop';
+import { arrivedSessions, carryHolds, liveLoopIn, loopNews, loopOfSession, type LoopsState } from '../state/loop';
 import { reviewOf, type ReviewView } from '../state/review';
 import type { SessionsState } from '../state/sessions';
 import type { Row } from '../state/sidebar';
@@ -46,13 +46,29 @@ export function useLoops(o: {
   show: (id: string | null) => void;
   sessions: SessionsState;
   rowById: ReadonlyMap<string, Row>;
+  /** A loop started from this window is in a new session: the Crew's thread follows it (D63). */
+  arrive?: (sessionId: string) => void;
 }): { view: LoopsView; sheet: (workspace: string) => void; node: ReactNode; open: boolean } {
   const { loops, actions, once, say, updateAttention, show, sessions, rowById } = o;
   const [sheetFor, setSheetFor] = useState<string | null>(null);
   const before = useRef(loops);
+  // The loops this window started, and what to call when one moves into a session.
+  const mine = useRef(new Set<string>());
+  const arrive = useRef(o.arrive);
+  const latest = useRef(loops);
+  useEffect(() => {
+    arrive.current = o.arrive;
+    latest.current = loops;
+  });
+  const started = useCallback((run: LoopRun) => {
+    mine.current.add(run.id);
+    const now = latest.current.byId[run.id]?.session_id || run.session_id;
+    if (now) arrive.current?.(now);
+  }, []);
 
   useEffect(() => {
     for (const text of loopNews(before.current, loops)) say(text);
+    for (const id of arrivedSessions(before.current, loops, mine.current)) arrive.current?.(id);
     before.current = loops;
     updateAttention((a) => carryHolds(a, loops));
   }, [loops, say, updateAttention]);
@@ -73,10 +89,13 @@ export function useLoops(o: {
   const start = useCallback(
     async (workspace: string, args: string) => {
       const out = await once(`loop:${workspace}`, () => actions.startLoop(workspace, args));
-      if (out?.ok) say(STARTED);
+      if (out?.ok) {
+        say(STARTED);
+        started(out.value);
+      }
       return !!out?.ok;
     },
-    [actions, once, say],
+    [actions, once, say, started],
   );
 
   const view = useMemo<LoopsView>(
@@ -101,7 +120,10 @@ export function useLoops(o: {
       listSpecs={actions.listSpecs}
       onStart={async (args) => {
         const out = await actions.startLoop(sheetFor, args);
-        if (out.ok) say(STARTED);
+        if (out.ok) {
+          say(STARTED);
+          started(out.value);
+        }
         return out;
       }}
       onClose={close}

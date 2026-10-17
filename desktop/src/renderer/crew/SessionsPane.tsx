@@ -17,7 +17,14 @@ function SessionItem({ row, sessions, now, on, onPick }: { row: Row; sessions: S
   const seal = state === 'running' || state === 'blocked' ? null : sealWord(row.verification);
   const last = lastEventText(row, now);
   return (
-    <button type="button" className={`crew-item${on ? ' on' : ''}`} data-session-id={row.id} aria-current={on ? 'true' : undefined} onClick={() => onPick(row)}>
+    <button
+      type="button"
+      className={`crew-item${on ? ' on' : ''}`}
+      data-session-id={row.id}
+      data-state={row.state}
+      aria-current={on ? 'true' : undefined}
+      onClick={() => onPick(row)}
+    >
       <span className="crew-item-top">
         <MascotGlyph state={v.mascot} live={v.live} size={12} className={`crew-item-glyph tone-${v.tone}`} />
         <span className="crew-item-project mono">{basename(row.workspace) || '(sem projeto)'}</span>
@@ -43,6 +50,7 @@ export function SessionsPane({
   now,
   onPick,
   onStart,
+  onLoop,
   listModels,
   pickFolder,
 }: {
@@ -53,6 +61,8 @@ export function SessionsPane({
   onPick: (row: Row) => void;
   /** Opens a session in a known project, or from the folder picker with null. */
   onStart: (workspace: string | null, options?: StartOptions) => void;
+  /** "Começar loop…" in the project chosen (D55, D63). */
+  onLoop: (workspace: string) => void;
   /** For choosing the model and mode before opening (D38). */
   listModels: (workspace: string) => Promise<Outcome<ModelsResponse>>;
   pickFolder: () => Promise<string | null>;
@@ -63,6 +73,8 @@ export function SessionsPane({
   // "Com modelo e modo": choosing a project leads to the form instead of opening.
   const [choosing, setChoosing] = useState(false);
   const [where, setWhere] = useState<string | null>(null);
+  // With "loop" on, choosing a project opens the loop's sheet there instead (D55), as in the grid's Nova sessão.
+  const [looping, setLooping] = useState(false);
   const groups = useMemo(() => sessionGroups(projects, query, now), [projects, query, now]);
   const total = projects.reduce((n, p) => n + p.rows.length, 0);
   const known = projects.filter((p) => p.id);
@@ -72,6 +84,11 @@ export function SessionsPane({
     onStart(ws, options);
   };
   const choose = (ws: string | null) => {
+    if (looping && ws) {
+      setMenu(false);
+      setLooping(false);
+      return onLoop(ws);
+    }
     if (!choosing) return start(ws);
     if (ws) return setWhere(ws);
     void pickFolder().then((picked) => picked && setWhere(picked));
@@ -84,6 +101,7 @@ export function SessionsPane({
           <button
             type="button"
             className="crew-primary"
+            aria-label="Nova sessão"
             aria-expanded={known.length > 0 ? menu : undefined}
             onClick={() => (known.length > 0 ? setMenu((m) => !m) : start(null))}
           >
@@ -95,24 +113,35 @@ export function SessionsPane({
                 <StartForm workspace={where} listModels={listModels} opening={false} onOpen={(o) => start(where, o)} onBack={() => setWhere(null)} />
               ) : (
                 <>
-                  <span className="crew-new-title">Abrir em</span>
+                  <span className="crew-new-title">{looping ? 'Começar loop em' : 'Abrir em'}</span>
                   {known.map((p) => (
-                    <button key={p.id} type="button" role="menuitem" title={p.id} onClick={() => choose(p.id)}>
+                    <button key={p.id} type="button" role="menuitem" className="place" title={p.id} onClick={() => choose(p.id)}>
                       {p.label}
                     </button>
                   ))}
-                  <button type="button" role="menuitem" onClick={() => choose(null)}>
-                    Outra pasta…
-                  </button>
+                  {!looping && (
+                    <button type="button" role="menuitem" onClick={() => choose(null)}>
+                      Outra pasta…
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitemcheckbox"
                     aria-checked={choosing}
                     className="crew-new-choose"
                     title="Escolher o modelo e o modo antes de abrir"
-                    onClick={() => setChoosing((c) => !c)}
+                    onClick={() => (setChoosing((c) => !c), setLooping(false))}
                   >
                     {choosing ? '✓' : '+'} com modelo e modo
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={looping}
+                    className="crew-new-choose"
+                    title="Começar um loop no projeto escolhido: uma pasta de spec ou um objetivo"
+                    onClick={() => (setLooping((l) => !l), setChoosing(false))}
+                  >
+                    {looping ? '✓' : '↻'} loop
                   </button>
                 </>
               )}

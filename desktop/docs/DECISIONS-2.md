@@ -172,7 +172,8 @@ para a janela em foco (escrever exigiria escolher antes).
 **D32. Uma segunda versão da tela, Crew, ao lado da grade.** Pedida depois de
 ver o Kiro Crew, sem desmanchar a grade: um seletor na barra do topo alterna
 "Grade" e "Crew", lembrado por janela no `localStorage` (como D7), e a grade
-continua sendo o padrão — as duas réguas medem a grade. Na Crew, três painéis: a
+continua sendo o padrão — as duas réguas medem a grade. (O padrão mudou em D63:
+a Crew é a tela principal e a grade a alternativa.) Na Crew, três painéis: a
 lista de conversas à esquerda, a conversa em foco no meio, inteira (D31), e à
 direita o que ela estabeleceu — o selo e os critérios, os arquivos que mudou
 (lidos das chamadas de escrita e das linhas que as ferramentas reportaram, D8),
@@ -205,8 +206,10 @@ faltavam seções e uma lista de sessões própria. A Crew troca a lateral; a gr
   escrever a continua (D21). No meio, a conversa inteira (D31). À direita, abas
   Mudanças (D8), Pronto (selo, critérios, tocou a régua, sem medição) e Sessão
   (projeto, branch, modelo e a troca, modo, turnos, contexto). Nada de pull
-  request, commits ou revisão: o daemon não sabe deles. "Nova" lista os projetos
-  conhecidos e "Outra pasta…"; o ⌘N vai ao seletor de pastas.
+  request, commits ou revisão: o daemon não sabe deles. (O PR e o CI entraram
+  na aba Mudanças em D60, quando o daemon passou a lê-los.) "Nova" lista os projetos
+  conhecidos e "Outra pasta…"; o ⌘N vai ao seletor de pastas. (Desde D63, "Nova"
+  também começa um loop, com "↻ loop".)
 - **Skills e Memória leem o daemon** (`GET /v1/skills`, `/v1/memory`, N6): as
   skills com origem, arquivo, gatilhos e o que as faz pedir permissão, e os
   arquivos recusados; a memória por tipo, marcando a velha e a que fica fora do

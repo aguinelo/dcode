@@ -517,7 +517,8 @@ A tabela de estado do [`CHANGELOG.pt-BR.md`](CHANGELOG.pt-BR.md) e os badges aci
 lidos por um teste que conta a árvore: famílias, changelogs de decisão, contratos
 declarados, quantos precisam de modelo, quantos se resolvem por asserção e quantos de fato
 já foram medidos — nas duas edições, contra a frase em prosa ao lado da tabela além da
-tabela em si. Número herdado da release anterior reprova o build.
+tabela em si. O release reconta a tabela a partir da árvore, e sem mudança pendente
+número que discorda da árvore reprova o build.
 
 É o defeito que este repositório não para de encontrar em si mesmo — **um valor copiado de
 uma verdade que se move** — e ele foi achado dentro do documento que existe para evitá-lo.
@@ -811,7 +812,8 @@ assinaturas, e parte desta superfície é feita de frases.
 
 Commit que muda comportamento técnico precisa manter a spec correspondente sincronizada —
 spec nunca pode ficar obsoleta em relação ao código. Toda alteração entra no
-[`CHANGELOG.pt-BR.md`](CHANGELOG.pt-BR.md), na branch que a faz.
+[`CHANGELOG.pt-BR.md`](CHANGELOG.pt-BR.md), na branch que a faz, como fragmento em
+`changelog.d/` — um arquivo novo, para que dois PRs nunca editem a mesma linha.
 
 **Autoria.** Commit tem autor único e nenhum trailer de coautoria. Todo commit é
 atribuível a uma pessoa; ferramenta que auxiliou não recebe crédito.

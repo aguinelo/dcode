@@ -107,6 +107,7 @@ export function CrewView({
         <div className="crew-board">
           <SessionsPane projects={projects} sessions={sessions} focusId={row?.id ?? null} now={now} onPick={on.pick}
             onStart={on.startIn}
+            onLoop={on.loop}
             listModels={actions.listModels}
             pickFolder={actions.pickFolder}
           />
@@ -122,6 +123,7 @@ export function CrewView({
             onRetryHistory={onRetryHistory}
             on={on}
             git={git.state}
+            measure={measure}
           />
           <ContextPane
             row={row}
@@ -159,7 +161,8 @@ export function CrewView({
   return (
     <div className="crew-shell">
       <CrewRail section={section} waiting={waiting} onPick={pick} />
-      <div className="crew-stage">{body}</div>
+      {/* The main screen's stage (D63), the same landmark the grid's is. */}
+      <main className="crew-stage">{body}</main>
     </div>
   );
 }
