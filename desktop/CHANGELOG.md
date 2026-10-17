@@ -10,6 +10,10 @@ and why, one entry each; the detail of a decision is in `docs/DECISIONS.md`.
 
 ## Unreleased
 
+- **A refused turn says the model refused.** A turn that ends with the core's
+  new stop reason `refused` gets the line "Parou: o modelo recusou responder"
+  after the error entry carrying the provider's words, instead of ending with
+  no line of its own. The protocol types are regenerated for `StopRefused`.
 - **PR and CI colours follow D52 (D61).** Running CI is neutral, not the
   waiting yellow, and a merged or closed PR is neutral, not green: D52 keeps
   yellow for what waits for you and green and red for what was measured. CI

@@ -719,6 +719,11 @@ func stopReasonEntry(reason string, rounds, maxRounds int, lang Lang) (Entry, bo
 		summary = t.TurnStoppedRepeatLoop
 	case protocol.StopMaxTokens:
 		summary = t.TurnStoppedMaxTokens
+	case protocol.StopRefused:
+		// Named even though session.error came first: that line is the
+		// provider's words, and this one is why the turn ended, in the
+		// reader's language.
+		summary = t.TurnStoppedRefused
 	default:
 		return Entry{}, false
 	}

@@ -49,8 +49,10 @@ type StreamEvent struct {
 	CallID   string
 	CallName string
 	Bytes    int
-	Usage    *Usage
-	Err      *ProviderError
+	// Usage is set on EventDone, and on an EventError whose answer was billed
+	// all the same — a refusal.
+	Usage *Usage
+	Err   *ProviderError
 	// Truncated is set on EventDone when the provider stopped because the
 	// answer reached the output ceiling of the request, not because the model
 	// finished. The answer that came before it is real and incomplete.
@@ -138,6 +140,11 @@ func Decide(e *ProviderError) Decision {
 		return DecisionRetry
 	case ErrClassCanceled:
 		return DecisionSilent
+	case ErrClassRefused:
+		// Named rather than left to the default: a refusal is the one failure
+		// a retry is guaranteed to repeat, and abort is the decision, not a
+		// fallthrough.
+		return DecisionAbort
 	default: // auth, quota, bad_request
 		return DecisionAbort
 	}

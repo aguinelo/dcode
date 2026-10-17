@@ -414,6 +414,17 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 		out.Usage.CacheWriteTokens += e.delegated.CacheWriteTokens
 		e.delegated = provider.Usage{}
 
+		if perr != nil && perr.Class == provider.ErrClassRefused {
+			// The model declined. Its own reason, so neither the person nor a
+			// loop reading the outcome takes it for a failure of ours — and
+			// never a retry, which asks the same model the same question.
+			// What streamed before the refusal stays out of the history: it
+			// is not an answer, and the next turn must not build on it.
+			e.emit(protocol.EventSessionError, protocol.Error{
+				Code: string(perr.Class), Message: perr.Message,
+			})
+			return e.finish(out, protocol.StopRefused), perr
+		}
 		if perr != nil {
 			switch provider.Decide(perr) {
 			case provider.DecisionSilent:
@@ -669,6 +680,11 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 					},
 				})
 				continue
+			}
+			// A refused answer is billed like any other, and the error is
+			// what carries its usage.
+			if ev.Usage != nil {
+				usage = *ev.Usage
 			}
 			return answer.String(), calls, usage, false, ev.Err
 		}

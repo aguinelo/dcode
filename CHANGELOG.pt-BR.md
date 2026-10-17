@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 235 changelogs de decisão |
+| famílias de spec | 19, com 236 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,14 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A recusa é dita, e nunca contada como pronta.** Uma resposta Claude que
+  termina em `stop_reason: "refusal"` era lida como término limpo, e o turno
+  tomava a recusa, ou a meia resposta enviada antes dela, pela resposta. Agora
+  ela termina o stream como erro de provedor `refused`, que nunca é repetido,
+  descarta as chamadas de ferramenta ainda chegando e guarda o uso cobrado. O
+  turno termina com o motivo novo `refused`, depois de um `session.error` de
+  código `refused` com as palavras do provedor, e o TUI diz que o modelo
+  recusou nas duas línguas.
 - **Uma falha da Anthropic chega ao laço com a sua própria classe.** Um 400
   que diz que o prompt é longo demais agora é `context_size`, que compacta e
   repete, em vez de `bad_request`, que abortava o turno justo na falha que a

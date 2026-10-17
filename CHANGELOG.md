@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 235 decision changelogs |
+| spec families | 19, with 236 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A refusal is said, and never counted as done.** A Claude answer that ends
+  with `stop_reason: "refusal"` used to decode as a clean finish, so the turn
+  took the refusal, or the half answer streamed before it, for the answer. It
+  now ends the stream as a `refused` provider error that is never retried,
+  drops the tool calls still arriving and keeps the billed usage. The turn ends
+  with the new stop reason `refused`, after a `session.error` with code
+  `refused` and the provider's words, and the TUI says the model refused in
+  both languages.
 - **An Anthropic failure reaches the loop with its own class.** A 400 that says
   the prompt is too long is now `context_size`, which compacts and retries,
   instead of `bad_request`, which aborted the turn on the one failure
