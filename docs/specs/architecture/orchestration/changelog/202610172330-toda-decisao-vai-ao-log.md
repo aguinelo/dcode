@@ -61,6 +61,10 @@ abrindo pela chave. `orchestrator.dir` é a primeira lida; o guarda de fiação 
 sessões porque quem a lê é a orquestradora, que conduz sessões e não é uma, e passa a procurar a
 leitura em `internal/orchestrate/`.
 
+Para a `.p` ficar abaixo de 500 linhas com as regras novas, a prosa foi condensada sem tirar regra:
+tipos de `Child` e `Question` em menos linhas, e o porquê da emenda ao `.r` §6 (§7) virou ponteiro
+para o changelog `202610172200`, onde já estava.
+
 `OpenDecisionLog` e `Torn` não têm chamador fora dos testes até o passo 5; ficam dispensados em
 `internal/specguard/unused_orchestrate_test.go`, como os nomes do passo 2, e saem de lá quando o
 passo 5 os chamar.

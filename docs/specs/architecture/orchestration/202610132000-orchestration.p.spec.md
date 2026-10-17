@@ -119,8 +119,7 @@ Quem cria é o `POST`, não o `GET` que o `.r` §5 descrevia; o porquê está no
 
 ### 5.2 Tipos no fio
 
-Tag JSON é o nome do campo em snake_case; todo campo de `Session`, `Conversation` e `TurnStarted`
-abaixo é `omitempty`, e nos tipos novos são `omitempty` os marcados `?`.
+Tag JSON é o campo em snake_case; `omitempty`: os de `Session`, `Conversation`, `TurnStarted`, e os `?`.
 
 ```go
 // Session e Conversation ganham:
@@ -146,11 +145,8 @@ type Child struct {
 	Branch, Worktree string
 	Base             string // commit da main de onde a branch saiu
 	Head?            string // último commit que o harness fez
-	Returned?        int
-	Return?          *Return
-	Review?          *Verdict
-	Gate?            *GateResult
-	PR?              *ChildPR
+	Returned?        int; Return? *Return
+	Review?          *Verdict; Gate? *GateResult; PR? *ChildPR
 	Usage            Usage // somado sobre os turnos
 	Started, Ended?  time.Time
 }
@@ -172,16 +168,14 @@ type Question struct {
 	Options                           []QuestionOption
 	Sensitive?                        []string // §7.5
 	Asked                             time.Time
-	Answer?, Note?                    string
-	Answered?                         time.Time
+	Answer?, Note?                    string; Answered? time.Time
 }
 type QuestionOption struct{ ID, Label string }
 ```
 
 ### 5.3 Eventos — todos no log da orquestradora
 
-O progresso de um filho fica no log dele, que é uma sessão; no da orquestradora entra só o que a
-lista viva e a conversa precisam.
+O progresso do filho fica no log dele; aqui entra só o que a lista viva e a conversa precisam.
 
 | Tipo | Payload | Quando |
 |---|---|---|
@@ -238,18 +232,15 @@ vai à pessoa como `session.error` na orquestradora.
 | `failed` | `working` | `steer_child` |
 | não terminal | `closed` | `close_child`, ou `DELETE` da pessoa; `reason: cancelled` |
 
-Nada mais transita. `in_review` cobre revisão, atualização e gate porque a RN-9 tem oito estados; o
-passo corrente se lê por `Review` e `Gate` preenchidos ou não. Além de `orchestrator.max_returns`
-devoluções o filho não volta de novo: `failed`, `reason: incomplete`, "devolvido N vezes", relato à
-orquestradora.
+Nada mais transita. `in_review` cobre revisão, atualização e gate (a RN-9 tem oito estados); o
+passo corrente se lê por `Review` e `Gate` preenchidos. Além de `orchestrator.max_returns`
+devoluções: `failed`, `reason: incomplete`, "devolvido N vezes", relato à orquestradora.
 
 ## 7. A esteira — o que decide se algo entra na main
 
 Roda **no harness**: ao fim `done` de um turno do filho, os passos correm em ordem e nenhum é
-pulado; o modelo lê os resultados e decide o que fazer com eles. **Isto muda o `.r` §6**, que
-listava `review`, `gate` e `merge` como ferramentas — decidido pelo dono em 2026-10-17 —, porque o
-`.r` §2 põe do lado determinístico tudo que decide a entrada na main, e um modelo que chama o gate é
-um modelo que pode não chamar. A orquestradora os vê por `children` e pelos relatos.
+pulado; o modelo lê os resultados e decide. **Emenda o `.r` §6**, que os listava como ferramentas
+(decisão 2 do dono; o porquê no changelog `202610172200`). A orquestradora os vê por `children` e pelos relatos.
 
 **7.1 Commit e `owns`.** O filho não faz commit; o harness faz, ao fim de cada turno. Lê
 `git status --porcelain` na worktree: caminho fora do `owns` (`policy.Glob`) devolve **sem commit e
