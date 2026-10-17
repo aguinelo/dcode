@@ -31,7 +31,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 240 decision changelogs |
+| spec families | 19, with 241 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |

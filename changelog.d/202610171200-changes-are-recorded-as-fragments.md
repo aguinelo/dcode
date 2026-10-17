@@ -10,7 +10,7 @@
   changes with it: it held the table to the tree on every commit, which is
   what made every pull request edit that row; it now holds it exactly when no
   fragment is pending — the state the release leaves — runs the release's
-  writer on every change, and logs the drift between releases. The 40
+  writer on every change, and logs the drift between releases. The 41
   entries of `Unreleased` moved into fragments unchanged.
 
 ## pt-BR
@@ -25,5 +25,5 @@
   junto: ela exigia a tabela igual à árvore em todo commit, e é isso que fazia
   todo PR editar aquela linha; agora exige exatamente quando não há fragmento
   pendente — o estado que o release deixa —, roda o escritor do release em
-  toda mudança e registra no log a distância entre releases. As 40 entradas do
+  toda mudança e registra no log a distância entre releases. As 41 entradas do
   `Não publicado` foram para fragmentos sem mudança.
