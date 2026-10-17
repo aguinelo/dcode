@@ -319,40 +319,6 @@ func TestCompactionRunsOnceAndIsAnnounced(t *testing.T) {
 	}
 }
 
-func TestCompactionFallsBackWhenSummarisingFails(t *testing.T) {
-	reg := tools.NewRegistry()
-	p := &scriptedProvider{turns: [][]provider.StreamEvent{{text("ok"), done()}}}
-
-	long := ce.Session{Instructions: "You are dcode."}
-	for i := 0; i < 40; i++ {
-		long.History = append(long.History,
-			ce.Message{Role: ce.RoleUser, Text: strings.Repeat("q ", 40)},
-			ce.Message{Role: ce.RoleAssistant, Text: strings.Repeat("a ", 40)},
-		)
-	}
-
-	ws := t.TempDir()
-	res, _ := policy.NewResolver(ws)
-	e := New(Config{
-		Provider: p, Tools: reg, State: tools.NewState(res, tools.DefaultLimits(), allToolNames),
-		Emitter: newRecorder(), Limits: DefaultLimits(), Mode: policy.ModeWorkspaceWrite,
-		Policy: policy.PolicyOnRequest, Model: "m",
-		CtxConfig: ce.Config{CompactAt: 0.5, KeepTurns: 2, Window: 500},
-		Summarise: func(context.Context, []ce.Message) (string, error) {
-			return "", context.Canceled
-		},
-	}, long)
-
-	if _, err := e.Run(context.Background(), "continue"); err != nil {
-		t.Fatal(err)
-	}
-	// A failed summary must not abort the turn: losing detail beats losing the
-	// session.
-	if e.Session().Summary == nil {
-		t.Error("compaction should still have happened with placeholder text")
-	}
-}
-
 func TestSortedPlanIsStable(t *testing.T) {
 	in := []protocol.PlanItem{{ID: 3}, {ID: 1}, {ID: 2}}
 	got := SortedPlan(in)

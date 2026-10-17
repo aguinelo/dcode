@@ -114,30 +114,6 @@ func TestLoadSourceAutoNothingYieldsEmpty(t *testing.T) {
 	}
 }
 
-func TestParseSourceValid(t *testing.T) {
-	cases := map[string]Source{
-		"":          SourceAuto,
-		"auto":      SourceAuto,
-		"done_file": SourceDoneFile,
-		"loop_spec": SourceLoopSpec,
-	}
-	for in, want := range cases {
-		got, err := ParseSource(in)
-		if err != nil {
-			t.Fatalf("ParseSource(%q): %v", in, err)
-		}
-		if got != want {
-			t.Fatalf("ParseSource(%q) = %d, want %d", in, got, want)
-		}
-	}
-}
-
-func TestParseSourceInvalid(t *testing.T) {
-	if _, err := ParseSource("loop_spec_typo"); err == nil {
-		t.Fatal("expected error on unknown source")
-	}
-}
-
 // SourceAuto with a spec path that is not there falls through to the legacy
 // verify command.
 //
@@ -171,7 +147,8 @@ func TestLoadSourceAutoMalformedSpecIsAnError(t *testing.T) {
 }
 
 // A Source that is not one of the three is an error rather than a silent
-// SourceAuto — the same reason ParseSource refuses an unknown string.
+// SourceAuto: silent defaulting would hide a mistake the same way a misread
+// configuration would.
 func TestLoadUnknownSourceIsAnError(t *testing.T) {
 	if _, err := Load(t.TempDir(), "", Source(99), "make check"); err == nil {
 		t.Fatal("an unknown source came back with no error")

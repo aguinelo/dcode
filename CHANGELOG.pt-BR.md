@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 230 changelogs de decisão |
+| famílias de spec | 19, com 235 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -268,6 +268,54 @@ existe para impedir exatamente isso.
   `overloaded_error`, agora termina o stream com a classe do seu par HTTP e a
   mensagem do provedor, em vez de ser ignorado e terminar como `transport`,
   com a mensagem perdida.
+- **A lista de loops acha o loop que bloqueia um workspace.** `GET
+  /loops?workspace=` agora guarda os loops na árvore, dentro ou em volta dela,
+  com os links resolvidos — a regra que recusa um segundo loop — e recusa com
+  `workspace_invalid` o workspace que não pode ler. Comparava só o caminho
+  exato, e um `/loop` digitado de novo numa subpasta, ou por um link, não achava
+  o que seguir e era recusado com `loop_already_running`.
+- **`memory.enabled` e `memory.max_entries` são configuráveis.** O código lia
+  as duas, mas nenhuma era chave conhecida, então um `config.toml` que as
+  escrevia era recusado e `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES`
+  nunca eram consultadas. Uma guarda nova confere também a outra direção: toda
+  chave que uma fonte de produto lê pelo nome tem de estar em `KnownKeys`.
+- **O gate de pre-push escolhe os gates pelo que a branch muda em relação à
+  `main`.** Ele comparava com o head antigo da branch no remoto, então uma
+  branch atualizada com a `main` rodava o gate do desktop por mudanças de
+  protocolo que vieram da `main`, e recusava o push onde faltava
+  `desktop/node_modules`.
+- **Compactação cujo resumo falhou mantém o histórico e diz por quê.** O
+  resumidor aceitava como resumo inteiro um stream que terminava em erro ou no
+  teto de saída, e o loop trocava resumo que falhou ou veio vazio por uma frase
+  fixa, cortava o trecho e anunciava `session.compacted` — um 429 ou uma
+  credencial revogada apagava parte da sessão atrás de um aviso dizendo que ela
+  fora resumida. Agora nada é cortado sem resumo de verdade, e `session.error`
+  `compaction_failed` nomeia a causa: o gatilho automático deixa o turno
+  seguir, `/compact` devolve o erro, e a recusa `context_size` que não consegue
+  compactar encerra o turno e diz isso.
+- **As flags de limite do `/loop` e as quatro chaves `loop.*` saem da spec,
+  que agora segue o código.** No mínimo MINOR: sai uma superfície de
+  configuração declarada. A spec declarava `--max-iterations`,
+  `--max-identical`, `--max-tokens`, `--max-stall` e `--done-timeout`, que o
+  `/loop` nunca aceitou, e `DCODE_LOOP_SPEC_PATH`, `_SOURCE`, `_PROTECT` e
+  `_SESSION_PREFIX`, que estavam em `KnownKeys` e eram lidas só por uma função
+  sem chamador — que transformava uma origem inválida em `auto` em silêncio.
+  As chaves, essa função e o `SessionConfig` saíram; a única flag é
+  `--protect`, e os limites de um loop vêm da família e da configuração como
+  os de qualquer sessão.
+- **Pedido que o daemon não consegue ler responde `400 invalid_input`, em toda
+  rota.** Corpo malformado, imagem que não é base64 e `from` que não é número
+  respondiam `500 internal` na maior parte das rotas de sessão (e
+  `workspace_invalid` na criação), o que diz ao cliente que o daemon quebrou e
+  que tentar de novo pode adiantar. As rotas de git e de loop já respondiam
+  `invalid_input`; agora todas respondem. A tabela de erros da spec do
+  protocolo passa a listar `no_active_turn` e `invalid_input`, que o daemon já
+  respondia.
+- **A família `generic` recusa o dialeto anthropic, e fala em nome próprio.**
+  Ela herdava o `Encode` da MiniMax, que serializava anthropic para uma família
+  cujo `Transports()` só nomeia openai, e a recusa de PDF dizia `minimax-m3` a
+  quem tinha digitado `--family generic`. O Gemini já tinha essa correção; a
+  `generic` agora a espelha.
 - **Um release só é construído sobre um commit em que a CI passou na
   `main`.** Um primeiro job novo confere que a tag está na `main` e que a CI
   passou exatamente naquele commit, esperando enquanto ela ainda roda e

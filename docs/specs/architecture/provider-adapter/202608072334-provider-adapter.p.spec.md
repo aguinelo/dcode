@@ -240,7 +240,7 @@ func (e *ProviderError) Error() string
 | `auth` | não | aborta o turno, erro ao usuário |
 | `quota` | não | aborta o turno, erro ao usuário |
 | `rate_limit` | sim | espera `RetryAfter`, repete a mesma requisição |
-| `context_size` | sim | força compactação e repete |
+| `context_size` | sim | força compactação e repete; sem o que compactar, ou com resumo que falha, aborta o turno, erro ao usuário |
 | `bad_request` | não | aborta; é bug nosso, precisa aparecer |
 | `tool_schema` | sim | devolve erro ao modelo como resultado de ferramenta (RN-8) |
 | `transport` | sim | repete com recuo exponencial, até o teto |

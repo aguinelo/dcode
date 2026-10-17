@@ -139,19 +139,30 @@ func (g *loopRegistry) get(id string) (*loopcommand.Runner, error) {
 	return r, nil
 }
 
-// list is every run, oldest first, or one workspace's.
-func (g *loopRegistry) list(workspace string) []protocol.LoopRun {
+// list is every run, oldest first, or those in, inside or around one
+// workspace's tree, links resolved — the rule start refuses by, so a client
+// finds the run that blocks it rather than only the one spelled as it spells
+// its workspace.
+func (g *loopRegistry) list(workspace string) ([]protocol.LoopRun, error) {
+	root := ""
+	if workspace != "" {
+		var err error
+		if root, err = loopRoot(workspace); err != nil {
+			return nil, err
+		}
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return g.listLocked(workspace)
+	return g.listLocked(root), nil
 }
 
-func (g *loopRegistry) listLocked(workspace string) []protocol.LoopRun {
+// listLocked keeps the runs whose tree overlaps root, a resolved workspace, or
+// every run when root is empty.
+func (g *loopRegistry) listLocked(root string) []protocol.LoopRun {
 	out := []protocol.LoopRun{}
 	for _, id := range g.order {
-		run := g.runs[id].Snapshot()
-		if workspace == "" || run.Workspace == filepath.Clean(workspace) {
-			out = append(out, run)
+		if root == "" || overlaps(g.roots[id], root) {
+			out = append(out, g.runs[id].Snapshot())
 		}
 	}
 	return out
@@ -337,15 +348,15 @@ func (s *Server) startLoop(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, run)
 }
 
-// listLoops answers GET /loops, oldest first; ?workspace= keeps one project's.
+// listLoops answers GET /loops, oldest first; ?workspace= keeps the runs of
+// that project's tree.
 func (s *Server) listLoops(w http.ResponseWriter, r *http.Request) {
-	ws := r.URL.Query().Get("workspace")
-	if ws != "" && !filepath.IsAbs(ws) {
-		writeErr(w, protocol.Errorf(protocol.CodeWorkspaceInvalid,
-			"workspace must be an absolute path, got %q", ws))
+	runs, err := s.loops.list(r.URL.Query().Get("workspace"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
 		return
 	}
-	writeJSON(w, http.StatusOK, protocol.ListLoopsResponse{Loops: s.loops.list(ws)})
+	writeJSON(w, http.StatusOK, protocol.ListLoopsResponse{Loops: runs})
 }
 
 // continueLoop takes a run out of awaiting_review.
