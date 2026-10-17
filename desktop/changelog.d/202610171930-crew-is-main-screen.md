@@ -9,10 +9,10 @@
   the card instead of drawing a second one. "Nova" gains "↻ loop", the thread
   follows a loop into the session it is in now, and the plan, the activity
   chips, the attachments and the approval card come with the conversation body
-  the Crew already shared. The Crew exposes what the daemon ruler reads; 12 of
-  13 of its scenarios pass, and continues-recorded — which expects a click on
-  an ended conversation to continue it, as the grid's sidebar does — waits on
-  the owner.
+  the Crew already shared. The Crew exposes what the daemon ruler reads, and
+  its continues-recorded scenario now follows the Crew, with the owner's
+  authorization: a click on an ended conversation shows its history, and a
+  message written in it continues it in a new session (D33). 13 of 13 pass.
 
 ## pt-BR
 
@@ -25,6 +25,6 @@
   "↻ loop", a thread segue o loop até a sessão em que ele está agora, e o
   plano, os chips de atividade, os anexos e o card de aprovação vêm com o corpo
   da conversa que a Crew já compartilhava. A Crew expõe o que a régua do daemon
-  lê; 12 dos 13 cenários passam, e o continues-recorded — que espera que clicar
-  numa conversa terminada a continue, como faz a lateral da grade — espera o
-  dono.
+  lê, e o cenário continues-recorded passa a seguir a Crew, com autorização do
+  dono: clicar numa conversa terminada mostra o histórico, e a mensagem escrita
+  nela a continua numa sessão nova (D33). Os 13 passam.

@@ -78,10 +78,14 @@ elemento feito desde D41 aparece nela.
   D42); na Crew, clicar numa gravada a mostra, e escrever a continua (D33).
 
 As réguas: as telas 02 e 03 são da grade maximizada e continuam abrindo nela
-no modo fixture, a 0,00%. O `check:daemon` passa 12 de 13: "continues-recorded"
-clica numa conversa gravada da lista e espera a continuação, o comportamento da
-lateral da grade, e a Crew mostra o histórico; o cenário é caminho protegido e
-fica como está até o dono decidir.
+no modo fixture, a 0,00%. O `check:daemon` passa 13 de 13. O cenário
+"continues-recorded" segue agora a Crew, com autorização do dono para mexer em
+`tests/daemon/` só nisso: clicava numa conversa gravada e esperava a
+continuação, o comportamento da lateral da grade; agora o clique mostra o
+histórico, nada continua sem que se escreva, e a mensagem escrita continua a
+conversa numa sessão nova, que a janela abre e onde o modelo responde. A
+intenção fica — uma conversa terminada se continua pela janela —, porque o dono
+manteve na Crew o que D33 decidiu: mostrar antes de continuar.
 
 Descartados: a Crew continuar uma gravada ao clique só para o cenário passar
 (trocaria a leitura do histórico por uma sessão que ninguém pediu, o que D42
