@@ -1,4 +1,4 @@
-.PHONY: test race cover lint build install install-fast uninstall clean tidy check eval eval-build
+.PHONY: test race cover lint build install install-fast uninstall clean tidy check eval eval-build hooks
 
 GO      ?= go
 PKGS    := ./...
@@ -88,6 +88,13 @@ tidy:
 	$(GO) mod tidy
 
 check: lint eval-build race cover build
+
+# Liga o gate de .githooks/pre-push: um push só sai depois de passar, nesta
+# máquina, pelo que a CI roda. A configuração vale para todos os worktrees do
+# repositório, os dos agentes incluídos.
+hooks:
+	git config core.hooksPath .githooks
+	@echo "pre-push ligado: .githooks/pre-push"
 
 # Contratos comportamentais. Fora do `check` de propósito: cada cenário roda
 # DCODE_EVAL_RUNS vezes contra um modelo de verdade, e uma suíte que gasta

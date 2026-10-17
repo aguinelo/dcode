@@ -261,6 +261,12 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **Um push roda aqui o gate da CI antes de sair.** `.githooks/pre-push`,
+  ligado com `make hooks`, roda no commit enviado, num worktree descartável, o
+  que a CI roda: o gate de Go quando algo fora de `desktop/` mudou, o do
+  desktop quando mudou `desktop/` ou `internal/protocol/`. Sete execuções de
+  PR falharam numa noite, uma delas por gofmt, que um gate local pega em um
+  segundo; o gate era uma regra que nada fazia cumprir.
 - **Um turno conferido conta as verificações uma vez só.** Lia "conferido —
   3 3 checks passaram", o mesmo defeito do fim de um `/loop`: a frase punha o
   número na frente de um substantivo que `plural()` já tinha contado. Era a
