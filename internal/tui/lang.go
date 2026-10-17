@@ -550,6 +550,7 @@ Usage:
   dcode login [flags]        store the model credential, read without echo
   dcode config [key]         the effective configuration and where it came from
   dcode sessions [show <id>] what dcode has done here, and what it did
+  dcode decisions [flags]    the orchestrator's decisions here, read without the daemon
   dcode socket               the daemon's socket path
   dcode -c                   continue the most recent session here
   dcode -r                   choose which session to continue
@@ -791,6 +792,7 @@ Uso:
   dcode login [flags]        guarda a credencial do modelo, lida sem eco
   dcode config [chave]       a configuração efetiva e de onde ela veio
   dcode sessions [show <id>] o que o dcode fez aqui, e o que ele fez
+  dcode decisions [flags]    as decisões da orquestradora daqui, lidas sem o daemon
   dcode socket               o caminho do socket do daemon
   dcode -c                   continua a sessão mais recente daqui
   dcode -r                   escolhe qual sessão continuar

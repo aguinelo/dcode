@@ -14,7 +14,9 @@
 | 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
 | 3 — a sessão gravada reabre sob o próprio id | **feito** (#519), com os três itens do fio que o passo 2 deixou |
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
-| 5 a 14 | **não feito** |
+| 5 a 10 | **não feito** |
+| 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
+| 12 a 14 | **não feito** |
 
 ## Pré-requisitos
 

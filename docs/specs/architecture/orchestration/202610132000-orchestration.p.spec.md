@@ -372,7 +372,7 @@ Lê o arquivo direto, **sem daemon**: o log tem de ser legível quando o que fal
 `--project` padrão é o diretório corrente, resolvido como o `POST /v1/projects` resolve. Texto, uma
 linha por decisão: `21:04:05  #42  gate.measured  índice  red  make check (exit 2)  why: …`;
 `--json` devolve as linhas como estão. Linha ilegível é dita em stderr com o número, o resto é
-impresso, e a saída é 1; `seq` com buraco também é dito.
+impresso, e a saída é 1; `seq` com buraco e linha final rasgada também. Nunca escreve no log.
 
 ## 10. Ferramentas e registros
 
@@ -434,6 +434,7 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Escrita do log que falha é erro devolvido e não gasta `seq`; nunca uma linha perdida em silêncio.
 - Última linha sem fim de linha é cortada ao reabrir e devolvida por `Torn`; linha completa ilegível ou `seq` fora de ordem impede o log de abrir.
 - Nenhuma linha do log passa de 64 KiB; o campo maior é cortado e diz quantos bytes perdeu.
+- `dcode decisions` lê o log sem daemon e nunca o escreve; linha ilegível é dita com o número, e o resto é impresso.
 
 ## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
 
@@ -466,7 +467,6 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
 - Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
 - Fechado sai da lista depois da retenção; `failed` não sai sozinho.
-- `dcode decisions` lê o log sem daemon, e linha ilegível é dita com o número.
 
 ## 15. Ordem de entrega
 
@@ -496,3 +496,4 @@ As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
 - [202610172300 — A sessão gravada reabre sob o próprio id](changelog/202610172300-a-sessao-gravada-reabre-sob-o-proprio-id.md)
 - [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)
+- [202610172345 — O log de decisões se lê sem o daemon](changelog/202610172345-o-log-de-decisoes-se-le-sem-o-daemon.md)
