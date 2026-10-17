@@ -58,8 +58,9 @@ Os commits daqui já seguem [Conventional Commits][cc] — `feat:`, `fix:`, `doc
 
 ```bash
 ./scripts/version.sh      # a próxima versão, dos commits desde a última tag
-./scripts/changelog.sh v0.0.1 en   # o esqueleto, em inglês
+./scripts/changelog.sh v0.0.1 en   # os PRs que entraram, em inglês
 ./scripts/changelog.sh v0.0.1 pt   # e em português
+make changelog                     # o Não publicado, montado dos fragmentos
 ```
 
 | commit | efeito |
@@ -74,26 +75,37 @@ Os commits daqui já seguem [Conventional Commits][cc] — `feat:`, `fix:`, `doc
 não "patch por segurança"; tag que não é `vX.Y.Z` é erro, não uma tentativa de
 aritmética. Versão escolhida por palpite silencioso é pior que script que para.
 
-## 5. O changelog é gerado como esqueleto, nunca como prosa
+## 5. O changelog é montado de fragmentos, nunca gerado como prosa
+
+Cada mudança é um fragmento escrito na branch dela —
+`changelog.d/<yyyymmddhhmm>-<slug>.md`, ou `desktop/changelog.d/` para o app
+desktop — com a entrada nas duas edições. Nenhum PR edita linha que outro
+edita, então nenhum conflita no changelog. O `Não publicado` é montado a partir
+deles; o `scripts/changelog-assemble.sh` o desenha.
 
 O `scripts/changelog.sh` produz o que existe mecanicamente: quais PRs entraram,
-agrupados, com número.
+agrupados, com número. No release é a conferência de que cada um deixou
+fragmento.
 
 Ele **não** produz o **porquê**, e não deve. *"A recusa era honesta mas instruía
 o abandono"* não está em assunto de commit nenhum e não sai de gerador nenhum.
 Uma ferramenta que tentasse escreveria uma frase plausível sobre uma decisão que
 ninguém tomou — pior que uma lista sem frase alguma.
 
-Portanto: gerar o esqueleto, e escrever a razão de cada linha à mão.
+Portanto: a razão é escrita à mão, no fragmento, por quem fez a mudança.
 
 ## 6. Publicar
 
 1. `make check` verde, e CI verde na `main`.
 2. `./scripts/version.sh` para o número.
-3. `./scripts/changelog.sh` **nos dois idiomas** para os esqueletos; escrever as
-   razões; mover as entradas de `Não lançado` para a seção nova e reescrever o
-   estado atual. O changelog é bilíngue como o README, com inglês canônico —
-   ver `LANGUAGE.md`.
+3. `./scripts/changelog-assemble.sh release X.Y.Z` dobra os fragmentos numa
+   seção `## X.Y.Z` das **duas edições**, apaga-os e reconta a tabela de estado
+   a partir da árvore. Conferir com `./scripts/changelog.sh` que nenhum PR ficou
+   sem fragmento, e reescrever o título do estado atual e a prosa dele. Sem
+   fragmento pendente, a guarda da tabela exige a tabela igual à árvore, então
+   é a CI deste commit que reprova número velho. O changelog é bilíngue como o
+   README, com inglês canônico — ver `LANGUAGE.md`. O app desktop dobra do
+   mesmo jeito, com `release X.Y.Z desktop`, nas tags `desktop-v*` dele.
 4. Mergear isso, e então marcar o commit do merge: `git tag -a vX.Y.Z -m 'vX.Y.Z'`.
 5. `git push origin vX.Y.Z` — **isto publica.** O workflow compila todas as
    plataformas, gera checksums, assina com cosign e cria o release no GitHub.

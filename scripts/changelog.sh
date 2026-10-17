@@ -2,6 +2,10 @@
 # Gera o esqueleto da seção de uma versão, a partir dos commits desde a última
 # tag.
 #
+# O texto das entradas vem dos fragmentos em changelog.d/, que o
+# scripts/changelog-assemble.sh dobra na seção no release. Este esqueleto é a
+# conferência: cada PR que ele lista tem de ter deixado um fragmento.
+#
 # Esqueleto, e não o texto. O que este repositório guarda de mais valioso nos
 # changelogs é o **porquê** — "a recusa era honesta mas instruía o abandono" não
 # está em nenhum assunto de commit e não sai de nenhum gerador. O que sai é a

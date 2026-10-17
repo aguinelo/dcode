@@ -46,34 +46,60 @@ can be recognised before it repeats rather than after.
 - Repeated approval to continue (`segue`, `pode ir`) grants **the work**, never
   the branch. Ask which branch, or start a new one.
 
-### Toda alteração entra no `CHANGELOG.md`
+### Toda alteração entra no `CHANGELOG.md` — como fragmento
 
-- Na **mesma branch** que a faz, no topo, e o "Estado atual" é reescrito junto.
-  Changelog escrito depois é changelog reconstruído de memória.
-- Uma linha por mudança: **o que mudou e por quê**. O detalhe da decisão continua
-  no changelog da família, em `docs/specs/architecture/<família>/changelog/`.
-- **Os números do "Estado atual" são contados, não digitados.**
-  `TestTheStateTableIsCountedAndNotCarried` confere famílias, changelogs de
-  decisão, contratos declarados, quantos precisam de modelo, quantos se
-  resolvem por asserção e quantos já foram de fato medidos — contra a árvore, e
-  contra a frase em prosa ao lado da tabela, nas duas edições. Um número
-  herdado da release anterior reprova.
-- **O que a guarda ainda não cobre é a metade em prosa da regra**: que a
-  entrada exista, que esteja na branch que fez a mudança, e que diga o porquê.
+- Na **mesma branch** que a faz, como **um arquivo novo**:
+  `changelog.d/<yyyymmddhhmm>-<slug>.md`, com `## en` e `## pt-BR`, cada um com
+  uma entrada só. Changelog escrito depois é changelog reconstruído de memória.
+- **Nenhum PR edita linha compartilhada.** Em 16/10/2026 quinze PRs em voo
+  conflitaram todos nas mesmas linhas — o topo do `Unreleased` nas duas edições
+  e a linha contada dos changelogs de decisão — e a integração virou serial.
+  O `Unreleased` / `Não publicado` commitado é só um ponteiro: as entradas saem
+  dos fragmentos (`make changelog` mostra), e o release
+  (`scripts/changelog-assemble.sh release`) as dobra na seção da versão e apaga
+  os fragmentos. O "Estado atual" é reescrito no release, não em cada PR.
+- Uma entrada por mudança: **o que mudou e por quê**. O detalhe da decisão
+  continua no changelog da família, em `docs/specs/architecture/<família>/changelog/`.
+- **Os números do "Estado atual" são contados, não digitados — pelo release.**
+  `TestTheStateTableIsCountedAndNotCarried` lê famílias, changelogs de decisão,
+  contratos declarados, quantos precisam de modelo, quantos se resolvem por
+  asserção, quantos já foram de fato medidos e quantos não sabem nomear o
+  prompt. **Antes** conferia a tabela contra a árvore em todo commit, e por isso
+  todo PR que criava um changelog de família editava a mesma linha. **Agora**:
+  sem fragmento pendente — o estado que o release deixa, antes de o commit dele
+  passar na CI e virar tag — a tabela tem de ser igual à árvore, linha a linha,
+  como antes; e sempre, o escritor que o release roda reescreve a tabela a
+  partir da árvore e ela tem de ler de volta como a árvore, a prosa tem de
+  bater com a própria tabela, e as duas edições uma com a outra. Entre releases,
+  tabela atrás da árvore é dita no log do teste (`make changelog` mostra), nunca
+  calada; número digitado à mão é sobrescrito pelo release e reprova se o
+  release for pulado.
+- `TestEveryFragmentCarriesBothEditions`, `TestNoUnreleasedEntryIsWrittenByHand`
+  e `TestTheAssemblerRendersExactlyTheFragments` conferem que todo fragmento
+  tem nome datado e as duas edições não vazias, uma entrada cada; que nenhuma
+  edição tem entrada escrita à mão no `Unreleased`; e que o montador entrega
+  exatamente os fragmentos.
+- **O que a guarda ainda não cobre é a metade em prosa da regra**: que o
+  fragmento exista, que esteja na branch que fez a mudança, que diga o porquê,
+  e que as duas edições digam a mesma coisa — a guarda vê que as duas existem,
+  não que se traduzem.
   Isso continua valendo o que vale a disciplina de quem lê, e está escrito aqui
   em vez de combinado. Cobertura e versão publicada também ficam de fora, de
   propósito: a primeira sai de uma execução que o teste não faz, e a segunda é
   afirmação sobre uma tag que um teste sem rede não enxerga.
-- **O que muda em `desktop/` entra no changelog do desktop** —
-  `desktop/CHANGELOG.md` e a edição pt-BR —, não neste. O app desktop tem
+- **O que muda em `desktop/` entra no changelog do desktop** — um fragmento em
+  `desktop/changelog.d/`, que monta o `desktop/CHANGELOG.md` e a edição pt-BR —,
+  não neste. O app desktop tem
   versão e tags próprias (`desktop-v*`). Uma mudança que atravessa os dois, como
   um pedido de protocolo que o desktop consome, entra nos dois.
 
 ### A versão é derivada, não decidida
 
 - `./scripts/version.sh` diz qual é a próxima, a partir dos commits desde a
-  última tag. `./scripts/changelog.sh` gera o esqueleto da seção — **o porquê de
-  cada linha é escrito à mão**, porque não sai de gerador nenhum.
+  última tag. `./scripts/changelog-assemble.sh release <versão>` dobra os
+  fragmentos na seção dela; `./scripts/changelog.sh` lista os PRs que entraram,
+  para conferir que nenhum ficou sem fragmento — **o porquê de cada entrada é
+  escrito à mão**, no fragmento, porque não sai de gerador nenhum.
 - Os dois leem só o núcleo: commit que mexe apenas em `desktop/` não conta, e as
   tags `desktop-v*` não servem de ponto de partida.
 - Comportamento faz parte do contrato: contrato removido, limiar que desce, ou

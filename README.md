@@ -519,8 +519,9 @@ Details in [`docs/conventions/SDD-HARNESS.md`](docs/conventions/SDD-HARNESS.md).
 The state table in [`CHANGELOG.md`](CHANGELOG.md) and the badges above are read by a test
 that counts the tree: families, decision changelogs, contracts declared, contracts needing
 a model, contracts settled by assertion, and contracts ever actually measured — in both
-language editions, against the prose beside the table as well as the table itself. A number
-inherited from the previous release fails the build.
+language editions, against the prose beside the table as well as the table itself. The
+release recounts the table from the tree, and with no change pending a number that
+disagrees with the tree fails the build.
 
 It is the defect this repository keeps finding in itself — **a value copied from a truth
 that moves** — and it was found sitting in the document that exists to prevent it.
@@ -815,7 +816,8 @@ part of this surface is made of sentences.
 
 Commits that change technical behavior must keep the corresponding spec in sync — a spec
 is never allowed to go stale relative to the code. Every change lands in
-[`CHANGELOG.md`](CHANGELOG.md), on the branch that makes it.
+[`CHANGELOG.md`](CHANGELOG.md), on the branch that makes it, as a fragment under
+`changelog.d/` — one new file, so no two pull requests edit the same line.
 
 **Authorship.** Commits carry a single author and no co-author trailers. Every commit is
 attributable to one person; tooling that assisted does not get a byline.
