@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **A família `generic` recusa o dialeto anthropic, e fala em nome próprio.**
+  Ela herdava o `Encode` da MiniMax, que serializava anthropic para uma família
+  cujo `Transports()` só nomeia openai, e a recusa de PDF dizia `minimax-m3` a
+  quem tinha digitado `--family generic`. O Gemini já tinha essa correção; a
+  `generic` agora a espelha.
 - **Um release só é construído sobre um commit em que a CI passou na
   `main`.** Um primeiro job novo confere que a tag está na `main` e que a CI
   passou exatamente naquele commit, esperando enquanto ela ainda roda e
