@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 237 decision changelogs |
+| spec families | 19, with 238 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,14 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A refusal is said, and never counted as done.** A Claude answer that ends
+  with `stop_reason: "refusal"` used to decode as a clean finish, so the turn
+  took the refusal, or the half answer streamed before it, for the answer. It
+  now ends the stream as a `refused` provider error that is never retried,
+  drops the tool calls still arriving and keeps the billed usage. The turn ends
+  with the new stop reason `refused`, after a `session.error` with code
+  `refused` and the provider's words, and the TUI says the model refused in
+  both languages.
 - **Undo never removes a file it could not read before the turn.** A snapshot
   whose read failed for any reason but absence was recorded as "did not exist",
   so `/undo` and the loop's automatic cycle undo removed a file that existed

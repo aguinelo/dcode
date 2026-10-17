@@ -9,6 +9,7 @@ const STOPPED: Record<string, string> = {
   max_iterations: 'Parou no teto de rodadas',
   repeat_loop: 'Parou: a mesma chamada se repetiu',
   max_tokens: 'Parou no teto de tokens',
+  refused: 'Parou: o modelo recusou responder',
   interrupted: 'Interrompido',
 };
 

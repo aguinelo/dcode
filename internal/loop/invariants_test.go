@@ -42,6 +42,7 @@ var loopInvariants = map[string]string{
 	"terminado em `done` e inteiro":               "TestSummariserRefusesAnIncompleteSummary_CompactionFailure",
 	"termina em `StopMaxIterations`":              "TestIterationCapIsTheBackstop",
 	"encerra o turno em `StopMaxTokens`":          "TestAnAnswerCutAtTheOutputCeilingStopsAtTheCeiling",
+	"encerra o turno em `StopRefused`":            "TestARefusalEndsTheTurnRefusedAndNotDone",
 
 	// Definition of done.
 	"usa a reentrada da RN-10":          "TestNoProgressEndsTheTurnAsIncomplete",

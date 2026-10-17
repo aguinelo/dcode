@@ -203,6 +203,9 @@ type Strings struct {
 	TurnStoppedMaxIterations string // takes rounds done, rounds allowed
 	TurnStoppedRepeatLoop    string
 	TurnStoppedMaxTokens     string
+	// A turn whose model declined to answer. The session.error before it
+	// carries what the provider said; this is why the turn ended.
+	TurnStoppedRefused string
 
 	// Approval
 	ApprovalDeny         string
@@ -446,6 +449,8 @@ var catalogue = map[Lang]Strings{
 			"Ask to continue, or raise limits.max_iterations.",
 		TurnStoppedRepeatLoop: "Stopped: the same call repeated too many times in a row.",
 		TurnStoppedMaxTokens:  "Stopped: hit the token ceiling for this turn.",
+		TurnStoppedRefused: "Stopped: the model refused to answer. Nothing was retried; " +
+			"rephrase the request, or ask another model.",
 
 		ApprovalDeny:         "deny",
 		ApprovalAllowOnce:    "allow once",
@@ -685,6 +690,8 @@ Environment:
 			"Peça pra continuar, ou suba limits.max_iterations.",
 		TurnStoppedRepeatLoop: "Parou: a mesma chamada se repetiu vezes demais seguidas.",
 		TurnStoppedMaxTokens:  "Parou: bateu o teto de tokens deste turno.",
+		TurnStoppedRefused: "Parou: o modelo recusou responder. Nada foi repetido; " +
+			"reformule o pedido, ou peça a outro modelo.",
 
 		ApprovalDeny:         "negar",
 		ApprovalAllowOnce:    "permitir uma vez",

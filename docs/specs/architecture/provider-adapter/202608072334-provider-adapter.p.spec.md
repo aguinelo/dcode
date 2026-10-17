@@ -221,6 +221,7 @@ const (
     ErrClassTransport   ErrorClass = "transport"     // rede, DNS, timeout
     ErrClassProvider    ErrorClass = "provider"      // 5xx do outro lado
     ErrClassCanceled    ErrorClass = "canceled"      // ctx cancelado
+    ErrClassRefused     ErrorClass = "refused"       // o modelo recusou responder
 )
 
 type ProviderError struct {
@@ -246,6 +247,7 @@ func (e *ProviderError) Error() string
 | `transport` | sim | repete com recuo exponencial, até o teto |
 | `provider` | sim | repete com recuo exponencial, até o teto |
 | `canceled` | não | encerra silenciosamente |
+| `refused` | não | encerra o turno em `refused`, erro ao usuário; nunca repete |
 
 **De onde a classe sai quando o status não basta.** A Anthropic não responde
 prompt longo demais com 413: responde 400 `invalid_request_error`, com
@@ -257,6 +259,16 @@ respondeu 200 — um frame `type: "error"`. Ele recebe a classe do seu par HTTP
 `rate_limit`, `authentication_error` → `auth`, `billing_error` → `quota`,
 `invalid_request_error` → `bad_request` ou `context_size`) e leva a mensagem do
 provedor; tipo desconhecido vai para `provider`, nomeado.
+
+**A recusa chega num 200.** O modelo que recusa responde com sucesso e termina
+com `stop_reason: "refusal"` no `message_delta`, às vezes com `stop_details`
+(`category`, `explanation`) — que é informativo e pode vir nulo; quem decide é
+o `stop_reason`. A recusa pode vir antes de qualquer saída ou no meio do
+stream, depois de texto já enviado. Ela termina o stream em `EventError` com
+`refused`, não em `EventDone`: o texto anterior não é resposta, as chamadas de
+ferramenta pendentes são descartadas e não liberadas, e o `EventError` leva o
+`Usage`, porque a resposta recusada é cobrada como qualquer outra. A mensagem
+diz que o modelo recusou, com a categoria e a explicação quando vieram.
 
 ## 5. Registro e resolução
 
@@ -327,6 +339,7 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - O uso do `message_start` chega ao `EventDone`, com o que o cache leu e escreveu.
 - Um 400 que diz que o prompt não cabe na janela vira `context_size` e força compactação; qualquer outro 400 continua `bad_request`.
 - Frame de erro no meio de um stream Anthropic termina com a classe do seu par HTTP e a mensagem do provedor, nunca como `transport`.
+- Resposta Anthropic com `stop_reason: "refusal"` termina em `EventError` da classe `refused`, sem repetição, sem liberar chamada pendente e com o uso cobrado.
 
 ## 8. Changelog
 
@@ -342,3 +355,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202610151400 — O prefixo Anthropic é lido do cache](changelog/202610151400-o-prefixo-anthropic-e-lido-do-cache.md)
 - [202610151500 — A janela Claude é por modelo](changelog/202610151500-a-janela-claude-e-por-modelo.md)
 - [202610161630 — O erro Anthropic diz a sua classe](changelog/202610161630-o-erro-anthropic-diz-a-sua-classe.md)
+- [202610162300 — A recusa do modelo é dita](changelog/202610162300-a-recusa-do-modelo-e-dita.md)
