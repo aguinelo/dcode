@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 231 changelogs de decisão |
+| famílias de spec | 19, com 232 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -270,6 +270,16 @@ existe para impedir exatamente isso.
   `compaction_failed` nomeia a causa: o gatilho automático deixa o turno
   seguir, `/compact` devolve o erro, e a recusa `context_size` que não consegue
   compactar encerra o turno e diz isso.
+- **As flags de limite do `/loop` e as quatro chaves `loop.*` saem da spec,
+  que agora segue o código.** No mínimo MINOR: sai uma superfície de
+  configuração declarada. A spec declarava `--max-iterations`,
+  `--max-identical`, `--max-tokens`, `--max-stall` e `--done-timeout`, que o
+  `/loop` nunca aceitou, e `DCODE_LOOP_SPEC_PATH`, `_SOURCE`, `_PROTECT` e
+  `_SESSION_PREFIX`, que estavam em `KnownKeys` e eram lidas só por uma função
+  sem chamador — que transformava uma origem inválida em `auto` em silêncio.
+  As chaves, essa função e o `SessionConfig` saíram; a única flag é
+  `--protect`, e os limites de um loop vêm da família e da configuração como
+  os de qualquer sessão.
 - **Pedido que o daemon não consegue ler responde `400 invalid_input`, em toda
   rota.** Corpo malformado, imagem que não é base64 e `from` que não é número
   respondiam `500 internal` na maior parte das rotas de sessão (e
