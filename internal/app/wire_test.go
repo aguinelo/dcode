@@ -211,6 +211,53 @@ func TestSummariserSurfacesAFailure(t *testing.T) {
 	}
 }
 
+// canned answers every Stream with the same events, in order.
+type canned struct{ events []provider.StreamEvent }
+
+func (c canned) Family() provider.Family       { return provider.MiniMaxM3{} }
+func (c canned) Transport() provider.Transport { return nil }
+func (c canned) Window(string) (int, error)    { return 1_000_000, nil }
+func (c canned) Limits() provider.Limits       { return provider.Limits{} }
+func (c canned) Stream(context.Context, provider.Request) (<-chan provider.StreamEvent, error) {
+	ch := make(chan provider.StreamEvent, len(c.events))
+	for _, ev := range c.events {
+		ch <- ev
+	}
+	close(ch)
+	return ch, nil
+}
+
+// The summariser read only text deltas and returned nil whatever ended the
+// stream, so a rate limit halfway through, or an answer cut at the output
+// ceiling, came back as a summary — half of one, accepted as whole, and the
+// span it claimed to cover was dropped on the strength of it.
+func TestSummariserRefusesAnIncompleteSummary_CompactionFailure(t *testing.T) {
+	cases := []struct {
+		name string
+		end  provider.StreamEvent
+	}{
+		{"the stream ended in an error", provider.StreamEvent{Type: provider.EventError, Err: &provider.ProviderError{
+			Class: provider.ErrClassRateLimit, Message: "slow down", Retryable: true,
+		}}},
+		{"the answer hit the output ceiling", provider.StreamEvent{Type: provider.EventDone, Truncated: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := canned{events: []provider.StreamEvent{
+				{Type: provider.EventTextDelta, Text: "We read main.go and"},
+				tc.end,
+			}}
+			got, err := summariser(p, "m")(context.Background(), []ce.Message{{Role: ce.RoleUser, Text: "go"}})
+			if err == nil {
+				t.Fatalf("an incomplete summary was returned as whole: %q", got)
+			}
+			if got != "" {
+				t.Errorf("a failed summary still returned text: %q", got)
+			}
+		})
+	}
+}
+
 // ---------- HTTP transport ----------
 
 func TestHTTPTransportParsesAnSSEStream(t *testing.T) {
