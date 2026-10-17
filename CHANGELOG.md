@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 229 decision changelogs |
+| spec families | 19, with 230 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **`memory.enabled` and `memory.max_entries` are configurable.** The code
+  read both, but neither was a known key, so a `config.toml` setting them was
+  refused and `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES` were never
+  looked up. A new guard checks the other direction too: every key a product
+  source reads by name must be in `KnownKeys`.
 - **A release is built only on a commit CI has passed on `main`.** A new
   first job checks that the tag is on `main` and that CI passed at that exact
   commit, waiting while it still runs and failing, with the reason, when it

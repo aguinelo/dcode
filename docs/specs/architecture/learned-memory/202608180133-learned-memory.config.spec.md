@@ -5,10 +5,10 @@ lida é defeito, e é o defeito que este projeto mais encontrou.
 
 ## 1. Chaves
 
-| chave | variável | tipo | padrão | o que faz |
+| variável | chave | tipo | padrão | o que faz |
 |---|---|---|---|---|
-| `memory.enabled` | `DCODE_MEMORY_ENABLED` | bool | `true` | Lê e escreve memória aprendida. Desligado, o produto é o de antes deste componente. |
-| `memory.max_entries` | `DCODE_MEMORY_MAX_ENTRIES` | int | `40` | Quantas memórias entram no prefixo, as mais recentes primeiro. |
+| `DCODE_MEMORY_ENABLED` | `memory.enabled` | bool | `true` | Lê e escreve memória aprendida. Desligado, o produto é o de antes deste componente. |
+| `DCODE_MEMORY_MAX_ENTRIES` | `memory.max_entries` | int | `40` | Quantas memórias entram no prefixo, as mais recentes primeiro. |
 
 ## 2. Sobre o teto de 40
 

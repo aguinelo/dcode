@@ -26,7 +26,7 @@ fora do pacote isolado.
 
 | | |
 |---|---|
-| famílias de spec | 19, com 229 changelogs de decisão |
+| famílias de spec | 19, com 230 changelogs de decisão |
 | contratos comportamentais | 60 declarados |
 | contratos que precisam de modelo | 55 dos 60; 5 se resolvem por asserção |
 | **contratos de fato já medidos** | **21** |
@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **`memory.enabled` e `memory.max_entries` são configuráveis.** O código lia
+  as duas, mas nenhuma era chave conhecida, então um `config.toml` que as
+  escrevia era recusado e `DCODE_MEMORY_ENABLED` / `DCODE_MEMORY_MAX_ENTRIES`
+  nunca eram consultadas. Uma guarda nova confere também a outra direção: toda
+  chave que uma fonte de produto lê pelo nome tem de estar em `KnownKeys`.
 - **Um release só é construído sobre um commit em que a CI passou na
   `main`.** Um primeiro job novo confere que a tag está na `main` e que a CI
   passou exatamente naquele commit, esperando enquanto ela ainda roda e
