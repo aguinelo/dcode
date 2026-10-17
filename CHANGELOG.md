@@ -26,7 +26,7 @@ isolated package.
 
 | | |
 |---|---|
-| spec families | 19, with 229 decision changelogs |
+| spec families | 19, with 230 decision changelogs |
 | behavioural contracts | 60 declared |
 | contracts needing a model | 55 of the 60; 5 are settled by assertion |
 | **contracts ever actually measured** | **21** |
@@ -263,6 +263,11 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **A `package.json` or `Makefile` that does not parse is said.** The probe
+  read a malformed manifest as "declares nothing", silently, so the prompt
+  looked exactly like a project with no gate. The session now warns at open
+  (`manifest_unreadable`, naming the file and the error); an absent manifest
+  still says nothing, and one unreadable file no longer hides the other.
 - **A release is built only on a commit CI has passed on `main`.** A new
   first job checks that the tag is on `main` and that CI passed at that exact
   commit, waiting while it still runs and failing, with the reason, when it
