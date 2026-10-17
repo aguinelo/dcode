@@ -270,7 +270,11 @@ existe para impedir exatamente isso.
   orquestradora roda ela mesma no commit que faz merge, fila serial de merge,
   deploy declarado, lista viva de agentes e log de decisões. Reescrito porque
   fazer o fluxo à mão em 2026-10-16 mostrou cada falha que estas regras agora
-  evitam. Só requisitos, aguardando aprovação; nada construído.
+  evitam. O dono decidiu as perguntas abertas — o daemon vira LaunchAgent do
+  `launchd`, cada filho é um PR com squash-merge contra o commit medido, a
+  aprovação de filho sempre espera a pessoa, e a decisão de desenho é
+  perguntada ou registrada conforme o nível — e aprovou os requisitos; nada
+  construído ainda.
 - **Toda proposta de um turno qualificador chega ao operador.** O daemon
   guardava um slot só, trocado a cada `done_propose`, e o histórico que a
   `done-qualifier` promete como defesa contra uma reproposta que troca um

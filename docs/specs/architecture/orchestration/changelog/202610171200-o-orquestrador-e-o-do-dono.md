@@ -6,7 +6,7 @@ reparte um pedido em filhos e junta os relatos, mas **o dcode como o
 orquestrador do projeto** — o que responde a pessoa na hora, reparte por tema,
 despacha agentes simples, mede, faz merge, faz deploy e mantém a lista de quem
 trabalha, numa execução longa com o dono longe. O `.r` foi reescrito para dizer
-isso, e volta a esperar aprovação.
+isso, e o dono o aprovou (abaixo).
 
 ## Por que agora
 
@@ -65,7 +65,7 @@ passo.
 
 ## O que o dono decidiu na revisão do rascunho
 
-Quatro perguntas da §12 viraram requisito, cada uma com o porquê:
+Sete perguntas da §12 viraram requisito, cada uma com o porquê:
 
 - **Q-C — o daemon é um LaunchAgent de usuário do `launchd`**: sobe no login,
   reinicia se cair, independe do app; app e TUI são só clientes. Emenda D19 —
@@ -80,14 +80,22 @@ Quatro perguntas da §12 viraram requisito, cada uma com o porquê:
   replanejar aquela tarefa por um caminho sem aprovação.
 - **Q-D — em supervisionado a decisão de desenho é perguntada**, com opções e
   recomendação, e só aquela tarefa espera.
+- **Q-E — sensível** é caminho declarado sensível, veredito do revisor com
+  ressalva, dependência nova ou diff acima de um limite do `.config`; um agente
+  fechado sai da lista uma hora depois. O dono confirmou a recomendação.
+- **Q-F — a memória da orquestradora** é a compactação de hoje, com o log de
+  decisões e a lista viva reinjetados como estado a cada compactação, medida na
+  primeira fatia. Confirmada como recomendada.
+- **Q-H — conflito em arquivo só de acréscimo volta ao filho dono da branch**;
+  a orquestradora não resolve conteúdo no lugar de integração. Confirmada como
+  recomendada.
+
+Com isso o dono **aprovou o `.r`** em 2026-10-17.
 
 ## O que fica em aberto
 
 Q-A (fragmentos) é PR próprio e o primeiro pré-requisito da primeira fatia;
-Q-B (o app de celular) espera o app. Q-E (o que é sensível, quanto um fechado
-fica na lista), Q-F (a memória de uma conversa que nunca termina) e Q-H
-(conflito em arquivo só de acréscimo) têm recomendação no `.r`, a confirmar
-pelo dono.
+Q-B (o app de celular) espera o app.
 
 ## Para depois
 

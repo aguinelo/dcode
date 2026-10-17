@@ -1,6 +1,6 @@
 # Research: Orquestrador — o dcode conduz o projeto, e os agentes são filhos dele
 
-> **Estado, 2026-10-17: reescrito com as decisões do dono, aguarda aprovação.**
+> **Estado, 2026-10-17: reescrito com as decisões do dono, e aprovado por ele.**
 > A versão de 2026-10-13 (#461) foi aprovada e nada dela foi construído; o
 > dono a revisou e a visão dele é outra — o que mudou e por quê está em
 > `changelog/202610171200-o-orquestrador-e-o-do-dono.md`. Depende de:
@@ -464,7 +464,7 @@ MINOR; os do desktop: changelog do desktop e D-números.
 
 ## 12. Decisões e perguntas
 
-**Decididas pelo dono, 2026-10-17:** Q-C — o daemon é LaunchAgent do `launchd`,
+**Decididas pelo dono, 2026-10-17** (Q-E, Q-F e Q-H abaixo): Q-C — o daemon é LaunchAgent do `launchd`,
 emendando D19 (RN-2); Q-G — um PR por filho, squash-merge pelo `gh` com
 `--match-head-commit`, merge local sem forge (RN-6); Q-I — em autônomo a
 aprovação do filho espera a pessoa, notificada, e a orquestradora segue e pode
@@ -474,16 +474,16 @@ perguntada e só aquela tarefa espera (RN-4).
 - **Q-A. Changelog em fragmentos.** Decidido; a migração é PR próprio e o
   **primeiro pré-requisito da primeira fatia** (§10).
 - **Q-B. O app de celular.** Como avisa e o que deixa responder — em aberto.
-- **Q-E. O que é "sensível", e quanto um fechado fica na lista.**
-  *Recomendação — a confirmar pelo dono:* sensível = caminho declarado
-  sensível, veredito do revisor com ressalva, dependência nova ou diff acima de
-  um limite do `.config`; o fechado sai uma hora depois de fechar.
-- **Q-F. A memória de uma conversa que nunca termina.** *Recomendação — a
-  confirmar pelo dono:* a compactação de hoje, com o log de decisões e a lista
-  viva reinjetados como estado a cada compactação; medido na primeira fatia.
-- **Q-H. Conflito em arquivo só de acréscimo** (o topo do changelog, até Q-A).
-  *Recomendação — a confirmar pelo dono:* volta ao filho dono da branch (RN-6);
-  a orquestradora não resolve conteúdo no lugar de integração.
+- **Q-E. O que é "sensível", e quanto um fechado fica na lista** (decidido):
+  sensível é caminho declarado sensível, veredito do revisor com ressalva,
+  dependência nova ou diff acima de um limite do `.config`; o fechado sai uma
+  hora depois de fechar.
+- **Q-F. A memória de uma conversa que nunca termina** (decidido): a compactação
+  de hoje, com o log de decisões e a lista viva reinjetados como estado a cada
+  compactação; medido na primeira fatia.
+- **Q-H. Conflito em arquivo só de acréscimo** (o topo do changelog, até Q-A;
+  decidido): volta ao filho dono da branch (RN-6); a orquestradora não resolve
+  conteúdo no lugar de integração.
 
 ## 13. Fora de escopo
 
@@ -495,5 +495,5 @@ perguntada e só aquela tarefa espera (RN-4).
 ## 14. Changelog
 
 - 2026-10-13 — aprovada a versão da #461 (Q1–Q8).
-- 2026-10-17 — reescrito com a visão do dono, e Q-C, Q-D, Q-G e Q-I decididas;
-  o porquê: `changelog/202610171200-o-orquestrador-e-o-do-dono.md`. Aguarda aprovação.
+- 2026-10-17 — reescrito com a visão do dono, Q-C a Q-I decididas, e aprovado;
+  o porquê: `changelog/202610171200-o-orquestrador-e-o-do-dono.md`.

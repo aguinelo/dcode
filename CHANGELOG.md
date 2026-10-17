@@ -271,8 +271,11 @@ exists to stop exactly that.
   levels, an always-ask list the harness enforces, a gate the orchestrator runs
   itself on the commit it merges, a serial merge queue, declared deploys, a
   live agent list and a decision log. Rewritten because running the workflow by
-  hand on 2026-10-16 showed each failure these rules now prevent. Requirements
-  only, awaiting approval; nothing is built.
+  hand on 2026-10-16 showed each failure these rules now prevent. The owner
+  decided the open questions — the daemon becomes a launchd user agent, each
+  child is a PR squash-merged against the measured commit, a child's approval
+  always waits for the person, and design questions are asked or recorded per
+  autonomy level — and approved the requirements; nothing is built yet.
 - **Every proposal of a qualifying turn reaches the operator.** The daemon
   kept one slot, replaced on each `done_propose`, so the history the
   done-qualifier promises as its defence against a re-proposal that swaps a
