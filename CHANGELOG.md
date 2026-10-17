@@ -263,6 +263,10 @@ exists to stop exactly that.
 
 ## Unreleased
 
+- **The pre-push gate picks its gates from what the branch changes against
+  `main`.** It compared with the branch's old remote head, so a branch brought
+  up to date with `main` ran the desktop gate for protocol changes that came
+  from `main`, and refused the push where `desktop/node_modules` was missing.
 - **The `/loop` limit flags and the four `loop.*` keys leave the spec, which
   now follows the code.** At least MINOR: a declared configuration surface is
   removed. The spec declared `--max-iterations`, `--max-identical`,

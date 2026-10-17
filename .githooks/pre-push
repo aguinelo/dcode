@@ -23,11 +23,12 @@ unset $(git rev-parse --local-env-vars)
 while read -r local_ref local_sha remote_ref remote_sha; do
 	[ "$local_sha" = "$zero" ] && continue # a deleted branch has nothing to test
 
-	if [ "$remote_sha" = "$zero" ]; then
-		base=$(git merge-base "$local_sha" origin/main)
-	else
-		base=$remote_sha
-	fi
+	# What the branch changes against main, never against the remote branch:
+	# a branch brought up to date with main differs from its old remote head by
+	# everything main gained, and that would pick gates for changes that are
+	# not the branch's. A stale origin/main only widens the diff — more gates,
+	# never fewer.
+	base=$(git merge-base "$local_sha" origin/main)
 	changed=$(git diff --name-only "$base" "$local_sha")
 	[ -z "$changed" ] && continue
 

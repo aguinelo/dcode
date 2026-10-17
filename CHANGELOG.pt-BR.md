@@ -261,6 +261,11 @@ existe para impedir exatamente isso.
 
 ## Não publicado
 
+- **O gate de pre-push escolhe os gates pelo que a branch muda em relação à
+  `main`.** Ele comparava com o head antigo da branch no remoto, então uma
+  branch atualizada com a `main` rodava o gate do desktop por mudanças de
+  protocolo que vieram da `main`, e recusava o push onde faltava
+  `desktop/node_modules`.
 - **As flags de limite do `/loop` e as quatro chaves `loop.*` saem da spec,
   que agora segue o código.** No mínimo MINOR: sai uma superfície de
   configuração declarada. A spec declarava `--max-iterations`,
