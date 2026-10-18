@@ -129,3 +129,38 @@ func TestARedGateOnTheMergedMainStopsTheLocalQueue(t *testing.T) {
 		t.Fatalf("second merge = %+v, %v; want main_red", out, err)
 	}
 }
+
+// An answer is said with the merges' lock released: what hears it may ask
+// the merges back, as the orchestrator saving their queue does. Said under
+// the lock, the reply waited for the answer and the answer for the reply —
+// the deadlock TestScenarioARedMainStopsTheQueue hit when the queue was
+// saved while the person answered. Both answers are asked: merge, and
+// return, which also says merge.refused.
+func TestAnAnswerIsSaidWithTheMergesLockReleased(t *testing.T) {
+	for _, answer := range []string{"merge", "return"} {
+		t.Run(answer, func(t *testing.T) {
+			p, f, c := localProject(t)
+			m, _ := newMerges(t, p, f, &events{})
+			_, q, err := m.Propose(context.Background(), Proposal{Child: c, Title: c.Title, Body: "What it does."})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stuck []protocol.EventType
+			m.o.Emit = func(typ protocol.EventType, _ any) {
+				back := make(chan struct{})
+				go func() { m.Queued(); m.Questions(); close(back) }()
+				select {
+				case <-back:
+				case <-time.After(10 * time.Second): // a ceiling: the reply needs no time, only the lock
+					stuck = append(stuck, typ)
+				}
+			}
+			if _, err := m.Answer(q.ID, answer, ""); err != nil && answer == "merge" {
+				t.Fatal(err)
+			}
+			if len(stuck) > 0 {
+				t.Errorf("asking the merges back from %v waited for the answer that was saying it", stuck)
+			}
+		})
+	}
+}

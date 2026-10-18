@@ -299,9 +299,13 @@ func (o *Orchestrator) giveBack(id string, ret protocol.Return, count bool, text
 		r := ret
 		ch.State, ch.Reason, ch.Waiting, ch.Return, ch.Returned = stateWorking, "", "", &r, n
 	})
-	if err := o.commit(Decision{Kind: "child.returned", Child: id, Why: why, Data: data}, back); err != nil {
+	live, err := o.commitLive(id, Decision{Kind: "child.returned", Child: id, Why: why, Data: data}, back)
+	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s was not handed back: the log did not take it: %v", id, err))
 		return
+	}
+	if !live {
+		return // closed or merged since it was read: there is no one to hand it back to
 	}
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
 	if err := o.submitIdle(id, text); err != nil {

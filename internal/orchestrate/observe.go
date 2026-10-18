@@ -141,11 +141,15 @@ func (o *Orchestrator) conclusion(id string) (string, bool) {
 // Its question has no deadline, and only the person answers it (ADR-02).
 func (o *Orchestrator) commitWaiting(id, on string) {
 	data, _ := json.Marshal(map[string]string{"from": stateWorking, "to": stateAwaiting, "waiting": on})
-	if err := o.commit(Decision{Kind: "child.state", Child: id, Data: data,
+	live, err := o.commitLive(id, Decision{Kind: "child.state", Child: id, Data: data,
 		Why: "the child asked the person for an " + on + ", which waits for the person without a deadline"},
-		edit(id, func(c *protocol.Child) { c.State, c.Waiting = stateAwaiting, on })); err != nil {
+		edit(id, func(c *protocol.Child) { c.State, c.Waiting = stateAwaiting, on }))
+	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s waits for the person and the log did not take it: %v", id, err))
 		return
+	}
+	if !live {
+		return // closed or merged meanwhile: nothing waits any more
 	}
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
 }
@@ -186,7 +190,7 @@ func (o *Orchestrator) turnEnded(id string, tc protocol.TurnCompleted) {
 		why = fmt.Sprintf("the child's turn ended %s with changes outside owns, so the harness committed nothing", tc.Reason)
 	}
 	raw, _ := json.Marshal(data)
-	err := o.commit(Decision{Kind: "child.completed", Child: id, Session: id, Why: why, Claim: said, Data: raw},
+	live, err := o.commitLive(id, Decision{Kind: "child.completed", Child: id, Session: id, Why: why, Claim: said, Data: raw},
 		func(st *State) {
 			st.Spent += tokens(tc.Usage)
 			setBrief(st, id, func(b *Brief) { b.Claim = said })
@@ -201,6 +205,9 @@ func (o *Orchestrator) turnEnded(id string, tc protocol.TurnCompleted) {
 	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("the end of a turn of child %s did not reach the log: %v", id, err))
 		return
+	}
+	if !live {
+		return // closed or merged while the harness committed: the turn is over with it
 	}
 	o.emit(protocol.EventChildCompleted, protocol.ChildCompleted{ChildID: id, TurnID: tc.TurnID, Reason: tc.Reason,
 		Conclusion: said, Truncated: cut, Wrote: paths, Unwritten: unwritten, Usage: u})

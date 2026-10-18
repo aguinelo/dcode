@@ -79,8 +79,12 @@ func (o *Orchestrator) mainNow(ctx context.Context) (string, error) {
 // saveMerges keeps in the state what the merges hold: their questions, the
 // queue and main's health. Called after each step of theirs, whose lines are
 // in the log already.
+//
+// What the merges hold is read before the state's lock is taken, never under
+// it: a merge step holds its own lock while it records, and one that reached
+// the orchestrator from there would wait for this one, which waits for it.
 func (o *Orchestrator) saveMerges(mg *Merges) {
-	asked := mg.Questions()
+	asked, queued, main := mg.Questions(), mg.Queued(), mg.Main()
 	if err := o.apply(func(st *State) {
 		kept := st.Questions[:0:0]
 		for _, q := range st.Questions {
@@ -88,7 +92,7 @@ func (o *Orchestrator) saveMerges(mg *Merges) {
 				kept = append(kept, q)
 			}
 		}
-		st.Questions, st.Queue, st.Main = append(kept, asked...), mg.Queued(), mg.Main()
+		st.Questions, st.Queue, st.Main = append(kept, asked...), queued, main
 	}); err != nil {
 		o.sayError(protocol.CodeInternal, "the merge questions and queue are in the log and not in the state: "+err.Error())
 	}
@@ -129,10 +133,16 @@ func (o *Orchestrator) propose(id string) {
 	}
 	o.saveMerges(mg)
 	data, _ := json.Marshal(map[string]any{"from": stateInReview, "to": statePR, "pr": got.PR, "question": q.ID})
-	if err := o.commit(Decision{Kind: "child.state", Child: id, Data: data,
+	live, err := o.commitLive(id, Decision{Kind: "child.state", Child: id, Data: data,
 		Why: "review approved and gate green on its head: the merge waits for the person's answer to " + q.ID},
-		edit(id, func(ch *protocol.Child) { ch.State, ch.Waiting, ch.PR = statePR, "merge", got.PR })); err != nil {
+		edit(id, func(ch *protocol.Child) { ch.State, ch.Waiting, ch.PR = statePR, "merge", got.PR }))
+	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s did not move to pr: %v", id, err))
+		return
+	}
+	if !live {
+		o.sayError(protocol.CodeInvalidInput, fmt.Sprintf("child %s became %s while its merge was proposed: it stays so, and question %s asks about a child that is gone",
+			id, o.child(id).State, q.ID))
 		return
 	}
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
