@@ -2,6 +2,16 @@
 
 🇧🇷 [Versão em português](README.pt-BR.md)
 
+> **Superseded.** This page describes the earlier mark: the amber three-box
+> mascot and its palette. On 2026-10-13 the owner adopted a new mascot — a
+> blocky one-eyed robot — and its orange, `#FF6A00`, as dcode's colour. The
+> current sheet, with the robot's colourways and the 23-tone palette, is
+> [`refs/design/brand/mascote.webp`](../../refs/design/brand/mascote.webp); how
+> the desktop draws it and which tones it uses are decisions D49 and D52 in
+> [`desktop/docs/DECISIONS-4.md`](../../desktop/docs/DECISIONS-4.md). The files
+> below are kept as the record of the earlier mark; do not use them for new
+> work.
+
 <img src="mascot.svg" width="96" alt="dcode mascot"> &nbsp;&nbsp; <img src="logomark.svg" width="96" alt="dcode logomark">
 
 Two marks with different jobs. The **mascot** is the character — stickers, physical
