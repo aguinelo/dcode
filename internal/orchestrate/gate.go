@@ -104,7 +104,9 @@ var addGateTree = func(ctx context.Context, dir, place, commit string) error {
 // never the person's tree, never a child's worktree, whose files may not be
 // the commit's — with every GIT_* variable out of the environment, so a gate
 // started from a hook still finds the tree it stands in. The worktree is
-// removed when Measure returns, on a timeout and on a panic too.
+// removed when Measure returns, on a timeout and on a panic too. The command
+// runs inside g's sandbox, writable only in that throwaway directory; without
+// one nothing runs (gate_sandbox.go).
 //
 // Base, the main under the commit, is the caller's to fill: the pipeline made
 // the commit by merging main and knows which.
@@ -137,6 +139,9 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 	if g.Timeout <= 0 {
 		return protocol.GateResult{}, fmt.Errorf("orchestrate: a gate without a timeout would wait forever; got %v", g.Timeout)
 	}
+	if g.sb, err = g.boundary(); err != nil {
+		return protocol.GateResult{}, err
+	}
 
 	out, err := newGateOutput(g.Logs, commit)
 	if err != nil {
@@ -148,6 +153,11 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 		return protocol.GateResult{}, fmt.Errorf("orchestrate: make the gate's throwaway directory: %w", err)
 	}
 	place := filepath.Join(scratch, "tree")
+	if err := os.Mkdir(filepath.Join(scratch, "tmp"), 0o700); err != nil {
+		_ = out.close()
+		_ = os.RemoveAll(scratch)
+		return protocol.GateResult{}, fmt.Errorf("orchestrate: make the gate's temporary directory: %w", err)
+	}
 	defer func() {
 		if cerr := removeTree(dir, place, scratch); cerr != nil {
 			err = errors.Join(err, cerr)
@@ -179,6 +189,7 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 		return protocol.GateResult{}, runErr
 	}
 	r.ExitCode, r.OutputTail, r.OutputPath = exit, out.tailText(), out.path
+	r.Sandbox, r.SandboxMode = g.sb.Name(), string(gateMode)
 	switch {
 	case timedOut:
 		r.Result = GateTimeout
@@ -193,13 +204,26 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 // runCommand runs the gate's command in tree until it ends, the timeout
 // passes, or ctx is done. The command gets a process group of its own, so the
 // kill reaches everything it started.
+//
+// It runs wrapped by the measurement's sandbox, with the throwaway directory —
+// the tree and its tmp beside it — as the workspace: the only place outside
+// the toolchain caches it may write. The shell steps into the tree first.
 func runCommand(ctx context.Context, g Gate, tree string, out *gateOutput) (exit int, timedOut bool, err error) {
+	if g.sb == nil {
+		return 0, false, fmt.Errorf("orchestrate: the gate %q has no sandbox to run in, so it did not run", g.Command)
+	}
 	tctx, cancel := context.WithTimeout(ctx, g.Timeout)
 	defer cancel()
-	cmd := exec.CommandContext(tctx, "/bin/sh", "-c", g.Command)
+	scratch := filepath.Dir(tree)
+	cmd, err := g.sb.Wrap(tctx, scratch, "cd -- "+shQuote(tree)+" || exit 125\n"+g.Command, gateMode)
+	if err != nil {
+		return 0, false, fmt.Errorf("orchestrate: the sandbox %s could not wrap the gate %q, so it did not run: %w",
+			g.sb.Name(), g.Command, err)
+	}
 	cmd.Dir = tree
-	cmd.Env = withoutGit(cmd.Environ()) // Environ sets PWD to Dir
-	cmd.Stdout, cmd.Stderr = out, out   // the same writer: one goroutine writes
+	// Environ sets PWD to Dir; TMPDIR is the measurement's own, not the daemon's.
+	cmd.Env = append(withoutGit(cmd.Environ()), "TMPDIR="+filepath.Join(scratch, "tmp"))
+	cmd.Stdout, cmd.Stderr = out, out // the same writer: one goroutine writes
 	setGateGroup(cmd)
 	cmd.Cancel = func() error { return killGateGroup(cmd) }
 	cmd.WaitDelay = gateWaitDelay

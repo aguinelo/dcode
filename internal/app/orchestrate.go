@@ -12,6 +12,7 @@ import (
 	"github.com/aguinelo/dcode/internal/orchestrate"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/sandbox"
 	"github.com/aguinelo/dcode/internal/session"
 )
 
@@ -58,6 +59,7 @@ func (d *Daemon) newProjects() *daemonProjects {
 		Dir: o.Dir, Spawner: d, Resolve: d.resolveAt, Log: d.opts.Log,
 		Emit: d.emitTo, Retention: o.ClosedRetention, MaxSessions: d.opts.MaxSessions,
 		ConclusionMax: d.opts.Base.DelegateMaxResultBytes, KnownProfile: d.knownProfile,
+		GateSandbox: d.gateSandbox,
 	})
 	if err != nil {
 		off := fmt.Sprintf("the orchestrator cannot run in this daemon: %v", err)
@@ -126,6 +128,25 @@ func (d *Daemon) resolveAt(root string) (config.Resolved, error) {
 		return config.Resolved{}, nil
 	}
 	return Resolve(d.opts.Base.Env, root)
+}
+
+// gateSandbox is the boundary a project's gate runs in: the sandbox a session
+// at root gets — its backend, the caches its toolchain needs, the paths it may
+// not read, the daemons out of reach — with nothing named writable beyond the
+// measurement's own directory, as a child has none (childMode). The network is
+// what configuration says, and only that: a standing grant is a person's answer
+// to a session's crossing, and a gate is no session that asked. Made per
+// measurement, so the configuration in force is today's.
+func (d *Daemon) gateSandbox(root string) orchestrate.GateSandbox {
+	return func() (sandbox.Sandbox, error) {
+		opts, err := d.optionsFor(root)
+		if err != nil {
+			return nil, err
+		}
+		cfg := sandboxConfig(opts, func() bool { return opts.AllowNetwork })
+		cfg.Scratch, cfg.Writable = orchestrate.GateScratch(opts.Env), nil
+		return sandbox.New(cfg, policy.ModeWorkspaceWrite)
+	}
 }
 
 // planMode is the orchestrator's boundary: it reads, talks and conducts, and

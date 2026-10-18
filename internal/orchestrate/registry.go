@@ -85,6 +85,9 @@ type RegistryOptions struct {
 	// HealthPoll is how long apart main's CI is read after a merge; zero is
 	// the merge step's default.
 	HealthPoll time.Duration
+	// GateSandbox is the boundary a project's gate and red tests run in, made
+	// from its root. Nil is DefaultGateSandbox, the closed one.
+	GateSandbox func(root string) GateSandbox
 }
 
 // Registry is every project this daemon conducts.
@@ -102,6 +105,7 @@ type Registry struct {
 	conclusionMax int
 	known         func(root, name string) bool
 	healthPoll    time.Duration
+	gateSandbox   func(root string) GateSandbox
 	// async runs a pipeline step that may take long — a gate, a red test —
 	// off the goroutine that reads a session's events. A test runs it inline.
 	async func(func())
@@ -166,7 +170,7 @@ func NewRegistry(o RegistryOptions) (*Registry, error) {
 	r := &Registry{dir: filepath.Clean(o.Dir), spawner: o.Spawner, resolve: o.Resolve, log: o.Log,
 		now: o.Now, lock: lock, projects: map[string]*Orchestrator{}, emit: o.Emit,
 		retention: o.Retention, maxSessions: o.MaxSessions, conclusionMax: o.ConclusionMax,
-		known: o.KnownProfile, healthPoll: o.HealthPoll, async: func(f func()) { go f() }}
+		known: o.KnownProfile, healthPoll: o.HealthPoll, gateSandbox: o.GateSandbox, async: func(f func()) { go f() }}
 	if r.conclusionMax <= 0 {
 		r.conclusionMax = defaultConclusionMax
 	}
@@ -448,6 +452,9 @@ func (r *Registry) pipelineConfig(o *Orchestrator, root, id string, cfg config.R
 		return err
 	}
 	gate.Logs = filepath.Join(r.dir, id, "gates")
+	if r.gateSandbox != nil {
+		gate.Sandbox = r.gateSandbox(root)
+	}
 	var known func(string) bool
 	if r.known != nil {
 		known = func(name string) bool { return r.known(root, name) }

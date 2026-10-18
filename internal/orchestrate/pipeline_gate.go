@@ -54,7 +54,8 @@ func (o *Orchestrator) confirmRed(id string) {
 	}
 	// Its output beside the gates', not over one: a red test and a gate on
 	// one commit are two measurements.
-	g := Gate{Command: b.RedTest, Timeout: o.gate.Timeout}
+	// In the gate's boundary too: a red test is a command the harness runs.
+	g := Gate{Command: b.RedTest, Timeout: o.gate.Timeout, Sandbox: o.gate.Sandbox}
 	if o.gate.Logs != "" {
 		g.Logs = filepath.Join(filepath.Dir(o.gate.Logs), "red_tests")
 	}

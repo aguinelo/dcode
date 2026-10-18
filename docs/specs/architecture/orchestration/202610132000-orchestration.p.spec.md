@@ -155,6 +155,7 @@ type GateResult struct {
 	ExitCode, DurationMS        int
 	Result                      string // "green" | "red" | "timeout" | "undeclared"
 	OutputTail?, OutputPath?    string // os últimos 4 KiB; a saída inteira em disco
+	Sandbox?, SandboxMode?      string // o backend que confinou o comando e o modo; vazios em undeclared
 	At                          time.Time
 }
 type ChildPR struct{ Number?, URL?, CI? } // CI na gramática de vcs.Checks; Number 0 no local
@@ -253,7 +254,14 @@ pulado; o modelo lê os resultados e decide. **Emenda o `.r` §6**, que os lista
    devolve (`Return{conflict, paths}`); ao fim do turno seguinte o harness conclui o merge com o
    commit dele. A orquestradora não resolve conteúdo (Q-H).
 3. `H` é o commit resultante. `Gate.Measure(H)` com `orchestrator.gate_command`, senão `verify.command`, senão
-   `gate_undeclared` e nada segue: numa worktree descartável em `H`, sem `GIT_*`, até `orchestrator.gate_timeout`.
+   `gate_undeclared` e nada segue: numa worktree descartável em `H`, sem `GIT_*`, até `orchestrator.gate_timeout`,
+   **dentro do sandbox** que o `bash` do agente usa (`sandbox.Sandbox` da raiz do projeto), em `workspace-write` com
+   o diretório descartável — a worktree e um `tmp` só dela, que é o `TMPDIR` do comando — como workspace: grava ali
+   e nos caches de toolchain que a política já concede, e em nenhum outro lugar; nem o `TMPDIR` do daemon, nem o
+   que `sandbox.writable` nomeia. Rede só se a configuração (`sandbox.network`) a abre; a concessão permanente é
+   resposta da pessoa a uma sessão, e o gate não é sessão — `make check` roda sem rede. Sandbox indisponível, ou
+   backend `none`, é gate que **não roda**: erro que diz que o sandbox é o motivo, nada medido, nada segue — nunca
+   um gate sem fronteira. O teste da fase `red` roda na mesma fronteira.
 4. `gate.measured` traz `commit H`, `tree`, `base M`, comando, saída e duração; o que o filho disse do próprio teste
    (`child.completed.conclusion`) vai como `claim` — alegação ao lado do medido, nunca no lugar dele.
 
@@ -420,6 +428,9 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
 - O gate roda numa worktree descartável no commit exato, sem `GIT_*` no ambiente, nunca na árvore da pessoa nem na do filho.
 - A worktree descartável do gate sai sempre, até depois de um pânico.
+- O gate roda dentro do sandbox: gravar no repositório da pessoa ou no home é gate vermelho, e nada chega lá.
+- Dentro do sandbox o gate grava na própria árvore e num `TMPDIR` só dele, e a medição nomeia o backend e o modo.
+- Sem sandbox o gate não roda: erro que diz que o sandbox é o motivo, e nenhuma medição.
 - Worktree trancada pelo git morto no meio do `worktree add` sai também; o que ainda fica é dito.
 - Gate parado por quem chamou devolve o cancelamento, nunca o erro do git que o cancelamento matou.
 - O que o filho disse do gate vai ao log como `claim`, ao lado do medido, e nunca muda o `result`.
@@ -501,4 +512,5 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610180300 — Um merge espera a pessoa](changelog/202610180300-um-merge-espera-a-pessoa.md)
 - [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)
 - [202610181200 — Os cenários roteirizados](changelog/202610181200-os-cenarios-roteirizados.md)
+- [202610181300 — O gate roda dentro do sandbox](changelog/202610181300-o-gate-roda-no-sandbox.md)
 - [202610181200 — `dcode orchestrate` abre a orquestradora do projeto](../client-tui/changelog/202610181200-dcode-orchestrate-abre-a-orquestradora.md)

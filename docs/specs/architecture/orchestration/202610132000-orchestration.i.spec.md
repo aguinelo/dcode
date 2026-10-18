@@ -18,12 +18,12 @@
 | 6 — um filho trabalha na própria worktree | **feito** — `internal/orchestrate/dispatch.go`, `children.go`, `observe.go`, `owns.go`, `worktree.go`, `limits.go`; as ferramentas em `internal/tools/orchestrate.go` e a negação de git em `gitwrite.go`; `app.Daemon` ganha `SpawnChild`, `Submit` e `Steer`. O `done` deixa o filho em `working` com o fim dito: a esteira (`in_review`) começa ali, no passo 8 |
 | 7 — o relato de um filho começa o turno | **feito** — `internal/orchestrate/reports.go`: a caixa (`State.PendingReports`), o debounce de `report_debounce`, o turno `Origin: children` |
 | 8 — um revisor lê o diff de cada filho | **feito** — o componente (`review.go`, `review_verdict.go`, `internal/tools/verdict.go`) e a fiação: `internal/orchestrate/pipeline.go` (conferência de `owns` antes do commit, `Spawner.SpawnReviewer`, `missing` uma vez de novo, `max_returns`), `pipeline_gate.go` (fase `red`/`fix`, `red_test.confirmed`) e a ferramenta `internal/tools/redtest.go` |
-| 9 — a orquestradora roda o gate | **feito**, menos o sandbox do `bash` em volta do gate (a guarda de fonte do `vcs` veio com o passo 12): a esteira atualiza a branch na integração (`Integration.Update`) e mede `H` (`pipeline_gate.go`); o conflito volta ao filho, e o turno seguinte conclui o merge |
+| 9 — a orquestradora roda o gate | **feito** — o sandbox do `bash` em volta do gate veio por último (`internal/orchestrate/gate_sandbox.go`, `app.Daemon.gateSandbox`), e a guarda de fonte do `vcs` com o passo 12: a esteira atualiza a branch na integração (`Integration.Update`) e mede `H` (`pipeline_gate.go`); o conflito volta ao filho, e o turno seguinte conclui o merge |
 | 10 — um merge espera a pessoa | **feito** — o componente (`merge.go`, `integrate.go`, `forge.go`, `forge_local.go`) e a fiação em `internal/orchestrate/merging.go` (`Propose` no verde, `Answer`, a fila serial, `merged`), `questions.go` e a ferramenta `internal/tools/ask.go`; perguntas, fila, `Main` e `LocalSaid` no `State`; as rotas de `/questions` em `internal/server/orchestrate.go` |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 — cenários roteirizados | **feito** — `internal/app/scenario_*_test.go`: o harness (daemon real em processo, modelo roteirizado por papel, repositório de brinquedo, `gh` falso em `internal/app/testdata/scenariogh/`), os doze da tabela do passo e mais um, e dois testes em `internal/orchestrate/` (`transition_test.go`, `history_guard_test.go`); nenhuma invariante fica prevista |
 | 13 — a orquestradora lista os agentes | **feito** — a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate` (`cmd/dcode/orchestrate.go`), a leitura de `/children` e `/questions` ao abrir, `^Q` e `^R` sobre os filhos (`internal/tui/orchestrate.go`, `orchestrate_view.go`) |
-| 14 | **não feito** |
+| 14 | **em parte** (#521; responder perguntas, abrir a orquestradora e agrupar filhos em #547, aguardando o dono) |
 
 ## Pré-requisitos
 
@@ -206,8 +206,8 @@ O lugar de integração, a atualização com merge da main, o conflito devolvido
       harness ao fim do turno seguinte conclui o merge.
 - [x] Gate em `H` numa worktree descartável, sem `GIT_*`, com tempo-limite; saída inteira em `gates/<commit>.log`
       (`Gate.Measure`); `gate.measured` com a alegação do filho como `claim` (`RecordGate`); `gate_stale`
-      conferido por `CheckFresh`. A esteira o chama depois da aprovação; o sandbox do `bash` em volta do
-      gate continua por fazer.
+      conferido por `CheckFresh`. A esteira o chama depois da aprovação, dentro do sandbox do `bash`
+      (`workspace-write` no diretório descartável, rede só pela configuração; sem sandbox, não roda).
 - [x] `vcs` sem nenhuma função de rebase ou de push forçado (`TestNoCodeOfThisSliceRebasesForcePushesOrAmends`, passo 12).
 
 **Testes obrigatórios:**
@@ -219,6 +219,9 @@ O lugar de integração, a atualização com merge da main, o conflito devolvido
   `gate_stale` e limpeza em `internal/orchestrate/gate_test.go`.
 - Conflito volta ao filho dono da branch com os caminhos; a integração termina limpa.
 - Guarda de fonte: nenhum `rebase`, `--force`, `--amend` em `internal/vcs/` nem em `internal/orchestrate/`.
+- O gate roda no sandbox: gravar fora da worktree é vermelho, o gate comum continua verde, sem sandbox não
+  roda. **Feito**: `internal/orchestrate/gate_sandbox_test.go` e
+  `TestTheGateGetsTheProjectsSandboxAndNeverNone` (`internal/app/orchestrate_gate_test.go`).
 
 ### Passo 10 — `feat(orchestrate): a merge waits for the person`
 
