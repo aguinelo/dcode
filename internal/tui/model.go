@@ -50,6 +50,9 @@ const (
 	// model's prose cannot contradict: the text may claim success, the seal is
 	// derived from what actually ran.
 	KindCompletion Kind = "completion"
+	// KindCard is an orchestrator's question card (card.go), drawn where it
+	// was said and changed there in place.
+	KindCard Kind = "card"
 )
 
 // Entry is one line of the stream, with its detail available on demand.
@@ -103,6 +106,8 @@ type Entry struct {
 	// Model.Plan rather than a copy that can drift: both are written from the
 	// same event, in the same reduction.
 	Plan []protocol.PlanItem
+	// Card is the question card a KindCard entry is, as the daemon last sent it.
+	Card *protocol.QuestionCard
 	// Added and Removed are the line counts the tool reported, kept as numbers.
 	//
 	// Summary already renders them, but as a sentence. The sidebar needs the
@@ -159,6 +164,9 @@ type Model struct {
 	// both only under an orchestrator (orchestrate.go).
 	Ask  *AskView
 	Pick AgentPick
+	// Card is the question card ^Q put the keyboard on (card.go); the card
+	// itself stays in the stream.
+	Card *CardFocus
 	// Navigating says the transcript has the keyboard.
 	//
 	// A MODE, and that is the whole point of it. The design's footer offers
@@ -686,6 +694,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 		m.TurnStartedAt = time.Time{}
 	}
 	m = m.applyAgents(ev)
+	m = m.applyCard(ev)
 
 	// Every entry this event produced is stamped with the event's own clock.
 	// One place rather than at each append: a kind added later would otherwise

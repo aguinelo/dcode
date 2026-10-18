@@ -219,10 +219,19 @@ var tuiInvariants = map[string]string{
 	"sem pergunta esperando diz":              "TestCtrlQWithNothingWaitingSaysSo",
 	"fora da orquestradora diz onde funciona": "TestCtrlQOutsideAnOrchestratorSaysWhereItWorks",
 	"fecha a pergunta sem responder":          "TestEscClosesTheQuestionWithoutAnswering",
-	"lista os filhos e **anexa**":             "TestCtrlRUnderTheOrchestratorAttachesToAChildAndBack",
-	"nem continuado no lugar dele":            "TestAChildThatCannotBeOpenedIsSaidAndNothingIsStarted",
-	"não toma o teclado e diz por quê":        "TestCtrlRWithNoChildrenDoesNotOpen",
-	"Ela aparece sozinha a partir de":         "TestTheSideColumnAppearsOnATerminalWideEnoughForIt",
+	// The question card in the transcript (card.go, card_view.go).
+	"desenhado no fluxo onde foi dito":     "TestTheQuestionCardIsDrawnInTheTranscriptWhereItWasSaid",
+	"todas as respostas num `POST` só":     "TestCtrlQFocusesTheCardAndItsKeysConfirmEveryAnswerInOnePost",
+	"aplica a recomendação de cada item":   "TestTheCardAppliesTheRecommendationToAll",
+	"sem palavras não é enviado":           "TestTheCardTakesThePersonsWordsInOther",
+	"recusou é dita com o código":          "TestARefusedAnswerOfTheCardIsSaid",
+	"mostra as palavras da pessoa no alto": "TestAProposedCardShowsThePersonsWords",
+	"solta o cartão, e ele fica no fluxo":  "TestEscLetsGoOfTheCardAndItStaysInTheTranscript",
+	"Cartão que não se lê é dito no fluxo": "TestAnUnreadableCardIsSaid",
+	"lista os filhos e **anexa**":          "TestCtrlRUnderTheOrchestratorAttachesToAChildAndBack",
+	"nem continuado no lugar dele":         "TestAChildThatCannotBeOpenedIsSaidAndNothingIsStarted",
+	"não toma o teclado e diz por quê":     "TestCtrlRWithNoChildrenDoesNotOpen",
+	"Ela aparece sozinha a partir de":      "TestTheSideColumnAppearsOnATerminalWideEnoughForIt",
 
 	// The column earns its width.
 	"não repete o fluxo":                "TestTheSideColumnSaysWhatIsNowhereElse",

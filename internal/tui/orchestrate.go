@@ -25,6 +25,8 @@ type Orchestration interface {
 	Children(ctx context.Context, sessionID string) ([]protocol.Child, error)
 	Questions(ctx context.Context, sessionID string) ([]protocol.Question, error)
 	AnswerQuestion(ctx context.Context, sessionID, questionID string, req protocol.AnswerQuestionRequest) (protocol.Question, error)
+	// AnswerQuestions confirms a question card: every answer in one POST.
+	AnswerQuestions(ctx context.Context, sessionID string, req protocol.AnswerQuestionsRequest) (protocol.AnswerQuestionsResponse, error)
 }
 
 var _ Orchestration = (*client.Client)(nil)
@@ -169,6 +171,11 @@ func (p *program) openAsk() (tea.Model, tea.Cmd) {
 	t := Text(p.model.Lang)
 	if !p.orchestrating() {
 		p.model.Flash = t.AskNotHere
+		return p, nil
+	}
+	// A card holds the questions waiting: they are answered there, in the
+	// transcript, one item at a time (card.go).
+	if p.focusCard() {
 		return p, nil
 	}
 	if len(p.model.Agents.Questions) == 0 {
