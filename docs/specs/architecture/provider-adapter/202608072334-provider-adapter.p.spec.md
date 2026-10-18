@@ -5,7 +5,7 @@
 
 ## 1. Nível de estabilidade
 
-**`experimental`.** Vive em `internal/provider` no MVP. Quando uma terceira família existir, avaliar promoção para `pkg/provider` como ponto de extensão público — aí passa a `stable` e ganha critério de promoção próprio.
+**`experimental`.** Vive em `internal/provider`. Esta seção dizia para avaliar a promoção a `pkg/provider` "quando uma terceira família existir"; hoje existem quatro (`minimax-m3`, `claude`, `gemini`, `generic`) e a avaliação não foi feita. Fica registrado como pendência, não como decisão: o pacote continua interno e `experimental` até alguém decidir a promoção, que ganha critério próprio e passa a `stable`.
 
 ## 2. Os dois eixos
 
@@ -17,7 +17,7 @@ Um `Provider` é a **composição** de um transporte e uma família (RN-1). Nenh
 // Transport é o formato de fio. Reusável entre famílias, não carrega
 // adaptação nem limiar.
 type Transport interface {
-    Name() string // "openai" | "anthropic"
+    Name() string // TransportOpenAI ("openai") | TransportAnthropic ("anthropic")
 
     // Do envia a requisição já serializada pela família e devolve os
     // eventos brutos do fio.
@@ -27,7 +27,7 @@ type Transport interface {
 // Family é a adaptação. Carrega os limiares dos contratos comportamentais
 // e os limites padrão do turno (RN-9).
 type Family interface {
-    Name() string // "minimax-m3" | "claude"
+    Name() string // "minimax-m3" | "claude" | "gemini" | "generic"
 
     // Transports lista os formatos de fio compatíveis, o primeiro sendo o
     // preferido. Uma família pode falar mais de um dialeto — é o caso do
@@ -70,6 +70,28 @@ type Family interface {
 // vários quando o fim do stream libera as calls que estavam sendo montadas.
 type Decoder interface {
     Decode(ev WireEvent) ([]StreamEvent, error)
+
+    // Close diz o que o fim do stream significa. Um dialeto pode terminar a
+    // mensagem e continuar falando — o OpenAI repete `finish_reason` e põe o
+    // uso no último frame —, então o decoder segura o evento terminal até o
+    // transporte dizer que nada mais vem.
+    Close() []StreamEvent
+}
+
+// WireRequest é o pedido já serializado pela família; o transporte só lê o
+// envelope.
+type WireRequest struct {
+    Model  string
+    Body   json.RawMessage
+    Stream bool
+}
+
+// WireEvent é um frame bruto do fio. Data vazio com Done marca o fim; Err é
+// falha do transporte (conexão, timeout, status).
+type WireEvent struct {
+    Data []byte
+    Done bool
+    Err  error
 }
 
 type Limits struct {
@@ -101,6 +123,22 @@ type Request struct {
 |---|---|---|---|
 | `minimax-m3` | `MiniMax-M3`, `minimax-m3` | `openai`, `anthropic` | **2.000** |
 | `claude` | `claude-` | `anthropic` | **50** |
+| `gemini` | `gemini-` | `openai` | **50** |
+| `generic` | nenhum — só por `--family generic` / `DCODE_FAMILY` | `openai` | **5.000** |
+
+| Família | Janela | Imagens | PDF | Medida? |
+|---|---|---|---|---|
+| `minimax-m3` | 1.000.000 fixo | sim | não | sim — os limiares foram medidos contra ela |
+| `claude` | por modelo, tabela em `claude_models.go` | sim | sim | não — avisa (RN-11) |
+| `gemini` | 1.000.000 fixo, palpite conservador | sim | não | um contrato, `boundary-full-access-acts`; não avisa |
+| `generic` | 128.000 fixo, ou `DCODE_WINDOW` | não | não | não — aviso próprio, mais largo |
+
+`gemini` fala o dialeto OpenAI pela superfície de compatibilidade do Google e
+herda de `MiniMaxM3` a codificação e o decoder; o que sobrescreve é o eixo da
+família — nome, modelos, janela, limites e o que lê. A superfície nativa
+(`:streamGenerateContent`) seria outro transporte e não existe. `generic` não
+reivindica prefixo nenhum (`Models()` vazio), então nunca é resolvida por
+nome de modelo: só `ResolveFamily` a alcança (seção 5).
 
 **Por que 2.000 para M3 e 50 para Claude.** O default de 50 foi dimensionado pelo caso de um refactor cruzando dez arquivos. M3 é treinado para horizonte longo — a MiniMax demonstrou uma execução com 1.959 tool calls — e 50 truncaria trabalho legítimo. O número foi 200 até esta citação ser levada a sério: o teto ficava em um décimo da execução que o justificava, e truncou uma real. O detector de repetição em 5 chamadas idênticas continua sendo o mecanismo real contra loop patológico; o teto é backstop, e backstop acompanha o horizonte do modelo.
 
@@ -115,9 +153,18 @@ mecanismo real e não muda com este número; o teto aqui só limita custo e
 tempo de parede, e um modelo local não paga o primeiro em dólar de API
 nenhum.
 
-**O teto de uma resposta também é da família, por modelo.** O dialeto anthropic exige `max_tokens`, e o que ia nele era um 8.192 fixo — um dezesseis avos do que a maioria dos modelos atuais aceita, cortando resposta longa num tamanho que ninguém escolheu. `Claude.OutputCeiling(model)` responde pelo limite publicado de cada linha de modelos (128.000 nos atuais, 64.000 em `claude-haiku-4-5` e na linha 4.5, 32.000 em `claude-opus-4`/`4-1`, 4.096 em `claude-3-haiku`), casado pelo prefixo mais longo. Modelo que a tabela não conhece recebe 32.000, não o maior número da tabela: teto acima do aceito é requisição recusada, teto abaixo é só resposta que para antes e diz. `minimax-m3` no dialeto anthropic segue com 8.192, que é o que sempre mandou. `DCODE_MAX_OUTPUT_TOKENS` (`202608072335-agent-loop.config.spec.md`) vence os dois. A parada no teto vira `Truncated` no `EventDone` — `stop_reason: max_tokens` num dialeto, `finish_reason: length` no outro.
+**O teto de uma resposta também é da família, por modelo.** O dialeto anthropic exige `max_tokens`, e o que ia nele era um 8.192 fixo — um dezesseis avos do que a maioria dos modelos atuais aceita, cortando resposta longa num tamanho que ninguém escolheu. `Claude.OutputCeiling(model)` responde pelo limite publicado de cada linha de modelos (128.000 nos atuais, 64.000 em `claude-haiku-4-5` e na linha 4.5, 32.000 em `claude-opus-4`/`4-1`, 4.096 em `claude-3-haiku`), casado pelo prefixo mais longo. Modelo que a tabela não conhece recebe 32.000 (`claudeDefaultOutput`), não o maior número da tabela: teto acima do aceito é requisição recusada, teto abaixo é só resposta que para antes e diz. `minimax-m3` no dialeto anthropic segue com 8.192, que é o que sempre mandou. `DCODE_MAX_OUTPUT_TOKENS` (`202608072335-agent-loop.config.spec.md`) vence os dois. A parada no teto vira `Truncated` no `EventDone` — `stop_reason: max_tokens` num dialeto, `finish_reason: length` no outro.
 
 **A janela também é por modelo, da mesma tabela.** `Claude.Window(model)` devolvia 200.000 fixo; todo modelo desde `claude-opus-4-6` tem 1.000.000, e a sessão era compactada a um quinto do que cabia. Linhas 4.5 e anteriores e `claude-haiku-4-5` seguem com 200.000, e modelo que a tabela não conhece também: janela pequena demais compacta cedo, grande demais é requisição recusada no meio do turno.
+
+> **Lacuna conhecida: aliases sem sufixo.** A tabela casa pelo prefixo mais
+> longo e suas linhas da geração 4 são `claude-opus-4-0`, `claude-opus-4-2025`,
+> `claude-sonnet-4-0` e `claude-sonnet-4-2025`. Os aliases sem data nem `-0` —
+> `claude-sonnet-4` e `claude-opus-4` — não casam com nenhuma e caem nos
+> defaults (200.000 de janela, 32.000 de teto). Para `claude-opus-4` o default
+> coincide com o publicado; para `claude-sonnet-4` o teto de saída fica em
+> 32.000, metade dos 64.000 que o modelo aceita. Não corrigido aqui — esta
+> entrada é só documental; ver `202610171700-a-spec-alcanca-o-codigo.md`.
 
 `minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
 
@@ -172,18 +219,25 @@ comentário: "each session gets its own... provider").
 type StreamEventType string
 
 const (
-    EventTextDelta     StreamEventType = "text_delta"
-    EventToolCall      StreamEventType = "tool_call"
-    EventDone          StreamEventType = "done"
-    EventError         StreamEventType = "error"
+    EventTextDelta        StreamEventType = "text_delta"
+    EventReasoningDelta   StreamEventType = "reasoning_delta"    // pensamento do modelo; nunca entra no histórico (RN-10)
+    EventToolCallOpened   StreamEventType = "tool_call_opened"   // uma call começou a chegar: nome e id já conhecidos
+    EventToolCallProgress StreamEventType = "tool_call_progress" // quanto dos argumentos dela já chegou
+    EventToolCall         StreamEventType = "tool_call"
+    EventDone             StreamEventType = "done"
+    EventError            StreamEventType = "error"
 )
 
 type StreamEvent struct {
     Type      StreamEventType
-    Text      string                // EventTextDelta
+    Text      string                // EventTextDelta, EventReasoningDelta
     ToolCall  *contextpkg.ToolCall  // EventToolCall, já validado (ver abaixo)
-    Usage     *Usage                // EventDone
+    CallID    string                // EventToolCallOpened, EventToolCallProgress
+    CallName  string                // EventToolCallOpened, EventToolCallProgress
+    Bytes     int                   // EventToolCallProgress: bytes de argumento já chegados
+    Usage     *Usage                // EventDone; e EventError cobrado mesmo assim — a recusa
     Err       *ProviderError        // EventError
+    Truncated bool                  // EventDone: o provedor parou no teto de saída
 }
 
 type Usage struct {
@@ -204,7 +258,7 @@ type Usage struct {
 >
 > Por isso o juiz daquele cenário decodifica a estrutura e exige os campos obrigatórios por conta própria. Validar schema no adaptador é decisão em aberto, não dívida escondida: custaria uma dependência de JSON Schema num projeto que escreveu o próprio leitor de TOML para não ter uma.
 
-**Ordem garantida:** zero ou mais `EventTextDelta` e `EventToolCall` intercalados, terminados por exatamente **um** `EventDone` ou **um** `EventError`. Nunca ambos, nunca nenhum.
+**Ordem garantida:** zero ou mais `EventTextDelta`, `EventReasoningDelta` e `EventToolCall` intercalados, terminados por exatamente **um** `EventDone` ou **um** `EventError`. Nunca ambos, nunca nenhum. `EventToolCallOpened` e `EventToolCallProgress` podem vir antes da `EventToolCall` que descrevem; quem os ignora vê exatamente a sequência de antes, e é isso que deixa um provedor que não sabe informá-los ficar calado em vez de fingir.
 
 ## 4. Classes de erro
 
@@ -275,17 +329,36 @@ diz que o modelo recusou, com a categoria e a explicação quando vieram.
 ```go
 type Registry struct{ /* ... */ }
 
+func NewRegistry() *Registry
+
 func (r *Registry) RegisterTransport(t Transport)
-func (r *Registry) RegisterFamily(f Family)
+
+// RegisterFamily recusa família cujo prefixo se sobrepõe ao de uma já
+// registrada: prefixo ambíguo resolveria para quem chegou primeiro, calado.
+func (r *Registry) RegisterFamily(f Family) error
 
 // Resolve compõe o Provider: modelo → família → transporte.
 // transportOverride vazio usa o preferido da família.
 func (r *Registry) Resolve(model, transportOverride string) (Provider, error)
+
+// ResolveFamily compõe com a família nomeada, sem resolução por prefixo. É o
+// escape hatch (`--family generic`); quem chama avisa que os limiares não
+// foram medidos.
+func (r *Registry) ResolveFamily(familyName, transportOverride string) (Provider, error)
+
+// FamilyFor diz qual família reivindica um modelo antes de existir Provider —
+// a credencial, por exemplo, é resolvida por família e é com ela que o
+// transporte é montado. Uma só implementação do casamento, para duas nunca
+// discordarem sobre qual chave um modelo usa.
+func FamilyFor(model string, families []Family) (Family, bool)
+
+func (r *Registry) FamilyNames() []string    // ordenados, para mensagem de erro estável
+func (r *Registry) TransportNames() []string // ordenados
 ```
 
 Ordem de resolução:
 
-1. `model` casa com o `Models()` de exatamente uma família. Zero casamentos → erro listando as famílias disponíveis. Mais de um → erro de configuração; prefixos de família não podem se sobrepor.
+1. `model` casa com o `Models()` de exatamente uma família. Zero casamentos → erro listando as famílias disponíveis. Mais de um não acontece: `RegisterFamily` já recusou a sobreposição na inicialização.
 2. Transporte é o `transportOverride`, se dado, ou o primeiro de `Transports()`.
 3. Override que não está em `Transports()` da família → erro nomeando os compatíveis.
 
@@ -356,3 +429,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202610151500 — A janela Claude é por modelo](changelog/202610151500-a-janela-claude-e-por-modelo.md)
 - [202610161630 — O erro Anthropic diz a sua classe](changelog/202610161630-o-erro-anthropic-diz-a-sua-classe.md)
 - [202610162300 — A recusa do modelo é dita](changelog/202610162300-a-recusa-do-modelo-e-dita.md)
+- [202610171700 — A spec alcança o código](changelog/202610171700-a-spec-alcanca-o-codigo.md)

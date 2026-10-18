@@ -16,7 +16,7 @@ superfície de configuração declarada e não implementada é pior que ausente 
 promete um controle que não está lá, e o valor é lido, resolvido, exibido por
 `dcode config` e ignorado. Em 2026-08-11 havia 64 chaves nesse estado.
 
-É a mesma forma das "Invariantes previstas" do `.p §9`, pelo mesmo motivo: o que
+É a mesma forma das "Invariantes previstas" do `.p §10`, pelo mesmo motivo: o que
 ainda não existe não é reivindicado como existente. Descrever em prosa é
 descrever; declarar em tabela é prometer.
 
@@ -41,13 +41,13 @@ Não pede assinatura para elas — quem escreveu já assinou escrevendo (RN-9 da
 `.r`).
 
 Nasce **ligada** porque é barata, não pede nada a ninguém, e é o que responde a
-pergunta da §10 do `.p` com dados de uso real.
+pergunta da §11 do `.p` com dados de uso real.
 
 ### 1.2 Tetos da fase — etapas 1 e 2
 
 `DCODE_QUALIFIER_MAX_PROPOSALS` **saiu** antes de existir (changelog
 `202610161200`): o teto de propostas por turno é a constante `MaxProposals` da
-§5, e esgotá-lo reprova o turno em vez de mandar a última ao operador. Mandar a
+§7 do `.p`, e esgotá-lo reprova o turno em vez de mandar a última ao operador. Mandar a
 última com a contagem à vista seria tratar o teto como fim normal, e um turno
 que repropôs sem parar é exatamente o que a pessoa precisa ver falhar.
 
@@ -83,13 +83,18 @@ A fase não tem orçamento próprio.
 
 ## 4. Medição de contratos comportamentais
 
-**Os três contratos desta família foram medidos** contra `MiniMax-M3` em
-2026-08-27, com `DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e `DCODE_EVAL_ENABLED` —
-declaradas em `202608072334-provider-adapter.config.spec.md` §4, não
-redeclaradas aqui. Os resultados estão na `.p §8`, com modelo e data em
-`internal/evals/measured.go`.
+**Os três contratos desta família foram medidos** contra `MiniMax-M3`, com
+`DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e `DCODE_EVAL_ENABLED` — declaradas em
+`202608072334-provider-adapter.config.spec.md` §4, não redeclaradas aqui. Os
+resultados estão na `.p §8`, com modelo e data em `internal/evals/measured.go`.
 
-Um deles fechou; dois não. Os limiares ficaram onde estavam.
+A medição que vale é a de **2026-08-28**, e **dois de três fecham**:
+`qualifier-fixes-broken` em 100% de 20, `qualifier-proposes-commands` em 98% de
+50, e `qualifier-declares-regression` em 80% de 20, abaixo dos 90%. A primeira,
+de 2026-08-27 — um fechado, dois não —, foi **substituída**, não acumulada:
+media um teto de rodadas que cortava execuções ainda lendo e um workspace que
+não compilava (`changelog/202608280200`). Os limiares ficaram onde estavam nas
+duas.
 
 `qualifier-narrows-on-mismatch` **foi retirado**, e o motivo mudou entre a
 escrita desta seção e a medição. Não é mais que o judge seria difícil: é que o
@@ -122,4 +127,7 @@ separa as duas. Nenhuma das duas primeiras entrou em `measured.go`.
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
 - [202608271200 — os contratos medidos](changelog/202608271200-os-contratos-medidos.md)
+- [202608280200 — o cenário que mudou embaixo do número](changelog/202608280200-o-cenario-que-mudou-embaixo.md)
+- [202610140900 — a assinatura é o arquivo, e o ida-e-volta sai](changelog/202610140900-a-assinatura-e-o-arquivo.md)
 - [202610161200 — toda proposta do turno é guardada e chega ao operador](changelog/202610161200-toda-proposta-e-guardada.md)
+- [202610172315 — a spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)

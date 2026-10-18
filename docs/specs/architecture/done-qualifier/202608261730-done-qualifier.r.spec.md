@@ -175,6 +175,11 @@ Consequência declarada: **a qualificação é uma fase interativa.** Onde não 
 quem assine, esta família não se aplica, e as três origens que já existem
 continuam sendo o caminho.
 
+No produto, **assinar é continuar**: com a proposta escrita, o laço fica em
+`awaiting_review` sem prazo, e só o `continue` de uma pessoa o leva ao trabalho
+(`.p` §6). Um turno qualificador que termina sem propor não chega lá: é falha
+explícita, sem arquivo escrito.
+
 ### RN-7 — Depois de assinada, a `DoneSet` é imutável no turno
 
 Nem o modelo nem o próprio laço podem acrescentar, remover ou reescrever
@@ -269,3 +274,4 @@ e devolve ao modelo exatamente a decisão que a RN-10 tirou dele.
 
 - [202608261730 — a definição de pronto passa a ter uma fase que a levanta](changelog/202608261730-qualificacao-antes-do-laco.md)
 - [202608261900 — o contrato técnico da qualificação](changelog/202608261900-contrato-da-qualificacao.md)
+- [202610172315 — a spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)

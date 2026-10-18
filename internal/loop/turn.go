@@ -374,6 +374,10 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 	// check. Per turn, because repeating it every cycle would be a loop with
 	// nothing to make progress on.
 	toldUnverified := false
+	// summaryFailed latches the automatic trigger off once its summary failed.
+	// Per turn, like toldUnverified: the next turn tries again, the cause may
+	// have cleared.
+	summaryFailed := false
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -388,7 +392,9 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 		// else. A second check point is how compaction becomes incremental by
 		// accident, which invalidates the cache every turn.
 		before := summaryMark(e.session)
-		e.maybeCompact(ctx)
+		if !summaryFailed {
+			summaryFailed = e.maybeCompact(ctx)
+		}
 		compacted = compacted || summaryMark(e.session) != before
 
 		msgs, err := ce.Assemble(e.session)
@@ -1058,18 +1064,28 @@ func (e *Engine) ctxConfig() ce.Config {
 // over a cut that was not needed yet. If the room does run out, the provider
 // refuses the context, forceCompact tries again, and that path is the one
 // that ends the turn.
-func (e *Engine) maybeCompact(ctx context.Context) {
+//
+// It reports whether a summary was asked for and failed, so the turn can stop
+// asking. A cause that fails once — a revoked credential, a quota spent — fails
+// on every iteration after it, and each one cost a provider call and said the
+// same compaction_failed again. The turn latches the first failure and skips
+// the trigger for the rest of it; the one warning says so. forceCompact keeps
+// no latch: a context_size refusal is the room running out, and that is worth
+// another try.
+func (e *Engine) maybeCompact(ctx context.Context) (failed bool) {
 	cfg := e.ctxConfig()
 	if cfg.Disabled {
-		return
+		return false
 	}
 	plan, ok := ce.Plan(e.session, cfg)
 	if !ok {
-		return
+		return false
 	}
 	if err := e.applyCompaction(ctx, plan); err != nil {
-		e.compactionFailed(err)
+		e.compactionFailed(fmt.Errorf("%w; automatic compaction will not try again in this turn", err))
+		return true
 	}
+	return false
 }
 
 // forceCompact is the recovery path when the provider says the context is too

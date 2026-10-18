@@ -195,3 +195,7 @@ fica escrito antes de construir.
 
 - [202608281900 — o erro que não voltava](changelog/202608281900-o-erro-que-nao-voltava.md)
 - [202608282000 — a saída fica](changelog/202608282000-a-saida-fica.md)
+- [202608282100 — a saída chega ao modelo](changelog/202608282100-a-saida-chega-ao-modelo.md)
+- [202608301600 — o instrumento que faltava](changelog/202608301600-o-instrumento.md)
+- [202608310100 — o critério que não dizia o que era](changelog/202608310100-o-criterio-silencioso.md) — a RN-3
+- [202610172315 — a spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)

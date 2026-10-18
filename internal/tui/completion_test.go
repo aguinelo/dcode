@@ -120,10 +120,12 @@ func TestAChangeToTheMeasurementIsNeverFoldedAwaySilently(t *testing.T) {
 	}
 }
 
-// A verified turn says how many checks passed once, in either language.
+// A verified turn says how many checks passed once, in the reader's language.
 //
 // It said "verified — 3 3 checks passed": the sentence put the count in front
-// of a noun that plural() had already counted.
+// of a noun that plural() had already counted. Then it said "conferido — 3
+// checks passaram": the noun was an English literal in the renderer, so the
+// Portuguese sentence carried it, and its verb did not agree with one check.
 func TestAVerifiedTurnCountsItsChecksOnce(t *testing.T) {
 	for _, c := range []struct {
 		lang Lang
@@ -132,8 +134,8 @@ func TestAVerifiedTurnCountsItsChecksOnce(t *testing.T) {
 	}{
 		{En, []string{"tests", "vet", "build"}, "verified — 3 checks passed"},
 		{En, []string{"tests"}, "verified — 1 check passed"},
-		{PtBR, []string{"tests", "vet", "build"}, "conferido — 3 checks passaram"},
-		{PtBR, []string{"tests"}, "conferido — 1 check passaram"},
+		{PtBR, []string{"tests", "vet", "build"}, "conferido — 3 verificações passaram"},
+		{PtBR, []string{"tests"}, "conferido — 1 verificação passou"},
 	} {
 		got := completionSummary(&protocol.Completion{Verification: string(loop.VerificationPassed), Met: c.met}, c.lang)
 		if got != c.want {

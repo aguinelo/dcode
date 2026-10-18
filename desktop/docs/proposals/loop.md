@@ -1,8 +1,12 @@
 # Proposta: o `/loop` com definição de pronto no desktop
 
-> **Estado: aprovada pelo dono em 2026-10-13** (as decisões estão na §7).
-> Nada aqui foi construído ainda; o `/loop` vem antes do orquestrador.
-> Cada passo da §8 é um PR de um tema só; os que mexem no núcleo levam a
+> **Estado: construída.** Aprovada pelo dono em 2026-10-13 (as decisões estão
+> na §7) e feita nos passos da §8, de #471 a #483: no núcleo, o `done.checked`,
+> o `done.proposed` e o `/loop` no daemon (`/v1/loops`, N4); no desktop, as
+> luzes que andam a cada conferência (D54), o loop começado e parado pela
+> janela (D55) e a revisão da proposta (D56). Onde o que foi feito difere do
+> desenho abaixo, a decisão do desktop é a que vale — a §3.1 já diz como ficou.
+> Cada passo da §8 foi um PR de um tema só; os que mexem no núcleo levam a
 > mudança de spec (changelog na família) antes do código, como
 > `docs/conventions/SDD-HARNESS.md` pede. Onde esta proposta e uma spec
 > divergirem, a spec vence.
@@ -94,8 +98,11 @@ Duas portas, uma gramática:
   specs pendentes --protect tests/**`. O desktop reconhece `/loop` como reconhece
   `/undo` (D40) — nunca vai ao modelo como mensagem (`loop-command` RN-3) — e o
   argumento segue para o daemon como foi digitado.
-- **No "Nova sessão" (D31/D38):** um item "Loop…" abre a folha da Figura 1, que
-  lista as pastas que o daemon conhece (`GET /v1/specs?measure=false`).
+- **No "Nova sessão" (D31/D38):** a alternância "↻ loop" (D55) — na janela de
+  Nova sessão da grade e no menu "Nova" da Crew (D63) — faz escolher o projeto
+  abrir a folha da Figura 1, que lista as pastas que o daemon conhece
+  (`GET /v1/specs?measure=false`). (O desenho aprovado dizia um item
+  "Loop…"; ficou a alternância.)
 
 ```
 Figura 1 — Grade: a folha "Começar loop", dentro da janela que perguntou onde
@@ -438,7 +445,9 @@ Turno que não escreveu nada não confere e não emite — é o que `checkDone` 
 - B. Permitir.
 - C. Permitir com `owns` disjuntos por loop.
 - **Decidido: A** (aprovado pelo dono). Dois loops na mesma árvore medem o trabalho um do outro; C é
-  a mesma pergunta que a proposta do orquestrador responde, e espera ela.
+  a mesma pergunta que a proposta do orquestrador responde
+  ([`docs/specs/architecture/orchestration/202610132000-orchestration.r.spec.md`](../../../docs/specs/architecture/orchestration/202610132000-orchestration.r.spec.md)),
+  e espera ela.
 
 ## 8. Entrega em passos (um tema por PR)
 
@@ -483,3 +492,5 @@ O 1 e o 4 são MINOR pelo `scripts/version.sh`.
 - 2026-10-13 — o dono aprovou as sete recomendações (Q1 C, Q2 A, Q3 A, Q4 A,
   Q5 A, Q6 C, Q7 A); as perguntas viraram decisões. Este desenho é construído
   antes do orquestrador.
+- 2026-10-17 — construída (#471–#483, D54–D56); o estado no topo e a §3.1
+  passam a dizer o que foi feito.

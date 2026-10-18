@@ -342,17 +342,20 @@ after `go clean -testcache`, and the difference was read as a failing change
 until the baseline was measured. Whatever the fix is, the trap is that the wrong
 number looks like an ordinary one.
 
-**O harness de eval não responde uma chamada delegada, e isso muda o que ele
-mede.** A recusa é honesta — ele não finge que um filho rodou —, mas a frase
-*"Do the reading yourself with the tools you have"* **instrui o abandono**: um
-`explore` de reconhecimento devolve isso, o modelo acredita, e não delega mais na
-execução inteira. Medido: `delegates-writing-when-disjoint` em 75% de 12, com as
-três falhas todas nessa forma, e as nove aprovações sendo as que emitiram os
-filhos numa mensagem só antes de a recusa chegar. Enquanto isso não mudar, todo
-limiar de delegação é piso sobre a taxa do produto e não a taxa. O conserto é um
-delegador de mentira que responda alguma coisa plausível sem rodar turno filho —
-e ele tem a armadilha do `shellRefusal` pela frente, porque fingir que rodou foi
-justamente o que fez um modelo queimar rodadas numa mentira.
+**`delegates-writing-when-disjoint` sits near half, and nobody knows why.**
+This entry used to say the eval harness refused every delegated call and that
+its refusal — *"Do the reading yourself with the tools you have"* — taught the
+model to stop delegating. The first half is no longer true: since
+`202608200100-o-harness-roda-um-turno-filho.md` (delegated-writing) the harness
+runs a real child turn through `Workspace.Delegate`, against the same provider,
+with the product's own `loop.DelegateInstructions`, and the refusal is only what
+a harness with no delegator says. The second half was measured and did not
+hold: with the child running, the contract moved from 50% to 52% of fifty runs,
+inside the noise. The model's own digest explaining the refusal was a
+rationalisation, not the cause. The threshold stays at 25%, as a guard against a
+regression to zero rather than a certified rate, until the real cause is found.
+The comment above that contract in `internal/evals/contracts.go` still tells the
+old story and should be corrected with it.
 
 **Learned memory has no user-level scope.** Deliberately out of scope in the
 spec: a gotcha from one project applied to another is worse than none. Revisit
@@ -720,6 +723,21 @@ a harness change rather than a contract — which is why it is here and not in t
 multi-turn fixture belongs in this suite at all, given what it costs per run,
 and the answer may be that decay is measured some other way entirely.
 
+## 18. The task ledger: designed and approved, not built
+
+`docs/specs/architecture/task-ledger` describes a backlog that outlives the
+session — `.dcode/backlog.toml` for intent, an append-only `.dcode/backlog.log`
+for progress — built on one principle: whoever executes does not sign the
+acceptance. Its `.p` says so in its first line: approved design, no code. There
+is no `.i`, and its invariants are titled "previstas" because there is no test
+to claim yet.
+
+Its own §11 orders the work: the backlog, the log and `dcode backlog` first,
+which is useful with no loop at all; then the `task` tool; then `dcode work`,
+and only with the number its §10 asks for — does a task with criteria close in
+one session? Whether `/loop` (§12 here) already answers part of that question
+has not been checked, and should be before anything is built.
+
 ## Not doing, and why
 
 **MCP.** A large surface with its own lifecycle, auth and failure modes.
@@ -729,10 +747,16 @@ Staying out was right and still is.
 configuration becomes undergrowth: the session that produced this roadmap ran
 under another product's hooks injecting noise into every turn.
 
-**Sub-agents that write.** Three of the four known problems with delegation
-exist *because* the child writes — conflict between children, inherited
-approval, and undoing. Read-only makes all three disappear, and that reasoning
-has not weakened.
+**Sub-agents that write — no longer in this list.** It was here because three
+of the four known problems with delegation exist *because* the child writes:
+conflict between children, inherited approval, and undoing. Both were built
+anyway, each with an answer to those three. `explore` takes `owns`, the paths a
+child may write, narrowed to what the parent may already write and declared as
+writes so two children owning one file are a conflict before either runs
+(`delegated-writing`). And the orchestrator (`orchestration`) delegates children
+that work in their own worktrees, has a reviewer read every child's diff, runs
+the gate itself, and waits for the person before a merge. The reasoning was not
+wrong; it was answered rather than outgrown.
 
 ---
 
@@ -755,6 +779,7 @@ has not weakened.
 | **13** — the qualifying phase | After 12's client half, which is what gives it somewhere to land. Start at `Measure`, never at the derivation — and step 2 ships value with no model in it. |
 | **17** — measuring decay across turns | The fact and the contract shipped in #372; what is left needs a multi-turn fixture, which is a harness change. Decide whether that belongs here at all before writing one. |
 | **12** — `/loop` façade | Parser and dispatch shipped; the client half is what remains. Next move is Step 3 of its `.i` — recognise `/loop` before it becomes turn input, so the syntax never enters the history. |
+| **18** — the task ledger | Approved and unbuilt. Its first step needs no loop; its last needs a number nobody has. Check what `/loop` already covers first. |
 
 **Do not start 4 by redesigning the fixture again.** Four designs have been tried
 and each redesign was pushing the model toward a behaviour rather than measuring

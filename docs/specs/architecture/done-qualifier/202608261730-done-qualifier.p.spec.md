@@ -168,10 +168,13 @@ type Measured struct {
     Class Class
     // Exit is what the command actually exited with.
     Exit int
-    // Output is capped at qualifier.output_limit. The operator reads this, and
-    // it is the only thing that distinguishes a criterion that is red because
-    // the work is missing from one that is red because the world is.
+    // Output is capped at MaxOutput, and says so when it was cut. The
+    // operator reads this, and it is the only thing that distinguishes a
+    // criterion that is red because the work is missing from one that is red
+    // because the world is.
     Output string
+    // Truncated marks output that did not fit.
+    Truncated bool
     // Mismatch is Expects disagreeing with Class. Not an error and not a
     // rejection: it is where the operator's eye should land.
     Mismatch bool
@@ -237,11 +240,23 @@ escolhendo o que é medição, que é o que a RN-4 da `loop-command` proíbe.
 ## 6. A assinatura
 
 **A assinatura é o arquivo revisado.** A proposta medida é escrita no
-`done.toml` da pasta (§5, `render.go`), com a classe de cada critério, o que o
+`done.toml` da pasta (`render.go`, §2), com a classe de cada critério, o que o
 proponente disse dele e o que a medição achou, e o laço **para** ali. O que a
 pessoa deixar no arquivo é a definição de pronto do próximo turno, e o
 carregador o lê como lê qualquer `done.toml`. Editar um critério é editar o
 arquivo: não há um segundo canal, dentro do turno, por onde a régua mude.
+
+**O portão é o `awaiting_review`, e assinar é continuar** (RN-6 da `.r`). Escrito
+o arquivo, o laço entra em `awaiting_review` e espera, sem relógio. Só
+`POST /v1/loops/{id}/continue` o leva ao trabalho — o primeiro a responder vence,
+e um segundo recebe `loop_not_awaiting_review` —, e `stop` o encerra ali sem
+trabalho nenhum. Não há caminho do arquivo escrito ao turno de trabalho que não
+passe por uma pessoa dizendo "continue".
+
+**Turno qualificador que termina sem propor é falha explícita.** O commit
+recusa com `invalid_input` — *"nothing was proposed for <sessão>"* —, nada é
+escrito nem anunciado, e o laço termina com o erro em vez de seguir para a
+revisão. Arquivo vazio seria uma régua que ninguém propôs com cara de proposta.
 
 ### 6.1 Protocolo
 
@@ -394,20 +409,12 @@ repositório mais recusa.
 
 ### A primeira leitura media um cenário que não existe mais
 
-Em 2026-08-27 estes contratos marcaram 96%, 85% e 75%. Aqueles números foram
-**substituídos**, não acumulados, e o motivo é o defeito que esta tabela existe
-para impedir: eles descreviam cenários que mudaram embaixo deles.
-
-Duas coisas mudaram. O **teto de rodadas** dos qualificadores era 12, e um turno
-que lê uma spec, lê a base e só então produz é "explore e então aja" — a mesma
-forma que já tinha levado `initRounds` e `exploreThenActRounds` a 20. Um terço
-das falhas do `declares-regression` eram execuções ainda lendo quando o
-arcabouço as cortou. E o **workspace compartilhado não compilava**: `toml.go`
-chamava dois helpers que não existiam, e modelos gastavam rodadas concluindo,
-corretamente, que o repositório estava quebrado.
-
-O `declares-regression` é o único que **piorou** — 85% para 80% — e é o único
-honesto dos três primeiros: com o teto solto, o número é pior e é o verdadeiro.
+Em 2026-08-27 estes contratos marcaram 96%, 85% e 75%, e aqueles números foram
+**substituídos**, não acumulados: o teto de rodadas dos qualificadores era 12 e
+cortava execuções ainda lendo, e o workspace compartilhado não compilava. A
+medição de 2026-08-28 é a da tabela (`changelog/202608280200`). O
+`declares-regression` foi o único que **piorou** — 85% para 80% — e é o
+número verdadeiro.
 
 ### O que ainda não fecha
 
@@ -422,30 +429,20 @@ do problema e não a raiz. Fica escrito como não resolvido.
 
 ### `qualifier-narrows-on-mismatch` foi retirado
 
-Não por ser difícil de julgar — era o que esta seção dizia antes, e o judge
-seria construível. Foi retirado porque **o cenário dele não existe mais no
-produto**.
+Porque **o cenário dele não existe mais no produto**, não por ser difícil de
+julgar. Ele media um segundo turno do modelo apertando um critério declarado
+`fail` que voltou `regression`. O desenho A pôs a medição **fora** do turno, e o
+turno já acabou quando o número aparece: quem lê a discordância é a **pessoa**,
+no arquivo. Um segundo turno de modelo trocaria uma decisão não verificada por
+duas (`changelog/202608271200`).
 
-Ele descrevia um segundo turno do modelo reagindo à medição: um critério
-declarado `fail` que volta `regression` "volta" para quem o escreveu, que
-aperta. Isso era verdade quando o `.p` foi escrito, e a `Summary` ainda dizia
-ao modelo "corrija propondo de novo".
-
-O desenho A moveu a medição para **fora** do turno — ela roda sob a fronteira do
-trabalho, que é o único lugar onde os critérios rodam de verdade — e o turno já
-acabou quando o número aparece. Quem lê a discordância é a **pessoa**, e o
-arquivo põe o olho dela exatamente ali. Trocar essa revisão por um segundo turno
-de modelo seria trocar uma decisão não verificada por duas, que é a recusa mais
-antiga desta família.
-
-Um critério **quebrado** é outra coisa: ele não é uma discordância de opinião, é
-uma medição de nada, e por isso é gravado comentado. A pasta segue declarando
-zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-broken`
-é alcançável.
+Um critério **quebrado** é outra coisa — uma medição de nada —, e por isso é
+gravado comentado: a pasta segue declarando zero critérios e volta para esta
+fase sozinha, que é como `qualifier-fixes-broken` é alcançável.
 
 ## 9. Invariantes verificáveis
 
-> A etapa 1 da §11 está entregue, e estas são reivindicadas por
+> A etapa 1 da §12 está entregue, e estas são reivindicadas por
 > `specguard.Check` em `internal/loop/invariants_test.go`. O que ainda não foi
 > construído está na §10.
 
@@ -477,6 +474,7 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 - Escrever a proposta emite `done.proposed` uma vez no log da sessão qualificadora, com a medição e o caminho do arquivo.
 - O aviso `done.proposed` leva as propostas anteriores, da mais antiga à mais nova, como o modelo as mandou e sem medição.
 - Proposta que não chegou a ser escrita não é anunciada.
+- Fora de um turno qualificador, `done_propose` recusa e diz que só serve a um.
 
 ## 10. Invariantes previstas
 
@@ -484,9 +482,8 @@ zero critérios e volta para esta fase sozinha — que é como `qualifier-fixes-
 > constrói.
 
 - `Measure` nunca escreve, e o runner injetado é o mesmo `Config.RunCriterion`.
-- `done_propose` não existe no registro de um turno que não é de qualificação.
-- A `DoneSet` congelada é, campo a campo, a que voltou na assinatura.
-- Nada muta `Config.Done` depois da assinatura.
+- A `DoneSet` congelada é, campo a campo, a do `done.toml` que a pessoa deixou ao continuar.
+- Nada muta `Config.Done` depois do `continue`.
 
 ## 11. O que medir antes de construir a derivação
 
@@ -500,7 +497,7 @@ barato e a fase vale pela derivação. Se for comum, a regra do vermelho inicial
 a peça que sustenta tudo, e vale construí-la mesmo que a derivação nunca fique
 boa — porque ela sozinha já protege as três origens que existem (RN-9 da `.r`).
 
-A etapa 2 da §11 entrega esse número sem modelo nenhum: ela mede `done.toml` de
+A etapa 2 da §12 entrega esse número sem modelo nenhum: ela mede `done.toml` de
 verdade, de gente de verdade, no começo do turno.
 
 ## 12. Ordem de entrega
@@ -511,7 +508,7 @@ A ordem é a inversa da intuitiva, e é de propósito.
    protocolo, sem operador. Testável inteiro por asserção.
 2. **A medição de t=0 nas origens que já existem.** Ainda sem modelo: a entrada é o `done.toml` ou o `tasks.md` que
    o operador já escreveu. Entrega valor sozinha — "dois dos seus critérios já
-   passavam antes de qualquer trabalho" — e é onde o número da §10 aparece.
+   passavam antes de qualquer trabalho" — e é onde o número da §11 aparece.
 3. **A ferramenta `done_propose` e o turno de qualificação.** A parte mediada, e
    a única que precisa de contrato medido.
 
@@ -530,3 +527,4 @@ derivação boa também não vale nada.
 - [202610140900 — a assinatura é o arquivo, e o ida-e-volta sai](changelog/202610140900-a-assinatura-e-o-arquivo.md)
 - [202610141000 — a proposta escrita é anunciada](changelog/202610141000-a-proposta-escrita-e-anunciada.md)
 - [202610161200 — toda proposta do turno é guardada e chega ao operador](changelog/202610161200-toda-proposta-e-guardada.md)
+- [202610172315 — a spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)

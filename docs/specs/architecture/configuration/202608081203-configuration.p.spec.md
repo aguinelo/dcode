@@ -39,29 +39,44 @@ $DCODE_HOME/
 ```toml
 # Todas as chaves são opcionais. Ausente = default do produto.
 # NENHUMA credencial aqui (RN-3).
+# Recorte representativo, não a lista inteira: o esquema é `config.KnownKeys`
+# (internal/config/toml.go), e cada chave é declarada, com default, na
+# `.config.spec.md` da família que a lê.
 
 [model]
-name      = "MiniMax-M3"   # DCODE_MODEL
-transport = ""             # DCODE_TRANSPORT; vazio = preferido da família
-family    = ""             # DCODE_FAMILY;    vazio = resolvido pelo nome
+name                = "MiniMax-M3"   # DCODE_MODEL
+transport           = ""             # DCODE_TRANSPORT; vazio = preferido da família
+family              = ""             # DCODE_FAMILY;    vazio = resolvido pelo nome
+base_url            = ""             # DCODE_BASE_URL;  vazio = endpoint da família
+window              = 0              # DCODE_WINDOW;    0 = janela que a família devolve
+anthropic_workspace = ""             # DCODE_ANTHROPIC_WORKSPACE
 
 [sandbox]
 mode            = "workspace-write"  # DCODE_SANDBOX_MODE
 approval_policy = "on-request"       # DCODE_APPROVAL_POLICY
-allow_network   = false              # DCODE_ALLOW_NETWORK
+allow_network   = true               # DCODE_ALLOW_NETWORK (sandbox-policy .config)
 
 [limits]
-max_iterations = 0    # 0 = default da família
-max_turn_tokens = 0
+max_iterations    = 0    # 0 = default da família
+max_turn_tokens   = 0
+max_output_tokens = 0    # DCODE_MAX_OUTPUT_TOKENS; 0 = teto da família (agent-loop .config)
 
 [behavior]
 instructions_enabled = true
 skills_enabled       = true
 reminders_enabled    = true
 
+[memory]
+enabled     = true       # DCODE_MEMORY_ENABLED (learned-memory .config)
+max_entries = 40         # DCODE_MEMORY_MAX_ENTRIES
+
 [update]
 check   = true
 channel = "stable"
+
+# [orchestrator] — as chaves do orquestrador (enabled, profile, main_branch,
+# max_children, gate_command, …) são declaradas em
+# `orchestration/202610132000-orchestration.config.spec.md`.
 ```
 
 **Regra de nomeação, sem exceção:** toda chave TOML corresponde a exatamente uma variável de ambiente, por `DCODE_<SEÇÃO>_<CHAVE>` em maiúsculas — salvo quando a variável já foi declarada com outro nome na spec dona daquela chave, e nesse caso o mapeamento é explícito na tabela daquela spec.
@@ -154,17 +169,36 @@ const (
 
 type Value struct {
     Key    string
-    Value  any
+    Value  string // o texto como veio da camada; o tipo é do leitor
     Source Source
     Origin string // caminho de arquivo, nome de variável, ou "built-in"
     Locked bool
 }
 
+type Layer struct {
+    Source Source
+    Origin string
+    Values map[string]string
+}
+
+// Resolved é o resultado da cadeia. Os valores são lidos pelos acessores, que
+// convertem e devolvem o default quando a chave falta ou não converte.
+type Resolved struct {
+    Warnings []string // tentativas de sobrescrever chave travada (RN-9)
+    // campos não exportados
+}
+
+func (r Resolved) Get(key string) (Value, bool)
+func (r Resolved) String(key, def string) string
+func (r Resolved) Bool(key string, def bool) bool
+func (r Resolved) Int(key string, def int) int
+func (r Resolved) Keys() []string
+
 // Resolve aplica a cadeia da RN-7. PURA sobre camadas já carregadas.
-func Resolve(layers []Layer) map[string]Value
+func Resolve(layers []Layer) Resolved
 ```
 
-`Origin` é o que torna RN-8 possível: `dcode config get <chave>` responde valor **e** procedência.
+`Origin` é o que torna RN-8 possível: `dcode config <chave>` (ou `dcode --config <chave>`) responde valor **e** procedência; `dcode config` sem argumento mostra a resolução das seções principais de uma vez.
 
 **Travamento (RN-9):** chave presente na camada travada e também em camada inferior devolve o valor travado, `Locked: true`, e emite aviso nomeando o arquivo de travamento. Nunca silencioso.
 
@@ -249,5 +283,8 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 
 - [202608091500 — Armazenamento de credencial](changelog/202608091500-armazenamento-de-credencial.md)
 - [202608101700 — Atravessamento de camadas de configuração](changelog/202608101700-atravessamento-de-camadas-de-configuracao.md)
+- [202608101900 — Tradução de instruções de terceiros](changelog/202608101900-traducao-de-instrucoes-de-terceiros.md)
+- [202608110900 — Chaves declaradas e não lidas saem da spec](changelog/202608110900-chaves-declaradas-e-nao-lidas.md)
 - [202609302227 — Cada sessão lê a configuração do seu workspace](changelog/202609302227-cada-sessao-le-a-configuracao-do-seu-workspace.md)
 - [202610162300 — Toda chave lida está no esquema](changelog/202610162300-toda-chave-lida-esta-no-esquema.md)
+- [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)
