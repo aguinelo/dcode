@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/aguinelo/dcode/internal/policy"
 )
@@ -324,9 +325,11 @@ func Check(ctx context.Context, set DoneSet, run CriterionRunner, timeout time.D
 // the tail to preserve the banner would preserve exactly the part that decides
 // nothing.
 //
-// On a line boundary when there is one inside the window, and on the byte when
-// there is not: an 8000-character line is machine output, and half of it beats
-// nothing at all.
+// On a line boundary when there is one inside the window, and on the first
+// whole character when there is not: an 8000-character line is machine output,
+// and half of it beats nothing at all — but half of an "é" is invalid UTF-8
+// handed to the model. The scan moves forward, never back, so the ceiling holds;
+// it drops at most utf8.UTFMax-1 bytes.
 func tail(s string, max int) (string, bool) {
 	s = strings.TrimRight(s, "\n")
 	if s == "" {
@@ -335,7 +338,11 @@ func tail(s string, max int) (string, bool) {
 	if len(s) <= max {
 		return s, false
 	}
-	cut := s[len(s)-max:]
+	start := len(s) - max
+	for start < len(s) && !utf8.RuneStart(s[start]) {
+		start++
+	}
+	cut := s[start:]
 	if i := strings.IndexByte(cut, '\n'); i >= 0 && i+1 < len(cut) {
 		cut = cut[i+1:]
 	}
