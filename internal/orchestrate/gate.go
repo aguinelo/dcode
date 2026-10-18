@@ -21,6 +21,7 @@ import (
 
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/sandbox"
 )
 
 const (
@@ -62,6 +63,11 @@ type Gate struct {
 	// Logs is the directory the whole output is written to, as
 	// <commit>.log — the gates/ of .p §8. Empty keeps only the tail.
 	Logs string
+	// Sandbox makes the boundary the command runs in, once per measurement.
+	// Nil is DefaultGateSandbox — the closed boundary, never none.
+	Sandbox GateSandbox
+
+	sb sandbox.Sandbox // the one this measurement runs in
 }
 
 // GateFrom reads the gate from configuration. An empty command is not an error
