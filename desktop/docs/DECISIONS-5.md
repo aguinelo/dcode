@@ -257,8 +257,10 @@ já serve (`.p` §5.1).
 
 As réguas: as dezoito referências continuam a 0,00% — nenhuma tem filho de
 orquestradora, e o menu medido (11) é o do loop ligado. O `check:daemon`
-passa 13 de 13; o cenário com dois filhos e a retenção curta que a `.i` pede
-continua esperando, porque `tests/daemon/` é régua protegida. As capturas da
+passava 13 de 13 quando esta decisão entrou; o cenário com dois filhos e a
+retenção curta que a `.i` pede veio depois, com autorização do dono para
+`tests/daemon/` (#553, `orchestra-lists`), e a régua passa 14 de 14. Ele achou
+que um filho merged nunca saía da lista, corrigido no núcleo (#552). As capturas da
 fila, da entrada no "Nova" e da lista agrupada, nos dois temas, vão ao dono
 no PR.
 
