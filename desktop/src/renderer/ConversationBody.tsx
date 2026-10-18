@@ -83,7 +83,7 @@ export function ConversationBody({
         }}
       >
         <div className="flow">
-          <FlowBlocks blocks={blocks} now={now} onAnswer={onAnswer} imagesAt={imagesAt} onRun={(command) => setTerminal((t) => ({ command, n: (t?.n ?? 0) + 1 }))} />
+          <FlowBlocks blocks={blocks} sessionId={session.id} now={now} onAnswer={onAnswer} imagesAt={imagesAt} onRun={(command) => setTerminal((t) => ({ command, n: (t?.n ?? 0) + 1 }))} />
           {session.state === 'running' && session.turn && (
             <TurnActivity session={session} activity={act} now={now} tick={verbTick} compact={compact} imagesAt={imagesAt} />
           )}

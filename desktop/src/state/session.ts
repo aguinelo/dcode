@@ -8,6 +8,7 @@
 import type * as P from '../protocol/generated';
 import type { EventOf, ProtocolEvent } from '../protocol/events';
 import { applyAgentEvent, emptyAgents, type AgentList } from './agents';
+import { withCards } from './card';
 
 export type ToolStatus = 'arriving' | 'running' | 'ok' | 'failed';
 
@@ -52,6 +53,9 @@ export type Entry =
   // turnId: the turn under way at the plan's latest revision, null outside one (D57).
   | (Stamp & { kind: 'plan'; items: P.PlanItem[]; turnId: string | null })
   | (Stamp & { kind: 'note'; note: Note })
+  // An orchestrator's question card (.p §5.5, D67): drawn where it was first
+  // said, and changed in place as the daemon changes it.
+  | (Stamp & { kind: 'card'; card: P.QuestionCard })
   | (Stamp & { kind: 'error'; code: string; message: string });
 
 export interface Counter {
@@ -439,11 +443,12 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
     case 'gate.measured':
     case 'question.asked':
     case 'question.answered':
-    case 'question.card':
     case 'merge.completed':
     case 'merge.refused':
     case 'main.health':
       return { ...view, agents: applyAgentEvent(view.agents, ev) };
+    case 'question.card':
+      return withCards(view, [ev.payload], ev.seq, ev.at);
   }
 }
 

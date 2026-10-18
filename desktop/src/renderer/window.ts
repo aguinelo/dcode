@@ -2,7 +2,7 @@
 // answers come from the daemon through the main process (live.ts); in fixture
 // mode, from a recording that sends nothing anywhere (fixture.ts).
 
-import type { LoopRun, ModelsResponse, SpecFolder } from '../protocol/generated';
+import type { AnswerQuestionsRequest, AnswerResult, LoopRun, ModelsResponse, SpecFolder } from '../protocol/generated';
 import type { Attachment, DaemonStatus, PickedAttachments, PrDraft } from '../shared/api';
 import type { CommandsResponse, CompactResult, GitDiffResponse, GitPRResponse, GitResponse, MemoryResponse, SkillsResponse, UndoResult } from '../protocol/generated';
 import type { History } from '../state/history';
@@ -120,4 +120,6 @@ export interface WindowActions {
   readAgents(sessionId: string): Promise<Outcome<null>>;
   /** The person's answer to a question, with a note or "" (D66); losing to an earlier answer is said. */
   answerQuestion(sessionId: string, questionId: string, answer: string, note: string): Promise<Outcome<null>>;
+  /** The person's confirm of a card (D67): every answer in one POST, and what became of each, or why the batch was not taken. */
+  answerQuestions(sessionId: string, batch: AnswerQuestionsRequest): Promise<Outcome<AnswerResult[]>>;
 }

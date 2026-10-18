@@ -6,7 +6,7 @@
 // nobody here chose. The main process is the daemon's client (D2, D19); the
 // renderer asks it for one thing at a time and is told what changed.
 
-import type { Conversation, ConversationChange, ModelsResponse, Session } from '../protocol/generated';
+import type { AnswerQuestionsRequest, Conversation, ConversationChange, ModelsResponse, Session } from '../protocol/generated';
 
 export interface UserInfo {
   /** The person's name as the system knows it, or their login when it has none. */
@@ -197,6 +197,8 @@ export interface OrchestrateApi {
   questions(sessionId: string): Promise<Answer<unknown>>;
   /** The person's answer to one, with a note when written (`POST /sessions/{id}/questions/{qid}`); the first answer wins. */
   answer(sessionId: string, questionId: string, answer: string, note?: string): Promise<Answer<unknown>>;
+  /** The person's confirm of a card: every answer and every skip in one POST (`POST /sessions/{id}/questions/answers`, D67). */
+  answerAll(sessionId: string, batch: AnswerQuestionsRequest): Promise<Answer<unknown>>;
 }
 
 export interface DcodeApi {
@@ -358,6 +360,7 @@ export const CHANNELS = {
   listChildren: 'dcode:list-children',
   listQuestions: 'dcode:list-questions',
   answerQuestion: 'dcode:answer-question',
+  answerQuestions: 'dcode:answer-questions',
 } as const;
 
 /** The channel the main process answers `user()` on. */

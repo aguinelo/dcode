@@ -10,6 +10,7 @@ import { emptyLoops } from '../state/loop';
 import type { Look } from '../renderer/TopBar';
 import { loopRecording, recordedLoops } from './loop-recording';
 import { emptyOrchestraRecording, orchestraRecording } from './orchestra-recording';
+import { questionsRecording } from './questions-recording';
 import type { Recording } from './record';
 import { recording, RECORDED_AT } from './recording';
 
@@ -38,4 +39,6 @@ export const referenceStates: Readonly<Record<string, Scene>> = {
   // An orchestrator's conversation with its live agent list (RN-9): busy, and before its first dispatch.
   'crew-orquestra': crew(orchestraRecording),
   'crew-orquestra-vazia': crew(emptyOrchestraRecording),
+  // An orchestrator that asks in its conversation (D67): a card of three merges, and the card it proposed from the person's words.
+  'crew-perguntas': crew(questionsRecording),
 };

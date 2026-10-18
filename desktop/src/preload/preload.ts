@@ -132,6 +132,7 @@ const api: DcodeApi = {
       note === undefined
         ? invoke<Answer<unknown>>(CHANNELS.answerQuestion, sessionId, questionId, answer)
         : invoke<Answer<unknown>>(CHANNELS.answerQuestion, sessionId, questionId, answer, note),
+    answerAll: (sessionId, batch) => invoke<Answer<unknown>>(CHANNELS.answerQuestions, sessionId, batch),
   },
 };
 

@@ -3,14 +3,14 @@
 // project with orchestrator.enabled; one scripted model answers every session
 // the project opens — the orchestrator, each child, each reviewer — from a
 // script of its own; the window opens the orchestrator through "Nova", answers
-// the merge from the Agentes tab, and is read for the rows, the queue and the
+// the merge through the question card in the conversation (D67), and is read for the rows, the queue and the
 // grouped list — and every claim is compared with the daemon's own routes.
 //
 // Besides the attributes in docs/loop/tasks.md, these read what the
 // orchestrator's window already carries: `data-orchestrate` on the toggle of
 // "Nova", `data-child-id` and `data-child-state` on a row of the Agentes tab,
-// `data-question-id` and `data-answer` in the queue, and `data-depth` on a
-// child's row in the list of Sessões.
+// `data-card-id`, `data-card-item`, `data-option` and `data-card-confirm` on
+// the question card, and `data-depth` on a child's row in the list of Sessões.
 
 import { spawnSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
@@ -179,7 +179,7 @@ async function underParent(page, parent, kid) {
 export const orchestraScenarios = [
   {
     name: 'orchestra-lists',
-    about: '◆ orquestradora in Nova opens the project’s orchestrator; its two children are listed under it, one waiting for the person, the other answered merge from the Agentes tab, merged, and gone after the retention — as is the waiting one once the person closes it',
+    about: '◆ orquestradora in Nova opens the project’s orchestrator; its two children are listed under it, one waiting for the person, the other answered merge through the question card in the conversation, merged, and gone after the retention — as is the waiting one once the person closes it',
     async run(ctx) {
       const t = await ctx.fresh();
       const outside = path.join(t.dir, 'elsewhere.txt');
@@ -265,10 +265,13 @@ export const orchestraScenarios = [
         await visible(page.locator(`.crew-sessions [data-session-id="${notes.id}"][data-state="blocked"]`), 10_000,
           `the row of the waiting child ${notes.id} in Sessões, blocked`);
 
-        // The queue: one question, answered merge from the window.
+        // The card in the conversation (D67): “◆ 1 pergunta” takes the person to it, and Merge, confirmed, is one POST of the batch.
         await (await visible(page.getByRole('button', { name: '◆ 1 pergunta' }), 10_000, 'the “◆ 1 pergunta” of the Agentes tab')).click();
-        const asked = await visible(page.locator(`[data-question-id="${question.id}"]`), 5_000, 'the merge question in the queue');
-        await asked.locator('[data-answer="merge"]').click();
+        const card = await visible(page.locator('main [data-card-id]').filter({ has: page.locator(`[data-card-item="${question.id}"]`) }), 5_000,
+          'the question card holding the merge question in the conversation');
+        await eventually(() => card.evaluate((el) => el.contains(document.activeElement)), 5_000, '“◆ 1 pergunta” did not focus the card in the conversation');
+        await card.locator('[data-option="merge"]').click();
+        await card.locator('[data-card-confirm]').click();
         await eventually(
           async () => ((await must(t.socket, 'GET', `/v1/sessions/${orq.id}/questions`))?.questions ?? []).find((q) => q.id === question.id)?.answer === 'merge',
           10_000,

@@ -42,7 +42,7 @@ it did not start keeps running. The installed `dcode` must be 0.23.0 or later,
 which serves the list of conversations. In a browser, `?fixture=` opens one
 of the recorded states of `src/fixtures/scenes.ts`, with the window controls
 drawn where macOS would put them: `crew`, `crew-vazia`, `crew-loop`,
-`crew-orquestra` and `crew-orquestra-vazia` on the Crew, and
+`crew-orquestra`, `crew-orquestra-vazia` and `crew-perguntas` on the Crew, and
 `02-janela-principal-rodando` and `03-janela-principal-aprovacao` on the grid's
 maximized window.
 

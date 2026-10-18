@@ -268,6 +268,12 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const said = input.questionAnswer(answer, note);
     return said.ok ? ask.answerQuestion(session.value, question.value, said.value) : said;
   });
+  handle(CHANNELS.answerQuestions, (_event, id, batch) => {
+    const session = input.recordedId(id);
+    if (!session.ok) return session;
+    const checked = input.questionAnswers(batch);
+    return checked.ok ? ask.answerQuestions(session.value, checked.value) : checked;
+  });
   handle(CHANNELS.resolveApproval, (_event, id, approvalId, decision) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;

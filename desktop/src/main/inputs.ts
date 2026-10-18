@@ -13,7 +13,7 @@ import {
   StopNow,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
-import type { AnswerQuestionRequest } from '../protocol/generated';
+import type { AnswerItem, AnswerQuestionRequest, AnswerQuestionsRequest } from '../protocol/generated';
 import type { NewSessionOptions, PrDraft, Refusal } from '../shared/api';
 import { NOTE_LIMIT } from '../state/questions';
 
@@ -289,4 +289,47 @@ export function questionAnswer(answer: unknown, note: unknown): Checked<AnswerQu
   const said = (note ?? '').trim();
   if (said.length > NOTE_LIMIT) return invalid(`A nota tem ${said.length} caracteres, e a resposta leva até ${NOTE_LIMIT}.`);
   return { ok: true, value: said ? { answer, note: said } : { answer } };
+}
+
+/** How many answers one confirm carries at most: a card is a handful of questions, never hundreds. */
+export const BATCH_LIMIT = 64;
+
+/**
+ * The person's confirm of a card (D67): every answer, each a question id and
+ * an answer checked as one answer is, and the items skipped, which need the
+ * card they were skipped in. An empty batch is refused here, as the daemon
+ * would refuse it; whether each answer is one its question offers is the
+ * daemon's to say, item by item.
+ */
+export function questionAnswers(v: unknown): Checked<AnswerQuestionsRequest> {
+  if (!isRecord(v)) return invalid(`As respostas do cartão precisam ser um objeto, e veio ${shown(v)}.`);
+  const { card_id, answers, skipped } = v;
+  if (card_id !== undefined && !(typeof card_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(card_id))) {
+    return invalid(`O id do cartão precisa ter de 1 a 128 letras, dígitos, - ou _, e veio ${shown(card_id)}.`);
+  }
+  if (!Array.isArray(answers)) return invalid(`As respostas do cartão precisam ser uma lista, e veio ${shown(answers)}.`);
+  if (skipped !== undefined && !Array.isArray(skipped)) return invalid(`Os pulados do cartão precisam ser uma lista, e veio ${shown(skipped)}.`);
+  const skips: unknown[] = skipped ?? [];
+  if (answers.length + skips.length === 0) return invalid('O cartão não levou nenhuma resposta nem nenhum pulo.');
+  if (answers.length + skips.length > BATCH_LIMIT) return invalid(`O cartão levou ${answers.length + skips.length} itens, e o app manda até ${BATCH_LIMIT}.`);
+  if (skips.length > 0 && card_id === undefined) return invalid('Pular um item pede o id do cartão em que ele foi pulado.');
+  const out: AnswerItem[] = [];
+  for (const a of answers) {
+    if (!isRecord(a)) return invalid(`Cada resposta do cartão precisa ser um objeto, e veio ${shown(a)}.`);
+    const q = questionId(a.question_id);
+    if (!q.ok) return q;
+    const said = questionAnswer(a.answer, a.note);
+    if (!said.ok) return said;
+    out.push({ question_id: q.value, ...said.value });
+  }
+  const ids: string[] = [];
+  for (const s of skips) {
+    const q = questionId(s);
+    if (!q.ok) return q;
+    ids.push(q.value);
+  }
+  const req: AnswerQuestionsRequest = { answers: out };
+  if (card_id !== undefined) req.card_id = card_id;
+  if (ids.length > 0) req.skipped = ids;
+  return { ok: true, value: req };
 }

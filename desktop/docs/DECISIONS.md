@@ -64,6 +64,7 @@ As que estão nos outros arquivos:
 - [D64](DECISIONS-5.md) — A conversa orquestradora mostra a lista viva dos agentes na aba Agentes da Crew.
 - [D65](DECISIONS-5.md) — O produto se chama DCode Box; a marca na barra do topo continua "dcode".
 - [D66](DECISIONS-5.md) — A janela age sobre a orquestradora: responde a fila, abre a do projeto pelo "Nova" e agrupa os filhos sob o projeto.
+- [D67](DECISIONS-5.md) — A pessoa decide na conversa da orquestradora, num cartão de perguntas igual ao do Claude Code.
 
 ## Decisões
 
