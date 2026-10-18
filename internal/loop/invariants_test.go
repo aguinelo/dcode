@@ -292,6 +292,7 @@ var qualifierInvariants = map[string]string{
 	"mostrada junto dele":                      "TestASetWithNothingRedWarnsInTheFile",
 	"emite `done.proposed` uma vez":            "TestAWrittenProposalIsAnnounced",
 	"não chegou a ser escrita não é anunciada": "TestAProposalThatWasNotWrittenIsNotAnnounced",
+	"Fora de um turno qualificador":            "TestTheToolRefusesOutsideAQualifyingTurn",
 }
 
 func TestEveryQualifierInvariantHasATest(t *testing.T) {

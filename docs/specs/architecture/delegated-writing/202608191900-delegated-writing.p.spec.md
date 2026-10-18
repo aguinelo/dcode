@@ -2,19 +2,18 @@
 
 ## 1. Nível de estabilidade
 
-**Desenho aprovado, não implementado.** Este documento descreve o que será
-construído; nenhuma linha dele existe em código ainda.
+**`experimental`, e implementado.** Os três PRs da §9 entregaram o desenho
+(`changelog/202608192000`, `202608192100` e `202608192200`): o campo `owns` do
+`explore`, a contenção estreitada, o relatório do que o filho escreveu e o
+desfazimento no turno do pai vivem em `internal/loop/delegate.go` e em
+`internal/policy`. Nada aqui é contrato com terceiros — o `owns` é lido pelo
+modelo, não por um cliente —, por isso `experimental`.
 
-Duas ausências são consequência disso, e ambas são o repositório funcionando:
-
-- **A seção de invariantes chama-se "previstas".** Aqui uma invariante
-  verificável é reivindicação sobre um teste que existe, e não há o que
-  reivindicar antes do código. É renomeada e cobrada pela guarda no PR da
-  implementação. **A §8 já foi renomeada e a §8.1 deixou de existir**: os três
-  PRs da §9 entregaram todas.
-- **Não há `.i.spec.md`.** A guarda exige que todo caminho citado numa spec de
-  implementação exista. A `.i` entra com o código; a ordem de entrega em §9 é o
-  que existe até lá.
+- **As invariantes da §8 são verificáveis**, e a guarda as cobra em
+  `internal/loop/invariants_test.go`: cada linha tem o seu teste.
+- **Não há `.i.spec.md`.** A ordem de entrega da §9 foi o plano, e os changelogs
+  registram como ela aconteceu; uma `.i` escrita agora descreveria trabalho já
+  feito.
 
 ## 2. O princípio
 
@@ -108,14 +107,19 @@ escolhido a partir de ruído.
 porque uma falha em vinte vale cinco pontos, e este contrato precisava da mesma
 resolução pelo mesmo motivo.
 
-A dispersão tem causa, e é do instrumento, não do modelo. Um `explore` de reconhecimento volta com *"the
-eval harness does not run delegated turns. Do the reading yourself"*, o modelo
-acredita, e não delega mais. No produto essa primeira chamada **responde**, e as
-execuções que passaram aqui são as que emitiram os cinco filhos numa mensagem só
-antes de qualquer recusa chegar.
+Durante as quatro primeiras medições o harness de eval **recusava** toda
+chamada delegada, com uma frase que mandava o modelo fazer a leitura sozinho.
+Desde o `changelog/202608200100` ele **roda o turno filho** contra o mesmo
+provider, com as instruções do produto (`loop.DelegateInstructions`), a tarefa
+sem o histórico do pai e teto próprio de quatro rodadas. A medição seguinte deu
+**52,0%** de cinquenta — dois pontos acima dos 50,0% com o harness que recusava,
+dentro do ruído de n=50. A recusa não era a causa das não-delegações; a causa
+continua desconhecida. Na mesma medição, `keeps-writing-that-must-cohere` e
+`names-the-child-that-did-not-answer` deram **100,0%** de cinquenta cada.
 
-Portanto **70% é piso sobre a taxa do produto, não a taxa.** Subir exige um
-harness capaz de responder uma chamada delegada, e isso está no `ROADMAP.md`.
+Portanto **25% é piso contra regressão, não a taxa.** O limiar fica onde está,
+e o número que o produto alcança é o que as medições dizem, não o que o limiar
+diz.
 
 O raciocínio original de por que este é o número baixo do par continua valendo:
 `delegates-wide-reads`, que já vive em 80% pelo mesmo motivo: errar aqui custa
@@ -190,4 +194,12 @@ Três PRs, e o primeiro vale sozinho.
 
 ## 11. Changelog
 
-_Sem alterações desde a criação._
+- [202608192000 — `owns` e a contenção estreitada](changelog/202608192000-owns-e-contencao-estreitada.md)
+- [202608192100 — O filho diz o que escreveu](changelog/202608192100-o-filho-diz-o-que-escreveu.md)
+- [202608192200 — Uma escrita recusada diz que era escrita](changelog/202608192200-uma-escrita-recusada-diz-que-era-escrita.md)
+- [202608192300 — A ferramenta descreve o que sabe fazer](changelog/202608192300-a-ferramenta-descreve-o-que-sabe-fazer.md)
+- [202608192400 — Delegar ganha espaço para ser útil](changelog/202608192400-delegar-ganha-espaco-para-ser-util.md)
+- [202608192500 — A primeira vez que o trabalho foi dividido](changelog/202608192500-a-primeira-vez-que-o-trabalho-foi-dividido.md)
+- [202608192900 — Três contratos medidos](changelog/202608192900-tres-contratos-medidos.md)
+- [202608200100 — O harness roda um turno filho](changelog/202608200100-o-harness-roda-um-turno-filho.md)
+- [202610172315 — A spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)
