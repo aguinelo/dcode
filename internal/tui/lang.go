@@ -205,10 +205,25 @@ type Strings struct {
 	LineMany   string
 	ExpandHint string
 
-	// WorkingInterrupt is the way out, on the activity line. Its own string
-	// rather than Interrupt, which is the `esc` hint somewhere else: two keys
-	// with one sentence between them is how a hint ends up naming the wrong
-	// key in one of the languages.
+	// The one-line result of a finished call. The numbers are the tool's; the
+	// words were English literals beside them on every screen. Lines count
+	// with LineOne and LineMany.
+	ResultTruncated string
+	ResultCreated   string // takes the line count, already worded
+	ResultFileOne   string
+	ResultFileMany  string
+	ResultMatchOne  string
+	ResultMatchMany string
+	ResultNoMatches string
+	ResultIn        string // matches in files
+	ResultFailed    string
+	// What a scrolled view says is below it, and the key back to the end.
+	ScrollBelow  string // takes the line count, already worded
+	ScrollFollow string
+
+	// WorkingInterrupt is the way out, on the activity line. ^C, which is the
+	// key that stops a turn; a second string naming esc, read by nothing, was
+	// removed rather than left to be wired up to the wrong key.
 	WorkingInterrupt string
 
 	// Status line
@@ -354,8 +369,7 @@ type Strings struct {
 	CopyEmpty    string
 
 	// Empty state and general
-	Interrupt string
-	Queued    string
+	Queued string
 	// The bottom bar names what it counts, so the numbers survive a terminal
 	// with no colour to group them.
 	BarFiles   string
@@ -393,6 +407,17 @@ var catalogue = map[Lang]Strings{
 		LineOne:                "line",
 		LineMany:               "lines",
 		ExpandHint:             "Tab expands",
+		ResultTruncated:        "(truncated)",
+		ResultCreated:          "created, %s",
+		ResultFileOne:          "file",
+		ResultFileMany:         "files",
+		ResultMatchOne:         "match",
+		ResultMatchMany:        "matches",
+		ResultNoMatches:        "no matches",
+		ResultIn:               "%s in %s",
+		ResultFailed:           "failed",
+		ScrollBelow:            "%s below",
+		ScrollFollow:           "End to follow",
 		ChildOne:               "child",
 		ChildMany:              "children",
 		ChildOwns:              "owns",
@@ -642,7 +667,6 @@ Environment:
 		CopyKeys:        "↑ ↓ extend · y copy · esc leave",
 		CopyDone:        "copied to the clipboard",
 		CopyEmpty:       "nothing selected",
-		Interrupt:       "esc interrupts",
 		Queued:          "queued",
 		BarFiles:        "files",
 		BarWaiting:      "wait",
@@ -662,6 +686,17 @@ Environment:
 		LineOne:                "linha",
 		LineMany:               "linhas",
 		ExpandHint:             "Tab expande",
+		ResultTruncated:        "(truncado)",
+		ResultCreated:          "criado, %s",
+		ResultFileOne:          "arquivo",
+		ResultFileMany:         "arquivos",
+		ResultMatchOne:         "ocorrência",
+		ResultMatchMany:        "ocorrências",
+		ResultNoMatches:        "nenhuma ocorrência",
+		ResultIn:               "%s em %s",
+		ResultFailed:           "falhou",
+		ScrollBelow:            "%s abaixo",
+		ScrollFollow:           "End para seguir",
 		ChildOne:               "filho",
 		ChildMany:              "filhos",
 		ChildOwns:              "possui",
@@ -911,7 +946,6 @@ Ambiente:
 		CopyKeys:        "↑ ↓ estende · y copia · esc sai",
 		CopyDone:        "copiado para a área de transferência",
 		CopyEmpty:       "nada selecionado",
-		Interrupt:       "esc interrompe",
 		Queued:          "na fila",
 		BarFiles:        "arq",
 		BarWaiting:      "espera",

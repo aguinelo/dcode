@@ -200,8 +200,12 @@ func TestEveryStringInTheCatalogueIsRenderedSomewhere(t *testing.T) {
 		src += string(data)
 	}
 
+	// A read of a field, not a call of a method that shares its name: a string
+	// is never called. Strings.Interrupt passed this guard for as long as it
+	// existed because the program calls Transport.Interrupt — and no screen
+	// ever showed it, which is as well, since it named esc and ctrl+c stops.
 	for _, name := range fields {
-		if !regexp.MustCompile(`\.` + name + `\b`).MatchString(src) {
+		if !regexp.MustCompile(`\.` + name + `(?:[^A-Za-z0-9_(]|$)`).MatchString(src) {
 			t.Errorf("Strings.%s is translated in every language and rendered nowhere; "+
 				"a sentence that cannot reach a screen is a sentence someone translated for nothing", name)
 		}
@@ -297,7 +301,18 @@ func TestNoEnglishSurvivesAPortugueseScreen(t *testing.T) {
 	g.Palette = Palette{}
 	g.RailMode = RailShown
 
+	// A finished call's one-line result is layout as well: the numbers are the
+	// tool's, the words around them are the screen's. They were English
+	// literals in summariseResult, and the guard never put a result on screen.
+	m = apply(t, m, portugueseResultEvents(t)...)
+
 	screen := strings.ToLower(Render(m, g))
+	// So is the hint a scrolled view shows, which needs the view scrolled.
+	scrolled := longStream(100)
+	scrolled.Lang = PtBR
+	small := DefaultGeometry(80, 12)
+	small.Palette = Palette{}
+	screen += "\n" + strings.ToLower(Render(scrolled.ScrollBy(-30, small), small))
 	// Whole words, not substrings. It used to be strings.Contains, and the
 	// word "works" from the catalogue matched inside "workspace-write" — a
 	// VALUE on the screen, not layout text. A guard that matches a loose
@@ -307,6 +322,66 @@ func TestNoEnglishSurvivesAPortugueseScreen(t *testing.T) {
 		if containsWord(screen, w) {
 			t.Errorf("%q is English and reached a Portuguese screen:\n%s", w, Render(m, g))
 		}
+	}
+}
+
+// portugueseResultEvents finish one call of every tool whose result has words
+// of its own, plus a failure with nothing to say.
+func portugueseResultEvents(t *testing.T) []protocol.Event {
+	t.Helper()
+	var evs []protocol.Event
+	seq := uint64(100)
+	for _, c := range []struct {
+		tool string
+		done protocol.ToolCompleted
+	}{
+		{"read", protocol.ToolCompleted{OK: true, Lines: 240, Truncated: true}},
+		{"write", protocol.ToolCompleted{OK: true, Added: 12}},
+		{"glob", protocol.ToolCompleted{OK: true, Files: 3}},
+		{"grep", protocol.ToolCompleted{OK: true, Lines: 4, Files: 2}},
+		{"grep", protocol.ToolCompleted{OK: true}},
+		{"bash", protocol.ToolCompleted{}},
+	} {
+		evs = append(evs,
+			ev(t, seq, protocol.EventToolRequested, protocol.ToolRequested{Name: c.tool}),
+			ev(t, seq+1, protocol.EventToolCompleted, c.done))
+		seq += 2
+	}
+	return evs
+}
+
+// The result line and the scroll hint read in the screen's language.
+//
+// The guard above finds English by the words the English catalogue carries,
+// so it cannot see an English literal that never reached the catalogue — which
+// is what these were. This names the words outright.
+func TestToolResultsAndTheScrollHintSpeakTheReadersLanguage(t *testing.T) {
+	m := apply(t, NewModel("s", "/w", "modelo", "workspace-write", PtBR), portugueseResultEvents(t)...)
+	var got []string
+	for _, e := range m.Entries {
+		got = append(got, e.Summary)
+	}
+	want := []string{
+		"240 linhas (truncado)",
+		"criado, 12 linhas",
+		"3 arquivos",
+		"4 ocorrências em 2 arquivos",
+		"nenhuma ocorrência",
+		"falhou",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("results on a Portuguese screen:\n got %q\nwant %q", got, want)
+	}
+
+	scrolled := longStream(100)
+	scrolled.Lang = PtBR
+	g := DefaultGeometry(80, 12)
+	hint := ScrollHint(scrolled, g, 0, 100, 10)
+	if hint != "↓ 90 linhas abaixo · End para seguir" {
+		t.Errorf("scroll hint on a Portuguese screen = %q", hint)
+	}
+	if one := ScrollHint(scrolled, g, 89, 100, 10); one != "↓ 1 linha abaixo · End para seguir" {
+		t.Errorf("one line below = %q", one)
 	}
 }
 
