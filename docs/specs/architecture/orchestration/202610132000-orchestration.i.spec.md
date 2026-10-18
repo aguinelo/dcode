@@ -14,8 +14,9 @@
 | 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
 | 3 — a sessão gravada reabre sob o próprio id | **feito** (#519), com os três itens do fio que o passo 2 deixou |
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
-| 5 — um projeto tem uma orquestradora | **feito** — `internal/orchestrate/registry.go`, `store.go`; `app.Daemon` é a `Spawner` com `SpawnOrchestrator`, `Reopen` e `Close` (os de filho e revisor entram nos passos 6 e 8); `SubmitOrigin` segue sem chamador até o passo 7 |
-| 6 e 7 | **não feito** |
+| 5 — um projeto tem uma orquestradora | **feito** — `internal/orchestrate/registry.go`, `store.go`; `app.Daemon` é a `Spawner` com `SpawnOrchestrator`, `Reopen` e `Close` (os de filho entraram no passo 6; o de revisor entra no 8) |
+| 6 — um filho trabalha na própria worktree | **feito** — `internal/orchestrate/dispatch.go`, `children.go`, `observe.go`, `owns.go`, `worktree.go`, `limits.go`; as ferramentas em `internal/tools/orchestrate.go` e a negação de git em `gitwrite.go`; `app.Daemon` ganha `SpawnChild`, `Submit` e `Steer`. O `done` deixa o filho em `working` com o fim dito: a esteira (`in_review`) começa ali, no passo 8 |
+| 7 | **não feito** |
 | 8 — um revisor lê o diff de cada filho | **em parte**: o componente — `internal/orchestrate/review.go` (`AssembleReview`, `OutsideOwns`, `Uncommitted`, `ReviewFrom`), `review_verdict.go` (`ReviewerRegistry`, `Review`, `ErrNoVerdict`) e a ferramenta `internal/tools/verdict.go`; `Spawner.SpawnReviewer`, o commit do harness, a fase `red`/`fix`, `max_returns` e a chamada na esteira entram com a fiação |
 | 9 — a orquestradora roda o gate | **em parte**: o componente — `internal/orchestrate/gate.go` (`Gate.Measure`, `GateFrom`, `RecordGate`, `CheckFresh`); a integração em `integration/`, o merge da main e a chamada na esteira (depois da revisão, antes da fila de merge) entram quando os passos 6 a 8 chegarem |
 | 10 | **não feito** |
@@ -131,16 +132,17 @@ ferramentas `delegate`, `children`, `steer_child`, `close_child` em `internal/to
 `awaiting_person`, `failed`, `closed`. Lê `max_children`, `child_profiles`, `branch_prefix`,
 `closed_retention`, `token_ceiling`.
 
-- [ ] `delegate` tudo ou nada, validando o lote antes da primeira worktree.
-- [ ] Worktree a partir da ponta da main, em `children/<id>/`, branch `<prefix><slug>-<id6>`.
-- [ ] `core.hooksPath` lido antes e depois; diferença vira `hooks.changed`.
-- [ ] Registro do filho sem as ferramentas da `.p` §10; a regra de negação de git que grava.
-- [ ] Commit do harness ao fim de cada turno, com os caminhos nomeados (a conferência de `owns`
+- [x] `delegate` tudo ou nada, validando o lote antes da primeira worktree.
+- [x] Worktree a partir da ponta da main, em `children/<id>/`, branch `<prefix><slug>-<id6>`, os seis **últimos** do id (os primeiros são o relógio e se repetem num lote).
+- [x] `core.hooksPath` lido antes e depois; diferença vira `hooks.changed`.
+- [x] Registro do filho sem as ferramentas da `.p` §10; a regra de negação de git que grava.
+- [x] Commit do harness ao fim de cada turno, com os caminhos nomeados (a conferência de `owns`
       entra no passo 8; aqui, o commit).
-- [ ] Fechado sai da resposta de `/children` depois de `closed_retention`.
-- [ ] `State.Spent` soma os tokens de toda sessão do projeto; no teto, `delegate` é recusado com
+- [x] Fechado sai da resposta de `/children` depois de `closed_retention`.
+- [x] `State.Spent` soma os tokens de toda sessão do projeto; no teto, `delegate` é recusado com
       `ceiling_reached`, `ceiling.reached` vai ao log, a conversa diz, e `Question{kind: ceiling}`
-      oferece `continue` (zera a janela) ou `stop`. Filho vivo não é parado.
+      oferece `continue` (zera a janela) ou `stop`. Filho vivo não é parado. A resposta é
+      `Orchestrator.Answer`; a rota de `/questions` é do passo 10.
 
 **Testes obrigatórios:**
 

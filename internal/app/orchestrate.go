@@ -26,6 +26,9 @@ import (
 type OrchestratorOptions struct {
 	Enabled bool
 	Dir     string
+	// ClosedRetention is orchestrator.closed_retention: how long a closed
+	// child stays in /children. Zero takes it out at once.
+	ClosedRetention time.Duration
 	// Elsewhere, when set, is why this daemon never conducts projects
 	// whatever the configuration says: a daemon embedded in one terminal
 	// client dies with it.
@@ -53,6 +56,8 @@ func (d *Daemon) newProjects() *daemonProjects {
 	}
 	reg, err := orchestrate.NewRegistry(orchestrate.RegistryOptions{
 		Dir: o.Dir, Spawner: d, Resolve: d.resolveAt, Log: d.opts.Log,
+		Emit: d.emitTo, Retention: o.ClosedRetention, MaxSessions: d.opts.MaxSessions,
+		ConclusionMax: d.opts.Base.DelegateMaxResultBytes,
 	})
 	if err != nil {
 		off := fmt.Sprintf("the orchestrator cannot run in this daemon: %v", err)
@@ -149,7 +154,7 @@ func (d *Daemon) SpawnOrchestrator(p protocol.Project) (protocol.Session, error)
 				"orchestrator.profile is %q, which is no profile of models.toml", profile)
 		}
 	}
-	sess, err := d.buildWith(protocol.CreateSessionRequest{Workspace: p.Root, Model: profile}, planMode)
+	sess, err := d.buildAs("", protocol.CreateSessionRequest{Workspace: p.Root, Model: profile}, d.orchestratorMode(p.ID))
 	if err != nil {
 		return protocol.Session{}, err
 	}
@@ -164,6 +169,7 @@ func (d *Daemon) SpawnOrchestrator(p protocol.Project) (protocol.Session, error)
 		return protocol.Session{}, protocol.Errorf(protocol.CodeOrchestratorUnavailable,
 			"the orchestrator of %s is not being recorded, so it could not survive a restart: %v", p.Root, err)
 	}
+	d.watch(sess)
 	return sess.Describe(), nil
 }
 
@@ -178,6 +184,7 @@ func (d *Daemon) Reopen(sessionID, reason string) (protocol.Session, error) {
 	if err != nil {
 		return protocol.Session{}, err
 	}
+	d.watch(s)
 	return s.Describe(), nil
 }
 
@@ -186,12 +193,18 @@ func (d *Daemon) Close(sessionID string) error { return d.manager.Remove(session
 
 // rebuild is the session.ReopenBuilder: the engine a record's session had —
 // its workspace, its model bundle, its history — around the record itself.
-// Only an orchestrator is reopened in this slice; children come with step 6.
+// An orchestrator and its children are reopened; nothing else is.
 func (d *Daemon) rebuild(r session.Reopening, log *session.EventLog) (*session.Session, error) {
 	o := r.Origin
-	if o.Role != protocol.RoleOrchestrator {
+	var mode func(*Options)
+	switch o.Role {
+	case protocol.RoleOrchestrator:
+		mode = d.orchestratorMode(o.ProjectID)
+	case protocol.RoleChild:
+		mode = childMode(o.Owns)
+	default:
 		return nil, protocol.Errorf(protocol.CodeInvalidInput,
-			"session %s is not an orchestrator; only an orchestrator is reopened in this slice", r.ID)
+			"session %s is neither an orchestrator nor a child; only those are reopened", r.ID)
 	}
 	ws, err := validWorkspace(o.Workspace)
 	if err != nil {
@@ -210,7 +223,7 @@ func (d *Daemon) rebuild(r session.Reopening, log *session.EventLog) (*session.S
 		}
 	}
 	opts.History = r.History
-	planMode(&opts)
+	mode(&opts)
 	log.OnRecorded(d.conversations.Observe)
 	return d.assemble(opts, r.ID, func(e *loop.Engine) *session.Session {
 		return session.NewReopened(r, e, log, time.Now)

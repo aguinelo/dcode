@@ -189,6 +189,16 @@ type Options struct {
 	// path and was the only behaviour until now.
 	Steer func() string
 
+	// Child makes this session a child of an orchestrator: its writes stay
+	// inside Owns, git that writes is refused in its shell, and its questions
+	// to the person wait without a deadline (orchestration .p §10).
+	Child bool
+	// Owns are the paths a child may write, relative to its worktree.
+	Owns []string
+	// Conductor, when set, gives this session the orchestrator's tools over
+	// the project it conducts.
+	Conductor tools.Conductor `json:"-"`
+
 	// Memory reads what earlier sessions in this workspace learned. Off is the
 	// product from before this existed.
 	Memory bool
@@ -581,6 +591,10 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 		// ruler instead of meeting it.
 		proposals = &Proposals{}
 		toolset = append(toolset, QualifyingTool(opts.LoopSpec, proposals))
+	}
+	toolset = conductorTools(toolset, opts)
+	if opts.Child {
+		toolset = childTools(toolset, resolver, opts.Owns)
 	}
 	registry := tools.NewRegistry(toolset...)
 	// After the registry, because the session's tool names are what an error

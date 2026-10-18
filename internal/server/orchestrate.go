@@ -8,8 +8,7 @@ import (
 )
 
 // The project routes: one orchestrator per project (orchestration .p §5.1).
-// The children's and the questions' routes arrive with the steps that make
-// children and questions.
+// The questions' routes arrive with the step that asks the person (step 10).
 
 // Projects is what the daemon conducts. Injected because opening a project
 // builds a session, which is the app's business. An implementation that
@@ -21,6 +20,47 @@ type Projects interface {
 	Open(workspace string) (p protocol.Project, created bool, err error)
 	List() []protocol.Project
 	Get(id string) (protocol.Project, error)
+	// Children are an orchestrator's children, the closed ones inside their
+	// retention among them; none for any other session.
+	Children(sessionID string) []protocol.Child
+	// CloseChild is the person's close of a child: held is false when the
+	// session is no child of a project here.
+	CloseChild(sessionID string) (held bool, err error)
+}
+
+// listChildren answers GET /sessions/{id}/children. A session with no
+// children answers an empty list; one that does not exist, session_not_found.
+func (s *Server) listChildren(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	out := protocol.ListChildrenResponse{Children: []protocol.Child{}}
+	if s.cfg.Projects != nil {
+		if kids := s.cfg.Projects.Children(sess.ID); kids != nil {
+			out.Children = kids
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// closeChild is DELETE of a child: the person's close. handled is false when
+// the session is no child, and the ordinary delete follows.
+func (s *Server) closeChild(w http.ResponseWriter, id string) (handled bool) {
+	if s.cfg.Projects == nil {
+		return false
+	}
+	held, err := s.cfg.Projects.CloseChild(id)
+	if !held {
+		return false
+	}
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return true
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return true
 }
 
 func (s *Server) openProject(w http.ResponseWriter, r *http.Request) {

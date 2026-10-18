@@ -85,6 +85,11 @@ var KnownKeys = map[string]string{
 	"orchestrator.enabled":          "DCODE_ORCHESTRATOR_ENABLED",
 	"orchestrator.profile":          "DCODE_ORCHESTRATOR_PROFILE",
 	"orchestrator.main_branch":      "DCODE_ORCHESTRATOR_MAIN_BRANCH",
+	"orchestrator.max_children":     "DCODE_ORCHESTRATOR_MAX_CHILDREN",
+	"orchestrator.child_profiles":   "DCODE_ORCHESTRATOR_CHILD_PROFILES",
+	"orchestrator.branch_prefix":    "DCODE_ORCHESTRATOR_BRANCH_PREFIX",
+	"orchestrator.closed_retention": "DCODE_ORCHESTRATOR_CLOSED_RETENTION",
+	"orchestrator.token_ceiling":    "DCODE_ORCHESTRATOR_TOKEN_CEILING",
 	"orchestrator.gate_command":     "DCODE_ORCHESTRATOR_GATE_COMMAND",
 	"orchestrator.gate_timeout":     "DCODE_ORCHESTRATOR_GATE_TIMEOUT",
 

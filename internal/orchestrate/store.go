@@ -16,16 +16,21 @@ const (
 )
 
 // State is a project's state.json: what the daemon needs to conduct it again
-// after a restart. The fields of later steps — children, questions, the merge
-// queue, the main's health, the token window, the reports — join it with the
-// steps that fill them (.p §4); this one holds the project and where the log
-// stood.
+// after a restart. The fields of later steps — the merge queue, the main's
+// health, the reports — join it with the steps that fill them (.p §4).
 type State struct {
 	V       int              `json:"v"`
 	Project protocol.Project `json:"project"`
+	// Children are every child the project dispatched, terminal ones too:
+	// /children hides a closed one after the retention, the state keeps it.
+	Children  []protocol.Child    `json:"children"`
+	Questions []protocol.Question `json:"questions"`
 	// LogSeq is the seq of the last decision this state follows. The state on
 	// disk is never ahead of the log (.p §8).
 	LogSeq uint64 `json:"log_seq"`
+	// Spent is the tokens of every session of the project — input, output and
+	// cache read — in the ceiling's window (.p §10).
+	Spent int64 `json:"spent"`
 }
 
 // Store is one project's state.json.

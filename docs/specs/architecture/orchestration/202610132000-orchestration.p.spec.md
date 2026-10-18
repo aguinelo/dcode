@@ -437,18 +437,22 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Revisão que termina sem `verdict` é `missing`, vai ao log, e nunca conta como aprovação.
 - Diff acima de `review_max_diff_bytes` sai inteiro e é dito; nunca chega cortado ao revisor como se fosse o todo.
 
-## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
-
 - Criar filhos volta com os ids antes de qualquer turno de filho terminar; com filhos rodando, a orquestradora fica `idle`, nunca `blocked`.
 - Lote com `owns` que se cruzam, entre si ou com filho vivo, é recusado **inteiro**, com os caminhos em disputa, e nenhuma worktree é criada.
 - Lote que passaria de `max_children` é recusado inteiro com `max_children_reached`.
 - Perfil fora da lista do papel é recusado com `model_not_allowed`.
-- Diff do filho com caminho fora do `owns` volta ao filho sem commit e sem revisão.
 - O registro do filho não tem `explore`, `delegate`, `children`, `steer_child`, `close_child` nem `ask`.
 - Comando git que grava, no `bash` do filho, é negado sem perguntar e com o porquê.
 - Aprovação de filho não expira, e nenhuma ferramenta da orquestradora a responde.
-- Todo fim de turno de filho tem um dos nomes da RN-7.
 - Criar a worktree não muda `core.hooksPath`; se mudou, `hooks.changed` diz os dois valores.
+- Turno de filho aberto no reinício termina com `daemon_restart`, dito na lista e no log, e nunca some.
+- Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
+- Fechado sai da lista depois da retenção; `failed` não sai sozinho.
+
+## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
+
+- Diff do filho com caminho fora do `owns` volta ao filho sem commit e sem revisão.
+- Todo fim de turno de filho tem um dos nomes da RN-7.
 - Defeito do revisor volta ao mesmo filho em fase `red`, e o conserto só é aceito depois de `red_test.confirmed`.
 - O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
 - Sem gate verde não há PR nem merge, e main ou branch que andou entre o gate e o merge mede de novo.
@@ -459,14 +463,12 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Nenhum caminho do código desta fatia roda `rebase`, `push --force` ou `commit --amend`.
 - A integração nunca acontece numa worktree que a pessoa usa.
 - Toda transição da §6 tem linha no log antes do evento; linha que não grava impede a transição.
-- Turno de filho aberto no reinício termina com `daemon_restart`, dito na lista e no log, e nunca some.
 - Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
-- Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
-- Fechado sai da lista depois da retenção; `failed` não sai sozinho.
 
 ## 15. Ordem de entrega
 
-Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de cada passo na `.i`.
+Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de cada passo na `.i`, e lá também as diferenças desta
+ordem para a do `.r` §10, com o porquê.
 
 | # | PR | Depende |
 |---|---|---|
@@ -486,8 +488,6 @@ Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de
 | 13 | `feat(tui): the orchestrator lists its agents` | 7 |
 | 14 | `feat(desktop): the live agent list` | 7 |
 
-As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
-
 ## 16. Changelog
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
 - [202610172300 — A sessão gravada reabre sob o próprio id](changelog/202610172300-a-sessao-gravada-reabre-sob-o-proprio-id.md)
@@ -496,3 +496,4 @@ As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 - [202610172358 — A orquestradora roda o gate ela mesma](changelog/202610172358-a-orquestradora-roda-o-gate.md)
 - [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)
 - [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)
+- [202610180200 — Um filho trabalha na própria worktree](changelog/202610180200-um-filho-trabalha-na-propria-worktree.md)

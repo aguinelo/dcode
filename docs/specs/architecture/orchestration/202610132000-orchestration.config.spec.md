@@ -6,8 +6,10 @@
 
 > **Estado.** `orchestrator.dir` é lida desde o passo 4; `enabled`, `profile` e `main_branch`, desde o
 > passo 5; `gate_command` e `gate_timeout`, desde o passo 9 (`orchestrate.GateFrom`);
-> `reviewer_profiles` e `review_max_diff_bytes`, desde o passo 8 (`orchestrate.ReviewFrom`); o resto está
-> planejado, não construído. Cada
+> `reviewer_profiles` e `review_max_diff_bytes`, desde o passo 8 (`orchestrate.ReviewFrom`);
+> `max_children`, `child_profiles`, `branch_prefix` e `token_ceiling`, desde o passo 6
+> (`orchestrate.ReadLimits`), e `closed_retention` com `dir`, onde o daemon nasce
+> (`orchestrate.ClosedRetention`); o resto está planejado, não construído. Cada
 > chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
 > da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
 > `TestEveryKeyTheSpecsDeclareIsReadSomewhere` existe para pegar. Por isso as tabelas abaixo abrem
@@ -27,12 +29,7 @@ Lidas:
 |---|---|---|---|---|
 | `DCODE_ORCHESTRATOR_DIR` | `orchestrator.dir` | `<state>/orchestrate` | absoluto; criado `0700`; fora de qualquer projeto que o daemon conduz | 4 |
 | `DCODE_ORCHESTRATOR_ENABLED` | `orchestrator.enabled` | `false` | booleano | 5 |
-
-Por ler:
-
-| Chave | Variável | Default | Validação | Passo |
-|---|---|---|---|---|
-| `orchestrator.closed_retention` | `DCODE_ORCHESTRATOR_CLOSED_RETENTION` | `1h` | de `0s` a `24h`; `0s` tira o fechado na hora | 6 |
+| `DCODE_ORCHESTRATOR_CLOSED_RETENTION` | `orchestrator.closed_retention` | `1h` | de `0s` a `24h`; `0s` tira o fechado na hora | 6 |
 
 `false` por padrão nesta fatia: a orquestradora é opt-in até a segunda fatia, e `POST /v1/projects`
 responde `orchestrator_unavailable` dizendo a chave. `enabled` e `dir` são lidas onde o `dcode serve`
@@ -58,21 +55,21 @@ Lidas, na cadeia de configuração da raiz do projeto, quando ele abre:
 |---|---|---|---|---|
 | `DCODE_ORCHESTRATOR_PROFILE` | `orchestrator.profile` | vazio = `model.name` | nome de perfil de `models.toml`, ou vazio | 5 |
 | `DCODE_ORCHESTRATOR_MAIN_BRANCH` | `orchestrator.main_branch` | vazio = a que `vcs` detecta | nome de branch que existe | 5 |
+| `DCODE_ORCHESTRATOR_MAX_CHILDREN` | `orchestrator.max_children` | `4` | inteiro de 1 a 16, e menor que `daemon` `MaxSessions` menos 2 | 6 |
+| `DCODE_ORCHESTRATOR_CHILD_PROFILES` | `orchestrator.child_profiles` | vazio = só o modelo da orquestradora | lista de perfis de `models.toml`; nome que não existe recusa o filho com `model_not_allowed`, dito | 6 |
+| `DCODE_ORCHESTRATOR_BRANCH_PREFIX` | `orchestrator.branch_prefix` | `dcode/` | passa em `git check-ref-format --branch` com um nome depois | 6 |
+| `DCODE_ORCHESTRATOR_TOKEN_CEILING` | `orchestrator.token_ceiling` | `20000000` | inteiro de 100000 a 1000000000 | 6 |
 | `DCODE_ORCHESTRATOR_REVIEWER_PROFILES` | `orchestrator.reviewer_profiles` | vazio = o primeiro de `child_profiles` | lista de perfis de `models.toml`; nome que não existe é erro | 8 |
 
-Valor inválido nestas três é recusado no `POST /v1/projects` (`workspace_invalid`), com a chave e o
+Valor inválido nestas é recusado no `POST /v1/projects` (`workspace_invalid`), com a chave e o
 valor: só ali se sabe a raiz cuja cadeia as declara.
 
 Por ler:
 
 | Chave | Variável | Default | Validação | Passo |
 |---|---|---|---|---|
-| `orchestrator.max_children` | `DCODE_ORCHESTRATOR_MAX_CHILDREN` | `4` | inteiro de 1 a 16, e menor que `daemon` `MaxSessions` menos 2 | 6 |
 | `orchestrator.max_returns` | `DCODE_ORCHESTRATOR_MAX_RETURNS` | `3` | inteiro de 1 a 10 | 8 |
-| `orchestrator.child_profiles` | `DCODE_ORCHESTRATOR_CHILD_PROFILES` | vazio = só o modelo da orquestradora | lista de perfis de `models.toml`; nome que não existe é erro | 6 |
-| `orchestrator.branch_prefix` | `DCODE_ORCHESTRATOR_BRANCH_PREFIX` | `dcode/` | passa em `git check-ref-format --branch` com um nome depois | 6 |
 | `orchestrator.report_debounce` | `DCODE_ORCHESTRATOR_REPORT_DEBOUNCE` | `2s` | de `0s` a `1m` | 7 |
-| `orchestrator.token_ceiling` | `DCODE_ORCHESTRATOR_TOKEN_CEILING` | `20000000` | inteiro de 100000 a 1000000000 | 6 |
 
 `max_children` conta filhos **vivos** (não terminais) do projeto, e o lote que passaria dele é
 recusado inteiro. Quatro porque é o que o dia à mão de 2026-10-16 sustentou com uma pessoa lendo os
@@ -90,7 +87,8 @@ pergunta oferece `continue` (zera a janela) ou `stop`. Vinte milhões são a ord
 quatro filhos no modelo de hoje; é um freio, não um orçamento. Os tetos de custo e de tempo, e
 parar filho vivo com `budget`, ficam na segunda fatia (§5).
 
-O nome da branch é `<branch_prefix><slug do title>-<6 primeiros do id do filho>`.
+O nome da branch é `<branch_prefix><slug do title>-<6 últimos do id do filho>`: os seis primeiros são o
+relógio do id, e se repetem entre os filhos de um lote.
 
 ## 3. Gate, revisão e merge (RN-5, RN-6)
 
@@ -166,3 +164,4 @@ segunda fatia, pelas chaves `eval.*` de `202608072334-provider-adapter.config.sp
 - [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)
 - [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)
 - [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)
+- [202610180200 — Um filho trabalha na própria worktree](changelog/202610180200-um-filho-trabalha-na-propria-worktree.md)
