@@ -55,16 +55,21 @@ var orchestrationInvariants = map[string]string{
 	"só no começo de um turno dela, com `Origin: children`": "TestAReportDuringATurnWaitsForThatTurnToEnd",
 	"que inclui a main de agora":                            "TestTheGateMeasuresTheCommitThatHoldsMainAsItIsNow",
 	"byte a byte o de antes (ADR-03)":                       "TestTheReportIsAppendedAndThePrefixIsByteForByteTheSame",
-	"nunca a saída do gate":                                 "TestAProposalWithoutAGreenGateOpensNothing",
-	"o filho sai da fila para medir de novo":                "TestAMainThatMovedAfterTheGateIsStaleAndNothingMerges",
-	"antes da resposta `merge` da pessoa":                   "TestAMergeWaitsForThePersonsYes",
-	"passa `--match-head-commit`":                           "TestTheMergeOnGitHubPassesMatchHeadCommitWithTheMeasuredCommit",
-	"com o valor antigo errado":                             "TestAConditionalUpdateWithTheWrongOldValueLeavesMainAlone",
-	"em checkout em qualquer worktree":                      "TestALocalMergeIsRefusedWithMainCheckedOutSayingWhere",
-	"salvo `fixes_main`":                                    "TestARedMainStopsTheQueueAndFixesMainPasses",
-	"vira `unknown` e para a fila":                          "TestPendingCIPastTheTimeoutIsUnknownAndStopsTheQueue",
-	"a orquestradora não resolve conteúdo":                  "TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean",
-	"numa worktree que a pessoa usa":                        "TestTheIntegrationIsADetachedWorktreeOfItsOwn",
+
+	// Step 12: the scripted scenarios, and the two tests that came with them.
+	"tem um dos nomes da RN-7":                          "TestScenarioEveryEndOfAChildsTurnIsNamed",
+	"roda `rebase`, `push --force` ou `commit --amend`": "TestNoCodeOfThisSliceRebasesForcePushesOrAmends",
+	"linha que não grava impede a transição":            "TestATransitionIsLoggedBeforeItIsSaidAndALineThatFailsStopsIt",
+	"nunca a saída do gate":                             "TestAProposalWithoutAGreenGateOpensNothing",
+	"o filho sai da fila para medir de novo":            "TestAMainThatMovedAfterTheGateIsStaleAndNothingMerges",
+	"antes da resposta `merge` da pessoa":               "TestAMergeWaitsForThePersonsYes",
+	"passa `--match-head-commit`":                       "TestTheMergeOnGitHubPassesMatchHeadCommitWithTheMeasuredCommit",
+	"com o valor antigo errado":                         "TestAConditionalUpdateWithTheWrongOldValueLeavesMainAlone",
+	"em checkout em qualquer worktree":                  "TestALocalMergeIsRefusedWithMainCheckedOutSayingWhere",
+	"salvo `fixes_main`":                                "TestARedMainStopsTheQueueAndFixesMainPasses",
+	"vira `unknown` e para a fila":                      "TestPendingCIPastTheTimeoutIsUnknownAndStopsTheQueue",
+	"a orquestradora não resolve conteúdo":              "TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean",
+	"numa worktree que a pessoa usa":                    "TestTheIntegrationIsADetachedWorktreeOfItsOwn",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

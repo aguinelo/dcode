@@ -457,12 +457,14 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
 - O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
 - Relatos dentro de `report_debounce` viram **um** turno, e o contexto antes dele é byte a byte o de antes (ADR-03).
-
-## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
-
 - Todo fim de turno de filho tem um dos nomes da RN-7.
 - Nenhum caminho do código desta fatia roda `rebase`, `push --force` ou `commit --amend`.
 - Toda transição da §6 tem linha no log antes do evento; linha que não grava impede a transição.
+
+## 14. Invariantes previstas
+
+Nenhuma. As três últimas subiram para a §13 com o passo 12, os cenários roteirizados
+(`internal/app/scenario_*_test.go`), e os dois testes que vieram com eles em `internal/orchestrate/`.
 
 ## 15. Ordem de entrega
 
@@ -497,3 +499,4 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610180200 — Um filho trabalha na própria worktree](changelog/202610180200-um-filho-trabalha-na-propria-worktree.md)
 - [202610180300 — Um merge espera a pessoa](changelog/202610180300-um-merge-espera-a-pessoa.md)
 - [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)
+- [202610181200 — Os cenários roteirizados](changelog/202610181200-os-cenarios-roteirizados.md)

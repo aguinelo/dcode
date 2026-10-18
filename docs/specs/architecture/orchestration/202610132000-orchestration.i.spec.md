@@ -18,10 +18,10 @@
 | 6 — um filho trabalha na própria worktree | **feito** — `internal/orchestrate/dispatch.go`, `children.go`, `observe.go`, `owns.go`, `worktree.go`, `limits.go`; as ferramentas em `internal/tools/orchestrate.go` e a negação de git em `gitwrite.go`; `app.Daemon` ganha `SpawnChild`, `Submit` e `Steer`. O `done` deixa o filho em `working` com o fim dito: a esteira (`in_review`) começa ali, no passo 8 |
 | 7 — o relato de um filho começa o turno | **feito** — `internal/orchestrate/reports.go`: a caixa (`State.PendingReports`), o debounce de `report_debounce`, o turno `Origin: children` |
 | 8 — um revisor lê o diff de cada filho | **feito** — o componente (`review.go`, `review_verdict.go`, `internal/tools/verdict.go`) e a fiação: `internal/orchestrate/pipeline.go` (conferência de `owns` antes do commit, `Spawner.SpawnReviewer`, `missing` uma vez de novo, `max_returns`), `pipeline_gate.go` (fase `red`/`fix`, `red_test.confirmed`) e a ferramenta `internal/tools/redtest.go` |
-| 9 — a orquestradora roda o gate | **feito**, menos o sandbox do `bash` em volta do gate e a guarda de fonte do `vcs`: a esteira atualiza a branch na integração (`Integration.Update`) e mede `H` (`pipeline_gate.go`); o conflito volta ao filho, e o turno seguinte conclui o merge |
+| 9 — a orquestradora roda o gate | **feito**, menos o sandbox do `bash` em volta do gate (a guarda de fonte do `vcs` veio com o passo 12): a esteira atualiza a branch na integração (`Integration.Update`) e mede `H` (`pipeline_gate.go`); o conflito volta ao filho, e o turno seguinte conclui o merge |
 | 10 — um merge espera a pessoa | **feito** — o componente (`merge.go`, `integrate.go`, `forge.go`, `forge_local.go`) e a fiação em `internal/orchestrate/merging.go` (`Propose` no verde, `Answer`, a fila serial, `merged`), `questions.go` e a ferramenta `internal/tools/ask.go`; perguntas, fila, `Main` e `LocalSaid` no `State`; as rotas de `/questions` em `internal/server/orchestrate.go` |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
-| 12 | **não feito** |
+| 12 — cenários roteirizados | **feito** — `internal/app/scenario_*_test.go`: o harness (daemon real em processo, modelo roteirizado por papel, repositório de brinquedo, `gh` falso em `internal/app/testdata/scenariogh/`), os doze da tabela do passo e mais um, e dois testes em `internal/orchestrate/` (`transition_test.go`, `history_guard_test.go`); nenhuma invariante fica prevista |
 | 13 — a orquestradora lista os agentes | **em parte**: a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate`, `^Q`, `^R` e a leitura de `/children` ao abrir ficam para o resto do passo |
 | 14 | **não feito** |
 
@@ -208,7 +208,7 @@ O lugar de integração, a atualização com merge da main, o conflito devolvido
       (`Gate.Measure`); `gate.measured` com a alegação do filho como `claim` (`RecordGate`); `gate_stale`
       conferido por `CheckFresh`. A esteira o chama depois da aprovação; o sandbox do `bash` em volta do
       gate continua por fazer.
-- [ ] `vcs` sem nenhuma função de rebase ou de push forçado.
+- [x] `vcs` sem nenhuma função de rebase ou de push forçado (`TestNoCodeOfThisSliceRebasesForcePushesOrAmends`, passo 12).
 
 **Testes obrigatórios:**
 
@@ -259,10 +259,9 @@ a fila serial, `gate_stale`, `main.health`, o forge `local`. Estados `pr` e `mer
 
 ### Passo 12 — `test(orchestrate): scripted scenarios`
 
-Os cenários da RN-11, em Go, no pacote `internal/orchestrate/` (arquivo `scenario_test.go`): um
-repositório de brinquedo por cenário, um `origin` bare local, o `gh` falso de
-`internal/vcs/pr_test.go`, e o modelo roteirizado de `internal/app/e2e_test.go` (`scriptedModel`)
-respondendo pela orquestradora, pelos filhos e pelo revisor. De graça, determinísticos, em todo PR
+Os cenários da RN-11, em Go, em `internal/app/scenario_*_test.go`: um repositório de brinquedo por
+cenário, um `origin` bare local, um `gh` falso, e um modelo roteirizado respondendo pela
+orquestradora, pelos filhos e pelo revisor. De graça, determinísticos, em todo PR
 — a régua do `check:daemon` do desktop (`desktop/tests/daemon/scenarios.mjs`) aplicada ao núcleo.
 
 | Teste | O que prova |
@@ -281,6 +280,19 @@ respondendo pela orquestradora, pelos filhos e pelo revisor. De graça, determin
 | `TestScenarioAChildApprovalWaitsForThePerson` | aprovação de filho não expira e a orquestradora segue com os outros |
 
 Cada cenário termina lendo o `decisions.jsonl` e conferindo os `kind` esperados, em ordem.
+
+**Feito**, com uma diferença de lugar: o plano os punha num `scenario_test.go` do pacote
+`orchestrate`, e eles ficaram em `internal/app/`. O daemon real — o que liga a esteira ao `session.Manager`, às
+rotas e à cadeia de configuração — e os ajudantes de teste que o abrem em processo (`route`,
+`openProject`, `childrenOf`) moram no pacote `app`. O modelo é próprio (`scenario_model_test.go`),
+não o `scriptedModel`: responde a cada sessão pelo roteiro dela, a orquestradora, cada filho e cada
+revisor, distinguidos pelas ferramentas oferecidas e por uma marca na tarefa. O `gh` falso também é
+próprio (`internal/app/testdata/scenariogh/gh`): faz o squash de verdade no `origin` bare, recusa
+`--match-head-commit` de outro commit e um segundo PR aberto para a mesma branch, como o GitHub. Os
+doze passam com `-race -count=3`, cada um em 1 a 6 s. Veio mais um,
+`TestScenarioEveryEndOfAChildsTurnIsNamed`, e dois testes em `internal/orchestrate/` para as duas
+invariantes que não são cenário: `TestATransitionIsLoggedBeforeItIsSaidAndALineThatFailsStopsIt` e
+`TestNoCodeOfThisSliceRebasesForcePushesOrAmends`, a guarda de fonte que o passo 9 pedia.
 
 ### Passo 13 — `feat(tui): the orchestrator lists its agents`
 
