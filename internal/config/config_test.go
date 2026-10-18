@@ -148,6 +148,17 @@ func TestTypedAccessors(t *testing.T) {
 	}
 }
 
+// A number is read from the whole value, not from the prefix a format scan
+// stops at, and what does not convert is said — "12abc" is not twelve.
+func TestAValueThatDoesNotConvertIsNotReadAsOne(t *testing.T) {
+	r := Resolve([]Layer{{Source: SourceProject, Origin: "p/config.toml", Values: map[string]string{
+		"n": "12abc",
+	}}})
+	if got := r.Int("n", 7); got != 7 {
+		t.Errorf(`"12abc" was read as %d`, got)
+	}
+}
+
 // ---------- roots ----------
 
 func TestRootsAreSeparateByDefault(t *testing.T) {
