@@ -85,6 +85,13 @@ func GateFrom(r config.Resolved) (Gate, error) {
 // see the tree removed anyway.
 var runGate = runCommand
 
+// addGateTree makes the throwaway worktree at commit. A variable so a test can
+// stop the caller in the middle of it, as a kill of git does.
+var addGateTree = func(ctx context.Context, dir, place, commit string) error {
+	_, err := gateGit(ctx, dir, "worktree", "add", "--quiet", "--detach", place, commit)
+	return err
+}
+
 // Measure runs the gate on commit, an exact SHA the repository at dir has.
 //
 // It runs in a throwaway worktree made at that commit for this run alone —
@@ -138,7 +145,7 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 	}()
 
 	gctx, cancel = context.WithTimeout(ctx, gateGitDeadline)
-	_, err = gateGit(gctx, dir, "worktree", "add", "--quiet", "--detach", place, commit)
+	err = addGateTree(gctx, dir, place, commit)
 	cancel()
 	if err != nil {
 		_ = out.close()
