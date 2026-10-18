@@ -102,16 +102,31 @@ type SkillIndexEntry struct {
 
 type Prompt struct {
     Doctrine     Doctrine
-    Tools        []contextpkg.ToolDef
-    Instructions []Instruction // ordenadas, já resolvidas
+    Tools        []string          // nomes das ferramentas; as definições vão no prefixo do motor de contexto
+    Instructions []Instruction     // ordenadas, já resolvidas
     SkillIndex   []SkillIndexEntry
+    Repo         *Repo             // o que o repositório diz do workspace; nil não renderiza
+    Workspace    *Workspace        // o que o projeto declara de si (working-defaults); nil é silencioso
+    Boundary     *Boundary         // o modo em vigor; o ÚNICO campo que /mode muda (bloco 1.5)
 }
 
-// Build é PURA. Mesma entrada, saída byte-a-byte idêntica.
-func Build(p Prompt, family provider.Family) (string, error)
+// Formulation é como uma família prefere que uma regra seja escrita (RN-8).
+// Só muda como uma seção é delimitada: não há método que acrescente, remova
+// ou reescreva regra.
+type Formulation interface {
+    Family() string
+    Section(title, body string) string
+}
+
+// FormulationFor devolve a formulação da família; desconhecida = markdown.
+func FormulationFor(family string) Formulation
+
+// Build é PURA. Mesma entrada, saída byte-a-byte idêntica. f nil usa
+// FormulationFor("").
+func Build(p Prompt, f Formulation) (string, error)
 ```
 
-`Build` recebe a família porque a **formulação** é dela (RN-8) — mas o conjunto de regras vem de `Prompt`, que é idêntico entre famílias.
+`Build` recebe a **formulação**, e não a família do provider, porque a formulação é o que a família decide (RN-8) — e a interface, por não ter como exprimir uma regra, é o que garante que o conjunto de regras vem de `Prompt`, idêntico entre famílias.
 
 ## 3.1 Sobreposição de doutrina
 
@@ -160,37 +175,28 @@ Instrução que tente afrouxar segurança é descartada e registrada em nível `
 type ReminderKind string
 
 const (
-    ReminderFileChanged     ReminderKind = "file_changed"
-    ReminderApprovalDenied  ReminderKind = "approval_denied"
-    ReminderCompacted       ReminderKind = "compacted"
-    ReminderToolsParallel   ReminderKind = "tools_parallel"
-
+    ReminderFileChanged             ReminderKind = "file_changed"
+    ReminderApprovalDenied          ReminderKind = "approval_denied"
+    ReminderCompacted               ReminderKind = "compacted"
+    ReminderToolsParallel           ReminderKind = "tools_parallel"
+    ReminderInstructionOutOfChain   ReminderKind = "instruction_out_of_chain"  // RN-6 da configuração
     // RN-6.1 de context-engine. UM tipo, três textos escolhidos pela faixa —
     // a regra é uma; o que muda é o quanto resta.
-    ReminderContextBudget   ReminderKind = "context_budget"
-
-    // RN-13. Emitidos a partir do estado de verificação, que é fato.
-    ReminderVerificationStale       ReminderKind = "verification_stale"
-    ReminderVerificationFailed      ReminderKind = "verification_failed"
-    ReminderVerificationUnavailable ReminderKind = "verification_unavailable"
-
+    ReminderContextBudget           ReminderKind = "context_budget"
+    ReminderUnmetCriteria           ReminderKind = "unmet_criteria"            // RN-10 do loop: critério rodou e disse não, com a saída dele
+    ReminderVerificationUnavailable ReminderKind = "verification_unavailable"  // RN-13: mudou, e nenhum critério pôde rodar
     // Trabalho espalhado por vários arquivos sem plano registrado. Existe
-    // porque a descrição da ferramenta pede o plano e não está pegando: o
-    // modelo descreve o plano em prosa e executa. Camada de lembrete, não
-    // quarta frase no mesmo lugar.
-    ReminderUnplannedChange ReminderKind = "unplanned_change"
-)
-
-// Verification é o estado de verificação do turno (RN-13). Derivado do registro
-// de escrita e do registro de execução — não há julgamento envolvido.
-type Verification string
-
-const (
-    VerificationClean       Verification = "clean"        // nada mudou; nada a verificar
-    VerificationPassed      Verification = "passed"       // rodou após a última edição, saiu zero
-    VerificationFailed      Verification = "failed"       // rodou, saiu diferente de zero
-    VerificationStale       Verification = "stale"        // mudou depois da última verificação
-    VerificationUnavailable Verification = "unavailable"  // mudou, e não há comando conhecido
+    // porque a descrição da ferramenta pede o plano e não está pegando.
+    ReminderUnplannedChange         ReminderKind = "unplanned_change"
+    // O turno bateu na mesma parede duas vezes — mesma ferramenta, mesma
+    // falha, mesmo caminho. Existe porque a medição mostrou o modelo nunca
+    // chamando `remember` por conta própria.
+    ReminderWorthRemembering        ReminderKind = "worth_remembering"
+    ReminderProtectedTouched        ReminderKind = "protected_touched"         // caminho que É a medição foi escrito
+    ReminderCycleUndone             ReminderKind = "cycle_undone"              // o loop desfez um ciclo que regrediu
+    // Turno interrompido depois de escrever: lista o que a sessão escreveu.
+    // Emitido pelo loop (finishInterrupted), fora de Emit.
+    ReminderInterrupted             ReminderKind = "interrupted"
 )
 
 type Reminder struct {
@@ -198,10 +204,20 @@ type Reminder struct {
     Text string
 }
 
+// SessionState é tudo de que Emit é função: sem relógio, sem disco, sem
+// global. Campos: ChangedFiles, DeniedTools, Compacted, ParallelBatch,
+// OutOfChain, UnmetCriteria, CriterionOutputs, CycleUndone, CycleKept,
+// Regressed, ProtectedTouched, UnplannedChange, WorthRemembering,
+// VerificationUnavailable, BudgetCrossed — ver internal/behavior/reminders.go.
+type SessionState struct { /* … */ }
+
 // Emit é PURA: função do estado da sessão (RN-6). Mesmo estado, mesmo
-// conjunto de lembretes — é o que mantém o histórico reproduzível.
+// conjunto de lembretes, na mesma ordem — é o que mantém o histórico
+// reproduzível.
 func Emit(s SessionState) []Reminder
 ```
+
+> **Não há `verification_stale` nem `verification_failed`.** O estado de verificação de um critério único — `clean`, `passed`, `failed`, `stale`, `unavailable` — é `loop.Verification` (`internal/loop/done.go`), e é o que o cliente mostra. Ao modelo, critério que rodou e falhou chega como `unmet_criteria`, com a saída do critério; mudança sem nada que possa rodar, como `verification_unavailable`. Um comando de verificação é uma definição de pronto de um item só, e não um segundo mecanismo (`agent-loop/changelog/202608110930-a-verificacao-nao-e-um-segundo-mecanismo.md`).
 
 **Regras:**
 
@@ -352,12 +368,22 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202608101800 — Doutrina editável por camada](changelog/202608101800-doutrina-editavel-por-camada.md)
 - [202608102000 — Verificação antes da afirmação](changelog/202608102000-verificacao-antes-da-afirmacao.md)
 - [202608102200 — Orçamento de contexto realimentado](../context-engine/changelog/202608102200-orcamento-de-contexto-realimentado.md)
+- [202608110900 — Chaves declaradas e não lidas saem da spec](changelog/202608110900-chaves-declaradas-e-nao-lidas.md)
+- [202608111000 — Os nomes declarados passam a ser os que o código lê](changelog/202608111000-nomes-de-chave-reconciliados.md)
 - [202608170200 — O prefixo diz onde o agente está](changelog/202608170200-onde-o-agente-esta.md)
-- [202608252200 — Quem pergunta é o harness](changelog/202608252200-quem-pergunta-e-o-harness.md)
-- [202608270015 — Os portões que o projeto declara](changelog/202608270015-os-portoes-que-o-projeto-declara.md)
-- [202608262100 — workspace sem histórico deixa de ser silencioso](changelog/202608262100-workspace-sem-historico-fala.md)
-- [202608262330 — A doutrina ganha um piso, e ele é sobreponível](changelog/202608262330-a-doutrina-ganha-um-piso.md)
+- [202608252200 — Quem pergunta é o harness, e a doutrina não dizia isso](changelog/202608252200-quem-pergunta-e-o-harness.md)
+- [202608262100 — Workspace sem histórico deixa de ser silencioso](changelog/202608262100-workspace-sem-historico-fala.md)
 - [202608262330 — A doutrina ganha um piso, e ele é sobreponível](changelog/202608262330-a-doutrina-ganha-um-piso.md)
 - [202608262345 — O texto do piso](changelog/202608262345-o-texto-do-piso.md)
+- [202608270015 — Os portões que o projeto declara](changelog/202608270015-os-portoes-que-o-projeto-declara.md)
+- [202608311400 — A skill carrega pelo que a distingue](changelog/202608311400-a-skill-que-se-distingue.md)
+- [202608311600 — O corpo que entrava calado](changelog/202608311600-o-corpo-que-entrava-calado.md)
+- [202608311800 — A skill medida](changelog/202608311800-a-skill-medida.md)
+- [202608312000 — O arquivo que parava o produto](changelog/202608312000-o-arquivo-que-parava-o-produto.md)
+- [202608312100 — A skill que alcança a fronteira](changelog/202608312100-a-skill-que-alcanca-a-fronteira.md)
+- [202608312200 — O agente não sabia do próprio mecanismo](changelog/202608312200-o-agente-nao-sabia-do-proprio-mecanismo.md)
+- [202608312300 — O formato é o mesmo](changelog/202608312300-o-formato-e-o-mesmo.md)
+- [202609012100 — A medição que não sabe o que viu](changelog/202609012100-a-medicao-que-nao-sabe-o-que-viu.md)
 - [202609031200 — A fronteira é um fato](changelog/202609031200-a-fronteira-e-um-fato.md)
 - [202609040200 — A primeira medição com preço](changelog/202609040200-a-primeira-medicao-com-preco.md)
+- [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)

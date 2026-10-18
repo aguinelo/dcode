@@ -9,10 +9,12 @@ D30); desde 2026-10-13 a régua visual mede contra capturas da janela aprovada (
 
 Quatro partes: o que foi decidido, o que ficou em aberto, o que o design pede e o
 protocolo não traz, e o que o desktop pede ao núcleo. As decisões de D21 em
-diante estão em [`DECISIONS-2.md`](DECISIONS-2.md), D39 em
-[`DECISIONS-3.md`](DECISIONS-3.md), D49 em [`DECISIONS-4.md`](DECISIONS-4.md) e D62 em
-[`DECISIONS-5.md`](DECISIONS-5.md), para que cada arquivo fique abaixo de 500
-linhas; a numeração é uma só, e uma referência a "D29" vale em todos.
+diante moram em outros arquivos, para que cada um fique abaixo de 500 linhas:
+de D21 a D40, sem D39, em [`DECISIONS-2.md`](DECISIONS-2.md); D39 e de D41 a
+D53, sem D49 e D52, em [`DECISIONS-3.md`](DECISIONS-3.md); D49, D52 e de D54 a
+D61 em [`DECISIONS-4.md`](DECISIONS-4.md); e de D62 em diante em
+[`DECISIONS-5.md`](DECISIONS-5.md). A numeração é uma só, e uma referência a
+"D29" vale em todos; a lista abaixo diz onde cada uma está.
 
 As que estão nos outros arquivos:
 
@@ -21,7 +23,7 @@ As que estão nos outros arquivos:
 - [D23](DECISIONS-2.md) — Mensagem durante o turno redireciona, como na TUI.
 - [D24](DECISIONS-2.md) — O loop é uma tela sobre o mecanismo que existe.
 - [D25](DECISIONS-2.md) — Tokens durante o turno: só o tempo, por enquanto.
-- [D26](DECISIONS-2.md) — Os dados do app ficam numa pasta só dele.
+- [D26](DECISIONS-2.md) — Os dados do app ficam numa pasta só dele (o nome do produto, decidido depois em D65).
 - [D27](DECISIONS-2.md) — O ⌘K procura na lista de conversas, pelo título e pelo projeto.
 - [D28](DECISIONS-2.md) — Trocar de modelo é continuar a conversa numa sessão nova.
 - [D29](DECISIONS-2.md) — Grafite: escuro, um acento, a fonte do sistema (a cor, substituída por D52).
@@ -37,7 +39,11 @@ As que estão nos outros arquivos:
 - [D39](DECISIONS-3.md) — A aprovação oferece as respostas que a TUI oferece.
 - [D40](DECISIONS-2.md) — Desfazer, resumir e rodar um comando, pela janela.
 - [D41](DECISIONS-3.md) — Onde a conversa trabalha: sessão, pasta, branch de agora, worktree e o diff da pasta.
+- [D42](DECISIONS-3.md) — Uma conversa terminada abre no histórico dela.
 - [D43](DECISIONS-3.md) — Renomear uma conversa pela janela.
+- [D44](DECISIONS-3.md) — O turno ao vivo: rodadas, chamadas em voo e o que o turno custou.
+- [D45](DECISIONS-3.md) — Uma chamada de ferramenta do modelo abre no que ela fez.
+- [D46](DECISIONS-3.md) — Imagens vão com o turno.
 - [D47](DECISIONS-3.md) — O campo lembra o que se pediu e guarda o que vem depois, como na TUI.
 - [D48](DECISIONS-3.md) — Os comandos do campo num menu, e uma ajuda com eles e com as teclas.
 - [D50](DECISIONS-3.md) — Os comandos que a pessoa escreveu, no menu e no campo, como na TUI.
@@ -56,6 +62,7 @@ As que estão nos outros arquivos:
 - [D62](DECISIONS-5.md) — A revisão mostra as propostas anteriores do turno, recolhidas embaixo da escrita.
 - [D63](DECISIONS-5.md) — A Crew é a tela principal e leva todo elemento novo; a grade fica como alternativa.
 - [D64](DECISIONS-5.md) — A conversa orquestradora mostra a lista viva dos agentes na aba Agentes da Crew.
+- [D65](DECISIONS-5.md) — O produto se chama DCode Box; a marca na barra do topo continua "dcode".
 
 ## Decisões
 
@@ -100,7 +107,9 @@ que nada foi enviado. Sem estado no endereço, a gravação abre na grade (D30).
 temas, seguindo o sistema), escuro por padrão e claro à escolha (D35). Os tokens são variáveis CSS,
 num bloco só por tema (`styles/tokens.css`, e os da Crew em `crew.css`). A Geist
 Mono vem do `@fontsource-variable` (OFL), empacotada, e é a reserva da mono onde o
-sistema não tem uma; nada vem da rede em tempo de execução. Com
+sistema não tem uma — e também do texto no Linux, que não tem uma fonte de
+sistema só (`--dc-font` em `tokens.css`); a Geist e a Fragment Mono da Crew
+(D32) vêm empacotadas do mesmo jeito. Nada vem da rede em tempo de execução. Com
 `prefers-reduced-motion`, nada pulsa nem pisca e o verbo da atividade não roda: o
 estado continua legível pela forma do glifo.
 
@@ -225,12 +234,15 @@ sobre a configuração de cada um).
 
 ## Decisões em aberto
 
-A1, A2 e A4 foram decididas e viraram D22, D23 e D24.
+A1, A2 e A4 foram decididas e viraram D22, D23 e D24; A3 foi decidida por D39.
 
-**A3. Três respostas ou cinco.** O protocolo tem cinco decisões (`allow`,
-`allow_session`, `allow_project`, `allow_always`, `deny`), e a TUI oferece
-`allow_project`/`allow_always` para a rede. O design mostra três; esta versão
-mostra as três.
+**A3. Três respostas ou cinco.** Decidida em D39: a janela oferece as
+respostas que a TUI oferece — quatro para a rede (uma vez, neste projeto,
+sempre, negar), três para as outras travessias (uma vez, nesta sessão, negar).
+Era: o protocolo tem cinco decisões (`allow`, `allow_session`,
+`allow_project`, `allow_always`, `deny`), a TUI oferece
+`allow_project`/`allow_always` para a rede, o design mostrava três e a janela
+mostrava as três.
 
 **A5. Voltar/avançar e recolher a lateral.** ←/→ andam no histórico do palco —
 as conversas maximizadas nesta janela e a grade — (← fica esmaecido até haver para
@@ -238,8 +250,9 @@ onde voltar). Grade, pelo botão e pelo ⌘0, volta à grade (D30); nova sessão
 botão e pelo ⌘N, pergunta onde numa janela da grade (D31); procurar, pelo botão e
 pelo ⌘K, abre a busca (D27); o chip do modelo, numa janela ou na conversa
 maximizada, o menu da troca (D28). Recolher a lateral e o menu da sessão saíram com a grade, e
-rotinas saiu da lateral até existir. Adicionar projeto e configurações avisam
-que ainda não existem; anexar existe desde D46.
+rotinas saiu da lateral até existir. Adicionar projeto avisa que ainda não
+existe; o ⚙ do pé da lateral abre o tema desde D35 (na Crew, a seção
+Configurações, D33); anexar existe desde D46.
 
 ## Lacunas — o que o design pede e o protocolo não traz
 

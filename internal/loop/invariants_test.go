@@ -37,6 +37,7 @@ var loopInvariants = map[string]string{
 	"Compactação verificada exatamente uma vez":   "TestCompactionRunsOnceAndIsAnnounced",
 	"resumo não incrementa o contador":            "TestSummarisingDoesNotSpendAnIteration",
 	"no gatilho automático não aplica o plano":    "TestAFailedSummaryKeepsTheHistoryAndSaysSo_CompactionFailure",
+	"pedido e dito uma vez por turno":             "TestAFailingSummaryIsSaidOnceNotEveryIteration_CompactionFailure",
 	"`/compact` com resumo que falha":             "TestAFailedSummaryFailsTheForcedCompaction_CompactionFailure",
 	"compactação forçada falha":                   "TestAContextSizeRefusalWithAFailedSummaryEndsTheTurn_CompactionFailure",
 	"terminado em `done` e inteiro":               "TestSummariserRefusesAnIncompleteSummary_CompactionFailure",
@@ -291,6 +292,7 @@ var qualifierInvariants = map[string]string{
 	"mostrada junto dele":                      "TestASetWithNothingRedWarnsInTheFile",
 	"emite `done.proposed` uma vez":            "TestAWrittenProposalIsAnnounced",
 	"não chegou a ser escrita não é anunciada": "TestAProposalThatWasNotWrittenIsNotAnnounced",
+	"Fora de um turno qualificador":            "TestTheToolRefusesOutsideAQualifyingTurn",
 }
 
 func TestEveryQualifierInvariantHasATest(t *testing.T) {

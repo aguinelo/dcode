@@ -325,11 +325,11 @@ As conversas — orquestradora, filhos, revisores — são sessões gravadas pel
 | `why` | string | sim, não vazio | do modelo quando ele escolheu (`why` das ferramentas), do harness quando a regra escolheu |
 | `claim` | string | não | o que um filho **disse** — nunca lido como prova |
 | `measured` | objeto | nas medições | `GateResult`, `Verdict`, `MainHealth` |
-| `data` | objeto | não | o resto do fato, por `kind` |
+| `data` | objeto | não | o resto do fato, por `kind`; o de `child.returned` tem uma forma só, quem quer que o escreva: `{return: Return, returned: n}` |
 
 `kind`: `project.opened`, `dispatch`, `dispatch.refused`, `model.chosen`, `worktree.created`,
 `hooks.changed`, `child.state`, `child.completed`, `child.returned`, `owns.checked`,
-`review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`,
+`review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`, `pr.updated`,
 `question.asked`, `question.answered`, `merge.queued`, `merge.completed`, `merge.refused`,
 `main.health`, `ceiling.reached`, `forge.local`, `worktree.removed`, `child.closed`,
 `daemon.restart`.
@@ -419,6 +419,8 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
 - O gate roda numa worktree descartável no commit exato, sem `GIT_*` no ambiente, nunca na árvore da pessoa nem na do filho.
 - A worktree descartável do gate sai sempre, até depois de um pânico.
+- Worktree trancada pelo git morto no meio do `worktree add` sai também; o que ainda fica é dito.
+- Gate parado por quem chamou devolve o cancelamento, nunca o erro do git que o cancelamento matou.
 - O que o filho disse do gate vai ao log como `claim`, ao lado do medido, e nunca muda o `result`.
 - Sem comando de gate declarado nada roda, o resultado é `undeclared`, e `gate_undeclared` é dito.
 - Medição de outro commit, ou sobre outra main, que não os do merge é `gate_stale`.

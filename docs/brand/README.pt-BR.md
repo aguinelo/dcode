@@ -2,6 +2,16 @@
 
 🇬🇧 [English version](README.md)
 
+> **Substituída.** Esta página descreve a marca anterior: o mascote âmbar de
+> três caixas e a paleta dele. Em 2026-10-13 o dono adotou um mascote novo — um
+> robô de blocos, de um olho só — e o laranja dele, `#FF6A00`, como a cor do
+> dcode. A folha atual, com as variações de cor do robô e a paleta de 23 tons,
+> é [`refs/design/brand/mascote.webp`](../../refs/design/brand/mascote.webp);
+> como o desktop o desenha e que tons usa são as decisões D49 e D52 em
+> [`desktop/docs/DECISIONS-4.md`](../../desktop/docs/DECISIONS-4.md). Os
+> arquivos abaixo ficam como registro da marca anterior; não os use em
+> trabalho novo.
+
 <img src="mascot.svg" width="96" alt="mascote do dcode"> &nbsp;&nbsp; <img src="logomark.svg" width="96" alt="logotipo do dcode">
 
 Duas marcas com papéis diferentes. O **mascote** é o personagem — adesivo, objeto físico,

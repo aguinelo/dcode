@@ -85,6 +85,13 @@ func GateFrom(r config.Resolved) (Gate, error) {
 // see the tree removed anyway.
 var runGate = runCommand
 
+// addGateTree makes the throwaway worktree at commit. A variable so a test can
+// stop the caller in the middle of it, as a kill of git does.
+var addGateTree = func(ctx context.Context, dir, place, commit string) error {
+	_, err := gateGit(ctx, dir, "worktree", "add", "--quiet", "--detach", place, commit)
+	return err
+}
+
 // Measure runs the gate on commit, an exact SHA the repository at dir has.
 //
 // It runs in a throwaway worktree made at that commit for this run alone —
@@ -108,6 +115,10 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 	gctx, cancel := context.WithTimeout(ctx, gateGitDeadline)
 	tree, err := gateGit(gctx, dir, "rev-parse", "--verify", "--quiet", commit+"^{commit}^{tree}")
 	cancel()
+	if err != nil && ctx.Err() != nil {
+		return protocol.GateResult{}, fmt.Errorf("orchestrate: the gate was stopped before it read %s, so it "+
+			"measured nothing: %w (git: %v)", commit, ctx.Err(), err)
+	}
 	if err != nil {
 		return protocol.GateResult{}, fmt.Errorf("orchestrate: the gate cannot measure %s: %w", commit, err)
 	}
@@ -138,10 +149,16 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 	}()
 
 	gctx, cancel = context.WithTimeout(ctx, gateGitDeadline)
-	_, err = gateGit(gctx, dir, "worktree", "add", "--quiet", "--detach", place, commit)
+	err = addGateTree(gctx, dir, place, commit)
 	cancel()
 	if err != nil {
 		_ = out.close()
+		if ctx.Err() != nil {
+			// git was killed because the caller stopped: the cause is the stop,
+			// and what git said of its kill is beside it, not instead of it.
+			return protocol.GateResult{}, fmt.Errorf("orchestrate: the gate was stopped while its worktree at %s "+
+				"was being made, so it measured nothing: %w (git: %v)", commit, ctx.Err(), err)
+		}
 		return protocol.GateResult{}, fmt.Errorf("orchestrate: make the gate's worktree at %s: %w", commit, err)
 	}
 
@@ -200,19 +217,13 @@ func runCommand(ctx context.Context, g Gate, tree string, out *gateOutput) (exit
 
 // removeTree takes the throwaway worktree out of git and off the disk. It runs
 // on a context of its own: the caller's may be the reason the gate stopped.
+// A tree a killed git left locked and half-made is removed too (forceRemove).
 func removeTree(repo, place, scratch string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), gateGitDeadline)
-	defer cancel()
 	var errs []error
-	if _, err := os.Stat(place); err == nil {
-		if _, err := gateGit(ctx, repo, "worktree", "remove", "--force", place); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if err := os.RemoveAll(scratch); err != nil {
+	if err := dropHalfMade(repo, place); err != nil {
 		errs = append(errs, err)
 	}
-	if _, err := gateGit(ctx, repo, "worktree", "prune"); err != nil {
+	if err := os.RemoveAll(scratch); err != nil {
 		errs = append(errs, err)
 	}
 	if len(errs) > 0 {

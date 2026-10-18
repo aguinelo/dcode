@@ -73,6 +73,12 @@ elemento feito desde D41 aparece nela.
   com `data-session-id` e `data-state`, a janela da conversa com
   `data-pane-id`, o palco como `main`, e "Nova sessão" como nome do botão
   "Nova".
+- **Os cantos da Crew são os dela.** A grade fica nos 4px de D29 e D52
+  (`--dc-radius`); na Crew, os cartões, os painéis e as folhas usam 8px
+  (`--dc-radius-lg`, em `styles/crew.css`), a medida que o visual dela já
+  tinha quando o dono o aprovou, e os controles pequenos continuam nos 4px e
+  3px dos tokens. Fora dos tokens fica um valor escrito à mão: o botão de
+  tentar de novo do histórico (D42), a 6px em `styles/history.css`.
 - **Só na grade:** várias conversas lado a lado e a maximizada com os pares no
   topo. A lateral da grade continua a continuar uma gravada ao clique (D21,
   D42); na Crew, clicar numa gravada a mostra, e escrever a continua (D33).
@@ -161,3 +167,30 @@ largura (a Crew tem três, e D63 manteve); contar o fechado no relógio do
 cliente (o `.p` dá a retenção ao daemon, e dois relógios discordariam); o
 custo em dólar estimado pelos tokens (inventaria uma tabela que a fatia não
 tem).
+
+**D65. O produto se chama DCode Box; a marca na barra do topo continua
+"dcode"** (emenda D26, que tinha deixado o nome de fora). Registro de uma
+decisão do dono, de 2026-10-13, feita em código antes de ter número aqui
+(#468, #469): rodado a partir do código, o app aparecia no Dock e na barra de
+tarefas como "Electron", e o dono pediu o ícone do mascote (D49) e o nome
+"DCode Box".
+
+- **Onde o nome aparece:** é o nome do produto — o `productName` do
+  `package.json`, o `app.setName` do processo principal, o título da janela
+  (`index.html`), o diálogo de quando o app não abre e a pergunta de fechar
+  (D19). No macOS, rodado do código, o nome da barra de menus e o do Dock vêm
+  do pacote do próprio Electron, e o `npm start` os escreve nele antes de
+  abrir (`scripts/dev-name.mjs`); um app empacotado os tira do próprio pacote.
+- **Por que um nome à parte:** foi o nome que o dono pediu, e ele separa o
+  app do que já se chama `dcode` — o comando, o daemon e a TUI —, de que o app
+  é uma janela a mais. O nome do produto é o que o sistema mostra do app; o do
+  comando continua o de sempre.
+- **A pasta dos dados não muda.** Ela nunca seguiu o nome do produto: continua
+  `dcode-desktop` (D26), e trocar o nome não move as preferências de ninguém.
+- **A marca na barra do topo continua "dcode"** (`TopBar.tsx`). Ela nomeia a
+  ferramenta que a janela conduz — o mesmo nome que se digita no terminal —, e
+  a barra está nas telas que a régua visual mede: trocá-la mudaria todas as
+  referências sem mudar o que a janela faz.
+
+Descartado: trocar também a marca da barra (move a régua inteira por um nome
+que a pessoa já lê no título da janela e no Dock).

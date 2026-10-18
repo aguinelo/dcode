@@ -23,6 +23,10 @@ case "$1 $2" in
 	echo "https://github.com/o/r/pull/7"
 	exit 0
 	;;
+"pr edit")
+	cat >"$d/body"
+	exit 0
+	;;
 "pr merge")
 	if [ -f "$d/merge-fails" ]; then
 		cat "$d/merge-fails" >&2

@@ -2,8 +2,16 @@
 
 ## 1. Nível de estabilidade
 
-**Instável.** Nada depende deste componente ainda. A forma do arquivo pode mudar
-enquanto não houver uso real, e a mudança será um changelog, não uma migração.
+**`experimental`**, na tabela do `SDD-HARNESS`: a forma do arquivo (§3, §4) e os
+tipos (§5) podem mudar em qualquer versão.
+
+Mas algo já depende dele: o `GET /v1/memory` do daemon (`internal/server/memory_skills.go`)
+lê o `.dcode/memory.md` por este componente e devolve cada entrada, com tipo,
+assunto, corpo, procedência e as marcas `stale` e `shown`, mais os blocos que
+não são memória — e o desktop lê essa resposta. O endpoint é contrato da família
+`client-server-protocol`, `experimental` lá também. Portanto mudar a forma do
+arquivo é livre **desde que o leitor continue alimentando aquela resposta**, e a
+mudança é um changelog aqui e lá, não uma migração.
 
 ## 2. O princípio
 
@@ -186,6 +194,12 @@ conferimento que não existia.
 Cada zero sobe assim que houver uma corrida completa, com changelog dizendo o
 que foi observado e por que aquele número.
 
+**Nenhum dos três foi medido até hoje.** Não há linha deles em
+`internal/evals/measured.go`, e nenhum changelog desta família registra corrida.
+O zero continua sendo "meça e me diga", com a pergunta ainda sem resposta: o
+que estes contratos dizem hoje é que a fixture compila e o juiz existe, não que
+o agente grava a coisa certa.
+
 ### O que mede a ausência vale mais
 
 `does-not-remember-activity` é o mais importante dos três, e é o único que
@@ -199,3 +213,4 @@ seguinte. Um contrato que mede a presença aprova um agente que grava tudo.
 
 - [202608180133 — Memória aprendida](changelog/202608180133-memoria-aprendida.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610172315 — A spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)

@@ -9,7 +9,7 @@ A ADR-05 decidiu neutralidade de provider **com camada de adaptação por famíl
 
 O motivo está registrado no estudo comparativo: harnesses agnósticos perdem para os afinados rodando o mesmo modelo, porque system prompt, schema de ferramenta e estratégia de edição precisam ser adaptados por família. Trocar só a URL entrega qualidade inconsistente de tool-calling, que é a falha mais cara de um agente de codificação: uma ferramenta mal invocada corrompe arquivo.
 
-Este componente é onde essa adaptação vive. No MVP existe **uma** implementação; a interface existe desde o dia 1 para que a segunda não exija reescrita.
+Este componente é onde essa adaptação vive. A interface existe desde o dia 1 para que a segunda família não exigisse reescrita — e não exigiu: hoje há **quatro** famílias (`minimax-m3`, `claude`, `gemini` e o escape hatch `generic`) sobre **dois** transportes (`openai` e `anthropic`). A tabela de famílias está no `.p`, seção 2.1.
 
 ## 2. Fronteira de determinismo
 
@@ -121,3 +121,19 @@ Família que manda o raciocínio duplicado no campo de conteúdo é o caso comum
 
 - [202608072352 — Transporte e família como eixos ortogonais](changelog/202608072352-transporte-familia-ortogonais.md)
 - [202608082230 — Decode passa a ter estado por stream](changelog/202608082230-decode-com-estado-por-stream.md) — nova RN-10.
+- [202608110900 — Chaves declaradas e não lidas saem da spec](changelog/202608110900-chaves-declaradas-e-nao-lidas.md)
+- [202608191300 — O backstop acompanha o horizonte do modelo](changelog/202608191300-o-backstop-acompanha-o-horizonte.md)
+- [202609010000 — Uma família para o Gemini](changelog/202609010000-uma-familia-para-o-gemini.md)
+- [202609040100 — O frame que trazia tudo junto](changelog/202609040100-o-frame-que-trazia-tudo-junto.md)
+- [202609141800 — A janela agora pode ser dita](changelog/202609141800-a-janela-agora-pode-ser-dita.md)
+- [202609141900 — Um nome troca o pacote inteiro](changelog/202609141900-um-nome-troca-o-pacote-inteiro.md)
+- [202609151500 — `generic` erra para o horizonte longo](changelog/202609151500-generic-erra-para-o-horizonte-longo.md)
+- [202609281439 — Cancelado não é cara ou coroa](changelog/202609281439-cancelado-nao-e-cara-ou-coroa.md)
+- [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
+- [202610151200 — Uma chave sem workspace nomeia um](changelog/202610151200-uma-chave-sem-workspace-nomeia-um.md)
+- [202610151300 — O teto de saída é do modelo](changelog/202610151300-o-teto-de-saida-e-do-modelo.md)
+- [202610151400 — O prefixo Anthropic é lido do cache](changelog/202610151400-o-prefixo-anthropic-e-lido-do-cache.md)
+- [202610151500 — A janela Claude é por modelo](changelog/202610151500-a-janela-claude-e-por-modelo.md)
+- [202610161630 — O erro Anthropic diz a sua classe](changelog/202610161630-o-erro-anthropic-diz-a-sua-classe.md)
+- [202610162300 — A recusa do modelo é dita](changelog/202610162300-a-recusa-do-modelo-e-dita.md)
+- [202610171700 — A spec alcança o código](changelog/202610171700-a-spec-alcanca-o-codigo.md)

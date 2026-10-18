@@ -89,6 +89,11 @@ type Request struct {
 type Access struct {
     Path  string // absoluto, com symlink resolvido (RN-4)
     Write bool
+    // Rel é o caminho relativo ao workspace, preenchido por Resolve. As regras
+    // são escritas contra ele, para um padrão ler igual em toda máquina e não
+    // ser contornado escrevendo o caminho em absoluto. Vazio fora do
+    // workspace, onde a contenção já respondeu.
+    Rel   string
 }
 
 type Decision string
@@ -102,19 +107,30 @@ const (
 type Verdict struct {
     Decision Decision
     Boundary Boundary // tipada, nao string: um valor invalido nao compila
+    Reason   string   // inglês, legível por humano
     Rule     string   // o padrao que escalou, para a aprovacao poder dizer POR QUE
-    Reason   string // inglês, legível por humano
 }
+
+// NetworkGrant diz se sair para a rede já está autorizado. Uma função, não um
+// valor: a resposta muda dentro da sessão — alguém concede no meio de um
+// turno — e um valor lido na inicialização ainda diria não uma hora depois.
+type NetworkGrant interface{ Granted() bool }
+
+type GrantedNetwork struct{}        // Granted() == true
+type WithheldNetwork struct{}       // Granted() == false
+type NetworkGrantFunc func() bool   // consultada ao vivo; nil é negado
 
 // Evaluate é PURA: sem I/O, sem relógio. A resolução de caminho acontece
 // ANTES, em Resolve, para que a decisão seja exatamente testável.
-func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy,
-    rules Rules, inWorkspace func(Access) bool) Verdict
+func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy, rules Rules,
+    net NetworkGrant, inWorkspace func(Access) bool) Verdict
 ```
 
 > **Correção de assinatura.** Esta seção nunca foi atualizada pelo changelog `202608091700`, que acrescentou as regras por caminho e por comando. `Evaluate` recebe `Rules` e recebe a contenção como **função**, não o workspace como string — porque resolver caminho faz E/S e a decisão não pode fazer, e é essa separação que torna a tabela inteira testável por asserção, uma por célula.
 >
 > `Resolve` é método de `Resolver` e não função livre, pelo mesmo motivo: a única parte que toca disco fica num tipo, e o resto do pacote continua puro.
+>
+> **Segunda correção, em 2026-10-17.** A assinatura acima ainda estava sem o parâmetro `net NetworkGrant`, e `Access` sem o campo `Rel` — nenhum changelog registrou nenhum dos dois. Copiadas agora de `internal/policy/policy.go`.
 
 
 ### 3.1 Tabela de decisão
@@ -125,7 +141,7 @@ func Evaluate(r Request, mode SandboxMode, pol ApprovalPolicy,
 | Leitura fora do workspace | escalate | escalate | allow |
 | Escrita dentro do workspace | **deny** | allow | allow |
 | Escrita fora do workspace | **deny** | escalate | allow |
-| Rede | **deny** | escalate | allow |
+| Rede | **deny** | escalate; allow se `net.Granted()` | allow |
 
 Depois, a política filtra:
 
@@ -212,12 +228,24 @@ func (r *Resolver) Resolve(path string, write bool) (Access, error)
 // Package: internal/sandbox
 
 type Sandbox interface {
-    // Wrap devolve o comando a executar, já envolvido pelo mecanismo do SO.
-    Wrap(ctx context.Context, cmd Command, mode SandboxMode, workspace string) (*exec.Cmd, error)
-    // Available informa se o mecanismo pode ser estabelecido nesta máquina.
+    Name() string // BackendSeatbelt | BackendBubblewrap | BackendNone
+    // Available informa se o mecanismo pode ser estabelecido nesta máquina; o
+    // erro nomeia o binário ausente e como instalá-lo.
     Available() error
+    // Wrap devolve o comando a executar, já envolvido pelo mecanismo do SO.
+    Wrap(ctx context.Context, workdir, command string, mode policy.SandboxMode) (*exec.Cmd, error)
 }
+
+// New escolhe o backend (Config.Backend: "auto", "seatbelt", "bubblewrap",
+// "none") e devolve ErrUnavailable quando o mecanismo não se estabelece.
+func New(cfg Config, mode policy.SandboxMode) (Sandbox, error)
 ```
+
+> **Correção de assinatura, em 2026-10-17.** Esta seção mostrava
+> `Wrap(ctx, cmd Command, mode, workspace string)` e não tinha `Name()`. No
+> código o comando é a string já renderizada, o diretório vem antes dela e o
+> modo é o último parâmetro — e não há tipo `Command`. Copiado de
+> `internal/sandbox/sandbox.go`.
 
 | Plataforma | Mecanismo | cgo |
 |---|---|---|
@@ -312,3 +340,4 @@ type Sandbox interface {
 - [202608260100 — Uma parede que diz como se abre](changelog/202608260100-uma-parede-que-diz-como-se-abre.md)
 - [202609281513 — Uma linha, uma promessa](changelog/202609281513-uma-linha-uma-promessa.md)
 - [202609301502 — O daemon fica fora do alcance do sandbox](changelog/202609301502-o-daemon-fica-fora-do-alcance.md)
+- [202610171700 — A spec alcança o código](changelog/202610171700-a-spec-alcanca-o-codigo.md)

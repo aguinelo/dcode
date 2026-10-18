@@ -100,9 +100,7 @@ func (o *Orchestrator) measure(id string) {
 		o.stall(id, fmt.Errorf("the merge step could not open: %w", err))
 		return
 	}
-	gctx, cancel := context.WithTimeout(ctx, gateGitDeadline)
-	tip, err := mainTip(gctx, p.Root, p.Main)
-	cancel()
+	tip, err := o.mainNow(ctx)
 	if err != nil {
 		o.stall(id, fmt.Errorf("main %s cannot be read: %w", p.Main, err))
 		return
@@ -110,7 +108,7 @@ func (o *Orchestrator) measure(id string) {
 	h, err := in.Update(ctx, o.log, id, c.Worktree, c.Head, tip)
 	var cf *Conflict
 	if errors.As(err, &cf) {
-		o.handBack(id, cf.Return(), true, conflictText(cf.Paths), false)
+		o.giveBack(id, cf.Return(), true, conflictText(cf.Paths))
 		return
 	}
 	if err != nil {

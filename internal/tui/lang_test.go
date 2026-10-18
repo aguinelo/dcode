@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/aguinelo/dcode/internal/loop"
 	"github.com/aguinelo/dcode/internal/protocol"
 	"go/ast"
 	"go/parser"
@@ -274,6 +275,12 @@ func TestNoEnglishSurvivesAPortugueseScreen(t *testing.T) {
 	m.Entries = []Entry{
 		{Kind: KindUser, Summary: "escreve o arquivo"},
 		{Kind: KindTool, Tool: "write", Target: "arquivo.go", Summary: "criado"},
+	}
+	// A verified turn's summary is layout too: its noun was an English literal.
+	if e, ok := completionEntry(&protocol.Completion{
+		Verification: string(loop.VerificationPassed), Met: []string{"testes", "lint", "compilação"},
+	}, PtBR); ok {
+		m.Entries = append(m.Entries, e)
 	}
 	m.Plan = []protocol.PlanItem{
 		{ID: 1, Text: "primeiro passo", Status: protocol.PlanDone},

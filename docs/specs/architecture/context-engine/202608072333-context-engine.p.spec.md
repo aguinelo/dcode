@@ -5,14 +5,14 @@
 
 ## 1. Nível de estabilidade
 
-**`experimental`.** Contrato interno — `internal/context`. Não é superfície pública; promoção a `stable` só se for exposto em `pkg/`.
+**`experimental`.** Contrato interno — `internal/contextengine` (o nome evita sombrear o pacote `context` da biblioteca padrão, que todo arquivo do projeto importa). Não é superfície pública; promoção a `stable` só se for exposto em `pkg/`.
 
 ## 2. A função pura
 
 O componente inteiro se reduz a isto:
 
 ```go
-// Package: internal/context
+// Package: internal/contextengine
 
 // Assemble é PURA: sem I/O, sem relógio, sem aleatoriedade, sem leitura de
 // variável de ambiente. Mesma entrada produz saída byte-a-byte idêntica (RN-7).
@@ -34,10 +34,30 @@ const (
 )
 
 type Message struct {
-    Role      Role       `json:"role"`
-    Text      string     `json:"text,omitempty"`
-    ToolCalls []ToolCall `json:"tool_calls,omitempty"` // só em RoleAssistant
+    Role       Role        `json:"role"`
+    Text       string      `json:"text,omitempty"`
+    ToolCalls  []ToolCall  `json:"tool_calls,omitempty"` // só em RoleAssistant
     ToolResult *ToolResult `json:"tool_result,omitempty"` // só em RoleTool
+    Images     []Image     // imagens lidas com a mensagem, em bytes (RN-7)
+    Documents  []Document  // só PDFs; texto já entrou em Text (ver 3.1)
+    // Reminder marca mensagem que o harness anexou, e não que a pessoa
+    // digitou. Viaja no papel user, o único que todo provedor aceita no meio
+    // da conversa, e nenhum cliente pode exibi-la como fala da pessoa.
+    Reminder   bool        `json:"reminder,omitempty"`
+}
+
+// Image é carregada em bytes, nunca por caminho: caminho varia por máquina e
+// pode mudar sob a sessão, e Assemble tem de ser byte-a-byte reprodutível.
+type Image struct {
+    MediaType string // image/png, image/jpeg, image/gif, image/webp
+    Data      []byte
+}
+
+// Document é arquivo lido com um turno, em bytes pelo mesmo motivo.
+type Document struct {
+    Name      string // como a pessoa o anexou; mostrado ao modelo ao lado
+    MediaType string
+    Data      []byte
 }
 
 type ToolCall struct {
@@ -68,10 +88,56 @@ type ToolDef struct {
 }
 
 type Summary struct {
-    Text     string // resumo do trecho compactado
-    UpToIdx  int    // índice exclusivo em History coberto pelo resumo
+    Text    string `json:"text"`      // resumo do trecho compactado
+    UpToIdx int    `json:"up_to_idx"` // índice exclusivo em History coberto pelo resumo
 }
+
+// Config carrega o que Plan, Estimate e Fraction precisam. Passada, e não
+// lida do ambiente, para que as funções continuem puras. Valores fixos em
+// DefaultConfig — ver `.config`, seção 3.
+type Config struct {
+    CompactAt     float64 // fração da janela que dispara a compactação
+    KeepTurns     int     // turnos recentes preservados além dos obrigatórios
+    KeepFraction  float64 // fração da janela que a cauda preserva, em tokens
+    CharsPerToken float64 // heurística da estimativa
+    Margin        float64 // somada a toda estimativa, absorve o erro
+    Window        int     // janela do modelo em tokens; vem do provider
+    Disabled      bool    // desliga só o gatilho automático (zero = ligado)
+}
+
+func DefaultConfig() Config
 ```
+
+### 3.1 Documentos anexados
+
+```go
+// InlineDocuments escreve os arquivos de texto na pergunta e devolve os PDFs,
+// que a família precisa declarar que lê. PURA.
+func InlineDocuments(text string, docs []Document) (string, []Document)
+```
+
+Todo `Document` cujo `MediaType` começa com `text/` entra **antes** da pergunta, cada um entre marcadores, nesta forma exata:
+
+```
+<document name="NOME" media_type="TIPO" boundary="B">
+…bytes do arquivo, intactos…
+</document boundary="B">
+
+```
+
+- `NOME` e `TIPO` passam por `html.EscapeString`: aspas no nome são nome, não começo de atributo.
+- `B` são os primeiros 12 bytes do SHA-256 do conteúdo, em hexadecimal (24 caracteres). Derivado do conteúdo, e não aleatório, para que o mesmo arquivo dê a mesma mensagem; um corpo não consegue conter o marcador de fechamento sem conter o próprio digest, então nada nele encerra o bloco antes da hora — um `</document>` dentro do arquivo continua dentro do arquivo.
+- Arquivo que não termina em `\n` ganha um antes do fechamento; cada bloco termina com uma linha em branco.
+
+O que não é `text/` — na prática, PDF — volta em `Documents` e viaja ao lado da mensagem.
+
+```go
+// PDFPages estima as páginas de um PDF pelos objetos de página. Heurística:
+// PDF que comprime os objetos esconde as páginas e conta como uma, nunca zero.
+func PDFPages(data []byte) int
+```
+
+Na estimativa, cada PDF custa `len(Name) + PDFPages(Data) × charsPerPDFPage` caracteres (`.config`, seção 3).
 
 ## 4. Ordem de montagem
 
@@ -97,8 +163,11 @@ func Plan(s Session, cfg Config) (CompactionPlan, bool)
 type CompactionPlan struct {
     FromIdx int // índice inclusivo do início do trecho a compactar
     ToIdx   int // índice exclusivo do fim
-    Keep    []int // índices dentro do trecho preservados na íntegra (RN-6)
 }
+
+// Apply devolve a sessão com o plano aplicado e text como novo resumo, somado
+// ao anterior. Não altera o slice History de quem chama.
+func Apply(s Session, plan CompactionPlan, text string) Session
 ```
 
 **Gatilho:** tokens estimados do contexto montado ≥ `CompactAt` × janela do modelo.
@@ -107,7 +176,9 @@ type CompactionPlan struct {
 
 **Preservação obrigatória (RN-6):** a mensagem `RoleUser` mais recente e todas as posteriores a ela nunca entram no trecho compactado. A tarefa corrente sobrevive por construção, não por qualidade do resumo.
 
-**Aplicação:** `Plan` é pura e decide. A geração do texto do resumo chama o modelo, portanto **não** pertence a este componente — o loop do agente executa o plano e devolve `Summary` preenchido. Essa separação é o que mantém `Assemble` e `Plan` puras.
+**Aplicação:** `Plan` é pura e decide. A geração do texto do resumo chama o modelo, portanto **não** pertence a este componente — o loop do agente pede o resumo e, **só com um resumo inteiro**, chama `Apply`. Essa separação é o que mantém `Assemble` e `Plan` puras.
+
+**Resumo que falha não compacta.** Resumo que volta com erro, vazio ou cortado no teto de saída não aplica o plano: o histórico fica inteiro, e o loop diz por quê em `session.error` `compaction_failed`. A decisão e o que cada caminho faz depois — o gatilho automático segue o turno, `/compact` devolve o erro, a recusa `context_size` encerra — estão em `agent-loop/changelog/202610161200-resumo-que-falha-nao-compacta.md`. Perder detalhe por resumo ruim nunca é trocado por perder o trecho em silêncio.
 
 ## 6. Estimativa de tokens
 
@@ -134,6 +205,10 @@ const (
 
 // BandFor é pura.
 func BandFor(f, compactAt float64) Band
+
+// Crossed devolve a faixa a anunciar e se anuncia. Só para cima; descer — o
+// que a compactação faz — não anuncia, mas rearma.
+func Crossed(announced Band, f, compactAt float64) (Band, bool)
 ```
 
 > **Correção de assinatura.** `Estimate` recebe `Config` porque a heurística — caracteres por token e margem — é configuração, e lê-la de um global tornaria a função impura e a compactação não reproduzível.
@@ -171,3 +246,8 @@ Cada linha é caso de teste obrigatório.
 ## 8. Changelog
 
 - [202608102200 — Orçamento de contexto realimentado](changelog/202608102200-orcamento-de-contexto-realimentado.md)
+- [202608110900 — Chaves declaradas e não lidas saem da spec](changelog/202608110900-chaves-declaradas-e-nao-lidas.md)
+- [202608250000 — O contexto avisa antes de cortar](changelog/202608250000-o-contexto-avisa-antes-de-cortar.md)
+- [202608250100 — A cauda tem dois pisos](changelog/202608250100-a-cauda-tem-dois-pisos.md)
+- [202609151700 — Compactar por pedido](changelog/202609151700-compactar-por-pedido.md)
+- [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)

@@ -217,7 +217,13 @@ type Strings struct {
 	UnverifiedLabel  string
 
 	// Completion report
-	VerifiedSummary     string // takes plural() of the checks met, count included
+	// VerifiedSummary takes plural(met, CheckOne, CheckMany), count included.
+	// VerifiedSummaryOne is the same sentence for a single check: the verb
+	// agrees with the count in Portuguese, so one sentence cannot serve both.
+	VerifiedSummary     string
+	VerifiedSummaryOne  string
+	CheckOne            string
+	CheckMany           string
 	NotVerifiedSummary  string // takes the failing names
 	NothingCouldCheck   string
 	ChangedAfterCheck   string
@@ -490,6 +496,9 @@ var catalogue = map[Lang]Strings{
 		UnverifiedLabel:  "unverified",
 
 		VerifiedSummary:     "verified — %s passed",
+		VerifiedSummaryOne:  "verified — %s passed",
+		CheckOne:            "check",
+		CheckMany:           "checks",
 		NotVerifiedSummary:  "NOT verified — %s did not pass",
 		NothingCouldCheck:   "not verified — nothing here could check this",
 		ChangedAfterCheck:   "not verified — files changed after the last check",
@@ -756,6 +765,9 @@ Environment:
 		UnverifiedLabel:  "sem conferir",
 
 		VerifiedSummary:     "conferido — %s passaram",
+		VerifiedSummaryOne:  "conferido — %s passou",
+		CheckOne:            "verificação",
+		CheckMany:           "verificações",
 		NotVerifiedSummary:  "NÃO conferido — %s não passou",
 		NothingCouldCheck:   "sem conferir — não há aqui como conferir isto",
 		ChangedAfterCheck:   "sem conferir — arquivos mudaram depois da última conferência",

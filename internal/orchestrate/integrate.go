@@ -54,7 +54,13 @@ func OpenIntegration(ctx context.Context, root, projectDir string) (*Integration
 		return nil, fmt.Errorf("orchestrate: make %s: %w", projectDir, err)
 	}
 	if _, err := forgeGit(ctx, root, "worktree", "add", "-q", "--detach", place, "HEAD"); err != nil {
-		return nil, fmt.Errorf("orchestrate: make the integration place: %w", err)
+		// A half-made place would be refused by the next open as "not the
+		// integration worktree"; it goes now, on a context of its own.
+		err = fmt.Errorf("orchestrate: make the integration place: %w", err)
+		if cerr := dropHalfMade(root, place); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+		return nil, err
 	}
 	return in, nil
 }
@@ -82,7 +88,8 @@ func (c *Conflict) Return() protocol.Return {
 //
 // A conflict is aborted in the integration place, which ends clean, and made
 // again in the child's worktree with the markers left for the child; it comes
-// back as *Conflict, and child.returned says so in the log.
+// back as *Conflict, which the pipeline hands back to the child — and writes
+// child.returned, in the one shape every return has.
 func (i *Integration) Update(ctx context.Context, l *DecisionLog, child, worktree, head, main string) (string, error) {
 	if l == nil {
 		return "", errors.New("orchestrate: no decision log to record the update in")
@@ -96,7 +103,7 @@ func (i *Integration) Update(ctx context.Context, l *DecisionLog, child, worktre
 		return "", err
 	}
 	if _, err := forgeGit(ctx, i.place, "merge", "-q", "--no-ff", "--no-edit", "-m", "Merge main into the branch", main); err != nil {
-		return "", i.conflict(ctx, l, child, worktree, main, err)
+		return "", i.conflict(ctx, worktree, main, err)
 	}
 	h, err := forgeGit(ctx, i.place, "rev-parse", "HEAD")
 	if err != nil {
@@ -118,9 +125,9 @@ func (i *Integration) Update(ctx context.Context, l *DecisionLog, child, worktre
 	return h, nil
 }
 
-// conflict aborts the merge in the place, makes it again in the child's
-// worktree with the markers, and records the return.
-func (i *Integration) conflict(ctx context.Context, l *DecisionLog, child, worktree, main string, mergeErr error) error {
+// conflict aborts the merge in the place and makes it again in the child's
+// worktree with the markers.
+func (i *Integration) conflict(ctx context.Context, worktree, main string, mergeErr error) error {
 	out, err := forgeGit(ctx, i.place, "diff", "--name-only", "--diff-filter=U")
 	if err != nil || strings.TrimSpace(out) == "" {
 		_ = i.reset(ctx, "HEAD")
@@ -133,10 +140,6 @@ func (i *Integration) conflict(ctx context.Context, l *DecisionLog, child, workt
 	// The same merge in the child's worktree, failing on the same paths, is
 	// what leaves the markers for the child; its error is the conflict.
 	_, _ = forgeGit(ctx, worktree, "merge", "-q", "--no-ff", "--no-edit", main)
-	data, _ := json.Marshal(c.Return())
-	if _, err := l.Record(Decision{Kind: "child.returned", Child: child, Why: c.Error(), Data: data}); err != nil {
-		return errors.Join(c, err)
-	}
 	return c
 }
 

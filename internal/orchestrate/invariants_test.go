@@ -24,6 +24,8 @@ var orchestrationInvariants = map[string]string{
 
 	"worktree descartável no commit exato":  "TestTheGateRunsInAThrowawayTreeWithoutGitEnvironment",
 	"sai sempre, até depois de um pânico":   "TestTheThrowawayWorktreeIsRemovedEvenOnAPanic",
+	"trancada pelo git morto no meio":       "TestALockedHalfMadeGateWorktreeIsRemoved",
+	"devolve o cancelamento, nunca o erro":  "TestAGateStoppedWhileItsWorktreeIsMadeIsTheCancellation",
 	"vai ao log como `claim`":               "TestAChildThatClaimsGreenIsRecordedRedBesideItsClaim",
 	"nada roda, o resultado é `undeclared`": "TestAnUndeclaredGateIsSaidAndNothingRuns",
 	"que não os do merge é `gate_stale`":    "TestAMeasurementOfAnotherCommitOrMainIsStale",

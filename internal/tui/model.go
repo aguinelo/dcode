@@ -775,7 +775,11 @@ func completionSummary(c *protocol.Completion, lang Lang) string {
 	t := Text(lang)
 	switch c.Verification {
 	case string(loop.VerificationPassed):
-		return fmt.Sprintf(t.VerifiedSummary, plural(len(c.Met), "check", "checks"))
+		sentence := t.VerifiedSummary
+		if len(c.Met) == 1 {
+			sentence = t.VerifiedSummaryOne
+		}
+		return fmt.Sprintf(sentence, plural(len(c.Met), t.CheckOne, t.CheckMany))
 	case string(loop.VerificationFailed):
 		return fmt.Sprintf(t.NotVerifiedSummary, strings.Join(c.Unmet, ", "))
 	case string(loop.VerificationUnavailable):

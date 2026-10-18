@@ -3,7 +3,9 @@ package orchestrate
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -99,17 +101,94 @@ func hooksPath(ctx context.Context, root string) string {
 	return v
 }
 
-// addWorktree makes branch at base and checks it out at path.
+// addWorktree makes branch at base and checks it out at path. An add that
+// fails — a git killed half-way among them — leaves no worktree behind; the
+// branch, if git made it, stays, as it does when a child is closed. A path that
+// was there before the add is not the add's, and is never removed.
 func addWorktree(ctx context.Context, root, path, branch, base string) error {
+	_, before := os.Lstat(path)
 	_, err := wtGit(ctx, root, "worktree", "add", "-b", branch, path, base)
+	if err != nil && errors.Is(before, os.ErrNotExist) {
+		if cerr := dropHalfMade(root, path); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}
 	return err
 }
 
 // removeWorktree takes the worktree away, what was not committed with it. The
 // branch stays: it holds the harness's commits, and the log names it.
 func removeWorktree(ctx context.Context, root, path string) error {
-	_, err := wtGit(ctx, root, "worktree", "remove", "--force", path)
-	return err
+	return forceRemove(ctx, root, path)
+}
+
+// dropHalfMade removes what a failed `worktree add` left at path, on a context
+// of its own: the caller's may be the reason the add failed.
+func dropHalfMade(root, path string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), gateGitDeadline)
+	defer cancel()
+	return forceRemove(ctx, root, path)
+}
+
+// forceRemove takes the worktree at path out of git and off the disk, in
+// whatever state it is. A git killed in the middle of `worktree add` leaves the
+// tree locked ("initializing"), and one --force refuses a locked tree: -f -f
+// does not. A directory git did not remove is removed here, and prune forgets
+// a registration whose directory is gone. What still stays is an error that
+// says so; a path that is already gone is not.
+func forceRemove(ctx context.Context, root, path string) error {
+	var errs []error
+	if _, err := os.Lstat(path); err == nil {
+		if _, err := wtGit(ctx, root, "worktree", "remove", "-f", "-f", path); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := os.RemoveAll(path); err != nil {
+		errs = append(errs, err)
+	}
+	if _, err := wtGit(ctx, root, "worktree", "prune"); err != nil {
+		errs = append(errs, err)
+	}
+	_, statErr := os.Lstat(path)
+	left := statErr == nil
+	listed, lerr := registered(ctx, root, path)
+	if lerr != nil {
+		errs = append(errs, lerr)
+	}
+	if !left && !listed && lerr == nil {
+		return nil // what failed on the way was made good by the next step
+	}
+	what := "git still lists it"
+	if left {
+		what = "it is still on the disk"
+	}
+	if lerr != nil && !left {
+		what = "git could not be asked whether it still lists it"
+	}
+	if len(errs) == 0 {
+		return fmt.Errorf("orchestrate: the worktree %s was not removed, %s", path, what)
+	}
+	return fmt.Errorf("orchestrate: the worktree %s was not removed, %s: %w", path, what, errors.Join(errs...))
+}
+
+// registered says whether git still lists a worktree at path. The path may be
+// gone, so it is compared both as given and with its parent's links resolved,
+// as git records it (/var against /private/var on macOS).
+func registered(ctx context.Context, root, path string) (bool, error) {
+	out, err := wtGit(ctx, root, "worktree", "list", "--porcelain")
+	if err != nil {
+		return false, err
+	}
+	want := map[string]bool{filepath.Clean(path): true}
+	if parent, err := filepath.EvalSymlinks(filepath.Dir(path)); err == nil {
+		want[filepath.Join(parent, filepath.Base(path))] = true
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if p, ok := strings.CutPrefix(line, "worktree "); ok && want[filepath.Clean(p)] {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // commitTurn commits what the child's turn changed in its worktree, adding the

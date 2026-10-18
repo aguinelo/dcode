@@ -60,8 +60,20 @@ func (o *Orchestrator) merges() (*Merges, *Integration, error) {
 	}); err != nil {
 		o.sayError(protocol.CodeInternal, "the project's forge could not be kept in its state: "+err.Error())
 	}
-	o.mg, o.in = mg, in
+	o.mg, o.in, o.forge = mg, in, forge
 	return mg, in, nil
+}
+
+// mainNow is main's tip as the project's forge has it now — origin's after a
+// fetch with github, the local branch with local: what the pipeline measures
+// and reviews over is what the merge will compare with (.p §7.4.1).
+func (o *Orchestrator) mainNow(ctx context.Context) (string, error) {
+	if _, _, err := o.merges(); err != nil {
+		return "", fmt.Errorf("the merge step could not open: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(ctx, forgeDeadline)
+	defer cancel()
+	return o.forge.MainTip(ctx)
 }
 
 // saveMerges keeps in the state what the merges hold: their questions, the
@@ -88,6 +100,10 @@ func (o *Orchestrator) saveMerges(mg *Merges) {
 func (o *Orchestrator) propose(id string) {
 	c, b := o.child(id), o.brief(id)
 	if terminal(c.State) {
+		return
+	}
+	if c.Gate == nil || c.Gate.Result != GateGreen || c.Gate.Commit != c.Head {
+		o.stall(id, fmt.Errorf("%s has no green measurement of its head %s, so it is not proposed", id, short(c.Head)))
 		return
 	}
 	mg, _, err := o.merges()
