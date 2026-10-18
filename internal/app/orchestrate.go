@@ -57,7 +57,7 @@ func (d *Daemon) newProjects() *daemonProjects {
 	reg, err := orchestrate.NewRegistry(orchestrate.RegistryOptions{
 		Dir: o.Dir, Spawner: d, Resolve: d.resolveAt, Log: d.opts.Log,
 		Emit: d.emitTo, Retention: o.ClosedRetention, MaxSessions: d.opts.MaxSessions,
-		ConclusionMax: d.opts.Base.DelegateMaxResultBytes,
+		ConclusionMax: d.opts.Base.DelegateMaxResultBytes, KnownProfile: d.knownProfile,
 	})
 	if err != nil {
 		off := fmt.Sprintf("the orchestrator cannot run in this daemon: %v", err)
@@ -201,7 +201,7 @@ func (d *Daemon) rebuild(r session.Reopening, log *session.EventLog) (*session.S
 	case protocol.RoleOrchestrator:
 		mode = d.orchestratorMode(o.ProjectID)
 	case protocol.RoleChild:
-		mode = childMode(o.Owns)
+		mode = d.childMode(r.ID, o.Owns)
 	default:
 		return nil, protocol.Errorf(protocol.CodeInvalidInput,
 			"session %s is neither an orchestrator nor a child; only those are reopened", r.ID)

@@ -26,6 +26,15 @@ func (o *Orchestrator) snapshot() State {
 func cloneState(st State) State {
 	st.Children = append([]protocol.Child(nil), st.Children...)
 	st.Questions = append([]protocol.Question(nil), st.Questions...)
+	st.PendingReports = append([]string(nil), st.PendingReports...)
+	st.Queue = append([]string(nil), st.Queue...)
+	if st.Briefs != nil {
+		briefs := make(map[string]Brief, len(st.Briefs))
+		for k, v := range st.Briefs {
+			briefs[k] = v
+		}
+		st.Briefs = briefs
+	}
 	return st
 }
 
@@ -121,6 +130,11 @@ func (o *Orchestrator) setModel(id, model string) {
 // for a turn now running.
 func (o *Orchestrator) move(id, to, reason, why string) protocol.Child {
 	from := o.child(id).State
+	if terminal(from) {
+		// Closed or merged while a step of its pipeline ran: nothing moves
+		// it again, and the step that ended late changes nothing.
+		return o.child(id)
+	}
 	data, _ := json.Marshal(map[string]string{"from": from, "to": to, "reason": reason})
 	err := o.commit(Decision{Kind: "child.state", Child: id, Why: why, Data: data}, edit(id, func(c *protocol.Child) {
 		c.State, c.Reason = to, reason
@@ -248,7 +262,7 @@ func (o *Orchestrator) reachCeiling(why string) {
 	st := o.snapshot()
 	data, _ := json.Marshal(map[string]int64{"spent": st.Spent, "ceiling": o.limits.TokenCeiling})
 	o.note(Decision{Kind: "ceiling.reached", Session: st.Project.OrchestratorID, Why: why, Data: data})
-	o.ask(protocol.Question{Kind: "ceiling", Recommended: "stop",
+	_, _ = o.ask(protocol.Question{Kind: "ceiling", Recommended: "stop",
 		Text: fmt.Sprintf("The project has spent %d tokens, past orchestrator.token_ceiling (%d). Continue with a new window, or stop dispatching?", st.Spent, o.limits.TokenCeiling),
 		Why:  "children already running finish what they do; no new child is dispatched until this is answered",
 		Options: []protocol.QuestionOption{
@@ -258,7 +272,7 @@ func (o *Orchestrator) reachCeiling(why string) {
 }
 
 // ask puts a question in the queue: question.asked, the state, the wire.
-func (o *Orchestrator) ask(q protocol.Question) {
+func (o *Orchestrator) ask(q protocol.Question) (protocol.Question, error) {
 	st := o.snapshot()
 	q.ID = fmt.Sprintf("q%d", len(st.Questions)+1)
 	q.Asked = o.reg.now().UTC()
@@ -266,9 +280,10 @@ func (o *Orchestrator) ask(q protocol.Question) {
 	if err := o.commit(Decision{Kind: "question.asked", Child: q.ChildID, Session: st.Project.OrchestratorID, Why: q.Why, Data: data},
 		func(s *State) { s.Questions = append(s.Questions, q) }); err != nil {
 		o.sayError(protocol.CodeInternal, "a question did not reach the log, and is not asked: "+err.Error())
-		return
+		return q, err
 	}
 	o.emit(protocol.EventQuestionAsked, q)
+	return q, nil
 }
 
 // Answer answers a question; the first answer wins. continue on the ceiling
@@ -285,6 +300,9 @@ func (o *Orchestrator) Answer(id, answer, note string) (protocol.Question, error
 		return protocol.Question{}, protocol.Errorf(protocol.CodeQuestionNotFound, "this project has no question %s", id)
 	}
 	q := st.Questions[i]
+	if q.Kind == "merge" {
+		return o.answerMerge(q, answer, note)
+	}
 	if q.Answer != "" {
 		return q, protocol.Errorf(protocol.CodeQuestionAlreadyAnswered, "question %s was already answered %q", id, q.Answer)
 	}
@@ -316,6 +334,7 @@ func (o *Orchestrator) Answer(id, answer, note string) (protocol.Question, error
 		return protocol.Question{}, protocol.Errorf(protocol.CodeInternal, "the answer did not reach the log: %v", err)
 	}
 	o.emit(protocol.EventQuestionAnswered, q)
+	o.Report(fmt.Sprintf("The person answered question %s (%s) with %q.", q.ID, q.Kind, answer))
 	return q, nil
 }
 
@@ -360,7 +379,10 @@ func (o *Orchestrator) reopenChildren() (reopened []string, failed map[string]st
 		if _, err := o.reg.spawner.Reopen(id, protocol.StopDaemonRestart); err != nil {
 			failed[id] = err.Error()
 			msg := fmt.Sprintf("the child could not be reopened after the daemon started again: %v", err)
-			moves = append(moves, func() { o.move(id, stateFailed, protocol.StopError, msg) })
+			moves = append(moves, func() {
+				o.move(id, stateFailed, protocol.StopError, msg)
+				o.reportChild(id, msg+".")
+			})
 			continue
 		}
 		reopened = append(reopened, id)
@@ -369,6 +391,7 @@ func (o *Orchestrator) reopenChildren() (reopened []string, failed map[string]st
 			moves = append(moves, func() {
 				o.move(id, stateFailed, protocol.StopDaemonRestart,
 					"the child's turn was open when the daemon stopped, and ended daemon_restart")
+				o.reportChild(id, "its turn was open when the daemon stopped, so it failed daemon_restart. Steer it to continue, or close it.")
 			})
 		}
 	}

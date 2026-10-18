@@ -29,7 +29,7 @@ const commitDeadline = 2 * dispatchDeadline
 func (r *Registry) Observe(sessionID string, ev protocol.Event) {
 	r.mu.Lock()
 	var held *Orchestrator
-	isChild := false
+	isChild, isReviewer := false, false
 	for _, o := range r.projects {
 		if o.orchestratorID() == sessionID {
 			held = o
@@ -39,18 +39,30 @@ func (r *Registry) Observe(sessionID string, ev protocol.Event) {
 			held, isChild = o, true
 			break
 		}
+		if o.reviewer(sessionID) {
+			held, isReviewer = o, true
+			break
+		}
 	}
 	r.mu.Unlock()
 	if held == nil {
 		return
 	}
 	if !isChild {
-		if ev.Type == protocol.EventTurnCompleted {
-			var tc protocol.TurnCompleted
-			if json.Unmarshal(ev.Payload, &tc) == nil {
-				held.spend(tc.Usage)
-			}
+		if ev.Type != protocol.EventTurnCompleted {
+			return
 		}
+		var tc protocol.TurnCompleted
+		if json.Unmarshal(ev.Payload, &tc) == nil {
+			held.spend(tc.Usage)
+		}
+		if isReviewer {
+			held.reviewerEnded(sessionID)
+			return
+		}
+		// The orchestrator's turn ended: what reached its inbox meanwhile
+		// starts the next one, never this one's middle (ADR-03).
+		held.scheduleReports()
 		return
 	}
 	held.observeChild(sessionID, ev)
@@ -138,10 +150,11 @@ func (o *Orchestrator) commitWaiting(id, on string) {
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
 }
 
-// turnEnded is the end of a child's turn: the harness commits what it changed
-// by name, child.completed says the turn with the child's claim beside it,
-// and a turn that did not end done fails the child. The owns check and the
-// review that follow a done turn are the pipeline's (.p §7).
+// turnEnded is the end of a child's turn. The owns check comes first: a
+// change outside owns is committed by nobody and goes back. Inside, the
+// harness commits by name, and child.completed says the turn with the child's
+// claim beside it. A turn that did not end done fails the child; one that did
+// enters the pipeline (.p §7).
 func (o *Orchestrator) turnEnded(id string, tc protocol.TurnCompleted) {
 	c := o.child(id)
 	if c.ID == "" || terminal(c.State) {
@@ -149,22 +162,34 @@ func (o *Orchestrator) turnEnded(id string, tc protocol.TurnCompleted) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), commitDeadline)
 	defer cancel()
-	head, paths, cerr := commitTurn(ctx, c.Worktree, c.Title)
 	said, cut := o.conclusion(id)
+	changed, outside, cerr := o.checkOwns(ctx, c)
+	var head string
+	var paths, unwritten []string
+	if cerr == nil && len(outside) == 0 {
+		head, paths, cerr = commitTurn(ctx, c.Worktree, c.Title)
+	} else if cerr == nil {
+		unwritten = changed
+	}
 	u := protocol.Usage{}
 	if tc.Usage != nil {
 		u = *tc.Usage
 	}
 	data := map[string]any{"turn_id": tc.TurnID, "reason": tc.Reason, "head": head, "wrote": paths}
 	why := fmt.Sprintf("the child's turn ended %s; the harness committed %d path(s) by name", tc.Reason, len(paths))
-	if cerr != nil {
+	switch {
+	case cerr != nil:
 		data["commit_error"] = cerr.Error()
 		why = fmt.Sprintf("the child's turn ended %s, and the harness could not commit it", tc.Reason)
+	case len(outside) > 0:
+		data["outside_owns"] = outside
+		why = fmt.Sprintf("the child's turn ended %s with changes outside owns, so the harness committed nothing", tc.Reason)
 	}
 	raw, _ := json.Marshal(data)
 	err := o.commit(Decision{Kind: "child.completed", Child: id, Session: id, Why: why, Claim: said, Data: raw},
 		func(st *State) {
 			st.Spent += tokens(tc.Usage)
+			setBrief(st, id, func(b *Brief) { b.Claim = said })
 			edit(id, func(ch *protocol.Child) {
 				ch.Usage = addUsage(ch.Usage, u)
 				if head != "" {
@@ -178,17 +203,28 @@ func (o *Orchestrator) turnEnded(id string, tc protocol.TurnCompleted) {
 		return
 	}
 	o.emit(protocol.EventChildCompleted, protocol.ChildCompleted{ChildID: id, TurnID: tc.TurnID, Reason: tc.Reason,
-		Conclusion: said, Truncated: cut, Wrote: paths, Usage: u})
+		Conclusion: said, Truncated: cut, Wrote: paths, Unwritten: unwritten, Usage: u})
 	switch {
 	case cerr != nil:
 		o.fail(id, fmt.Errorf("the harness could not commit the turn in %s: %w", c.Worktree, cerr))
+		o.reportChild(id, "the harness could not commit its turn: "+cerr.Error())
 	case tc.Reason != protocol.StopDone:
 		o.move(id, stateFailed, tc.Reason, "the child's turn ended "+tc.Reason+", which is not done")
+		o.reportChild(id, "its turn ended "+tc.Reason+", which is not done, so it failed. It said: "+quote(said))
+	case len(outside) > 0:
+		o.move(id, stateInReview, tc.Reason, "the child's turn ended done; the owns check comes first")
+		o.giveBack(id, protocol.Return{Why: protocol.CodeOutsideOwns, Paths: outside}, true, ownsText(outside, c.Owns))
 	default:
-		// Done: the pipeline starts here (.p §7), with the reviewer's step.
-		// Until it does, the child stays working with its turn's end said.
-		o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
+		o.afterDone(id)
 	}
+}
+
+// quote is what a child said, for a report: never empty.
+func quote(said string) string {
+	if strings.TrimSpace(said) == "" {
+		return "(nothing)"
+	}
+	return said
 }
 
 func addUsage(a, b protocol.Usage) protocol.Usage {

@@ -120,6 +120,13 @@ type Forge interface {
 	Merge(ctx context.Context, c protocol.Child, measured string) (string, error)
 	// MainHealth is one reading of main's health at commit.
 	MainHealth(ctx context.Context, commit string) (protocol.MainHealth, error)
+	// MainTip is main's tip as the forge has it now: origin's after a fetch
+	// on github, the local branch on local. A fetch that fails is an error,
+	// never the local main in its place.
+	MainTip(ctx context.Context) (string, error)
+	// UpdatePR pushes branch again, never forced, and refreshes pr's body;
+	// a child measured again keeps the PR it has. Local has none.
+	UpdatePR(ctx context.Context, pr protocol.ChildPR, branch, body string) (protocol.ChildPR, error)
 }
 
 // ForgeSetup is what NewForge needs. Integration and Gate are the local
@@ -181,6 +188,32 @@ type githubForge struct {
 }
 
 func (g *githubForge) Name() string { return ForgeGitHub }
+
+// MainTip fetches main from origin and reads origin's: a merge on GitHub
+// moves origin's main, never the local one.
+func (g *githubForge) MainTip(ctx context.Context) (string, error) {
+	if _, err := forgeGit(ctx, g.root, "fetch", "-q", "origin", g.main); err != nil {
+		return "", fmt.Errorf("orchestrate: fetch origin %s, which main's tip is read from with forge github: %w", g.main, err)
+	}
+	return forgeGit(ctx, g.root, "rev-parse", "--verify", "refs/remotes/origin/"+g.main)
+}
+
+// UpdatePR pushes the branch again — a plain push, never forced: the branch
+// only moved forward — and refreshes the PR's body, whose evidence names the
+// commit measured.
+func (g *githubForge) UpdatePR(ctx context.Context, pr protocol.ChildPR, branch, body string) (protocol.ChildPR, error) {
+	if len(body) > vcs.PRBodyLimit {
+		return pr, fmt.Errorf("orchestrate: the PR body is %d bytes, over GitHub's %d", len(body), vcs.PRBodyLimit)
+	}
+	if _, err := forgeGit(ctx, g.root, "push", "-q", "origin", "refs/heads/"+branch+":refs/heads/"+branch); err != nil {
+		return pr, err
+	}
+	if _, stderr, err := ghRun(ctx, g.root, strings.NewReader(body), "pr", "edit", strconv.Itoa(pr.Number), "--body-file", "-"); err != nil {
+		return pr, fmt.Errorf("orchestrate: gh pr edit #%d: %s", pr.Number, firstOf(stderr, err))
+	}
+	pr.CI = vcs.ChecksPending
+	return pr, nil
+}
 
 func (g *githubForge) Tips(ctx context.Context, branch string) (string, string, error) {
 	if _, err := forgeGit(ctx, g.root, "fetch", "-q", "origin", g.main, branch); err != nil {

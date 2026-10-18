@@ -7,8 +7,8 @@ import (
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
-// The project routes: one orchestrator per project (orchestration .p §5.1).
-// The questions' routes arrive with the step that asks the person (step 10).
+// The project routes: one orchestrator per project, its children and the
+// questions that wait for the person (orchestration .p §5.1).
 
 // Projects is what the daemon conducts. Injected because opening a project
 // builds a session, which is the app's business. An implementation that
@@ -26,6 +26,48 @@ type Projects interface {
 	// CloseChild is the person's close of a child: held is false when the
 	// session is no child of a project here.
 	CloseChild(sessionID string) (held bool, err error)
+	// Questions are an orchestrator's questions, answered or not; held is
+	// false for any other session.
+	Questions(sessionID string) (questions []protocol.Question, held bool)
+	// Answer is the person's answer to one; the first answer wins.
+	Answer(sessionID, questionID string, req protocol.AnswerQuestionRequest) (protocol.Question, error)
+}
+
+// listQuestions answers GET /sessions/{id}/questions. A session that is no
+// orchestrator has none: an empty list, as /children answers.
+func (s *Server) listQuestions(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.cfg.Manager.Get(r.PathValue("id"))
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	out := protocol.ListQuestionsResponse{Questions: []protocol.Question{}}
+	if s.cfg.Projects != nil {
+		if qs, held := s.cfg.Projects.Questions(sess.ID); held && qs != nil {
+			out.Questions = qs
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// answerQuestion is the person's POST of an answer. Only the person answers:
+// no tool of the orchestrator's reaches this.
+func (s *Server) answerQuestion(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.Projects == nil {
+		writeErr(w, noProjects())
+		return
+	}
+	var req protocol.AnswerQuestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
+		return
+	}
+	q, err := s.cfg.Projects.Answer(r.PathValue("id"), r.PathValue("qid"), req)
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, q)
 }
 
 // listChildren answers GET /sessions/{id}/children. A session with no

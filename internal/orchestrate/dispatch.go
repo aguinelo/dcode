@@ -18,8 +18,7 @@ import (
 //
 // Spec: docs/specs/architecture/orchestration/202610132000-orchestration.p.spec.md §6, §10.
 
-// The states of a child that step 6 moves through (.p §6). in_review, pr and
-// merged arrive with the pipeline.
+// The states of a child (.p §6). pr and merged are the merge step's.
 const (
 	stateDispatched = "dispatched"
 	stateWorking    = "working"
@@ -195,7 +194,12 @@ func (o *Orchestrator) dispatchOne(it Item, profile string) protocol.Child {
 	data, _ := json.Marshal(map[string]any{"title": it.Title, "task": it.Task, "owns": it.Owns,
 		"pr_title": it.PRTitle, "pr_body": it.PRBody, "fixes_main": it.FixesMain, "branch": c.Branch})
 	if err := o.commit(Decision{Kind: "dispatch", Child: id, Session: orq, Why: it.Why, Data: data},
-		func(st *State) { st.Children = append(st.Children, c) }); err != nil {
+		func(st *State) {
+			st.Children = append(st.Children, c)
+			setBrief(st, id, func(b *Brief) {
+				*b = Brief{Task: it.Task, PRTitle: it.PRTitle, PRBody: it.PRBody, FixesMain: it.FixesMain}
+			})
+		}); err != nil {
 		c.State, c.Reason = stateFailed, protocol.StopError
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("%q was not dispatched: the decision log did not take it: %v", it.Title, err))
 		return c

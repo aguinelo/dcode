@@ -7,34 +7,11 @@ package specguard
 // has a user is an error — removes it there, one line at a time.
 const orchestrationAhead = "orchestration wire vocabulary (orchestration .p §5), declared by step 2 of its .i ahead of the step that produces it"
 
-// The gate is built by step 9 of the orchestration .i ahead of the pipeline
-// that calls it after review and before the merge queue (steps 6 to 8 and 10).
-const orchestrationGate = "the gate (orchestration .p §7.4, §7.6), built by step 9 of its .i; the per-child pipeline calls it after review and before the merge queue once steps 6 to 8 land"
-
-// The reviewer is built by step 8 of the orchestration .i ahead of the pipeline
-// that spawns it (Spawner.SpawnReviewer) when a child's turn ends done.
-const orchestrationReview = "the reviewer (orchestration .p §7.1, §7.2), built by step 8 of its .i; the per-child pipeline assembles the review, spawns the reviewer with this registry and finishes it once Spawner.SpawnReviewer lands"
-
-// The merge is built by step 10 of the orchestration .i ahead of the queue the
-// per-child pipeline (step 7) hands a measured child to.
-const orchestrationMerge = "the merge (orchestration .p §7.4 to §7.6), built by step 10 of its .i; the per-child pipeline opens the project's integration place, its forge and its merges, and proposes each child its gate measured green"
-
 const orchestrationClient = "pkg/client is the public API; a consumer conducts the orchestrator's routes (orchestration .p §5.1), as the TUI and the desktop will"
 
 func init() {
-	for _, name := range []string{
-		"Returned", "ValidRole",
-	} {
+	for _, name := range []string{"ValidRole"} {
 		exportedWithoutUser[name] = orchestrationAhead
-	}
-	for _, name := range []string{"GateFrom", "RecordGate"} {
-		exportedWithoutUser[name] = orchestrationGate
-	}
-	for _, name := range []string{"AssembleReview", "Finish", "NewReview", "ReviewFrom", "ReviewerRegistry"} {
-		exportedWithoutUser[name] = orchestrationReview
-	}
-	for _, name := range []string{"MergeFrom", "NewForge", "NewMerges", "OpenIntegration", "Propose"} {
-		exportedWithoutUser[name] = orchestrationMerge
 	}
 	for _, name := range []string{"AnswerQuestion", "ListProjects", "OpenProject"} {
 		exportedWithoutUser[name] = orchestrationClient

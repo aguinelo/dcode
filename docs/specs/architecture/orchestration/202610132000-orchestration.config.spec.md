@@ -10,7 +10,8 @@
 > `max_children`, `child_profiles`, `branch_prefix` e `token_ceiling`, desde o passo 6
 > (`orchestrate.ReadLimits`), e `closed_retention` com `dir`, onde o daemon nasce
 > (`orchestrate.ClosedRetention`); `forge`, `ci_timeout`, `sensitive` e `sensitive_diff_lines`,
-> desde o passo 10 (`orchestrate.MergeFrom`); o resto está planejado, não construído. Cada
+> desde o passo 10 (`orchestrate.MergeFrom`); `max_returns` e `report_debounce`, desde a fiação dos
+> passos 7 a 10 (`orchestrate.ReadLimits`); o resto está planejado, não construído. Cada
 > chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
 > da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
 > `TestEveryKeyTheSpecsDeclareIsReadSomewhere` existe para pegar. Por isso as tabelas abaixo abrem
@@ -61,16 +62,11 @@ Lidas, na cadeia de configuração da raiz do projeto, quando ele abre:
 | `DCODE_ORCHESTRATOR_BRANCH_PREFIX` | `orchestrator.branch_prefix` | `dcode/` | passa em `git check-ref-format --branch` com um nome depois | 6 |
 | `DCODE_ORCHESTRATOR_TOKEN_CEILING` | `orchestrator.token_ceiling` | `20000000` | inteiro de 100000 a 1000000000 | 6 |
 | `DCODE_ORCHESTRATOR_REVIEWER_PROFILES` | `orchestrator.reviewer_profiles` | vazio = o primeiro de `child_profiles` | lista de perfis de `models.toml`; nome que não existe é erro | 8 |
+| `DCODE_ORCHESTRATOR_MAX_RETURNS` | `orchestrator.max_returns` | `3` | inteiro de 1 a 10 | 8 |
+| `DCODE_ORCHESTRATOR_REPORT_DEBOUNCE` | `orchestrator.report_debounce` | `2s` | de `0s` a `1m` | 7 |
 
 Valor inválido nestas é recusado no `POST /v1/projects` (`workspace_invalid`), com a chave e o
 valor: só ali se sabe a raiz cuja cadeia as declara.
-
-Por ler:
-
-| Chave | Variável | Default | Validação | Passo |
-|---|---|---|---|---|
-| `orchestrator.max_returns` | `DCODE_ORCHESTRATOR_MAX_RETURNS` | `3` | inteiro de 1 a 10 | 8 |
-| `orchestrator.report_debounce` | `DCODE_ORCHESTRATOR_REPORT_DEBOUNCE` | `2s` | de `0s` a `1m` | 7 |
 
 `max_children` conta filhos **vivos** (não terminais) do projeto, e o lote que passaria dele é
 recusado inteiro. Quatro porque é o que o dia à mão de 2026-10-16 sustentou com uma pessoa lendo os
@@ -106,7 +102,7 @@ Lidas:
 | `DCODE_ORCHESTRATOR_SENSITIVE_DIFF_LINES` | `orchestrator.sensitive_diff_lines` | `800` | inteiro de 50 a 100000 | 10 |
 
 `auto` é `github` quando o repositório tem `origin` e `gh auth status` responde; senão `local`, e a
-primeira vez é dita (`forge.local`). `github` declarado sem `gh` é erro dito no `POST /v1/projects`,
+primeira vez é dita (`forge.local`). `github` declarado sem `gh` é erro dito quando o passo de merge abre (o primeiro filho medido),
 nunca queda silenciosa para `local`.
 
 `gate_timeout` de 30 minutos cobre o `make check` deste repositório (lint, race, coverage, build)
@@ -161,3 +157,4 @@ segunda fatia, pelas chaves `eval.*` de `202608072334-provider-adapter.config.sp
 - [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)
 - [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)
 - [202610180200 — Um filho trabalha na própria worktree](changelog/202610180200-um-filho-trabalha-na-propria-worktree.md)
+- [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)

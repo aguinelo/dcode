@@ -25,6 +25,8 @@ type Conductor interface {
 	Children() ([]protocol.Child, error)
 	SteerChild(childID, text, why string) error
 	CloseChild(childID, why string) error
+	// Ask puts a question in the project's queue and returns its id.
+	Ask(in AskInput) (string, error)
 }
 
 // DelegateItem is one child of a batch.

@@ -66,6 +66,13 @@ type fakeSpawner struct {
 	failChild, failSubmit error
 	failReopen            map[string]error
 	closeErr              error
+	// What the pipeline asks of it (pipeline_test.go): the reviewers built,
+	// the origin of each turn submitted, and the sessions in a turn.
+	reviewers []ReviewRequest
+	origins   []string
+	busy      map[string]bool
+	// failReviewer makes SpawnReviewer fail.
+	failReviewer error
 }
 
 func (f *fakeSpawner) SpawnOrchestrator(p protocol.Project) (protocol.Session, error) {

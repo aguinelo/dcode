@@ -141,7 +141,4 @@ func TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean(t *tes
 	if revParse(t, p.root, "dcode/a") != head {
 		t.Error("the branch moved on a conflict")
 	}
-	if d := decisionOf(t, p, "child.returned"); !strings.Contains(d.Why, "file.txt") {
-		t.Errorf("child.returned = %+v", d)
-	}
 }

@@ -54,6 +54,12 @@ type MergeOptions struct {
 	Now  func() time.Time
 	// LocalSaid is whether forge.local was already said for this project.
 	LocalSaid bool
+	// Questions, Queue and Main are what the project's state.json kept of
+	// its merges, given back after a restart: the questions asked, the
+	// children the person said merge to, and main's last reading.
+	Questions []protocol.Question
+	Queue     []string
+	Main      protocol.MainHealth
 }
 
 // Merges is one project's merge questions and its serial queue.
@@ -91,8 +97,20 @@ func NewMerges(o MergeOptions) (*Merges, error) {
 			return nil, err
 		}
 	}
-	return &Merges{o: o}, nil
+	return &Merges{o: o, questions: append([]protocol.Question(nil), o.Questions...),
+		queue: append([]string(nil), o.Queue...), main: o.Main}, nil
 }
+
+// Queued is the merge queue, in order: the children the person said merge to
+// and that have not merged or left it.
+func (m *Merges) Queued() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]string(nil), m.queue...)
+}
+
+// Main is main's health as the queue last read it.
+func (m *Merges) Main() protocol.MainHealth { return m.health() }
 
 // Proposal is a child the pipeline measured green, to be proposed.
 type Proposal struct {
@@ -121,7 +139,21 @@ func (m *Merges) Propose(ctx context.Context, p Proposal) (protocol.Child, proto
 		return c, protocol.Question{}, &protocol.Error{Code: protocol.CodeInvalidInput, Message: fmt.Sprintf(
 			"%s has no green measurement of its head; without a green gate there is no PR and no merge", c.ID)}
 	}
-	pr, err := m.o.Forge.OpenPR(ctx, c.Branch, p.Title, PRBody(p.Body, *c.Gate, c.Review))
+	body := PRBody(p.Body, *c.Gate, c.Review)
+	if c.PR != nil && c.PR.Number > 0 {
+		pr, err := m.o.Forge.UpdatePR(ctx, *c.PR, c.Branch, body)
+		if err != nil {
+			return c, protocol.Question{}, err
+		}
+		c.PR = &pr
+		data, _ := json.Marshal(pr)
+		if _, err := m.o.Log.Record(Decision{Kind: "pr.updated", Child: c.ID, Data: data,
+			Why: fmt.Sprintf("measured again green on %s, so the harness pushed %s and refreshed the evidence of #%d", short(c.Head), c.Branch, pr.Number)}); err != nil {
+			return c, protocol.Question{}, err
+		}
+		return m.ask(c, p)
+	}
+	pr, err := m.o.Forge.OpenPR(ctx, c.Branch, p.Title, body)
 	if err != nil {
 		return c, protocol.Question{}, err
 	}
@@ -133,6 +165,11 @@ func (m *Merges) Propose(ctx context.Context, p Proposal) (protocol.Child, proto
 			return c, protocol.Question{}, err
 		}
 	}
+	return m.ask(c, p)
+}
+
+// ask records and sends the merge question of a proposed child.
+func (m *Merges) ask(c protocol.Child, p Proposal) (protocol.Child, protocol.Question, error) {
 	q := m.question(c, p)
 	data, _ := json.Marshal(q)
 	if _, err := m.o.Log.Record(Decision{Kind: "question.asked", Child: c.ID, Data: data,

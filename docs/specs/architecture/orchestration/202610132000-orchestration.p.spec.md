@@ -239,19 +239,11 @@ Roda **no harness**: ao fim `done` de um turno do filho, os passos correm em ord
 pulado; o modelo lê os resultados e decide. **Emenda o `.r` §6**, que os listava como ferramentas
 (decisão 2 do dono; o porquê no changelog `202610172200`). A orquestradora os vê por `children` e pelos relatos.
 
-**7.1 Commit e `owns`.** O filho não faz commit; o harness faz, ao fim de cada turno. Lê
-`git status --porcelain` na worktree: caminho fora do `owns` (`policy.Glob`) devolve **sem commit e
-sem revisão** (`Return{outside_owns, paths}`). Dentro, adiciona **os caminhos nomeados** — nunca
-`-A` — e commita com `pr_title` (ou `title`) como mensagem; `Head` é esse commit. Log:
-`owns.checked`, com os caminhos.
+**7.1 Commit e `owns`.** O filho não faz commit; o harness faz, ao fim de cada turno. Lê `git status --porcelain` na worktree **antes** do commit: caminho fora do `owns` (`policy.Glob`) devolve **sem commit e sem revisão** (`Return{outside_owns, paths}`). Dentro, adiciona **os caminhos nomeados** — nunca `-A` — e commita com o `title` como mensagem; `Head` é esse commit. Log: `owns.checked`, com os caminhos.
 
 **7.2 Revisão.** Uma sessão `RoleReviewer`, filha da orquestradora, na worktree do filho, com `read`, `glob`, `grep`, `symbol` e `verdict` (`ReviewerRegistry`) — sem escrita, sem `bash`. `AssembleReview` monta a tarefa, o `owns`, as specs que a tarefa nomeia e o diff `Base..Head` até `orchestrator.review_max_diff_bytes`; acima disso, o diff sai inteiro (`DiffCut`), dito, com a lista de arquivos e a instrução de lê-los; arquivo fora do `owns` no diff é `outside_owns` sem revisor. `verdict{verdict, findings, why}`. Turno sem `verdict` é `missing` (`ErrNoVerdict`) e roda de novo uma vez; o segundo `missing` deixa o filho em `in_review`, com relato à orquestradora.
 
-**7.3 Devolução com teste vermelho primeiro (RN-5).** `changes_requested` volta **ao mesmo filho**
-em duas fases. **`red`:** o turno pede só o teste que mostra o defeito e termina com
-`red_test{command}`; o harness commita, roda o comando nesse commit e exige saída diferente de zero
-— `red_test.confirmed`, ou, verde, de novo `red`, dizendo. **`fix`:** o conserto; ao fim, a esteira
-recomeça em 7.1. Gate vermelho devolve direto em `fix`: a saída dele já é a medição vermelha.
+**7.3 Devolução com teste vermelho primeiro (RN-5).** `changes_requested` volta **ao mesmo filho** em duas fases. **`red`:** o turno pede só o teste que mostra o defeito e termina com `red_test{command}`; o harness commita, roda o comando nesse commit numa worktree descartável e exige saída diferente de zero — `red_test.confirmed`, ou, verde, de novo `red`, dizendo; turno `red` sem `red_test` também volta a `red`. **`fix`:** o conserto; ao fim, a esteira recomeça em 7.1. Gate vermelho devolve direto em `fix`: a saída dele já é a medição vermelha. A passagem de `red` a `fix` é metade de uma devolução e não conta em `max_returns`.
 
 **7.4 Atualização e gate, no lugar de integração** — uma worktree do daemon por projeto, destacada, nunca a da pessoa:
 
@@ -333,11 +325,11 @@ As conversas — orquestradora, filhos, revisores — são sessões gravadas pel
 | `why` | string | sim, não vazio | do modelo quando ele escolheu (`why` das ferramentas), do harness quando a regra escolheu |
 | `claim` | string | não | o que um filho **disse** — nunca lido como prova |
 | `measured` | objeto | nas medições | `GateResult`, `Verdict`, `MainHealth` |
-| `data` | objeto | não | o resto do fato, por `kind` |
+| `data` | objeto | não | o resto do fato, por `kind`; o de `child.returned` tem uma forma só, quem quer que o escreva: `{return: Return, returned: n}` |
 
 `kind`: `project.opened`, `dispatch`, `dispatch.refused`, `model.chosen`, `worktree.created`,
 `hooks.changed`, `child.state`, `child.completed`, `child.returned`, `owns.checked`,
-`review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`,
+`review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`, `pr.updated`,
 `question.asked`, `question.answered`, `merge.queued`, `merge.completed`, `merge.refused`,
 `main.health`, `ceiling.reached`, `forge.local`, `worktree.removed`, `child.closed`,
 `daemon.restart`.
@@ -456,16 +448,21 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Turno de filho aberto no reinício termina com `daemon_restart`, dito na lista e no log, e nunca some.
 - Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
 - Fechado sai da lista depois da retenção; `failed` não sai sozinho.
+- Diff do filho com caminho fora do `owns` volta ao filho sem commit e sem revisão.
+- Defeito do revisor volta ao mesmo filho em fase `red`, e o conserto só é aceito depois de `red_test.confirmed`.
+- Teste da fase `red` que passa não é aceito como vermelho, e conserto sem a fase `red` confirmada nunca chega ao gate.
+- A segunda revisão seguida sem `verdict` deixa o filho em `in_review`, dito à orquestradora; não há terceira.
+- Além de `max_returns` devoluções o filho vai a `failed`, `incomplete`, e a orquestradora é avisada.
+- O gate da esteira mede o `Head` exato do filho, com `base` a ponta da main sob ele, e o que o filho disse ao lado como `claim`.
+- Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
+- O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
+- Relatos dentro de `report_debounce` viram **um** turno, e o contexto antes dele é byte a byte o de antes (ADR-03).
 
 ## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
 
-- Diff do filho com caminho fora do `owns` volta ao filho sem commit e sem revisão.
 - Todo fim de turno de filho tem um dos nomes da RN-7.
-- Defeito do revisor volta ao mesmo filho em fase `red`, e o conserto só é aceito depois de `red_test.confirmed`.
-- O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
 - Nenhum caminho do código desta fatia roda `rebase`, `push --force` ou `commit --amend`.
 - Toda transição da §6 tem linha no log antes do evento; linha que não grava impede a transição.
-- Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
 
 ## 15. Ordem de entrega
 
@@ -499,3 +496,4 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)
 - [202610180200 — Um filho trabalha na própria worktree](changelog/202610180200-um-filho-trabalha-na-propria-worktree.md)
 - [202610180300 — Um merge espera a pessoa](changelog/202610180300-um-merge-espera-a-pessoa.md)
+- [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)
