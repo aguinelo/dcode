@@ -1,0 +1,48 @@
+{
+  "id": "c1",
+  "kind": "merge",
+  "title": "Merges ready",
+  "items": [
+    {
+      "id": "q-1",
+      "header": "index",
+      "kind": "merge",
+      "text": "Merge \"index\"?",
+      "recommended": "merge",
+      "why": "approved and green",
+      "child_id": "s-2",
+      "options": [
+        {
+          "id": "merge",
+          "label": "Merge",
+          "description": "Into main."
+        },
+        {
+          "id": "return",
+          "label": "Return"
+        }
+      ],
+      "allow_other": true,
+      "summary": "Conta palavras.\nCom teste.",
+      "evidence": {
+        "verdict": "approve",
+        "reviewer": "s-3",
+        "reviewed_commit": "1f2e3d4",
+        "review_seq": 7,
+        "gate": "green",
+        "command": "make check",
+        "commit": "1f2e3d4",
+        "base": "6ec45f1",
+        "exit_code": 0,
+        "duration_ms": 4000,
+        "gate_seq": 9
+      },
+      "asked": "2026-08-11T12:00:00Z",
+      "state": "pending",
+      "selected": "merge"
+    }
+  ],
+  "pending": 1,
+  "created": "2026-08-11T12:00:00Z",
+  "updated": "2026-08-11T12:00:00Z"
+}

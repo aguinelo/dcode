@@ -25,6 +25,9 @@ type State struct {
 	// /children hides a closed one after the retention, the state keeps it.
 	Children  []protocol.Child    `json:"children"`
 	Questions []protocol.Question `json:"questions"`
+	// Cards are the cards the questions are shown in, in the order made,
+	// closed ones too (.p §5.5).
+	Cards []Card `json:"cards,omitempty"`
 	// LogSeq is the seq of the last decision this state follows. The state on
 	// disk is never ahead of the log (.p §8).
 	LogSeq uint64 `json:"log_seq"`

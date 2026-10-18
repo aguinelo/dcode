@@ -37,7 +37,7 @@ func TestGitThatWritesIsDeniedToAChildWithoutAsking(t *testing.T) {
 }
 
 type fakeConductor struct {
-	items []DelegateItem
+	items     []DelegateItem
 	asked     []AskInput
 	summaries []string
 	proposed  []ProposeInput

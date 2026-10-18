@@ -191,7 +191,9 @@ recomendação, e **só aquela tarefa espera**.
 
 **Perguntas pendentes fazem fila na conversa orquestradora**, cada uma com
 opções e recomendação; o trabalho que não depende delas **continua**. O pedido
-de aprovação de ferramenta de um filho continua da RN-7.
+de aprovação de ferramenta de um filho continua da RN-7. *Refinado pelo dono em
+2026-10-18:* a pessoa decide **na conversa**, num cartão por tipo de pergunta, e a
+orquestradora resume e propõe, nunca responde (`.p` §5.5).
 
 *Por quê:* o que não volta não pode depender de o modelo lembrar de perguntar;
 e parar tudo por uma pergunta deixou a fila parada em 2026-10-16.

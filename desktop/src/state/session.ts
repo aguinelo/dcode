@@ -439,6 +439,7 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
     case 'gate.measured':
     case 'question.asked':
     case 'question.answered':
+    case 'question.card':
     case 'merge.completed':
     case 'merge.refused':
     case 'main.health':

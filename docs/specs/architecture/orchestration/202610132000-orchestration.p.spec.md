@@ -106,8 +106,9 @@ type Forge interface {
 | `GET /v1/projects/{id}` | — | `Project` | `project_not_found` |
 | `GET /v1/projects/{id}/orchestrator` | — | a `Session` da orquestradora | `project_not_found` |
 | `GET /v1/sessions/{id}/children` | — | `ListChildrenResponse{children}`: vivos e falhos, e fechados ou merged dentro da retenção | `session_not_found` |
-| `GET /v1/sessions/{id}/questions` | — | `ListQuestionsResponse{questions}` | `session_not_found` |
+| `GET /v1/sessions/{id}/questions` | — | `ListQuestionsResponse{questions, cards}`: a fila e os cartões dela (§5.5) | `session_not_found` |
 | `POST /v1/sessions/{id}/questions/{qid}` | `AnswerQuestionRequest{answer, note}` | a `Question` respondida | `question_not_found`, `question_already_answered`, `invalid_input` |
+| `POST /v1/sessions/{id}/questions/answers` | `AnswerQuestionsRequest{card_id, answers: [{question_id, answer, note}], skipped}` | `AnswerQuestionsResponse{results, cards}`: um resultado por resposta e por pulo, na ordem | `session_not_found`; `invalid_input` para o lote inteiro (vazio, pulo sem `card_id`, cartão que não há) |
 
 `DELETE /v1/sessions/{id}` num filho é o fechar da pessoa: `closed`, worktree removida, `owns`
 liberado, linha no log. Na orquestradora é `invalid_input` nesta fatia; arquivá-la é da segunda.
@@ -162,13 +163,19 @@ type ChildPR struct{ Number?, URL?, CI? } // CI na gramática de vcs.Checks; Num
 type MainHealth struct{ Commit, Health string; Checked time.Time } // Health: green | red | pending | unknown
 type Question struct {
 	ID, Kind, Text, Recommended, Why string // Kind "merge" | "design" | "ceiling"; Recommended é um Option.ID
+	Header?                           string // etiqueta curta do cartão; o título do filho num merge
 	ChildID?                          string
 	Options                           []QuestionOption
+	AllowOther?                       bool   // aceita as palavras da pessoa (AnswerOther, §5.5)
+	Summary?                          string // 2–3 linhas da orquestradora, na língua da pessoa (`summarize`)
+	Evidence?                         *QuestionEvidence // num merge: lida do log, nunca do que o filho disse
 	Sensitive?                        []string // §7.5
 	Asked                             time.Time
 	Answer?, Note?                    string; Answered? time.Time
 }
-type QuestionOption struct{ ID, Label string }
+type QuestionOption struct{ ID, Label string; Description? string }
+// §5.5: QuestionCard, CardItem, QuestionEvidence, AnswerItem, AnswerQuestionsRequest,
+// AnswerResult, AnswerQuestionsResponse; const AnswerOther = "other"
 ```
 
 ### 5.3 Eventos — todos no log da orquestradora
@@ -184,6 +191,7 @@ O progresso do filho fica no log dele; aqui entra só o que a lista viva e a con
 | `gate.measured` | `GateResult` e `child_id` | toda medição, verde ou não |
 | `question.asked` | `Question` | pergunta entrou na fila |
 | `question.answered` | `Question` | a pessoa respondeu |
+| `question.card` | `QuestionCard` | um cartão nasceu ou mudou: item novo, resumo, resposta, pulo, palavras repassadas (§5.5) |
 | `merge.completed` | `MergeCompleted{child_id, method, pr, merged, measured}` | `merged` é o commit na main; `measured`, o do gate |
 | `merge.refused` | `MergeRefused{child_id, code, reason}` | `main_red`, `gate_stale`, `gate_undeclared`, recusa do forge |
 | `main.health` | `MainHealth` | depois de cada merge, até o CI terminar |
@@ -208,6 +216,37 @@ O progresso do filho fica no log dele; aqui entra só o que a lista viva e a con
 
 Recusa de ferramenta volta ao modelo como resultado `ok: false` com o código no texto; o mesmo fato
 vai à pessoa como `session.error` na orquestradora.
+
+### 5.5 O cartão de perguntas — a pessoa decide na conversa
+
+Decisão do dono de 2026-10-18, que refina a RN-4 (o porquê no changelog da família). As perguntas
+**do mesmo tipo pendentes juntas** são **um cartão** (`QuestionCard{id, kind, title, proposed, from,
+why, items, pending, created, updated, closed}`), na ordem em que foram feitas; o cartão fecha quando
+todo item tem resposta, e a pergunta seguinte abre outro. O agrupamento é regra do harness, sem linha
+própria no log. Cada item é a `Question` plana (`CardItem`), com `state` — `pending`, `skipped`,
+`relayed` ou `answered` —, `selected` (a recomendação; num cartão proposto, a resposta proposta, com
+`selected_note`) e `other`, as palavras repassadas. Responder um item é responder a pergunta, em todo
+cartão em que ela está. Num merge, `evidence` é lida das linhas `review.verdict` e `gate.measured` do
+log, com o `seq` delas; o que o filho disse é `claim` daquela linha e não entra.
+
+**As palavras da pessoa** (`answer: "other"`, as palavras em `note`): numa pergunta de desenho são a
+resposta; numa de merge ou de teto, cujas respostas o harness executa, vão à orquestradora
+(`question.relayed`, e o relato) e a pergunta continua esperando, até a pessoa confirmar uma proposta.
+
+**A orquestradora nunca responde.** `summarize` põe 2–3 linhas do que mudou numa pergunta que espera
+(`question.summarized`); `propose_answers` faz um cartão `proposed`, com as respostas que ela leu nas
+palavras da pessoa selecionadas, cada uma uma opção da pergunta (`answers.proposed`). Só o `POST` da
+pessoa — um, ou o lote — vira resposta.
+
+**O que o cliente desenha** (o desktop e a TUI, no PR seguinte), igual ao cartão de pergunta do
+Claude Code: um item por vez, com "1 de N" e setas ‹ ›; o texto da pergunta como título e o `header`
+acima; as opções como linhas de rádio, rótulo em negrito e `description` embaixo, a `selected`
+marcada e a recomendada com "(Recomendado)"; por último a linha "Outro", texto livre, quando
+`allow_other`; no rodapé "Pular" (o item fica pendente) e "Próximo ⌘↵", que no último item confirma
+**todas** as escolhidas num `POST /questions/answers` só, com os pulados em `skipped`; "Aplicar a
+recomendação a todos" é ação do cartão: o mesmo `POST`, com a `recommended` de cada item. Com
+`pending` acima de zero, o selo "Precisa da sua contribuição". Num merge, o `summary` e a `evidence`
+(veredito, gate, comando, commit) aparecem junto da pergunta.
 
 ## 6. A máquina de estados de um filho (RN-9)
 
@@ -340,7 +379,7 @@ As conversas — orquestradora, filhos, revisores — são sessões gravadas pel
 `review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`, `pr.updated`,
 `question.asked`, `question.answered`, `merge.queued`, `merge.completed`, `merge.refused`,
 `main.health`, `ceiling.reached`, `forge.local`, `worktree.removed`, `child.closed`,
-`daemon.restart`.
+`daemon.restart`, `question.summarized`, `question.skipped`, `question.relayed`, `answers.proposed`.
 
 Nenhuma linha passa de 64 KiB: o maior entre `why`, `claim`, `measured` e `data` é cortado com
 `…[N bytes cortados]` (`measured` ou `data` cortados viram string JSON); o que nem assim cabe é erro.
@@ -376,7 +415,9 @@ ao revisor sobre o próprio papel — e que o somente leitura dela não é modo 
 | `children` | `{}` | os `Child`, em texto determinístico |
 | `steer_child` | `{child_id, text, why}` | ok: turno novo, ou `steer` do corrente |
 | `close_child` | `{child_id, why}` | ok |
-| `ask` | `{text, options, recommended, why, child_id}` | o id da pergunta |
+| `ask` | `{header, text, options: [{id, label, description}], recommended, why, child_id}` | o id da pergunta |
+| `summarize` | `{question_id, summary}` | ok; o resumo vai à pergunta e aos cartões dela (§5.5) |
+| `propose_answers` | `{from, why, answers: [{question_id, answer, note}]}` | o id do cartão proposto; nada é respondido |
 
 `delegate` é **tudo ou nada**: valida o lote inteiro — `owns` não vazio e dentro da raiz,
 `OwnsOverlap` entre itens e contra `Leases`, `max_children`, perfil na lista do papel, teto de
@@ -398,7 +439,7 @@ worktree, pelo sandbox, gravável só nela. Uma regra de negação — não perg
 `ExpiresAt` zero e **não expira**; nenhuma ferramenta da orquestradora a responde (ADR-02).
 
 **O relato** (RN-1): `child.completed`, `merge.completed`, `merge.refused`, `main.health` vermelha e
-`question.answered` entram na caixa (`State.PendingReports`). Com a orquestradora `idle`, a caixa
+`question.answered` e `question.relayed` entram na caixa (`State.PendingReports`). Com a orquestradora `idle`, a caixa
 vira um turno `Origin: children` depois de `orchestrator.report_debounce`, com um texto montado pelo
 harness, em inglês, acrescentado ao fim do histórico — nunca no meio de um turno, nunca reescrevendo
 o prefixo (ADR-03). Com um turno em curso, espera ele terminar.
@@ -478,6 +519,13 @@ o que ele mede é o prompt, e veio de um defeito ao vivo. A metade determinísti
 - Todo fim de turno de filho tem um dos nomes da RN-7.
 - Nenhum caminho do código desta fatia roda `rebase`, `push --force` ou `commit --amend`.
 - Toda transição da §6 tem linha no log antes do evento; linha que não grava impede a transição.
+- Perguntas do mesmo tipo pendentes juntas são um cartão só, na ordem em que foram feitas, com a recomendação selecionada.
+- No lote, cada resposta tem o próprio resultado e a primeira a uma pergunta leva, dentro do lote também; item pulado continua pendente.
+- Nenhum método do que as ferramentas da orquestradora alcançam responde pergunta.
+- Cartão proposto não é resposta: nenhum `question.answered`, nenhum `merge.queued`, até o `POST` da pessoa.
+- O resumo da orquestradora entra na pergunta que espera e em todo cartão dela; pergunta respondida não o aceita.
+- A evidência de um item de merge vem das linhas `review.verdict` e `gate.measured` do log, com o `seq` delas, nunca do que o filho disse.
+- As palavras da pessoa respondem pergunta de desenho; numa de merge vão à orquestradora, e a pergunta continua esperando.
 
 ## 14. Invariantes previstas
 
@@ -505,6 +553,8 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 | 12 | `test(orchestrate): scripted scenarios` | 10 |
 | 13 | `feat(tui): the orchestrator lists its agents` | 7 |
 | 14 | `feat(desktop): the live agent list` | 7 |
+| 15 | `feat(orchestrate): the person decides in the orchestrator's conversation` — núcleo e fio (§5.5) | 10 |
+| 16 | o cartão desenhado no desktop e na TUI, como a §5.5 descreve | 15 |
 
 ## 16. Changelog
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
@@ -519,5 +569,6 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)
 - [202610181200 — Os cenários roteirizados](changelog/202610181200-os-cenarios-roteirizados.md)
 - [202610181300 — O gate roda dentro do sandbox](changelog/202610181300-o-gate-roda-no-sandbox.md)
+- [202610181800 — A pessoa decide na conversa da orquestradora](changelog/202610181800-a-pessoa-decide-na-conversa.md)
 - [202610181200 — `dcode orchestrate` abre a orquestradora do projeto](../client-tui/changelog/202610181200-dcode-orchestrate-abre-a-orquestradora.md)
 - [202610181700 — A orquestradora sabe o próprio papel](../behavior-definition/changelog/202610181700-o-orquestrador-sabe-o-proprio-papel.md)

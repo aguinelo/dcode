@@ -83,21 +83,64 @@ export const CHILD: Shape<P.Child> = {
 const QUESTION_OPTION: Shape<P.QuestionOption> = {
   id: req('string'),
   label: req('string'),
+  description: opt('string'),
+};
+
+const QUESTION_EVIDENCE: Shape<P.QuestionEvidence> = {
+  verdict: req('string'),
+  reviewer: opt('string'),
+  reviewed_commit: req('string'),
+  findings: opt('number'),
+  review_seq: req('number'),
+  gate: req('string'),
+  command: req('string'),
+  commit: req('string'),
+  base: req('string'),
+  exit_code: req('number'),
+  duration_ms: req('number'),
+  gate_seq: req('number'),
 };
 
 export const QUESTION: Shape<P.Question> = {
   id: req('string'),
+  header: opt('string'),
   kind: req('string'),
   text: req('string'),
   recommended: req('string'),
   why: req('string'),
   child_id: opt('string'),
   options: req('array', QUESTION_OPTION),
+  allow_other: opt('boolean'),
+  summary: opt('string'),
+  evidence: opt('object', QUESTION_EVIDENCE),
   sensitive: opt('array', 'string'),
   asked: req('string'),
   answer: opt('string'),
   note: opt('string'),
   answered: opt('string'),
+};
+
+const CARD_ITEM: Shape<P.CardItem> = {
+  ...QUESTION,
+  state: req('string'),
+  selected: req('string'),
+  selected_note: opt('string'),
+  other: opt('string'),
+};
+
+/** A card of the questions that wait together (.p §5.5): rendered in the conversation. */
+export const QUESTION_CARD: Shape<P.QuestionCard> = {
+  id: req('string'),
+  kind: req('string'),
+  title: req('string'),
+  proposed: opt('boolean'),
+  from: opt('string'),
+  why: opt('string'),
+  items: req('array', CARD_ITEM),
+  pending: req('number'),
+  created: req('string'),
+  updated: req('string'),
+  closed: opt('string'),
 };
 
 const MAIN_HEALTH: Shape<P.MainHealth> = {
@@ -126,6 +169,7 @@ export const ORCHESTRATE_SHAPES = {
   'gate.measured': { child_id: req('string'), ...GATE_RESULT } satisfies Shape<P.GateMeasured>,
   'question.asked': QUESTION,
   'question.answered': QUESTION,
+  'question.card': QUESTION_CARD,
   'merge.completed': {
     child_id: req('string'),
     method: req('string'),
@@ -150,6 +194,7 @@ export interface OrchestratePayloadByType {
   'gate.measured': P.GateMeasured;
   'question.asked': P.Question;
   'question.answered': P.Question;
+  'question.card': P.QuestionCard;
   'merge.completed': P.MergeCompleted;
   'merge.refused': P.MergeRefused;
   'main.health': P.MainHealth;

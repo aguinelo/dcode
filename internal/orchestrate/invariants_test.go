@@ -75,6 +75,15 @@ var orchestrationInvariants = map[string]string{
 	"vira `unknown` e para a fila":                      "TestPendingCIPastTheTimeoutIsUnknownAndStopsTheQueue",
 	"a orquestradora não resolve conteúdo":              "TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean",
 	"numa worktree que a pessoa usa":                    "TestTheIntegrationIsADetachedWorktreeOfItsOwn",
+
+	// The person decides in the conversation (.p §5.5, the owner's decision of 2026-10-18).
+	"são um cartão só, na ordem em que foram feitas":  "TestPendingQuestionsOfOneKindShareOneCard",
+	"dentro do lote também; item pulado":              "TestTheBatchAnswersEachItemAndTheFirstAnswerWins",
+	"ferramentas da orquestradora alcançam responde":  "TestNoToolOfTheOrchestratorReachesAnAnswer",
+	"Cartão proposto não é resposta":                  "TestProposingAnswersMakesAProposedCardAndAnswersNothing",
+	"pergunta respondida não o aceita":                "TestASummaryIsAttachedToAWaitingMergeQuestion",
+	"com o `seq` delas, nunca do que o filho disse":   "TestTheMergeEvidenceIsWhatTheLogMeasuredNeverTheClaim",
+	"numa de merge vão à orquestradora, e a pergunta": "TestThePersonsOwnWordsAnswerADesignAndRelayAMerge",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

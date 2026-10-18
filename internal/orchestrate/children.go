@@ -28,6 +28,7 @@ func cloneState(st State) State {
 	st.Questions = append([]protocol.Question(nil), st.Questions...)
 	st.PendingReports = append([]string(nil), st.PendingReports...)
 	st.Queue = append([]string(nil), st.Queue...)
+	st.Cards = cloneCards(st.Cards)
 	if st.Briefs != nil {
 		briefs := make(map[string]Brief, len(st.Briefs))
 		for k, v := range st.Briefs {
@@ -278,96 +279,6 @@ func (o *Orchestrator) Close(id, why string) error {
 func isCode(err error, code string) bool {
 	var e *protocol.Error
 	return errors.As(err, &e) && e.Code == code
-}
-
-// Questions are the questions of the project, answered or not.
-func (o *Orchestrator) Questions() []protocol.Question { return o.snapshot().Questions }
-
-// reachCeiling says the ceiling in the log and asks its question, unless one
-// is already waiting.
-func (o *Orchestrator) reachCeiling(why string) {
-	for _, q := range o.snapshot().Questions {
-		if q.Kind == "ceiling" && q.Answer == "" {
-			return
-		}
-	}
-	st := o.snapshot()
-	data, _ := json.Marshal(map[string]int64{"spent": st.Spent, "ceiling": o.limits.TokenCeiling})
-	o.note(Decision{Kind: "ceiling.reached", Session: st.Project.OrchestratorID, Why: why, Data: data})
-	_, _ = o.ask(protocol.Question{Kind: "ceiling", Recommended: "stop",
-		Text: fmt.Sprintf("The project has spent %d tokens, past orchestrator.token_ceiling (%d). Continue with a new window, or stop dispatching?", st.Spent, o.limits.TokenCeiling),
-		Why:  "children already running finish what they do; no new child is dispatched until this is answered",
-		Options: []protocol.QuestionOption{
-			{ID: "continue", Label: "Continue: start a new window of tokens"},
-			{ID: "stop", Label: "Stop dispatching"},
-		}})
-}
-
-// ask puts a question in the queue: question.asked, the state, the wire.
-func (o *Orchestrator) ask(q protocol.Question) (protocol.Question, error) {
-	st := o.snapshot()
-	q.ID = fmt.Sprintf("q%d", len(st.Questions)+1)
-	q.Asked = o.reg.now().UTC()
-	data, _ := json.Marshal(q)
-	if err := o.commit(Decision{Kind: "question.asked", Child: q.ChildID, Session: st.Project.OrchestratorID, Why: q.Why, Data: data},
-		func(s *State) { s.Questions = append(s.Questions, q) }); err != nil {
-		o.sayError(protocol.CodeInternal, "a question did not reach the log, and is not asked: "+err.Error())
-		return q, err
-	}
-	o.emit(protocol.EventQuestionAsked, q)
-	return q, nil
-}
-
-// Answer answers a question; the first answer wins. continue on the ceiling
-// question opens a new window: Spent goes back to zero.
-func (o *Orchestrator) Answer(id, answer, note string) (protocol.Question, error) {
-	st := o.snapshot()
-	i := -1
-	for j, q := range st.Questions {
-		if q.ID == id {
-			i = j
-		}
-	}
-	if i < 0 {
-		return protocol.Question{}, protocol.Errorf(protocol.CodeQuestionNotFound, "this project has no question %s", id)
-	}
-	q := st.Questions[i]
-	if q.Kind == "merge" {
-		return o.answerMerge(q, answer, note)
-	}
-	if q.Answer != "" {
-		return q, protocol.Errorf(protocol.CodeQuestionAlreadyAnswered, "question %s was already answered %q", id, q.Answer)
-	}
-	known := false
-	for _, opt := range q.Options {
-		known = known || opt.ID == answer
-	}
-	if !known {
-		return q, protocol.Errorf(protocol.CodeInvalidInput, "%q is not one of the options of question %s", answer, id)
-	}
-	now := o.reg.now().UTC()
-	q.Answer, q.Note, q.Answered = answer, note, &now
-	why := "the person answered " + answer
-	if q.Kind == "ceiling" && answer == "continue" {
-		why += ": the token window starts again from zero"
-	}
-	data, _ := json.Marshal(q)
-	if err := o.commit(Decision{Kind: "question.answered", Session: st.Project.OrchestratorID, Child: q.ChildID, Why: why, Data: data},
-		func(s *State) {
-			for j := range s.Questions {
-				if s.Questions[j].ID == id {
-					s.Questions[j] = q
-				}
-			}
-			if q.Kind == "ceiling" && answer == "continue" {
-				s.Spent = 0
-			}
-		}); err != nil {
-		return protocol.Question{}, protocol.Errorf(protocol.CodeInternal, "the answer did not reach the log: %v", err)
-	}
-	o.emit(protocol.EventQuestionAnswered, q)
-	o.Report(fmt.Sprintf("The person answered question %s (%s) with %q.", q.ID, q.Kind, answer))
-	return q, nil
 }
 
 // spend adds tokens to the window. Accounting, not a decision: no log line,

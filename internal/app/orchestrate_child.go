@@ -168,6 +168,23 @@ func (p *daemonProjects) Answer(sessionID, questionID string, req protocol.Answe
 	return p.reg.AnswerOf(sessionID, questionID, req.Answer, req.Note)
 }
 
+// Cards are the cards an orchestrator's questions are shown in.
+func (p *daemonProjects) Cards(sessionID string) []protocol.QuestionCard {
+	if p.reg == nil {
+		return nil
+	}
+	cards, _ := p.reg.CardsOf(sessionID)
+	return cards
+}
+
+// AnswerAll is the person's confirm of a card: every answer in one POST.
+func (p *daemonProjects) AnswerAll(sessionID string, req protocol.AnswerQuestionsRequest) (protocol.AnswerQuestionsResponse, error) {
+	if p.reg == nil {
+		return protocol.AnswerQuestionsResponse{}, p.unavailable()
+	}
+	return p.reg.AnswersOf(sessionID, req)
+}
+
 // conductor is the project an orchestrator's tools reach, found when a tool
 // runs: the session is built before its project is held.
 type conductor struct {
@@ -230,9 +247,31 @@ func (c conductor) Ask(in tools.AskInput) (string, error) {
 	}
 	options := make([]protocol.QuestionOption, 0, len(in.Options))
 	for _, opt := range in.Options {
-		options = append(options, protocol.QuestionOption{ID: opt.ID, Label: opt.Label})
+		options = append(options, protocol.QuestionOption{ID: opt.ID, Label: opt.Label, Description: opt.Description})
 	}
-	return o.Ask(in.Text, options, in.Recommended, in.Why, in.ChildID)
+	return o.AskWithHeader(in.Header, in.Text, options, in.Recommended, in.Why, in.ChildID)
+}
+
+func (c conductor) Summarize(qid, summary string) error {
+	o, err := c.held()
+	if err != nil {
+		return err
+	}
+	return o.Summarize(qid, summary)
+}
+
+// ProposeAnswers makes a proposed card; the person's POST alone answers it.
+func (c conductor) ProposeAnswers(in tools.ProposeInput) (string, error) {
+	o, err := c.held()
+	if err != nil {
+		return "", err
+	}
+	answers := make([]protocol.AnswerItem, 0, len(in.Answers))
+	for _, a := range in.Answers {
+		answers = append(answers, protocol.AnswerItem{QuestionID: a.QuestionID, Answer: a.Answer, Note: a.Note})
+	}
+	card, err := o.ProposeAnswers(in.From, in.Why, answers)
+	return card.ID, err
 }
 
 // reviewerMode is a reviewer's boundary: plan mode, the reviewer's registry

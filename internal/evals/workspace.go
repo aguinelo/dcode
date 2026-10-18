@@ -124,6 +124,7 @@ func ProductRegistry() *tools.Registry {
 		// conductor that refused would talk it out of dispatching.
 		tools.DelegateTool{Conductor: c}, tools.ChildrenTool{Conductor: c},
 		tools.SteerChildTool{Conductor: c}, tools.CloseChildTool{Conductor: c}, tools.AskTool{Conductor: c},
+		tools.SummarizeTool{Conductor: c}, tools.ProposeAnswersTool{Conductor: c},
 	)
 }
 

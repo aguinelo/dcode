@@ -51,6 +51,10 @@ func (p *standInProject) Children() ([]protocol.Child, error) {
 func (p *standInProject) SteerChild(string, string, string) error { return nil }
 func (p *standInProject) CloseChild(string, string) error         { return nil }
 func (p *standInProject) Ask(tools.AskInput) (string, error)      { return "q1", nil }
+func (p *standInProject) Summarize(string, string) error          { return nil }
+func (p *standInProject) ProposeAnswers(tools.ProposeInput) (string, error) {
+	return "c1", nil
+}
 
 // validRole refuses a role the prompt cannot be built for, the way an unknown
 // mode is refused: a typo must not degrade into a scenario measured without

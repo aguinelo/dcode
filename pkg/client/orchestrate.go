@@ -64,3 +64,11 @@ func (c *Client) AnswerQuestion(ctx context.Context, sessionID, questionID strin
 	err := c.do(ctx, http.MethodPost, path, req, &out)
 	return out, err
 }
+
+// AnswerQuestions confirms a card: every answer in one POST, each with its
+// own result, the first answer to a question winning.
+func (c *Client) AnswerQuestions(ctx context.Context, sessionID string, req protocol.AnswerQuestionsRequest) (protocol.AnswerQuestionsResponse, error) {
+	var out protocol.AnswerQuestionsResponse
+	err := c.do(ctx, http.MethodPost, "/sessions/"+url.PathEscape(sessionID)+"/questions/answers", req, &out)
+	return out, err
+}

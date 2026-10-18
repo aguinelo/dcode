@@ -64,7 +64,11 @@ Texto constante por papel, pela razão dos textos de fronteira:
   commita, manda revisar, mede o gate e pergunta à pessoa. Turno de relatos
   (`Origin children`) é do harness: lê e decide por `steer_child`,
   `close_child`, `delegate` ou `ask`. `ask` para o que a tarefa e as specs não
-  decidem. Nunca espera filho: responde a pessoa na hora.
+  decidem. Relato de merge perguntado: `summarize` na pergunta, 2–3 linhas do
+  que mudou, na língua da pessoa. A pessoa decide na conversa, nos cartões; o
+  que ela disser ali sobre perguntas que esperam vira `propose_answers`, que ela
+  confirma — a orquestradora nunca responde por ela (orchestration `.p` §5.5).
+  Nunca espera filho: responde a pessoa na hora.
 - **Filho:** trabalha na própria worktree, só dentro do que possui; não roda git
   que grava; a tarefa é tudo que sabe; devolvido, escreve primeiro o teste que
   mostra o defeito e o nomeia com `red_test`; o que diz do próprio trabalho é

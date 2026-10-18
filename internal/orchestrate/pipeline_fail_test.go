@@ -1,6 +1,7 @@
 package orchestrate
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -129,6 +130,12 @@ func TestThePipelineTakesUpAgainAfterARestart(t *testing.T) {
 	p.end(t, a.ID, protocol.StopDone, "Done.")
 	p.end(t, b.ID, protocol.StopDone, "Done.")
 	v := protocol.Verdict{Verdict: "approve", Commit: p.o.child(b.ID).Head}
+	// The approval is in the log as the reviewer's Finish writes it: the
+	// merge question reads its evidence there.
+	measured, _ := json.Marshal(v)
+	if _, err := p.o.log.Record(Decision{Kind: "review.verdict", Child: b.ID, Why: "approved before the stop", Measured: measured}); err != nil {
+		t.Fatal(err)
+	}
 	if err := p.o.apply(edit(b.ID, func(c *protocol.Child) { c.Review = &v })); err != nil {
 		t.Fatal(err)
 	}

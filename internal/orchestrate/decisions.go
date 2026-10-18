@@ -49,7 +49,8 @@ var kinds = map[string]bool{
 	"branch.updated": true, "gate.measured": true, "pr.opened": true, "pr.updated": true, "question.asked": true,
 	"question.answered": true, "merge.queued": true, "merge.completed": true, "merge.refused": true,
 	"main.health": true, "ceiling.reached": true, "forge.local": true, "worktree.removed": true,
-	"child.closed": true, "daemon.restart": true,
+	"child.closed": true, "daemon.restart": true, "question.summarized": true, "question.skipped": true,
+	"question.relayed": true, "answers.proposed": true,
 }
 
 // projectID is Project.ID: 24 hex of a sha256. It names a directory, so

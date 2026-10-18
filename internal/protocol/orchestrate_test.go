@@ -138,6 +138,7 @@ func TestOrchestrationEventNames(t *testing.T) {
 		EventGateMeasured:     "gate.measured",
 		EventQuestionAsked:    "question.asked",
 		EventQuestionAnswered: "question.answered",
+		EventQuestionCard:     "question.card",
 		EventMergeCompleted:   "merge.completed",
 		EventMergeRefused:     "merge.refused",
 		EventMainHealth:       "main.health",
@@ -178,5 +179,27 @@ func TestOrchestrationRoundTrip(t *testing.T) {
 	roundTrip(t, AnswerQuestionRequest{Answer: "merge", Note: "go"})
 	roundTrip(t, ListProjectsResponse{Projects: []Project{{ID: "p", Created: at}}})
 	roundTrip(t, ListChildrenResponse{Children: []Child{}})
-	roundTrip(t, ListQuestionsResponse{Questions: []Question{}})
+	roundTrip(t, ListQuestionsResponse{Questions: []Question{}, Cards: []QuestionCard{}})
+	roundTrip(t, AnswerQuestionsRequest{CardID: "c1", Answers: []AnswerItem{{QuestionID: "q1", Answer: "merge"}}, Skipped: []string{"q2"}})
+	roundTrip(t, AnswerQuestionsResponse{Results: []AnswerResult{{QuestionID: "q1", Status: AnswerRefused,
+		Code: CodeQuestionAlreadyAnswered, Message: "first wins"}}, Cards: []QuestionCard{}})
+}
+
+// A card carries everything its rendering needs — the order of its items,
+// each question flat with its header, options and their descriptions, the
+// recommendation, the selection, the person's own words allowed, the
+// orchestrator's summary and the log's evidence — and how many still wait
+// (.p §5.5).
+func TestACardCarriesItsItemsFlatWithWhatTheyNeed(t *testing.T) {
+	golden(t, "question_card", QuestionCard{ID: "c1", Kind: "merge", Title: "Merges ready", Pending: 1,
+		Items: []CardItem{{
+			Question: Question{ID: "q-1", Header: "index", Kind: "merge", Text: "Merge \"index\"?", Recommended: "merge",
+				Why: "approved and green", ChildID: "s-2", AllowOther: true, Summary: "Conta palavras.\nCom teste.",
+				Options: []QuestionOption{{ID: "merge", Label: "Merge", Description: "Into main."}, {ID: "return", Label: "Return"}},
+				Evidence: &QuestionEvidence{Verdict: "approve", Reviewer: "s-3", ReviewedCommit: "1f2e3d4", ReviewSeq: 7,
+					Gate: "green", Command: "make check", Commit: "1f2e3d4", Base: "6ec45f1", DurationMS: 4000, GateSeq: 9},
+				Asked: at},
+			State: CardItemPending, Selected: "merge",
+		}},
+		Created: at, Updated: at})
 }

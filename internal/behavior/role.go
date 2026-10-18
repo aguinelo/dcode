@@ -39,6 +39,11 @@ const (
 		"Read them and decide: `steer_child` to give a child more, `close_child` to stop one, " +
 		"`delegate` for more, `ask` to put a question to the person.\n" +
 		"- Use `ask` for a decision the task and the specs do not settle; do not guess it.\n" +
+		"- When a report says a child's merge is asked, call `summarize` on that question: two or three lines " +
+		"of what the change does, in the person's language. The evidence beside it is the harness's measurement.\n" +
+		"- The person decides in this conversation, on cards of the waiting questions. When they tell you here " +
+		"how to answer them, call `propose_answers` with what you understood; they confirm it. " +
+		"You never answer a question for the person.\n" +
 		"- Never wait for a child. Answer the person at once while children work; `children` shows where each one is."
 
 	childRole = "You are a child of this project's orchestrator, doing one theme of its work.\n\n" +

@@ -980,6 +980,11 @@ export const EventQuestionAsked: EventType = "question.asked";
  */
 export const EventQuestionAnswered: EventType = "question.answered";
 /**
+ * EventQuestionCard carries a QuestionCard each time it is made or
+ * changes: the conversation renders it where it was said.
+ */
+export const EventQuestionCard: EventType = "question.card";
+/**
  * Events of an orchestrator's log. A child's own progress stays in the child's
  * log; these are what the live list and the conversation need.
  */
@@ -1147,12 +1152,32 @@ export interface MainHealth {
  */
 export interface Question {
   id: string;
+  /**
+   * Header is the question's short tag, a few words shown above it in its
+   * card: the child's title, for a merge.
+   */
+  header?: string;
   kind: string;
   text: string;
   recommended: string;
   why: string;
   child_id?: string;
   options: QuestionOption[];
+  /**
+   * AllowOther is whether the person may answer in their own words —
+   * AnswerOther, with the words as the note — besides the options.
+   */
+  allow_other?: boolean;
+  /**
+   * Summary is what changed, in two or three lines the orchestrator wrote
+   * in the person's language; empty until it writes them.
+   */
+  summary?: string;
+  /**
+   * Evidence is what the harness measured, read from the decision log —
+   * on a merge question; never what the child said.
+   */
+  evidence?: QuestionEvidence;
   /**
    * Sensitive are the paths of the diff that make a merge ask with care.
    */
@@ -1163,11 +1188,13 @@ export interface Question {
   answered?: string;
 }
 /**
- * QuestionOption is one answer a question offers.
+ * QuestionOption is one answer a question offers: a short label, and what
+ * choosing it does.
  */
 export interface QuestionOption {
   id: string;
   label: string;
+  description?: string;
 }
 /**
  * OpenProjectRequest opens, or finds, the project of a workspace.
@@ -1189,10 +1216,12 @@ export interface ListChildrenResponse {
   children: Child[];
 }
 /**
- * ListQuestionsResponse answers GET /sessions/{id}/questions.
+ * ListQuestionsResponse answers GET /sessions/{id}/questions: the queue, and
+ * the cards it is shown in, open and closed.
  */
 export interface ListQuestionsResponse {
   questions: Question[];
+  cards: QuestionCard[];
 }
 /**
  * AnswerQuestionRequest answers one question; the first answer wins.
@@ -2377,6 +2406,153 @@ export interface DoneChecked {
    * TouchedProtected are paths that measure the work and were written.
    */
   touched_protected?: string[];
+}
+
+//////////
+// source: questions.go
+
+/**
+ * AnswerOther is the answer in the person's own words, the words as the
+ * note. On a design question it is the answer; on a merge or a ceiling
+ * question, whose answers the harness acts on, the words go to the
+ * orchestrator and the question keeps waiting (CardItemRelayed).
+ */
+export const AnswerOther = "other";
+/**
+ * CardItemPending waits for the person.
+ */
+export const CardItemPending = "pending";
+/**
+ * CardItemSkipped is one the person passed over when they confirmed the
+ * card: its question still waits.
+ */
+export const CardItemSkipped = "skipped";
+/**
+ * CardItemRelayed is one the person answered in their own words where
+ * the harness acts on an option: the words went to the orchestrator,
+ * which proposes answers, and the question still waits.
+ */
+export const CardItemRelayed = "relayed";
+/**
+ * CardItemAnswered is one whose question has its answer, from this card
+ * or from any other place the person answered it.
+ */
+export const CardItemAnswered = "answered";
+/**
+ * The status of one answer of a batch (AnswerResult.Status): the item's new
+ * state, or refused with the code of why.
+ */
+export const AnswerRefused = "refused";
+/**
+ * QuestionCard groups the questions of one kind that wait together — three
+ * merges ready, say — in the order they were asked. A card is proposed when
+ * the orchestrator made it from the person's words: its items come with the
+ * answers it understood selected, and they are answers only once the person
+ * confirms them with their own POST.
+ */
+export interface QuestionCard {
+  id: string;
+  kind: string;
+  title: string;
+  /**
+   * Proposed says the selections are the orchestrator's proposal, and From
+   * is the person's words it came from.
+   */
+  proposed?: boolean;
+  from?: string;
+  /**
+   * Why is the orchestrator's reason for a proposed card.
+   */
+  why?: string;
+  items: CardItem[];
+  /**
+   * Pending is how many items still wait — pending, skipped or relayed:
+   * the card needs the person while it is above zero.
+   */
+  pending: number /* int */;
+  created: string;
+  updated: string;
+  closed?: string;
+}
+/**
+ * CardItem is one question of a card, flat, with where it is in the card.
+ * Selected is the option shown selected: the recommendation, or on a
+ * proposed card the answer the orchestrator understood, with its note.
+ */
+export interface CardItem extends Question {
+  state: string;
+  selected: string;
+  selected_note?: string;
+  /**
+   * Other is the person's own words, on an item that was relayed.
+   */
+  other?: string;
+}
+/**
+ * QuestionEvidence is what the harness measured of a child, read from the
+ * decision log's lines: the reviewer's verdict and the gate's result, each
+ * with the line it came from. What the child said of its work is no part of it.
+ */
+export interface QuestionEvidence {
+  /**
+   * Verdict is the reviewer's, on ReviewedCommit; Findings how many it
+   * pointed at. ReviewSeq is the review.verdict line.
+   */
+  verdict: string;
+  reviewer?: string;
+  reviewed_commit: string;
+  findings?: number /* int */;
+  review_seq: number /* uint64 */;
+  /**
+   * Gate is the result of Command on Commit, over main at Base. GateSeq is
+   * the gate.measured line.
+   */
+  gate: string;
+  command: string;
+  commit: string;
+  base: string;
+  exit_code: number /* int */;
+  duration_ms: number /* int */;
+  gate_seq: number /* uint64 */;
+}
+/**
+ * AnswerItem is one answer of a batch.
+ */
+export interface AnswerItem {
+  question_id: string;
+  answer: string;
+  note?: string;
+}
+/**
+ * AnswerQuestionsRequest is the person's confirm of a card: every answer
+ * they gave, in one POST, and the items they skipped, which keep waiting.
+ * Skipped needs CardID, the card they were skipped in.
+ */
+export interface AnswerQuestionsRequest {
+  card_id?: string;
+  answers: AnswerItem[];
+  skipped?: string[];
+}
+/**
+ * AnswerResult is what became of one answer of a batch: answered, relayed,
+ * skipped, or refused with the code and why. Question is the question as it
+ * is now, when there is one.
+ */
+export interface AnswerResult {
+  question_id: string;
+  status: string;
+  code?: string;
+  message?: string;
+  question?: Question;
+}
+/**
+ * AnswerQuestionsResponse answers the batch: one result per answer and per
+ * skip, in the order sent, and the cards they changed. The first answer to a
+ * question wins, inside the batch too.
+ */
+export interface AnswerQuestionsResponse {
+  results: AnswerResult[];
+  cards: QuestionCard[];
 }
 
 //////////
