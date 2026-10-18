@@ -10,6 +10,7 @@ import { emptyLoops } from '../state/loop';
 import type { Look } from '../renderer/TopBar';
 import { loopRecording, recordedLoops } from './loop-recording';
 import { emptyOrchestraRecording, orchestraRecording } from './orchestra-recording';
+import { planRecording } from './plan-recording';
 import { questionsRecording } from './questions-recording';
 import type { Recording } from './record';
 import { recording, RECORDED_AT } from './recording';
@@ -41,4 +42,6 @@ export const referenceStates: Readonly<Record<string, Scene>> = {
   'crew-orquestra-vazia': crew(emptyOrchestraRecording),
   // An orchestrator that asks in its conversation (D67): a card of three merges, and the card it proposed from the person's words.
   'crew-perguntas': crew(questionsRecording),
+  // An orchestrator's plan as its main view (D68): each step with its agent's phase, and a merge card below.
+  'crew-orquestra-plano': crew(planRecording),
 };

@@ -150,6 +150,11 @@ type Orchestrator struct {
 	forge    Forge
 	mg       *Merges
 	drainMu  sync.Mutex
+	// planMu keeps one advance of the plan at a time, from reading the
+	// children to the plan.updated it sends (plan.go); planSent is the plan
+	// the wire shows now.
+	planMu   sync.Mutex
+	planSent []protocol.PlanItem
 }
 
 // NewRegistry opens orchestrator.dir, owner-only, for this daemon alone.

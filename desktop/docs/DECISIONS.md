@@ -65,6 +65,7 @@ As que estão nos outros arquivos:
 - [D65](DECISIONS-5.md) — O produto se chama DCode Box; a marca na barra do topo continua "dcode".
 - [D66](DECISIONS-5.md) — A janela age sobre a orquestradora: responde a fila, abre a do projeto pelo "Nova" e agrupa os filhos sob o projeto.
 - [D67](DECISIONS-5.md) — A pessoa decide na conversa da orquestradora, num cartão de perguntas igual ao do Claude Code.
+- [D68](DECISIONS-5.md) — O plano da orquestradora é a vista principal, e cada passo mostra a fase dos agentes que o cumprem.
 
 ## Decisões
 

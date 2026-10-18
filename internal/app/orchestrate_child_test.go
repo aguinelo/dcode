@@ -235,9 +235,12 @@ func TestTheConductorReachesTheProjectThroughTheDaemon(t *testing.T) {
 	d := modelDaemon(t, &routedModel{hold: make(chan struct{})}, time.Minute, t.TempDir(), t.TempDir())
 	p := openProject(t, d, ws, http.StatusCreated)
 	c := conductor{d: d, project: p.ID}
-	kids, err := c.Delegate([]tools.DelegateItem{{Title: "docs", Task: "t", Owns: []string{"docs"}, Why: "w"}})
+	kids, err := c.Delegate([]tools.DelegateItem{{Title: "docs", Task: "t", Owns: []string{"docs"}, Why: "w", PlanStep: 2}})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if kids[0].PlanStep != 2 {
+		t.Errorf("the delegate item named plan step 2, and the child holds %d", kids[0].PlanStep)
 	}
 	if got, err := c.Children(); err != nil || len(got) != 1 {
 		t.Errorf("Children = %v, %v", got, err)

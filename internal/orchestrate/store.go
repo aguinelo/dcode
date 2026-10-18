@@ -46,6 +46,9 @@ type State struct {
 	// Briefs are what each child was dispatched with, by child id: what the
 	// pipeline needs after dispatch and the wire's Child does not carry.
 	Briefs map[string]Brief `json:"briefs,omitempty"`
+	// Plan is the orchestrator's plan as its plan tool last wrote it, before
+	// the harness sets the status of the steps that have children (plan.go).
+	Plan []protocol.PlanItem `json:"plan,omitempty"`
 }
 
 // Brief is a child's dispatch as the pipeline reads it later: the task the

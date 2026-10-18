@@ -54,6 +54,8 @@ type Item struct {
 	FixesMain       bool
 	// Why is the model's reason for this child, and goes to the log.
 	Why string
+	// PlanStep is the orchestrator's plan item the child fulfils; 0 is none.
+	PlanStep int
 }
 
 // Delegate dispatches a batch, all or nothing: owns, overlap with each other
@@ -92,6 +94,11 @@ func (o *Orchestrator) admit(items []Item) ([]string, error) {
 		if strings.TrimSpace(it.Title) == "" || strings.TrimSpace(it.Task) == "" || strings.TrimSpace(it.Why) == "" {
 			return nil, protocol.Errorf(protocol.CodeInvalidInput,
 				"item %d needs a title, a task and a why; the batch is refused whole", i+1)
+		}
+		if it.PlanStep < 0 {
+			return nil, protocol.Errorf(protocol.CodeInvalidInput,
+				"%q names plan step %d, and a plan step is an item id from 1, or 0 for none; the batch is refused whole",
+				it.Title, it.PlanStep)
 		}
 		if err := validOwns(it.Title, it.Owns); err != nil {
 			return nil, err
@@ -187,12 +194,16 @@ func (o *Orchestrator) dispatchOne(it Item, profile string) protocol.Child {
 	c := protocol.Child{
 		ID: id, ParentID: orq, Title: it.Title, Profile: profile, State: stateDispatched,
 		Owns: append([]string(nil), it.Owns...), Branch: branchFor(o.limits.BranchPrefix, it.Title, id),
-		Worktree: worktreeOf(o.reg.dir, p.ID, id), Started: o.reg.now().UTC(),
+		Worktree: worktreeOf(o.reg.dir, p.ID, id), Started: o.reg.now().UTC(), PlanStep: it.PlanStep,
 	}
 	base, berr := mainTip(ctx, p.Root, p.Main)
 	c.Base = base
-	data, _ := json.Marshal(map[string]any{"title": it.Title, "task": it.Task, "owns": it.Owns,
-		"pr_title": it.PRTitle, "pr_body": it.PRBody, "fixes_main": it.FixesMain, "branch": c.Branch})
+	fields := map[string]any{"title": it.Title, "task": it.Task, "owns": it.Owns,
+		"pr_title": it.PRTitle, "pr_body": it.PRBody, "fixes_main": it.FixesMain, "branch": c.Branch}
+	if it.PlanStep > 0 {
+		fields["plan_step"] = it.PlanStep
+	}
+	data, _ := json.Marshal(fields)
 	if err := o.commit(Decision{Kind: "dispatch", Child: id, Session: orq, Why: it.Why, Data: data},
 		func(st *State) {
 			st.Children = append(st.Children, c)

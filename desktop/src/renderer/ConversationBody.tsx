@@ -2,6 +2,7 @@ import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'reac
 import { imagesOfEntries } from '../state/attachments';
 import { activity, flowBlocks } from '../state/flow';
 import { pinnedPlan, withoutPinned } from '../state/plan';
+import { stepAgents } from '../state/plan-agents';
 import type { SessionView } from '../state/session';
 import { Composer } from './Composer';
 import { FlowBlocks } from './Flow';
@@ -32,6 +33,8 @@ export function ConversationBody({
   onStop,
   onMissing,
   onMode,
+  canOpenChild,
+  onOpenChild,
 }: {
   session: SessionView;
   now: number;
@@ -47,9 +50,15 @@ export function ConversationBody({
   onStop: () => void;
   onMissing: (what: string) => void;
   onMode?: (anchor: HTMLElement) => void;
+  /** Whether a child of an orchestrator can be opened from its plan (D68), and opening it. */
+  canOpenChild?: (id: string) => boolean;
+  onOpenChild?: (id: string) => void;
 }) {
   // The running turn's plan stands above the flow, and the flow leaves it out (D57).
   const pin = useMemo(() => pinnedPlan(session), [session]);
+  // An orchestrator's steps carry the agents that fulfil them (D68).
+  const orchestrator = session.info?.role === 'orchestrator';
+  const agents = useMemo(() => (pin && orchestrator ? stepAgents(pin.items, session.agents.children) : undefined), [pin, orchestrator, session.agents.children]);
   const blocks = useMemo(() => flowBlocks(withoutPinned(session.entries, pin)), [session.entries, pin]);
   const act = useMemo(() => activity(session.entries), [session.entries]);
   // The pictures this window sent, on the messages they went with (D46): the events carry none.
@@ -73,7 +82,7 @@ export function ConversationBody({
 
   return (
     <>
-      {pin && <PlanPin pin={pin} compact={compact} />}
+      {pin && <PlanPin pin={pin} compact={compact} agents={agents} canOpen={canOpenChild} onOpen={onOpenChild} />}
       <div
         className="flow-scroll"
         ref={scroller}

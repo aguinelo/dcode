@@ -211,7 +211,7 @@ func (c conductor) Delegate(items []tools.DelegateItem) ([]protocol.Child, error
 	batch := make([]orchestrate.Item, 0, len(items))
 	for _, it := range items {
 		batch = append(batch, orchestrate.Item{Title: it.Title, Task: it.Task, Owns: it.Owns, Model: it.Model,
-			PRTitle: it.PRTitle, PRBody: it.PRBody, FixesMain: it.FixesMain, Why: it.Why})
+			PRTitle: it.PRTitle, PRBody: it.PRBody, FixesMain: it.FixesMain, Why: it.Why, PlanStep: it.PlanStep})
 	}
 	return o.Delegate(batch)
 }

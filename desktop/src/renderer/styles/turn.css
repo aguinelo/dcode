@@ -60,6 +60,110 @@
   font-size: 11.5px;
 }
 
+/* An orchestrator's plan, each step with its agents (D68): pinned between its
+   turns, so it never takes the whole conversation. */
+.plan-pin.with-agents {
+  max-height: 42vh;
+  overflow-y: auto;
+}
+.plan-pin.with-agents .plan-pin-item {
+  flex-wrap: wrap;
+}
+.plan-agents {
+  flex-basis: 100%;
+  margin: 2px 0 4px 20px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.plan-agent {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11.5px;
+}
+.plan-agent-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--dc-text);
+  cursor: pointer;
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-agent-name:hover:not(:disabled) {
+  color: var(--dc-emph);
+  text-decoration: underline;
+}
+.plan-agent-name:disabled {
+  color: var(--dc-dim);
+  cursor: default;
+}
+.phase-pipe {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: 2px;
+}
+.phase {
+  padding: 0 5px;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: 3px;
+  line-height: 16px;
+  font-size: 10.5px;
+  color: var(--dc-faint);
+}
+.phase.passed {
+  color: var(--dc-dim);
+  border-color: var(--dc-line);
+}
+.phase.current {
+  border-color: currentColor;
+  font-weight: 600;
+}
+/* The current phase in its tone (D52, D61): .phase's own colour would win over .tone-*. */
+.phase.current.tone-accent {
+  color: var(--dc-accent);
+}
+.phase.current.tone-warn {
+  color: var(--dc-warn);
+}
+.phase.current.tone-err {
+  color: var(--dc-err);
+}
+.phase.current.tone-ok {
+  color: var(--dc-ok);
+}
+.phase.current.tone-dim {
+  color: var(--dc-dim);
+}
+.plan-agent-word {
+  font-size: 11px;
+}
+.plan-agent-tokens {
+  color: var(--dc-faint);
+  font-size: 10.5px;
+}
+.plan-pin-outside {
+  max-width: 732px;
+  margin: 6px auto 0;
+}
+.plan-pin-outside-head {
+  color: var(--dc-faint);
+  font-size: 11px;
+}
+.plan-pin-outside .plan-agents {
+  margin-left: 0;
+}
+
 /* A window on the grid: one line. */
 .plan-pin.compact {
   display: flex;

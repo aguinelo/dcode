@@ -28,6 +28,7 @@ func cloneState(st State) State {
 	st.Questions = append([]protocol.Question(nil), st.Questions...)
 	st.PendingReports = append([]string(nil), st.PendingReports...)
 	st.Queue = append([]string(nil), st.Queue...)
+	st.Plan = append([]protocol.PlanItem(nil), st.Plan...)
 	st.Cards = cloneCards(st.Cards)
 	if st.Briefs != nil {
 		briefs := make(map[string]Brief, len(st.Briefs))
@@ -102,6 +103,9 @@ func (o *Orchestrator) orchestratorID() string { return o.Project().Orchestrator
 func (o *Orchestrator) emit(t protocol.EventType, payload any) {
 	if o.reg != nil && o.reg.emit != nil {
 		o.reg.emit(o.orchestratorID(), t, payload)
+	}
+	if t == protocol.EventChildStarted || t == protocol.EventChildState {
+		o.advancePlan()
 	}
 }
 

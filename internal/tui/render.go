@@ -664,7 +664,7 @@ func renderStream(m Model, g Geometry, w int) []string {
 
 		case KindPlan:
 			out = gapBefore(out)
-			out = append(out, renderPlanBlock(e, cursor, cont, gl, g, m.Lang, w)...)
+			out = append(out, renderPlanBlock(e, m.Agents.Children, cursor, cont, gl, g, m.Lang, w)...)
 			blocked = true
 
 		case KindCard:
@@ -827,7 +827,9 @@ func decisionWord(d protocol.ApprovalDecision, t Strings) string {
 //
 // The heading counts the plan the way the model would say it — `plan 2/4` — so
 // the block answers "how far along" without the reader counting ticks.
-func renderPlanBlock(e Entry, cursor, cont string, gl marks, g Geometry, lang Lang, w int) []string {
+//
+// An orchestrator's step names the children that fulfil it under it (kids).
+func renderPlanBlock(e Entry, kids []Agent, cursor, cont string, gl marks, g Geometry, lang Lang, w int) []string {
 	p := g.Palette
 	t := Text(lang)
 
@@ -858,6 +860,7 @@ func renderPlanBlock(e Entry, cursor, cont string, gl marks, g Geometry, lang La
 		line := cont + p.Apply(StyleChrome, branch) + " " + p.Apply(style, mark) + " " +
 			p.Apply(textStyleFor(it.Status), ellipsisTail(it.Text, room, gl.ell))
 		out = append(out, clipStyled(line, w))
+		out = append(out, planChildRows(kids, it.ID, cont, g, lang, w)...)
 
 		// A block with no visible cause is worse than no block at all — the
 		// rule the panel carried, kept when the plan moved into the stream.

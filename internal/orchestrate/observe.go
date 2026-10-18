@@ -49,6 +49,10 @@ func (r *Registry) Observe(sessionID string, ev protocol.Event) {
 		return
 	}
 	if !isChild {
+		if ev.Type == protocol.EventPlanUpdated && !isReviewer {
+			held.planRevised(ev)
+			return
+		}
 		if ev.Type != protocol.EventTurnCompleted {
 			return
 		}

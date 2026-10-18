@@ -229,3 +229,35 @@ func tokenCount(n int) string {
 	}
 	return humanTokens(n)
 }
+
+// planChildRows are the children of one step of the orchestrator's plan,
+// under it: the mark, the title and the state, one row each (desktop D68, in
+// text). A step no child names has none, and is drawn as before.
+func planChildRows(kids []Agent, step int, cont string, g Geometry, lang Lang, w int) []string {
+	if step == 0 {
+		return nil
+	}
+	p := g.Palette
+	t := Text(lang)
+	am := agentGlyphs(g.Unicode)
+	var out []string
+	for _, c := range kids {
+		if c.PlanStep != step {
+			continue
+		}
+		mark, ok := am.state[c.State]
+		if !ok {
+			mark = am.unknown
+		}
+		style := agentStateStyle(c.State)
+		state := agentStateWord(c.State, t)
+		room := w - visibleWidth(cont) - 8 - visibleWidth(state)
+		title := c.Title
+		if room > 1 {
+			title = ellipsisTail(title, room, glyphs(g.Unicode).ell)
+		}
+		out = append(out, clipStyled(cont+"     "+p.Apply(style, mark)+" "+p.Apply(StyleProse, title)+" "+
+			p.Apply(StyleMeta, "·")+" "+p.Apply(style, state), w))
+	}
+	return out
+}

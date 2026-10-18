@@ -131,6 +131,11 @@ export function CrewView({
             on={on}
             git={git.state}
             measure={measure}
+            canOpenChild={(id) => rowIn(projects, id) !== null}
+            onOpenChild={(id) => {
+              const r = rowIn(projects, id);
+              if (r) on.pick(r);
+            }}
           />
           <ContextPane
             row={row}

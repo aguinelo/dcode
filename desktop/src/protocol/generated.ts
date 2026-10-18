@@ -1064,6 +1064,12 @@ export interface Child {
   usage: Usage;
   started: string;
   ended?: string;
+  /**
+   * PlanStep is the id of the orchestrator's plan item this child fulfils,
+   * as its delegate item named it; 0 is none. The harness sets that step's
+   * status from the state of its children.
+   */
+  plan_step?: number /* int */;
 }
 /**
  * Return is why a child was handed its work back.
