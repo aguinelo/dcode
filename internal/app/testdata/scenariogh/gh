@@ -1,0 +1,87 @@
+#!/bin/sh
+# A stand-in for the GitHub CLI, for the orchestrator's scripted scenarios. It
+# talks to no network: the bare repository the project calls origin is the
+# forge. It keeps its pull requests in $SCENARIO_GH and writes down every call,
+# the arguments one per line and a blank line after each.
+#
+#   pr create  numbers the PR and remembers its branch
+#   pr merge   squashes the commit --match-head-commit names onto origin's
+#              main, as GitHub would, and refuses when the branch on origin
+#              is not at that commit
+#   pr view    says MERGED at the squash, or OPEN
+#   run list   every run green; with $SCENARIO_GH/red-after-merge, red on
+#              every commit a merge of this fake made
+d="$SCENARIO_GH"
+for a in "$@"; do printf '%s\n' "$a" >>"$d/calls"; done
+printf '\n' >>"$d/calls"
+case "$1 $2" in
+"auth status")
+	exit 0
+	;;
+"pr create")
+	cat >/dev/null
+	head=""
+	prev=""
+	for a in "$@"; do
+		[ "$prev" = "--head" ] && head="$a"
+		prev="$a"
+	done
+	n=$(($(cat "$d/count" 2>/dev/null || echo 0) + 1))
+	echo "$n" >"$d/count"
+	echo "$head" >"$d/pr-$n"
+	echo "https://github.com/o/r/pull/$n"
+	exit 0
+	;;
+"pr merge")
+	n="$3"
+	match=""
+	prev=""
+	for a in "$@"; do
+		[ "$prev" = "--match-head-commit" ] && match="$a"
+		prev="$a"
+	done
+	branch=$(cat "$d/pr-$n") || exit 1
+	origin=$(git remote get-url origin) || exit 1
+	tip=$(git --git-dir="$origin" rev-parse "refs/heads/$branch") || exit 1
+	if [ "$tip" != "$match" ]; then
+		echo "Head branch was modified. Review and try the merge again." >&2
+		exit 1
+	fi
+	tmp=$(mktemp -d)
+	if ! (git clone -q "$origin" "$tmp/c" && cd "$tmp/c" &&
+		git merge -q --squash "$match" >/dev/null &&
+		git commit -q -m "squash #$n" &&
+		git push -q origin HEAD:refs/heads/main &&
+		git rev-parse HEAD >"$d/merged-$n"); then
+		rm -rf "$tmp"
+		echo "fake gh: the squash of #$n did not land" >&2
+		exit 1
+	fi
+	rm -rf "$tmp"
+	exit 0
+	;;
+"pr view")
+	if [ -f "$d/merged-$3" ]; then
+		echo "{\"state\":\"MERGED\",\"mergeCommit\":{\"oid\":\"$(cat "$d/merged-$3")\"}}"
+	else
+		echo '{"state":"OPEN","mergeCommit":null}'
+	fi
+	exit 0
+	;;
+"run list")
+	sha=""
+	prev=""
+	for a in "$@"; do
+		[ "$prev" = "--commit" ] && sha="$a"
+		prev="$a"
+	done
+	if [ -f "$d/red-after-merge" ] && cat "$d"/merged-* 2>/dev/null | grep -qx "$sha"; then
+		echo '[{"status":"completed","conclusion":"failure"}]'
+	else
+		echo '[{"status":"completed","conclusion":"success"}]'
+	fi
+	exit 0
+	;;
+esac
+echo "fake gh: no answer for: $*" >&2
+exit 2
