@@ -112,6 +112,11 @@ type Prompt struct {
 	// what `/mode` changes, and the prompt is rebuilt when it does. See
 	// boundary.go for why that cost is paid.
 	Boundary *Boundary
+	// Role is which session of an orchestrated project this is: orchestrator,
+	// child or reviewer. Empty is every session that is not orchestrated, and
+	// renders nothing. Frozen at session creation, like everything but the
+	// boundary: a session does not change role.
+	Role string
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
