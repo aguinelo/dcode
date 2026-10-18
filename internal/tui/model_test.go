@@ -370,7 +370,7 @@ func TestToolSummariesComeFromTheMetadata(t *testing.T) {
 		"unknown tool":  {"custom", protocol.ToolCompleted{OK: true, Output: "pronto\nmais"}, "pronto"},
 		"unknown empty": {"custom", protocol.ToolCompleted{OK: true}, "ok"},
 	} {
-		if got := summariseResult(tc.tool, tc.done); got != tc.want {
+		if got := summariseResult(tc.tool, tc.done, En); got != tc.want {
 			t.Errorf("%s: got %q want %q", name, got, tc.want)
 		}
 	}

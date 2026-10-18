@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
@@ -201,7 +203,8 @@ func ScrollHint(m Model, g Geometry, top, total, height int) string {
 	if !g.Unicode {
 		mark = "v"
 	}
-	return mark + " " + plural(behind, "line below", "lines below") + " · End to follow"
+	t := Text(m.Lang)
+	return mark + " " + fmt.Sprintf(t.ScrollBelow, plural(behind, t.LineOne, t.LineMany)) + " · " + t.ScrollFollow
 }
 
 // clipWidth is a small helper shared by the renderers.

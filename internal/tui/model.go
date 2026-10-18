@@ -489,7 +489,7 @@ func (m Model) Apply(ev protocol.Event) Model {
 			if d.ToolCallID != "" && m.Entries[i].CallID != d.ToolCallID {
 				continue
 			}
-			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d)
+			m.Entries[i].Summary = summariseResult(m.Entries[i].Tool, d, m.Lang)
 			m.Entries[i].Detail = withoutEchoOf(d.Output, m.Entries[i].Summary)
 			m.Entries[i].Diff = d.Diff
 			m.Entries[i].IsError = !d.OK
@@ -929,11 +929,6 @@ func relativise(target, workspace string) string {
 	return target
 }
 
-// summariseResult renders the one-line form of a completed tool call.
-//
-// It reads the metadata the tool reported rather than parsing the output. `go
-// test` prints two hundred lines; what the user needs on screen is "12 passed",
-// and rebuilding that by matching prose breaks the day the wording changes.
 // ownsOf reads the paths a delegated call declared it would write.
 //
 // From the input rather than from the result, because it is what the child was
@@ -972,20 +967,27 @@ func withoutEchoOf(output, summary string) string {
 	return rest
 }
 
-func summariseResult(tool string, d protocol.ToolCompleted) string {
+// summariseResult renders the one-line form of a completed tool call, in the
+// screen's language.
+//
+// It reads the metadata the tool reported rather than parsing the output. `go
+// test` prints two hundred lines; what the user needs on screen is "12 passed",
+// and rebuilding that by matching prose breaks the day the wording changes.
+func summariseResult(tool string, d protocol.ToolCompleted, lang Lang) string {
+	t := Text(lang)
 	if !d.OK {
 		if s := firstLine(d.Output); s != "" {
 			return s
 		}
-		return "failed"
+		return t.ResultFailed
 	}
 
 	switch tool {
 	case "read":
 		if d.Lines > 0 {
-			s := fmt.Sprintf("%d lines", d.Lines)
+			s := plural(d.Lines, t.LineOne, t.LineMany)
 			if d.Truncated {
-				s += " (truncated)"
+				s += " " + t.ResultTruncated
 			}
 			return s
 		}
@@ -993,17 +995,18 @@ func summariseResult(tool string, d protocol.ToolCompleted) string {
 		return fmt.Sprintf("+%d -%d", d.Added, d.Removed)
 	case "write":
 		if d.Removed == 0 && d.Added > 0 {
-			return fmt.Sprintf("created, %d lines", d.Added)
+			return fmt.Sprintf(t.ResultCreated, plural(d.Added, t.LineOne, t.LineMany))
 		}
 		return fmt.Sprintf("+%d -%d", d.Added, d.Removed)
 	case "glob":
-		return plural(d.Files, "file", "files")
+		return plural(d.Files, t.ResultFileOne, t.ResultFileMany)
 	case "grep":
 		if d.Lines == 0 {
-			return "no matches"
+			return t.ResultNoMatches
 		}
-		return fmt.Sprintf("%s in %s",
-			plural(d.Lines, "match", "matches"), plural(d.Files, "file", "files"))
+		return fmt.Sprintf(t.ResultIn,
+			plural(d.Lines, t.ResultMatchOne, t.ResultMatchMany),
+			plural(d.Files, t.ResultFileOne, t.ResultFileMany))
 	case "bash":
 		if d.HasExit {
 			if d.ExitCode == 0 {
