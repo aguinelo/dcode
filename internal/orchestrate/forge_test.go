@@ -40,8 +40,12 @@ func TestMergeFromReadsTheKeysAndRefusesWhatDoesNotHold(t *testing.T) {
 func TestAutoIsGitHubWithAnOriginAndALoginAndLocalOtherwise(t *testing.T) {
 	gh := fakeGh(t)
 	withOrigin := newProject(t, true)
-	setup := func(p project, declared string) ForgeSetup {
-		return ForgeSetup{Declared: declared, Root: p.root, Main: "main", Gate: Gate{Command: "true", Timeout: time.Minute}}
+	setup := func(p mergeProject, declared string) ForgeSetup {
+		in, err := OpenIntegration(context.Background(), p.root, p.dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ForgeSetup{Declared: declared, Root: p.root, Main: "main", Integration: in, Gate: Gate{Command: "true", Timeout: time.Minute}}
 	}
 	ctx := context.Background()
 	if f, err := NewForge(ctx, setup(withOrigin, ForgeAuto)); err != nil || f.Name() != ForgeGitHub {
@@ -61,8 +65,9 @@ func TestAutoIsGitHubWithAnOriginAndALoginAndLocalOtherwise(t *testing.T) {
 	if err := os.Remove(filepath.Join(gh, "logged-out")); err != nil {
 		t.Fatal(err)
 	}
+	s := setup(withOrigin, ForgeGitHub)
 	t.Setenv("PATH", t.TempDir())
-	if _, err := NewForge(ctx, setup(withOrigin, ForgeGitHub)); err == nil {
+	if _, err := NewForge(ctx, s); err == nil {
 		t.Error("github declared without gh on PATH was accepted")
 	}
 }
@@ -81,8 +86,8 @@ func TestMainHealthOnGitHubReadsTheRunsOfTheCommit(t *testing.T) {
 	for runs, want := range map[string]string{
 		`[]`: "pending",
 		`[{"status":"completed","conclusion":"success"},{"status":"completed","conclusion":"skipped"}]`:  "green",
-		`[{"status":"completed","conclusion":"success"},{"status":"in_progress","conclusion":""}]`:      "pending",
-		`[{"status":"in_progress","conclusion":""},{"status":"completed","conclusion":"failure"}]`:      "red",
+		`[{"status":"completed","conclusion":"success"},{"status":"in_progress","conclusion":""}]`:       "pending",
+		`[{"status":"in_progress","conclusion":""},{"status":"completed","conclusion":"failure"}]`:       "red",
 		`[{"status":"completed","conclusion":"success"},{"status":"completed","conclusion":"whatever"}]`: "red",
 	} {
 		ghSays(t, gh, "runs.json", runs)

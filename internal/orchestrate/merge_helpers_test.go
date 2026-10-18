@@ -70,20 +70,20 @@ func ghMergesTo(t *testing.T, d, commit string) {
 	ghSays(t, d, "view.json", `{"state":"MERGED","mergeCommit":{"oid":"`+commit+`"}}`)
 }
 
-// project is a repository with main at one commit, and the folder the daemon
+// mergeProject is a repository with main at one commit, and the folder the daemon
 // keeps the project in. With origin, a bare repository elsewhere holds main too.
-type project struct {
+type mergeProject struct {
 	root, remote, dir string
 }
 
-func newProject(t *testing.T, origin bool) project {
+func newProject(t *testing.T, origin bool) mergeProject {
 	t.Helper()
 	mergeEnv(t)
 	base, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := project{root: filepath.Join(base, "repo"), dir: filepath.Join(base, "orchestrate", testProjectID)}
+	p := mergeProject{root: filepath.Join(base, "repo"), dir: filepath.Join(base, "orchestrate", testProjectID)}
 	mkdir(t, p.root)
 	mkdir(t, p.dir)
 	git(t, p.root, "init", "-q", "-b", "main")
@@ -101,7 +101,7 @@ func newProject(t *testing.T, origin bool) project {
 
 // child is a worktree on a branch of its own, off from, with one commit
 // writing name; it returns the worktree and the commit.
-func (p project) child(t *testing.T, branch, from, name, body string) (string, string) {
+func (p mergeProject) child(t *testing.T, branch, from, name, body string) (string, string) {
 	t.Helper()
 	wt := filepath.Join(filepath.Dir(p.dir), "children", strings.ReplaceAll(branch, "/", "-"))
 	git(t, p.root, "worktree", "add", "-q", "-b", branch, wt, from)
@@ -128,7 +128,7 @@ func writeFile(t *testing.T, dir, name, body string) {
 // measured is a child whose gate was green on head, over main.
 func measured(id, branch, head, main string) protocol.Child {
 	return protocol.Child{ID: id, Title: "Child " + id, Branch: branch, Head: head, State: "in_review",
-		Gate: &protocol.GateResult{Commit: head, Base: main, Command: "true", Result: GateGreen, At: time.Now().UTC()},
+		Gate:   &protocol.GateResult{Commit: head, Base: main, Command: "true", Result: GateGreen, At: time.Now().UTC()},
 		Review: &protocol.Verdict{SessionID: "r-" + id, Commit: head, Verdict: "approve"}}
 }
 
@@ -146,7 +146,7 @@ func (e *events) has(t protocol.EventType) bool {
 	return false
 }
 
-func newMerges(t *testing.T, p project, f Forge, ev *events) (*Merges, *DecisionLog) {
+func newMerges(t *testing.T, p mergeProject, f Forge, ev *events) (*Merges, *DecisionLog) {
 	t.Helper()
 	l := openLog(t, filepath.Dir(p.dir), protocol.Project{ID: testProjectID, Root: p.root})
 	m, err := NewMerges(MergeOptions{Log: l, Forge: f, Emit: ev.emit, Poll: 5 * time.Millisecond,
@@ -158,7 +158,7 @@ func newMerges(t *testing.T, p project, f Forge, ev *events) (*Merges, *Decision
 }
 
 // logKinds is the kinds of the log, in order.
-func logKinds(t *testing.T, p project) []string {
+func logKinds(t *testing.T, p mergeProject) []string {
 	t.Helper()
 	var out []string
 	for _, d := range readLines(t, filepath.Dir(p.dir)) {
@@ -167,7 +167,7 @@ func logKinds(t *testing.T, p project) []string {
 	return out
 }
 
-func decisionOf(t *testing.T, p project, kind string) Decision {
+func decisionOf(t *testing.T, p mergeProject, kind string) Decision {
 	t.Helper()
 	for _, d := range readLines(t, filepath.Dir(p.dir)) {
 		if d.Kind == kind {

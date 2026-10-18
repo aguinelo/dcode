@@ -43,6 +43,17 @@ var orchestrationInvariants = map[string]string{
 	"no reinício termina com `daemon_restart`":       "TestAChildIsReopenedAfterARestartAndAnOpenTurnFails",
 	"`delegate` é recusado com `ceiling_reached`":    "TestAtTheCeilingDispatchStopsAndContinueOpensANewWindow",
 	"Fechado sai da lista depois da retenção":        "TestAClosedChildLeavesTheListAfterTheRetentionAndAFailedOneStays",
+
+	"nunca a saída do gate":                  "TestAProposalWithoutAGreenGateOpensNothing",
+	"o filho sai da fila para medir de novo": "TestAMainThatMovedAfterTheGateIsStaleAndNothingMerges",
+	"antes da resposta `merge` da pessoa":    "TestAMergeWaitsForThePersonsYes",
+	"passa `--match-head-commit`":            "TestTheMergeOnGitHubPassesMatchHeadCommitWithTheMeasuredCommit",
+	"com o valor antigo errado":              "TestAConditionalUpdateWithTheWrongOldValueLeavesMainAlone",
+	"em checkout em qualquer worktree":       "TestALocalMergeIsRefusedWithMainCheckedOutSayingWhere",
+	"salvo `fixes_main`":                     "TestARedMainStopsTheQueueAndFixesMainPasses",
+	"vira `unknown` e para a fila":           "TestPendingCIPastTheTimeoutIsUnknownAndStopsTheQueue",
+	"a orquestradora não resolve conteúdo":   "TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean",
+	"numa worktree que a pessoa usa":         "TestTheIntegrationIsADetachedWorktreeOfItsOwn",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

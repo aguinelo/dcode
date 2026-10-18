@@ -12,7 +12,7 @@ import (
 // localProject is a project with no forge: no origin, the person's tree on a
 // branch of its own so main is checked out nowhere, a gate that passes, and
 // one child measured green over main.
-func localProject(t *testing.T) (project, Forge, protocol.Child) {
+func localProject(t *testing.T) (mergeProject, Forge, protocol.Child) {
 	t.Helper()
 	p := newProject(t, false)
 	main := revParse(t, p.root, "main")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,19 +11,13 @@ import (
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
-func gitOut(t *testing.T, dir string, args ...string) string {
+// gitLine is what git said, trimmed.
+func gitLine(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	cmd.Env = gitEnv(os.Environ())
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
-	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimSpace(gitOut(t, dir, args...))
 }
 
-func protocolProject(p project) protocol.Project {
+func protocolProject(p mergeProject) protocol.Project {
 	return protocol.Project{ID: testProjectID, Root: p.root}
 }
 
@@ -41,7 +34,7 @@ func TestTheIntegrationIsADetachedWorktreeOfItsOwn(t *testing.T) {
 	if in.place != place {
 		t.Fatalf("place = %s, want %s", in.place, place)
 	}
-	if b := gitOut(t, place, "rev-parse", "--abbrev-ref", "HEAD"); b != "HEAD" {
+	if b := gitLine(t, place, "rev-parse", "--abbrev-ref", "HEAD"); b != "HEAD" {
 		t.Errorf("the integration is on %q, want detached", b)
 	}
 	if _, err := OpenIntegration(context.Background(), p.root, p.dir); err != nil {
@@ -73,7 +66,7 @@ func TestUpdatingMergesMainIntoTheBranchAndNeverRewritesIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parents := gitOut(t, p.root, "rev-list", "--parents", "-n1", h); parents != h+" "+head+" "+main {
+	if parents := gitLine(t, p.root, "rev-list", "--parents", "-n1", h); parents != h+" "+head+" "+main {
 		t.Errorf("H's parents = %q, want the child's head then main", parents)
 	}
 	if revParse(t, wt, "HEAD") != h || revParse(t, p.root, "dcode/a") != h {
@@ -111,7 +104,7 @@ func TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean(t *tes
 	if r := c.Return(); r.Why != "conflict" || len(r.Paths) != 1 {
 		t.Errorf("Return = %+v", r)
 	}
-	if s := gitOut(t, in.place, "status", "--porcelain"); s != "" {
+	if s := gitLine(t, in.place, "status", "--porcelain"); s != "" {
 		t.Errorf("the integration is not clean:\n%s", s)
 	}
 	b, _ := os.ReadFile(filepath.Join(wt, "file.txt"))

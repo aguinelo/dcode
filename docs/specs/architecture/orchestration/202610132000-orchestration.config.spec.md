@@ -9,7 +9,8 @@
 > `reviewer_profiles` e `review_max_diff_bytes`, desde o passo 8 (`orchestrate.ReviewFrom`);
 > `max_children`, `child_profiles`, `branch_prefix` e `token_ceiling`, desde o passo 6
 > (`orchestrate.ReadLimits`), e `closed_retention` com `dir`, onde o daemon nasce
-> (`orchestrate.ClosedRetention`); o resto está planejado, não construído. Cada
+> (`orchestrate.ClosedRetention`); `forge`, `ci_timeout`, `sensitive` e `sensitive_diff_lines`,
+> desde o passo 10 (`orchestrate.MergeFrom`); o resto está planejado, não construído. Cada
 > chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
 > da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
 > `TestEveryKeyTheSpecsDeclareIsReadSomewhere` existe para pegar. Por isso as tabelas abaixo abrem
@@ -99,15 +100,10 @@ Lidas:
 | `DCODE_ORCHESTRATOR_GATE_COMMAND` | `orchestrator.gate_command` | vazio = `verify.command` | texto; vazio com `verify.command` vazio é `gate_undeclared` na medição, não erro de abertura | 9 |
 | `DCODE_ORCHESTRATOR_GATE_TIMEOUT` | `orchestrator.gate_timeout` | `30m` | de `1m` a `6h` | 9 |
 | `DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES` | `orchestrator.review_max_diff_bytes` | `131072` | inteiro de 4096 a 1048576; diff acima é cortado inteiro e dito, nunca truncado | 8 |
-
-Por ler:
-
-| Chave | Variável | Default | Validação | Passo |
-|---|---|---|---|---|
-| `orchestrator.forge` | `DCODE_ORCHESTRATOR_FORGE` | `auto` | `auto`, `github` ou `local` | 10 |
-| `orchestrator.ci_timeout` | `DCODE_ORCHESTRATOR_CI_TIMEOUT` | `45m` | de `1m` a `6h` | 10 |
-| `orchestrator.sensitive` | `DCODE_ORCHESTRATOR_SENSITIVE` | ver abaixo | lista de globs de `policy.Glob` | 10 |
-| `orchestrator.sensitive_diff_lines` | `DCODE_ORCHESTRATOR_SENSITIVE_DIFF_LINES` | `800` | inteiro de 50 a 100000 | 10 |
+| `DCODE_ORCHESTRATOR_FORGE` | `orchestrator.forge` | `auto` | `auto`, `github` ou `local` | 10 |
+| `DCODE_ORCHESTRATOR_CI_TIMEOUT` | `orchestrator.ci_timeout` | `45m` | de `1m` a `6h` | 10 |
+| `DCODE_ORCHESTRATOR_SENSITIVE` | `orchestrator.sensitive` | ver abaixo | lista de globs de `policy.Glob` | 10 |
+| `DCODE_ORCHESTRATOR_SENSITIVE_DIFF_LINES` | `orchestrator.sensitive_diff_lines` | `800` | inteiro de 50 a 100000 | 10 |
 
 `auto` é `github` quando o repositório tem `origin` e `gh auth status` responde; senão `local`, e a
 primeira vez é dita (`forge.local`). `github` declarado sem `gh` é erro dito no `POST /v1/projects`,

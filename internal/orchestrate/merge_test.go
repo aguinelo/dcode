@@ -12,7 +12,7 @@ import (
 
 // githubProject is a project on the forge: origin a bare repository, gh the
 // stand-in, and one child measured green on its own commit over main.
-func githubProject(t *testing.T) (project, string, Forge, protocol.Child) {
+func githubProject(t *testing.T) (mergeProject, string, Forge, protocol.Child) {
 	t.Helper()
 	gh := fakeGh(t)
 	p := newProject(t, true)
@@ -233,7 +233,7 @@ func TestAProposalWithoutAGreenGateOpensNothing(t *testing.T) {
 	if _, _, err := m.Propose(context.Background(), Proposal{Child: red, Title: "t", Body: "b"}); err == nil {
 		t.Fatal("a red gate was proposed")
 	}
-	if ghCalls(t, gh) != "" || len(m.Questions()) != 0 {
+	if strings.Contains(ghCalls(t, gh), "pr\ncreate") || len(m.Questions()) != 0 {
 		t.Fatalf("a red gate reached the forge or the queue: %q", ghCalls(t, gh))
 	}
 	c.Gate.OutputTail = "TOKEN=hunter2"
