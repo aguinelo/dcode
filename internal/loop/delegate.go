@@ -283,8 +283,9 @@ var readOnlyTools = map[string]bool{
 // one alone for that reason — so nothing can be proven about what it would
 // touch, and containment narrowed to owned paths would be arguing with a
 // process rather than with a declaration. Whether a writing child may run a
-// command is an open question in the research spec; excluding it is the safe
-// direction to be wrong in until that question has an answer.
+// command was a question in the research spec, and it is answered: no
+// (delegated-writing .r §6, fixed as an invariant in the .p §8). Reopening it
+// takes a case and a way to prove what a command reaches, not a measurement.
 var writingTools = map[string]bool{
 	"write": true,
 	"edit":  true,

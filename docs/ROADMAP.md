@@ -354,8 +354,6 @@ hold: with the child running, the contract moved from 50% to 52% of fifty runs,
 inside the noise. The model's own digest explaining the refusal was a
 rationalisation, not the cause. The threshold stays at 25%, as a guard against a
 regression to zero rather than a certified rate, until the real cause is found.
-The comment above that contract in `internal/evals/contracts.go` still tells the
-old story and should be corrected with it.
 
 **Learned memory has no user-level scope.** Deliberately out of scope in the
 spec: a gotcha from one project applied to another is worse than none. Revisit
