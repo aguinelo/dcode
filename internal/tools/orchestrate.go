@@ -94,7 +94,7 @@ func (CloseChildTool) Description() string {
 
 func (DelegateTool) Schema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{"items":{"type":"array","minItems":1,"items":{"type":"object","properties":{` +
-		`"title":{"type":"string","description":"A short name for the child's theme"},` +
+		`"title":{"type":"string","description":"A short topic title of at most 40 characters, such as \"listas: Unicos\": it names the child wherever the person reads it; a longer or missing one is shortened by the harness, never the first line of the task"},` +
 		`"task":{"type":"string","description":"What the child is to do, complete: it does not see your conversation"},` +
 		`"owns":{"type":"array","items":{"type":"string"},"description":"Paths relative to the project's root the child alone may write; a folder owns what is under it, * and ? are globs"},` +
 		`"model":{"type":"string","description":"A profile of the child role's list; empty is the first of it"},` +
@@ -145,8 +145,15 @@ func (t DelegateTool) Execute(_ context.Context, input json.RawMessage, _ *State
 	if err != nil {
 		return refused(t.Name(), err), nil
 	}
-	return Result{Output: fmt.Sprintf("Dispatched %d child(ren); they run on their own, and you are told when each turn of theirs ends.\n%s",
-		len(kids), RenderChildren(kids))}, nil
+	out := fmt.Sprintf("Dispatched %d child(ren); they run on their own, and you are told when each turn of theirs ends.\n%s",
+		len(kids), RenderChildren(kids))
+	for i, it := range in.Items {
+		if i < len(kids) && kids[i].Title != strings.TrimSpace(it.Title) {
+			out += fmt.Sprintf("\nThe title of item %d was not a short topic title of at most 40 characters, so the harness derived one: item %d is titled %q.",
+				i+1, i+1, kids[i].Title)
+		}
+	}
+	return Result{Output: out}, nil
 }
 
 func (t ChildrenTool) Execute(_ context.Context, _ json.RawMessage, _ *State) (Result, error) {

@@ -42,7 +42,9 @@ const dispatchDeadline = time.Minute
 // and its owns.
 type ChildRequest struct {
 	ID, ParentID, Worktree, Profile, Task string
-	Owns                                  []string
+	// Title is the child's short title, which names its conversation.
+	Title string
+	Owns  []string
 }
 
 // Item is one entry of a delegate batch, as the orchestrator's model wrote it.
@@ -56,6 +58,9 @@ type Item struct {
 	Why string
 	// PlanStep is the orchestrator's plan item the child fulfils; 0 is none.
 	PlanStep int
+	// asked is the title the orchestrator wrote when the harness had to
+	// derive a short one (ShortTitle), for the log; empty otherwise.
+	asked *string
 }
 
 // Delegate dispatches a batch, all or nothing: owns, overlap with each other
@@ -66,6 +71,7 @@ type Item struct {
 func (o *Orchestrator) Delegate(items []Item) ([]protocol.Child, error) {
 	o.dispatch.Lock()
 	defer o.dispatch.Unlock()
+	items = titled(items)
 	profiles, err := o.admit(items)
 	if err != nil {
 		o.refuse(items, err)
@@ -76,6 +82,22 @@ func (o *Orchestrator) Delegate(items []Item) ([]protocol.Child, error) {
 		out = append(out, o.dispatchOne(it, profiles[i]))
 	}
 	return out, nil
+}
+
+// titled gives each item its short title (ShortTitle): a long or missing one
+// does not refuse the batch, and the one asked for goes to the log.
+func titled(items []Item) []Item {
+	out := make([]Item, len(items))
+	for i, it := range items {
+		short, derived := ShortTitle(it.Title, it.Task)
+		if derived {
+			asked := it.Title
+			it.asked = &asked
+		}
+		it.Title = short
+		out[i] = it
+	}
+	return out
 }
 
 // admit checks the batch whole and gives back each item's profile.
@@ -93,7 +115,7 @@ func (o *Orchestrator) admit(items []Item) ([]string, error) {
 	for i, it := range items {
 		if strings.TrimSpace(it.Title) == "" || strings.TrimSpace(it.Task) == "" || strings.TrimSpace(it.Why) == "" {
 			return nil, protocol.Errorf(protocol.CodeInvalidInput,
-				"item %d needs a title, a task and a why; the batch is refused whole", i+1)
+				"item %d needs a task and a why; the batch is refused whole", i+1)
 		}
 		if it.PlanStep < 0 {
 			return nil, protocol.Errorf(protocol.CodeInvalidInput,
@@ -203,6 +225,9 @@ func (o *Orchestrator) dispatchOne(it Item, profile string) protocol.Child {
 	if it.PlanStep > 0 {
 		fields["plan_step"] = it.PlanStep
 	}
+	if it.asked != nil {
+		fields["asked_title"] = *it.asked
+	}
 	data, _ := json.Marshal(fields)
 	if err := o.commit(Decision{Kind: "dispatch", Child: id, Session: orq, Why: it.Why, Data: data},
 		func(st *State) {
@@ -237,7 +262,7 @@ func (o *Orchestrator) dispatchOne(it Item, profile string) protocol.Child {
 			Why: "core.hooksPath read after making the worktree differs from the one read before; the orchestrator does not rewrite it"})
 	}
 	sess, err := o.reg.spawner.SpawnChild(ChildRequest{ID: id, ParentID: orq, Worktree: c.Worktree,
-		Profile: profile, Task: it.Task, Owns: c.Owns})
+		Profile: profile, Task: it.Task, Title: c.Title, Owns: c.Owns})
 	if err != nil {
 		return o.fail(id, fmt.Errorf("the child's session could not be built: %w", err))
 	}
