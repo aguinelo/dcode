@@ -3,6 +3,7 @@ package loop
 import (
 	"context"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -140,19 +141,78 @@ func TestAnInterruptedTurnThatWroteNothingSaysNothing(t *testing.T) {
 //
 // A stop reason nobody returns is a state the product claims to have and does
 // not, which is the same defect class as a config key nobody reads.
+//
+// The list is checked against what the protocol declares, not typed beside
+// it: a hand-kept list missed StopRefused, which the loop does return, and a
+// list that can fall behind is a guard that passes over the reason it forgot.
 func TestEveryStopReasonIsReachableFromTheLoop(t *testing.T) {
 	src := loopSources(t)
 
 	// StopError is returned from several places; the rest each have one site.
-	for _, reason := range []string{
+	fromLoop := []string{
 		"StopDone", "StopInterrupted", "StopMaxIterations", "StopRepeatLoop",
 		"StopMaxTokens", "StopError", "StopUnverified", "StopIncomplete",
-	} {
+	}
+	// Reasons the loop never returns, each with the file that does. A turn the
+	// daemon died in has no loop left to end it: session reopen closes it.
+	elsewhere := map[string]string{
+		"StopDaemonRestart": "../session/reopen.go",
+	}
+
+	for _, reason := range fromLoop {
 		if !strings.Contains(src, "protocol."+reason) {
 			t.Errorf("protocol.%s is declared and no code in internal/loop returns it: "+
 				"a stop reason nobody reaches is a state the product claims to have and does not", reason)
 		}
 	}
+	for reason, file := range elsewhere {
+		if strings.Contains(src, "protocol."+reason) {
+			t.Errorf("protocol.%s is classified as emitted by %s, and internal/loop returns it too", reason, file)
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), "protocol."+reason) {
+			t.Errorf("protocol.%s is classified as emitted by %s, which does not return it", reason, file)
+		}
+	}
+
+	classified := map[string]bool{}
+	for _, r := range fromLoop {
+		classified[r] = true
+	}
+	for r := range elsewhere {
+		classified[r] = true
+	}
+	declared := declaredStopReasons(t)
+	for _, r := range declared {
+		if !classified[r] {
+			t.Errorf("protocol.%s is declared and this guard does not name it: "+
+				"say whether the loop returns it or which code does", r)
+		}
+	}
+	if len(declared) != len(classified) {
+		t.Errorf("the guard names %d stop reasons and the protocol declares %d (%v)",
+			len(classified), len(declared), declared)
+	}
+}
+
+// declaredStopReasons reads the Stop* constants out of the protocol source.
+func declaredStopReasons(t *testing.T) []string {
+	t.Helper()
+	data, err := os.ReadFile("../protocol/protocol.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, m := range regexp.MustCompile(`(?m)^\s*(Stop[A-Z][A-Za-z]*)\s*=\s*"`).FindAllStringSubmatch(string(data), -1) {
+		out = append(out, m[1])
+	}
+	if len(out) == 0 {
+		t.Fatal("no stop reasons read from the protocol; the guard would pass vacuously")
+	}
+	return out
 }
 
 func loopSources(t *testing.T) string {
