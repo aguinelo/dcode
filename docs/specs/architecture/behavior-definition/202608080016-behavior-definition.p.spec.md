@@ -392,3 +392,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202609031200 — A fronteira é um fato](changelog/202609031200-a-fronteira-e-um-fato.md)
 - [202609040200 — A primeira medição com preço](changelog/202609040200-a-primeira-medicao-com-preco.md)
 - [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)
+- [202610180200 — As invariantes sem dono ganham teste](changelog/202610180200-as-invariantes-sem-dono-ganham-teste.md)

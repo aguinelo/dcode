@@ -28,6 +28,9 @@ var behaviorDirs = []string{
 	// what counts as measuring one. The tests for those are where the harness
 	// is.
 	filepath.Join("..", "evals"),
+	// The gate probe is this family's — its block is in the prefix — and the
+	// probe itself, which reads the manifests, is the workspace package.
+	filepath.Join("..", "workspace"),
 	filepath.Join("..", "vcs"),
 	filepath.Join("..", "workspace"),
 }
@@ -107,6 +110,11 @@ var behaviorInvariants = map[string]string{
 	"**não executa** nenhum deles":              "TestPackageScriptsBecomeGates",
 	"regra com padrão não viram portão":         "TestMakefileNoiseIsNotAGate",
 	"Sonda cancelada":                           "TestACancelledProbeReadsNothing",
+	"devolve lista vazia da sonda":              "TestNothingDeclaredIsNoGates",
+	"presente e malformado volta da sonda":      "TestAMalformedPackageJSONIsUnreadableNotEmpty",
+	"que a sonda não termina de ler":            "TestAMakefileThatCannotBeScannedIsUnreadable",
+	"Manifesto ilegível é avisado":              "TestAnUnreadablePackageJSONIsSaid",
+	"linha de `Practices` junto das outras":     "TestAuditNamesAllFourSectionsAndTheirOrigin",
 
 	// The boundary, as a fact in the prompt.
 	"Todo modo que a política aceita":        "TestEveryPolicyModeIsDescribedToTheModel",

@@ -151,7 +151,7 @@ func TestEveryStopReasonIsReachableFromTheLoop(t *testing.T) {
 	// StopError is returned from several places; the rest each have one site.
 	fromLoop := []string{
 		"StopDone", "StopInterrupted", "StopMaxIterations", "StopRepeatLoop",
-		"StopMaxTokens", "StopError", "StopUnverified", "StopIncomplete",
+		"StopMaxTokens", "StopError", "StopRefused", "StopUnverified", "StopIncomplete",
 	}
 	// Reasons the loop never returns, each with the file that does. A turn the
 	// daemon died in has no loop left to end it: session reopen closes it.
