@@ -517,6 +517,10 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case answeredMsg:
 		return p, p.onAnswered(msg)
 
+	case cardAnsweredMsg:
+		p.onCardAnswered(msg)
+		return p, nil
+
 	case eventMsg:
 		// From a stream that has been replaced: an event still in the old
 		// channel's buffer when it was cancelled. Dropped rather than rendered,
@@ -644,6 +648,9 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	// The orchestrator's question and its list of agents own the keyboard
 	// while they are open, for the reason every overlay here does.
+	if p.model.Card != nil {
+		return p.onCardKey(k)
+	}
 	if p.model.Ask != nil {
 		return p.onAskKey(k)
 	}

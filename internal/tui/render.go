@@ -667,6 +667,11 @@ func renderStream(m Model, g Geometry, w int) []string {
 			out = append(out, renderPlanBlock(e, cursor, cont, gl, g, m.Lang, w)...)
 			blocked = true
 
+		case KindCard:
+			out = gapBefore(out)
+			out = append(out, renderCardBlock(e, m.Card, cursor, cont, g, m.Lang, w)...)
+			blocked = true
+
 		case KindReasoning:
 			out = append(out, renderThought(e, cursor, cont, gl, g)...)
 
@@ -914,7 +919,7 @@ func laneOf(e Entry) Lane {
 	switch e.Kind {
 	case KindUser:
 		return LaneYou
-	case KindApproval:
+	case KindApproval, KindCard:
 		return LaneAsk
 	case KindAssistant, KindCompletion:
 		return LaneAnswer

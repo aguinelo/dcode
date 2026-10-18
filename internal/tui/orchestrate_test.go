@@ -24,6 +24,24 @@ type fakeOrchestration struct {
 	answerErr error
 	reads     []string
 	answers   [][3]string // session, question, answer
+	// batches are the confirms of a question card, and batchResp and
+	// batchErr what the daemon answers them (card_test.go).
+	batches   []protocol.AnswerQuestionsRequest
+	batchResp protocol.AnswerQuestionsResponse
+	batchErr  error
+}
+
+func (f *fakeOrchestration) AnswerQuestions(_ context.Context, _ string, req protocol.AnswerQuestionsRequest) (protocol.AnswerQuestionsResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.batches = append(f.batches, req)
+	return f.batchResp, f.batchErr
+}
+
+func (f *fakeOrchestration) confirmed() []protocol.AnswerQuestionsRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]protocol.AnswerQuestionsRequest(nil), f.batches...)
 }
 
 func (f *fakeOrchestration) Children(_ context.Context, id string) ([]protocol.Child, error) {
