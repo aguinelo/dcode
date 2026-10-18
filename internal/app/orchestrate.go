@@ -247,6 +247,38 @@ func (d *Daemon) rebuild(r session.Reopening, log *session.EventLog) (*session.S
 	mode(&opts)
 	log.OnRecorded(d.conversations.Observe)
 	return d.assemble(opts, r.ID, func(e *loop.Engine) *session.Session {
+		// Live again in the list, from its record, before its first new event:
+		// it writes no second session.created to start a row with. Here,
+		// where nothing can fail any more before the session watches its own
+		// state, so a reopen refused later closes the row it opened.
+		if err := d.conversations.Reopened(r.ID); err != nil && d.opts.Log != nil {
+			d.opts.Log(fmt.Sprintf("the list of conversations still reads %s as ended: %v", r.ID, err))
+		}
 		return session.NewReopened(r, e, log, time.Now)
 	})
+}
+
+// continuedOrigin reads what a record's session was, for a continuation, and
+// refuses to continue one an orchestrator conducts. A continuation is a new
+// ordinary session: it would have neither the orchestrator's role nor its
+// tools, and its project and children would go on naming the old id. The
+// orchestrator is reopened under its own id instead (RN-2), and a child or a
+// reviewer that ended is read, not continued. A record whose origin cannot be
+// read gives nothing here: Rebuild reads it next, and says why it cannot.
+func continuedOrigin(path, id string) (protocol.Session, error) {
+	origin, err := session.Origin(path)
+	if err != nil {
+		return protocol.Session{}, nil
+	}
+	switch origin.Role {
+	case protocol.RoleOrchestrator:
+		return protocol.Session{}, protocol.Errorf(protocol.CodeInvalidInput,
+			"session %s is the orchestrator of project %s and is not continued in a new session: it is the live session of its project, opened by GET /%s/projects/%s/orchestrator",
+			id, origin.ProjectID, protocol.Version, origin.ProjectID)
+	case protocol.RoleChild, protocol.RoleReviewer:
+		return protocol.Session{}, protocol.Errorf(protocol.CodeInvalidInput,
+			"session %s is a %s dispatched by %s and is not continued in a new session, which would have neither its role nor its tools: its work goes on through the orchestrator",
+			id, origin.Role, origin.ParentID)
+	}
+	return origin, nil
 }

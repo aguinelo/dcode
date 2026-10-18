@@ -12,6 +12,7 @@ import {
   CodePRRefused,
   CodeQuestionAlreadyAnswered,
   CodeQuestionNotFound,
+  CodeSessionNotFound,
   CodeTurnAlreadyActive,
   type CompactResult,
   type GitPRResponse,
@@ -19,7 +20,16 @@ import {
 } from '../protocol/generated';
 import { decodeChildren, decodeOrchestrator, decodeProject, decodeQuestion, decodeQuestions } from '../protocol/projects';
 import { withAnswered, withChildren, withQuestions } from '../state/agents';
-import { answerRefusal, openRefusal } from '../state/questions';
+import {
+  answerRefusal,
+  ENDED_AGENT,
+  isAgentRole,
+  NO_MODEL_SWITCH,
+  openPathOf,
+  openRefusal,
+  ORCHESTRATOR_WITHOUT_PROJECT,
+  sessionGone,
+} from '../state/questions';
 import { isRecord } from '../protocol/validate';
 import type { Answer, Attachment, DaemonStatus, DcodeApi, NewSessionOptions } from '../shared/api';
 import { STEER_TAKES_TEXT } from '../state/attachments';
@@ -54,7 +64,10 @@ const ENDED_GRACE_MS = 1500;
 
 /** A refusal said as the window says it: what did not happen, then the daemon's reason. */
 function outcome<T>(answer: Answer<T>, what: string): Outcome<T> {
-  return answer.ok ? { ok: true, value: answer.value } : { ok: false, why: `${what}: ${answer.refusal.message}` };
+  if (answer.ok) return { ok: true, value: answer.value };
+  // The daemon's words for it are "no session <id>", which say nothing to a person.
+  if (answer.refusal.code === CodeSessionNotFound) return { ok: false, why: sessionGone(what) };
+  return { ok: false, why: `${what}: ${answer.refusal.message}` };
 }
 
 /** An answer the daemon gave, read at the boundary: a shape it does not have is said, never guessed from. */
@@ -175,7 +188,7 @@ export class LiveStore {
   };
 
   readonly actions: WindowActions = {
-    open: (row) => (row.state === 'recorded' ? this.continueRow(row) : this.follow(row.id)),
+    open: (row) => this.openRow(row),
     send: (id, text, steer, attachments) => this.send(id, text, steer, attachments ?? []),
     pickAttachments: async () => ({ ok: true, value: await this.api.pickAttachments() }),
     readAttachment: async (name, bytes) => outcome(await this.api.readAttachment(name, bytes), `${name} não foi anexado`),
@@ -261,13 +274,35 @@ export class LiveStore {
     if (!opened.ok && opened.refusal.code !== UNEXPECTED) return { ok: false, why: openRefusal(opened.refusal.code, opened.refusal.message, workspace) };
     const project = read(opened, decodeProject, 'os projetos (POST /v1/projects)', `A orquestradora de ${workspace} não abriu`);
     if (!project.ok) return project;
-    const orchestrator = read(
-      await this.api.orchestrate.orchestrator(project.value.id),
-      decodeOrchestrator,
-      'a orquestradora de um projeto (GET /v1/projects/{id}/orchestrator)',
-      `A orquestradora de ${workspace} não abriu`,
-    );
+    return this.orchestratorOf(project.value.id, workspace);
+  }
+
+  /** The project's live orchestrator, followed; unavailable said with the keys that turn it on. */
+  private async orchestratorOf(projectId: string, workspace: string): Promise<Outcome<string>> {
+    const got = await this.api.orchestrate.orchestrator(projectId);
+    if (!got.ok && got.refusal.code !== UNEXPECTED) return { ok: false, why: openRefusal(got.refusal.code, got.refusal.message, workspace) };
+    const orchestrator = read(got, decodeOrchestrator, 'a orquestradora de um projeto (GET /v1/projects/{id}/orchestrator)', `A orquestradora de ${workspace} não abriu`);
     return orchestrator.ok ? this.follow(orchestrator.value.id) : orchestrator;
+  }
+
+  /**
+   * A row of the list, opened. A live conversation is followed and one that
+   * ended is continued (D21) — but an orchestrator is always the live one of
+   * its project, asked of the project's route, and a child or a reviewer that
+   * ended is never continued: a new ordinary session would have neither the
+   * role nor the tools.
+   */
+  private openRow(row: Row): Promise<Outcome<string>> {
+    switch (openPathOf(row)) {
+      case 'orchestrator':
+        return row.projectId ? this.orchestratorOf(row.projectId, row.workspace) : Promise.resolve({ ok: false, why: ORCHESTRATOR_WITHOUT_PROJECT });
+      case 'ended-agent':
+        return Promise.resolve({ ok: false, why: ENDED_AGENT });
+      case 'continue':
+        return this.continueRow(row);
+      case 'follow':
+        return this.follow(row.id);
+    }
   }
 
   /**
@@ -403,6 +438,7 @@ export class LiveStore {
    * record stays, and the list shows it ended.
    */
   private async switchModel(id: string, workspace: string, model: string): Promise<Outcome<string>> {
+    if (isAgentRole(this.snap.conversations.byId[id]?.role ?? this.snap.sessions.byId[id]?.info?.role)) return { ok: false, why: NO_MODEL_SWITCH };
     const made = outcome(await this.api.continueConversation({ id, workspace }, model), `A conversa não continuou em ${model}`);
     if (!made.ok) return made;
     // Live by the list; one the list does not know yet is live if its events are here.

@@ -7,7 +7,7 @@ import { paneView } from '../state/pane';
 import { dropBefore, moveProject, PREFS_KEY, relabel, setAllCollapsed, setCollapsed, type Prefs } from '../state/prefs';
 import { emptySession } from '../state/session';
 import type { SessionsState } from '../state/sessions';
-import { countStates, projectsOf, rowOfSession, titleNow, type Row } from '../state/sidebar';
+import { countStates, pickShows, projectsOf, rowOfSession, titleNow, type Row } from '../state/sidebar';
 import { SheetContext, useCommandSheet } from './CommandSheet';
 import { CrewView } from './CrewView';
 import { Grid } from './Grid';
@@ -336,7 +336,7 @@ export function App({
             onRetryHistory={() => crewId && histories.retry(crewId)}
             onSectionError={say}
             on={{
-              pick: (row) => (row.state === 'recorded' ? win.focus(row.id) : void win.open(row.id)),
+              pick: (row) => (pickShows(row) ? win.focus(row.id) : void win.open(row.id)),
               draft: draftIn,
               send: (id, text) => void win.sendIn(id, text),
               stop: win.stopIn,

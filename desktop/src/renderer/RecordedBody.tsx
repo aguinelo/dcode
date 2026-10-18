@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { flowBlocks } from '../state/flow';
 import type { History } from '../state/history';
+import { ENDED_AGENT, openPathOf, type OpenPath } from '../state/questions';
 import type { Row } from '../state/sidebar';
 import { Field } from './Composer';
 import { FlowBlocks } from './Flow';
@@ -36,6 +37,7 @@ export function RecordedBody({
   onContinue: (text: string) => void;
   onRetry: () => void;
 }) {
+  const path = endedPath(row);
   const view = history?.state === 'loaded' ? history.view : null;
   const blocks = useMemo(() => (view ? flowBlocks(view.entries) : []), [view]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -83,19 +85,38 @@ export function RecordedBody({
         </div>
       </div>
       <p className="recorded-ended">
-        Terminada · {row.turns ?? 0} {row.turns === 1 ? 'turno' : 'turnos'}. Escrever continua a conversa numa sessão nova, com o histórico.
+        {path === 'orchestrator' ? 'Orquestradora do projeto' : 'Terminada'} · {row.turns ?? 0} {row.turns === 1 ? 'turno' : 'turnos'}. {ENDED_LINE[path]}
       </p>
-      <div className={`composer-wrap${compact ? ' compact' : ''}`}>
-        <div className="composer">
-          <Field
-            text={draft}
-            placeholder="Escreva para continuar esta conversa"
-            caret={caret}
-            onText={onDraft}
-            onSubmit={() => draft.trim() && onContinue(draft)}
-          />
+      {path !== 'ended-agent' && (
+        <div className={`composer-wrap${compact ? ' compact' : ''}`}>
+          <div className="composer">
+            <Field
+              text={draft}
+              placeholder={path === 'orchestrator' ? 'Escreva para a orquestradora' : 'Escreva para continuar esta conversa'}
+              caret={caret}
+              onText={onDraft}
+              onSubmit={() => draft.trim() && onContinue(draft)}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
+}
+
+/**
+ * What writing below an ended conversation does. An ordinary one continues in
+ * a new session (D42); an orchestrator is never continued — writing opens the
+ * live one of its project and sends it there; a child or a reviewer has no
+ * field at all, because its work goes on through the orchestrator.
+ */
+const ENDED_LINE: Record<Exclude<OpenPath, 'follow'>, string> = {
+  continue: 'Escrever continua a conversa numa sessão nova, com o histórico.',
+  orchestrator: 'Escrever abre a orquestradora viva do projeto e manda a mensagem a ela — uma orquestradora nunca continua numa sessão nova.',
+  'ended-agent': ENDED_AGENT,
+};
+
+function endedPath(row: Row): Exclude<OpenPath, 'follow'> {
+  const path = openPathOf({ ...row, state: 'recorded' });
+  return path === 'follow' ? 'continue' : path;
 }

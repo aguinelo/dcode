@@ -485,8 +485,9 @@ func latestSession(dir, ws string) (string, error) {
 	// empty record behind. Continuing that one carries nothing, and the run
 	// that did it leaves another empty record for the next: taken literally,
 	// `--continue` destroys its own target every time it is used.
+	// And the person's own: an orchestrator's sessions are never continued.
 	for _, s := range found {
-		if s.Turns > 0 {
+		if s.Turns > 0 && s.Role == "" {
 			return s.ID, nil
 		}
 	}

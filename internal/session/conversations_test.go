@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -148,5 +149,53 @@ func TestARecordedConversationKeepsItsParent(t *testing.T) {
 	if got.ParentID != "o" || got.ProjectID != "a1b2c3d4e5f6a1b2c3d4e5f6" || got.Role != protocol.RoleChild ||
 		len(got.Owns) != 1 || got.Owns[0] != "internal/index/" {
 		t.Errorf("the recorded child reads %+v, want its parent, project, role and owns", got)
+	}
+}
+
+// A session reopened under its own id writes no second session.created — its
+// record already has one — so the list is told, and the row it had on disk is
+// live again: the orchestrator after a daemon restart is the live session of
+// its project, never a conversation that ended.
+func TestAReopenedSessionIsLiveInTheList(t *testing.T) {
+	dir := t.TempDir()
+	log := liveRecord(t, dir, "o", func(l *EventLog) {
+		_, _ = l.Append(protocol.EventSessionCreated, protocol.Session{
+			ID: "o", State: protocol.SessionStateIdle, Workspace: "/p", Model: "MiniMax-M3",
+			ProjectID: "a1b2c3d4e5f6a1b2c3d4e5f6", Role: protocol.RoleOrchestrator,
+		})
+		_, _ = l.Append(protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t1", Text: "plan the index"})
+	})
+	x := NewConversations(dir)
+	if before := find(t, x, "o"); before.Live {
+		t.Fatalf("before the reopen the row reads %+v, want recorded", before)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, changes, err := x.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := x.Reopened("o"); err != nil {
+		t.Fatal(err)
+	}
+	log.OnRecorded(x.Observe)
+	_, _ = log.Append(protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t1", Reason: protocol.StopDaemonRestart})
+
+	got := find(t, x, "o")
+	if !got.Live || got.State != protocol.SessionStateIdle || got.Role != protocol.RoleOrchestrator ||
+		got.Title != "plan the index" || got.Turns != 1 {
+		t.Errorf("the reopened row reads %+v, want live, idle, the orchestrator, its title and the turn that ended", got)
+	}
+	select {
+	case ch := <-changes:
+		if ch.Conversation == nil || ch.Conversation.ID != "o" || !ch.Conversation.Live {
+			t.Errorf("the stream said %+v, want the row live again", ch)
+		}
+	default:
+		t.Error("the stream said nothing when the session came back")
+	}
+	if err := x.Reopened("nothing"); err == nil {
+		t.Error("reopening a record that is not there was not refused")
 	}
 }

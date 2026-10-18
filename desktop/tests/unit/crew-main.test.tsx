@@ -195,7 +195,8 @@ describe('the field under an ended conversation', () => {
 
   it('says writing to the orchestrator opens the live one of the project', () => {
     const html = draw(ended({ id: 's-orq', role: 'orchestrator', projectId: 'p1' }));
-    expect(html).not.toContain('sessão nova');
+    expect(html).not.toContain('Escrever continua a conversa numa sessão nova');
+    expect(html).toContain('nunca continua numa sessão nova');
     expect(html).toContain('orquestradora');
   });
 });

@@ -37,6 +37,10 @@ type Summary struct {
 	Turns   int
 	Started time.Time
 	Bytes   int64
+	// Role is the session's place under an orchestrator — orchestrator,
+	// child or reviewer — and empty for one a person opened. Those are
+	// never continued: an orchestrator reopens under its own id.
+	Role string
 }
 
 // titleLimit is how much of the question survives into a listing.
@@ -119,7 +123,7 @@ func describe(path string) (Summary, error) {
 		case protocol.EventSessionCreated:
 			var d protocol.Session
 			if json.Unmarshal(ev.Payload, &d) == nil {
-				s.Workspace, s.Model, s.Started = d.Workspace, d.Model, ev.At
+				s.Workspace, s.Model, s.Started, s.Role = d.Workspace, d.Model, ev.At, d.Role
 				opened = true
 			}
 		case protocol.EventTurnStarted:

@@ -243,3 +243,27 @@ func TestWatchServeReportsAnUnaskedForExit(t *testing.T) {
 		t.Fatal("an unasked-for exit was not reported")
 	}
 }
+
+// `-c` continues the person's conversation, never an orchestrator's: the
+// orchestrator works at the project's root, so the newest record there can be
+// its own, and continuing it would make a new ordinary session of the live
+// session of the project — which the daemon refuses, and `-c` must not ask.
+func TestContinuingSkipsAnOrchestratorsSession(t *testing.T) {
+	dir, ws := t.TempDir(), "/w"
+	record(t, dir, "conversation", "2026-08-18T14:46:28-03:00", ws, "the thing I was doing")
+	orq := `{"seq":1,"session_id":"orq","type":"session.created","at":"2026-08-18T14:47:12-03:00",` +
+		`"payload":{"id":"orq","workspace":"/w","model":"m","role":"orchestrator","project_id":"a1b2c3d4e5f6a1b2c3d4e5f6"}}` + "\n" +
+		`{"seq":2,"session_id":"orq","type":"turn.started","payload":{"text":"plan"}}` + "\n" +
+		`{"seq":3,"session_id":"orq","type":"turn.completed","payload":{}}` + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "orq.jsonl"), []byte(orq), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := latestSession(dir, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "conversation" {
+		t.Errorf("continued %q, want the person's conversation, not the orchestrator", got)
+	}
+}
