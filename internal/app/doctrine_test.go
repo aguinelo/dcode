@@ -45,6 +45,9 @@ func TestAuditNamesAllFourSectionsAndTheirOrigin(t *testing.T) {
 		"Using tools", "appended",
 		"Safety", "builtin",
 		"Style",
+		// The practices floor is the fifth line. The test named four sections
+		// before it existed, and never looked for the one it added.
+		"Practices",
 		"safety.md", "not overridable",
 	} {
 		if !strings.Contains(out, want) {

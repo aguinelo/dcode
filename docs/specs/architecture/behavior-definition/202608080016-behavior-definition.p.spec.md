@@ -332,6 +332,7 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - `practices.md` **substitui** o texto embutido; não existe variante que acrescenta.
 - A sobreposição alcança `Practices` e continua sem alcançar `Safety`, que não tem campo no tipo.
 - Piso substituído é reportado como `replaced`; sem sobreposição, `builtin`.
+- A auditoria da doutrina imprime a linha de `Practices` junto das outras quatro seções.
 - `Build` continua pura com a seção de práticas: mesma doutrina, prefixo byte-idêntico.
 - O piso embutido carrega a frase de que instrução do usuário ou do projeto **vence sem discussão**, e que se diz uma vez.
 - O piso embutido proíbe repetir-se, virar ressalva anexada ao trabalho, ou fazer o trabalho esperar resposta.
@@ -361,6 +362,10 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - A sonda de portões lê `package.json` e `Makefile`, e **não executa** nenhum deles.
 - Alvo de `Makefile` que começa com ponto, atribuição de variável e regra com padrão não viram portão.
 - Sonda cancelada não devolve portão nenhum — "não olhei" e "olhei e não há" continuam separados.
+- Diretório sem `package.json` nem `Makefile` devolve lista vazia da sonda, sem erro nem arquivo ilegível.
+- `package.json` presente e malformado volta da sonda nomeado e com o motivo, e os portões do outro manifesto continuam lidos.
+- `Makefile` que a sonda não termina de ler volta nomeado, e o que foi lido antes da falha não é oferecido como a lista.
+- Manifesto ilegível é avisado quando a sessão abre, com o arquivo e o motivo, e não impede a sessão.
 
 ## 9. Changelog
 
@@ -387,3 +392,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202609031200 — A fronteira é um fato](changelog/202609031200-a-fronteira-e-um-fato.md)
 - [202609040200 — A primeira medição com preço](changelog/202609040200-a-primeira-medicao-com-preco.md)
 - [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)
+- [202610180200 — As invariantes sem dono ganham teste](changelog/202610180200-as-invariantes-sem-dono-ganham-teste.md)
