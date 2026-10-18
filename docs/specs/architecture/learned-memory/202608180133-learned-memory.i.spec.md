@@ -12,10 +12,12 @@ antes de haver o que aprender.
       `## 10. Invariantes verificáveis` no `.p`.
 - [x] Criar o guarda de invariantes em `internal/memory/invariants_test.go`,
       nomeando `learned-memory`.
-- [x] O que a ferramenta ainda não cumpre saiu para `## 11. Invariantes ainda
-      sem cobrança`. O `specguard` cobra **tudo** sob o título da seção 10, e
-      subseção não o detém — invariante listada lá sem teste é a afirmação vazia
-      que esta spec existe para não repetir.
+- [x] O que a ferramenta ainda não cumpria saiu, enquanto não cumpria, para uma
+      seção própria fora do título da seção 10. O `specguard` cobra **tudo** sob
+      aquele título, e subseção não o detém — invariante listada lá sem teste é
+      a afirmação vazia que esta spec existe para não repetir. Cada uma voltou à
+      seção 10 no commit que a implementou, e a seção provisória deixou de
+      existir: o §11 do `.p` hoje são os contratos comportamentais.
 
 > Os caminhos de arquivo aqui estão escritos sem crase de propósito. O
 > `specguard` trata caminho em crase num `.i` como **afirmação de que o arquivo
@@ -141,3 +143,4 @@ rodando depois que a pessoa parou de olhar é a forma que RN-6 recusa.
 ## Changelog
 
 - [202608180133 — Memória aprendida](changelog/202608180133-memoria-aprendida.md)
+- [202610172315 — A spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)

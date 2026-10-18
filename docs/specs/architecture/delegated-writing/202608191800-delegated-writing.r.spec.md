@@ -172,13 +172,18 @@ ser disjuntos — e esse caso fica fora de escopo até que apareça um de verdad
 
 ## 6. Perguntas em aberto
 
-- Um filho que escreve deve poder rodar comando? Comando é opaco e roda sozinho
-  no scheduler; um filho que compila é útil, um filho que empurra para o remoto
-  não é. A resposta provável é o mesmo eixo de sempre — o filho herda as regras
-  do pai e nunca pergunta — mas não foi medida.
+- ~~Um filho que escreve deve poder rodar comando?~~ **Respondida: não.** O
+  `.p` §8 fixa como invariante que *filho que escreve não carrega ferramenta
+  opaca nem a de delegar*, e o registro do filho em `internal/loop/delegate.go`
+  é uma lista de permissão — leitura, mais `write` e `edit` quando possui
+  caminhos. Comando é opaco: nada pode ser provado sobre o que ele tocaria, e a
+  contenção estreitada ao `owns` estaria discutindo com um processo em vez de
+  com uma declaração. Um filho que compila seria útil; reabrir isso pede um caso
+  e uma forma de provar o alcance do comando, não uma medição.
 - O relatório do filho volta em prosa. Um catálogo de dez repositórios quer
   estrutura, e prosa é o que a delegação de hoje sabe devolver.
 
 ## 7. Changelog
 
 - [202610171900 — O filho-sessão pergunta; o filho delegado continua sem perguntar](changelog/202610171900-o-filho-sessao-pergunta.md)
+- [202610172315 — A spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)
