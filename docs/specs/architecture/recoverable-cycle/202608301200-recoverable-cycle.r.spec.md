@@ -2,7 +2,9 @@
 
 **Família:** `recoverable-cycle`
 **Data:** 2026-08-30
-**Estado:** `.r` — o problema e as regras. Sem `.p`, sem código.
+**Estado:** `.r` — o problema e as regras. Escrita antes do `.p` e do código;
+hoje as etapas 1 a 3 do `.p` §9 estão entregues. A §1 descreve o código como
+estava em 2026-08-30 — o `Progressed` que ela cita deu lugar a `Moved`.
 
 ---
 
@@ -129,8 +131,9 @@ Empatar é comum e legítimo: um ciclo que leu, entendeu e não fechou critério
 nenhum não estragou nada. Reverter esse ciclo joga fora trabalho bom.
 
 O que justifica voltar é **regressão** — um critério que passava e passou a não
-passar. Isso é um estado que o `Report` já sabe apurar e que hoje ninguém apura,
-porque `Progressed` devolve um booleano onde cabem três respostas.
+passar. Isso é um estado que o `Report` já sabe apurar e que, quando esta `.r`
+foi escrita, ninguém apurava, porque `Progressed` devolvia um booleano onde cabem
+três respostas. Hoje é `Moved` (`internal/loop/done.go`, `.p` §2).
 
 ### RN-5 — Nada é restaurado em silêncio
 
@@ -183,3 +186,4 @@ diferentes.
 ## 7. Changelog
 
 - [202608301200 — o laço não sabia voltar](changelog/202608301200-o-laco-nao-sabia-voltar.md)
+- [202610171700 — a spec alcança o código](changelog/202610171700-a-spec-alcanca-o-codigo.md)
