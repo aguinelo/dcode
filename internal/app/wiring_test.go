@@ -126,6 +126,13 @@ var nonSession = map[string]string{
 	"orchestrator.enabled":     "read by the daemon, which conducts projects and outlives any one session",
 	"orchestrator.profile":     "read by the orchestrator, which conducts sessions and is not one",
 	"orchestrator.main_branch": "read by the orchestrator, which conducts sessions and is not one",
+	// The dispatch's keys (orchestration .config §1, §2), read when a project
+	// opens and, for the retention, where the daemon starts.
+	"orchestrator.max_children":     "read by the orchestrator, which dispatches children and is not a session",
+	"orchestrator.child_profiles":   "read by the orchestrator, which chooses a child's profile from the allow-list",
+	"orchestrator.branch_prefix":    "read by the orchestrator, which names each child's branch",
+	"orchestrator.token_ceiling":    "read by the orchestrator, which stops dispatching at the ceiling",
+	"orchestrator.closed_retention": "read by the daemon, which lists an orchestrator's children",
 
 	// The gate is measured by the orchestrator, never by the session it judges.
 	"orchestrator.gate_command": "read by the orchestrator, which runs the gate itself and is not a session",

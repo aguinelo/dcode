@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,12 +30,22 @@ const gitDeadline = 10 * time.Second
 const autonomyStep = "step"
 
 // Spawner is how the orchestrator reaches the daemon, which alone knows how a
-// session is built (.p §3). The methods of children and reviewers join it with
-// the steps that dispatch them.
+// session is built (.p §3). The reviewer's method joins it with the step that
+// dispatches one.
 type Spawner interface {
 	// SpawnOrchestrator opens the orchestrator of p: a recorded session in
 	// plan mode at p.Root, with p's id and the orchestrator role.
 	SpawnOrchestrator(p protocol.Project) (protocol.Session, error)
+	// SpawnChild opens a child: a recorded session under req.ID in its
+	// worktree, with the child role, its parent and its owns, whose writes
+	// stay inside them, whose git that writes is refused, and whose
+	// approvals wait for the person without a deadline.
+	SpawnChild(req ChildRequest) (protocol.Session, error)
+	// Submit starts a turn in an idle session; origin is who started it,
+	// empty for the person.
+	Submit(sessionID, text, origin string) error
+	// Steer hands the turn a session is in more of what to do.
+	Steer(sessionID, text string) error
 	// Reopen brings a recorded session back under its own id; a turn its
 	// record shows open ends with reason.
 	Reopen(sessionID, reason string) (protocol.Session, error)
@@ -53,6 +64,18 @@ type RegistryOptions struct {
 	// Log receives what a reload cut or could not reopen.
 	Log func(string)
 	Now func() time.Time
+	// Emit sends an event on a session's log: how child.* and question.*
+	// reach the orchestrator's wire. Nil sends nothing.
+	Emit func(sessionID string, t protocol.EventType, payload any)
+	// Retention is orchestrator.closed_retention: how long a closed child
+	// stays in /children. Zero takes it out at once.
+	Retention time.Duration
+	// MaxSessions is the daemon's session ceiling, which max_children must
+	// leave room under; zero is unknown.
+	MaxSessions int
+	// ConclusionMax is where a child's conclusion is cut in child.completed;
+	// zero is DelegateMaxResultBytes' default.
+	ConclusionMax int
 }
 
 // Registry is every project this daemon conducts.
@@ -63,6 +86,11 @@ type Registry struct {
 	log     func(string)
 	now     func() time.Time
 	lock    *os.File
+	emit    func(string, protocol.EventType, any)
+
+	retention     time.Duration
+	maxSessions   int
+	conclusionMax int
 
 	mu       sync.Mutex
 	projects map[string]*Orchestrator
@@ -70,10 +98,22 @@ type Registry struct {
 
 // Orchestrator conducts one project. No method waits for a child.
 type Orchestrator struct {
+	reg    *Registry
+	limits Limits
+	// ownProfile is orchestrator.profile, the child role's list when
+	// child_profiles names none.
+	ownProfile string
+	// dispatch serialises what changes the set of children — a batch, a
+	// close — so a batch is validated against the children it will join.
+	dispatch sync.Mutex
+
 	mu    sync.Mutex
 	state State
 	store *Store
 	log   *DecisionLog
+	// conclusions are what each child said in its turn since its last tool
+	// call: the conclusion child.completed carries.
+	conclusions map[string]*strings.Builder
 }
 
 // NewRegistry opens orchestrator.dir, owner-only, for this daemon alone.
@@ -92,7 +132,11 @@ func NewRegistry(o RegistryOptions) (*Registry, error) {
 		return nil, err
 	}
 	r := &Registry{dir: filepath.Clean(o.Dir), spawner: o.Spawner, resolve: o.Resolve, log: o.Log,
-		now: o.Now, lock: lock, projects: map[string]*Orchestrator{}}
+		now: o.Now, lock: lock, projects: map[string]*Orchestrator{}, emit: o.Emit,
+		retention: o.Retention, maxSessions: o.MaxSessions, conclusionMax: o.ConclusionMax}
+	if r.conclusionMax <= 0 {
+		r.conclusionMax = defaultConclusionMax
+	}
 	if r.log == nil {
 		r.log = func(string) {}
 	}
@@ -154,9 +198,17 @@ func (r *Registry) Open(workspace string) (*Orchestrator, bool, error) {
 // decision, its state — in that order, so the state never names an
 // orchestrator the log does not.
 func (r *Registry) create(ctx context.Context, root, id, workspace string) (*Orchestrator, error) {
-	main, err := r.mainBranch(ctx, root)
+	cfg, err := r.config(root)
 	if err != nil {
 		return nil, err
+	}
+	main, err := r.mainBranch(ctx, root, cfg)
+	if err != nil {
+		return nil, err
+	}
+	limits, err := ReadLimits(ctx, cfg, r.maxSessions)
+	if err != nil {
+		return nil, protocol.Errorf(protocol.CodeWorkspaceInvalid, "%v", err)
 	}
 	p := protocol.Project{ID: id, Root: root, Main: main, Autonomy: autonomyStep, Created: r.now().UTC()}
 	log, err := OpenDecisionLog(r.dir, p)
@@ -169,7 +221,8 @@ func (r *Registry) create(ctx context.Context, root, id, workspace string) (*Orc
 		return nil, err
 	}
 	p.OrchestratorID = s.ID
-	o := &Orchestrator{state: State{V: stateVersion, Project: p}, store: storeAt(r.dir, id), log: log}
+	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg),
+		state: State{V: stateVersion, Project: p}, store: storeAt(r.dir, id), log: log}
 	data, _ := json.Marshal(map[string]string{"workspace": workspace, "orchestrator": s.ID, "main": main})
 	if err := o.record(Decision{Kind: "project.opened", Session: s.ID, Data: data,
 		Why: "the person opened the project of " + workspace + "; a project has one orchestrator"}); err != nil {
@@ -186,14 +239,7 @@ func (r *Registry) create(ctx context.Context, root, id, workspace string) (*Orc
 // mainBranch is orchestrator.main_branch when declared and present, else the
 // branch the repository says is its main. Neither is an error saying so: a
 // wrong main is worse than none, since everything is measured against it.
-func (r *Registry) mainBranch(ctx context.Context, root string) (string, error) {
-	var cfg config.Resolved
-	if r.resolve != nil {
-		var err error
-		if cfg, err = r.resolve(root); err != nil {
-			return "", protocol.Errorf(protocol.CodeWorkspaceInvalid, "the configuration of %s cannot be read: %v", root, err)
-		}
-	}
+func (r *Registry) mainBranch(ctx context.Context, root string, cfg config.Resolved) (string, error) {
 	if name := MainBranch(cfg); name != "" {
 		cmd := exec.CommandContext(ctx, "git", "rev-parse", "--verify", "--quiet", "refs/heads/"+name)
 		cmd.Dir = root
@@ -208,6 +254,18 @@ func (r *Registry) mainBranch(ctx context.Context, root string) (string, error) 
 	}
 	return "", protocol.Errorf(protocol.CodeWorkspaceInvalid,
 		"%s has no main branch git can name (no origin/HEAD, no main, no master); set orchestrator.main_branch", root)
+}
+
+// config is the configuration chain at a project's root.
+func (r *Registry) config(root string) (config.Resolved, error) {
+	if r.resolve == nil {
+		return config.Resolved{}, nil
+	}
+	cfg, err := r.resolve(root)
+	if err != nil {
+		return config.Resolved{}, protocol.Errorf(protocol.CodeWorkspaceInvalid, "the configuration of %s cannot be read: %v", root, err)
+	}
+	return cfg, nil
 }
 
 // Reload opens every project on disk, at the daemon's start: each reopens its
@@ -254,7 +312,19 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 	if err != nil {
 		return nil, err
 	}
-	o := &Orchestrator{state: st, store: store, log: log}
+	cfg, err := r.config(st.Project.Root)
+	if err != nil {
+		_ = log.Close()
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), gitDeadline)
+	defer cancel()
+	limits, err := ReadLimits(ctx, cfg, r.maxSessions)
+	if err != nil {
+		_ = log.Close()
+		return nil, err
+	}
+	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), state: st, store: store, log: log}
 	orq := st.Project.OrchestratorID
 	restart := map[string]any{}
 	if torn := log.Torn(); len(torn) > 0 {
@@ -266,8 +336,16 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 		restart["failed"] = map[string]string{orq: rerr.Error()}
 		why += "; the orchestrator could not be reopened, and the project stays closed"
 	} else {
-		restart["reopened"] = []string{orq}
 		why += "; the orchestrator was reopened under its own id"
+	}
+	var after []func()
+	if rerr == nil {
+		reopened, failed, moves := o.reopenChildren()
+		restart["reopened"] = append([]string{orq}, reopened...)
+		if len(failed) > 0 {
+			restart["failed"] = failed
+		}
+		after = moves
 	}
 	data, _ := json.Marshal(restart)
 	if err := o.record(Decision{Kind: "daemon.restart", Session: orq, Why: why, Data: data}); err != nil {
@@ -280,6 +358,9 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 	if rerr != nil {
 		_ = log.Close()
 		return nil, fmt.Errorf("orchestrator %s: %w", orq, rerr)
+	}
+	for _, move := range after {
+		move()
 	}
 	r.projects[id] = o
 	return o, nil
@@ -310,22 +391,4 @@ func (o *Orchestrator) Project() protocol.Project {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return o.state.Project
-}
-
-// record writes d to the log and then the state that follows it: the log
-// before state.json (.p §8). A line that does not write changes nothing.
-func (o *Orchestrator) record(d Decision) error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	seq, err := o.log.Record(d)
-	if err != nil {
-		return err
-	}
-	st := o.state
-	st.LogSeq = seq
-	if err := o.store.Save(st); err != nil {
-		return err
-	}
-	o.state = st
-	return nil
 }

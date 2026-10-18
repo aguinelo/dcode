@@ -23,16 +23,20 @@ func (d *Daemon) assemble(opts Options, id string, wrap func(*loop.Engine) *sess
 		return sess.TakeSteering()
 	}
 
+	timeout := d.opts.ApprovalTimeout
+	if opts.Child {
+		// A child's question waits for the person, however long: nobody
+		// else may answer it, and it must not lapse into a denial (ADR-02).
+		timeout = 0
+	}
 	appSession, err := New(opts,
 		emitterFunc(func(t protocol.EventType, payload any) {
 			if sess != nil {
 				sess.Emit(t, payload)
 			}
 		}),
-		// The daemon's timeout, never zero here (New defaults it): a question
-		// with no deadline is for a session that asks for one, which the
-		// orchestrator's children do.
-		session.NewApprover(func() *session.Session { return sess }, d.opts.ApprovalTimeout),
+		// The daemon's timeout, but for a child of an orchestrator, above.
+		session.NewApprover(func() *session.Session { return sess }, timeout),
 	)
 	if err != nil {
 		return nil, err

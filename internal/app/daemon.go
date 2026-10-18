@@ -182,17 +182,16 @@ func (d *Daemon) optionsFor(ws string) (Options, error) {
 // unit of confinement, so sharing any of it across sessions would let one
 // workspace's boundary apply to another.
 func (d *Daemon) build(req protocol.CreateSessionRequest) (*session.Session, error) {
-	return d.buildWith(req, nil)
+	return d.buildAs("", req, nil)
 }
 
-// buildWith is build with adjust applied to the options last, before the
-// engine is made: how the orchestrator gets plan mode whatever the request.
-func (d *Daemon) buildWith(req protocol.CreateSessionRequest, adjust func(*Options)) (*session.Session, error) {
+// buildAs is build under id (a child's, which names its worktree first; empty
+// is a new one), adjust applied last: how the orchestrator gets plan mode.
+func (d *Daemon) buildAs(id string, req protocol.CreateSessionRequest, adjust func(*Options)) (*session.Session, error) {
 	ws, err := validWorkspace(req.Workspace)
 	if err != nil {
 		return nil, err
 	}
-
 	opts, err := d.optionsFor(ws)
 	if err != nil {
 		return nil, err
@@ -285,7 +284,9 @@ func (d *Daemon) buildWith(req protocol.CreateSessionRequest, adjust func(*Optio
 		adjust(&opts)
 	}
 
-	id := session.NewID(time.Now, randomUint32)
+	if id == "" {
+		id = session.NewID(time.Now, randomUint32)
+	}
 	log := session.NewEventLog(id, d.opts.EventRetention, time.Now)
 	// Before anything is appended: the list folds what the record holds.
 	log.OnRecorded(d.conversations.Observe)

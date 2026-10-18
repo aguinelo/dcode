@@ -128,7 +128,11 @@ func orchestratorOptions(r config.Resolved) (app.OrchestratorOptions, error) {
 	if err != nil {
 		return app.OrchestratorOptions{}, err
 	}
-	return app.OrchestratorOptions{Enabled: true, Dir: dir}, nil
+	retention, err := orchestrate.ClosedRetention(r)
+	if err != nil {
+		return app.OrchestratorOptions{}, err
+	}
+	return app.OrchestratorOptions{Enabled: true, Dir: dir, ClosedRetention: retention}, nil
 }
 
 // spillDir is where trimmed events are kept.

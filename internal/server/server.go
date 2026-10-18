@@ -213,6 +213,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/projects", s.listProjects)
 	s.mux.HandleFunc("GET "+p+"/projects/{id}", s.getProject)
 	s.mux.HandleFunc("GET "+p+"/projects/{id}/orchestrator", s.projectOrchestrator)
+	s.mux.HandleFunc("GET "+p+"/sessions/{id}/children", s.listChildren)
 	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
 	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
 	s.mux.HandleFunc("GET "+p+"/git/pr", s.readGitPR)
@@ -366,6 +367,8 @@ func (s *Server) deleteSession(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput,
 			"session %s is the orchestrator of project %s and is not closed in this slice", sess.ID, sess.ProjectID))
 		return
+	} else if err == nil && sess.Role == protocol.RoleChild && s.closeChild(w, sess.ID) {
+		return // closed by its orchestrator: worktree removed, owns freed, said in the log
 	}
 	if err := s.cfg.Manager.Remove(r.PathValue("id")); err != nil {
 		writeErr(w, wrapErr(err))
