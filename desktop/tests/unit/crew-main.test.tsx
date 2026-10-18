@@ -5,6 +5,7 @@ import type { CrewHandlers } from '../../src/renderer/crew/handlers';
 import { SessionsPane } from '../../src/renderer/crew/SessionsPane';
 import { ThreadPane, ThreadProof } from '../../src/renderer/crew/ThreadPane';
 import { LoopSection } from '../../src/renderer/LoopRuler';
+import { RecordedBody } from '../../src/renderer/RecordedBody';
 import { DEFAULT_LOOK, lookOf } from '../../src/renderer/stored';
 import { LoopContext, type LoopsView } from '../../src/renderer/useLoops';
 import { arrivedSessions, emptyLoops, followLoop, type LoopsState } from '../../src/state/loop';
@@ -164,5 +165,37 @@ describe('the sessions list of the Crew', () => {
     expect(html).toContain('data-session-id="s3" data-state="idle"');
     expect(html).toContain('data-session-id="s4" data-state="recorded"');
     expect(html).toContain('aria-label="Nova sessão"');
+  });
+});
+
+// A conversation that ended is continued by writing (D33, D42) — but not an
+// orchestrator's agent, which a new ordinary session would strip of its role
+// and its tools, and not the orchestrator, which is always the live one.
+describe('the field under an ended conversation', () => {
+  const ended = (over: Partial<Row>): Row => ({ id: 'c-a', title: 'índice', workspace: '/w/c', state: 'recorded', started: 0, lastAt: null, turns: 2, ...over });
+  const draw = (row: Row) =>
+    renderToStaticMarkup(
+      <RecordedBody row={row} history={{ state: 'loading' }} compact={false} now={NOW} draft="" onDraft={() => {}} onContinue={() => {}} onRetry={() => {}} />,
+    );
+
+  it('continues an ordinary conversation in a new session', () => {
+    const html = draw(ended({}));
+    expect(html).toContain('Escrever continua a conversa numa sessão nova');
+    expect(html).toContain('<textarea');
+  });
+
+  it('offers no field under a child or a reviewer that ended, and points to the orchestrator', () => {
+    for (const role of ['child', 'reviewer']) {
+      const html = draw(ended({ role, parentId: 's-orq', projectId: 'p1' }));
+      expect(html).not.toContain('<textarea');
+      expect(html).not.toContain('sessão nova, com o histórico');
+      expect(html).toContain('orquestradora');
+    }
+  });
+
+  it('says writing to the orchestrator opens the live one of the project', () => {
+    const html = draw(ended({ id: 's-orq', role: 'orchestrator', projectId: 'p1' }));
+    expect(html).not.toContain('sessão nova');
+    expect(html).toContain('orquestradora');
   });
 });

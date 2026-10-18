@@ -178,6 +178,27 @@ func TestTheOrchestratorSurvivesADaemonRestart(t *testing.T) {
 	if !strings.Contains(string(log), `"kind":"daemon.restart"`) {
 		t.Errorf("the restart is not in the decision log:\n%s", log)
 	}
+
+	// The list a client shows says the same: the orchestrator is live again,
+	// once, and not a conversation that ended — which a client would continue
+	// in a new ordinary session, without its role or its tools.
+	list, err := again.conversations.List("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := 0
+	for _, c := range list {
+		if c.ID != p.OrchestratorID {
+			continue
+		}
+		rows++
+		if !c.Live || c.State != protocol.SessionStateIdle || c.Role != protocol.RoleOrchestrator {
+			t.Errorf("after the restart the list reads the orchestrator as %+v, want it live, idle and the orchestrator", c)
+		}
+	}
+	if rows != 1 {
+		t.Errorf("the orchestrator is listed %d times, want once", rows)
+	}
 }
 
 // Spec: orchestration .i step 5 — with orchestrator.enabled false, or session
