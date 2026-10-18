@@ -8,8 +8,8 @@
 
 ## 1. O que muda, em uma frase
 
-`Progressed` passa a devolver **três** respostas em vez de duas, e o laço desfaz
-o ciclo quando a resposta é regressão.
+O booleano `Progressed` dá lugar a `Moved`, que devolve **três** respostas em vez
+de duas, e o laço desfaz o ciclo quando a resposta é regressão.
 
 Nenhuma máquina nova: `Snapshot`, `BeginTurn` e `Undo` já existem e já fazem a
 parte difícil.
@@ -44,8 +44,8 @@ critérios — não é regressão, é o mesmo estado.
 
 **Empate inclui a troca.** `{a,b} → {a,c}` tem nome novo e portanto é
 regressão: `c` passava. Isto é a `.r` RN-4 aplicada, e é o caso que o
-`Progressed` de hoje já recusa como progresso — a diferença é que agora ele tem
-consequência.
+`Progressed` de antes já recusava como progresso — a diferença é que, em `Moved`,
+ele tem consequência.
 
 ## 3. O ponto de retorno por ciclo
 
@@ -111,12 +111,19 @@ e é a única linha desta spec que vale o que vale a disciplina de quem lê.
 Um lembrete novo, na mesma família dos que existem:
 
 ```
-The last cycle was undone. <names> passed before it and did not after,
-so what it wrote was put back. <n> file(s) restored; <m> left alone
-because they changed on disk since.
+Your last set of changes was undone. <names> passed before them and did not
+after, so what they wrote was put back. <n> file(s) restored. Left alone
+because they changed on disk since: <paths>.
 
-Try something else — the same edit will be undone the same way.
+Try something else. The same change will be undone the same way.
 ```
+
+É o texto de `cycleUndone` em `internal/behavior/reminders.go`, o mesmo do
+changelog [202608301400](changelog/202608301400-o-laco-desfaz.md). `<names>` e
+`<paths>` saem ordenados e sem repetição; a frase dos restaurados só aparece
+quando houve algum, e a dos deixados só quando houve algum. Esta seção trazia
+um rascunho anterior (*"The last cycle was undone…"*) que o código nunca
+emitiu.
 
 **A última frase é o ponto.** Sem ela o agente repete a tentativa achando que
 ela nunca aconteceu, o que transforma o seguro numa armadilha.
@@ -130,7 +137,8 @@ se ninguém souber que é meio.
 - `/undo` continua sendo da pessoa e continua alcançando o turno inteiro.
 - `BeginTurn` e o `Undo` de turno ficam como estão.
 - Nada em git.
-- O teto de ciclos parados continua em 2. É a etapa 4 da §9 e depende disto.
+- O teto de ciclos parados continua em 2. Subi-lo era a etapa 5 da §9 da
+  `failure-feedback`; a §8 daqui mostra por que esse passo saiu do plano.
 
 ## 7. Invariantes verificáveis
 
@@ -211,13 +219,15 @@ Fica escrito que esta família está **entregue e não medida**, e que isso é
 diferente de medida e boa.
 
 **O contrato que falta continua faltando**, e é o mesmo da `failure-feedback`:
-nenhum contrato mede a **qualidade de uma correção**. É a etapa 2 da §9 e não se
-resolve aqui.
+nenhum contrato mede a **qualidade de uma correção**. Não é etapa da §9 daqui
+— a primeira versão desta frase apontava para a etapa 2, que é `BeginCycle` — e
+não se resolve nesta família.
 
 ## 9. Ordem de entrega
 
-1. **`Moved`, e `Progressed` escrito sobre ele.** Puro, asserção, nada muda de
-   comportamento.
+1. **`Moved` no lugar de `Progressed`.** Puro, asserção, nada muda de
+   comportamento. A primeira versão desta linha dizia *"`Progressed` escrito sobre
+   ele"*; `Progressed` saiu (§2).
 2. **`BeginCycle` e `UndoCycle`.** Puro sobre disco, testável sem modelo.
 3. **O laço desfazendo, e o lembrete.** É aqui que o comportamento muda.
 4. ~~Medir `states-unmet-on-stall` e `fixes-cause-not-measure`.~~ **Riscada**:
@@ -233,3 +243,4 @@ sozinho, pela mesma razão que a etapa 2 da `failure-feedback` foi sozinha.
 - [202608301400 — o laço desfaz o ciclo que quebrou algo](changelog/202608301400-o-laco-desfaz.md)
 - [202608301800 — a conta que faltava no teto de rodadas](changelog/202608301800-a-conta-do-ciclo.md)
 - [202610161200 — o instantâneo que não se tirou não vira arquivo criado](changelog/202610161200-o-instantaneo-que-nao-se-tirou.md)
+- [202610171700 — a spec alcança o código](changelog/202610171700-a-spec-alcanca-o-codigo.md)
