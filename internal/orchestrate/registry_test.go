@@ -61,6 +61,11 @@ type fakeSpawner struct {
 	children  []ChildRequest
 	submitted []string
 	steered   []string
+	// failChild, failSubmit and failReopen make those calls fail; the last
+	// for the ids it names alone.
+	failChild, failSubmit error
+	failReopen            map[string]error
+	closeErr              error
 }
 
 func (f *fakeSpawner) SpawnOrchestrator(p protocol.Project) (protocol.Session, error) {
@@ -77,6 +82,9 @@ func (f *fakeSpawner) Reopen(id, reason string) (protocol.Session, error) {
 	if f.failOpen != nil {
 		return protocol.Session{}, f.failOpen
 	}
+	if err := f.failReopen[id]; err != nil {
+		return protocol.Session{}, err
+	}
 	f.reopened = append(f.reopened, id)
 	f.reasons = append(f.reasons, reason)
 	return protocol.Session{ID: id, Role: protocol.RoleOrchestrator}, nil
@@ -86,7 +94,7 @@ func (f *fakeSpawner) Close(id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.closed = append(f.closed, id)
-	return nil
+	return f.closeErr
 }
 
 func newRegistry(t *testing.T, dir string, sp Spawner) *Registry {

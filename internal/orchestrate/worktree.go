@@ -116,11 +116,10 @@ func removeWorktree(ctx context.Context, root, path string) error {
 // paths by name — never -A — with message as the message. Nothing changed is
 // no commit and no error; head is then empty.
 func commitTurn(ctx context.Context, worktree, message string) (head string, paths []string, err error) {
-	out, err := wtGit(ctx, worktree, "status", "--porcelain", "-z", "--untracked-files=all")
+	paths, err = Uncommitted(ctx, worktree)
 	if err != nil {
 		return "", nil, err
 	}
-	paths = porcelainPaths(out)
 	if len(paths) == 0 {
 		return "", nil, nil
 	}
@@ -132,25 +131,4 @@ func commitTurn(ctx context.Context, worktree, message string) (head string, pat
 	}
 	head, err = wtGit(ctx, worktree, "rev-parse", "HEAD")
 	return head, paths, err
-}
-
-// porcelainPaths reads `git status --porcelain -z`: each entry "XY path", and
-// a rename's source after it, which is named too so its removal is staged.
-func porcelainPaths(out string) []string {
-	var paths []string
-	fields := strings.Split(out, "\x00")
-	for i := 0; i < len(fields); i++ {
-		f := fields[i]
-		if len(f) < 4 {
-			continue
-		}
-		paths = append(paths, f[3:])
-		if f[0] == 'R' || f[0] == 'C' {
-			if i+1 < len(fields) && fields[i+1] != "" {
-				paths = append(paths, fields[i+1])
-			}
-			i++
-		}
-	}
-	return paths
 }

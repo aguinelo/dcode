@@ -66,11 +66,6 @@ var exportedWithoutUser = map[string]string{
 	"NewReplayTransport": "replay harness; the suite runs on recorded frames",
 	"ParseSSE":           "replay harness; the suite runs on recorded frames",
 
-	// The orchestrator's first slice is built one pull request per step
-	// (orchestration .i). Step 3 gives the session a turn that says who started
-	// it; the report turn of step 7 is the first to start one, and deletes this.
-	"SubmitOrigin": "orchestration step 3; the report turn of step 7 calls it",
-
 	// The eval harness, behind its own build tag and run by `make eval`.
 	"ContractByID": "eval harness, behind the eval build tag",
 }

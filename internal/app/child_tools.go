@@ -63,7 +63,7 @@ func (t ownedTool) Declare(input json.RawMessage) (policy.Request, error) {
 		// Outside the worktree, or unresolvable, is owned by no one.
 		r, rerr := t.resolver.Resolve(a.Path, true)
 		inside := rerr == nil && (r.Rel != "" || filepath.Clean(r.Path) == t.resolver.Workspace)
-		if !inside || !orchestrate.Owned(t.owns, r.Rel) {
+		if !inside || len(orchestrate.OutsideOwns(t.owns, []string{r.Rel})) > 0 {
 			return policy.Request{}, &tools.ToolError{Tool: t.Name(), Code: protocol.CodeOutsideOwns,
 				Reason: "a child writes only the paths it owns; " + a.Path + " is outside them (" + strings.Join(t.owns, ", ") + "). " +
 					"Leave it, or say in your report that it needs changing"}

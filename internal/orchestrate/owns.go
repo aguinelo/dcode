@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
 )
 
@@ -53,28 +52,8 @@ func underPrefix(dir, p string) bool {
 	return strings.HasPrefix(p, dir+"/")
 }
 
-// Owned reports whether rel, a slash path relative to the worktree, is one the
-// owns entries claim: the entry itself, anything under it, or what its glob
-// matches.
-func Owned(owns []string, rel string) bool {
-	rel = strings.TrimPrefix(rel, "./")
-	for _, e := range owns {
-		e = strings.TrimPrefix(e, "./")
-		if strings.ContainsAny(e, globMeta) {
-			if policy.Glob(e, rel) {
-				return true
-			}
-			continue
-		}
-		if underPrefix(ownsPrefix(e), rel) {
-			return true
-		}
-	}
-	return false
-}
-
-// validOwns refuses an owns that is empty, or names a path that is absolute,
-// not clean, or climbs out of the tree.
+// validOwns refuses an owns that is empty, or names the whole tree, or a path
+// that is absolute, not clean, or climbs out of it.
 func validOwns(title string, owns []string) error {
 	if len(owns) == 0 {
 		return protocol.Errorf(protocol.CodeInvalidInput,
@@ -82,8 +61,9 @@ func validOwns(title string, owns []string) error {
 	}
 	for _, e := range owns {
 		switch {
-		case e == "":
-			return protocol.Errorf(protocol.CodeInvalidInput, "%q owns an empty path", title)
+		case e == "" || e == ".":
+			return protocol.Errorf(protocol.CodeInvalidInput,
+				"%q owns %q: owning the whole tree is owning nothing in particular, so name the paths", title, e)
 		case strings.HasPrefix(e, "/") || strings.Contains(e, `\`):
 			return protocol.Errorf(protocol.CodeInvalidInput,
 				"%q owns %q: owns are slash paths relative to the project's root", title, e)

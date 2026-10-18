@@ -31,6 +31,18 @@ var orchestrationInvariants = map[string]string{
 	"O revisor não tem ferramenta que escreve": "TestTheReviewerRegistryHasNoToolThatWrites",
 	"nunca conta como aprovação":               "TestAReviewThatEndsWithoutAVerdictIsMissingNeverAnApproval",
 	"nunca chega cortado ao revisor":           "TestADiffOverTheLimitIsCutAndSaidNeverTruncated",
+
+	"a orquestradora fica `idle`, nunca `blocked`":   "TestCreatingChildrenLeavesTheOrchestratorIdleWhileTheyRun",
+	"com os caminhos em disputa, e nenhuma worktree": "TestABatchWhoseOwnsCrossIsRefusedWholeAndNoWorktreeIsMade",
+	"recusado inteiro com `max_children_reached`":    "TestABatchAboveMaxChildrenIsRefusedWhole",
+	"recusado com `model_not_allowed`":               "TestAProfileOutsideTheListIsModelNotAllowed",
+	"`steer_child`, `close_child` nem `ask`":         "TestTheChildsRegistryHasNoToolThatConducts",
+	"é negado sem perguntar e com o porquê":          "TestGitThatWritesIsDeniedToAChildWithoutAsking",
+	"Aprovação de filho não expira":                  "TestAChildsApprovalWaitsPastTheTimeoutAndSurvivesTheDaemon",
+	"`hooks.changed` diz os dois valores":            "TestAWorktreeThatChangesTheHooksPathIsSaid",
+	"no reinício termina com `daemon_restart`":       "TestAChildIsReopenedAfterARestartAndAnOpenTurnFails",
+	"`delegate` é recusado com `ceiling_reached`":    "TestAtTheCeilingDispatchStopsAndContinueOpensANewWindow",
+	"Fechado sai da lista depois da retenção":        "TestAClosedChildLeavesTheListAfterTheRetentionAndAFailedOneStays",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
@@ -38,7 +50,7 @@ func TestEveryInvariantHasATest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, err := specguard.Check(root, "orchestration", []string{".", filepath.Join("..", "..", "cmd", "dcode"), filepath.Join("..", "app")}, orchestrationInvariants)
+	findings, err := specguard.Check(root, "orchestration", []string{".", filepath.Join("..", "..", "cmd", "dcode"), filepath.Join("..", "app"), filepath.Join("..", "tools")}, orchestrationInvariants)
 	if err != nil {
 		t.Fatal(err)
 	}
