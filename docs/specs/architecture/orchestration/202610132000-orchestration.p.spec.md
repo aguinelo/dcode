@@ -426,7 +426,8 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Um projeto tem **uma** orquestradora: dois `POST /v1/projects` da mesma árvore, por caminhos diferentes, devolvem o mesmo `Project`.
 - A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
 - O gate roda numa worktree descartável no commit exato, sem `GIT_*` no ambiente, nunca na árvore da pessoa nem na do filho.
-- A worktree descartável do gate sai sempre, até depois de um pânico, e até trancada pelo git morto no meio do `worktree add`; o que fica é dito.
+- A worktree descartável do gate sai sempre, até depois de um pânico.
+- Worktree trancada pelo git morto no meio do `worktree add` sai também; o que ainda fica é dito.
 - Gate parado por quem chamou devolve o cancelamento, nunca o erro do git que o cancelamento matou.
 - O que o filho disse do gate vai ao log como `claim`, ao lado do medido, e nunca muda o `result`.
 - Sem comando de gate declarado nada roda, o resultado é `undeclared`, e `gate_undeclared` é dito.
