@@ -70,12 +70,12 @@ func TestALongOrMissingTitleGivesTheChildAShortOneAndTheLogSaysSo(t *testing.T) 
 			continue
 		}
 		var got struct {
-			Title, Asked string `json:"title"`
+			Title string `json:"title"`
+			Asked string `json:"asked_title"`
 		}
-		var raw map[string]any
-		_ = json.Unmarshal(d.Data, &raw)
-		got.Title, _ = raw["title"].(string)
-		got.Asked, _ = raw["asked_title"].(string)
+		if err := json.Unmarshal(d.Data, &got); err != nil {
+			t.Fatal(err)
+		}
 		asked[got.Title] = got.Asked
 	}
 	if asked[kids[0].Title] != long.Title {
