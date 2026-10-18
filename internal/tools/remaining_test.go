@@ -37,17 +37,19 @@ func TestTruncatedOutputAlwaysSaysWhatRemains(t *testing.T) {
 		"Fetch":   cutFetch,
 	}
 	neverCuts := map[string]string{
-		"Write":          "its diff rides on Meta for the client and never enters Output",
-		"Plan":           "renders the plan it was given, whole",
-		"AskTool":        "returns the person's answer, whole",
-		"DonePropose":    "returns a fixed acknowledgement",
-		"Remember":       "returns a fixed acknowledgement",
-		"RedTest":        "returns the verdict line, whole",
-		"Verdict":        "returns the verdict line, whole",
-		"DelegateTool":   "returns the child's identifier",
-		"ChildrenTool":   "lists the children, whole",
-		"SteerChildTool": "returns an acknowledgement",
-		"CloseChildTool": "returns an acknowledgement",
+		"Write":              "its diff rides on Meta for the client and never enters Output",
+		"Plan":               "renders the plan it was given, whole",
+		"AskTool":            "returns the person's answer, whole",
+		"DonePropose":        "returns a fixed acknowledgement",
+		"Remember":           "returns a fixed acknowledgement",
+		"RedTest":            "returns the verdict line, whole",
+		"Verdict":            "returns the verdict line, whole",
+		"DelegateTool":       "returns the child's identifier",
+		"ChildrenTool":       "lists the children, whole",
+		"SteerChildTool":     "returns an acknowledgement",
+		"CloseChildTool":     "returns an acknowledgement",
+		"SummarizeTool":      "returns an acknowledgement naming the question",
+		"ProposeAnswersTool": "returns an acknowledgement naming the card",
 	}
 
 	for _, name := range executors(t) {

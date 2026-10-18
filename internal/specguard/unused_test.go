@@ -26,6 +26,7 @@ var exportedWithoutUser = map[string]string{
 	// pkg/client exists for consumers of the daemon, not for this repository.
 	// Its surface is measured by what a client needs, not by what dcode uses.
 	"DeleteSession":      "pkg/client is the public API; a consumer deletes sessions",
+	"AnswerQuestions":    "pkg/client is the public API; the TUI's card, the next change, confirms a card with it",
 	"ListConversations":  "pkg/client is the public API; a consumer lists conversations, and the TUI's picker moves to it in its own pull request",
 	"WatchConversations": "pkg/client is the public API; a consumer watches the list, as the desktop does over HTTP",
 	"ListModels":         "pkg/client is the public API; a consumer asks which models a session can ask for, as the desktop's model menu does over HTTP",

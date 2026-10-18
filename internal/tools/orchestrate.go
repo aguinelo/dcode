@@ -27,6 +27,12 @@ type Conductor interface {
 	CloseChild(childID, why string) error
 	// Ask puts a question in the project's queue and returns its id.
 	Ask(in AskInput) (string, error)
+	// Summarize writes what changed into a question that waits.
+	Summarize(questionID, summary string) error
+	// ProposeAnswers makes a proposed card from the person's words and
+	// returns its id. It answers nothing: no method here answers, and only
+	// the person's POST does (.p §5.5).
+	ProposeAnswers(in ProposeInput) (string, error)
 }
 
 // DelegateItem is one child of a batch.

@@ -31,6 +31,13 @@ const (
 	answerClose  = "close"
 )
 
+// mergeOptions are a merge question's options, each saying what it does.
+var mergeOptions = []protocol.QuestionOption{
+	{ID: answerMerge, Label: "Merge", Description: "Into main, once main and the branch are checked again for having moved since the gate."},
+	{ID: answerReturn, Label: "Return to the child", Description: "The child gets the work back with your note, and the pipeline runs again."},
+	{ID: answerClose, Label: "Close the child", Description: "Its session ends and its worktree goes; its branch stays."},
+}
+
 // The codes of merge.refused beside the protocol's: the person's no, and the
 // forge's.
 const (
@@ -119,6 +126,9 @@ type Proposal struct {
 	// Paths and Lines are the diff's, which say whether the merge is sensitive.
 	Paths []string
 	Lines int
+	// Evidence is what the log measured of the child (DecisionLog.Evidence),
+	// shown with the question.
+	Evidence *protocol.QuestionEvidence
 }
 
 // MergeOutcome is what one merge did: completed, or refused, and main's
@@ -195,10 +205,9 @@ func (m *Merges) question(c protocol.Child, p Proposal) protocol.Question {
 	if over {
 		text += fmt.Sprintf(" The diff is %d lines, over sensitive_diff_lines (%d).", p.Lines, m.o.Config.SensitiveDiffLines)
 	}
-	return protocol.Question{ID: "q-" + randomHex(), Kind: "merge", Text: text, Recommended: answerMerge,
+	return protocol.Question{ID: "q-" + randomHex(), Header: c.Title, Kind: "merge", Text: text, Recommended: answerMerge,
 		Why: "the reviewer approved and the harness measured the gate green on this commit", ChildID: c.ID,
-		Options:   []protocol.QuestionOption{{ID: answerMerge, Label: "Merge"}, {ID: answerReturn, Label: "Return to the child"}, {ID: answerClose, Label: "Close the child"}},
-		Sensitive: sensitive, Asked: m.o.Now().UTC()}
+		Options: append([]protocol.QuestionOption(nil), mergeOptions...), AllowOther: true, Evidence: p.Evidence, Sensitive: sensitive, Asked: m.o.Now().UTC()}
 }
 
 func (m *Merges) sensitive(path string) bool {

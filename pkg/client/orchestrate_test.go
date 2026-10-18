@@ -36,6 +36,13 @@ func TestTheOrchestrationCallsAskTheirRoutes(t *testing.T) {
 			fmt.Fprint(w, `{"children":[{"id":"c","state":"working"}]}`)
 		case "GET " + v + "/sessions/o/questions":
 			fmt.Fprint(w, `{"questions":[{"id":"q1","kind":"merge"}]}`)
+		case "POST " + v + "/sessions/o/questions/answers":
+			var req protocol.AnswerQuestionsRequest
+			if json.NewDecoder(r.Body).Decode(&req) != nil || req.CardID != "c1" || len(req.Answers) != 1 {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			fmt.Fprint(w, `{"results":[{"question_id":"q1","status":"answered"}],"cards":[]}`)
 		case "POST " + v + "/sessions/o/questions/q1":
 			w.WriteHeader(http.StatusConflict)
 			fmt.Fprint(w, `{"code":"question_already_answered","message":"answered at 12:00"}`)
@@ -67,7 +74,12 @@ func TestTheOrchestrationCallsAskTheirRoutes(t *testing.T) {
 	if pe, ok := protocol.AsError(err); !ok || pe.Code != protocol.CodeQuestionAlreadyAnswered {
 		t.Errorf("AnswerQuestion: the refusal reads %v, want question_already_answered", err)
 	}
-	if len(asked) != 7 {
+	got, err := c.AnswerQuestions(ctx, "o", protocol.AnswerQuestionsRequest{CardID: "c1",
+		Answers: []protocol.AnswerItem{{QuestionID: "q1", Answer: "merge"}}})
+	if err != nil || len(got.Results) != 1 || got.Results[0].Status != protocol.CardItemAnswered {
+		t.Errorf("AnswerQuestions: %+v %v", got, err)
+	}
+	if len(asked) != 8 {
 		t.Errorf("asked %v", asked)
 	}
 }

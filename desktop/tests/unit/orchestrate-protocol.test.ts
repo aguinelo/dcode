@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import child from '../../../internal/protocol/testdata/child.json?raw';
 import childMinimal from '../../../internal/protocol/testdata/child_minimal.json?raw';
 import question from '../../../internal/protocol/testdata/question.json?raw';
+import questionCard from '../../../internal/protocol/testdata/question_card.json?raw';
 import reviewVerdict from '../../../internal/protocol/testdata/review_verdict.json?raw';
 import gateMeasured from '../../../internal/protocol/testdata/gate_measured.json?raw';
 import sessionChild from '../../../internal/protocol/testdata/session_child.json?raw';
@@ -23,6 +24,7 @@ describe('the orchestrator events', () => {
       ['child.started', { child: JSON.parse(childMinimal) }],
       ['child.state', { child: JSON.parse(child) }],
       ['question.asked', JSON.parse(question)],
+      ['question.card', JSON.parse(questionCard)],
       ['review.verdict', JSON.parse(reviewVerdict)],
       ['gate.measured', JSON.parse(gateMeasured)],
       ['session.created', JSON.parse(sessionChild)],

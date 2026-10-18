@@ -193,6 +193,54 @@ func TestTheOrchestratorAsksAndOnlyThePersonsFirstAnswerCounts(t *testing.T) {
 	}
 }
 
+// Spec: orchestration .p §5.1, §5.5 — GET /questions carries the cards, and
+// the person's batch POST answers every item of one, with a result each; the
+// orchestrator's proposal is a card, never an answer.
+func TestThePersonConfirmsACardInOnePost(t *testing.T) {
+	ws := projectRepo(t)
+	d := modelDaemon(t, &routedModel{}, time.Minute, t.TempDir(), t.TempDir())
+	p := openProject(t, d, ws, http.StatusCreated)
+	c := conductor{d: d, project: p.ID}
+	opts := []tools.AskOption{{ID: "one", Label: "One", Description: "a single store"}, {ID: "two", Label: "Two"}}
+	q1, err := c.Ask(tools.AskInput{Header: "Store", Text: "One store or two?", Recommended: "one", Why: "less to keep in step", Options: opts})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q2, err := c.Ask(tools.AskInput{Text: "One cache or two?", Recommended: "one", Why: "the same", Options: opts})
+	if err != nil {
+		t.Fatal(err)
+	}
+	card, err := c.ProposeAnswers(tools.ProposeInput{From: "two of each", Why: "the person said two",
+		Answers: []tools.ProposedAnswer{{QuestionID: q1, Answer: "two"}, {QuestionID: q2, Answer: "two"}}})
+	if err != nil || card == "" {
+		t.Fatalf("ProposeAnswers = %q, %v", card, err)
+	}
+	code, body := route(t, d, http.MethodGet, "/sessions/"+p.OrchestratorID+"/questions", nil)
+	var list protocol.ListQuestionsResponse
+	if code != http.StatusOK || json.Unmarshal(body, &list) != nil || len(list.Cards) != 2 || list.Questions[0].Answer != "" {
+		t.Fatalf("GET questions = %d %s", code, body)
+	}
+	if h := list.Cards[0].Items[0]; h.Header != "Store" || h.Options[0].Description != "a single store" {
+		t.Errorf("the first card's item = %+v", h)
+	}
+	path := "/sessions/" + p.OrchestratorID + "/questions/answers"
+	code, body = route(t, d, http.MethodPost, path, protocol.AnswerQuestionsRequest{CardID: card,
+		Answers: []protocol.AnswerItem{{QuestionID: q1, Answer: "two"}, {QuestionID: q1, Answer: "one"}}, Skipped: []string{q2}})
+	var got protocol.AnswerQuestionsResponse
+	if code != http.StatusOK || json.Unmarshal(body, &got) != nil || len(got.Results) != 3 ||
+		got.Results[0].Status != protocol.CardItemAnswered || got.Results[1].Code != protocol.CodeQuestionAlreadyAnswered ||
+		got.Results[2].Status != protocol.CardItemSkipped {
+		t.Fatalf("POST answers = %d %s", code, body)
+	}
+	if code, _ := route(t, d, http.MethodPost, path, protocol.AnswerQuestionsRequest{}); code != http.StatusBadRequest {
+		t.Errorf("an empty batch = %d", code)
+	}
+	if code, _ := route(t, d, http.MethodPost, "/sessions/nobody/questions/answers", protocol.AnswerQuestionsRequest{
+		Answers: []protocol.AnswerItem{{QuestionID: q2, Answer: "one"}}}); code != http.StatusNotFound {
+		t.Errorf("a batch to a session that conducts nothing = %d", code)
+	}
+}
+
 // Spec: orchestration .p §7.2 — SpawnReviewer refuses a request it cannot
 // build a review from.
 func TestSpawnReviewerRefusesWhatItCannotBuild(t *testing.T) {

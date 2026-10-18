@@ -31,6 +31,12 @@ type Projects interface {
 	Questions(sessionID string) (questions []protocol.Question, held bool)
 	// Answer is the person's answer to one; the first answer wins.
 	Answer(sessionID, questionID string, req protocol.AnswerQuestionRequest) (protocol.Question, error)
+	// Cards are the cards an orchestrator's questions are shown in, open
+	// and closed; none for any other session.
+	Cards(sessionID string) []protocol.QuestionCard
+	// AnswerAll is the person's confirm of a card: a result per answer and
+	// per skip, the first answer to a question winning.
+	AnswerAll(sessionID string, req protocol.AnswerQuestionsRequest) (protocol.AnswerQuestionsResponse, error)
 }
 
 // listQuestions answers GET /sessions/{id}/questions. A session that is no
@@ -41,11 +47,36 @@ func (s *Server) listQuestions(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, wrapErr(err))
 		return
 	}
-	out := protocol.ListQuestionsResponse{Questions: []protocol.Question{}}
+	out := protocol.ListQuestionsResponse{Questions: []protocol.Question{}, Cards: []protocol.QuestionCard{}}
 	if s.cfg.Projects != nil {
 		if qs, held := s.cfg.Projects.Questions(sess.ID); held && qs != nil {
 			out.Questions = qs
 		}
+		if cards := s.cfg.Projects.Cards(sess.ID); cards != nil {
+			out.Cards = cards
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// answerQuestions is the person's confirm of a card: every answer at once,
+// each with its own result. A batch that is malformed as a whole is refused
+// before anything is taken. Only the person answers: no tool of the
+// orchestrator's reaches this.
+func (s *Server) answerQuestions(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.Projects == nil {
+		writeErr(w, noProjects())
+		return
+	}
+	var req protocol.AnswerQuestionsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput, "malformed request: %v", err))
+		return
+	}
+	out, err := s.cfg.Projects.AnswerAll(r.PathValue("id"), req)
+	if err != nil {
+		writeErr(w, wrapErr(err))
+		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }

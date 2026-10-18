@@ -126,12 +126,18 @@ func (o *Orchestrator) propose(id string) {
 	if strings.TrimSpace(title) == "" {
 		title = c.Title
 	}
-	got, q, err := mg.Propose(ctx, Proposal{Child: c, Title: title, Body: b.PRBody, Paths: paths, Lines: lines})
+	ev, err := o.log.Evidence(id, c.Head)
+	if err != nil {
+		o.stall(id, err)
+		return
+	}
+	got, q, err := mg.Propose(ctx, Proposal{Child: c, Title: title, Body: b.PRBody, Paths: paths, Lines: lines, Evidence: &ev})
 	if err != nil {
 		o.stall(id, fmt.Errorf("the merge step did not propose it: %w", err))
 		return
 	}
 	o.saveMerges(mg)
+	o.cardFor(q)
 	data, _ := json.Marshal(map[string]any{"from": stateInReview, "to": statePR, "pr": got.PR, "question": q.ID})
 	live, err := o.commitLive(id, Decision{Kind: "child.state", Child: id, Data: data,
 		Why: "review approved and gate green on its head: the merge waits for the person's answer to " + q.ID},
@@ -146,7 +152,7 @@ func (o *Orchestrator) propose(id string) {
 		return
 	}
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
-	o.reportChild(id, fmt.Sprintf("its review approved and the gate measured green on %s; the person is asked whether it merges (%s).", short(c.Head), q.ID))
+	o.reportChild(id, fmt.Sprintf("its review approved and the gate measured green on %s; the person is asked whether it merges (%s). Write what changed into that question with summarize.", short(c.Head), q.ID))
 }
 
 // answerMerge is the person's answer to a merge question: merge puts the child

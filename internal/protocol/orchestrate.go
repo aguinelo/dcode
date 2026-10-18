@@ -37,9 +37,12 @@ const (
 	EventGateMeasured     EventType = "gate.measured"
 	EventQuestionAsked    EventType = "question.asked"
 	EventQuestionAnswered EventType = "question.answered"
-	EventMergeCompleted   EventType = "merge.completed"
-	EventMergeRefused     EventType = "merge.refused"
-	EventMainHealth       EventType = "main.health"
+	// EventQuestionCard carries a QuestionCard each time it is made or
+	// changes: the conversation renders it where it was said.
+	EventQuestionCard   EventType = "question.card"
+	EventMergeCompleted EventType = "merge.completed"
+	EventMergeRefused   EventType = "merge.refused"
+	EventMainHealth     EventType = "main.health"
 )
 
 // Project is one tree conducted by one orchestrator.
@@ -156,13 +159,25 @@ type MainHealth struct {
 // Question is one thing waiting for the person. Kind is merge, design or
 // ceiling; Recommended is the ID of one of Options.
 type Question struct {
-	ID          string           `json:"id"`
+	ID string `json:"id"`
+	// Header is the question's short tag, a few words shown above it in its
+	// card: the child's title, for a merge.
+	Header      string           `json:"header,omitempty"`
 	Kind        string           `json:"kind"`
 	Text        string           `json:"text"`
 	Recommended string           `json:"recommended"`
 	Why         string           `json:"why"`
 	ChildID     string           `json:"child_id,omitempty"`
 	Options     []QuestionOption `json:"options"`
+	// AllowOther is whether the person may answer in their own words —
+	// AnswerOther, with the words as the note — besides the options.
+	AllowOther bool `json:"allow_other,omitempty"`
+	// Summary is what changed, in two or three lines the orchestrator wrote
+	// in the person's language; empty until it writes them.
+	Summary string `json:"summary,omitempty"`
+	// Evidence is what the harness measured, read from the decision log —
+	// on a merge question; never what the child said.
+	Evidence *QuestionEvidence `json:"evidence,omitempty"`
 	// Sensitive are the paths of the diff that make a merge ask with care.
 	Sensitive []string   `json:"sensitive,omitempty"`
 	Asked     time.Time  `json:"asked"`
@@ -171,10 +186,12 @@ type Question struct {
 	Answered  *time.Time `json:"answered,omitempty"`
 }
 
-// QuestionOption is one answer a question offers.
+// QuestionOption is one answer a question offers: a short label, and what
+// choosing it does.
 type QuestionOption struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
 }
 
 // OpenProjectRequest opens, or finds, the project of a workspace.
@@ -193,9 +210,11 @@ type ListChildrenResponse struct {
 	Children []Child `json:"children"`
 }
 
-// ListQuestionsResponse answers GET /sessions/{id}/questions.
+// ListQuestionsResponse answers GET /sessions/{id}/questions: the queue, and
+// the cards it is shown in, open and closed.
 type ListQuestionsResponse struct {
-	Questions []Question `json:"questions"`
+	Questions []Question     `json:"questions"`
+	Cards     []QuestionCard `json:"cards"`
 }
 
 // AnswerQuestionRequest answers one question; the first answer wins.

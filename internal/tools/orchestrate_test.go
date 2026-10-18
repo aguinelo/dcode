@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -36,9 +37,11 @@ func TestGitThatWritesIsDeniedToAChildWithoutAsking(t *testing.T) {
 }
 
 type fakeConductor struct {
-	items []DelegateItem
-	asked []AskInput
-	err   error
+	items     []DelegateItem
+	asked     []AskInput
+	summaries []string
+	proposed  []ProposeInput
+	err       error
 }
 
 func (f *fakeConductor) Delegate(items []DelegateItem) ([]protocol.Child, error) {
@@ -54,6 +57,62 @@ func (f *fakeConductor) CloseChild(string, string) error         { return f.err 
 func (f *fakeConductor) Ask(in AskInput) (string, error) {
 	f.asked = append(f.asked, in)
 	return "q1", f.err
+}
+func (f *fakeConductor) Summarize(qid, summary string) error {
+	f.summaries = append(f.summaries, qid+": "+summary)
+	return f.err
+}
+func (f *fakeConductor) ProposeAnswers(in ProposeInput) (string, error) {
+	f.proposed = append(f.proposed, in)
+	return "c2", f.err
+}
+
+// Spec: orchestration .p §10 — summarize hands the orchestrator's lines to
+// the question they are about; a refusal is said with its code.
+func TestSummarizeAttachesTheLinesToTheQuestion(t *testing.T) {
+	f := &fakeConductor{}
+	in := json.RawMessage(`{"question_id":"q-1","summary":"Conta palavras.\nCom teste."}`)
+	res, _ := SummarizeTool{Conductor: f}.Execute(context.Background(), in, nil)
+	if res.IsError || len(f.summaries) != 1 || f.summaries[0] != "q-1: Conta palavras.\nCom teste." {
+		t.Fatalf("summarize = %+v; %v", res, f.summaries)
+	}
+	f.err = protocol.Errorf(protocol.CodeQuestionAlreadyAnswered, "answered")
+	if res, _ := (SummarizeTool{Conductor: f}).Execute(context.Background(), in, nil); !res.IsError || res.Code != protocol.CodeQuestionAlreadyAnswered {
+		t.Errorf("a refused summary = %+v", res)
+	}
+	if res, _ := (SummarizeTool{}).Execute(context.Background(), in, nil); !res.IsError {
+		t.Errorf("summarize without a project = %+v", res)
+	}
+}
+
+// Spec: orchestration .p §5.5, §10 — propose_answers hands the person's words
+// and the answers understood over as a proposal, and says that nothing is
+// answered until the person confirms it.
+func TestProposeAnswersIsAProposalAndSaysSo(t *testing.T) {
+	f := &fakeConductor{}
+	in := json.RawMessage(`{"from":"merge em todas","why":"the person said so","answers":[{"question_id":"q-1","answer":"merge"},{"question_id":"q-2","answer":"return","note":"more tests"}]}`)
+	res, _ := ProposeAnswersTool{Conductor: f}.Execute(context.Background(), in, nil)
+	if res.IsError || len(f.proposed) != 1 || f.proposed[0].From != "merge em todas" || len(f.proposed[0].Answers) != 2 ||
+		f.proposed[0].Answers[1].Note != "more tests" || !strings.Contains(res.Output, "c2") || !strings.Contains(res.Output, "nothing is answered") {
+		t.Fatalf("propose_answers = %+v; %+v", res, f.proposed)
+	}
+	if d := (ProposeAnswersTool{}).Description(); !strings.Contains(d, "never answers") {
+		t.Errorf("propose_answers' description does not say it never answers:\n%s", d)
+	}
+}
+
+// Spec: orchestration .p §5.5, §13 — the orchestrator cannot answer: no
+// method of what its tools reach answers a question, so no tool can.
+func TestNoToolOfTheOrchestratorReachesAnAnswer(t *testing.T) {
+	ct := reflect.TypeOf((*Conductor)(nil)).Elem()
+	for i := range ct.NumMethod() {
+		if name := ct.Method(i).Name; strings.HasPrefix(name, "Answer") {
+			t.Errorf("Conductor.%s: a tool of the orchestrator's would reach an answer", name)
+		}
+	}
+	if _, ok := ct.MethodByName("ProposeAnswers"); !ok {
+		t.Error("the orchestrator has no way to propose what the person said")
+	}
 }
 
 // Spec: orchestration .p §10 — ask puts a question to the person and returns
