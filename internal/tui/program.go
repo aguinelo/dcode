@@ -155,6 +155,12 @@ type Options struct {
 	// why. A dead end reached in the code is exactly the kind of failure that
 	// must reach the screen, not just the process's exit code nobody reads.
 	DaemonFailed <-chan error
+
+	// Orchestration is set by `dcode orchestrate`, and SessionID is then the
+	// project's orchestrator: the list is read from its routes when it opens,
+	// ^Q answers its questions and ^R lists its children (orchestrate.go).
+	// Nil on every ordinary conversation.
+	Orchestration Orchestration
 }
 
 type program struct {
