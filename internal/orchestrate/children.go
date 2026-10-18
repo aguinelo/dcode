@@ -42,14 +42,36 @@ func cloneState(st State) State {
 // the log before state.json (.p §8). A line that does not write changes
 // nothing, and neither does a state that does not save.
 func (o *Orchestrator) commit(d Decision, mutate func(*State)) error {
+	_, err := o.commitIf(d, nil, mutate)
+	return err
+}
+
+// commitLive is commit for a step of child id that holds only while the
+// child is live: the check that it is neither closed nor merged is made
+// under the lock the commit takes, not when the caller read the child. A
+// close or a merge that lands in between is not undone by the late step,
+// which writes nothing and reports false.
+func (o *Orchestrator) commitLive(id string, d Decision, mutate func(*State)) (bool, error) {
+	return o.commitIf(d, func(st State) bool {
+		i := indexOf(st.Children, id)
+		return i >= 0 && !terminal(st.Children[i].State)
+	}, mutate)
+}
+
+// commitIf commits when holds, read under the lock, says the state still
+// takes d; otherwise it writes nothing and reports false.
+func (o *Orchestrator) commitIf(d Decision, holds func(State) bool, mutate func(*State)) (bool, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if holds != nil && !holds(o.state) {
+		return false, nil
+	}
 	if d.Child != "" && d.Session == "" {
 		d.Session = o.state.Project.OrchestratorID
 	}
 	seq, err := o.log.Record(d)
 	if err != nil {
-		return err
+		return true, err
 	}
 	st := cloneState(o.state)
 	if mutate != nil {
@@ -57,10 +79,10 @@ func (o *Orchestrator) commit(d Decision, mutate func(*State)) error {
 	}
 	st.LogSeq = seq
 	if err := o.store.Save(st); err != nil {
-		return err
+		return true, err
 	}
 	o.state = st
-	return nil
+	return true, nil
 }
 
 // record writes d and the state that follows it, unchanged but for the seq.
@@ -136,7 +158,7 @@ func (o *Orchestrator) move(id, to, reason, why string) protocol.Child {
 		return o.child(id)
 	}
 	data, _ := json.Marshal(map[string]string{"from": from, "to": to, "reason": reason})
-	err := o.commit(Decision{Kind: "child.state", Child: id, Why: why, Data: data}, edit(id, func(c *protocol.Child) {
+	live, err := o.commitLive(id, Decision{Kind: "child.state", Child: id, Why: why, Data: data}, edit(id, func(c *protocol.Child) {
 		c.State, c.Reason = to, reason
 		if to != stateAwaiting {
 			c.Waiting = ""
@@ -148,6 +170,11 @@ func (o *Orchestrator) move(id, to, reason, why string) protocol.Child {
 	}))
 	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s did not move from %s to %s: the log or the state did not take it: %v", id, from, to, err))
+		return o.child(id)
+	}
+	if !live {
+		// Closed or merged since from was read: the same late step as
+		// above, caught where the commit is.
 		return o.child(id)
 	}
 	c := o.child(id)
@@ -224,11 +251,15 @@ func (o *Orchestrator) Close(id, why string) error {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("the session of child %s did not close: %v", id, err))
 	}
 	data, _ := json.Marshal(map[string]string{"from": c.State, "worktree": c.Worktree, "branch": c.Branch})
-	if err := o.commit(Decision{Kind: "child.closed", Child: id, Why: why, Data: data}, edit(id, func(ch *protocol.Child) {
+	live, err := o.commitLive(id, Decision{Kind: "child.closed", Child: id, Why: why, Data: data}, edit(id, func(ch *protocol.Child) {
 		now := o.reg.now().UTC()
 		ch.State, ch.Reason, ch.Waiting, ch.Ended = stateClosed, "cancelled", "", &now
-	})); err != nil {
+	}))
+	switch {
+	case err != nil:
 		return protocol.Errorf(protocol.CodeInternal, "the close of %s did not reach the log: %v", id, err)
+	case !live:
+		return protocol.Errorf(protocol.CodeInvalidInput, "child %s became %s while it was being closed", id, o.child(id).State)
 	}
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
 	ctx, cancel := context.WithTimeout(context.Background(), dispatchDeadline)

@@ -129,10 +129,16 @@ func (o *Orchestrator) propose(id string) {
 	}
 	o.saveMerges(mg)
 	data, _ := json.Marshal(map[string]any{"from": stateInReview, "to": statePR, "pr": got.PR, "question": q.ID})
-	if err := o.commit(Decision{Kind: "child.state", Child: id, Data: data,
+	live, err := o.commitLive(id, Decision{Kind: "child.state", Child: id, Data: data,
 		Why: "review approved and gate green on its head: the merge waits for the person's answer to " + q.ID},
-		edit(id, func(ch *protocol.Child) { ch.State, ch.Waiting, ch.PR = statePR, "merge", got.PR })); err != nil {
+		edit(id, func(ch *protocol.Child) { ch.State, ch.Waiting, ch.PR = statePR, "merge", got.PR }))
+	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s did not move to pr: %v", id, err))
+		return
+	}
+	if !live {
+		o.sayError(protocol.CodeInvalidInput, fmt.Sprintf("child %s became %s while its merge was proposed: it stays so, and question %s asks about a child that is gone",
+			id, o.child(id).State, q.ID))
 		return
 	}
 	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
