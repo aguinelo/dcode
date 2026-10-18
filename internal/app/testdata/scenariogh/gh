@@ -6,6 +6,7 @@
 #
 #   pr create  numbers the PR and remembers its branch; refuses a second
 #              open PR for one branch, as GitHub does
+#   pr edit    takes the new body of a PR it opened
 #   pr merge   squashes the commit --match-head-commit names onto origin's
 #              main, as GitHub would, and refuses when the branch on origin
 #              is not at that commit
@@ -39,6 +40,14 @@ case "$1 $2" in
 	echo "$n" >"$d/count"
 	echo "$head" >"$d/pr-$n"
 	echo "https://github.com/o/r/pull/$n"
+	exit 0
+	;;
+"pr edit")
+	cat >"$d/edited-$3"
+	[ -f "$d/pr-$3" ] || {
+		echo "no pull request #$3" >&2
+		exit 1
+	}
 	exit 0
 	;;
 "pr merge")

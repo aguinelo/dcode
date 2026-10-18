@@ -108,6 +108,9 @@ func TestScenarioThreeThemesBecomeThreeChildren(t *testing.T) {
 		t.Fatalf("%d merges before the person said yes", n)
 	}
 	s.mergeAll(ids...)
+	if n := strings.Count(s.ghCalls(), "pr\ncreate\n"); n != 3 {
+		t.Errorf("gh opened %d PRs by the end, want the three: a new measurement updates its PR", n)
+	}
 
 	for _, k := range []string{"docs", "api", "web"} {
 		if got := s.show(s.mainTip(), k+"/"+k+".txt"); got != k+"\n" {
@@ -185,6 +188,10 @@ func TestScenarioMainMovedBetweenGateAndMerge(t *testing.T) {
 	if !s.ancestor(moved, again.Commit) {
 		t.Errorf("the second measurement %s does not contain main's tip %s", again.Commit, moved)
 	}
+	if s.count(c.ID, "pr.opened") != 1 || s.count(c.ID, "pr.updated") != 1 {
+		t.Errorf("the PR was opened %d times and updated %d, want one PR, updated once with the new measurement",
+			s.count(c.ID, "pr.opened"), s.count(c.ID, "pr.updated"))
+	}
 	ms := s.merges()
 	if len(ms) != 1 || after(ms[0], "--match-head-commit") != again.Commit {
 		t.Errorf("gh pr merge was called %q, want once, at the second measurement %s", ms, again.Commit)
@@ -194,7 +201,7 @@ func TestScenarioMainMovedBetweenGateAndMerge(t *testing.T) {
 		t.Errorf("main at %s lost one of the two changes", tip)
 	}
 	s.inOrder(c.ID, "gate.measured", "question.asked", "question.answered", "merge.queued", "merge.refused",
-		"gate.measured", "merge.completed")
+		"gate.measured", "pr.updated", "question.asked", "merge.completed")
 	s.quiet()
 }
 

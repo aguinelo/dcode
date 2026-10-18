@@ -150,9 +150,7 @@ func (s *scenario) returns(id string) []protocol.Return {
 			Return protocol.Return `json:"return"`
 		}](s.t, d.Data).Return
 		if r.Why == "" {
-			// The conflict's line, which Integration.Update writes, carries
-			// the Return bare rather than under "return".
-			r = decode[protocol.Return](s.t, d.Data)
+			s.t.Fatalf("child.returned #%d carries no return under \"return\": %s", d.Seq, d.Data)
 		}
 		out = append(out, r)
 	}
