@@ -162,9 +162,8 @@ func TestBashTimeoutKeepsPartialOutput(t *testing.T) {
 	if !strings.Contains(res.Output, "started") {
 		t.Errorf("partial output should survive a timeout: %q", res.Output)
 	}
-	if !res.Truncated {
-		t.Error("a timeout is a truncation and must say so")
-	}
+	// Whether the deadline counts as a truncation is decided in
+	// TestATimeoutIsNotATruncationOfOutput: it does not.
 }
 
 func TestBashWithoutASandboxRefusesToRun(t *testing.T) {

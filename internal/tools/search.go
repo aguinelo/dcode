@@ -217,6 +217,10 @@ func (g Grep) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 	var hits []hit
 	limit := s.Limits.GrepMaxMatches
 	truncated := false
+	// Matches past the limit are still counted, never emitted: "stopped at
+	// 50" says nothing about whether the next call should narrow the pattern
+	// or read on. Counting costs what a search with no match costs anyway.
+	remaining := 0
 
 	// The list is known before the scan starts, so this one can say `n of N`.
 	// Its own walk stays quiet: two phases with different totals would show a
@@ -238,9 +242,10 @@ func (g Grep) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 			if !re.MatchString(line) {
 				continue
 			}
-			if limit > 0 && matched+len(hits) >= limit {
+			if truncated || (limit > 0 && matched+len(hits) >= limit) {
 				truncated = true
-				break
+				remaining++
+				continue
 			}
 			matched++
 			for j := i - ctxLines; j <= i+ctxLines; j++ {
@@ -256,9 +261,6 @@ func (g Grep) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 		sort.Ints(idx)
 		for _, i := range idx {
 			hits = append(hits, hit{rel, i + 1, lines[i]})
-		}
-		if truncated {
-			break
 		}
 	}
 
@@ -283,7 +285,9 @@ func (g Grep) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 	res := Result{Output: b.String(), Meta: Meta{Lines: len(hits), Files: len(distinct)}}
 	if truncated {
 		res.Truncated = true
-		res.Output += fmt.Sprintf("\n… stopped at %d matches. Narrow the pattern or the glob.\n", limit)
+		res.Remaining = remaining
+		res.Output += fmt.Sprintf("\n… stopped at %d matches, %d more not shown. Narrow the pattern or the glob.\n",
+			limit, remaining)
 	}
 	return res, nil
 }
