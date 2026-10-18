@@ -425,6 +425,15 @@ ao revisor sobre o próprio papel — e que o somente leitura dela não é modo 
 tokens — antes de criar qualquer worktree. `model` vazio é o primeiro de
 `orchestrator.child_profiles`.
 
+**O título do filho é curto** (decisão do dono, 2026-10-18; desktop D69). `title` é um título de
+tópico de até `TitleLimit` = 40 caracteres, como "listas: Unicos": nomeia o filho onde a pessoa o lê
+— a lista de conversas, a aba Agentes, o plano, o cabeçalho da pergunta de merge — e a branch e os
+commits dele. Título longo, de mais de uma linha ou vazio **não recusa o lote**: o harness deriva um
+curto (`ShortTitle`), sempre o mesmo para a mesma entrada — a primeira linha do título, ou da
+`task` quando ele falta, cortada na última palavra que cabe, com "…". A resposta de `delegate` diz
+o título que o filho leva, a linha `dispatch` guarda o pedido em `asked_title`, e a conversa do
+filho recebe esse título como nome (`session.renamed`), em vez da primeira linha da tarefa.
+
 **O plano segue os filhos** (pedido do dono, 2026-10-18). A orquestradora faz o plano com `plan`
 antes de despachar, e cada item de `delegate` nomeia em `plan_step` o id do item do plano que
 cumpre — negativo recusa o lote inteiro. O passo vai à linha `dispatch` e ao `Child.PlanStep`. O
@@ -542,6 +551,8 @@ o que ele mede é o prompt, e veio de um defeito ao vivo. A metade determinísti
 - O passo do plano que um item de `delegate` nomeia segue o estado dos filhos dele: em curso, feito com todos em merge, bloqueado dizendo quem falhou.
 - O passo nomeado vai à linha `dispatch` e ao `Child`, e o plano que o harness mandou, lido de volta, não manda outro.
 - Item de `delegate` com `plan_step` negativo recusa o lote inteiro, sem worktree.
+- Título de item de `delegate` longo ou ausente não recusa o lote: o filho leva um título curto derivado, e a linha `dispatch` guarda o pedido em `asked_title`.
+- O título curto tem no máximo 40 caracteres, corta numa palavra e sai igual para a mesma entrada.
 
 ## 14. Invariantes previstas
 
@@ -587,5 +598,6 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610181300 — O gate roda dentro do sandbox](changelog/202610181300-o-gate-roda-no-sandbox.md)
 - [202610181800 — A pessoa decide na conversa da orquestradora](changelog/202610181800-a-pessoa-decide-na-conversa.md)
 - [202610182000 — O plano da orquestradora segue os filhos](changelog/202610182000-o-plano-segue-os-filhos.md)
+- [202610182100 — O filho leva um título curto](changelog/202610182100-o-filho-leva-um-titulo-curto.md)
 - [202610181200 — `dcode orchestrate` abre a orquestradora do projeto](../client-tui/changelog/202610181200-dcode-orchestrate-abre-a-orquestradora.md)
 - [202610181700 — A orquestradora sabe o próprio papel](../behavior-definition/changelog/202610181700-o-orquestrador-sabe-o-proprio-papel.md)

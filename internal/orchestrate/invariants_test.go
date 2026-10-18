@@ -89,6 +89,8 @@ var orchestrationInvariants = map[string]string{
 	"segue o estado dos filhos dele":     "TestAPlanStepFollowsTheStateOfItsChildren",
 	"lido de volta, não manda outro":     "TestTheHarnessAdvancesThePlanStepFromTheChild",
 	"`plan_step` negativo recusa o lote": "TestADelegateItemWithANegativePlanStepIsRefused",
+	"longo ou ausente não recusa o lote": "TestALongOrMissingTitleGivesTheChildAShortOneAndTheLogSaysSo",
+	"corta numa palavra e sai igual":     "TestAChildTitleIsShortAndDerivedTheSameWayEachTime",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {
