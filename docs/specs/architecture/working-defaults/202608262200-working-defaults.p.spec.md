@@ -6,41 +6,46 @@
 
 ## 1. Nível de estabilidade
 
-**Parcialmente entregue.** Os fatos F-1 e F-2 do catálogo da `.r §5.1` existem
-em código desde 2026-08-26, na `behavior-definition`. O resto — a seção de
-práticas, a origem delas, e o inventário de portões — é **desenho aprovado, não
-implementado**.
+**Entregue.** As quatro etapas da §8 estão em código: a seção de práticas, a
+sobreposição por `practices.md` e a origem (`internal/behavior`), o texto
+embutido do piso, o inventário de portões (`internal/workspace`, com a chave
+`DCODE_WORKSPACE_GATES`), e os contratos comportamentais, medidos (§6). Os fatos
+F-1 e F-2 do catálogo da `.r §5.1` existem desde 2026-08-26, na
+`behavior-definition`.
 
-Como na `task-ledger` e na `done-qualifier`, duas ausências decorrem disso:
+O código foi entregue **dentro** da `behavior-definition`, e é lá que as
+invariantes são reivindicadas. Duas consequências:
 
-- **A seção de invariantes chama-se "previstas".** Uma invariante verificável é
-  reivindicação sobre um teste que existe. As de F-1 e F-2 já são verificáveis e
-  moram na `behavior-definition §8`, onde foram entregues; **não são
-  reivindicadas de novo aqui**, porque duas famílias reivindicando o mesmo teste
-  é a duplicata que a guarda não pega.
-- **Não há `.i.spec.md`.** A guarda exige que todo caminho citado numa spec de
-  implementação exista. A `.i` entra com o código; a ordem de entrega da §8 é o
-  que existe até lá.
+- **A seção de invariantes desta família não é "verificáveis".** Cada
+  invariante da §7 já é reivindicada — ou está apontada como lacuna — na
+  `behavior-definition §8`, e a §7 diz onde. Reivindicá-las de novo aqui faria
+  duas famílias reivindicarem o mesmo teste, que é a duplicata que a guarda não
+  pega: `specguard.Check` confere uma família por vez.
+- **Não há `.i.spec.md`.** A ordem de entrega da §8 fez o papel dela, e as
+  quatro etapas foram cumpridas; escrever a `.i` agora seria reconstruir de
+  memória um plano já executado.
 
 ## 2. Onde mora o código
 
 ```
 internal/behavior/
-    behavior.go        # Doctrine ganha Practices; Build renderiza a seção
-    doctrine_overlay.go# DoctrineOverlay e SectionOrigins ganham Practices
-    workspace.go       # NOVO — tipo Workspace e renderWorkspace
-    workspace_test.go
+    behavior.go          # Doctrine.Practices; Build renderiza a seção; texto embutido do piso
+    doctrine_overlay.go  # DoctrineOverlay.Practices, SectionOrigins.Practices, practices.md
+    repo.go              # tipo Workspace e o bloco do workspace (repositório + portões)
+    practices_test.go
+    repo_test.go
 internal/workspace/
-    probe.go           # NOVO — sonda os portões declarados
+    probe.go             # Probe: sonda os portões declarados; Unreadable
     probe_test.go
 internal/app/
-    app.go             # DoctrineAudit ganha a linha de práticas
+    app.go               # declaredGates, o aviso manifest_unreadable, DoctrineAudit
 ```
 
-**Por que a sonda não mora no `internal/vcs/`.** Aquele pacote lê git e o
-comentário de topo dele diz isso. Portão declarado é `package.json`, `Makefile`,
-o que o projeto chamar de mínimo — não tem nada a ver com controle de versão, e
-enfiar ali criaria um pacote chamado `vcs` que lê `package.json`.
+**Por que a sonda não mora no `internal/vcs/`.** Aquele pacote lê o controle de
+versão, e o comentário de topo dele diz isso. Portão declarado é `package.json`,
+`Makefile`, o que o projeto chamar de mínimo — não tem nada a ver com controle
+de versão, e enfiar ali criaria um pacote chamado `vcs` que lê `package.json`.
+`Probe` é `workspace.Probe`.
 
 **Por que o tipo `Workspace` mora no `behavior/`.** Pela mesma razão que `Repo`
 mora: `Build` é pura e nada dentro dela roda comando. Quem cria a sessão tira o
@@ -174,17 +179,34 @@ type Gate struct {
     Source string
 }
 
+// Unreadable is a manifest that is there and could not be read or parsed.
+// It is not "declares nothing".
+type Unreadable struct {
+    Source string // o arquivo, como Gate.Source o nomeia
+    Err    error  // o erro de leitura ou de parse
+}
+
 // Probe reads what the workspace declares. Reading only: nothing here runs a
 // gate. Running them is 202608261730-done-qualifier.
-func Probe(ctx context.Context, dir string) []Gate
+//
+// gates é nil quando nada foi declarado; manifesto presente e ilegível volta
+// em unreadable; sonda cancelada não lê nada e não devolve nada.
+func Probe(ctx context.Context, dir string) (gates []Gate, unreadable []Unreadable)
 ```
 
 Fontes lidas, e nada mais:
 
 | Arquivo | O que vira `Gate` |
 |---|---|
-| `package.json` | cada chave de `scripts` |
-| `Makefile` | cada alvo sem `.` no nome e sem receita vazia |
+| `package.json` | cada chave de `scripts`, em ordem de chave |
+| `Makefile` | cada alvo em coluna zero, sem `.` inicial e sem espaço, `$` ou `%` no nome; atribuição de variável não é alvo; repetido entra uma vez; o comando é `make <alvo>` |
+
+No prefixo entram no máximo `MaxGates` (20) portões, e o corte é dito; o texto
+de um comando é cortado em 120 caracteres.
+
+Manifesto presente e ilegível não é "não declarou nada": volta em `Unreadable`,
+não apaga o outro manifesto, e a sessão o diz ao abrir com `session.error`
+`manifest_unreadable` (`changelog/202610162300-manifesto-ilegivel-e-dito.md`).
 
 **Por que só essas duas.** São as que os projetos auditados declaram, e uma
 lista que cresce por antecipação é uma lista que nunca é lida inteira. Acrescer
@@ -294,28 +316,36 @@ faça a instrução do projeto pesar o que ela declara pesar, e esse mecanismo �
 
 Os limiares **não** desceram para encontrar o resultado.
 
-## 7. Invariantes previstas
+## 7. Invariantes — reivindicadas na `behavior-definition`
 
-> Entram como **verificáveis**, reivindicadas por `specguard.Check`, no PR de
-> cada etapa. As de F-1 e F-2 já são verificáveis e moram na
-> `behavior-definition §8`; não se repetem aqui.
+> **Não promovidas a verificáveis aqui, e de propósito.** O código entrou pela
+> `behavior-definition`, e os testes que as afirmam já são reivindicados na
+> `behavior-definition §8` por `internal/behavior/invariants_test.go`. Promovê-las
+> nesta família exigiria um segundo `specguard.Check` reivindicando os mesmos
+> testes — `TestAnEmptyFloorDoesNotFailTheBuild`, `TestTheDeclaredGatesReachThePrefix`
+> e os vizinhos em `practices_test.go` e `repo_test.go` —, e duas famílias
+> reivindicando o mesmo teste é a duplicata que a guarda não pega. Cada linha
+> abaixo diz onde é reivindicada, ou que ainda não é.
 
-- `Doctrine.Practices` vazia **não** faz `Build` falhar; `Identity` e `Safety` vazias continuam fazendo.
-- A seção de práticas é renderizada depois de `Safety` e antes de `Using tools`.
-- As instruções do projeto continuam sendo o último bloco do prefixo.
-- `DoctrineOverlay` tem campo para `Practices` e **continua sem** campo para `Safety`.
-- `practices.md` substitui o texto embutido; não há variante que acrescenta.
-- `SectionOrigins.Practices` é `replaced` quando houve overlay e `builtin` quando não.
-- `DoctrineAudit` imprime a linha de práticas junto das outras quatro.
-- `Build` continua pura com a seção de práticas: mesma doutrina, prefixo byte-idêntico.
-- `Probe` não executa nenhum portão que encontra.
-- `Probe` lê apenas `package.json` e `Makefile`; nenhuma outra fonte vira `Gate`.
-- `Probe` num diretório sem nenhuma das duas devolve lista vazia, não erro.
-- `Probe` com `package.json` ou `Makefile` presente e ilegível devolve o arquivo e o motivo, e a sessão avisa ao abrir.
-- `Makefile` com alvo começando por `.` não vira `Gate`.
-- O bloco de portões declara que nada ali afirma que eles passam.
-- Workspace sem portão declarado não renderiza bloco nenhum.
-- `Workspace` nulo renderiza nada, e nada no prefixo afirma que o projeto não declara portões.
+- `Doctrine.Practices` vazia **não** faz `Build` falhar; `Identity` e `Safety` vazias continuam fazendo. — `behavior-definition §8`.
+- A seção de práticas é renderizada depois de `Safety` e antes de `Using tools`. — `behavior-definition §8`.
+- As instruções do projeto continuam sendo o último bloco do prefixo. — `behavior-definition §8`.
+- `DoctrineOverlay` tem campo para `Practices` e **continua sem** campo para `Safety`. — `behavior-definition §8`.
+- `practices.md` substitui o texto embutido; não há variante que acrescenta. — `behavior-definition §8`.
+- `SectionOrigins.Practices` é `replaced` quando houve overlay e `builtin` quando não. — `behavior-definition §8`.
+- `DoctrineAudit` imprime a linha de práticas junto das outras quatro. — **sem reivindicação**: o código imprime a linha (`internal/app/app.go`), mas `TestAuditNamesAllFourSectionsAndTheirOrigin` não confere `Practices`.
+- `Build` continua pura com a seção de práticas: mesma doutrina, prefixo byte-idêntico. — `behavior-definition §8`.
+- `Probe` não executa nenhum portão que encontra. — `behavior-definition §8`.
+- `Probe` lê apenas `package.json` e `Makefile`; nenhuma outra fonte vira `Gate`. — `behavior-definition §8`, pela metade: a linha de lá diz as duas fontes; que nenhuma outra vire portão não tem asserção própria.
+- `Probe` num diretório sem nenhuma das duas devolve lista vazia, não erro. — **sem reivindicação**; `TestNothingDeclaredIsNoGates` (`internal/workspace`) afirma e não é reivindicado.
+- `Probe` com `package.json` ou `Makefile` presente e ilegível devolve o arquivo e o motivo, e a sessão avisa ao abrir. — **sem reivindicação**; `TestAMalformedPackageJSONIsUnreadableNotEmpty`, `TestAMakefileThatCannotBeScannedIsUnreadable` e `TestAnUnreadablePackageJSONIsSaid` afirmam e não são reivindicados.
+- `Makefile` com alvo começando por `.` não vira `Gate`. — `behavior-definition §8`.
+- O bloco de portões declara que nada ali afirma que eles passam. — `behavior-definition §8`.
+- Workspace sem portão declarado não renderiza bloco nenhum. — `behavior-definition §8`.
+- `Workspace` nulo renderiza nada, e nada no prefixo afirma que o projeto não declara portões. — `behavior-definition §8`.
+
+As três sem reivindicação são lacuna da `behavior-definition §8`, onde o código
+foi entregue, e é lá que fecham.
 
 A última é a lição do F-2 aplicada de novo: "não sondei" e "sondei e não há" não
 podem ler igual.
@@ -341,4 +371,6 @@ onde o texto morar.
 - [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)
 - [202608271200 — o piso medido](changelog/202608271200-o-piso-medido.md)
 - [202608280200 — verificação impossível não cancela o trabalho](changelog/202608280200-verificacao-impossivel.md)
+- [202609012200 — o produto de duas exigências](changelog/202609012200-o-produto-de-duas-exigencias.md)
 - [202610162300 — manifesto ilegível é dito](changelog/202610162300-manifesto-ilegivel-e-dito.md)
+- [202610180100 — a spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)

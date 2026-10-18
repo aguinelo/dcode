@@ -3,20 +3,14 @@
 > Nenhuma variável de ambiente nova no código sem estar aqui.
 > Precedência: flag > variável de ambiente > arquivo de config > default.
 
-## 1. Chaves previstas — **nenhuma declarada ainda**
+## 1. A chave desta família — declarada na `behavior-definition`
 
-Este arquivo não declara chave nenhuma. Linha de tabela num `.config.spec.md`
-**é** a declaração — `TestEveryKeyTheSpecsDeclareIsReadSomewhere` lê as linhas e
-reprova a chave que nenhum código consome — e o que ainda não existe não é
-reivindicado como existente. A linha de tabela entra no PR da etapa que lê a
-chave.
-
-Mesma forma das "Invariantes previstas" do `.p §7`, pelo mesmo motivo.
-
-### 1.1 A única chave prevista — etapa 3
-
-**`DCODE_WORKSPACE_GATES`**, bool, default `true`. Liga o inventário de portões
-declarados no prefixo (`.p §5`).
+**`DCODE_WORKSPACE_GATES`** (`workspace.gates`), bool, default `true`. Liga o
+inventário de portões declarados no prefixo (`.p §5`). Existe e é lida
+(`internal/app/app.go`); a linha de tabela que a declara está em
+`202608080016-behavior-definition.config.spec.md` §3, porque o código entrou por
+lá. Não é redeclarada aqui: duas linhas para a mesma chave são duas descrições
+que derivam uma da outra.
 
 Nasce **ligada**: a sonda lê dois arquivos, não roda nada, e o custo é uma
 leitura na abertura da sessão. Uma sonda barata que nasce desligada é uma sonda
@@ -24,7 +18,7 @@ que ninguém liga.
 
 Ela existe por um motivo só, e é honesto declará-lo: um repositório grande com
 um `Makefile` de setenta alvos gastaria contexto com uma lista que ninguém lê. O
-teto da `.config §3` cobre o caso comum; a chave cobre quem quiser nada.
+teto `MaxGates` (20) cobre o caso comum; a chave cobre quem quiser nada.
 
 ## 2. O que **não** vira chave, e por quê
 
@@ -62,13 +56,13 @@ segunda maneira é a que fica desatualizada.
 
 ## 4. Medição de contratos comportamentais
 
-**Os cinco contratos desta família foram medidos** contra `MiniMax-M3` em
-2026-08-27, com `DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e `DCODE_EVAL_ENABLED` —
-declaradas em `202608072334-provider-adapter.config.spec.md` §4, não
-redeclaradas aqui. Os resultados estão na `.p §6`, com modelo e data em
-`internal/evals/measured.go`.
-
-Dois fecharam; três não, e um deles a 5%. Os limiares ficaram onde estavam.
+**Os contratos desta família foram medidos** contra `MiniMax-M3`, com
+`DCODE_EVAL_MODEL`, `DCODE_EVAL_RUNS` e `DCODE_EVAL_ENABLED` — declaradas em
+`202608072334-provider-adapter.config.spec.md` §4, não redeclaradas aqui. Eram
+cinco em 2026-08-27 e são seis desde que `202609012200` separou o contrato
+conjuntivo em dois. Os resultados vigentes estão na `.p §6`, contados de
+`internal/evals/measured.go`, com modelo e data. Os limiares ficaram onde
+estavam.
 
 `floor-checks-before-claiming` **continua medido, e não migrou para
 `Asserted`.** A previsão desta seção estava meio certa: o judge é de fato
@@ -89,3 +83,7 @@ chamada, e inventá-la seria o juiz codificando algo que não enxerga.
 - [202608262200 — o piso de prática e quem pode mudá-lo](changelog/202608262200-piso-de-pratica.md)
 - [202608262300 — o contrato do piso](changelog/202608262300-contrato-do-piso.md)
 - [202608271200 — o piso medido](changelog/202608271200-o-piso-medido.md)
+- [202608280200 — verificação impossível não cancela o trabalho](changelog/202608280200-verificacao-impossivel.md)
+- [202609012200 — o produto de duas exigências](changelog/202609012200-o-produto-de-duas-exigencias.md)
+- [202610162300 — manifesto ilegível é dito](changelog/202610162300-manifesto-ilegivel-e-dito.md)
+- [202610180100 — a spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)

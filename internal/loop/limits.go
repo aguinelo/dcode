@@ -64,8 +64,8 @@ func (l Limits) withFamily(familyMaxIterations int) Limits {
 //
 // Identity is over the tool *and* its canonicalised input. That is what lets
 // the detector coexist with recovery: retrying with a different approach is not
-// an identical call, so it never trips, while the same failing command three
-// times does.
+// an identical call, so it never trips, while the same failing command n times
+// in a row — five by default, MaxIdenticalCalls — does.
 func IsRepeat(calls []ce.ToolCall, n int) bool {
 	if n <= 0 || len(calls) < n {
 		return false

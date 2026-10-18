@@ -66,7 +66,7 @@
 `internal/contextengine/contextengine_test.go`
 
 - [ ] Um teste por linha da seção 7 do `.p.spec.md`.
-- [ ] `go test -race ./internal/context/...` limpo.
+- [ ] `go test -race ./internal/contextengine/...` limpo.
 - [ ] Cobertura ≥ 90% neste pacote.
 
 ## Ordem de dependência
