@@ -153,16 +153,17 @@ var protocolInvariants = map[string]string{
 	"junta os fragmentos de texto": "TestATranscriptReadsLikeTheConversation",
 	// Continuing. The daemon assembles it; the rebuild is asserted where the
 	// record is read.
-	"cria sessão **nova** carregando": "TestContinuingASessionCarriesItsConversation",
-	"Continuar sessão inexistente":    "TestContinuingAMissingSessionIsAnError",
-	"entra no log da sessão nova":     "TestContinuingShowsAndRecordsWhatItCarries",
-	"Continuar uma continuação":       "TestContinuingAContinuationKeepsTheWholeConversation",
-	"sem resultado não entra":         "TestACallWithNoResultIsDropped",
-	"é reconstruído inteiro":          "TestABatchOfCallsIsRebuiltWhole",
-	"não na ordem em que terminaram":  "TestABatchIsRebuiltInTheOrderItsCallsWereMade",
-	"reconecta ao pacote":             "TestResumingWithNoModelRestoresTheSessionsOwnBundle",
-	"`Session.Branch` é lido uma vez": "TestASessionBuiltInARepositoryDescribesItsBranch",
-	"só é aplicado com `family`":      "TestResumingAnOldRecordWithNoFamilyFallsBackRatherThanFailingToBuild",
+	"cria sessão **nova** carregando":   "TestContinuingASessionCarriesItsConversation",
+	"Continuar sessão inexistente":      "TestContinuingAMissingSessionIsAnError",
+	"entra no log da sessão nova":       "TestContinuingShowsAndRecordsWhatItCarries",
+	"Continuar uma continuação":         "TestContinuingAContinuationKeepsTheWholeConversation",
+	"sem resultado não entra":           "TestACallWithNoResultIsDropped",
+	"é reconstruído inteiro":            "TestABatchOfCallsIsRebuiltWhole",
+	"não na ordem em que terminaram":    "TestABatchIsRebuiltInTheOrderItsCallsWereMade",
+	"o par fica inteiro como histórico": "TestAnOrchestratorRecordRebuildsIntoPairsTheProviderAccepts",
+	"reconecta ao pacote":               "TestResumingWithNoModelRestoresTheSessionsOwnBundle",
+	"`Session.Branch` é lido uma vez":   "TestASessionBuiltInARepositoryDescribesItsBranch",
+	"só é aplicado com `family`":        "TestResumingAnOldRecordWithNoFamilyFallsBackRatherThanFailingToBuild",
 	// Undo. The state owns what changed, the session owns when it may be
 	// asked for, and the assertions live with each.
 	"restaura o que o **último** turno": "TestANewTurnReplacesWhatCanBeUndone",

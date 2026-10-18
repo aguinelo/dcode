@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
+	"github.com/aguinelo/dcode/internal/protocol"
 	"github.com/aguinelo/dcode/internal/provider"
 	"github.com/aguinelo/dcode/internal/tools"
 )
@@ -83,11 +84,17 @@ func TestARefusedCallLeavesAHistoryTheProviderAccepts(t *testing.T) {
 		{text("I cannot delegate here, so I read it myself."), done()},
 		{text("Done."), done()},
 	}}
-	e, _ := newEngine(t, p, tools.NewRegistry(tools.Read{}))
+	e, rec := newEngine(t, p, tools.NewRegistry(tools.Read{}))
 	e.session.History = append(e.session.History, seeded...)
 
 	if _, err := e.Run(context.Background(), "keep going"); err != nil {
 		t.Fatal(err)
+	}
+	if len(p.seen) != 2 {
+		t.Errorf("the turn made %d requests, want a second one for the model to correct the refused call", len(p.seen))
+	}
+	if rec.count(protocol.EventSessionError) != 1 {
+		t.Error("a call that did not run has to be said on the stream")
 	}
 	if _, err := e.Run(context.Background(), "and now?"); err != nil {
 		t.Fatal(err)
