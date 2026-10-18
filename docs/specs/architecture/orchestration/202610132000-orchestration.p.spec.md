@@ -64,7 +64,7 @@ type Spawner interface {
 	Close(sessionID string) error
 }
 type ChildRequest struct{ ParentID, Worktree, Profile, Task string; Owns []string }
-type ReviewRequest struct{ ParentID, ChildID, Worktree, Profile, Commit, Diff string; Files []string }
+type ReviewRequest struct{ ParentID, ChildID, Worktree, Profile, Base, Commit, Task, Diff string; Owns, Files, Specs, MissingSpecs []string; DiffBytes int; DiffCut bool }
 type State struct { // state.json, um por projeto
 	V              int                 `json:"v"` // 1
 	Project        protocol.Project    `json:"project"`
@@ -248,11 +248,7 @@ sem revisão** (`Return{outside_owns, paths}`). Dentro, adiciona **os caminhos n
 `-A` — e commita com `pr_title` (ou `title`) como mensagem; `Head` é esse commit. Log:
 `owns.checked`, com os caminhos.
 
-**7.2 Revisão.** Uma sessão `RoleReviewer`, filha da orquestradora, na worktree do filho, com
-`read`, `glob`, `grep`, `symbol` e `verdict` — sem escrita, sem `bash`. Recebe a tarefa, o `owns` e
-o diff `Base..Head` até `orchestrator.review_max_diff_bytes`; acima disso, a lista de arquivos e a
-instrução de lê-los. `verdict{verdict, findings}`. Turno sem `verdict` é `missing` e roda de novo
-uma vez; o segundo `missing` deixa o filho em `in_review`, com relato à orquestradora.
+**7.2 Revisão.** Uma sessão `RoleReviewer`, filha da orquestradora, na worktree do filho, com `read`, `glob`, `grep`, `symbol` e `verdict` (`ReviewerRegistry`) — sem escrita, sem `bash`. `AssembleReview` monta a tarefa, o `owns`, as specs que a tarefa nomeia e o diff `Base..Head` até `orchestrator.review_max_diff_bytes`; acima disso, o diff sai inteiro (`DiffCut`), dito, com a lista de arquivos e a instrução de lê-los; arquivo fora do `owns` no diff é `outside_owns` sem revisor. `verdict{verdict, findings, why}`. Turno sem `verdict` é `missing` (`ErrNoVerdict`) e roda de novo uma vez; o segundo `missing` deixa o filho em `in_review`, com relato à orquestradora.
 
 **7.3 Devolução com teste vermelho primeiro (RN-5).** `changes_requested` volta **ao mesmo filho**
 em duas fases. **`red`:** o turno pede só o teste que mostra o defeito e termina com
@@ -437,6 +433,9 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - O que o filho disse do gate vai ao log como `claim`, ao lado do medido, e nunca muda o `result`.
 - Sem comando de gate declarado nada roda, o resultado é `undeclared`, e `gate_undeclared` é dito.
 - Medição de outro commit, ou sobre outra main, que não os do merge é `gate_stale`.
+- O revisor não tem ferramenta que escreve.
+- Revisão que termina sem `verdict` é `missing`, vai ao log, e nunca conta como aprovação.
+- Diff acima de `review_max_diff_bytes` sai inteiro e é dito; nunca chega cortado ao revisor como se fosse o todo.
 
 ## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
 
@@ -450,7 +449,6 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Aprovação de filho não expira, e nenhuma ferramenta da orquestradora a responde.
 - Todo fim de turno de filho tem um dos nomes da RN-7.
 - Criar a worktree não muda `core.hooksPath`; se mudou, `hooks.changed` diz os dois valores.
-- O revisor não tem ferramenta que escreve.
 - Defeito do revisor volta ao mesmo filho em fase `red`, e o conserto só é aceito depois de `red_test.confirmed`.
 - O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
 - Sem gate verde não há PR nem merge, e main ou branch que andou entre o gate e o merge mede de novo.
@@ -497,3 +495,4 @@ As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 - [202610172350 — O log de decisões se lê sem o daemon](changelog/202610172350-o-log-de-decisoes-se-le-sem-o-daemon.md)
 - [202610172358 — A orquestradora roda o gate ela mesma](changelog/202610172358-a-orquestradora-roda-o-gate.md)
 - [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)
+- [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)

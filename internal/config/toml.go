@@ -87,6 +87,11 @@ var KnownKeys = map[string]string{
 	"orchestrator.main_branch":      "DCODE_ORCHESTRATOR_MAIN_BRANCH",
 	"orchestrator.gate_command":     "DCODE_ORCHESTRATOR_GATE_COMMAND",
 	"orchestrator.gate_timeout":     "DCODE_ORCHESTRATOR_GATE_TIMEOUT",
+
+	// The review's keys, read by the orchestrator (orchestration .config §2, §3).
+	"orchestrator.reviewer_profiles":     "DCODE_ORCHESTRATOR_REVIEWER_PROFILES",
+	"orchestrator.review_max_diff_bytes": "DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES",
+
 	// The eval keys are read by the measurement harness, never by the product.
 	// They live in the same schema anyway: a key that governs behaviour and
 	// cannot be inspected with `--config` is the gap the audit pair closes,

@@ -5,7 +5,8 @@
 > Contrato técnico em `202610132000-orchestration.p.spec.md`.
 
 > **Estado.** `orchestrator.dir` é lida desde o passo 4; `enabled`, `profile` e `main_branch`, desde o
-> passo 5; `gate_command` e `gate_timeout`, desde o passo 9 (`orchestrate.GateFrom`); o resto está
+> passo 5; `gate_command` e `gate_timeout`, desde o passo 9 (`orchestrate.GateFrom`);
+> `reviewer_profiles` e `review_max_diff_bytes`, desde o passo 8 (`orchestrate.ReviewFrom`); o resto está
 > planejado, não construído. Cada
 > chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
 > da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
@@ -57,8 +58,9 @@ Lidas, na cadeia de configuração da raiz do projeto, quando ele abre:
 |---|---|---|---|---|
 | `DCODE_ORCHESTRATOR_PROFILE` | `orchestrator.profile` | vazio = `model.name` | nome de perfil de `models.toml`, ou vazio | 5 |
 | `DCODE_ORCHESTRATOR_MAIN_BRANCH` | `orchestrator.main_branch` | vazio = a que `vcs` detecta | nome de branch que existe | 5 |
+| `DCODE_ORCHESTRATOR_REVIEWER_PROFILES` | `orchestrator.reviewer_profiles` | vazio = o primeiro de `child_profiles` | lista de perfis de `models.toml`; nome que não existe é erro | 8 |
 
-Valor inválido nestas duas é recusado no `POST /v1/projects` (`workspace_invalid`), com a chave e o
+Valor inválido nestas três é recusado no `POST /v1/projects` (`workspace_invalid`), com a chave e o
 valor: só ali se sabe a raiz cuja cadeia as declara.
 
 Por ler:
@@ -68,7 +70,6 @@ Por ler:
 | `orchestrator.max_children` | `DCODE_ORCHESTRATOR_MAX_CHILDREN` | `4` | inteiro de 1 a 16, e menor que `daemon` `MaxSessions` menos 2 | 6 |
 | `orchestrator.max_returns` | `DCODE_ORCHESTRATOR_MAX_RETURNS` | `3` | inteiro de 1 a 10 | 8 |
 | `orchestrator.child_profiles` | `DCODE_ORCHESTRATOR_CHILD_PROFILES` | vazio = só o modelo da orquestradora | lista de perfis de `models.toml`; nome que não existe é erro | 6 |
-| `orchestrator.reviewer_profiles` | `DCODE_ORCHESTRATOR_REVIEWER_PROFILES` | vazio = o primeiro de `child_profiles` | idem | 8 |
 | `orchestrator.branch_prefix` | `DCODE_ORCHESTRATOR_BRANCH_PREFIX` | `dcode/` | passa em `git check-ref-format --branch` com um nome depois | 6 |
 | `orchestrator.report_debounce` | `DCODE_ORCHESTRATOR_REPORT_DEBOUNCE` | `2s` | de `0s` a `1m` | 7 |
 | `orchestrator.token_ceiling` | `DCODE_ORCHESTRATOR_TOKEN_CEILING` | `20000000` | inteiro de 100000 a 1000000000 | 6 |
@@ -99,12 +100,12 @@ Lidas:
 |---|---|---|---|---|
 | `DCODE_ORCHESTRATOR_GATE_COMMAND` | `orchestrator.gate_command` | vazio = `verify.command` | texto; vazio com `verify.command` vazio é `gate_undeclared` na medição, não erro de abertura | 9 |
 | `DCODE_ORCHESTRATOR_GATE_TIMEOUT` | `orchestrator.gate_timeout` | `30m` | de `1m` a `6h` | 9 |
+| `DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES` | `orchestrator.review_max_diff_bytes` | `131072` | inteiro de 4096 a 1048576; diff acima é cortado inteiro e dito, nunca truncado | 8 |
 
 Por ler:
 
 | Chave | Variável | Default | Validação | Passo |
 |---|---|---|---|---|
-| `orchestrator.review_max_diff_bytes` | `DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES` | `131072` | inteiro de 4096 a 1048576 | 8 |
 | `orchestrator.forge` | `DCODE_ORCHESTRATOR_FORGE` | `auto` | `auto`, `github` ou `local` | 10 |
 | `orchestrator.ci_timeout` | `DCODE_ORCHESTRATOR_CI_TIMEOUT` | `45m` | de `1m` a `6h` | 10 |
 | `orchestrator.sensitive` | `DCODE_ORCHESTRATOR_SENSITIVE` | ver abaixo | lista de globs de `policy.Glob` | 10 |
@@ -164,3 +165,4 @@ segunda fatia, pelas chaves `eval.*` de `202608072334-provider-adapter.config.sp
 - [202610172200 — A primeira fatia, planejada](changelog/202610172200-a-primeira-fatia-planejada.md)
 - [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)
 - [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)
+- [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)

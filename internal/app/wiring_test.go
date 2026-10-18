@@ -130,6 +130,11 @@ var nonSession = map[string]string{
 	// The gate is measured by the orchestrator, never by the session it judges.
 	"orchestrator.gate_command": "read by the orchestrator, which runs the gate itself and is not a session",
 	"orchestrator.gate_timeout": "read by the orchestrator, which runs the gate itself and is not a session",
+
+	// The review is the orchestrator's too: the reviewer is a session it
+	// starts, and the session never chooses its own reviewer or its diff.
+	"orchestrator.reviewer_profiles":     "read by the orchestrator, which chooses the reviewer's profile from the allow-list",
+	"orchestrator.review_max_diff_bytes": "read by the orchestrator, which assembles the reviewer's diff",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.
