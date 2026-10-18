@@ -320,6 +320,7 @@ var feedbackInvariants = map[string]string{
 	"cortada em `MaxCriterionOutput`":                  "TestTheCeilingIsPerCriterionAndNotPerReport",
 	"preserva o **fim**":                               "TestTruncationKeepsTheEnd",
 	"fronteira de linha quando há uma":                 "TestTruncationCutsOnALineWhenItCan",
+	"nunca parte um caractere de vários bytes":         "TestTheTailNeverSplitsACharacter",
 	"teto é por critério":                              "TestTheCeilingIsPerCriterionAndNotPerReport",
 	"não lê saída":                                     "TestProgressDoesNotReadOutput",
 	"**nomeia o seu comando**":                         "TestASilentCriterionNamesItsCommand",
