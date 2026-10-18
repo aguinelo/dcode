@@ -218,7 +218,7 @@ func (b Bash) startBackground(ctx context.Context, command string, s *State) Res
 	}
 	code, done := watchUntilSettled(ctx, h, settle)
 
-	out, cut := clampTail(h.Output(), s.Limits.MaxToolOutput)
+	out, dropped := clampTail(h.Output(), s.Limits.MaxToolOutput)
 	body := out
 	if strings.TrimSpace(body) == "" {
 		body = "(no output yet)"
@@ -233,7 +233,8 @@ func (b Bash) startBackground(ctx context.Context, command string, s *State) Res
 	res := Result{
 		Output: fmt.Sprintf("started as %s · %s\n\n%s\n\nRead it again with `process`.",
 			id, state, body),
-		Truncated: cut,
+		Truncated: dropped > 0,
+		Remaining: dropped,
 		Meta:      Meta{Lines: countLines(out)},
 	}
 	if done {

@@ -188,7 +188,7 @@ func (p Process) list(s *State) Result {
 
 // report is one process: what state it is in, and what it has printed.
 func (p Process) report(e *procEntry, max int) Result {
-	out, cut := clampTail(e.handle.Output(), max)
+	out, dropped := clampTail(e.handle.Output(), max)
 	body := out
 	if strings.TrimSpace(body) == "" {
 		body = "(no output)"
@@ -196,7 +196,8 @@ func (p Process) report(e *procEntry, max int) Result {
 	code, done := e.handle.Exited()
 	res := Result{
 		Output:    fmt.Sprintf("%s · %s · %s\n\n%s", e.id, status(e), e.command, body),
-		Truncated: cut,
+		Truncated: dropped > 0,
+		Remaining: dropped,
 		Meta:      Meta{Lines: countLines(out)},
 	}
 	if done {
@@ -227,14 +228,19 @@ func status(e *procEntry) string {
 // The opposite of clamp, and deliberately: a server's first lines are a banner,
 // and its last lines are why it died. Cutting the tail throws away the only
 // part anyone reads a log for.
-func clampTail(s string, max int) (string, bool) {
+//
+// It returns how many bytes of s were left out, so the Result can carry it as
+// Remaining: a cut that only says "cut" leaves the model guessing whether it
+// missed a line or a megabyte. Zero means nothing was cut.
+func clampTail(s string, max int) (string, int) {
 	if max <= 0 || len(s) <= max {
-		return s, false
+		return s, 0
 	}
 	cut := s[len(s)-max:]
 	// Start at a line boundary so the first line is not half a line.
 	if i := strings.IndexByte(cut, '\n'); i >= 0 && i < len(cut)-1 {
 		cut = cut[i+1:]
 	}
-	return fmt.Sprintf("… earlier output dropped, keeping the last %d bytes\n%s", max, cut), true
+	dropped := len(s) - len(cut)
+	return fmt.Sprintf("… %d earlier bytes dropped, keeping the last %d\n%s", dropped, len(cut), cut), dropped
 }

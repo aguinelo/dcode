@@ -123,24 +123,46 @@ func (f Fetch) Execute(ctx context.Context, input json.RawMessage, s *State) (Re
 	}
 
 	text := string(body)
-	truncated := false
+	remaining, exact := 0, true
 	if len(text) > limit {
 		text = text[:limit]
-		truncated = true
+		remaining, exact = unread(resp, limit, len(body))
 	}
 
 	// The source rides with the text. A model that cannot tell a quotation
 	// from its own summary will produce both, and the URL is what lets a
 	// reader check which one they got.
 	head := fmt.Sprintf("%s · %s", u.String(), resp.Status)
-	if truncated {
-		head += fmt.Sprintf(" · truncated at %d bytes", limit)
+	if remaining > 0 {
+		more := fmt.Sprintf("%d", remaining)
+		if !exact {
+			more = "at least " + more
+		}
+		head += fmt.Sprintf(" · truncated at %d bytes, %s more not returned", limit, more)
 	}
 	return Result{
 		Output:    head + "\n\n" + text,
-		Truncated: truncated,
+		Truncated: remaining > 0,
+		Remaining: remaining,
 		Meta:      Meta{Lines: countLines(text)},
 	}, nil
+}
+
+// fetchCountCap bounds how much of a cut body is read only to be counted.
+// Counting a body means downloading it; past this, the count is a floor.
+const fetchCountCap = 16 << 20
+
+// unread is how many bytes of the body were not returned, when read bytes were
+// taken and only limit of them kept. A declared length answers without reading
+// further; without one the rest is counted, up to fetchCountCap. exact is false
+// when the count stopped at the cap or the read failed, so the text can say
+// "at least" instead of a number it does not have.
+func unread(resp *http.Response, limit, read int) (int, bool) {
+	if resp.ContentLength > int64(limit) {
+		return int(resp.ContentLength - int64(limit)), true
+	}
+	n, err := io.Copy(io.Discard, io.LimitReader(resp.Body, fetchCountCap))
+	return read - limit + int(n), err == nil && n < fetchCountCap
 }
 
 // isReadable reports whether a content type is text this tool should return.
