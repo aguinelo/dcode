@@ -8,6 +8,7 @@
 import type { Conversation } from '../protocol/generated';
 import { age, firstLine, since } from './format';
 import type { Prefs } from './prefs';
+import { openPathOf } from './questions';
 import type { SessionView } from './session';
 import type { SessionsState } from './sessions';
 
@@ -118,6 +119,15 @@ export function rowOfConversation(c: Conversation): Row {
     lastEvent: c.last_event,
     ...placed(c),
   };
+}
+
+/**
+ * Whether picking a row in the Crew only shows it: an ended conversation is
+ * shown, and writing continues it (D33). An orchestrator is never shown as
+ * ended — it is always the live one of its project, and picking opens it.
+ */
+export function pickShows(r: Row): boolean {
+  return r.state === 'recorded' && openPathOf(r) !== 'orchestrator';
 }
 
 export type Mark = 'running' | 'blocked' | 'none';

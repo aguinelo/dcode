@@ -208,18 +208,20 @@ func (d *Daemon) buildAs(id string, req protocol.CreateSessionRequest, adjust fu
 	}
 	if req.Resume != "" {
 		// The record is the only copy of what happened, so continuing means
-		// reading it. A failure here is fatal to the request rather than
-		// quietly starting fresh: someone who asked to continue and got an
-		// empty session would not find out until the model had forgotten
-		// everything.
-		//
-		// The id comes from a client and becomes a path, so it is held to
-		// the record directory first: unchecked, `../x` continued a record
-		// outside it, read into the model and copied into this session's.
+		// reading it. A failure here is fatal rather than quietly starting
+		// fresh: someone who asked to continue and got an empty session would
+		// not find out until the model had forgotten everything. The id comes
+		// from a client and becomes a path, so it is held to the record
+		// directory first: unchecked, `../x` continued a record outside it,
+		// read into the model and copied into this session's.
 		if err := session.ValidID(req.Resume); err != nil {
 			return nil, err
 		}
 		path := filepath.Join(d.opts.RecordDir, req.Resume+".jsonl")
+		origin, oerr := continuedOrigin(path, req.Resume)
+		if oerr != nil {
+			return nil, oerr
+		}
 		history, herr := session.Rebuild(path)
 		if herr != nil {
 			return nil, protocol.Errorf(protocol.CodeSessionNotFound,
@@ -252,12 +254,10 @@ func (d *Daemon) buildAs(id string, req protocol.CreateSessionRequest, adjust fu
 		// to Base here is the same answer this whole feature replaces — but
 		// wrong-and-recoverable beats crashed, and a record from before this
 		// shipped ages out of retention like any other.
-		if req.Model == "" {
-			if origin, oerr := session.Origin(path); oerr == nil && origin.Model != "" && origin.Family != "" {
-				opts.Model, opts.Family, opts.Transport, opts.BaseURL = origin.Model, origin.Family, origin.Transport, origin.BaseURL
-				if origin.ContextWindow > 0 {
-					opts.Window = origin.ContextWindow
-				}
+		if req.Model == "" && origin.Model != "" && origin.Family != "" {
+			opts.Model, opts.Family, opts.Transport, opts.BaseURL = origin.Model, origin.Family, origin.Transport, origin.BaseURL
+			if origin.ContextWindow > 0 {
+				opts.Window = origin.ContextWindow
 			}
 		}
 	}

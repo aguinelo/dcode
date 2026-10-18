@@ -3,6 +3,7 @@ import type * as P from '../../src/protocol/generated';
 import { LiveStore } from '../../src/renderer/live';
 import type { Answer, DaemonStatus, DcodeApi, ImageAttachment, SessionEvents, StreamEnd } from '../../src/shared/api';
 import { STEER_TAKES_TEXT } from '../../src/state/attachments';
+import { sessionGone } from '../../src/state/questions';
 import { quietLoops, quietOrchestrate, quietPr } from './helpers';
 
 const picture = (name: string): ImageAttachment => ({ name, mediaType: 'image/png', data: 'iVBORw0KGgo=', bytes: 8 });
@@ -319,8 +320,8 @@ describe('the window connected', () => {
     const f = fakeApi();
     const store = new LiveStore(f.api);
     expect(await store.actions.send('s1', 'na verdade, resuma', true)).toEqual({ ok: true, value: null });
-    f.refuse('turn', 'session_not_found', 'session s1 not found');
-    expect(await store.actions.send('s1', 'oi', false)).toEqual({ ok: false, why: 'A mensagem não foi enviada: session s1 not found' });
+    f.refuse('turn', 'invalid_input', 'session s1 is closing');
+    expect(await store.actions.send('s1', 'oi', false)).toEqual({ ok: false, why: 'A mensagem não foi enviada: session s1 is closing' });
     expect(f.asked).toEqual(['steer s1: na verdade, resuma', 'turn s1: oi']);
   });
 
@@ -432,7 +433,7 @@ describe('the window connected', () => {
     expect(f.asked).toEqual(['create in /w/dcode', 'follow new']);
     expect(await store.actions.closeSession('new')).toEqual({ ok: true, value: null });
     f.refuse('close', 'session_not_found', 'no session new');
-    expect(await store.actions.closeSession('new')).toEqual({ ok: false, why: 'A sessão não fechou: no session new' });
+    expect(await store.actions.closeSession('new')).toEqual({ ok: false, why: sessionGone('A sessão não fechou') });
   });
 
   it('opens a new session on the model and mode chosen, switching the mode only when the sandbox did not give it', async () => {

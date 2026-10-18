@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type * as P from '../../src/protocol/generated';
 import { LiveStore } from '../../src/renderer/live';
 import type { Answer, DcodeApi, SessionEvents } from '../../src/shared/api';
+import type { Row } from '../../src/state/sidebar';
 
 // The window acts on its orchestrator (D66): it opens a project's orchestrator
 // for a folder, reads its children and questions when its conversation opens,
@@ -52,6 +53,8 @@ function orchestrateApi() {
     onStreamEnd: quiet,
     loops: { on: quiet },
     follow: (id: string) => (asked.push(`follow ${id}`), Promise.resolve({ ok: true, value: null })),
+    continueConversation: (c: { id: string }, model?: string) => answer('continue', `continue ${c.id}${model ? ` on ${model}` : ''}`),
+    submitTurn: (id: string, text: string) => answer('submit', `submit ${text} to ${id}`),
     orchestrate: {
       openProject: (ws: string) => answer('open', `open project ${ws}`),
       orchestrator: (id: string) => answer('orchestrator', `orchestrator of ${id}`),
@@ -113,6 +116,70 @@ describe('opening a project’s orchestrator', () => {
     const got = await store.actions.openOrchestrator('/w/dcode');
     expect(got.ok ? '' : got.why).toMatch(/^Resposta ilegível do daemon: /);
     expect(f.asked).toEqual(['open project /w/dcode']);
+  });
+});
+
+// An orchestrator is never continued: it is the live session of its project,
+// and a new ordinary session would have neither its role nor its tools. A
+// child or a reviewer that ended is not continued either.
+describe('opening an orchestrator’s conversation, or one of its agents’', () => {
+  const row = (over: Partial<Row>): Row => ({ id: 's-orq', title: 'orq', workspace: '/w/dcode', state: 'recorded', started: 0, lastAt: null, ...over });
+
+  it('opens a recorded orchestrator as the live one of its project, never a continuation', async () => {
+    const { f, store } = started();
+    f.answers.orchestrator = { ok: true, value: orchestrator };
+    expect(await store.actions.open(row({ role: 'orchestrator', projectId: 'p1' }))).toEqual({ ok: true, value: 's-orq' });
+    expect(f.asked).toEqual(['orchestrator of p1', 'follow s-orq']);
+  });
+
+  it('opens a live orchestrator through its project too', async () => {
+    const { f, store } = started();
+    f.answers.orchestrator = { ok: true, value: orchestrator };
+    expect(await store.actions.open(row({ state: 'idle', role: 'orchestrator', projectId: 'p1' }))).toEqual({ ok: true, value: 's-orq' });
+    expect(f.asked).toEqual(['orchestrator of p1', 'follow s-orq']);
+  });
+
+  it('says why when the orchestrator is unavailable, with the keys that turn it on, and continues nothing', async () => {
+    const { f, store } = started();
+    f.answers.orchestrator = { ok: false, refusal: { code: 'orchestrator_unavailable', message: 'record.enabled is false' } };
+    const got = await store.actions.open(row({ role: 'orchestrator', projectId: 'p1' }));
+    const why = got.ok ? '' : got.why;
+    expect(why).toContain('record.enabled is false');
+    expect(why).toContain('orchestrator.enabled = true');
+    expect(f.asked).toEqual(['orchestrator of p1']);
+  });
+
+  it('says an orchestrator without its project, rather than continuing it', async () => {
+    const { f, store } = started();
+    const got = await store.actions.open(row({ role: 'orchestrator' }));
+    expect(got.ok ? '' : got.why).toContain('projeto');
+    expect(f.asked).toEqual([]);
+  });
+
+  it('never continues a child or a reviewer that ended, and points to the orchestrator', async () => {
+    for (const role of ['child', 'reviewer']) {
+      const { f, store } = started();
+      const got = await store.actions.open(row({ id: 'c-a', role, parentId: 's-orq', projectId: 'p1' }));
+      expect(got.ok ? '' : got.why).toContain('orquestradora');
+      expect(f.asked).toEqual([]);
+    }
+  });
+
+  it('never switches an orchestrator’s model by continuing it in a new session', async () => {
+    const { f, store } = started();
+    replay(f);
+    const got = await store.actions.switchModel('s-orq', '/w/dcode', 'Sonnet');
+    expect(got.ok ? '' : got.why).toContain('orquestradora');
+    expect(f.asked).toEqual([]);
+  });
+
+  it('says a session the daemon no longer has in words, not as the daemon’s raw error', async () => {
+    const { f, store } = started();
+    f.answers.submit = { ok: false, refusal: { code: 'session_not_found', message: 'no session c-a' } };
+    const got = await store.actions.send('c-a', 'oi', false);
+    const why = got.ok ? '' : got.why;
+    expect(why).not.toContain('no session');
+    expect(why).toContain('não está mais no daemon');
   });
 });
 

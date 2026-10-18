@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { age, clock, elapsed } from '../../src/state/format';
 import { dropBefore, emptyPrefs, moveProject, parsePrefs, relabel, setAllCollapsed } from '../../src/state/prefs';
 import { applyRaw, emptySessions } from '../../src/state/sessions';
-import { countStates, projectsOf, rowSide, rowsOfSessions, sessionTitle, shortPath } from '../../src/state/sidebar';
+import { countStates, pickShows, projectsOf, rowSide, rowsOfSessions, sessionTitle, shortPath, type Row } from '../../src/state/sidebar';
 import { recordedClient, recording, RECORDED_AT } from '../../src/fixtures/recording';
 
 const state = applyRaw(emptySessions, recording.events);
@@ -106,5 +106,21 @@ describe('a path in little room', () => {
     expect(long.startsWith('…')).toBe(true);
     expect(long.endsWith('pagamentos-webhooks')).toBe(true);
     expect(long.length).toBe(34);
+  });
+});
+
+describe('picking a row in the Crew', () => {
+  const row = (state: string, role?: string): Row => ({ id: 'x', title: 't', workspace: '/w', state, started: 0, lastAt: null, ...(role ? { role } : {}) });
+
+  it('shows an ended conversation, a child and a reviewer, and opens a live one', () => {
+    expect(pickShows(row('recorded'))).toBe(true);
+    expect(pickShows(row('recorded', 'child'))).toBe(true);
+    expect(pickShows(row('recorded', 'reviewer'))).toBe(true);
+    expect(pickShows(row('idle'))).toBe(false);
+  });
+
+  it('opens an orchestrator, live or not: it is always the live one of its project', () => {
+    expect(pickShows(row('recorded', 'orchestrator'))).toBe(false);
+    expect(pickShows(row('idle', 'orchestrator'))).toBe(false);
   });
 });

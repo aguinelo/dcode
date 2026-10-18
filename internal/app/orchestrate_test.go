@@ -178,6 +178,61 @@ func TestTheOrchestratorSurvivesADaemonRestart(t *testing.T) {
 	if !strings.Contains(string(log), `"kind":"daemon.restart"`) {
 		t.Errorf("the restart is not in the decision log:\n%s", log)
 	}
+
+	// The list a client shows says the same: the orchestrator is live again,
+	// once, and not a conversation that ended — which a client would continue
+	// in a new ordinary session, without its role or its tools.
+	list, err := again.conversations.List("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := 0
+	for _, c := range list {
+		if c.ID != p.OrchestratorID {
+			continue
+		}
+		rows++
+		if !c.Live || c.State != protocol.SessionStateIdle || c.Role != protocol.RoleOrchestrator {
+			t.Errorf("after the restart the list reads the orchestrator as %+v, want it live, idle and the orchestrator", c)
+		}
+	}
+	if rows != 1 {
+		t.Errorf("the orchestrator is listed %d times, want once", rows)
+	}
+}
+
+// An orchestrator, a child and a reviewer are never continued in a new
+// ordinary session — every client's continue path asks this one route, so it
+// is refused here, saying where the work goes on, whichever client asked.
+func TestAnOrchestratorsSessionsAreNotContinued(t *testing.T) {
+	records := t.TempDir()
+	d := orchestratingDaemon(t, records, t.TempDir())
+	for id, s := range map[string]protocol.Session{
+		"s-orq":   {Role: protocol.RoleOrchestrator, ProjectID: "a1b2c3d4e5f6a1b2c3d4e5f6"},
+		"s-child": {Role: protocol.RoleChild, ParentID: "s-orq", ProjectID: "a1b2c3d4e5f6a1b2c3d4e5f6"},
+		"s-rev":   {Role: protocol.RoleReviewer, ParentID: "s-child", ProjectID: "a1b2c3d4e5f6a1b2c3d4e5f6"},
+	} {
+		rec, err := session.NewRecord(records, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		log := session.NewEventLog(id, 100, nil)
+		log.SetRecord(rec)
+		s.ID, s.Workspace, s.State = id, t.TempDir(), protocol.SessionStateIdle
+		if _, err := log.Append(protocol.EventSessionCreated, s); err != nil {
+			t.Fatal(err)
+		}
+		log.Close()
+
+		code, body := route(t, d, http.MethodPost, "/sessions", protocol.CreateSessionRequest{Workspace: s.Workspace, Resume: id})
+		if code != http.StatusBadRequest || !strings.Contains(string(body), protocol.CodeInvalidInput) ||
+			!strings.Contains(string(body), "not continued in a new session") {
+			t.Errorf("continuing the %s %s answered %d %s, want invalid_input saying it is not continued", s.Role, id, code, body)
+		}
+	}
+	if n := d.manager.Count(); n != 0 {
+		t.Errorf("%d sessions opened for continuations that were refused", n)
+	}
 }
 
 // Spec: orchestration .i step 5 — with orchestrator.enabled false, or session

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -114,6 +115,33 @@ func (x *Conversations) StateChanged(id string, st protocol.SessionState) {
 	ended := x.view(r)
 	ended.Live, ended.State = false, protocol.ConversationRecorded
 	x.send(protocol.ConversationChange{Kind: protocol.ConversationChanged, Conversation: &ended})
+}
+
+// Reopened puts a session reopened under its own id back among the live rows,
+// folded from its record. A reopened session writes no second
+// session.created — its record already has one — so without this the list
+// would go on reading it as a conversation that ended, and a client would
+// continue it in a new session that has neither its role nor its tools.
+// Called before the session's first new event is recorded, so everything
+// after it folds on top; the record is read before mu is taken.
+func (x *Conversations) Reopened(id string) error {
+	if err := ValidID(id); err != nil {
+		return err
+	}
+	if x.dir == "" {
+		return fmt.Errorf("session %s cannot be listed as reopened: this daemon keeps no records", id)
+	}
+	r, err := foldRecord(filepath.Join(x.dir, id+".jsonl"))
+	if err != nil {
+		return fmt.Errorf("session %s cannot be listed as reopened: its record cannot be read: %w", id, err)
+	}
+	r.c.Live, r.c.State = true, protocol.SessionStateIdle
+	x.mu.Lock()
+	defer x.mu.Unlock()
+	x.live[id] = r
+	v := x.view(r)
+	x.send(protocol.ConversationChange{Kind: protocol.ConversationChanged, Conversation: &v})
+	return nil
 }
 
 // recorded reports whether a conversation has a record to stay in the list as.
@@ -282,9 +310,21 @@ func (x *Conversations) readRecords() ([]protocol.Conversation, error) {
 // events with the same code that folds a live session's. A variable so a test
 // can count the reads.
 var summarizeRecord = func(path string) (protocol.Conversation, error) {
-	f, err := os.Open(path)
+	r, err := foldRecord(path)
 	if err != nil {
 		return protocol.Conversation{}, err
+	}
+	r.c.Live, r.c.State = false, protocol.ConversationRecorded
+	return r.c, nil
+}
+
+// foldRecord folds a record's events into the row they make, with the first
+// question and the name kept apart, so a reopened session's row goes on
+// folding from where its record stopped.
+func foldRecord(path string) (*row, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
 	}
 	defer f.Close()
 
@@ -304,13 +344,12 @@ var summarizeRecord = func(path string) (protocol.Conversation, error) {
 		r.fold(ev)
 	}
 	if err := sc.Err(); err != nil {
-		return protocol.Conversation{}, err
+		return nil, err
 	}
 	if !opened {
-		return protocol.Conversation{}, errNotARecord
+		return nil, errNotARecord
 	}
-	r.c.Live, r.c.State = false, protocol.ConversationRecorded
-	return r.c, nil
+	return r, nil
 }
 
 // fold applies one event to a row: the one place a conversation's summary is
