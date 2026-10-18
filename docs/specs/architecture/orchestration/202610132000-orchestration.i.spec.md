@@ -23,7 +23,7 @@
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 — cenários roteirizados | **feito** — `internal/app/scenario_*_test.go`: o harness (daemon real em processo, modelo roteirizado por papel, repositório de brinquedo, `gh` falso em `internal/app/testdata/scenariogh/`), os doze da tabela do passo e mais um, e dois testes em `internal/orchestrate/` (`transition_test.go`, `history_guard_test.go`); nenhuma invariante fica prevista |
 | 13 — a orquestradora lista os agentes | **feito** — a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate` (`cmd/dcode/orchestrate.go`), a leitura de `/children` e `/questions` ao abrir, `^Q` e `^R` sobre os filhos (`internal/tui/orchestrate.go`, `orchestrate_view.go`) |
-| 14 — a lista viva no desktop | **feito**, menos o cenário do `check:daemon` (dois filhos, um esperando a pessoa, o merged saindo depois da retenção): `desktop/tests/daemon/` é caminho protegido e o cenário espera a autorização do dono — a aba Agentes (#521, D64) e as ações sobre a orquestradora (#547, D66: responder perguntas, abrir a orquestradora pelo "Nova", filhos agrupados sob o projeto), aprovadas pelo dono em 2026-10-18 |
+| 14 — a lista viva no desktop | **feito** — a aba Agentes (#521, D64), as ações sobre a orquestradora (#547, D66: responder perguntas, abrir a orquestradora pelo "Nova", filhos agrupados sob o projeto), aprovadas pelo dono em 2026-10-18, e o cenário `orchestra-lists` do `check:daemon` (`desktop/tests/daemon/orchestra.mjs`): dois filhos, um esperando você, o merged respondido pela aba e saindo depois da retenção curta, com autorização do dono para a régua protegida |
 
 ## Pré-requisitos
 
@@ -348,7 +348,8 @@ projeto, ao lado da conversa comum, que continua o padrão (decisão 4).
 
 - Redutor de estado: `child.*` e `question.*` sobre a lista inicial dão a lista esperada.
 - Cenário novo em `desktop/tests/daemon/` (`check:daemon`): dois filhos aparecem, um fica
-  "esperando você" com o pedido do filho, e o merged sai depois da retenção curta do teste.
+  "esperando você" com o pedido do filho, e o merged sai depois da retenção curta do teste —
+  `orchestra-lists`, em `desktop/tests/daemon/orchestra.mjs`.
 - `check:visual` das telas 02 e 03 sem diferença.
 
 ### Fechamento — as invariantes deixam de ser previstas
