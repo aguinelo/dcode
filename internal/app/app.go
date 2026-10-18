@@ -735,7 +735,7 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	}
 	names, idx, family := registry.Names(), behavior.Index(skills), CredentialName(opts)
 	reprompt := func(mode policy.SandboxMode, pol policy.ApprovalPolicy) (string, error) {
-		return behaviorBuild(names, instructions, idx, overlay, family, repo, gates, boundaryOf(mode, pol))
+		return behaviorBuild(names, instructions, idx, overlay, family, repo, gates, boundaryOf(mode, pol), roleOf(opts))
 	}
 
 	prompt, err := reprompt(opts.SandboxMode, opts.Policy)
@@ -938,7 +938,7 @@ func boundaryOf(mode policy.SandboxMode, pol policy.ApprovalPolicy) *behavior.Bo
 
 // behaviorBuild renders a prompt from a tool set and instructions. Small
 // indirection so tests can assemble one without wiring a whole session.
-func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo, ws *behavior.Workspace, boundary *behavior.Boundary) (string, error) {
+func behaviorBuild(toolNames []string, instructions []behavior.Instruction, index []behavior.SkillIndexEntry, overlay behavior.DoctrineOverlay, family string, repo *behavior.Repo, ws *behavior.Workspace, boundary *behavior.Boundary, role string) (string, error) {
 	return behavior.Build(behavior.Prompt{
 		Doctrine:     behavior.DefaultDoctrine(toolNames).Apply(overlay),
 		Tools:        toolNames,
@@ -947,6 +947,7 @@ func behaviorBuild(toolNames []string, instructions []behavior.Instruction, inde
 		Repo:         repo,
 		Workspace:    ws,
 		Boundary:     boundary,
+		Role:         role,
 	}, behavior.FormulationFor(family))
 }
 

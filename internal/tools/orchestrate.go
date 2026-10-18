@@ -59,11 +59,15 @@ func (SteerChildTool) Name() string { return "steer_child" }
 func (CloseChildTool) Name() string { return "close_child" }
 
 func (DelegateTool) Description() string {
-	return "Dispatch children: each item becomes a child session working in its own git worktree, on its own branch " +
-		"from main's tip, writing only the paths it owns. The batch is all or nothing: owns that cross each other or " +
-		"a live child's, more children than allowed, a model outside the allowed list, or the token ceiling refuse the " +
-		"whole batch before anything is made. It returns the children as soon as their first turns start; it never " +
-		"waits for one to finish. Say why for each item: it goes to the decision log."
+	return "Dispatch children to do work that changes files: you do not write, they do. Each item becomes a child " +
+		"session in its own git worktree, on its own branch from main's tip, with write access to the paths in its " +
+		"`owns` — paths relative to the project's root, which no other child may own — and nowhere else. Split the " +
+		"work by theme, one item per theme, and give each a complete task: a child does not see your conversation. " +
+		"When a child's turn ends the harness commits it, has it reviewed, runs the gate and asks the person to merge; " +
+		"you are told in a report. The batch is all or nothing: owns that cross each other or a live child's, more " +
+		"children than allowed, a model outside the allowed list, or the token ceiling refuse the whole batch before " +
+		"anything is made. It returns the children as soon as their first turns start; it never waits for one to " +
+		"finish. Say why for each item: it goes to the decision log."
 }
 
 func (ChildrenTool) Description() string {

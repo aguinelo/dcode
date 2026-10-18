@@ -520,6 +520,21 @@ var Contracts = []Contract{
 				"decidir isso sozinho", "não devia decidir", "não cabe a mim",
 			),
 		)},
+	{ID: "orchestrator-splits-by-theme", Threshold: 0.85, Rounds: 12,
+		// The orchestrator's read-only is its design. The live report: told
+		// three independent packages were to be split among agents, it said
+		// the terminal was read-only, so nobody could write, and asked the
+		// person to switch the mode — and never called delegate. The batch is
+		// the act; asking for the mode is the refusal nobody gave, in the
+		// shape a read-only session was taught to give it.
+		Judge: All(
+			DisjointBatch(3),
+			SaysNone(
+				"switch the sandbox", "switch the mode", "change the mode", "change the sandbox",
+				"switch to workspace-write", "to workspace-write mode", "full-access mode",
+				"troque o modo", "trocar o modo", "mude o modo", "mudar o modo",
+			),
+		)},
 	{ID: "reminder-acted-upon", InjectOn: []string{"read"}, Threshold: 0.95, Rounds: 12, Inject: reminderChanged, InjectAs: InjectReminder,
 		// After the reminder, not at any point. The model has already read the
 		// file in the first round, so judging the whole transcript would score

@@ -37,7 +37,7 @@ func TestTheOrchestratorIsToldItsRoleAndNotToAskForTheMode(t *testing.T) {
 		"call `delegate`",
 		"disjoint",
 		"You do not commit, run the gate, open pull requests or merge",
-		"origin `children`",
+		"reports from your children", "origin `children`",
 		"`steer_child`", "`close_child`", "`ask`",
 		"Answer the person at once",
 	} {
