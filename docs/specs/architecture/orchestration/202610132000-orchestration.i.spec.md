@@ -15,7 +15,10 @@
 | 3 — a sessão gravada reabre sob o próprio id | **feito** (#519), com os três itens do fio que o passo 2 deixou |
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
 | 5 — um projeto tem uma orquestradora | **feito** — `internal/orchestrate/registry.go`, `store.go`; `app.Daemon` é a `Spawner` com `SpawnOrchestrator`, `Reopen` e `Close` (os de filho e revisor entram nos passos 6 e 8); `SubmitOrigin` segue sem chamador até o passo 7 |
-| 6 a 10 | **não feito** |
+| 6 e 7 | **não feito** |
+| 8 — um revisor lê o diff de cada filho | **em parte**: o componente — `internal/orchestrate/review.go` (`AssembleReview`, `OutsideOwns`, `Uncommitted`, `ReviewFrom`), `review_verdict.go` (`ReviewerRegistry`, `Review`, `ErrNoVerdict`) e a ferramenta `internal/tools/verdict.go`; `Spawner.SpawnReviewer`, o commit do harness, a fase `red`/`fix`, `max_returns` e a chamada na esteira entram com a fiação |
+| 9 — a orquestradora roda o gate | **em parte**: o componente — `internal/orchestrate/gate.go` (`Gate.Measure`, `GateFrom`, `RecordGate`, `CheckFresh`); a integração em `integration/`, o merge da main e a chamada na esteira (depois da revisão, antes da fila de merge) entram quando os passos 6 a 8 chegarem |
+| 10 | **não feito** |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 | **não feito** |
 | 13 — a orquestradora lista os agentes | **em parte**: a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate`, `^Q`, `^R` e a leitura de `/children` ao abrir ficam para o resto do passo |
@@ -175,8 +178,10 @@ A conferência de `owns` (`.p` §7.1), a sessão `RoleReviewer` e a ferramenta `
 devolução em duas fases com `red_test` (§7.3), `review.verdict`. Estado `in_review`. Lê
 `reviewer_profiles`, `review_max_diff_bytes`, `max_returns`.
 
-- [ ] Caminho fora do `owns` no `git status --porcelain` devolve sem commit e sem revisão.
-- [ ] Revisor só com `read`, `glob`, `grep`, `symbol`, `verdict`.
+- [ ] Caminho fora do `owns` no `git status --porcelain` devolve sem commit e sem revisão. A
+      conferência está feita (`Uncommitted`, `OutsideOwns`, e `AssembleReview` sobre o diff); o
+      "sem commit" é da esteira.
+- [x] Revisor só com `read`, `glob`, `grep`, `symbol`, `verdict` (`ReviewerRegistry`).
 - [ ] `missing` roda de novo uma vez; o segundo fica em `in_review` com relato.
 - [ ] `changes_requested` → fase `red` → `red_test.confirmed` → fase `fix` → 7.1 de novo.
 - [ ] Além de `max_returns`, `failed` com `incomplete`.
@@ -184,7 +189,9 @@ devolução em duas fases com `red_test` (§7.3), `review.verdict`. Estado `in_r
 **Testes obrigatórios:**
 
 - Diff com um arquivo fora do `owns`: `Return{outside_owns}`, sem commit, sem sessão de revisor.
-- O registro do revisor não tem ferramenta que escreve.
+- O registro do revisor não tem ferramenta que escreve. **Feito**:
+  `TestTheReviewerRegistryHasNoToolThatWrites`; e `TestADiffOutsideOwnsReturnsWithoutAReview`, sem
+  revisor, em `internal/orchestrate/review_test.go`.
 - Teste da fase `red` que passa não é aceito como vermelho, e o filho volta à fase `red`.
 - Conserto entregue sem a fase `red` confirmada não segue para o gate.
 
@@ -196,14 +203,18 @@ O lugar de integração, a atualização com merge da main, o conflito devolvido
 - [ ] Integração em `integration/`, `--detach`, criada uma vez por projeto.
 - [ ] `git merge --no-ff M` sobre `Head`; conflito abortado na integração e refeito na worktree do
       filho com os marcadores; `Return{conflict, paths}`.
-- [ ] Gate em `H` pelo sandbox de `bash`, com tempo-limite; saída inteira em `gates/`.
+- [x] Gate em `H` numa worktree descartável, sem `GIT_*`, com tempo-limite; saída inteira em `gates/<commit>.log`
+      (`Gate.Measure`); `gate.measured` com a alegação do filho como `claim` (`RecordGate`); `gate_stale`
+      conferido por `CheckFresh`. O sandbox do `bash` em volta do gate fica para a fiação.
 - [ ] `vcs` sem nenhuma função de rebase ou de push forçado.
 
 **Testes obrigatórios:**
 
 - `gate.measured.commit` é o `H` que contém a ponta da main, e `base` é essa ponta.
 - Gate vermelho devolve ao mesmo filho em fase `fix`, com a saída.
-- Sem `gate_command` nem `verify.command`: `gate_undeclared`, nada segue.
+- Sem `gate_command` nem `verify.command`: `gate_undeclared`, nada segue. **Feito**:
+  `TestAnUndeclaredGateIsSaidAndNothingRuns`, com verde, vermelho, `timeout`, alegação contra medição,
+  `gate_stale` e limpeza em `internal/orchestrate/gate_test.go`.
 - Conflito volta ao filho dono da branch com os caminhos; a integração termina limpa.
 - Guarda de fonte: nenhum `rebase`, `--force`, `--amend` em `internal/vcs/` nem em `internal/orchestrate/`.
 

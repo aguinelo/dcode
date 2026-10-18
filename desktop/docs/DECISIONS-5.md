@@ -93,3 +93,71 @@ recusou); trocar a ordem do seletor (moveria a régua da 02 e da 03); um segundo
 card de revisão na aba Pronto (dois "Começar o trabalho" para a mesma
 proposta); refazer a grade com os tokens da Crew (o pedido é a Crew como tela
 principal, não a grade com outra cara).
+
+**D64. A conversa orquestradora mostra a lista viva dos agentes na aba
+Agentes da Crew.** Passo 14 da primeira fatia do orquestrador (registro
+`202610132000`, RN-9, `.p` §11), feito antes do daemon que o alimenta, com
+autorização do dono para paralelizar a interface. O desktop já lia e conferia
+os eventos da orquestradora desde o passo 2; agora eles viram uma lista.
+
+- **Onde mora.** No painel direito da Crew, numa quarta aba, **Agentes**, que
+  aparece só quando a sessão diz `role: orchestrator` e abre por padrão nela;
+  as outras três (Mudanças, Pronto, Sessão) continuam ao lado, como D63 as
+  deixou. Uma conversa comum não ganha aba nenhuma. O contador da aba é o de
+  agentes em curso — nem merged nem fechado.
+- **A gramática é a da Mudanças** (D41): uma linha de resumo ("6 agentes em
+  curso · 8 na lista") e uma linha por filho — a marca, o título e o estado
+  em palavra à direita; o `owns` resumido ("internal/a/ +2") com o PR e o CI
+  à direita; os tokens somados (entrada · saída · cache); e o detalhe do
+  estado quando há ("revisando", "medindo o gate", "o turno terminou em
+  max_iterations"). A árvore segue `parent_id`: os filhos da orquestradora no
+  primeiro nível, um neto recuado embaixo do pai.
+- **Os tons seguem D52 e D61.** Trabalhando, em revisão e PR no acento, porque
+  estão em curso; esperando você — e um PR que espera a resposta do merge —
+  no amarelo de espera; falhou em vermelho; despachado, merged e fechado em
+  cinza. Estado que o app não conhece é dito em vermelho com o nome que o
+  daemon mandou. O CI do PR é o de D61; o núcleo escreve na gramática do
+  `GitChecks` e o golden diz "passing", então os dois são lidos.
+- **Sem dinheiro.** Tokens de entrada, saída e cache, nada em dólar: preço e
+  tabela são da segunda fatia (`.p` §2).
+- **No topo**, "passo a passo" — o `Project.autonomy` desta fatia é sempre
+  `step`; quando o desktop ler o `Project`, a palavra vem dele —, a saúde da
+  main do último `main.health` e "◆ N perguntas", que abre a fila: o tipo, o
+  filho, o texto, a recomendada e o porquê, e os caminhos sensíveis de um
+  merge. A pergunta de um filho aparece também na linha dele. Responder daqui
+  fica para quando o app falar com `GET/POST /questions`, e a fila diz isso.
+- **Clicar abre o filho no meio**, como clicar na lista de sessões: ao vivo,
+  continua acompanhando; gravado, mostra o histórico (D33, D63). Um filho cuja
+  conversa não está na lista da janela — despachado sem sessão ainda, merged
+  ou fechado — fica desabilitado e diz "sem conversa na lista desta janela".
+  A grade não muda.
+- **Só o fio (D8), num redutor puro.** `state/agents.ts` dobra `child.*`,
+  `review.verdict`, `gate.measured`, `question.*`, `merge.*` e `main.health`
+  dentro da visão da sessão, sobre a resposta do daemon a `/children` quando o
+  app a ler. Um fechado sai quando essa resposta não o traz mais — a
+  retenção é do daemon (`orchestrator.closed_retention`, 1h), nunca um relógio
+  do cliente —, e um que falhou não sai sozinho. Evento sobre filho que a
+  lista não conhece não inventa o filho.
+- **Modo fixture.** Uma terceira gravação, `orchestra-recording.ts`, com uma
+  orquestradora e um filho em cada um dos oito estados, duas perguntas e a
+  main verde (`?fixture=crew-orquestra`), e uma orquestradora sem filhos
+  (`crew-orquestra-vazia`).
+
+As réguas: as telas medidas não têm orquestradora, e nenhuma mudou — 02 e 03
+e as dezesseis da Crew a 0,00%. Nenhuma referência nova entra aqui: as
+capturas do painel, nos dois temas, cheio e vazio, vão ao dono no PR, e a
+régua só ganha o estado depois do visto dele. O cenário de `check:daemon` que
+a `.i` pede para este passo (dois filhos, um esperando você, o merged saindo
+depois da retenção curta) espera o daemon dos passos que produzem os eventos
+e a rota `/children`.
+
+Lacuna: os filhos trabalham cada um na sua worktree, e a lista de sessões
+agrupa por pasta, então cada filho aparece como um projeto à parte. Agrupar
+por `project_id` é decisão própria.
+
+Descartados: a lista no lugar da aba Mudanças (a orquestradora também muda
+arquivos, e a Mudanças dela continua valendo); um painel novo, quarto na
+largura (a Crew tem três, e D63 manteve); contar o fechado no relógio do
+cliente (o `.p` dá a retenção ao daemon, e dois relógios discordariam); o
+custo em dólar estimado pelos tokens (inventaria uma tabela que a fatia não
+tem).

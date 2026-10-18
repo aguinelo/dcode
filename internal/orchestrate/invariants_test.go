@@ -21,6 +21,16 @@ var orchestrationInvariants = map[string]string{
 	"linha ilegível é dita com o número":             "TestAnUnreadableLineIsSaidWithItsNumberAndTheRestIsPrinted",
 	"devolvem o mesmo `Project`":                     "TestTwoOpensOfOneTreeAreOneProject",
 	"volta do reinício do daemon **sob o mesmo id**": "TestTheOrchestratorSurvivesADaemonRestart",
+
+	"worktree descartável no commit exato":  "TestTheGateRunsInAThrowawayTreeWithoutGitEnvironment",
+	"sai sempre, até depois de um pânico":   "TestTheThrowawayWorktreeIsRemovedEvenOnAPanic",
+	"vai ao log como `claim`":               "TestAChildThatClaimsGreenIsRecordedRedBesideItsClaim",
+	"nada roda, o resultado é `undeclared`": "TestAnUndeclaredGateIsSaidAndNothingRuns",
+	"que não os do merge é `gate_stale`":    "TestAMeasurementOfAnotherCommitOrMainIsStale",
+
+	"O revisor não tem ferramenta que escreve": "TestTheReviewerRegistryHasNoToolThatWrites",
+	"nunca conta como aprovação":               "TestAReviewThatEndsWithoutAVerdictIsMissingNeverAnApproval",
+	"nunca chega cortado ao revisor":           "TestADiffOverTheLimitIsCutAndSaidNeverTruncated",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

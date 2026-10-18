@@ -16,8 +16,10 @@ import { PullRequest } from '../context/PullRequest';
 import { ModeChip } from '../ModeMenu';
 import { LoopSection } from '../LoopRuler';
 import { DoneRow } from '../Pane';
+import { AgentsPanel } from '../AgentsPanel';
+import { liveCount } from '../../state/agents';
 
-type Tab = 'mudancas' | 'pronto' | 'sessao';
+type Tab = 'agentes' | 'mudancas' | 'pronto' | 'sessao';
 
 /**
  * What this conversation's tools said they wrote (D8) — beside the folder's
@@ -235,6 +237,8 @@ export function ContextPane({
   moved,
   onModel,
   onMode,
+  canOpen,
+  onOpen,
 }: {
   row: Row | null;
   view: PaneView | null;
@@ -247,13 +251,22 @@ export function ContextPane({
   moved: unknown;
   onModel: (row: Row, anchor: HTMLElement) => void;
   onMode: (id: string, anchor: HTMLElement) => void;
+  /** Whether a child of an orchestrator has a conversation in the list, and opening it in the middle (RN-9). */
+  canOpen: (id: string) => boolean;
+  onOpen: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<Tab>('mudancas');
+  // Null is the default: Agentes for an orchestrator's conversation (RN-9), Mudanças for any other.
+  const [picked, setPicked] = useState<Tab | null>(null);
+  const orchestrator = session?.info?.role === 'orchestrator';
+  const tab: Tab = picked === null || (picked === 'agentes' && !orchestrator) ? (orchestrator ? 'agentes' : 'mudancas') : picked;
+  const setTab = setPicked;
   const wrote = useMemo(() => (session ? filesTouched(session.entries) : []), [session]);
   const wrotePaths = useMemo(() => new Set(wrote.map((f) => f.path)), [wrote]);
   // The folder's count once git answered; what the tools wrote until then.
   const files = git.state.kind === 'ready' && git.state.git.repository ? git.state.git.files.length : wrote.length;
+  const live = session ? liveCount(session.agents) : 0;
   const tabs: { id: Tab; label: string; count?: string }[] = [
+    ...(orchestrator ? [{ id: 'agentes' as const, label: 'Agentes', count: live > 0 ? String(live) : undefined }] : []),
     { id: 'mudancas', label: 'Mudanças', count: files > 0 ? String(files) : undefined },
     { id: 'pronto', label: 'Pronto' },
     { id: 'sessao', label: 'Sessão' },
@@ -271,6 +284,8 @@ export function ContextPane({
       <div className="crew-tab-body" role="tabpanel">
         {!row || !view ? (
           <p className="crew-quiet">Nenhuma conversa em foco.</p>
+        ) : tab === 'agentes' && session ? (
+          <AgentsPanel agents={session.agents} rootId={row.id} canOpen={canOpen} onOpen={onOpen} />
         ) : tab === 'mudancas' ? (
           <>
             <PullRequest conversationId={row.id} title={row.title} entries={session?.entries} git={git.state} />

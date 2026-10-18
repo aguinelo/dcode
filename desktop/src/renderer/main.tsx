@@ -21,6 +21,7 @@ import './styles/commands.css';
 import './styles/loop.css';
 import './styles/turn.css';
 import './styles/pr.css';
+import './styles/agents.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';

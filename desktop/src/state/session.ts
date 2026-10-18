@@ -7,6 +7,7 @@
 
 import type * as P from '../protocol/generated';
 import type { EventOf, ProtocolEvent } from '../protocol/events';
+import { applyAgentEvent, emptyAgents, type AgentList } from './agents';
 
 export type ToolStatus = 'arriving' | 'running' | 'ok' | 'failed';
 
@@ -94,6 +95,8 @@ export interface SessionView {
   /** The last definition of done this session proposed and the daemon measured and wrote (done.proposed, D56). */
   proposal: P.DoneProposal | null;
   pendingApprovalId: string | null;
+  /** An orchestrator's children and what waits for the person (RN-9); empty for any other session. */
+  agents: AgentList;
   lastSeq: number;
   lastAt: string | null;
   entries: Entry[];
@@ -119,6 +122,7 @@ export function emptySession(id: string): SessionView {
     check: null,
     proposal: null,
     pendingApprovalId: null,
+    agents: emptyAgents,
     lastSeq: 0,
     lastAt: null,
     entries: [],
@@ -426,10 +430,8 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
         criteria: (ev.payload.criteria ?? []).length,
         noAcceptance: !!ev.payload.no_acceptance,
       });
-    // The orchestrator's own events. They are read and checked at the
-    // boundary; what they change is the live agent list, which is not a
-    // session's transcript and is built in a later step (orchestration .i,
-    // step 14). Named here so the switch stays exhaustive.
+    // The orchestrator's own events: not the transcript, but the live agent
+    // list beside it (RN-9).
     case 'child.started':
     case 'child.state':
     case 'child.completed':
@@ -440,7 +442,7 @@ function applyKnown(view: SessionView, ev: ProtocolEvent): SessionView {
     case 'merge.completed':
     case 'merge.refused':
     case 'main.health':
-      return view;
+      return { ...view, agents: applyAgentEvent(view.agents, ev) };
   }
 }
 
