@@ -197,8 +197,8 @@ func (l *EventLog) SetRecord(r *Record) {
 // A client has to be told, not left to assume 1. Continuing a long
 // conversation appends every carried event to this log, and retention then
 // drops the oldest — so the earliest event a session HAS is routinely not the
-// first one it had. A client that subscribes from 1 anyway is refused, and the
-// conversation it asked to continue does not open at all.
+// first one it had. Below it, Replay and Subscribe read the record; with no
+// record, a client that asks from 1 anyway is refused.
 func (l *EventLog) FirstSeq() uint64 {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -219,7 +219,12 @@ func (l *EventLog) LastSeq() uint64 {
 func (l *EventLog) Replay(from uint64) ([]protocol.Event, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+	return l.from(from)
+}
 
+// from is every event at or after `from`: below the horizon from the record,
+// the rest from memory, each once. Caller holds the lock, either way.
+func (l *EventLog) from(from uint64) ([]protocol.Event, error) {
 	var out []protocol.Event
 	if from < l.firstSeq {
 		// Trimmed out of memory is not gone if the session is being recorded.
@@ -261,18 +266,15 @@ func (l *EventLog) Replay(from uint64) ([]protocol.Event, error) {
 // buffered prefix is deduplicated by sequence.
 func (l *EventLog) Subscribe(ctx context.Context, from uint64) (<-chan protocol.Event, func(), error) {
 	l.mu.Lock()
-	if from < l.firstSeq {
+	// The same backlog Replay answers, record included. Refusing below the
+	// horizon here while Replay read the record left the stream — the route
+	// every client follows — without what the record holds: a reopened
+	// session's log starts after its record, so following it from 1 was
+	// refused with events_expired, and only an unrecorded log is refused now.
+	backlog, err := l.from(from)
+	if err != nil {
 		l.mu.Unlock()
-		return nil, nil, protocol.Errorf(protocol.CodeEventsExpired,
-			"events before %d are no longer held; the earliest available is %d",
-			from, l.firstSeq)
-	}
-
-	backlog := make([]protocol.Event, 0, len(l.events))
-	for _, ev := range l.events {
-		if ev.Seq >= from {
-			backlog = append(backlog, ev)
-		}
+		return nil, nil, err
 	}
 
 	live := make(chan protocol.Event, 256)

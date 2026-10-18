@@ -607,7 +607,7 @@ Implementa RN-4 e RN-5, ligando ADR-02 a ADR-04.
 ## 7. Semântica do fluxo SSE
 
 - Cada evento SSE tem `id:` igual ao `Seq` e `data:` com o `Event` serializado.
-- `from` menor que o primeiro `Seq` retido → `410 events_expired`.
+- `from` menor que o primeiro `Seq` retido em memória é lido do registro da sessão, quando há registro; sem registro → `410 events_expired`.
 - Servidor envia comentário `: ping` a cada 20s para manter proxies e conexões ociosas vivas.
 - Desconexão não afeta a sessão (RN-1). Reconectar com `from = último Seq recebido + 1`.
 - Sem `Last-Event-ID`: a reposição é sempre explícita via `from`, para que o comportamento seja idêntico entre reconexão e primeira conexão.
@@ -721,6 +721,7 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 
 - `Seq` é estritamente crescente e sem lacunas, por sessão.
 - Reproduzir de `from=1` gera exatamente a mesma sequência de eventos que a observação ao vivo, ignorando `At`.
+- Sessão reaberta ou aparada pela retenção é acompanhada pelo fluxo de qualquer `from` que o registro guarde: o que ficou fora da memória vem do disco, o resto ao vivo, cada evento uma vez.
 - Nenhum evento é emitido após `turn.completed` do mesmo `turn_id`, exceto de outro turno.
 - Sessão em `blocked` não emite `message.delta`.
 - Cliente desanexado durante turno não altera a sequência final de eventos.
@@ -846,3 +847,4 @@ Toda linha aqui é caso de teste obrigatório em `go test`. Ver seção 2 do `.r
 - [202610162300 — A recusa do modelo é dita](../provider-adapter/changelog/202610162300-a-recusa-do-modelo-e-dita.md)
 - [202610171900 — Uma sessão pode ter mãe](changelog/202610171900-uma-sessao-pode-ter-mae.md)
 - [202610172300 — A sessão gravada reabre sob o próprio id](../orchestration/changelog/202610172300-a-sessao-gravada-reabre-sob-o-proprio-id.md)
+- [202610181900 — O fluxo lê o registro como a reposição](changelog/202610181900-o-fluxo-le-o-registro.md)
