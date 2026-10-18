@@ -51,7 +51,13 @@ func OpenIntegration(ctx context.Context, root, projectDir string) (*Integration
 		return nil, fmt.Errorf("orchestrate: make %s: %w", projectDir, err)
 	}
 	if _, err := forgeGit(ctx, root, "worktree", "add", "-q", "--detach", place, "HEAD"); err != nil {
-		return nil, fmt.Errorf("orchestrate: make the integration place: %w", err)
+		// A half-made place would be refused by the next open as "not the
+		// integration worktree"; it goes now, on a context of its own.
+		err = fmt.Errorf("orchestrate: make the integration place: %w", err)
+		if cerr := dropHalfMade(root, place); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+		return nil, err
 	}
 	return in, nil
 }
