@@ -30,8 +30,7 @@ const gitDeadline = 10 * time.Second
 const autonomyStep = "step"
 
 // Spawner is how the orchestrator reaches the daemon, which alone knows how a
-// session is built (.p §3). The reviewer's method joins it with the step that
-// dispatches one.
+// session is built (.p §3).
 type Spawner interface {
 	// SpawnOrchestrator opens the orchestrator of p: a recorded session in
 	// plan mode at p.Root, with p's id and the orchestrator role.
@@ -41,6 +40,10 @@ type Spawner interface {
 	// stay inside them, whose git that writes is refused, and whose
 	// approvals wait for the person without a deadline.
 	SpawnChild(req ChildRequest) (protocol.Session, error)
+	// SpawnReviewer opens a reviewer under req.ID: a recorded session with
+	// the reviewer role, in plan mode in the child's worktree, whose tools
+	// are ReviewerRegistry's with req.Submit as its verdict.
+	SpawnReviewer(req ReviewRequest) (protocol.Session, error)
 	// Submit starts a turn in an idle session; origin is who started it,
 	// empty for the person.
 	Submit(sessionID, text, origin string) error
@@ -76,6 +79,12 @@ type RegistryOptions struct {
 	// ConclusionMax is where a child's conclusion is cut in child.completed;
 	// zero is DelegateMaxResultBytes' default.
 	ConclusionMax int
+	// KnownProfile says whether models.toml at root has a profile name:
+	// orchestrator.reviewer_profiles is checked against it. Nil knows none.
+	KnownProfile func(root, name string) bool
+	// Merge is the merge step a child measured green is handed to; nil
+	// leaves it in_review, reported.
+	Merge MergeQueue
 }
 
 // Registry is every project this daemon conducts.
@@ -91,6 +100,11 @@ type Registry struct {
 	retention     time.Duration
 	maxSessions   int
 	conclusionMax int
+	known         func(root, name string) bool
+	merge         MergeQueue
+	// async runs a pipeline step that may take long — a gate, a red test —
+	// off the goroutine that reads a session's events. A test runs it inline.
+	async func(func())
 
 	mu       sync.Mutex
 	projects map[string]*Orchestrator
@@ -114,6 +128,15 @@ type Orchestrator struct {
 	// conclusions are what each child said in its turn since its last tool
 	// call: the conclusion child.completed carries.
 	conclusions map[string]*strings.Builder
+	// gate and review are the pipeline's configuration, read when the
+	// project opens.
+	gate   Gate
+	review ReviewConfig
+	// reviews are the reviewer sessions at work, by session id.
+	reviews map[string]*reviewing
+	// reportTimer is the inbox's debounce while it runs; closed stops it.
+	reportTimer *time.Timer
+	closed      bool
 }
 
 // NewRegistry opens orchestrator.dir, owner-only, for this daemon alone.
@@ -133,7 +156,8 @@ func NewRegistry(o RegistryOptions) (*Registry, error) {
 	}
 	r := &Registry{dir: filepath.Clean(o.Dir), spawner: o.Spawner, resolve: o.Resolve, log: o.Log,
 		now: o.Now, lock: lock, projects: map[string]*Orchestrator{}, emit: o.Emit,
-		retention: o.Retention, maxSessions: o.MaxSessions, conclusionMax: o.ConclusionMax}
+		retention: o.Retention, maxSessions: o.MaxSessions, conclusionMax: o.ConclusionMax,
+		known: o.KnownProfile, merge: o.Merge, async: func(f func()) { go f() }}
 	if r.conclusionMax <= 0 {
 		r.conclusionMax = defaultConclusionMax
 	}
@@ -151,6 +175,7 @@ func (r *Registry) Close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, o := range r.projects {
+		o.stop()
 		_ = o.log.Close()
 	}
 	r.projects = map[string]*Orchestrator{}
@@ -221,7 +246,12 @@ func (r *Registry) create(ctx context.Context, root, id, workspace string) (*Orc
 		return nil, err
 	}
 	p.OrchestratorID = s.ID
-	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg),
+	gate, review, err := r.pipelineConfig(root, id, cfg)
+	if err != nil {
+		_ = log.Close()
+		return nil, protocol.Errorf(protocol.CodeWorkspaceInvalid, "%v", err)
+	}
+	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), gate: gate, review: review,
 		state: State{V: stateVersion, Project: p}, store: storeAt(r.dir, id), log: log}
 	data, _ := json.Marshal(map[string]string{"workspace": workspace, "orchestrator": s.ID, "main": main})
 	if err := o.record(Decision{Kind: "project.opened", Session: s.ID, Data: data,
@@ -324,7 +354,13 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 		_ = log.Close()
 		return nil, err
 	}
-	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), state: st, store: store, log: log}
+	gate, review, err := r.pipelineConfig(st.Project.Root, id, cfg)
+	if err != nil {
+		_ = log.Close()
+		return nil, err
+	}
+	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), gate: gate, review: review,
+		state: st, store: store, log: log}
 	orq := st.Project.OrchestratorID
 	restart := map[string]any{}
 	if torn := log.Torn(); len(torn) > 0 {
@@ -359,10 +395,12 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 		_ = log.Close()
 		return nil, fmt.Errorf("orchestrator %s: %w", orq, rerr)
 	}
+	r.projects[id] = o
 	for _, move := range after {
 		move()
 	}
-	r.projects[id] = o
+	o.resume()
+	o.scheduleReports() // a report pending at the restart is delivered now
 	return o, nil
 }
 
@@ -391,4 +429,20 @@ func (o *Orchestrator) Project() protocol.Project {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return o.state.Project
+}
+
+// pipelineConfig is the gate and the review a project's chain declares; the
+// whole output of each measurement goes to its gates/ directory.
+func (r *Registry) pipelineConfig(root, id string, cfg config.Resolved) (Gate, ReviewConfig, error) {
+	gate, err := GateFrom(cfg)
+	if err != nil {
+		return Gate{}, ReviewConfig{}, err
+	}
+	gate.Logs = filepath.Join(r.dir, id, "gates")
+	var known func(string) bool
+	if r.known != nil {
+		known = func(name string) bool { return r.known(root, name) }
+	}
+	review, err := ReviewFrom(cfg, known)
+	return gate, review, err
 }

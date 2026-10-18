@@ -198,6 +198,11 @@ type Options struct {
 	// Conductor, when set, gives this session the orchestrator's tools over
 	// the project it conducts.
 	Conductor tools.Conductor `json:"-"`
+	// RedTest, on a child, is where its red_test tool hands the command.
+	RedTest func(ctx context.Context, command string) (string, error) `json:"-"`
+	// Reviewer, when set, makes this session a reviewer: its tools are the
+	// reviewer's registry alone, with this as the verdict.
+	Reviewer func(ctx context.Context, in tools.VerdictInput) (string, error) `json:"-"`
 
 	// Memory reads what earlier sessions in this workspace learned. Off is the
 	// product from before this existed.
@@ -594,9 +599,9 @@ func New(opts Options, emitter loop.Emitter, approver loop.Approver) (*Session, 
 	}
 	toolset = conductorTools(toolset, opts)
 	if opts.Child {
-		toolset = childTools(toolset, resolver, opts.Owns)
+		toolset = append(childTools(toolset, resolver, opts.Owns), tools.RedTest{Submit: opts.RedTest})
 	}
-	registry := tools.NewRegistry(toolset...)
+	registry := sessionRegistry(toolset, opts)
 	// After the registry, because the session's tool names are what an error
 	// message may point at. A tool error naming a capability this build does
 	// not carry sends the model somewhere that does not exist.

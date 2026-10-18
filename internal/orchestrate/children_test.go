@@ -75,7 +75,7 @@ func TestTheHarnessCommitsTheEndOfEachChildTurnByName(t *testing.T) {
 		Usage: &protocol.Usage{InputTokens: 10, OutputTokens: 5}}))
 
 	got := p.o.child(c.ID)
-	if got.Head == "" || got.State != stateWorking || got.Reason != protocol.StopDone || got.Usage.InputTokens != 10 {
+	if got.Head == "" || got.State != stateInReview || got.Reason != protocol.StopDone || got.Usage.InputTokens != 10 {
 		t.Fatalf("child after its turn = %+v", got)
 	}
 	if files := strings.TrimSpace(gitOut(t, c.Worktree, "show", "--name-only", "--format=", got.Head)); files != "internal/index/i.go" {
@@ -96,9 +96,10 @@ func TestTheHarnessCommitsTheEndOfEachChildTurnByName(t *testing.T) {
 		t.Errorf("the child's claim is not kept in the log as a claim:\n%s", data)
 	}
 
-	p.reg.Observe(c.ID, event(t, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t2"}))
-	p.reg.Observe(c.ID, event(t, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t2", Reason: protocol.StopMaxIterations}))
-	if got := p.o.child(c.ID); got.State != stateFailed || got.Reason != protocol.StopMaxIterations {
+	other := p.one(t, item("other", "other"))
+	p.reg.Observe(other.ID, event(t, protocol.EventTurnStarted, protocol.TurnStarted{TurnID: "t2"}))
+	p.reg.Observe(other.ID, event(t, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t2", Reason: protocol.StopMaxIterations}))
+	if got := p.o.child(other.ID); got.State != stateFailed || got.Reason != protocol.StopMaxIterations {
 		t.Errorf("a turn ending max_iterations left the child %s/%s", got.State, got.Reason)
 	}
 }

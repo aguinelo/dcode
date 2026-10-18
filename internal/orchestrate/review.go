@@ -21,6 +21,7 @@ import (
 	"github.com/aguinelo/dcode/internal/config"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
+	"github.com/aguinelo/dcode/internal/tools"
 )
 
 const (
@@ -168,8 +169,11 @@ type ReviewInput struct {
 }
 
 // ReviewRequest is a reviewer's whole brief, and what SpawnReviewer is given.
-// ParentID and Profile are the caller's to fill.
+// ID, ParentID, Profile and Submit are the caller's to fill.
 type ReviewRequest struct {
+	// ID is the reviewer session's id, chosen before the session exists so
+	// the review it records is named by it.
+	ID                                   string
 	ParentID, ChildID, Worktree, Profile string
 	Base, Commit, Task                   string
 	Owns                                 []string
@@ -184,6 +188,9 @@ type ReviewRequest struct {
 	Diff      string
 	DiffBytes int
 	DiffCut   bool
+	// Submit is the review's verdict tool (Review.Submit): what the
+	// reviewer's verdict calls.
+	Submit func(context.Context, tools.VerdictInput) (string, error)
 }
 
 // AssembleReview builds the reviewer's brief from the child's worktree. A

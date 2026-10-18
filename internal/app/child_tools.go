@@ -71,3 +71,13 @@ func (t ownedTool) Declare(input json.RawMessage) (policy.Request, error) {
 	}
 	return req, nil
 }
+
+// sessionRegistry is the registry a session is built with: a reviewer's is
+// the reviewer's registry alone — the four tools that only read, and verdict
+// — whatever else the toolset holds; any other session's is its toolset.
+func sessionRegistry(toolset []tools.Tool, opts Options) *tools.Registry {
+	if opts.Reviewer != nil {
+		return orchestrate.ReviewerRegistry(tools.Verdict{Submit: opts.Reviewer})
+	}
+	return tools.NewRegistry(toolset...)
+}

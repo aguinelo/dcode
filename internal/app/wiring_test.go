@@ -142,6 +142,10 @@ var nonSession = map[string]string{
 	// starts, and the session never chooses its own reviewer or its diff.
 	"orchestrator.reviewer_profiles":     "read by the orchestrator, which chooses the reviewer's profile from the allow-list",
 	"orchestrator.review_max_diff_bytes": "read by the orchestrator, which assembles the reviewer's diff",
+
+	// The pipeline and the inbox are the harness's, around the sessions.
+	"orchestrator.max_returns":     "read by the orchestrator, whose pipeline hands a child its work back",
+	"orchestrator.report_debounce": "read by the orchestrator, whose inbox starts its own turn",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.

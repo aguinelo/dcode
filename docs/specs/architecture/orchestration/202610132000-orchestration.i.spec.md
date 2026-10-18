@@ -16,9 +16,9 @@
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
 | 5 — um projeto tem uma orquestradora | **feito** — `internal/orchestrate/registry.go`, `store.go`; `app.Daemon` é a `Spawner` com `SpawnOrchestrator`, `Reopen` e `Close` (os de filho entraram no passo 6; o de revisor entra no 8) |
 | 6 — um filho trabalha na própria worktree | **feito** — `internal/orchestrate/dispatch.go`, `children.go`, `observe.go`, `owns.go`, `worktree.go`, `limits.go`; as ferramentas em `internal/tools/orchestrate.go` e a negação de git em `gitwrite.go`; `app.Daemon` ganha `SpawnChild`, `Submit` e `Steer`. O `done` deixa o filho em `working` com o fim dito: a esteira (`in_review`) começa ali, no passo 8 |
-| 7 | **não feito** |
-| 8 — um revisor lê o diff de cada filho | **em parte**: o componente — `internal/orchestrate/review.go` (`AssembleReview`, `OutsideOwns`, `Uncommitted`, `ReviewFrom`), `review_verdict.go` (`ReviewerRegistry`, `Review`, `ErrNoVerdict`) e a ferramenta `internal/tools/verdict.go`; `Spawner.SpawnReviewer`, o commit do harness, a fase `red`/`fix`, `max_returns` e a chamada na esteira entram com a fiação |
-| 9 — a orquestradora roda o gate | **em parte**: o componente — `internal/orchestrate/gate.go` (`Gate.Measure`, `GateFrom`, `RecordGate`, `CheckFresh`); a integração em `integration/`, o merge da main e a chamada na esteira (depois da revisão, antes da fila de merge) entram quando os passos 6 a 8 chegarem |
+| 7 — o relato de um filho começa o turno | **feito** — `internal/orchestrate/reports.go`: a caixa (`State.PendingReports`), o debounce de `report_debounce`, o turno `Origin: children` |
+| 8 — um revisor lê o diff de cada filho | **feito** — o componente (`review.go`, `review_verdict.go`, `internal/tools/verdict.go`) e a fiação: `internal/orchestrate/pipeline.go` (conferência de `owns` antes do commit, `Spawner.SpawnReviewer`, `missing` uma vez de novo, `max_returns`), `pipeline_gate.go` (fase `red`/`fix`, `red_test.confirmed`) e a ferramenta `internal/tools/redtest.go` |
+| 9 — a orquestradora roda o gate | **em parte**: `Gate.Measure` chamado pela esteira depois da aprovação, no `Head` exato, com `base` a ponta da main sob ele (`pipeline_gate.go`); verde vai ao passo de merge pela `MergeQueue`. A integração em `integration/`, o merge da main e o conflito devolvido ficam para a fiação do passo 10, que constrói o componente |
 | 10 | **não feito** |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 | **não feito** |
@@ -164,9 +164,9 @@ ferramentas `delegate`, `children`, `steer_child`, `close_child` em `internal/to
 A caixa de relatos (`State.PendingReports`), o turno `Origin: children`, o debounce. Lê
 `orchestrator.report_debounce`.
 
-- [ ] Relato com a orquestradora `idle` abre um turno depois do debounce, juntando os que chegaram.
-- [ ] Relato com turno em curso espera o fim dele; nunca entra no meio.
-- [ ] Texto do relato montado pelo harness, em inglês, acrescentado ao fim do histórico.
+- [x] Relato com a orquestradora `idle` abre um turno depois do debounce, juntando os que chegaram.
+- [x] Relato com turno em curso espera o fim dele; nunca entra no meio.
+- [x] Texto do relato montado pelo harness, em inglês, acrescentado ao fim do histórico.
 
 **Testes obrigatórios:**
 
@@ -180,13 +180,11 @@ A conferência de `owns` (`.p` §7.1), a sessão `RoleReviewer` e a ferramenta `
 devolução em duas fases com `red_test` (§7.3), `review.verdict`. Estado `in_review`. Lê
 `reviewer_profiles`, `review_max_diff_bytes`, `max_returns`.
 
-- [ ] Caminho fora do `owns` no `git status --porcelain` devolve sem commit e sem revisão. A
-      conferência está feita (`Uncommitted`, `OutsideOwns`, e `AssembleReview` sobre o diff); o
-      "sem commit" é da esteira.
+- [x] Caminho fora do `owns` no `git status --porcelain` devolve sem commit e sem revisão.
 - [x] Revisor só com `read`, `glob`, `grep`, `symbol`, `verdict` (`ReviewerRegistry`).
-- [ ] `missing` roda de novo uma vez; o segundo fica em `in_review` com relato.
-- [ ] `changes_requested` → fase `red` → `red_test.confirmed` → fase `fix` → 7.1 de novo.
-- [ ] Além de `max_returns`, `failed` com `incomplete`.
+- [x] `missing` roda de novo uma vez; o segundo fica em `in_review` com relato.
+- [x] `changes_requested` → fase `red` → `red_test.confirmed` → fase `fix` → 7.1 de novo.
+- [x] Além de `max_returns`, `failed` com `incomplete`.
 
 **Testes obrigatórios:**
 
@@ -207,7 +205,8 @@ O lugar de integração, a atualização com merge da main, o conflito devolvido
       filho com os marcadores; `Return{conflict, paths}`.
 - [x] Gate em `H` numa worktree descartável, sem `GIT_*`, com tempo-limite; saída inteira em `gates/<commit>.log`
       (`Gate.Measure`); `gate.measured` com a alegação do filho como `claim` (`RecordGate`); `gate_stale`
-      conferido por `CheckFresh`. O sandbox do `bash` em volta do gate fica para a fiação.
+      conferido por `CheckFresh`. A esteira o chama depois da aprovação; o sandbox do `bash` em volta do
+      gate continua por fazer.
 - [ ] `vcs` sem nenhuma função de rebase ou de push forçado.
 
 **Testes obrigatórios:**

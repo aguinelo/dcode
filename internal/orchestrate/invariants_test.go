@@ -43,6 +43,15 @@ var orchestrationInvariants = map[string]string{
 	"no reinício termina com `daemon_restart`":       "TestAChildIsReopenedAfterARestartAndAnOpenTurnFails",
 	"`delegate` é recusado com `ceiling_reached`":    "TestAtTheCeilingDispatchStopsAndContinueOpensANewWindow",
 	"Fechado sai da lista depois da retenção":        "TestAClosedChildLeavesTheListAfterTheRetentionAndAFailedOneStays",
+
+	"volta ao filho sem commit e sem revisão":               "TestADiffOutsideOwnsIsNeverCommittedAndReturnsWithoutAReviewer",
+	"só é aceito depois de `red_test.confirmed`":            "TestTheRedTestMustFailWithoutTheFixBeforeTheFixIsTaken",
+	"nunca chega ao gate":                                   "TestARedTestThatPassesIsNotTakenAndAnUnconfirmedFixNeverReachesTheGate",
+	"não há terceira":                                       "TestAReviewWithoutAVerdictRunsOnceMoreThenStaysInReview",
+	"Além de `max_returns` devoluções":                      "TestPastMaxReturnsTheChildFailsIncomplete",
+	"mede o `Head` exato do filho":                          "TestTheGateMeasuresTheExactCommitAndALyingChildIsRecordedRed",
+	"só no começo de um turno dela, com `Origin: children`": "TestAReportDuringATurnWaitsForThatTurnToEnd",
+	"byte a byte o de antes (ADR-03)":                       "TestTheReportIsAppendedAndThePrefixIsByteForByteTheSame",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

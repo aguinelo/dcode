@@ -25,11 +25,22 @@ func (f *fakeSpawner) SpawnChild(req ChildRequest) (protocol.Session, error) {
 		ParentID: req.ParentID, Role: protocol.RoleChild, Owns: req.Owns}, nil
 }
 
-func (f *fakeSpawner) Submit(id, text, _ string) error {
+func (f *fakeSpawner) Submit(id, text, origin string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.busy[id] {
+		return protocol.Errorf(protocol.CodeTurnAlreadyActive, "a turn is already running")
+	}
 	f.submitted = append(f.submitted, id+": "+text)
+	f.origins = append(f.origins, origin)
 	return f.failSubmit
+}
+
+func (f *fakeSpawner) SpawnReviewer(req ReviewRequest) (protocol.Session, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reviewers = append(f.reviewers, req)
+	return protocol.Session{ID: req.ID, Workspace: req.Worktree, ParentID: req.ParentID, Role: protocol.RoleReviewer}, nil
 }
 
 func (f *fakeSpawner) Steer(id, text string) error {
@@ -99,13 +110,19 @@ type project struct {
 	clk       *clock
 	reg       *Registry
 	o         *Orchestrator
+	// merge is the merge step the registry hands a green child to.
+	merge MergeQueue
 }
 
 func openWith(t *testing.T, keys map[string]string) *project {
+	return openMerging(t, keys, nil)
+}
+
+func openMerging(t *testing.T, keys map[string]string, merge MergeQueue) *project {
 	t.Helper()
 	isolateGit(t)
 	p := &project{root: gitRepo(t), dir: t.TempDir(), sp: &fakeSpawner{}, w: &wire{},
-		clk: &clock{at: time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)}}
+		clk: &clock{at: time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)}, merge: merge}
 	p.reg = p.registry(t, keys)
 	o, _, err := p.reg.Open(p.root)
 	if err != nil {
@@ -118,11 +135,12 @@ func openWith(t *testing.T, keys map[string]string) *project {
 func (p *project) registry(t *testing.T, keys map[string]string) *Registry {
 	t.Helper()
 	r, err := NewRegistry(RegistryOptions{Dir: p.dir, Spawner: p.sp, Log: func(string) {}, Now: p.clk.now,
-		Emit: p.w.emit, Retention: time.Hour,
+		Emit: p.w.emit, Retention: time.Hour, Merge: p.merge,
 		Resolve: func(string) (config.Resolved, error) { return resolved(keys), nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
+	r.async = func(f func()) { f() } // the pipeline's long steps run inline, in order
 	t.Cleanup(r.Close)
 	return r
 }

@@ -17,7 +17,7 @@ const (
 
 // State is a project's state.json: what the daemon needs to conduct it again
 // after a restart. The fields of later steps — the merge queue, the main's
-// health, the reports — join it with the steps that fill them (.p §4).
+// health — join it with the steps that fill them (.p §4).
 type State struct {
 	V       int              `json:"v"`
 	Project protocol.Project `json:"project"`
@@ -31,6 +31,28 @@ type State struct {
 	// Spent is the tokens of every session of the project — input, output and
 	// cache read — in the ceiling's window (.p §10).
 	Spent int64 `json:"spent"`
+	// PendingReports are the reports no orchestrator turn has carried yet:
+	// the inbox, kept on disk so a report survives a restart (.p §10).
+	PendingReports []string `json:"pending_reports,omitempty"`
+	// Briefs are what each child was dispatched with, by child id: what the
+	// pipeline needs after dispatch and the wire's Child does not carry.
+	Briefs map[string]Brief `json:"briefs,omitempty"`
+}
+
+// Brief is a child's dispatch as the pipeline reads it later: the task the
+// reviewer judges against, the pull request's text for the merge step, what
+// the child last said of its work, and the red test it named.
+type Brief struct {
+	Task      string `json:"task"`
+	PRTitle   string `json:"pr_title,omitempty"`
+	PRBody    string `json:"pr_body,omitempty"`
+	FixesMain bool   `json:"fixes_main,omitempty"`
+	// Claim is the conclusion of the child's last turn: what it said, kept
+	// beside the measurement and never read as one.
+	Claim string `json:"claim,omitempty"`
+	// RedTest is the command the child named with red_test in its red phase,
+	// until the harness runs it.
+	RedTest string `json:"red_test,omitempty"`
 }
 
 // Store is one project's state.json.

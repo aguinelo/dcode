@@ -26,6 +26,14 @@ func (o *Orchestrator) snapshot() State {
 func cloneState(st State) State {
 	st.Children = append([]protocol.Child(nil), st.Children...)
 	st.Questions = append([]protocol.Question(nil), st.Questions...)
+	st.PendingReports = append([]string(nil), st.PendingReports...)
+	if st.Briefs != nil {
+		briefs := make(map[string]Brief, len(st.Briefs))
+		for k, v := range st.Briefs {
+			briefs[k] = v
+		}
+		st.Briefs = briefs
+	}
 	return st
 }
 
@@ -121,6 +129,11 @@ func (o *Orchestrator) setModel(id, model string) {
 // for a turn now running.
 func (o *Orchestrator) move(id, to, reason, why string) protocol.Child {
 	from := o.child(id).State
+	if terminal(from) {
+		// Closed or merged while a step of its pipeline ran: nothing moves
+		// it again, and the step that ended late changes nothing.
+		return o.child(id)
+	}
 	data, _ := json.Marshal(map[string]string{"from": from, "to": to, "reason": reason})
 	err := o.commit(Decision{Kind: "child.state", Child: id, Why: why, Data: data}, edit(id, func(c *protocol.Child) {
 		c.State, c.Reason = to, reason
@@ -316,6 +329,7 @@ func (o *Orchestrator) Answer(id, answer, note string) (protocol.Question, error
 		return protocol.Question{}, protocol.Errorf(protocol.CodeInternal, "the answer did not reach the log: %v", err)
 	}
 	o.emit(protocol.EventQuestionAnswered, q)
+	o.Report(fmt.Sprintf("The person answered question %s (%s) with %q.", q.ID, q.Kind, answer))
 	return q, nil
 }
 
@@ -360,7 +374,10 @@ func (o *Orchestrator) reopenChildren() (reopened []string, failed map[string]st
 		if _, err := o.reg.spawner.Reopen(id, protocol.StopDaemonRestart); err != nil {
 			failed[id] = err.Error()
 			msg := fmt.Sprintf("the child could not be reopened after the daemon started again: %v", err)
-			moves = append(moves, func() { o.move(id, stateFailed, protocol.StopError, msg) })
+			moves = append(moves, func() {
+				o.move(id, stateFailed, protocol.StopError, msg)
+				o.reportChild(id, msg+".")
+			})
 			continue
 		}
 		reopened = append(reopened, id)
@@ -369,6 +386,7 @@ func (o *Orchestrator) reopenChildren() (reopened []string, failed map[string]st
 			moves = append(moves, func() {
 				o.move(id, stateFailed, protocol.StopDaemonRestart,
 					"the child's turn was open when the daemon stopped, and ended daemon_restart")
+				o.reportChild(id, "its turn was open when the daemon stopped, so it failed daemon_restart. Steer it to continue, or close it.")
 			})
 		}
 	}

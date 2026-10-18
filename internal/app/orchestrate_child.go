@@ -25,12 +25,14 @@ func (d *Daemon) orchestratorMode(projectID string) func(*Options) {
 	}
 }
 
-// childMode is a child's boundary, set last so no request widens it: it
+// childMode is child id's boundary, set last so no request widens it: it
 // writes inside its worktree and its owns alone, asks the person without a
-// deadline, runs no git that writes, and delegates nothing.
-func childMode(owns []string) func(*Options) {
+// deadline, runs no git that writes, and delegates nothing. Its red_test
+// reaches the pipeline of its project.
+func (d *Daemon) childMode(id string, owns []string) func(*Options) {
 	return func(o *Options) {
 		o.Child, o.Owns, o.Conductor = true, append([]string(nil), owns...), nil
+		o.RedTest = func(_ context.Context, command string) (string, error) { return d.redTest(id, command) }
 		o.SandboxMode, o.Policy = policy.ModeWorkspaceWrite, policy.PolicyOnRequest
 		o.Writable, o.Delegate, o.Qualify, o.LoopSpec = nil, false, false, ""
 	}
@@ -60,7 +62,7 @@ func (d *Daemon) SpawnChild(req orchestrate.ChildRequest) (protocol.Session, err
 				"the child role's profile %q is no profile of models.toml", req.Profile)
 		}
 	}
-	sess, err := d.buildAs(req.ID, protocol.CreateSessionRequest{Workspace: req.Worktree, Model: req.Profile}, childMode(req.Owns))
+	sess, err := d.buildAs(req.ID, protocol.CreateSessionRequest{Workspace: req.Worktree, Model: req.Profile}, d.childMode(req.ID, req.Owns))
 	if err != nil {
 		return protocol.Session{}, err
 	}
@@ -203,4 +205,61 @@ func (c conductor) CloseChild(id, why string) error {
 		return err
 	}
 	return o.Close(id, why)
+}
+
+// reviewerMode is a reviewer's boundary: plan mode, the reviewer's registry
+// with submit as its verdict, and nothing that conducts or delegates.
+func reviewerMode(submit func(context.Context, tools.VerdictInput) (string, error)) func(*Options) {
+	return func(o *Options) {
+		o.Child, o.Owns, o.Conductor, o.RedTest = false, nil, nil, nil
+		o.Delegate, o.Qualify, o.LoopSpec, o.Memory = false, false, "", false
+		o.Reviewer = submit
+		planMode(o)
+	}
+}
+
+// SpawnReviewer opens a reviewer under req.ID in the child's worktree: a
+// recorded session with the reviewer role and the orchestrator as parent,
+// which only reads and ends its review with verdict.
+func (d *Daemon) SpawnReviewer(req orchestrate.ReviewRequest) (protocol.Session, error) {
+	if err := session.ValidID(req.ID); err != nil {
+		return protocol.Session{}, err
+	}
+	if req.Submit == nil {
+		return protocol.Session{}, protocol.Errorf(protocol.CodeInvalidInput, "a reviewer needs the review its verdict goes to")
+	}
+	parent, err := d.manager.Get(req.ParentID)
+	if err != nil {
+		return protocol.Session{}, err
+	}
+	sess, err := d.buildAs(req.ID, protocol.CreateSessionRequest{Workspace: req.Worktree, Model: req.Profile}, reviewerMode(req.Submit))
+	if err != nil {
+		return protocol.Session{}, err
+	}
+	sess.Role, sess.ParentID, sess.ProjectID = protocol.RoleReviewer, req.ParentID, parent.ProjectID
+	if err := d.manager.Add(sess); err != nil {
+		sess.Close()
+		return protocol.Session{}, err
+	}
+	sess.Emit(protocol.EventSessionCreated, sess.Describe())
+	d.watch(sess)
+	return sess.Describe(), nil
+}
+
+// redTest hands a child's red_test to its project's pipeline.
+func (d *Daemon) redTest(childID, command string) (string, error) {
+	if d.projects == nil || d.projects.reg == nil {
+		return "", protocol.Errorf(protocol.CodeOrchestratorUnavailable, "this daemon conducts no projects")
+	}
+	return d.projects.reg.RedTest(childID, command)
+}
+
+// knownProfile says whether models.toml at root has profile name.
+func (d *Daemon) knownProfile(root, name string) bool {
+	opts, err := d.optionsFor(root)
+	if err != nil {
+		return false
+	}
+	_, ok := opts.Profiles[name]
+	return ok
 }

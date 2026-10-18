@@ -27,7 +27,7 @@ func TestTheChildsRegistryHasNoToolThatConducts(t *testing.T) {
 	opts := baseOpts(t)
 	opts.Workspace = ws
 	requireSandbox(t, opts)
-	childMode([]string{"docs"})(&opts)
+	(&Daemon{}).childMode("c", []string{"docs"})(&opts)
 	child, err := New(opts, &ConsoleEmitter{W: io.Discard}, DenyAll{})
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func TestCreatingChildrenLeavesTheOrchestratorIdleWhileTheyRun(t *testing.T) {
 		t.Fatalf("child session = %+v, %v", cs, err)
 	}
 	close(m.hold)
-	waitUntil(t, "the child's turn did not end", func() bool { return childrenOf(t, d, orq.ID)[0].Reason == protocol.StopDone })
+	waitUntil(t, "the child's turn did not end", func() bool { return childrenOf(t, d, orq.ID)[0].Reason != "" })
 
 	if code, body := route(t, d, http.MethodDelete, "/sessions/"+kid.ID, nil); code != http.StatusNoContent {
 		t.Fatalf("DELETE child = %d %s", code, body)
