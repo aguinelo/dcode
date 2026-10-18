@@ -214,6 +214,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/projects/{id}", s.getProject)
 	s.mux.HandleFunc("GET "+p+"/projects/{id}/orchestrator", s.projectOrchestrator)
 	s.mux.HandleFunc("GET "+p+"/sessions/{id}/children", s.listChildren)
+	s.mux.HandleFunc("GET "+p+"/sessions/{id}/questions", s.listQuestions)
+	s.mux.HandleFunc("POST "+p+"/sessions/{id}/questions/{qid}", s.answerQuestion)
 	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
 	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
 	s.mux.HandleFunc("GET "+p+"/git/pr", s.readGitPR)

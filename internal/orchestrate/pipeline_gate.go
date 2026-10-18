@@ -3,6 +3,7 @@ package orchestrate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -87,34 +88,48 @@ func (o *Orchestrator) confirmRed(id string) {
 	o.giveBack(id, protocol.Return{Why: why, Phase: phaseFix}, false, fix.String())
 }
 
-// measure runs the gate on the child's Head after an approval: in a
-// throwaway tree at that exact commit, with Base the main tip under it.
+// measure brings the child's branch up to date with main in the integration
+// place — a merge, never a rebase — and runs the gate on the result H, in a
+// throwaway tree at that exact commit, with Base the main tip it holds.
 // gate.measured keeps what the child said beside what was measured.
 func (o *Orchestrator) measure(id string) {
 	c, p := o.child(id), o.Project()
 	ctx := context.Background()
+	_, in, err := o.merges()
+	if err != nil {
+		o.stall(id, fmt.Errorf("the merge step could not open: %w", err))
+		return
+	}
 	gctx, cancel := context.WithTimeout(ctx, gateGitDeadline)
 	tip, err := mainTip(gctx, p.Root, p.Main)
-	base, behind := tip, false
-	if err == nil {
-		if _, aerr := wtGit(gctx, p.Root, "merge-base", "--is-ancestor", tip, c.Head); aerr != nil {
-			behind = true
-			base, err = wtGit(gctx, p.Root, "merge-base", tip, c.Head)
-		}
-	}
 	cancel()
 	if err != nil {
-		o.stall(id, fmt.Errorf("the main under %s cannot be read: %w", short(c.Head), err))
+		o.stall(id, fmt.Errorf("main %s cannot be read: %w", p.Main, err))
 		return
 	}
-	r, err := o.gate.Measure(ctx, p.Root, c.Head)
+	h, err := in.Update(ctx, o.log, id, c.Worktree, c.Head, tip)
+	var cf *Conflict
+	if errors.As(err, &cf) {
+		o.handBack(id, cf.Return(), true, conflictText(cf.Paths), false)
+		return
+	}
+	if err != nil {
+		o.stall(id, fmt.Errorf("main could not be merged into the branch: %w", err))
+		return
+	}
+	if h != c.Head {
+		if aerr := o.apply(edit(id, func(ch *protocol.Child) { ch.Head = h })); aerr != nil {
+			o.sayError(protocol.CodeInternal, fmt.Sprintf("the updated head of child %s is not in the state: %v", id, aerr))
+		}
+	}
+	r, err := o.gate.Measure(ctx, p.Root, h)
 	if err != nil && r.Result != GateUndeclared {
-		o.stall(id, fmt.Errorf("the gate did not measure %s: %w", short(c.Head), err))
+		o.stall(id, fmt.Errorf("the gate did not measure %s: %w", short(h), err))
 		return
 	}
-	r.Base = base
+	r.Base = tip
 	if _, rerr := RecordGate(o.log, id, o.brief(id).Claim, r); rerr != nil {
-		o.stall(id, fmt.Errorf("the measurement of %s did not reach the log: %w", short(c.Head), rerr))
+		o.stall(id, fmt.Errorf("the measurement of %s did not reach the log: %w", short(h), rerr))
 		return
 	}
 	if aerr := o.apply(edit(id, func(ch *protocol.Child) { g := r; ch.Gate = &g })); aerr != nil {
@@ -123,7 +138,7 @@ func (o *Orchestrator) measure(id string) {
 	o.emit(protocol.EventGateMeasured, protocol.GateMeasured{ChildID: id, GateResult: r})
 	switch r.Result {
 	case GateGreen:
-		o.ready(id, behind)
+		o.propose(id)
 	case GateUndeclared:
 		o.reportChild(id, "its review approved, and no gate is declared (orchestrator.gate_command, verify.command): nothing was measured, and nothing merges.")
 	default:
@@ -133,34 +148,12 @@ func (o *Orchestrator) measure(id string) {
 	}
 }
 
-// ready hands a child measured green to the merge step, and moves it to pr
-// with the pull request that step opened.
-func (o *Orchestrator) ready(id string, behind bool) {
-	if terminal(o.child(id).State) {
-		return
-	}
-	note := ""
-	if behind {
-		note = " Its branch does not contain main's tip, so the merge measures it again over main."
-	}
-	if o.reg.merge == nil {
-		o.reportChild(id, "its review approved and the gate measured green on its head; it waits in_review for the merge step, which this daemon does not run yet."+note)
-		return
-	}
-	pr, err := o.reg.merge.Ready(o, o.child(id), o.brief(id))
-	if err != nil {
-		o.stall(id, fmt.Errorf("the merge step did not take it: %w", err))
-		return
-	}
-	data, _ := json.Marshal(map[string]any{"from": stateInReview, "to": statePR, "pr": pr})
-	if err := o.commit(Decision{Kind: "child.state", Child: id, Data: data,
-		Why: "review approved, gate green, pull request open: the merge waits for the person"},
-		edit(id, func(c *protocol.Child) { p := pr; c.State, c.Waiting, c.PR = statePR, "merge", &p })); err != nil {
-		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s did not move to pr: %v", id, err))
-		return
-	}
-	o.emit(protocol.EventChildState, protocol.ChildChanged{Child: o.child(id)})
-	o.reportChild(id, "its review approved, the gate measured green, and its pull request waits for the person's merge."+note)
+// conflictText is the turn that hands back a branch main does not merge into.
+func conflictText(paths []string) string {
+	return "Main moved, and merging it into your branch conflicts in " + strings.Join(paths, ", ") + ". " +
+		"The merge is in progress in your worktree with the conflict markers in those files. Resolve them, " +
+		"keeping what main changed and what your task needs, and end your turn: the harness concludes the merge " +
+		"with its commit, and the pipeline reviews and measures it again. Run no git command yourself."
 }
 
 // RedTest is a child's red_test, handed to the project it is a child of.
@@ -201,7 +194,7 @@ func (o *Orchestrator) resume() {
 			case c.Gate == nil || c.Gate.Commit != c.Head:
 				o.reg.async(func() { o.measure(id) })
 			case c.Gate.Result == GateGreen:
-				o.reg.async(func() { o.ready(id, false) })
+				o.reg.async(func() { o.propose(id) })
 			}
 			continue
 		}

@@ -39,6 +39,9 @@ func (f *fakeSpawner) Submit(id, text, origin string) error {
 func (f *fakeSpawner) SpawnReviewer(req ReviewRequest) (protocol.Session, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.failReviewer != nil {
+		return protocol.Session{}, f.failReviewer
+	}
 	f.reviewers = append(f.reviewers, req)
 	return protocol.Session{ID: req.ID, Workspace: req.Worktree, ParentID: req.ParentID, Role: protocol.RoleReviewer}, nil
 }
@@ -110,19 +113,13 @@ type project struct {
 	clk       *clock
 	reg       *Registry
 	o         *Orchestrator
-	// merge is the merge step the registry hands a green child to.
-	merge MergeQueue
 }
 
 func openWith(t *testing.T, keys map[string]string) *project {
-	return openMerging(t, keys, nil)
-}
-
-func openMerging(t *testing.T, keys map[string]string, merge MergeQueue) *project {
 	t.Helper()
 	isolateGit(t)
 	p := &project{root: gitRepo(t), dir: t.TempDir(), sp: &fakeSpawner{}, w: &wire{},
-		clk: &clock{at: time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)}, merge: merge}
+		clk: &clock{at: time.Date(2026, 10, 17, 12, 0, 0, 0, time.UTC)}}
 	p.reg = p.registry(t, keys)
 	o, _, err := p.reg.Open(p.root)
 	if err != nil {
@@ -135,7 +132,7 @@ func openMerging(t *testing.T, keys map[string]string, merge MergeQueue) *projec
 func (p *project) registry(t *testing.T, keys map[string]string) *Registry {
 	t.Helper()
 	r, err := NewRegistry(RegistryOptions{Dir: p.dir, Spawner: p.sp, Log: func(string) {}, Now: p.clk.now,
-		Emit: p.w.emit, Retention: time.Hour, Merge: p.merge,
+		Emit: p.w.emit, Retention: time.Hour,
 		Resolve: func(string) (config.Resolved, error) { return resolved(keys), nil }})
 	if err != nil {
 		t.Fatal(err)

@@ -289,44 +289,6 @@ func TestPastMaxReturnsTheChildFailsIncomplete(t *testing.T) {
 	}
 }
 
-type fakeMerge struct {
-	got   []protocol.Child
-	brief []Brief
-}
-
-func (m *fakeMerge) Ready(_ *Orchestrator, c protocol.Child, b Brief) (protocol.ChildPR, error) {
-	m.got, m.brief = append(m.got, c), append(m.brief, b)
-	return protocol.ChildPR{Number: 7, URL: "https://example.test/pr/7"}, nil
-}
-
-// Spec: orchestration .p §7.5 — review approved and gate green hand the child
-// to the merge step, which opens its pull request; the child goes to pr.
-func TestAGreenChildIsHandedToTheMergeStepAndWaitsInPR(t *testing.T) {
-	m := &fakeMerge{}
-	p := openMerging(t, map[string]string{"orchestrator.gate_command": "true"}, m)
-	it := item("index", "internal/index")
-	it.PRTitle = "feat(index): count words"
-	c := p.one(t, it)
-	put(t, c, "internal/index/i.go", "package index\n")
-	p.end(t, c.ID, protocol.StopDone, "Done.")
-	p.review(t, approve)
-
-	if len(m.got) != 1 || m.got[0].Gate == nil || m.got[0].Gate.Commit != m.got[0].Head || m.brief[0].PRTitle != it.PRTitle {
-		t.Fatalf("the merge step got %+v / %+v", m.got, m.brief)
-	}
-	got := p.o.child(c.ID)
-	if got.State != statePR || got.PR == nil || got.PR.Number != 7 || got.Waiting != "merge" {
-		t.Errorf("child = %s, pr %+v, waiting %q", got.State, got.PR, got.Waiting)
-	}
-	k := p.kinds(t)
-	if i, j := strings.Index(k, "review.verdict"), strings.Index(k, "gate.measured"); i < 0 || j < i {
-		t.Errorf("review and gate are out of order: %s", k)
-	}
-	if strings.Contains(k, "merge.queued") {
-		t.Errorf("merge.queued is the person's answer, never the pipeline's: %s", k)
-	}
-}
-
 // A pipeline step that ends after the child was closed moves nothing: a
 // closed child is terminal, and a late failure must not reopen it.
 func TestAStepThatEndsAfterACloseMovesNothing(t *testing.T) {
@@ -337,7 +299,7 @@ func TestAStepThatEndsAfterACloseMovesNothing(t *testing.T) {
 	}
 	p.o.move(c.ID, stateFailed, protocol.StopIncomplete, "a late step")
 	p.o.giveBack(c.ID, protocol.Return{Why: returnReview}, true, "late")
-	p.o.ready(c.ID, false)
+	p.o.propose(c.ID)
 	if got := p.o.child(c.ID); got.State != stateClosed || got.Returned != 0 {
 		t.Errorf("after the close the child is %s, returned %d", got.State, got.Returned)
 	}

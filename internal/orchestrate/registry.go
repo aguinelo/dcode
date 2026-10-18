@@ -82,9 +82,9 @@ type RegistryOptions struct {
 	// KnownProfile says whether models.toml at root has a profile name:
 	// orchestrator.reviewer_profiles is checked against it. Nil knows none.
 	KnownProfile func(root, name string) bool
-	// Merge is the merge step a child measured green is handed to; nil
-	// leaves it in_review, reported.
-	Merge MergeQueue
+	// HealthPoll is how long apart main's CI is read after a merge; zero is
+	// the merge step's default.
+	HealthPoll time.Duration
 }
 
 // Registry is every project this daemon conducts.
@@ -101,7 +101,7 @@ type Registry struct {
 	maxSessions   int
 	conclusionMax int
 	known         func(root, name string) bool
-	merge         MergeQueue
+	healthPoll    time.Duration
 	// async runs a pipeline step that may take long — a gate, a red test —
 	// off the goroutine that reads a session's events. A test runs it inline.
 	async func(func())
@@ -137,6 +137,14 @@ type Orchestrator struct {
 	// reportTimer is the inbox's debounce while it runs; closed stops it.
 	reportTimer *time.Timer
 	closed      bool
+	// The merge step, opened the first time a child needs it (merging.go):
+	// its configuration, the integration place, and the merges. drainMu
+	// keeps one run of the queue at a time.
+	mergeCfg MergeConfig
+	mergeMu  sync.Mutex
+	in       *Integration
+	mg       *Merges
+	drainMu  sync.Mutex
 }
 
 // NewRegistry opens orchestrator.dir, owner-only, for this daemon alone.
@@ -157,7 +165,7 @@ func NewRegistry(o RegistryOptions) (*Registry, error) {
 	r := &Registry{dir: filepath.Clean(o.Dir), spawner: o.Spawner, resolve: o.Resolve, log: o.Log,
 		now: o.Now, lock: lock, projects: map[string]*Orchestrator{}, emit: o.Emit,
 		retention: o.Retention, maxSessions: o.MaxSessions, conclusionMax: o.ConclusionMax,
-		known: o.KnownProfile, merge: o.Merge, async: func(f func()) { go f() }}
+		known: o.KnownProfile, healthPoll: o.HealthPoll, async: func(f func()) { go f() }}
 	if r.conclusionMax <= 0 {
 		r.conclusionMax = defaultConclusionMax
 	}
@@ -246,13 +254,12 @@ func (r *Registry) create(ctx context.Context, root, id, workspace string) (*Orc
 		return nil, err
 	}
 	p.OrchestratorID = s.ID
-	gate, review, err := r.pipelineConfig(root, id, cfg)
-	if err != nil {
+	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg),
+		state: State{V: stateVersion, Project: p}, store: storeAt(r.dir, id), log: log}
+	if err := r.pipelineConfig(o, root, id, cfg); err != nil {
 		_ = log.Close()
 		return nil, protocol.Errorf(protocol.CodeWorkspaceInvalid, "%v", err)
 	}
-	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), gate: gate, review: review,
-		state: State{V: stateVersion, Project: p}, store: storeAt(r.dir, id), log: log}
 	data, _ := json.Marshal(map[string]string{"workspace": workspace, "orchestrator": s.ID, "main": main})
 	if err := o.record(Decision{Kind: "project.opened", Session: s.ID, Data: data,
 		Why: "the person opened the project of " + workspace + "; a project has one orchestrator"}); err != nil {
@@ -354,13 +361,11 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 		_ = log.Close()
 		return nil, err
 	}
-	gate, review, err := r.pipelineConfig(st.Project.Root, id, cfg)
-	if err != nil {
+	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), state: st, store: store, log: log}
+	if err := r.pipelineConfig(o, st.Project.Root, id, cfg); err != nil {
 		_ = log.Close()
 		return nil, err
 	}
-	o := &Orchestrator{reg: r, limits: limits, ownProfile: Profile(cfg), gate: gate, review: review,
-		state: st, store: store, log: log}
 	orq := st.Project.OrchestratorID
 	restart := map[string]any{}
 	if torn := log.Torn(); len(torn) > 0 {
@@ -400,6 +405,9 @@ func (r *Registry) load(id, why string) (*Orchestrator, error) {
 		move()
 	}
 	o.resume()
+	if len(st.Queue) > 0 {
+		o.reg.async(o.drain) // the person's yes outlives the daemon
+	}
 	o.scheduleReports() // a report pending at the restart is delivered now
 	return o, nil
 }
@@ -431,12 +439,12 @@ func (o *Orchestrator) Project() protocol.Project {
 	return o.state.Project
 }
 
-// pipelineConfig is the gate and the review a project's chain declares; the
-// whole output of each measurement goes to its gates/ directory.
-func (r *Registry) pipelineConfig(root, id string, cfg config.Resolved) (Gate, ReviewConfig, error) {
+// pipelineConfig is the gate, the review and the merge a project's chain
+// declares; the whole output of each measurement goes to its gates/ directory.
+func (r *Registry) pipelineConfig(o *Orchestrator, root, id string, cfg config.Resolved) error {
 	gate, err := GateFrom(cfg)
 	if err != nil {
-		return Gate{}, ReviewConfig{}, err
+		return err
 	}
 	gate.Logs = filepath.Join(r.dir, id, "gates")
 	var known func(string) bool
@@ -444,5 +452,13 @@ func (r *Registry) pipelineConfig(root, id string, cfg config.Resolved) (Gate, R
 		known = func(name string) bool { return r.known(root, name) }
 	}
 	review, err := ReviewFrom(cfg, known)
-	return gate, review, err
+	if err != nil {
+		return err
+	}
+	merge, err := MergeFrom(cfg)
+	if err != nil {
+		return err
+	}
+	o.gate, o.review, o.mergeCfg = gate, review, merge
+	return nil
 }

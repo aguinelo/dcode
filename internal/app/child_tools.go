@@ -23,7 +23,7 @@ func conductorTools(toolset []tools.Tool, opts Options) []tools.Tool {
 	}
 	c := opts.Conductor
 	return append(toolset, tools.DelegateTool{Conductor: c}, tools.ChildrenTool{Conductor: c},
-		tools.SteerChildTool{Conductor: c}, tools.CloseChildTool{Conductor: c})
+		tools.SteerChildTool{Conductor: c}, tools.CloseChildTool{Conductor: c}, tools.AskTool{Conductor: c})
 }
 
 // childTools is a child's tool set: its shell refuses git that writes, and

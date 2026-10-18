@@ -34,6 +34,12 @@ type State struct {
 	// PendingReports are the reports no orchestrator turn has carried yet:
 	// the inbox, kept on disk so a report survives a restart (.p §10).
 	PendingReports []string `json:"pending_reports,omitempty"`
+	// Queue is the merge queue: the children the person said merge to, in
+	// order. Main is main's health as the queue last read it. LocalSaid is
+	// whether forge.local was said, which is said once a project (.p §7.6).
+	Queue     []string            `json:"queue,omitempty"`
+	Main      protocol.MainHealth `json:"main,omitempty"`
+	LocalSaid bool                `json:"local_said,omitempty"`
 	// Briefs are what each child was dispatched with, by child id: what the
 	// pipeline needs after dispatch and the wire's Child does not carry.
 	Briefs map[string]Brief `json:"briefs,omitempty"`

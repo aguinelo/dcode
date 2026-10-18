@@ -152,6 +152,22 @@ func (p *daemonProjects) CloseChild(sessionID string) (bool, error) {
 	return p.reg.CloseChild(sessionID)
 }
 
+// Questions answers /questions of a session: an orchestrator's, or none.
+func (p *daemonProjects) Questions(sessionID string) ([]protocol.Question, bool) {
+	if p.reg == nil {
+		return nil, false
+	}
+	return p.reg.QuestionsOf(sessionID)
+}
+
+// Answer is the person's answer to a question of an orchestrator.
+func (p *daemonProjects) Answer(sessionID, questionID string, req protocol.AnswerQuestionRequest) (protocol.Question, error) {
+	if p.reg == nil {
+		return protocol.Question{}, p.unavailable()
+	}
+	return p.reg.AnswerOf(sessionID, questionID, req.Answer, req.Note)
+}
+
 // conductor is the project an orchestrator's tools reach, found when a tool
 // runs: the session is built before its project is held.
 type conductor struct {
@@ -205,6 +221,18 @@ func (c conductor) CloseChild(id, why string) error {
 		return err
 	}
 	return o.Close(id, why)
+}
+
+func (c conductor) Ask(in tools.AskInput) (string, error) {
+	o, err := c.held()
+	if err != nil {
+		return "", err
+	}
+	options := make([]protocol.QuestionOption, 0, len(in.Options))
+	for _, opt := range in.Options {
+		options = append(options, protocol.QuestionOption{ID: opt.ID, Label: opt.Label})
+	}
+	return o.Ask(in.Text, options, in.Recommended, in.Why, in.ChildID)
 }
 
 // reviewerMode is a reviewer's boundary: plan mode, the reviewer's registry

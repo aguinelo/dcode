@@ -58,7 +58,7 @@ func TestTheChildsRegistryHasNoToolThatConducts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"delegate", "children", "steer_child", "close_child"} {
+	for _, want := range []string{"delegate", "children", "steer_child", "close_child", "ask"} {
 		if _, ok := o.Registry.Get(want); !ok {
 			t.Errorf("the orchestrator has no %s", want)
 		}

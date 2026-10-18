@@ -51,7 +51,18 @@ var orchestrationInvariants = map[string]string{
 	"Além de `max_returns` devoluções":                      "TestPastMaxReturnsTheChildFailsIncomplete",
 	"mede o `Head` exato do filho":                          "TestTheGateMeasuresTheExactCommitAndALyingChildIsRecordedRed",
 	"só no começo de um turno dela, com `Origin: children`": "TestAReportDuringATurnWaitsForThatTurnToEnd",
+	"que inclui a main de agora":                            "TestTheGateMeasuresTheCommitThatHoldsMainAsItIsNow",
 	"byte a byte o de antes (ADR-03)":                       "TestTheReportIsAppendedAndThePrefixIsByteForByteTheSame",
+	"nunca a saída do gate":                                 "TestAProposalWithoutAGreenGateOpensNothing",
+	"o filho sai da fila para medir de novo":                "TestAMainThatMovedAfterTheGateIsStaleAndNothingMerges",
+	"antes da resposta `merge` da pessoa":                   "TestAMergeWaitsForThePersonsYes",
+	"passa `--match-head-commit`":                           "TestTheMergeOnGitHubPassesMatchHeadCommitWithTheMeasuredCommit",
+	"com o valor antigo errado":                             "TestAConditionalUpdateWithTheWrongOldValueLeavesMainAlone",
+	"em checkout em qualquer worktree":                      "TestALocalMergeIsRefusedWithMainCheckedOutSayingWhere",
+	"salvo `fixes_main`":                                    "TestARedMainStopsTheQueueAndFixesMainPasses",
+	"vira `unknown` e para a fila":                          "TestPendingCIPastTheTimeoutIsUnknownAndStopsTheQueue",
+	"a orquestradora não resolve conteúdo":                  "TestAConflictReturnsToTheChildWithItsPathsAndTheIntegrationEndsClean",
+	"numa worktree que a pessoa usa":                        "TestTheIntegrationIsADetachedWorktreeOfItsOwn",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

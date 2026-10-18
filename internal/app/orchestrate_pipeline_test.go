@@ -162,6 +162,37 @@ func messagesOf(t *testing.T, body []byte) []json.RawMessage {
 	return req.Messages
 }
 
+// Spec: orchestration .p §5.1, §10 — the orchestrator's ask puts a question in
+// the queue; GET /questions lists it, the person's POST answers it, and the
+// first answer wins (question_already_answered).
+func TestTheOrchestratorAsksAndOnlyThePersonsFirstAnswerCounts(t *testing.T) {
+	ws := projectRepo(t)
+	d := modelDaemon(t, &routedModel{}, time.Minute, t.TempDir(), t.TempDir())
+	p := openProject(t, d, ws, http.StatusCreated)
+	c := conductor{d: d, project: p.ID}
+	id, err := c.Ask(tools.AskInput{Text: "One store or two?", Recommended: "one", Why: "less to keep in step",
+		Options: []tools.AskOption{{ID: "one", Label: "One"}, {ID: "two", Label: "Two"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, body := route(t, d, http.MethodGet, "/sessions/"+p.OrchestratorID+"/questions", nil)
+	var list protocol.ListQuestionsResponse
+	if code != http.StatusOK || json.Unmarshal(body, &list) != nil || len(list.Questions) != 1 || list.Questions[0].ID != id {
+		t.Fatalf("GET questions = %d %s", code, body)
+	}
+	path := "/sessions/" + p.OrchestratorID + "/questions/" + id
+	if code, body := route(t, d, http.MethodPost, path, protocol.AnswerQuestionRequest{Answer: "two"}); code != http.StatusOK {
+		t.Fatalf("POST answer = %d %s", code, body)
+	}
+	code, body = route(t, d, http.MethodPost, path, protocol.AnswerQuestionRequest{Answer: "one"})
+	if code != http.StatusConflict || !strings.Contains(string(body), protocol.CodeQuestionAlreadyAnswered) {
+		t.Errorf("a second answer = %d %s", code, body)
+	}
+	if code, _ := route(t, d, http.MethodPost, "/sessions/nobody/questions/q1", protocol.AnswerQuestionRequest{Answer: "one"}); code != http.StatusNotFound {
+		t.Errorf("an answer to a session that conducts nothing = %d", code)
+	}
+}
+
 // Spec: orchestration .p §7.2 — SpawnReviewer refuses a request it cannot
 // build a review from.
 func TestSpawnReviewerRefusesWhatItCannotBuild(t *testing.T) {

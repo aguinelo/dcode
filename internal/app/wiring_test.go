@@ -146,6 +146,11 @@ var nonSession = map[string]string{
 	// The pipeline and the inbox are the harness's, around the sessions.
 	"orchestrator.max_returns":     "read by the orchestrator, whose pipeline hands a child its work back",
 	"orchestrator.report_debounce": "read by the orchestrator, whose inbox starts its own turn",
+	// The merge's keys (orchestration .config §3).
+	"orchestrator.forge":                "read by the orchestrator, which merges through the project's forge",
+	"orchestrator.ci_timeout":           "read by the orchestrator, which waits for main's CI after a merge",
+	"orchestrator.sensitive":            "read by the orchestrator, which marks a merge question sensitive",
+	"orchestrator.sensitive_diff_lines": "read by the orchestrator, which marks a large merge question sensitive",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.

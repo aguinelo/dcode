@@ -18,8 +18,8 @@
 | 6 — um filho trabalha na própria worktree | **feito** — `internal/orchestrate/dispatch.go`, `children.go`, `observe.go`, `owns.go`, `worktree.go`, `limits.go`; as ferramentas em `internal/tools/orchestrate.go` e a negação de git em `gitwrite.go`; `app.Daemon` ganha `SpawnChild`, `Submit` e `Steer`. O `done` deixa o filho em `working` com o fim dito: a esteira (`in_review`) começa ali, no passo 8 |
 | 7 — o relato de um filho começa o turno | **feito** — `internal/orchestrate/reports.go`: a caixa (`State.PendingReports`), o debounce de `report_debounce`, o turno `Origin: children` |
 | 8 — um revisor lê o diff de cada filho | **feito** — o componente (`review.go`, `review_verdict.go`, `internal/tools/verdict.go`) e a fiação: `internal/orchestrate/pipeline.go` (conferência de `owns` antes do commit, `Spawner.SpawnReviewer`, `missing` uma vez de novo, `max_returns`), `pipeline_gate.go` (fase `red`/`fix`, `red_test.confirmed`) e a ferramenta `internal/tools/redtest.go` |
-| 9 — a orquestradora roda o gate | **em parte**: `Gate.Measure` chamado pela esteira depois da aprovação, no `Head` exato, com `base` a ponta da main sob ele (`pipeline_gate.go`); verde vai ao passo de merge pela `MergeQueue`. A integração em `integration/`, o merge da main e o conflito devolvido ficam para a fiação do passo 10, que constrói o componente |
-| 10 | **não feito** |
+| 9 — a orquestradora roda o gate | **feito**, menos o sandbox do `bash` em volta do gate e a guarda de fonte do `vcs`: a esteira atualiza a branch na integração (`Integration.Update`) e mede `H` (`pipeline_gate.go`); o conflito volta ao filho, e o turno seguinte conclui o merge |
+| 10 — um merge espera a pessoa | **feito** — o componente (`merge.go`, `integrate.go`, `forge.go`, `forge_local.go`) e a fiação em `internal/orchestrate/merging.go` (`Propose` no verde, `Answer`, a fila serial, `merged`), `questions.go` e a ferramenta `internal/tools/ask.go`; perguntas, fila, `Main` e `LocalSaid` no `State`; as rotas de `/questions` em `internal/server/orchestrate.go` |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 | **não feito** |
 | 13 — a orquestradora lista os agentes | **em parte**: a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate`, `^Q`, `^R` e a leitura de `/children` ao abrir ficam para o resto do passo |
@@ -200,9 +200,10 @@ devolução em duas fases com `red_test` (§7.3), `review.verdict`. Estado `in_r
 O lugar de integração, a atualização com merge da main, o conflito devolvido, `Gate.Measure`,
 `gate.measured`. Lê `gate_command`, `gate_timeout`, e `verify.command` como queda.
 
-- [ ] Integração em `integration/`, `--detach`, criada uma vez por projeto.
-- [ ] `git merge --no-ff M` sobre `Head`; conflito abortado na integração e refeito na worktree do
-      filho com os marcadores; `Return{conflict, paths}`.
+- [x] Integração em `integration/`, `--detach`, criada uma vez por projeto (`OpenIntegration`, passo 10).
+- [x] `git merge --no-ff M` sobre `Head`; conflito abortado na integração e refeito na worktree do
+      filho com os marcadores; `Return{conflict, paths}` (`Integration.Update`, passo 10); o commit do
+      harness ao fim do turno seguinte conclui o merge.
 - [x] Gate em `H` numa worktree descartável, sem `GIT_*`, com tempo-limite; saída inteira em `gates/<commit>.log`
       (`Gate.Measure`); `gate.measured` com a alegação do filho como `claim` (`RecordGate`); `gate_stale`
       conferido por `CheckFresh`. A esteira o chama depois da aprovação; o sandbox do `bash` em volta do
@@ -225,11 +226,12 @@ A fila de perguntas (`ask`, `GET` e `POST` de `/questions`), o PR pelo `Forge`, 
 a fila serial, `gate_stale`, `main.health`, o forge `local`. Estados `pr` e `merged`. Lê `forge`,
 `ci_timeout`, `sensitive`, `sensitive_diff_lines`.
 
-- [ ] Gate verde: push sem `--force`, PR com bloco de evidência, `Question{kind: merge}`.
-- [ ] Só a pessoa responde; o primeiro que responde leva.
-- [ ] Merge: main vermelha recusa; `gate_stale` mede de novo; `gh pr merge --squash
-      --match-head-commit`; local por `update-ref` condicional.
-- [ ] Depois do merge, `main.health` até verde, vermelho ou `ci_timeout`.
+- [x] Gate verde: push sem `--force`, PR com bloco de evidência, `Question{kind: merge}` (`Merges.Propose`).
+- [x] Só a pessoa responde; o primeiro que responde leva (`Merges.Answer`, `POST /questions`); a
+      ferramenta `ask` pergunta, e a fila fica no `State`.
+- [x] Merge: main vermelha recusa; `gate_stale` mede de novo; `gh pr merge --squash
+      --match-head-commit`; local por `update-ref` condicional (`Merges.Merge`).
+- [x] Depois do merge, `main.health` até verde, vermelho ou `ci_timeout`.
 
 **Testes obrigatórios** (com o `gh` falso de `internal/vcs/pr_test.go`):
 
@@ -239,6 +241,10 @@ a fila serial, `gate_stale`, `main.health`, o forge `local`. Estados `pr` e `mer
 - Local com a main em checkout numa worktree: recusado, dizendo onde.
 - Local: `update-ref` com o valor antigo errado não move a main.
 - `question_already_answered` para a segunda resposta.
+- **Feitos**, com um `gh` falso próprio (`internal/orchestrate/testdata/fakegh`), em
+  `merge_test.go`, `merge_local_test.go`, `integrate_test.go` e `forge_test.go` de
+  `internal/orchestrate/`; e mais: o merge que espera o sim, a recusa da pessoa com o porquê, o
+  conflito com os caminhos e o `pending` que vira `unknown`.
 
 ### Passo 11 — `feat(cli): dcode decisions reads the log`
 

@@ -1,10 +1,9 @@
 # Planning: Orquestrador — primeira fatia, o núcleo observável
 
 > Contrato técnico. Use **EXATAMENTE** os nomes, campos e tipos definidos aqui.
-> Regra de negócio em `202610132000-orchestration.r.spec.md` (aprovado em
-> 2026-10-17, #514); a ordem das fatias é a §10 dele, as decisões as §§12–14.
-> Configuração em `202610132000-orchestration.config.spec.md`; passos e testes
-> obrigatórios em `202610132000-orchestration.i.spec.md`.
+> Regra de negócio em `202610132000-orchestration.r.spec.md` (aprovado em 2026-10-17, #514); a ordem das
+> fatias é a §10 dele, as decisões as §§12–14. Configuração em `202610132000-orchestration.config.spec.md`;
+> passos e testes obrigatórios em `202610132000-orchestration.i.spec.md`.
 
 ## 1. Nível de estabilidade
 
@@ -14,22 +13,19 @@ pede a segunda fatia e um projeto real de ponta a ponta com o log lido (RN-11).
 
 ## 2. O que esta fatia é, e o que fica para a segunda
 
-**Pré-requisito, passo 0:** o changelog em fragmentos (Q-A), já na main (#515). Esta spec não o
-descreve; o filho escreve o fragmento dele em `changelog.d/`, dentro do próprio `owns`.
+**Pré-requisito, passo 0:** o changelog em fragmentos (Q-A), na main (#515); o filho escreve o dele em `changelog.d/`, no `owns`.
 
 **Dentro:** uma orquestradora por projeto, viva no daemon e em disco; filhos como sessões com
 `parent_id`, worktree e branch próprias, `owns` disjuntos; `child.*` no fio; o log de decisões em
 JSONL e `dcode decisions`; revisor só leitura; o gate rodado pela orquestradora no commit exato;
 lugar de integração próprio; merge **só em passo a passo** — PR por filho, squash pelo `gh` com
 `--match-head-commit`, merge local sem forge; o teto de tokens, que para o despacho; a lista viva
-(painel do desktop, texto na TUI); os cenários com modelo roteirizado. Decisões do dono de
-2026-10-17 sobre este plano: no changelog da família, `202610172200`.
+(painel do desktop, texto na TUI); os cenários com modelo roteirizado. Decisões do dono: `202610172200`.
 
-**Fora — segunda fatia (§10 do `.r`), com ponteiro na `.i`:** `launchd` (RN-2); supervisionado e
-autônomo (RN-3); a lista "sempre perguntar" como negação de `internal/policy` (RN-4); tetos de custo
-e de tempo (RN-3); custo em dinheiro e a tabela de preços (RN-9); deploy (RN-13); notificações
-(RN-10); contratos com modelo real (§12). Em passo a passo todo merge pergunta, e nada desta fatia
-faz deploy, tag, release ou force-push: o que a RN-4 lista já passa pela pessoa.
+**Fora — segunda fatia (§10 do `.r`), com ponteiro na `.i`:** `launchd` (RN-2); supervisionado e autônomo
+(RN-3); a lista "sempre perguntar" como negação de `internal/policy` (RN-4); tetos de custo e de tempo (RN-3);
+custo em dinheiro e a tabela de preços (RN-9); deploy (RN-13); notificações (RN-10); contratos com modelo real
+(§12). Em passo a passo todo merge pergunta, e nada desta fatia faz deploy, tag, release ou force-push.
 
 ## 3. Onde mora o código
 
@@ -88,6 +84,7 @@ type Gate struct{ Command string; Timeout time.Duration }
 func (g Gate) Measure(ctx context.Context, dir, commit string) (protocol.GateResult, error)
 type Forge interface {
 	Name() string // "github" | "local"
+	Tips(ctx context.Context, branch string) (main, head string, err error) // fetch, quando remoto
 	OpenPR(ctx context.Context, branch, title, body string) (protocol.ChildPR, error)
 	Merge(ctx context.Context, c protocol.Child, measured string) (string, error)
 	MainHealth(ctx context.Context, commit string) (protocol.MainHealth, error)
@@ -428,6 +425,16 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - O revisor não tem ferramenta que escreve.
 - Revisão que termina sem `verdict` é `missing`, vai ao log, e nunca conta como aprovação.
 - Diff acima de `review_max_diff_bytes` sai inteiro e é dito; nunca chega cortado ao revisor como se fosse o todo.
+- Sem gate verde não há PR, pergunta nem merge; o corpo do PR leva a evidência e nunca a saída do gate.
+- Main ou branch que andou entre o gate e o merge não faz merge: o filho sai da fila para medir de novo.
+- Em passo a passo nada faz merge antes da resposta `merge` da pessoa; `return` ou `close` é `merge.refused` com o porquê.
+- O merge no GitHub passa `--match-head-commit` com o commit medido.
+- Merge local é troca condicional da ref da main: com o valor antigo errado, a main não se move.
+- Merge local é recusado com a main em checkout em qualquer worktree, dizendo onde.
+- Um merge por vez; com a main vermelha ou desconhecida, nenhum outro entra, salvo `fixes_main`.
+- Depois de cada merge, `main.health` até verde, vermelho ou `ci_timeout`; `pending` no tempo-limite vira `unknown` e para a fila.
+- Conflito ao atualizar a branch volta ao filho dono dela, com os caminhos; a orquestradora não resolve conteúdo.
+- A integração nunca acontece numa worktree que a pessoa usa.
 - Criar filhos volta com os ids antes de qualquer turno de filho terminar; com filhos rodando, a orquestradora fica `idle`, nunca `blocked`.
 - Lote com `owns` que se cruzam, entre si ou com filho vivo, é recusado **inteiro**, com os caminhos em disputa, e nenhuma worktree é criada.
 - Lote que passaria de `max_children` é recusado inteiro com `max_children_reached`.
@@ -446,25 +453,18 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Além de `max_returns` devoluções o filho vai a `failed`, `incomplete`, e a orquestradora é avisada.
 - O gate da esteira mede o `Head` exato do filho, com `base` a ponta da main sob ele, e o que o filho disse ao lado como `claim`.
 - Relato de filho entra no histórico da orquestradora só no começo de um turno dela, com `Origin: children`.
+- O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
 - Relatos dentro de `report_debounce` viram **um** turno, e o contexto antes dele é byte a byte o de antes (ADR-03).
 
 ## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
 
 - Todo fim de turno de filho tem um dos nomes da RN-7.
-- O gate roda no commit `H` que inclui a main de agora, e `gate.measured` traz `commit`, `tree` e `base`.
-- Sem gate verde não há PR nem merge, e main ou branch que andou entre o gate e o merge mede de novo.
-- O merge no GitHub passa `--match-head-commit` com o commit medido.
-- Merge local é troca condicional da ref da main, e é recusado com a main em checkout em qualquer worktree.
-- Um merge por vez; com a main vermelha ou desconhecida, nenhum outro entra, salvo `fixes_main`.
-- Conflito ao atualizar a branch volta ao filho dono dela; a orquestradora não resolve conteúdo.
 - Nenhum caminho do código desta fatia roda `rebase`, `push --force` ou `commit --amend`.
-- A integração nunca acontece numa worktree que a pessoa usa.
 - Toda transição da §6 tem linha no log antes do evento; linha que não grava impede a transição.
 
 ## 15. Ordem de entrega
 
-Cada linha é um PR, e o título não tem "and". Detalhe e teste obrigatório de cada passo na `.i`, e lá também as diferenças desta
-ordem para a do `.r` §10, com o porquê.
+Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as diferenças para o `.r` §10, na `.i`.
 
 | # | PR | Depende |
 |---|---|---|
@@ -493,4 +493,5 @@ ordem para a do `.r` §10, com o porquê.
 - [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)
 - [202610180100 — Um revisor lê o diff de cada filho](changelog/202610180100-um-revisor-le-o-diff-de-cada-filho.md)
 - [202610180200 — Um filho trabalha na própria worktree](changelog/202610180200-um-filho-trabalha-na-propria-worktree.md)
-- [202610180300 — O relato de um filho começa o turno da orquestradora](changelog/202610180300-o-relato-de-um-filho-comeca-o-turno.md)
+- [202610180300 — Um merge espera a pessoa](changelog/202610180300-um-merge-espera-a-pessoa.md)
+- [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)

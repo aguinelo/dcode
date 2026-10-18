@@ -37,6 +37,7 @@ func TestGitThatWritesIsDeniedToAChildWithoutAsking(t *testing.T) {
 
 type fakeConductor struct {
 	items []DelegateItem
+	asked []AskInput
 	err   error
 }
 
@@ -50,6 +51,28 @@ func (f *fakeConductor) Delegate(items []DelegateItem) ([]protocol.Child, error)
 func (f *fakeConductor) Children() ([]protocol.Child, error)     { return nil, nil }
 func (f *fakeConductor) SteerChild(string, string, string) error { return f.err }
 func (f *fakeConductor) CloseChild(string, string) error         { return f.err }
+func (f *fakeConductor) Ask(in AskInput) (string, error) {
+	f.asked = append(f.asked, in)
+	return "q1", f.err
+}
+
+// Spec: orchestration .p §10 — ask puts a question to the person and returns
+// at once with its id; a refusal is said with its code.
+func TestAskQueuesTheQuestionAndReturnsAtOnce(t *testing.T) {
+	f := &fakeConductor{}
+	in := json.RawMessage(`{"text":"which?","options":[{"id":"a","label":"A"},{"id":"b","label":"B"}],"recommended":"a","why":"w"}`)
+	res, _ := AskTool{Conductor: f}.Execute(context.Background(), in, nil)
+	if res.IsError || !strings.Contains(res.Output, "q1") || len(f.asked) != 1 || f.asked[0].Recommended != "a" {
+		t.Fatalf("ask = %+v; asked %+v", res, f.asked)
+	}
+	f.err = protocol.Errorf(protocol.CodeInvalidInput, "no")
+	if res, _ := (AskTool{Conductor: f}).Execute(context.Background(), in, nil); !res.IsError {
+		t.Errorf("a refused question = %+v", res)
+	}
+	if res, _ := (AskTool{}).Execute(context.Background(), in, nil); !res.IsError {
+		t.Errorf("ask without a project = %+v", res)
+	}
+}
 
 func TestDelegateHandsTheBatchOverAndSaysARefusalWithItsCode(t *testing.T) {
 	f := &fakeConductor{}

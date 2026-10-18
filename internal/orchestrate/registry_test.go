@@ -71,6 +71,8 @@ type fakeSpawner struct {
 	reviewers []ReviewRequest
 	origins   []string
 	busy      map[string]bool
+	// failReviewer makes SpawnReviewer fail.
+	failReviewer error
 }
 
 func (f *fakeSpawner) SpawnOrchestrator(p protocol.Project) (protocol.Session, error) {

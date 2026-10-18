@@ -99,6 +99,12 @@ var KnownKeys = map[string]string{
 	"orchestrator.max_returns":           "DCODE_ORCHESTRATOR_MAX_RETURNS",
 	"orchestrator.report_debounce":       "DCODE_ORCHESTRATOR_REPORT_DEBOUNCE",
 
+	// The merge's keys (orchestration .config §3).
+	"orchestrator.forge":                "DCODE_ORCHESTRATOR_FORGE",
+	"orchestrator.ci_timeout":           "DCODE_ORCHESTRATOR_CI_TIMEOUT",
+	"orchestrator.sensitive":            "DCODE_ORCHESTRATOR_SENSITIVE",
+	"orchestrator.sensitive_diff_lines": "DCODE_ORCHESTRATOR_SENSITIVE_DIFF_LINES",
+
 	// The eval keys are read by the measurement harness, never by the product.
 	// They live in the same schema anyway: a key that governs behaviour and
 	// cannot be inspected with `--config` is the gap the audit pair closes,

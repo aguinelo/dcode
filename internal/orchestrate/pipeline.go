@@ -39,15 +39,6 @@ const (
 	idleWait = 10 * time.Second
 )
 
-// MergeQueue is the merge step (.p §7.5, §7.6), the pipeline's last: it takes
-// a child whose review approved and whose gate measured green on its Head,
-// pushes it, opens its pull request and asks the person. Its PR comes back,
-// and the pipeline moves the child to pr. An error is said, and the child
-// stays in_review with its measurement.
-type MergeQueue interface {
-	Ready(o *Orchestrator, c protocol.Child, b Brief) (protocol.ChildPR, error)
-}
-
 // reviewing is a reviewer session at work on one child.
 type reviewing struct {
 	child   string
@@ -79,7 +70,11 @@ func (o *Orchestrator) checkOwns(ctx context.Context, c protocol.Child) (changed
 	if err != nil || len(changed) == 0 {
 		return changed, nil, err
 	}
-	outside = OutsideOwns(c.Owns, changed)
+	mine, err := childsOwn(ctx, c.Worktree, changed)
+	if err != nil {
+		return changed, nil, err
+	}
+	outside = OutsideOwns(c.Owns, mine)
 	data, _ := json.Marshal(map[string]any{"paths": changed, "outside": outside, "owns": c.Owns})
 	why := fmt.Sprintf("the harness checked %d changed path(s) against owns before committing", len(changed))
 	if len(outside) > 0 {
@@ -87,6 +82,35 @@ func (o *Orchestrator) checkOwns(ctx context.Context, c protocol.Child) (changed
 	}
 	o.note(Decision{Kind: "owns.checked", Child: c.ID, Why: why, Data: data})
 	return changed, outside, nil
+}
+
+// childsOwn is what of changed the child wrote. In a merge of main the
+// integration left in the worktree for a conflict, a path that is as main
+// has it came with main, not from the child: only the rest is checked against
+// owns, and the commit that concludes the merge takes both.
+func childsOwn(ctx context.Context, worktree string, changed []string) ([]string, error) {
+	if _, err := reviewGit(ctx, worktree, "rev-parse", "-q", "--verify", "MERGE_HEAD"); err != nil {
+		return changed, nil // no merge in progress: every change is the child's
+	}
+	differs, err := reviewGit(ctx, worktree, "diff", "--name-only", "-z", "--no-renames", "MERGE_HEAD", "--")
+	if err != nil {
+		return nil, err
+	}
+	untracked, err := reviewGit(ctx, worktree, "ls-files", "-z", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+	byChild := map[string]bool{}
+	for _, p := range strings.Split(differs+untracked, "\x00") {
+		byChild[p] = p != ""
+	}
+	var mine []string
+	for _, p := range changed {
+		if byChild[p] {
+			mine = append(mine, p)
+		}
+	}
+	return mine, nil
 }
 
 // afterDone is the pipeline from a turn that ended done and committed: the
@@ -113,7 +137,12 @@ func (o *Orchestrator) startReview(id string, attempt int) {
 	c, b := o.child(id), o.brief(id)
 	ctx, cancel := context.WithTimeout(context.Background(), reviewDeadline)
 	defer cancel()
-	req, err := AssembleReview(ctx, ReviewInput{ChildID: id, Worktree: c.Worktree, Base: c.Base, Head: c.Head,
+	base, err := reviewBase(ctx, o.Project(), c)
+	if err != nil {
+		o.stall(id, err)
+		return
+	}
+	req, err := AssembleReview(ctx, ReviewInput{ChildID: id, Worktree: c.Worktree, Base: base, Head: c.Head,
 		Task: b.Task, Owns: c.Owns, MaxDiffBytes: o.review.MaxDiffBytes})
 	var ov *OwnsViolation
 	if errors.As(err, &ov) {
@@ -149,6 +178,21 @@ func (o *Orchestrator) startReview(id string, attempt int) {
 		o.closeSession(rid)
 		o.stall(id, fmt.Errorf("the reviewer's turn could not start: %w", err))
 	}
+}
+
+// reviewBase is where the child's own work starts: the merge-base of its head
+// and main's tip. It is the branch's Base until the integration merges main
+// into it; after that, what main brought is not the child's to review.
+func reviewBase(ctx context.Context, p protocol.Project, c protocol.Child) (string, error) {
+	tip, err := mainTip(ctx, p.Root, p.Main)
+	if err != nil {
+		return "", fmt.Errorf("main %s cannot be read for the review: %w", p.Main, err)
+	}
+	base, err := wtGit(ctx, p.Root, "merge-base", tip, c.Head)
+	if err != nil {
+		return "", fmt.Errorf("the review finds no base for %s over main: %w", short(c.Head), err)
+	}
+	return base, nil
 }
 
 // reviewerProfile is the reviewer's profile: the first of
@@ -227,6 +271,12 @@ func (o *Orchestrator) stall(id string, err error) {
 // false for the red phase becoming the fix phase, which is one return in two
 // halves. Past max_returns the child fails incomplete instead.
 func (o *Orchestrator) giveBack(id string, ret protocol.Return, count bool, text string) {
+	o.handBack(id, ret, count, text, true)
+}
+
+// handBack is giveBack; logged false is a return whose child.returned line a
+// step already wrote — the integration's conflict — and only the state follows.
+func (o *Orchestrator) handBack(id string, ret protocol.Return, count bool, text string, logged bool) {
 	c := o.child(id)
 	if terminal(c.State) {
 		return
@@ -247,10 +297,17 @@ func (o *Orchestrator) giveBack(id string, ret protocol.Return, count bool, text
 		why += ", phase " + ret.Phase
 	}
 	why += ")"
-	if err := o.commit(Decision{Kind: "child.returned", Child: id, Why: why, Data: data}, edit(id, func(ch *protocol.Child) {
+	back := edit(id, func(ch *protocol.Child) {
 		r := ret
 		ch.State, ch.Reason, ch.Waiting, ch.Return, ch.Returned = stateWorking, "", "", &r, n
-	})); err != nil {
+	})
+	var err error
+	if logged {
+		err = o.commit(Decision{Kind: "child.returned", Child: id, Why: why, Data: data}, back)
+	} else {
+		err = o.apply(back)
+	}
+	if err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s was not handed back: the log did not take it: %v", id, err))
 		return
 	}
