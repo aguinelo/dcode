@@ -130,7 +130,7 @@ func (s *scenario) start() {
 		SocketPath: filepath.Join(s.t.TempDir(), "d.sock"), EventRetention: 100000, RecordDir: s.records,
 		ApprovalTimeout: 50 * time.Millisecond, Log: func(string) {},
 		Base:         Options{Env: func(k string) string { return env[k] }},
-		Orchestrator: OrchestratorOptions{Enabled: true, Dir: s.orch},
+		Orchestrator: OrchestratorOptions{Enabled: true, Dir: s.orch, ClosedRetention: time.Hour},
 	})
 	d := s.d
 	s.t.Cleanup(d.closeProjects)
