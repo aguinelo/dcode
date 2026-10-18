@@ -16,8 +16,7 @@
 
 ## 2. Arquivo de config
 
-| Variável | Tipo | Default | Uso |
-|---|---|---|---|
+Esta seção não declara chave. O caminho de `config.toml` não é configurável: é `<config>/config.toml` para o usuário e `<workspace>/.dcode/config.toml` para o projeto (`.p`, seções 2 e 5). Cada chave **dentro** do arquivo é declarada, com tipo e default, na `.config.spec.md` da família que a lê; o esquema inteiro é `config.KnownKeys`. `DCODE_CONFIG_FILE`, `DCODE_PROJECT_CONFIG` e `DCODE_CONFIG_STRICT` foram removidas em `202608110900` por nunca terem sido lidas — chave desconhecida é sempre erro, sem interruptor.
 
 ## 3. Descoberta de instruções
 
@@ -41,10 +40,7 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 
 ## 4. Diagnóstico
 
-| Variável | Tipo | Default | Uso |
-|---|---|---|---|
-
-> O caminho normal para isso é `dcode config get <chave>`, que responde valor **e** procedência (RN-8). O `TRACE` é para quando se quer a resolução inteira de uma vez.
+Nenhuma chave. O diagnóstico é um comando, não configuração: `dcode config <chave>` (ou `dcode --config <chave>`) responde valor **e** procedência (RN-8), e `dcode config` sem argumento mostra a resolução das seções principais de uma vez. `DCODE_CONFIG_TRACE` foi removida em `202608110900` por nunca ter sido lida.
 
 ## 5. Constantes não configuráveis
 
@@ -66,3 +62,5 @@ Fornece os defaults que `202608080016-behavior-definition.config.spec.md` deixou
 ## 6. Changelog
 
 - [202608101900 — Tradução de instruções de terceiros](changelog/202608101900-traducao-de-instrucoes-de-terceiros.md)
+- [202608110900 — Chaves declaradas e não lidas saem da spec](changelog/202608110900-chaves-declaradas-e-nao-lidas.md)
+- [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)
