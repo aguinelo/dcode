@@ -26,10 +26,19 @@ func TestTheClaudeFamilyDeclaresAnOutputCeilingPerModel(t *testing.T) {
 		{"claude-sonnet-4-20250514", 64_000},
 		{"claude-opus-4-1", 32_000},
 		{"claude-opus-4-20250514", 32_000},
+		// The undated aliases are the same models as their -0 and dated rows;
+		// matching neither, claude-sonnet-4 fell to the 32k default.
+		{"claude-sonnet-4", 64_000},
+		{"claude-sonnet-4-0", 64_000},
+		{"claude-opus-4", 32_000},
+		{"claude-opus-4-0", 32_000},
 		{"claude-3-haiku-20240307", 4_096},
 		// A model this table has not heard of gets the conservative answer,
 		// not the largest one: too large is a request the API refuses.
 		{"claude-next", 32_000},
+		// An alias is an exact name, not a prefix: a 4.x line nobody has
+		// published yet does not inherit claude-sonnet-4's ceiling.
+		{"claude-sonnet-4-9", 32_000},
 	} {
 		if got := (Claude{}).OutputCeiling(tc.model); got != tc.want {
 			t.Errorf("%s: ceiling = %d, want %d", tc.model, got, tc.want)
@@ -55,6 +64,8 @@ func TestTheClaudeFamilyDeclaresAWindowPerModel(t *testing.T) {
 		{"claude-opus-4-5", 200_000},
 		{"claude-sonnet-4-5", 200_000},
 		{"claude-opus-4-1", 200_000},
+		{"claude-sonnet-4", 200_000},
+		{"claude-opus-4", 200_000},
 		{"claude-3-haiku-20240307", 200_000},
 		{"claude-next", 200_000},
 	} {

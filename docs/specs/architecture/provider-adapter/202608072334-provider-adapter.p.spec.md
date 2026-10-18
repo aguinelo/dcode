@@ -157,14 +157,15 @@ nenhum.
 
 **A janela também é por modelo, da mesma tabela.** `Claude.Window(model)` devolvia 200.000 fixo; todo modelo desde `claude-opus-4-6` tem 1.000.000, e a sessão era compactada a um quinto do que cabia. Linhas 4.5 e anteriores e `claude-haiku-4-5` seguem com 200.000, e modelo que a tabela não conhece também: janela pequena demais compacta cedo, grande demais é requisição recusada no meio do turno.
 
-> **Lacuna conhecida: aliases sem sufixo.** A tabela casa pelo prefixo mais
-> longo e suas linhas da geração 4 são `claude-opus-4-0`, `claude-opus-4-2025`,
-> `claude-sonnet-4-0` e `claude-sonnet-4-2025`. Os aliases sem data nem `-0` —
-> `claude-sonnet-4` e `claude-opus-4` — não casam com nenhuma e caem nos
-> defaults (200.000 de janela, 32.000 de teto). Para `claude-opus-4` o default
-> coincide com o publicado; para `claude-sonnet-4` o teto de saída fica em
-> 32.000, metade dos 64.000 que o modelo aceita. Não corrigido aqui — esta
-> entrada é só documental; ver `202610171700-a-spec-alcanca-o-codigo.md`.
+**Aliases sem sufixo casam por nome exato.** As linhas da geração 4 são
+`claude-opus-4-0`, `claude-opus-4-2025`, `claude-sonnet-4-0` e
+`claude-sonnet-4-2025`, e os aliases sem data nem `-0` — `claude-sonnet-4` e
+`claude-opus-4` — não casavam com nenhuma: caíam nos defaults, e o teto de
+`claude-sonnet-4` ficava em 32.000, metade dos 64.000 que o modelo aceita.
+`claudeAliases` leva cada um à linha do modelo que nomeia (64.000 e 32.000 de
+teto, 200.000 de janela). O casamento é exato, nunca por prefixo: como prefixo,
+`claude-sonnet-4` daria o seu teto a toda Sonnet 4.x que a tabela não conhece.
+Ver `changelog/202610172355-os-aliases-sem-data-tem-o-teto-publicado.md`.
 
 `minimax-m3` prefere `openai` porque é o dialeto com protocolo de tool-calling mais exercitado, e é o que os limiares medem.
 
