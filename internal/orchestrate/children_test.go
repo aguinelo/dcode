@@ -139,6 +139,40 @@ func TestAClosedChildLeavesTheListAfterTheRetentionAndAFailedOneStays(t *testing
 	}
 }
 
+// Spec: orchestration .p §11 — a merged child leaves /children
+// closed_retention after Ended, as a closed one does; before, only closed
+// left, and since a merged child cannot be closed it stayed forever. A failed
+// one stays until the person closes it, and then leaves the same way.
+func TestAMergedChildLeavesTheListAfterTheRetentionAndAFailedOneStays(t *testing.T) {
+	p := openWith(t, nil)
+	a := p.one(t, item("a", "a"))
+	b := p.one(t, item("b", "b"))
+	p.reg.Observe(b.ID, event(t, protocol.EventTurnCompleted, protocol.TurnCompleted{TurnID: "t1", Reason: protocol.StopError}))
+	if got := p.o.move(a.ID, stateMerged, "", "merged into main"); got.State != stateMerged || got.Ended == nil {
+		t.Fatalf("merged child = %+v, want merged with Ended", got)
+	}
+
+	if kids := p.o.Children(); len(kids) != 2 {
+		t.Errorf("inside the retention /children = %+v, want the merged and the failed", kids)
+	}
+	p.clk.add(2 * time.Hour)
+	kids := p.o.Children()
+	if len(kids) != 1 || kids[0].ID != b.ID || kids[0].State != stateFailed {
+		t.Fatalf("after the retention /children = %+v, want the failed one alone", kids)
+	}
+
+	if err := p.o.Close(b.ID, "the person read what failed"); err != nil {
+		t.Fatalf("closing a failed child: %v", err)
+	}
+	if len(p.o.Children()) != 1 {
+		t.Errorf("inside its retention the closed child is not listed")
+	}
+	p.clk.add(2 * time.Hour)
+	if kids := p.o.Children(); len(kids) != 0 {
+		t.Errorf("after the retention /children = %+v, want none", kids)
+	}
+}
+
 // A step that lands on a child after its state was read and before its own
 // commit does not undo a close or a merge that committed in between: the
 // check that the child is live is made where the commit is. Here a merge
