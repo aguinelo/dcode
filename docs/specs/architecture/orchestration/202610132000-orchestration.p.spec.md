@@ -366,7 +366,9 @@ impresso, e a saída é 1; `seq` com buraco e linha final rasgada também. Nunca
 
 **A orquestradora** é uma sessão em modo `plan` na raiz do projeto: lê, conversa e conduz; **não
 escreve na árvore**. Quem escreve é filho, numa worktree. Tem as ferramentas de leitura de hoje,
-`explore` (Q2 da #461) e estas, nenhuma esperando filho:
+`explore` (Q2 da #461) e estas, nenhuma esperando filho. O que o prompt diz a ela, ao filho e
+ao revisor sobre o próprio papel — e que o somente leitura dela não é modo a trocar — está na
+`behavior-definition` `.p` §2.1:
 
 | Ferramenta | Entrada | Volta |
 |---|---|---|
@@ -413,8 +415,10 @@ da `.i`.
 
 ## 12. Contratos comportamentais
 
-Os sete do `.r` §9 são mediados e entram na segunda fatia, com fixture, juiz e limiar. A metade
-determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate verde — já é desta.
+Os sete do `.r` §9 são mediados e entram na segunda fatia, com fixture, juiz e limiar — salvo
+`orchestrator-splits-by-theme`, que entrou antes, declarado na `behavior-definition` `.p` §7 porque
+o que ele mede é o prompt, e veio de um defeito ao vivo. A metade determinística de
+`orchestrator-distrusts-the-claim` — nenhum merge sem gate verde — já é desta.
 
 ## 13. Invariantes verificáveis
 
@@ -516,3 +520,4 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610181200 — Os cenários roteirizados](changelog/202610181200-os-cenarios-roteirizados.md)
 - [202610181300 — O gate roda dentro do sandbox](changelog/202610181300-o-gate-roda-no-sandbox.md)
 - [202610181200 — `dcode orchestrate` abre a orquestradora do projeto](../client-tui/changelog/202610181200-dcode-orchestrate-abre-a-orquestradora.md)
+- [202610181700 — A orquestradora sabe o próprio papel](../behavior-definition/changelog/202610181700-o-orquestrador-sabe-o-proprio-papel.md)

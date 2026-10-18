@@ -112,6 +112,11 @@ type Prompt struct {
 	// what `/mode` changes, and the prompt is rebuilt when it does. See
 	// boundary.go for why that cost is paid.
 	Boundary *Boundary
+	// Role is which session of an orchestrated project this is: orchestrator,
+	// child or reviewer. Empty is every session that is not orchestrated, and
+	// renders nothing. Frozen at session creation, like everything but the
+	// boundary: a session does not change role.
+	Role string
 }
 
 // Build renders the system prompt. Pure: same input, byte-identical output.
@@ -139,9 +144,17 @@ func Build(p Prompt, f Formulation) (string, error) {
 	// put to the person; this says whether anyone will be asked at all, and
 	// read in the other order the model has to hold the rule for a paragraph
 	// before learning which case it is in.
-	if rendered := renderBoundary(p.Boundary); rendered != "" {
+	role, err := renderRole(p.Role)
+	if err != nil {
+		return "", err
+	}
+	if rendered := boundaryFor(p.Boundary, p.Role); rendered != "" {
 		writeBlock(&b, f, "The boundary right now", rendered)
 	}
+	// Right after the boundary, because it is how the boundary is read: an
+	// orchestrator's read-only is its design, and a model told the mode
+	// without the role reads it as an obstacle to ask someone to lift.
+	writeBlock(&b, f, "Your role", role)
 	// After Safety and before everything the user or the project says. The
 	// position IS the precedence: what comes earlier is context for reading
 	// what comes later, and the project instructions are the last block of all.

@@ -102,6 +102,11 @@ type World struct {
 	// reads 90%. That sentence is already in this suite's history, from when
 	// boundary-decides was at 100% and boundary-decides-write was broken.
 	Mode string `json:"mode"`
+	// Role is the orchestrated role the prompt is built for, when the
+	// scenario is one: a session of an orchestrated project is told what it
+	// is, and measuring one without that is measuring a session that does
+	// not exist. Checked in validRole.
+	Role string `json:"role"`
 }
 
 // RepoAbsent is the only repository state a scenario declares today.
@@ -201,7 +206,7 @@ func loadWorld(dir string) (World, error) {
 		return World{}, fmt.Errorf("world.json: %q is not a sandbox mode; use %q, %q or %q",
 			w.Mode, policy.ModeReadOnly, policy.ModeWorkspaceWrite, policy.ModeFullAccess)
 	}
-	return w, nil
+	return w, validRole(w.Role)
 }
 
 // loadTask reads what the scenario asks, from the one place that owns it.
@@ -401,6 +406,7 @@ func (f Fixture) prompt(family string, repo *behavior.Repo, ws *behavior.Workspa
 		Repo:         repo,
 		Workspace:    ws,
 		Boundary:     f.boundary(),
+		Role:         f.World.Role,
 	}, behavior.FormulationFor(family))
 }
 

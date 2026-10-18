@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/aguinelo/dcode/internal/behavior"
 	"github.com/aguinelo/dcode/internal/orchestrate"
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -80,4 +81,20 @@ func sessionRegistry(toolset []tools.Tool, opts Options) *tools.Registry {
 		return orchestrate.ReviewerRegistry(tools.Verdict{Submit: opts.Reviewer})
 	}
 	return tools.NewRegistry(toolset...)
+}
+
+// roleOf is the role the daemon's modes gave these options, as the prompt
+// names it: the reviewer, the orchestrator, the child, or none. Read from the
+// options rather than passed beside them, so no mode can set up a role's tools
+// and forget to tell the model what the role is.
+func roleOf(opts Options) string {
+	switch {
+	case opts.Reviewer != nil:
+		return behavior.RoleReviewer
+	case opts.Conductor != nil:
+		return behavior.RoleOrchestrator
+	case opts.Child:
+		return behavior.RoleChild
+	}
+	return ""
 }

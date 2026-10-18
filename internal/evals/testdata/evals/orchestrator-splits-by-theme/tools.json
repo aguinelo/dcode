@@ -1,0 +1,13 @@
+[
+  "read",
+  "write",
+  "edit",
+  "glob",
+  "grep",
+  "plan",
+  "delegate",
+  "children",
+  "steer_child",
+  "close_child",
+  "ask"
+]

@@ -91,3 +91,17 @@ func TestDelegateHandsTheBatchOverAndSaysARefusalWithItsCode(t *testing.T) {
 		t.Errorf("steer_child refusal = %+v", res)
 	}
 }
+
+// The description is the only place an orchestrator reads about delegate at
+// the point of use, so it has to stand on its own: who writes, what owns is,
+// and that the harness, not the orchestrator, carries the change to main.
+func TestDelegateSaysChildrenWriteAndWhatOwnsIs(t *testing.T) {
+	d := DelegateTool{}.Description()
+	for _, want := range []string{"you do not write, they do", "own git worktree", "write access to the paths in its `owns`",
+		"relative to the project's root", "which no other child may own", "one item per theme",
+		"the harness commits it, has it reviewed, runs the gate and asks the person to merge"} {
+		if !strings.Contains(d, want) {
+			t.Errorf("delegate's description does not say %q:\n%s", want, d)
+		}
+	}
+}

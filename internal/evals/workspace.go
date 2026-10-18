@@ -105,6 +105,7 @@ func NewWorkspace(dir string, files map[string]string, offered []string) (*Works
 // bash carries a zero Runner because only its definition is wanted here.
 // Execute intercepts the name before dispatch, so the Runner is never reached.
 func ProductRegistry() *tools.Registry {
+	c := &standInProject{}
 	return tools.NewRegistry(
 		tools.Read{}, tools.Write{}, tools.Edit{},
 		tools.Glob{}, tools.Grep{}, tools.Symbol{},
@@ -118,6 +119,11 @@ func ProductRegistry() *tools.Registry {
 		// so a scenario that declares the tool without being a qualifying turn
 		// gets the product's own refusal rather than a harness invention.
 		tools.DonePropose{},
+		// The orchestrator's tools, over a project the harness stands in for
+		// (orchestrator.go): the contract is what the model dispatches, and a
+		// conductor that refused would talk it out of dispatching.
+		tools.DelegateTool{Conductor: c}, tools.ChildrenTool{Conductor: c},
+		tools.SteerChildTool{Conductor: c}, tools.CloseChildTool{Conductor: c}, tools.AskTool{Conductor: c},
 	)
 }
 

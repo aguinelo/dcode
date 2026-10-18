@@ -32,6 +32,9 @@ var behaviorDirs = []string{
 	// probe itself, which reads the manifests, is the workspace package.
 	filepath.Join("..", "workspace"),
 	filepath.Join("..", "vcs"),
+	// delegate's description is how the orchestrator's role reads at the
+	// point of use, so its invariant is this family's.
+	filepath.Join("..", "tools"),
 	filepath.Join("..", "workspace"),
 }
 
@@ -120,6 +123,17 @@ var behaviorInvariants = map[string]string{
 	"Todo modo que a política aceita":        "TestEveryPolicyModeIsDescribedToTheModel",
 	"carrega a regra que a torna autoridade": "TestEveryModeCarriesTheRuleThatMakesItAuthoritative",
 	"A grafia dos modos":                     "TestTheBoundarySpellingsAgreeWithThePolicy",
+
+	// The role, in an orchestrated session.
+	"A orquestradora recebe a seção do papel":       "TestTheOrchestratorIsToldItsRoleAndNotToAskForTheMode",
+	"O filho recebe a seção do papel":               "TestTheChildIsToldItsRole",
+	"O revisor recebe a seção do papel":             "TestTheReviewerIsToldItsRoleAndNotToAskForTheMode",
+	"Sessão sem papel não ganha seção":              "TestASessionWithNoRoleHasNoRoleSection",
+	"Nome que não é papel":                          "TestAnUnknownRoleRefusesToAssemble",
+	"logo depois da fronteira e antes do piso":      "TestTheRoleIsRenderedRightAfterTheBoundary",
+	"Cada modo do daemon monta":                     "TestEachRoleIsBuiltWithItsOwnSection",
+	"A grafia dos papéis":                           "TestTheRoleSpellingsAgreeWithTheProtocol",
+	"A descrição de `delegate` se sustenta sozinha": "TestDelegateSaysChildrenWriteAndWhatOwnsIs",
 
 	// What counts as having measured a contract.
 	"nem chamada nem texto":                  "TestAnExchangeWithNothingReadableIsNotAVerdict",

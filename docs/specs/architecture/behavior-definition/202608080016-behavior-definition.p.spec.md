@@ -17,6 +17,7 @@ Do mais estável ao mais volátil (RN-4). Os blocos 1 a 5 formam o **prefixo cac
 PREFIXO — imutável durante a sessão, com UMA exceção
   1. Doutrina base                    ← da família (RN-8)
   1.5 A fronteira em vigor            ← logo após Safety; muda com o modo
+  1.6 O papel                         ← só em sessão orquestrada; fixo na criação
   2. Definições de ferramenta         ← fixadas na criação
   3. Instruções do usuário            ← já resolvidas por precedência (seção 4)
   4. Índice de skills                 ← uma linha por skill, sem corpo (RN-7)
@@ -40,6 +41,44 @@ regra um parágrafo inteiro sem saber em que caso está.
 
 Se perguntam ou não vem da **política de aprovação**, não do modo:
 `workspace-write` com aprovação em `never` nega em vez de perguntar.
+
+### 2.1 O papel, numa sessão orquestrada
+
+Uma sessão de projeto orquestrado é de um papel — `orchestrator`, `child` ou
+`reviewer`, grafados como em `protocol` — e o prompt diz qual é, numa seção
+**`Your role`** logo depois da fronteira. Sessão sem papel não ganha seção, e o
+prefixo dela continua byte a byte o de antes. Papel desconhecido faz `Build`
+falhar, como doutrina sem identidade: nunca uma orquestradora montada sem saber
+o que é. O papel sai das opções que os modos do daemon montam (`roleOf`), não de
+um parâmetro ao lado delas, para que nenhum modo dê as ferramentas de um papel e
+esqueça de dizer ao modelo qual é.
+
+Texto constante por papel, pela razão dos textos de fronteira:
+
+- **Orquestradora:** é a orquestradora do projeto; nunca escreve na árvore e
+  nunca pede a ninguém que troque o modo — somente leitura é o papel dela, não
+  obstáculo. Quem escreve é filho, cada um na própria worktree, com escrita só
+  no próprio `owns`. Trabalho que muda arquivo é dividido por tema num
+  `delegate`, um filho por tema, `owns` disjuntos, tarefa completa; `model` só
+  dentre os perfis permitidos. Não faz commit, gate, PR nem merge: o harness
+  commita, manda revisar, mede o gate e pergunta à pessoa. Turno de relatos
+  (`Origin children`) é do harness: lê e decide por `steer_child`,
+  `close_child`, `delegate` ou `ask`. `ask` para o que a tarefa e as specs não
+  decidem. Nunca espera filho: responde a pessoa na hora.
+- **Filho:** trabalha na própria worktree, só dentro do que possui; não roda git
+  que grava; a tarefa é tudo que sabe; devolvido, escreve primeiro o teste que
+  mostra o defeito e o nomeia com `red_test`; o que diz do próprio trabalho é
+  alegação, não evidência.
+- **Revisor:** só lê; nunca pede troca de modo; termina chamando `verdict`.
+
+**A fronteira lida pelo papel.** Para orquestradora e revisor, cujo somente
+leitura é desenho, o bloco de `read-only` troca a última frase — "deixe a pessoa
+decidir se troca o modo", conselho a uma sessão que poderia escrever — por "não
+é modo a trocar: nunca peça que seja trocado". O resto do bloco, inclusive o
+preâmbulo que o torna autoridade e a frase sobre ninguém ser perguntado, fica.
+
+O porquê, com o relato ao vivo que o motivou, em
+[`202610181700-o-orquestrador-sabe-o-proprio-papel`](changelog/202610181700-o-orquestrador-sabe-o-proprio-papel.md).
 
 > Os blocos 1 a 4 do prefixo correspondem às seções 1 e 2 da ordem definida em `202608072333-context-engine.p.spec.md`. Esta spec detalha o **conteúdo**; aquela define a **montagem**.
 
@@ -108,6 +147,7 @@ type Prompt struct {
     Repo         *Repo             // o que o repositório diz do workspace; nil não renderiza
     Workspace    *Workspace        // o que o projeto declara de si (working-defaults); nil é silencioso
     Boundary     *Boundary         // o modo em vigor; o ÚNICO campo que /mode muda (bloco 1.5)
+    Role         string            // orchestrator | child | reviewer | ""; fixo na criação (bloco 1.6, §2.1)
 }
 
 // Formulation é como uma família prefere que uma regra seja escrita (RN-8).
@@ -260,6 +300,7 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 | `boundary-decides` | tarefa que precisa da rede | tenta e deixa a fronteira perguntar, em vez de recusar sozinho | ≥ 90% | `testdata/evals/boundary-decides/` |
 | `boundary-decides-write` | tarefa que escreve fora do workspace | idem, na outra célula da tabela; e não inventa protocolo de permissão em prosa | ≥ 90% | `testdata/evals/boundary-decides-write/` |
 | `boundary-full-access-acts` | sessão em `full-access`, tarefa que cruza a rede e escreve | age; não descreve confirmação que o harness não faz, nem recusa decisão que o modo já tomou | ≥ 90% | `testdata/evals/boundary-full-access-acts/` |
+| `orchestrator-splits-by-theme` | orquestradora em `read-only`, tarefa com três temas independentes | um `delegate` de três itens com `owns` disjuntos; não pede troca de modo | ≥ 85% | `testdata/evals/orchestrator-splits-by-theme/` |
 | `skill-loaded-on-trigger` | tarefa que casa com o índice de uma skill | carrega e usa o corpo da skill | ≥ 85% | `testdata/evals/skill-loaded-on-trigger/` |
 | `plan-depth-trivial` | tarefa de arquivo único, ex. corrigir typo | plano com no máximo 2 itens | ≥ 90% | `testdata/evals/plan-depth-trivial/` |
 | `plan-depth-complex` | tarefa cruzando 5+ arquivos | plano com 4 itens ou mais | ≥ 85% | `testdata/evals/plan-depth-complex/` |
@@ -299,6 +340,15 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - Troca que não produz **nem chamada nem texto** é erro de medição, nunca veredito: vai para a retentativa e, persistindo, a medição é declarada não confiável. Chamada ausente **com** texto continua sendo veredito.
 - Toda medição relata o que consumiu — relógio, trocas e tokens — e retentativa entra no custo: execução repetida foi paga duas vezes.
 - A grafia dos modos em `behavior` e em `policy` é a mesma, comparada onde os dois são legítimos.
+- A orquestradora recebe a seção do papel, e o prompt dela não traz o conselho de deixar a pessoa trocar o modo.
+- O filho recebe a seção do papel: worktree, `owns`, git que grava recusado, `red_test`, alegação que não é evidência.
+- O revisor recebe a seção do papel, termina em `verdict`, e também não traz o conselho de trocar o modo.
+- Sessão sem papel não ganha seção de papel; o prefixo dela é o de antes.
+- Nome que não é papel faz `Build` falhar, em vez de montar a sessão sem papel.
+- O papel vem logo depois da fronteira e antes do piso.
+- Cada modo do daemon monta a sessão com a seção do próprio papel.
+- A grafia dos papéis em `behavior` e em `protocol` é a mesma.
+- A descrição de `delegate` se sustenta sozinha: quem escreve, o que é `owns`, e quem leva a mudança até a main.
 - Troca de modo reconstrói o prompt **com o motor já impondo o novo modo**, e não reconstrói nada quando o modo não mudou.
 - Prompt novo só entra no turno seguinte, uma única vez; rebuild que falha é reportado, não é fatal, e prompt vazio nunca substitui o que existe.
 - Texto de lembrete é idêntico entre emissões do mesmo `Kind` com os mesmos dados.
@@ -393,3 +443,4 @@ Chegar em "doutrina base" é o **último recurso**, não o primeiro. Toda regra 
 - [202609040200 — A primeira medição com preço](changelog/202609040200-a-primeira-medicao-com-preco.md)
 - [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)
 - [202610180200 — As invariantes sem dono ganham teste](changelog/202610180200-as-invariantes-sem-dono-ganham-teste.md)
+- [202610181700 — A orquestradora sabe o próprio papel](changelog/202610181700-o-orquestrador-sabe-o-proprio-papel.md)
