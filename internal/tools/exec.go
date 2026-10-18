@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/aguinelo/dcode/internal/policy"
 	"github.com/aguinelo/dcode/internal/protocol"
@@ -127,16 +128,21 @@ func (b Bash) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 	defer cancel()
 
 	out, code, err := b.Runner.Run(runCtx, b.Workdir, in.Command)
-	out = clamp(out, s.Limits.MaxToolOutput)
+	out, dropped := clamp(out, s.Limits.MaxToolOutput)
 
 	if err != nil && errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 		// Whatever was produced before the cut still helps the model decide,
 		// so it is returned rather than discarded.
+		//
+		// A deadline cuts time, not output: every byte the command produced
+		// is here unless the clamp also cut, and Code says the rest. Marking
+		// it Truncated would claim bytes were held back that never existed.
 		return Result{
 			Output:    fmt.Sprintf("%s\n\n(timed out after %s)", out, timeout),
 			IsError:   true,
 			Code:      CodeTimeout,
-			Truncated: true,
+			Truncated: dropped > 0,
+			Remaining: dropped,
 		}, nil
 	}
 	if err != nil && code < 0 {
@@ -154,8 +160,10 @@ func (b Bash) Execute(ctx context.Context, input json.RawMessage, s *State) (Res
 		body += "\n\n" + note
 	}
 	return Result{
-		Output: fmt.Sprintf("exit %d\n%s", code, body),
-		Meta:   Meta{ExitCode: code, HasExit: true, Lines: countLines(out)},
+		Output:    fmt.Sprintf("exit %d\n%s", code, body),
+		Truncated: dropped > 0,
+		Remaining: dropped,
+		Meta:      Meta{ExitCode: code, HasExit: true, Lines: countLines(out)},
 	}, nil
 }
 
@@ -278,11 +286,21 @@ func countLines(s string) int {
 	return strings.Count(s, "\n") + 1
 }
 
-func clamp(s string, max int) string {
+// clamp keeps the start of s within max bytes and returns how many it dropped.
+//
+// The cut lands on a whole character, so what is kept never ends in half a
+// rune. The notice says both numbers: what was dropped tells the model whether
+// to narrow the command, and what was kept tells it where the text stops.
+func clamp(s string, max int) (string, int) {
 	if max <= 0 || len(s) <= max {
-		return s
+		return s, 0
 	}
-	return s[:max] + fmt.Sprintf("\n… output truncated at %d bytes", max)
+	keep := max
+	for keep > 0 && !utf8.RuneStart(s[keep]) {
+		keep--
+	}
+	dropped := len(s) - keep
+	return s[:keep] + fmt.Sprintf("\n… output truncated: %d more bytes dropped, keeping the first %d", dropped, keep), dropped
 }
 
 // ---------- plan ----------

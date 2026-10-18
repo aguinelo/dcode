@@ -54,9 +54,8 @@ com teste em `internal/tui/orchestrate_test.go` ou `cmd/dcode/orchestrate_test.g
 
 - **A §8 não muda.** Ela é dos comandos `/` dentro da TUI; `dcode orchestrate` é subcomando da
   linha de comando, está no texto de uso nas duas línguas e na §2.2.
-- **Nenhuma invariante prevista da `orchestration` (§14) sobe.** As três que restam — os nomes de
-  fim de turno da RN-7, a guarda contra `rebase` e força, a linha no log antes de cada transição —
-  são do núcleo, e nenhuma é tocada por este passo.
+- **Nenhuma invariante prevista da `orchestration` (§14) sobe aqui.** A §14 já está vazia: as três
+  últimas subiram com o passo 12, os cenários roteirizados. A linha nova da §13 é deste passo.
 - **A lista vista de um filho não se atualiza.** O cliente assina o log de uma sessão por vez; no
   filho, a lista é a que se tinha ao sair da orquestradora, e voltar a ela relê. Assinar os dois
   logs ao mesmo tempo é mudança do `Transport`, e não há pedido para ela ainda.

@@ -159,6 +159,41 @@ func (s slowTool) Execute(ctx context.Context, _ json.RawMessage, _ *tools.State
 	return tools.Result{Output: "from " + s.name}, nil
 }
 
+// gatedTool runs until it is told to stop rather than for a length of time.
+// entered, when set, is closed the moment Execute begins; wait is what it
+// blocks on before returning. A test that needs two calls to overlap, or one
+// to finish first, says so with channels instead of betting on two sleeps.
+type gatedTool struct {
+	name    string
+	path    string
+	entered chan struct{}
+	wait    <-chan struct{}
+}
+
+func (g gatedTool) Name() string            { return g.name }
+func (g gatedTool) Description() string     { return "test tool" }
+func (g gatedTool) Schema() json.RawMessage { return json.RawMessage(`{"type":"object"}`) }
+
+func (g gatedTool) Declare(json.RawMessage) (policy.Request, error) {
+	return policy.Request{Tool: g.name, Paths: []policy.Access{{Path: g.path}}}, nil
+}
+
+func (g gatedTool) Execute(ctx context.Context, _ json.RawMessage, _ *tools.State) (tools.Result, error) {
+	if g.entered != nil {
+		close(g.entered)
+	}
+	select {
+	case <-g.wait:
+	case <-ctx.Done():
+	}
+	return tools.Result{Output: "from " + g.name}, nil
+}
+
+// emitterFunc lets a test watch the event stream as it is produced.
+type emitterFunc func(protocol.EventType, any)
+
+func (f emitterFunc) Emit(t protocol.EventType, payload any) { f(t, payload) }
+
 func newEngine(t *testing.T, p provider.Provider, reg *tools.Registry, mut ...func(*Config)) (*Engine, *recorder) {
 	t.Helper()
 	ws := t.TempDir()
@@ -1237,17 +1272,49 @@ func TestWithoutTheHookTheTurnIsUnchanged(t *testing.T) {
 // session differ. The client is a person's window, and a person asking "which
 // of these was first" is asking a reasonable question.
 func TestTheEventCarriesWhenACallActuallyRan(t *testing.T) {
+	// The order is arranged, not hoped for. Two sleeps of different lengths
+	// only usually overlap: under a loaded machine the fast call's goroutine
+	// was once scheduled after the slow one had already finished, and the test
+	// reported a sequence where the engine had done nothing wrong. Here the
+	// slow call cannot return until the fast call's completion has been
+	// emitted, and the fast call cannot start until the slow one is running —
+	// so the overlap and the finishing order are facts of the test, and the
+	// only thing left to check is whether the event records them.
+	slowIn, fastDone := make(chan struct{}), make(chan struct{})
 	reg := tools.NewRegistry(
-		slowTool{name: "slow", delay: 40 * time.Millisecond, path: "a"},
-		slowTool{name: "fast", delay: time.Millisecond, path: "b"},
+		gatedTool{name: "slow", path: "a", entered: slowIn, wait: fastDone},
+		gatedTool{name: "fast", path: "b", wait: slowIn},
 	)
 	p := &scriptedProvider{turns: [][]provider.StreamEvent{
 		{call("c1", "slow", `{}`), call("c2", "fast", `{}`), done()},
 		{text("both ran"), done()},
 	}}
-	e, rec := newEngine(t, p, reg)
+	rec := newRecorder()
+	e, _ := newEngine(t, p, reg, func(c *Config) {
+		// A clock that only moves forward, one tick per reading. The real
+		// one can return the same instant twice; this one cannot, so a strict
+		// "before" below is decided by the order of the readings alone.
+		var mu sync.Mutex
+		tick := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		c.Now = func() time.Time {
+			mu.Lock()
+			defer mu.Unlock()
+			tick = tick.Add(time.Millisecond)
+			return tick
+		}
+		c.Emitter = emitterFunc(func(et protocol.EventType, payload any) {
+			rec.Emit(et, payload)
+			if done, ok := payload.(protocol.ToolCompleted); ok && done.ToolCallID == "c2" {
+				close(fastDone)
+			}
+		})
+	})
 
-	if _, err := e.Run(context.Background(), "go"); err != nil {
+	// Bounded so an engine that ran the two calls one after the other fails
+	// here with a missing completion instead of hanging the suite.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := e.Run(ctx, "go"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1290,6 +1357,14 @@ func TestTheEventCarriesWhenACallActuallyRan(t *testing.T) {
 	// And they overlapped, which is what "ran together" means.
 	if !fast.StartedAt.Before(slow.FinishedAt) {
 		t.Error("the two calls did not overlap; the times describe a sequence")
+	}
+	// The fast call finished while the slow one was running — the gates make
+	// that true whichever goroutine read the clock first. It is what catches
+	// an event that carries the start twice: the two starts alone can come in
+	// either order, but a finish cannot fall inside an interval of no length.
+	if !slow.StartedAt.Before(fast.FinishedAt) {
+		t.Errorf("fast finished at %v, before slow started at %v; the times do not "+
+			"describe the calls that ran", fast.FinishedAt, slow.StartedAt)
 	}
 }
 
