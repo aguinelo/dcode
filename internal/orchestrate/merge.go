@@ -213,34 +213,16 @@ func (m *Merges) sensitive(path string) bool {
 // Answer is the person's answer; the first one wins. merge queues the child;
 // return and close are the person's refusal, said as merge.refused with the
 // note. Only the person answers: the orchestrator has no tool for this.
+//
+// The answer is taken under the lock, and said with it released, as ask and
+// the main's health are: what hears the event may ask the merges back — the
+// orchestrator saving their queue does — and an event sent under the lock
+// waited for its own reply.
 func (m *Merges) Answer(id, answer, note string) (protocol.Question, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	i := -1
-	for n := range m.questions {
-		if m.questions[n].ID == id {
-			i = n
-		}
+	q, queued, err := m.take(id, answer, note)
+	if err != nil {
+		return q, err
 	}
-	if i < 0 {
-		return protocol.Question{}, &protocol.Error{Code: protocol.CodeQuestionNotFound, Message: fmt.Sprintf("no question %q", id)}
-	}
-	q := m.questions[i]
-	if q.Answered != nil {
-		return q, &protocol.Error{Code: protocol.CodeQuestionAlreadyAnswered,
-			Message: fmt.Sprintf("%s was answered %q already; the first answer wins", id, q.Answer)}
-	}
-	if !offers(q, answer) {
-		return q, &protocol.Error{Code: protocol.CodeInvalidInput, Message: fmt.Sprintf("%s offers no answer %q", id, answer)}
-	}
-	at := m.o.Now().UTC()
-	q.Answer, q.Note, q.Answered = answer, note, &at
-	data, _ := json.Marshal(q)
-	if _, err := m.o.Log.Record(Decision{Kind: "question.answered", Child: q.ChildID, Data: data,
-		Why: fmt.Sprintf("the person answered %q", answer)}); err != nil {
-		return protocol.Question{}, err
-	}
-	m.questions[i] = q
 	m.o.Emit(protocol.EventQuestionAnswered, q)
 	if answer != answerMerge {
 		reason := fmt.Sprintf("the person answered %s", answer)
@@ -250,12 +232,48 @@ func (m *Merges) Answer(id, answer, note string) (protocol.Question, error) {
 		r := &protocol.MergeRefused{ChildID: q.ChildID, Code: refusedByPerson, Reason: reason}
 		return q, m.refuse(r)
 	}
+	return q, queued
+}
+
+// take records the answer, the first one, and queues a merge. queued is the
+// failure of the queue's line alone: the answer itself was taken.
+func (m *Merges) take(id, answer, note string) (q protocol.Question, queued, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	i := -1
+	for n := range m.questions {
+		if m.questions[n].ID == id {
+			i = n
+		}
+	}
+	if i < 0 {
+		return protocol.Question{}, nil, &protocol.Error{Code: protocol.CodeQuestionNotFound, Message: fmt.Sprintf("no question %q", id)}
+	}
+	q = m.questions[i]
+	if q.Answered != nil {
+		return q, nil, &protocol.Error{Code: protocol.CodeQuestionAlreadyAnswered,
+			Message: fmt.Sprintf("%s was answered %q already; the first answer wins", id, q.Answer)}
+	}
+	if !offers(q, answer) {
+		return q, nil, &protocol.Error{Code: protocol.CodeInvalidInput, Message: fmt.Sprintf("%s offers no answer %q", id, answer)}
+	}
+	at := m.o.Now().UTC()
+	q.Answer, q.Note, q.Answered = answer, note, &at
+	data, _ := json.Marshal(q)
+	if _, err := m.o.Log.Record(Decision{Kind: "question.answered", Child: q.ChildID, Data: data,
+		Why: fmt.Sprintf("the person answered %q", answer)}); err != nil {
+		return protocol.Question{}, nil, err
+	}
+	m.questions[i] = q
+	if answer != answerMerge {
+		return q, nil, nil
+	}
 	if _, err := m.o.Log.Record(Decision{Kind: "merge.queued", Child: q.ChildID,
 		Why: fmt.Sprintf("the person answered merge; %d ahead in the queue", len(m.queue))}); err != nil {
-		return q, err
+		return q, err, nil
 	}
 	m.queue = append(m.queue, q.ChildID)
-	return q, nil
+	return q, nil, nil
 }
 
 func offers(q protocol.Question, answer string) bool {

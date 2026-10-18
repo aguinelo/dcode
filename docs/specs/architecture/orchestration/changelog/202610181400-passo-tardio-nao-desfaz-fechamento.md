@@ -35,3 +35,18 @@ O mesmo vão existia no próprio `Close` (lê, fecha a sessão, comita `closed` 
 spawner falso — depois de o `Close` ler o filho e antes do commit dele —, então a ordem é a do
 código, não a do agendador. O teste de integração que falhava continua igual: o que ele prova
 (fechado e sem retenção, some da lista) era certo; errada era a produção.
+
+## O deadlock que apareceu no gate
+
+No gate da primeira versão desta mudança, `TestScenarioARedMainStopsTheQueue` ficou 9 minutos
+parado. Duas ordens de lock opostas: `Merges.Answer` segurava `m.mu` enquanto emitia
+`question.answered` (e, num `return`, `merge.refused`), e o emit chega a `o.mu` pela
+`Project()`; `saveMerges`, no `drain` da fila, segurava `o.mu` dentro do `apply` e lia
+`mg.Queued()`/`mg.Main()`, que pedem `m.mu`. A inversão já existia; a fila e a resposta só
+precisavam se cruzar.
+
+- `Merges.Answer` toma a resposta sob o lock (`take`) e emite com ele solto, como `ask` e a saúde
+  da main já faziam. "A primeira resposta vence" continua decidido sob o lock.
+- `saveMerges` lê perguntas, fila e saúde da main antes de tomar `o.mu`.
+- `TestAnAnswerIsSaidWithTheMergesLockReleased`: quem ouve o evento pergunta de volta aos merges;
+  antes, esperava a própria resposta até o teto do teste, sempre — sem depender de agendador.
