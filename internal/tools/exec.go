@@ -35,6 +35,10 @@ type Bash struct {
 	// not a readiness check: it answers "did it die immediately", which is the
 	// common failure and the one a model cannot otherwise see.
 	Settle time.Duration
+	// Deny refuses a command outright, before any question: what it returns
+	// is why, and empty lets the command through to the policy. Nil denies
+	// nothing. A child of an orchestrator gets DenyGitWrite.
+	Deny func(command string) string
 }
 
 // BashInput is the argument shape.
@@ -69,6 +73,13 @@ func (b Bash) Declare(input json.RawMessage) (policy.Request, error) {
 	var in BashInput
 	if err := decode(b.Name(), input, &in); err != nil {
 		return policy.Request{}, err
+	}
+	// Refused here, in the declaration, so there is no request to put to
+	// anyone: a denial that asked first would be a question with one answer.
+	if b.Deny != nil {
+		if why := b.Deny(in.Command); why != "" {
+			return policy.Request{}, errf(b.Name(), CodeDenied, "", "%s", why)
+		}
 	}
 	// A shell command is opaque, so the worst case is what gets declared. A
 	// build resolves dependencies, a test suite pulls an image, a formatter
