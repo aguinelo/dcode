@@ -147,6 +147,7 @@ type Child struct {
 	Review?          *Verdict; Gate? *GateResult; PR? *ChildPR
 	Usage            Usage // somado sobre os turnos
 	Started, Ended?  time.Time
+	PlanStep?        int   // o id do item do plano da orquestradora que o filho cumpre (§10); 0 é nenhum
 }
 type Return struct{ Why, Phase? string; Paths? []string } // Why: outside_owns | review | conflict | gate_red | person; Phase: red | fix
 type Verdict struct{ SessionID, Commit, Verdict string; Findings? []Finding } // approve | changes_requested | missing
@@ -411,7 +412,7 @@ ao revisor sobre o próprio papel — e que o somente leitura dela não é modo 
 
 | Ferramenta | Entrada | Volta |
 |---|---|---|
-| `delegate` | `{items: [{title, task, owns, model, pr_title, pr_body, fixes_main, why}]}` | os `Child` criados, já `dispatched` |
+| `delegate` | `{items: [{title, task, owns, model, pr_title, pr_body, fixes_main, why, plan_step}]}` | os `Child` criados, já `dispatched` |
 | `children` | `{}` | os `Child`, em texto determinístico |
 | `steer_child` | `{child_id, text, why}` | ok: turno novo, ou `steer` do corrente |
 | `close_child` | `{child_id, why}` | ok |
@@ -423,6 +424,18 @@ ao revisor sobre o próprio papel — e que o somente leitura dela não é modo 
 `OwnsOverlap` entre itens e contra `Leases`, `max_children`, perfil na lista do papel, teto de
 tokens — antes de criar qualquer worktree. `model` vazio é o primeiro de
 `orchestrator.child_profiles`.
+
+**O plano segue os filhos** (pedido do dono, 2026-10-18). A orquestradora faz o plano com `plan`
+antes de despachar, e cada item de `delegate` nomeia em `plan_step` o id do item do plano que
+cumpre — negativo recusa o lote inteiro. O passo vai à linha `dispatch` e ao `Child.PlanStep`. O
+harness lê o `plan.updated` da orquestradora, guarda o plano em `State.Plan` e, a cada
+`child.started` e `child.state`, manda no log dela o mesmo plano com o status de cada passo que tem
+filhos tirado deles: `active` enquanto algum despacha, trabalha, espera, é revisado, medido ou
+espera o merge; `done` quando todos têm merge; `blocked`, dizendo quem e por quê, quando um falhou
+— inclusive além de `max_returns`. Filho fechado não segura o passo; passo sem filho fica com o
+status que a orquestradora deu; filho sem passo não muda nada. É projeção dos filhos, cujo cada
+movimento já está no log: não é decisão e não tem linha própria. O plano que o harness mandou volta
+pelo mesmo log e é reconhecido; não manda outro.
 
 **O teto de tokens** (RN-3, trazido para esta fatia pelo dono). `State.Spent` soma `input`, `output`
 e `cache_read` de toda sessão do projeto — orquestradora, filhos, revisores. Ao chegar a
@@ -526,6 +539,9 @@ o que ele mede é o prompt, e veio de um defeito ao vivo. A metade determinísti
 - O resumo da orquestradora entra na pergunta que espera e em todo cartão dela; pergunta respondida não o aceita.
 - A evidência de um item de merge vem das linhas `review.verdict` e `gate.measured` do log, com o `seq` delas, nunca do que o filho disse.
 - As palavras da pessoa respondem pergunta de desenho; numa de merge vão à orquestradora, e a pergunta continua esperando.
+- O passo do plano que um item de `delegate` nomeia segue o estado dos filhos dele: em curso, feito com todos em merge, bloqueado dizendo quem falhou.
+- O passo nomeado vai à linha `dispatch` e ao `Child`, e o plano que o harness mandou, lido de volta, não manda outro.
+- Item de `delegate` com `plan_step` negativo recusa o lote inteiro, sem worktree.
 
 ## 14. Invariantes previstas
 
@@ -570,5 +586,6 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610181200 — Os cenários roteirizados](changelog/202610181200-os-cenarios-roteirizados.md)
 - [202610181300 — O gate roda dentro do sandbox](changelog/202610181300-o-gate-roda-no-sandbox.md)
 - [202610181800 — A pessoa decide na conversa da orquestradora](changelog/202610181800-a-pessoa-decide-na-conversa.md)
+- [202610182000 — O plano da orquestradora segue os filhos](changelog/202610182000-o-plano-segue-os-filhos.md)
 - [202610181200 — `dcode orchestrate` abre a orquestradora do projeto](../client-tui/changelog/202610181200-dcode-orchestrate-abre-a-orquestradora.md)
 - [202610181700 — A orquestradora sabe o próprio papel](../behavior-definition/changelog/202610181700-o-orquestrador-sabe-o-proprio-papel.md)

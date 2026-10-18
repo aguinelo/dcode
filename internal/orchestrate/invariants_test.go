@@ -84,6 +84,11 @@ var orchestrationInvariants = map[string]string{
 	"pergunta respondida não o aceita":                "TestASummaryIsAttachedToAWaitingMergeQuestion",
 	"com o `seq` delas, nunca do que o filho disse":   "TestTheMergeEvidenceIsWhatTheLogMeasuredNeverTheClaim",
 	"numa de merge vão à orquestradora, e a pergunta": "TestThePersonsOwnWordsAnswerADesignAndRelayAMerge",
+
+	// The orchestrator's plan follows its children (the owner's request of 2026-10-18).
+	"segue o estado dos filhos dele":     "TestAPlanStepFollowsTheStateOfItsChildren",
+	"lido de volta, não manda outro":     "TestTheHarnessAdvancesThePlanStepFromTheChild",
+	"`plan_step` negativo recusa o lote": "TestADelegateItemWithANegativePlanStepIsRefused",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

@@ -45,6 +45,8 @@ type DelegateItem struct {
 	PRBody    string   `json:"pr_body,omitempty"`
 	FixesMain bool     `json:"fixes_main,omitempty"`
 	Why       string   `json:"why"`
+	// PlanStep is the id of the plan item the child fulfils; 0 is none.
+	PlanStep int `json:"plan_step,omitempty"`
 }
 
 // DelegateTool dispatches a batch of children, all or nothing.
@@ -73,7 +75,9 @@ func (DelegateTool) Description() string {
 		"you are told in a report. The batch is all or nothing: owns that cross each other or a live child's, more " +
 		"children than allowed, a model outside the allowed list, or the token ceiling refuse the whole batch before " +
 		"anything is made. It returns the children as soon as their first turns start; it never waits for one to " +
-		"finish. Say why for each item: it goes to the decision log."
+		"finish. Say why for each item: it goes to the decision log. Name in `plan_step` the id of the item of your " +
+		"plan the child fulfils: the harness then sets that item's status from the child's, and the person follows " +
+		"the work on the plan."
 }
 
 func (ChildrenTool) Description() string {
@@ -96,7 +100,8 @@ func (DelegateTool) Schema() json.RawMessage {
 		`"model":{"type":"string","description":"A profile of the child role's list; empty is the first of it"},` +
 		`"pr_title":{"type":"string"},"pr_body":{"type":"string"},` +
 		`"fixes_main":{"type":"boolean","description":"The child repairs a red main"},` +
-		`"why":{"type":"string","description":"Why this child, and why this model if you named one"}},` +
+		`"why":{"type":"string","description":"Why this child, and why this model if you named one"},` +
+		`"plan_step":{"type":"integer","minimum":0,"description":"The id of the item of your plan this child fulfils; the harness sets that item's status from the child's"}},` +
 		`"required":["title","task","owns","why"]}}},"required":["items"]}`)
 }
 
@@ -206,8 +211,12 @@ func RenderChildren(kids []protocol.Child) string {
 			state += " waiting on " + c.Waiting
 		}
 		u := c.Usage
-		fmt.Fprintf(&b, "%s  %s  %q  branch %s  owns %s  tokens %d\n", c.ID, state, c.Title, c.Branch,
+		fmt.Fprintf(&b, "%s  %s  %q  branch %s  owns %s  tokens %d", c.ID, state, c.Title, c.Branch,
 			strings.Join(c.Owns, ", "), u.InputTokens+u.OutputTokens+u.CacheReadTokens)
+		if c.PlanStep > 0 {
+			fmt.Fprintf(&b, "  plan step %d", c.PlanStep)
+		}
+		b.WriteString("\n")
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

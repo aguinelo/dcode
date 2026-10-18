@@ -78,6 +78,7 @@ export const CHILD: Shape<P.Child> = {
   usage: req('object', USAGE),
   started: req('string'),
   ended: opt('string'),
+  plan_step: opt('number'),
 };
 
 const QUESTION_OPTION: Shape<P.QuestionOption> = {

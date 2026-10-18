@@ -91,6 +91,10 @@ type Child struct {
 	Usage   Usage      `json:"usage"`
 	Started time.Time  `json:"started"`
 	Ended   *time.Time `json:"ended,omitempty"`
+	// PlanStep is the id of the orchestrator's plan item this child fulfils,
+	// as its delegate item named it; 0 is none. The harness sets that step's
+	// status from the state of its children.
+	PlanStep int `json:"plan_step,omitempty"`
 }
 
 // Return is why a child was handed its work back.

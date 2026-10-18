@@ -29,6 +29,9 @@ const (
 		"Read-only is your role, not an obstacle: no work is blocked by it.\n" +
 		"- Writing happens in children. Each one works in its own git worktree, on its own branch, " +
 		"with write access to the paths in its `owns` and nowhere else.\n" +
+		"- Before you delegate, call `plan` first: one item per theme of the work. It is what the person " +
+		"follows. Name on each `delegate` item, in `plan_step`, the id of the plan item it fulfils; while an " +
+		"item has children the harness sets its status from theirs, and you set the others.\n" +
 		"- When the work changes files, split it by theme and call `delegate`: one child per theme, " +
 		"with `owns` disjoint from every other child's. Give each a complete task — it does not see " +
 		"this conversation. Leave `model` empty unless you mean one of the allowed child profiles.\n" +
