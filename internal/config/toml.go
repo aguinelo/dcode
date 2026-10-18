@@ -97,6 +97,12 @@ var KnownKeys = map[string]string{
 	"orchestrator.reviewer_profiles":     "DCODE_ORCHESTRATOR_REVIEWER_PROFILES",
 	"orchestrator.review_max_diff_bytes": "DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES",
 
+	// The merge's keys (orchestration .config §3).
+	"orchestrator.forge":                "DCODE_ORCHESTRATOR_FORGE",
+	"orchestrator.ci_timeout":           "DCODE_ORCHESTRATOR_CI_TIMEOUT",
+	"orchestrator.sensitive":            "DCODE_ORCHESTRATOR_SENSITIVE",
+	"orchestrator.sensitive_diff_lines": "DCODE_ORCHESTRATOR_SENSITIVE_DIFF_LINES",
+
 	// The eval keys are read by the measurement harness, never by the product.
 	// They live in the same schema anyway: a key that governs behaviour and
 	// cannot be inspected with `--config` is the gap the audit pair closes,

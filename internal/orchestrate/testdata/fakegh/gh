@@ -1,0 +1,59 @@
+#!/bin/sh
+# A stand-in for the GitHub CLI, for the merge tests. It answers from the files
+# in $FAKE_GH and writes down every call it gets, the arguments one per line
+# and a blank line after each call. It talks to no network: a merge it is asked
+# for moves the bare origin's main to the commit in merge-to, as GitHub would.
+d="$FAKE_GH"
+for a in "$@"; do printf '%s\n' "$a" >>"$d/calls"; done
+printf '\n' >>"$d/calls"
+case "$1 $2" in
+"auth status")
+	if [ -f "$d/logged-out" ]; then
+		echo "You are not logged into any GitHub hosts." >&2
+		exit 4
+	fi
+	exit 0
+	;;
+"pr create")
+	cat >"$d/body"
+	if [ -f "$d/create-fails" ]; then
+		cat "$d/create-fails" >&2
+		exit 1
+	fi
+	echo "https://github.com/o/r/pull/7"
+	exit 0
+	;;
+"pr merge")
+	if [ -f "$d/merge-fails" ]; then
+		cat "$d/merge-fails" >&2
+		exit 1
+	fi
+	if [ -f "$d/merge-to" ]; then
+		git push -q origin "$(cat "$d/merge-to"):refs/heads/main" || exit 1
+	fi
+	if [ -f "$d/delete-branch" ]; then
+		git push -q origin --delete "$(cat "$d/delete-branch")" || exit 1
+	fi
+	exit 0
+	;;
+"pr view")
+	cat "$d/view.json"
+	exit 0
+	;;
+"run list")
+	sha=""
+	prev=""
+	for a in "$@"; do
+		[ "$prev" = "--commit" ] && sha="$a"
+		prev="$a"
+	done
+	if [ -f "$d/runs-$sha.json" ]; then
+		cat "$d/runs-$sha.json"
+	else
+		cat "$d/runs.json"
+	fi
+	exit 0
+	;;
+esac
+echo "fake gh: no answer for: $*" >&2
+exit 2
