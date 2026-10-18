@@ -18,6 +18,12 @@ var orchestrationInvariants = map[string]string{
 	"devolvida por `Torn`":                       "TestATornLastLineIsCutOnReopenAndSaid",
 	"Nenhuma linha do log passa de 64 KiB":       "TestALineOver64KiBCutsTheLargestFieldAndSaysHowMuch",
 	"linha ilegível é dita com o número":         "TestAnUnreadableLineIsSaidWithItsNumberAndTheRestIsPrinted",
+
+	"worktree descartável no commit exato":  "TestTheGateRunsInAThrowawayTreeWithoutGitEnvironment",
+	"sai sempre, até depois de um pânico":   "TestTheThrowawayWorktreeIsRemovedEvenOnAPanic",
+	"vai ao log como `claim`":               "TestAChildThatClaimsGreenIsRecordedRedBesideItsClaim",
+	"nada roda, o resultado é `undeclared`": "TestAnUndeclaredGateIsSaidAndNothingRuns",
+	"que não os do merge é `gate_stale`":    "TestAMeasurementOfAnotherCommitOrMainIsStale",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

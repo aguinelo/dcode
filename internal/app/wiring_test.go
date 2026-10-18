@@ -123,6 +123,10 @@ var nonSession = map[string]string{
 	"eval.model":       "read by the eval harness, which measures the product rather than running it",
 	"eval.runs":        "read by the eval harness, which measures the product rather than running it",
 	"orchestrator.dir": "read by the orchestrator, which conducts sessions and is not one",
+
+	// The gate is measured by the orchestrator, never by the session it judges.
+	"orchestrator.gate_command": "read by the orchestrator, which runs the gate itself and is not a session",
+	"orchestrator.gate_timeout": "read by the orchestrator, which runs the gate itself and is not a session",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.

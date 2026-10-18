@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/aguinelo/dcode/internal/protocol"
 )
@@ -107,7 +108,7 @@ func TestAGreenGateIsMeasuredOnTheExactCommit(t *testing.T) {
 func TestARedGateIsRedWithItsExitAndItsOutput(t *testing.T) {
 	repo, _, second := gateRepo(t)
 	logs := t.TempDir()
-	g := Gate{Command: "head -c 6000 /dev/zero | tr '\\0' x; echo; echo boom; exit 3", Timeout: time.Minute, Logs: logs}
+	g := Gate{Command: "head -c 9000 /dev/zero | tr '\\0' x; echo; echo boom; exit 3", Timeout: time.Minute, Logs: logs}
 
 	r := measure(t, g, repo, second)
 
@@ -125,8 +126,8 @@ func TestARedGateIsRedWithItsExitAndItsOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(whole) != 6000+1+5 {
-		t.Errorf("the file has %d bytes, want the whole output (%d)", len(whole), 6000+1+5)
+	if len(whole) != 9000+1+5 {
+		t.Errorf("the file has %d bytes, want the whole output (%d)", len(whole), 9000+1+5)
 	}
 }
 
@@ -385,5 +386,56 @@ func TestTheGateIsReadFromConfigurationWithVerifyAsFallback(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "orchestrator.gate_timeout") || !strings.Contains(err.Error(), bad) {
 			t.Errorf("gate_timeout %q: err = %v, want one naming the key and the value", bad, err)
 		}
+	}
+}
+
+// Spec: orchestration .p §9.1 — only a measurement is recorded as one, and a
+// timeout says it is not green.
+func TestOnlyAMeasurementIsRecordedAsOne(t *testing.T) {
+	dir := t.TempDir()
+	l := openLog(t, dir, testProject(t))
+	sha := strings.Repeat("a", 40)
+	for name, c := range map[string]struct {
+		l *DecisionLog
+		r protocol.GateResult
+	}{
+		"no log":           {nil, protocol.GateResult{Commit: sha, Result: GateGreen}},
+		"no result":        {l, protocol.GateResult{Commit: sha}},
+		"a made-up result": {l, protocol.GateResult{Commit: sha, Result: "passed"}},
+		"no exact commit":  {l, protocol.GateResult{Commit: "HEAD", Result: GateGreen}},
+	} {
+		if _, err := RecordGate(c.l, "child-1", "", c.r); err == nil {
+			t.Errorf("%s: recorded; want an error", name)
+		}
+	}
+	if _, err := RecordGate(l, "child-1", "", protocol.GateResult{Commit: sha, Result: GateTimeout, Command: "make check"}); err != nil {
+		t.Fatal(err)
+	}
+	lines := readLines(t, dir)
+	if len(lines) != 1 || !strings.Contains(lines[0].Why, "not green") {
+		t.Errorf("lines = %+v, want one timeout saying it is not green", lines)
+	}
+}
+
+// Spec: orchestration .config §4 — the tail is the last 4 KiB, starting on a
+// whole character, and a gates directory that cannot be made is said.
+func TestTheTailStartsOnAWholeCharacterAndAnUnwritableGatesDirIsSaid(t *testing.T) {
+	o := &gateOutput{}
+	_, _ = o.Write([]byte(strings.Repeat("é", gateTail)))
+	tail := o.tailText()
+	if len(tail) > gateTail || !utf8.ValidString(tail) {
+		t.Errorf("tail is %d bytes, valid UTF-8 %v; want at most %d and valid", len(tail), utf8.ValidString(tail), gateTail)
+	}
+
+	repo, _, second := gateRepo(t)
+	file := filepath.Join(t.TempDir(), "a-file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (Gate{Command: "true", Timeout: time.Minute, Logs: file}).Measure(context.Background(), repo, second); err == nil {
+		t.Error("a gates directory that is a file was accepted")
+	}
+	if n := worktrees(t, repo); n != 1 {
+		t.Errorf("%d worktrees, want only the person's", n)
 	}
 }

@@ -4,7 +4,8 @@
 > Precedência: flag > variável de ambiente > arquivo de config > default.
 > Contrato técnico em `202610132000-orchestration.p.spec.md`.
 
-> **Estado.** Só `orchestrator.dir` é lida (passo 4); o resto está planejado, não construído. Cada
+> **Estado.** São lidas `orchestrator.dir` (passo 4), `orchestrator.gate_command` e
+> `orchestrator.gate_timeout` (passo 9, por `orchestrate.GateFrom`); o resto está planejado, não construído. Cada
 > chave entra em `KnownKeys` (`internal/config/toml.go`) **no mesmo PR** que passa a lê-la — o passo
 > da `.i` que a nomeia —, e não antes: chave declarada que ninguém lê é o defeito que
 > `TestEveryKeyTheSpecsDeclareIsReadSomewhere` existe para pegar. Por isso as tabelas abaixo abrem
@@ -77,10 +78,17 @@ O nome da branch é `<branch_prefix><slug do title>-<6 primeiros do id do filho>
 
 ## 3. Gate, revisão e merge (RN-5, RN-6)
 
+Lidas:
+
+| Variável | Chave | Default | Validação | Passo |
+|---|---|---|---|---|
+| `DCODE_ORCHESTRATOR_GATE_COMMAND` | `orchestrator.gate_command` | vazio = `verify.command` | texto; vazio com `verify.command` vazio é `gate_undeclared` na medição, não erro de abertura | 9 |
+| `DCODE_ORCHESTRATOR_GATE_TIMEOUT` | `orchestrator.gate_timeout` | `30m` | de `1m` a `6h` | 9 |
+
+Por ler:
+
 | Chave | Variável | Default | Validação | Passo |
 |---|---|---|---|---|
-| `orchestrator.gate_command` | `DCODE_ORCHESTRATOR_GATE_COMMAND` | vazio = `verify.command` | texto; vazio com `verify.command` vazio é `gate_undeclared` no merge, não erro de abertura | 9 |
-| `orchestrator.gate_timeout` | `DCODE_ORCHESTRATOR_GATE_TIMEOUT` | `30m` | de `1m` a `6h` | 9 |
 | `orchestrator.review_max_diff_bytes` | `DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES` | `131072` | inteiro de 4096 a 1048576 | 8 |
 | `orchestrator.forge` | `DCODE_ORCHESTRATOR_FORGE` | `auto` | `auto`, `github` ou `local` | 10 |
 | `orchestrator.main_branch` | `DCODE_ORCHESTRATOR_MAIN_BRANCH` | vazio = a que `vcs` detecta | nome de branch que existe | 5 |
