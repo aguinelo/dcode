@@ -138,7 +138,7 @@ ferramentas `delegate`, `children`, `steer_child`, `close_child` em `internal/to
 - [x] Registro do filho sem as ferramentas da `.p` §10; a regra de negação de git que grava.
 - [x] Commit do harness ao fim de cada turno, com os caminhos nomeados (a conferência de `owns`
       entra no passo 8; aqui, o commit).
-- [x] Fechado sai da resposta de `/children` depois de `closed_retention`.
+- [x] Fechado e merged saem da resposta de `/children` depois de `closed_retention`; `failed` fica.
 - [x] `State.Spent` soma os tokens de toda sessão do projeto; no teto, `delegate` é recusado com
       `ceiling_reached`, `ceiling.reached` vai ao log, a conversa diz, e `Question{kind: ceiling}`
       oferece `continue` (zera a janela) ou `stop`. Filho vivo não é parado. A resposta é
