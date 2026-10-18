@@ -50,7 +50,8 @@ func TestScenarioAConflictReturnsToTheChildThatOwnsTheBranch(t *testing.T) {
 	if conflict == nil || len(conflict.Paths) != 1 || conflict.Paths[0] != "shared.txt" {
 		t.Fatalf("the hand-backs were %+v, want a conflict on shared.txt", s.returns(c.ID))
 	}
-	if sent := s.model.sentTo("child/shared"); !strings.Contains(sent, "<<<<<<<") {
+	// JSON escapes the angle brackets of the markers in the request body.
+	if sent := s.model.sentTo("child/shared"); !strings.Contains(sent, strings.Repeat("\\u003c", 7)+" HEAD") {
 		t.Error("the child's worktree held no conflict markers when it read the file")
 	}
 	g := s.lastGate(c.ID)
@@ -189,7 +190,8 @@ func TestScenarioAChildApprovalWaitsForThePerson(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	docs := s.kid("docs")
+	var docs protocol.Child
+	s.waitFor("the second child was never dispatched", func() bool { docs = s.kid("docs"); return docs.ID != "" })
 	s.waitQuestion(docs.ID)
 	time.Sleep(4 * s.d.opts.ApprovalTimeout)
 	pending := cs.Pending()

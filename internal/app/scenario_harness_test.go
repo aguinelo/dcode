@@ -303,6 +303,9 @@ func (s *scenario) show(commit, path string) string {
 func (s *scenario) mainTip() string {
 	s.t.Helper()
 	if s.origin != "" {
+		// Fetched, so the project has the commit to show: a squash is made
+		// on the forge, never in the project.
+		s.git(s.root, "fetch", "-q", "origin")
 		return s.git(s.root, "--git-dir="+s.origin, "rev-parse", "refs/heads/main")
 	}
 	return s.git(s.root, "rev-parse", "refs/heads/main")

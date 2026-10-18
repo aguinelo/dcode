@@ -95,6 +95,7 @@ func (s *scenario) kinds(id string) []string {
 // decisions may come between. Every scenario ends with one.
 func (s *scenario) inOrder(id string, want ...string) {
 	s.t.Helper()
+	s.quiet() // what is still in flight lands first
 	got := s.kinds(id)
 	i := 0
 	for _, k := range got {
@@ -145,9 +146,15 @@ func (s *scenario) returns(id string) []protocol.Return {
 	s.t.Helper()
 	var out []protocol.Return
 	for _, d := range s.all(id, "child.returned") {
-		out = append(out, decode[struct {
+		r := decode[struct {
 			Return protocol.Return `json:"return"`
-		}](s.t, d.Data).Return)
+		}](s.t, d.Data).Return
+		if r.Why == "" {
+			// The conflict's line, which Integration.Update writes, carries
+			// the Return bare rather than under "return".
+			r = decode[protocol.Return](s.t, d.Data)
+		}
+		out = append(out, r)
 	}
 	return out
 }
