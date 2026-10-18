@@ -283,7 +283,8 @@ export const orchestraScenarios = [
         await child(t.socket, orq.id, (c) => c.id === notes.id && c.state === 'awaiting_person', 1_000,
           'past the retention the waiting child is no longer waiting');
         await agentState(page, notes.id, 'awaiting_person', 1_000);
-        if ((await page.getByRole('button', { name: /pergunta/ }).count()) > 0) fail('the answered question is still counted in the Agentes tab');
+        const counted = await page.locator('.agents-asks').allTextContents();
+        if (counted.length > 0) fail(`the answered question is still counted in the Agentes tab: “${counted.join(', ')}”`);
 
         // The person closes the waiting one, from another client: closed, and gone after the retention too.
         await must(t.socket, 'DELETE', `/v1/sessions/${notes.id}`);
