@@ -45,6 +45,10 @@ func TestTheOrchestratorIsToldItsRoleAndNotToAskForTheMode(t *testing.T) {
 		// a proposal, and never answers.
 		"call `summarize`", "the person's language",
 		"call `propose_answers`", "You never answer a question for the person",
+		// The plan is the person's main view of the work (desktop D68): made
+		// first, each delegate item naming its step, the step's status the
+		// harness's while it has children.
+		"call `plan` first", "`plan_step`", "the harness sets its status",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the orchestrator's prompt does not say %q:\n%s", want, got)
