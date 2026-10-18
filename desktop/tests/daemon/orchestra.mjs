@@ -1,5 +1,5 @@
 // The orchestrator's live agent list, driven from the window against a real
-// daemon (D64, D66; step 14 of the orchestration .i). The daemon conducts a
+// daemon (D64, D66, D69; step 14 of the orchestration .i). The daemon conducts a
 // project with orchestrator.enabled; one scripted model answers every session
 // the project opens — the orchestrator, each child, each reviewer — from a
 // script of its own; the window opens the orchestrator through "Nova", answers
@@ -10,7 +10,8 @@
 // orchestrator's window already carries: `data-orchestrate` on the toggle of
 // "Nova", `data-child-id` and `data-child-state` on a row of the Agentes tab,
 // `data-card-id`, `data-card-item`, `data-option` and `data-card-confirm` on
-// the question card, and `data-depth` on a child's row in the list of Sessões.
+// the question card, and `data-crew` on the orchestrator's line of agents in
+// the list of Sessões, where no child has a row (D69).
 
 import { spawnSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
@@ -160,26 +161,35 @@ async function rowLooks(page, id) {
 }
 
 /**
- * Whether a child's row in Sessões sits under its parent's: in the same
- * group, after it, drawn in one level with "↳" before the folder (D66).
+ * The list of Sessões for an orchestrated project (D69): the orchestrator's
+ * line of agents by phase, or null without one, and whether any of the given
+ * children has a row of its own there, which it must not.
  */
-async function underParent(page, parent, kid) {
-  return page.evaluate(([p, k]) => {
-    const pr = document.querySelector(`.crew-sessions [data-session-id="${p}"]`);
-    const kr = document.querySelector(`.crew-sessions [data-session-id="${k}"]`);
-    if (!pr || !kr) return false;
-    const same = pr.closest('.crew-group') === kr.closest('.crew-group');
-    const after = Boolean(pr.compareDocumentPosition(kr) & Node.DOCUMENT_POSITION_FOLLOWING);
-    const folder = kr.querySelector('.crew-item-project');
-    const mark = folder ? getComputedStyle(folder, '::before').content : '';
-    return same && after && kr.getAttribute('data-depth') === '1' && mark.includes('↳');
-  }, [parent, kid]);
+async function crewRow(page, orq, kids) {
+  return page.evaluate(([o, ks]) => {
+    const line = document.querySelector(`.crew-sessions [data-session-id="${o}"] [data-crew]`);
+    const listed = ks.some((k) => document.querySelector(`.crew-sessions [data-session-id="${k}"]`));
+    return { line: line ? (line.textContent ?? '').trim() : null, listed };
+  }, [orq, kids]);
+}
+
+/** Waits until the orchestrator's row in Sessões reads as `want` says, with no child row; fails naming the last line read. */
+async function crewReads(page, orq, kids, want, what, ms = 15_000) {
+  let last = { line: null, listed: false };
+  try {
+    await eventually(async () => {
+      last = await crewRow(page, orq, kids);
+      return !last.listed && want(last.line);
+    }, ms, what);
+  } catch {
+    fail(`${what}: the orchestrator's line reads “${last.line ?? '(none)'}”${last.listed ? ', and a child has a row of its own in Sessões' : ''}`);
+  }
 }
 
 export const orchestraScenarios = [
   {
     name: 'orchestra-lists',
-    about: '◆ orquestradora in Nova opens the project’s orchestrator; its two children are listed under it, one waiting for the person, the other answered merge through the question card in the conversation, merged, and gone after the retention — as is the waiting one once the person closes it',
+    about: '◆ orquestradora in Nova opens the project’s orchestrator; its two children are counted on its one row in Sessões, never listed, one waiting for the person, the other answered merge through the question card in the conversation, merged, and gone after the retention — as is the waiting one once the person closes it',
     async run(ctx) {
       const t = await ctx.fresh();
       const outside = path.join(t.dir, 'elsewhere.txt');
@@ -259,11 +269,9 @@ export const orchestraScenarios = [
         const asking = await rowLooks(page, docs.id);
         if (asking.tone !== 'tone-warn') fail(`the PR waiting for its merge answer reads ${asking.tone}, want tone-warn`);
 
-        // The list of Sessões: docs, idle, sits under the orchestrator in its project's group; notes, waiting, is among the Ativas.
-        await eventually(() => underParent(page, orq.id, docs.id), 15_000,
-          `the row of child ${docs.id} is not under the orchestrator ${orq.id} with ↳ in Sessões`);
-        await visible(page.locator(`.crew-sessions [data-session-id="${notes.id}"][data-state="blocked"]`), 10_000,
-          `the row of the waiting child ${notes.id} in Sessões, blocked`);
+        // The list of Sessões (D69): one row for the orchestrator, counting both children, both waiting for the person; no child has a row.
+        await crewReads(page, orq.id, [notes.id, docs.id], (line) => line?.startsWith('2 agentes') && line.includes('2 esperando você'),
+          'the orchestrator’s row in Sessões does not count two agents waiting for the person');
 
         // The card in the conversation (D67): “◆ 1 pergunta” takes the person to it, and Merge, confirmed, is one POST of the batch.
         await (await visible(page.getByRole('button', { name: '◆ 1 pergunta' }), 10_000, 'the “◆ 1 pergunta” of the Agentes tab')).click();
@@ -286,6 +294,8 @@ export const orchestraScenarios = [
         await child(t.socket, orq.id, (c) => c.id === notes.id && c.state === 'awaiting_person', 1_000,
           'past the retention the waiting child is no longer waiting');
         await agentState(page, notes.id, 'awaiting_person', 1_000);
+        await crewReads(page, orq.id, [notes.id, docs.id], (line) => line === '1 agente · 1 esperando você',
+          'past the merge the orchestrator’s row in Sessões does not count the one agent left waiting');
         const counted = await page.locator('.agents-asks').allTextContents();
         if (counted.length > 0) fail(`the answered question is still counted in the Agentes tab: “${counted.join(', ')}”`);
 
@@ -294,6 +304,8 @@ export const orchestraScenarios = [
         await eventually(async () => (await agent(page, notes.id).count()) === 0, 10_000,
           `the closed child ${notes.id} is still in the Agentes tab after the retention`);
         await visible(page.getByText('Esta orquestradora ainda não despachou nenhum agente.'), 5_000, 'the agent list, empty once both left');
+        await crewReads(page, orq.id, [notes.id, docs.id], (line) => line === null || line === 'nenhum agente em curso',
+          'once both left the orchestrator’s row in Sessões still counts an agent in course');
       } finally {
         await model.close();
       }

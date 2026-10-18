@@ -10,7 +10,8 @@
   row with "↳" and the child's short title. A child with no orchestrator listed keeps a row of its
   own, so it can still be opened. Children are named by the short title the core now gives them at
   dispatch (core changelog). A sixth fixture recording, `crew-orquestras`, has two orchestrated
-  projects and an ordinary conversation.
+  projects and an ordinary conversation. The `orchestra-lists` daemon scenario, with the owner's
+  leave, now checks the orchestrator's line instead of the child's indented row.
 
 ## pt-BR
 
@@ -24,3 +25,5 @@
   filho. Um filho sem orquestradora listada continua com linha própria, para ainda poder ser aberto.
   Os filhos têm o título curto que o núcleo passa a dar no despacho (changelog do núcleo). Uma
   sexta gravação de fixture, `crew-orquestras`, tem dois projetos orquestrados e uma conversa comum.
+  O cenário `orchestra-lists` do daemon, com licença do dono, confere a linha da orquestradora no
+  lugar da linha recuada do filho.

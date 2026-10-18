@@ -455,10 +455,12 @@ projeto do tamanho do dcode seriam dezenas de linhas.
   Agrupa") e o revisor de um deles, e uma conversa comum em `listas`.
 
 As réguas: as dezoito referências continuam a 0,00% — nenhuma tem
-orquestradora. O `check:daemon` passa 13 de 14: o `orchestra-lists` confere
-o filho sob a orquestradora com "↳" e `data-depth="1"` (D66), que esta
-decisão tira; mudar o cenário espera a autorização do dono para
-`tests/daemon/`. As capturas — a lateral com dois projetos orquestrados e uma
+orquestradora. O `check:daemon` passa 14 de 14: o `orchestra-lists`, com
+autorização do dono para mexer só nele, deixou de conferir o filho sob a
+orquestradora com "↳" e `data-depth="1"` (D66) e confere agora que nenhum
+filho tem linha em Sessões e que a linha `data-crew` da orquestradora conta
+os dois esperando você, cai para "1 agente · 1 esperando você" depois do
+merge e não conta ninguém depois de a pessoa fechar o outro. As capturas — a lateral com dois projetos orquestrados e uma
 conversa comum, e a busca por um filho, nos dois temas — vão ao dono no PR.
 
 Descartados: manter os filhos recuados sob a orquestradora (é o que já
