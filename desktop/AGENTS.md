@@ -29,9 +29,12 @@ npm run gen:icons       # the app icon's sizes (.icns, .ico, .png) from assets/i
 
 ## What CI runs
 
-`.github/workflows/desktop.yml`, on pull requests and pushes to `main` that touch
-`desktop/**`, `internal/protocol/**` or the workflow: `npm ci`, typecheck, lint,
-tests, the production build, and the protocol-types staleness check.
+`.github/workflows/desktop.yml`, on pushes to `main` that touch `desktop/**`,
+`internal/protocol/**` or the workflow, and on a branch only when dispatched by
+hand: `npm ci`, typecheck, lint, tests, the production build, and the
+protocol-types staleness check. A pull request is gated by `.githooks/pre-push`,
+on the machine that pushes it, which runs the desktop gate when the branch
+touches `desktop/` or `internal/protocol/`; CI then confirms `main` after the merge.
 
 **`check:visual` is not in CI**, on purpose: its limit is known to hold only on
 macOS. The references in `refs/design/desktop/screenshots/` are captures of the
