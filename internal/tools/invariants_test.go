@@ -30,7 +30,7 @@ var toolInvariants = map[string]string{
 	"Nenhuma saída contém":                        "TestNoOutputCarriesAClockOrAnAbsolutePath",
 	"em diretório diz que é diretório":            "TestReadingADirectorySaysToUseGlob",
 	"só nomeia ferramenta que":                    "TestAToolErrorNamesGlobOnlyWhenTheSessionHasIt",
-	"Truncamento sempre":                          "TestTruncationIsDeclared",
+	"Truncamento sempre":                          "TestTruncatedOutputAlwaysSaysWhatRemains",
 	"saída diferente de zero":                     "TestBashNonZeroExitIsAResultNotAnError",
 	"sem veredito favorável":                      "TestEveryToolPassesThroughPolicy",
 	"dois itens `active":                          "TestRejectedPlanLeavesThePreviousOneIntact",
