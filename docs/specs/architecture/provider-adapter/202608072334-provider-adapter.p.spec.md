@@ -414,6 +414,8 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - Um 400 que diz que o prompt não cabe na janela vira `context_size` e força compactação; qualquer outro 400 continua `bad_request`.
 - Frame de erro no meio de um stream Anthropic termina com a classe do seu par HTTP e a mensagem do provedor, nunca como `transport`.
 - Resposta Anthropic com `stop_reason: "refusal"` termina em `EventError` da classe `refused`, sem repetição, sem liberar chamada pendente e com o uso cobrado.
+- Conversa com resultado de ferramenta sem id, sem a chamada na mensagem do assistente logo acima, ou com chamada sem resposta é recusada antes do envio, nos dois dialetos, como `bad_request` que nomeia o índice da mensagem.
+- Chamadas a ferramentas que a requisição não declara seguem no histórico como foram feitas: ler o passado não exige a ferramenta declarada.
 
 ## 8. Changelog
 
@@ -431,3 +433,4 @@ Mede a fidelidade da família de modelo, não a corretude do código.
 - [202610161630 — O erro Anthropic diz a sua classe](changelog/202610161630-o-erro-anthropic-diz-a-sua-classe.md)
 - [202610162300 — A recusa do modelo é dita](changelog/202610162300-a-recusa-do-modelo-e-dita.md)
 - [202610171700 — A spec alcança o código](changelog/202610171700-a-spec-alcanca-o-codigo.md)
+- [202610181800 — O par de ferramenta fica inteiro](changelog/202610181800-o-par-de-ferramenta-fica-inteiro.md)

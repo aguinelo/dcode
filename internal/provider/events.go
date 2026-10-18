@@ -134,7 +134,9 @@ func Decide(e *ProviderError) Decision {
 		return DecisionCompact
 	case ErrClassToolSchema:
 		// Not the loop's problem to solve: hand the error back to the model as
-		// a tool result and let it correct itself.
+		// a note after its answer and let it correct itself. Never as a tool
+		// result: the refused call is not in the answer, so a result would
+		// answer nothing, and providers reject that request.
 		return DecisionFeedToolIn
 	case ErrClassTransport, ErrClassProvider:
 		return DecisionRetry

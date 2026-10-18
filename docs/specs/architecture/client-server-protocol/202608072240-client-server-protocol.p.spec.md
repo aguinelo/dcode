@@ -710,6 +710,7 @@ diz onde cada um é dado; estão aqui porque todo código tem uma linha nesta ta
 - Chamada de ferramenta sem resultado não entra no histórico reconstruído.
 - Lote de chamadas é reconstruído inteiro: uma mensagem do assistente com todas as chamadas que tiveram resultado, seguida de um resultado por chamada, e todo resultado responde a uma chamada dessa mensagem.
 - Os resultados de um lote voltam na ordem em que as chamadas foram feitas, não na ordem em que terminaram — a do histórico ao vivo (RN-3 do agent-loop).
+- Conversa de orquestrador continuada por sessão comum volta com as chamadas a ferramentas que a sessão nova não tem (`delegate`, `children`, `ask`) junto dos seus resultados: o par fica inteiro como histórico, nunca pela metade.
 - Listagem de sessões vem do registro em disco, ordenada da mais recente, filtrada pelo workspace por default.
 - Sessão é titulada pela primeira pergunta; sem pergunta ainda, aparece assim mesmo.
 - Arquivo sem `session.created` não é registro e não entra na listagem.

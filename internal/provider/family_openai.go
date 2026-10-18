@@ -175,12 +175,21 @@ func encodeOpenAI(req Request) (WireRequest, error) {
 	if err := refusePDF("the openai dialect", req); err != nil {
 		return WireRequest{}, err
 	}
+	if err := CheckToolPairs(req.Messages); err != nil {
+		return WireRequest{}, err
+	}
 	body := oaRequest{
 		Model: req.Model, Stream: true, MaxTokens: req.MaxTokens,
 		StreamOptions: &oaStreamOptions{IncludeUsage: true},
 	}
 
 	for _, m := range req.Messages {
+		if m.Role == ce.RoleTool && m.ToolResult == nil {
+			// A tool message carrying nothing has no call to name, and a tool
+			// message naming none is what the provider rejects. Dropped, as
+			// the Anthropic dialect drops it (CheckToolPairs).
+			continue
+		}
 		om := oaMessage{Role: string(m.Role), Content: m.Text}
 		if m.Role == ce.RoleTool && m.ToolResult != nil {
 			om.ToolCallID = m.ToolResult.ToolCallID
@@ -526,6 +535,9 @@ const m3AnthropicOutput = 8192
 // ask for: the dialect carries the marker, and only a family that knows its
 // endpoint reads it should send one.
 func encodeAnthropic(req Request, ceiling int, cache bool) (WireRequest, error) {
+	if err := CheckToolPairs(req.Messages); err != nil {
+		return WireRequest{}, err
+	}
 	body := anRequest{Model: req.Model, Stream: true, MaxTokens: req.MaxTokens}
 	var system string
 	if body.MaxTokens <= 0 {

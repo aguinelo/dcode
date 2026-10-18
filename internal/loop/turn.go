@@ -224,6 +224,9 @@ type Engine struct {
 	// delegated is what child turns cost, debited from this turn. Without it
 	// the parent's ceiling is fiction.
 	delegated provider.Usage
+	// refused holds the calls the provider refused before they ran during the
+	// stream in progress (refused.go).
+	refused []string
 }
 
 // now is the engine's clock. Injectable so a test can assert a duration without
@@ -476,7 +479,9 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 				Role: ce.RoleAssistant, Text: text, ToolCalls: calls,
 			})
 		}
+		refused := e.takeRefused()
 		if len(calls) == 0 {
+			e.session.History = append(e.session.History, refused...)
 			// The stream can end done at the very instant the person presses
 			// stop — the provider still decodes a terminal frame it took before
 			// the cancel — so the loop looks here, before the check, and not
@@ -512,6 +517,17 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 			// nothing on the screen would say a number stopped it.
 			if cut {
 				return e.finish(out, protocol.StopMaxTokens), nil
+			}
+
+			// A call refused before it ran is the model's to correct, and an
+			// answer whose only call was refused is not an answer to check.
+			if len(refused) > 0 {
+				out.Iterations++
+				e.emitRounds(turnID, out.Iterations)
+				if out.Iterations >= e.cfg.Limits.MaxIterations {
+					return e.finish(out, protocol.StopMaxIterations), nil
+				}
+				continue
 			}
 
 			// Step 4. The turn does not end merely because the model stopped
@@ -555,6 +571,7 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 			for _, c := range calls {
 				e.session.History = append(e.session.History, notRun(c))
 			}
+			e.session.History = append(e.session.History, refused...)
 			return e.finishInterrupted(out), nil
 		}
 
@@ -567,6 +584,8 @@ func (e *Engine) RunAttached(ctx context.Context, input string, att Attachments)
 
 		results, batch := e.execute(ctx, turnID, calls)
 		e.session.History = append(e.session.History, results...)
+		// After the results, never between them and their calls.
+		e.session.History = append(e.session.History, refused...)
 
 		batch.Compacted = compacted
 		compacted = false
@@ -675,16 +694,11 @@ func (e *Engine) stream(ctx context.Context, turnID string, msgs []ce.Message) (
 			}
 			cut = ev.Truncated
 		case provider.EventError:
-			// A tool-schema failure is the model's to fix, so it comes back as
-			// a tool result rather than ending the turn.
+			// A tool-schema failure is the model's to fix, so it goes back to
+			// the model rather than ending the turn — as a note after the
+			// answer, never as a tool result (refused.go).
 			if ev.Err != nil && ev.Err.Class == provider.ErrClassToolSchema {
-				e.session.History = append(e.session.History, ce.Message{
-					Role: ce.RoleTool,
-					ToolResult: &ce.ToolResult{
-						Output:  ev.Err.Message,
-						IsError: true,
-					},
-				})
+				e.refuse(ev.Err.Message)
 				continue
 			}
 			// A refused answer is billed like any other, and the error is
