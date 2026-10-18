@@ -209,6 +209,13 @@ func (s *Session) SetMode(name string) error {
 		return protocol.Errorf(protocol.CodeInvalidInput,
 			"unknown mode %q (want plan, assist or auto)", name)
 	}
+	// The orchestrator reads, talks and conducts; only children write, in
+	// their own worktrees (orchestration .p §10). A switch out of plan would
+	// hand it the tree the person works in.
+	if s.Role == protocol.RoleOrchestrator && name != protocol.ModePlan {
+		return protocol.Errorf(protocol.CodeInvalidInput,
+			"session %s is an orchestrator, which runs in plan mode and never writes to the tree; %s is refused", s.ID, name)
+	}
 	if s.engine == nil {
 		return protocol.Errorf(protocol.CodeInternal, "session has no engine")
 	}

@@ -88,6 +88,9 @@ type Config struct {
 	// workspace offers, discovered as the TUI discovers them. Nil refuses,
 	// saying why.
 	Commands func(workspace string) (protocol.CommandsResponse, error)
+	// Projects are the projects the daemon conducts, one orchestrator each.
+	// Nil answers orchestrator_unavailable and lists none.
+	Projects Projects
 	// Log receives operational notices. Nil silences them, which is what a
 	// test wants and what a daemon must not do.
 	Log func(string)
@@ -206,6 +209,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+p+"/memory", s.readMemory)
 	s.mux.HandleFunc("GET "+p+"/skills", s.listSkills)
 	s.mux.HandleFunc("GET "+p+"/commands", s.listCommands)
+	s.mux.HandleFunc("POST "+p+"/projects", s.openProject)
+	s.mux.HandleFunc("GET "+p+"/projects", s.listProjects)
+	s.mux.HandleFunc("GET "+p+"/projects/{id}", s.getProject)
+	s.mux.HandleFunc("GET "+p+"/projects/{id}/orchestrator", s.projectOrchestrator)
 	s.mux.HandleFunc("GET "+p+"/git", s.readGit)
 	s.mux.HandleFunc("GET "+p+"/git/diff", s.readGitDiff)
 	s.mux.HandleFunc("GET "+p+"/git/pr", s.readGitPR)
@@ -353,6 +360,13 @@ func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteSession(w http.ResponseWriter, r *http.Request) {
+	// A project names its orchestrator; closing it would leave the project
+	// pointing at nothing. Archiving one is the second slice's (orchestration .p §5.1).
+	if sess, err := s.cfg.Manager.Get(r.PathValue("id")); err == nil && sess.Role == protocol.RoleOrchestrator {
+		writeErr(w, protocol.Errorf(protocol.CodeInvalidInput,
+			"session %s is the orchestrator of project %s and is not closed in this slice", sess.ID, sess.ProjectID))
+		return
+	}
 	if err := s.cfg.Manager.Remove(r.PathValue("id")); err != nil {
 		writeErr(w, wrapErr(err))
 		return
