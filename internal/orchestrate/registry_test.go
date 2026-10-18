@@ -56,6 +56,11 @@ type fakeSpawner struct {
 	reasons  []string
 	closed   []string
 	failOpen error
+	// What step 6 asks of it: the children built, the turns submitted and
+	// the steering handed over (children_test.go).
+	children  []ChildRequest
+	submitted []string
+	steered   []string
 }
 
 func (f *fakeSpawner) SpawnOrchestrator(p protocol.Project) (protocol.Session, error) {
