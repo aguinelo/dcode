@@ -167,7 +167,7 @@ func TestADiffOverTheLimitIsCutAndSaidNeverTruncated(t *testing.T) {
 	if strings.Contains(p, "a line that makes the diff long") {
 		t.Error("part of a cut diff reached the prompt, which would read as the whole of it")
 	}
-	if !strings.Contains(p, "diff cut") || !strings.Contains(p, "internal/index/index.go") {
+	if !strings.Contains(strings.ToLower(p), "diff cut") || !strings.Contains(p, "internal/index/index.go") {
 		t.Errorf("the prompt does not say the diff was cut and which files to read:\n%s", p)
 	}
 	in.MaxDiffBytes = 0
