@@ -139,6 +139,28 @@ func TestAClosedChildLeavesTheListAfterTheRetentionAndAFailedOneStays(t *testing
 	}
 }
 
+// A step that lands on a child after its state was read and before its own
+// commit does not undo a close or a merge that committed in between: the
+// check that the child is live is made where the commit is. Here a merge
+// lands while Close is closing the session; before, Close wrote closed over
+// merged, and a late failed overwrote closed the same way, which is how a
+// closed child came back to /children as failed incomplete.
+func TestALateStepDoesNotUndoAMergeOrACloseThatLandedFirst(t *testing.T) {
+	p := openWith(t, nil)
+	c := p.one(t, item("index", "internal/index"))
+	p.sp.onClose = func(id string) { p.o.move(id, stateMerged, "", "the merge landed while the session closed") }
+
+	err := p.o.Close(c.ID, "the person closed it")
+	if got := p.o.child(c.ID); got.State != stateMerged {
+		t.Errorf("a close that lost to a merge left the child %s/%s, want merged", got.State, got.Reason)
+	}
+	kinds := strings.Join(kindsIn(t, p.dir, p.o.Project().ID), " ")
+	if strings.Contains(kinds, "child.closed") {
+		t.Errorf("a close that did not happen is in the log: %s", kinds)
+	}
+	wantCode(t, err, protocol.CodeInvalidInput)
+}
+
 // Spec: orchestration .p §8 — at the daemon's start each child that is not
 // terminal is reopened under its own id; one whose turn was open fails with
 // daemon_restart, said in the list and in the log.

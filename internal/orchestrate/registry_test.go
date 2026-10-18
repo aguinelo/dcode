@@ -56,6 +56,9 @@ type fakeSpawner struct {
 	reasons  []string
 	closed   []string
 	failOpen error
+	// onClose runs inside Close, after the session closed and before the
+	// close is committed: what else lands on the child in that window.
+	onClose func(id string)
 	// What step 6 asks of it: the children built, the turns submitted and
 	// the steering handed over (children_test.go).
 	children  []ChildRequest
@@ -99,9 +102,13 @@ func (f *fakeSpawner) Reopen(id, reason string) (protocol.Session, error) {
 
 func (f *fakeSpawner) Close(id string) error {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	f.closed = append(f.closed, id)
-	return f.closeErr
+	err, hook := f.closeErr, f.onClose
+	f.mu.Unlock()
+	if hook != nil {
+		hook(id)
+	}
+	return err
 }
 
 func newRegistry(t *testing.T, dir string, sp Spawner) *Registry {
