@@ -49,6 +49,7 @@ var orchestrationInvariants = map[string]string{
 	"no reinício termina com `daemon_restart`":       "TestAChildIsReopenedAfterARestartAndAnOpenTurnFails",
 	"`delegate` é recusado com `ceiling_reached`":    "TestAtTheCeilingDispatchStopsAndContinueOpensANewWindow",
 	"Fechado sai da lista depois da retenção":        "TestAClosedChildLeavesTheListAfterTheRetentionAndAFailedOneStays",
+	"Merged sai da lista `closed_retention` depois":  "TestAMergedChildLeavesTheListAfterTheRetentionAndAFailedOneStays",
 
 	"volta ao filho sem commit e sem revisão":               "TestADiffOutsideOwnsIsNeverCommittedAndReturnsWithoutAReviewer",
 	"só é aceito depois de `red_test.confirmed`":            "TestTheRedTestMustFailWithoutTheFixBeforeTheFixIsTaken",

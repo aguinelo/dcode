@@ -105,7 +105,7 @@ type Forge interface {
 | `GET /v1/projects` | — | `ListProjectsResponse{projects}` | — |
 | `GET /v1/projects/{id}` | — | `Project` | `project_not_found` |
 | `GET /v1/projects/{id}/orchestrator` | — | a `Session` da orquestradora | `project_not_found` |
-| `GET /v1/sessions/{id}/children` | — | `ListChildrenResponse{children}`: vivos, e fechados dentro da retenção | `session_not_found` |
+| `GET /v1/sessions/{id}/children` | — | `ListChildrenResponse{children}`: vivos e falhos, e fechados ou merged dentro da retenção | `session_not_found` |
 | `GET /v1/sessions/{id}/questions` | — | `ListQuestionsResponse{questions}` | `session_not_found` |
 | `POST /v1/sessions/{id}/questions/{qid}` | `AnswerQuestionRequest{answer, note}` | a `Question` respondida | `question_not_found`, `question_already_answered`, `invalid_input` |
 
@@ -404,9 +404,10 @@ o prefixo (ADR-03). Com um turno em curso, espera ele terminar.
 ## 11. A lista viva
 
 Só do fio: `GET /v1/sessions/{orq}/children` ao abrir, depois `child.*`, `question.*` e
-`main.health` do SSE da orquestradora — nada de texto (D8). Fechado sai
+`main.health` do SSE da orquestradora — nada de texto (D8). Fechado e merged — os terminais — saem
 `orchestrator.closed_retention` depois de `Ended`, pela resposta do daemon, não por relógio do
-cliente; `failed` não sai sozinho. A forma no desktop (`AgentsPanel`, gramática de D41, PR e CI de
+cliente; o histórico continua no log de decisões. `failed` não é terminal e não sai sozinho: fica
+até a pessoa fechá-lo, e então sai como qualquer fechado. A forma no desktop (`AgentsPanel`, gramática de D41, PR e CI de
 D60 e D61) e na TUI (`dcode orchestrate`; `dcode` continua a conversa comum) está nos passos 13 e 14
 da `.i`.
 
@@ -460,6 +461,7 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Turno de filho aberto no reinício termina com `daemon_restart`, dito na lista e no log, e nunca some.
 - Com `Spent` no teto de tokens, `delegate` é recusado com `ceiling_reached` e o porquê é dito.
 - Fechado sai da lista depois da retenção; `failed` não sai sozinho.
+- Merged sai da lista `closed_retention` depois de `Ended`, como o fechado.
 - Diff do filho com caminho fora do `owns` volta ao filho sem commit e sem revisão.
 - Defeito do revisor volta ao mesmo filho em fase `red`, e o conserto só é aceito depois de `red_test.confirmed`.
 - Teste da fase `red` que passa não é aceito como vermelho, e conserto sem a fase `red` confirmada nunca chega ao gate.
