@@ -1115,6 +1115,12 @@ export interface GateResult {
    */
   output_tail?: string;
   output_path?: string;
+  /**
+   * Sandbox is the backend the command ran confined by, and SandboxMode
+   * the boundary it ran under; empty when nothing ran (undeclared).
+   */
+  sandbox?: string;
+  sandbox_mode?: string;
   at: string;
 }
 /**

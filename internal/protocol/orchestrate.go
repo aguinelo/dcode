@@ -128,9 +128,13 @@ type GateResult struct {
 	// Result is green, red, timeout or undeclared.
 	Result string `json:"result"`
 	// OutputTail is the last 4 KiB; OutputPath the whole output on disk.
-	OutputTail string    `json:"output_tail,omitempty"`
-	OutputPath string    `json:"output_path,omitempty"`
-	At         time.Time `json:"at"`
+	OutputTail string `json:"output_tail,omitempty"`
+	OutputPath string `json:"output_path,omitempty"`
+	// Sandbox is the backend the command ran confined by, and SandboxMode
+	// the boundary it ran under; empty when nothing ran (undeclared).
+	Sandbox     string    `json:"sandbox,omitempty"`
+	SandboxMode string    `json:"sandbox_mode,omitempty"`
+	At          time.Time `json:"at"`
 }
 
 // ChildPR is a child's pull request. Number is 0 for a local merge; CI is in

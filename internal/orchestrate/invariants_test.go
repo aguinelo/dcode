@@ -25,6 +25,9 @@ var orchestrationInvariants = map[string]string{
 
 	"worktree descartável no commit exato":  "TestTheGateRunsInAThrowawayTreeWithoutGitEnvironment",
 	"sai sempre, até depois de um pânico":   "TestTheThrowawayWorktreeIsRemovedEvenOnAPanic",
+	"no home é gate vermelho":               "TestTheGateCannotWriteOutsideItsWorktree",
+	"num `TMPDIR` só dele":                  "TestAGateWritesItsTreeAndItsOwnTemporaryDirectory",
+	"Sem sandbox o gate não roda":           "TestWithoutTheSandboxTheGateDoesNotRunAndSaysWhy",
 	"trancada pelo git morto no meio":       "TestALockedHalfMadeGateWorktreeIsRemoved",
 	"devolve o cancelamento, nunca o erro":  "TestAGateStoppedWhileItsWorktreeIsMadeIsTheCancellation",
 	"vai ao log como `claim`":               "TestAChildThatClaimsGreenIsRecordedRedBesideItsClaim",
