@@ -163,6 +163,12 @@ func TestCreatingChildrenLeavesTheOrchestratorIdleWhileTheyRun(t *testing.T) {
 	if err != nil || cs.Role != protocol.RoleChild || cs.ParentID != orq.ID || cs.ProjectID != p.ID || cs.Workspace != kid.Worktree {
 		t.Fatalf("child session = %+v, %v", cs, err)
 	}
+	// The child's conversation is titled by its item's short title, never by
+	// the first line of its task (.p §10).
+	if code, body := route(t, d, http.MethodGet, "/conversations", nil); code != http.StatusOK ||
+		!strings.Contains(string(body), `"id":"`+kid.ID+`"`) || !strings.Contains(string(body), `"title":"docs","named":true`) {
+		t.Errorf("the child's conversation is not titled docs: %d %s", code, body)
+	}
 	close(m.hold)
 	waitUntil(t, "the child's turn did not end", func() bool { return childrenOf(t, d, orq.ID)[0].Reason != "" })
 

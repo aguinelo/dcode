@@ -164,3 +164,23 @@ func TestDelegateSaysChildrenWriteAndWhatOwnsIs(t *testing.T) {
 		}
 	}
 }
+
+// Spec: orchestration .p §10 — a title the harness had to derive is said in
+// delegate's answer: the one the child carries, so the orchestrator names the
+// child as the person reads it.
+func TestDelegateSaysWhenTheHarnessShortenedATitle(t *testing.T) {
+	f := &fakeConductor{}
+	in := json.RawMessage(`{"items":[{"title":"Crie no pacote listas a função Unicos que remove duplicados","task":"t","owns":["a"],"why":"w"}]}`)
+	res, err := DelegateTool{Conductor: f}.Execute(context.Background(), in, nil)
+	if err != nil || res.IsError || !strings.Contains(res.Output, `item 1 is titled "index"`) ||
+		!strings.Contains(res.Output, "a short topic title") {
+		t.Fatalf("delegate = %+v, %v", res, err)
+	}
+	in = json.RawMessage(`{"items":[{"title":"index","task":"t","owns":["a"],"why":"w"}]}`)
+	if res, _ = (DelegateTool{Conductor: f}).Execute(context.Background(), in, nil); strings.Contains(res.Output, "is titled") {
+		t.Errorf("a title that fits is said as shortened:\n%s", res.Output)
+	}
+	if s := string(DelegateTool{}.Schema()); !strings.Contains(s, `A short topic title of at most 40 characters, such as \"listas: Unicos\"`) {
+		t.Errorf("the schema does not ask for a short topic title: %s", s)
+	}
+}
