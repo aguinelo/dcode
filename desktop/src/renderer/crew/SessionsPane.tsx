@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { groupCount, sessionGroups, stateWord } from '../../state/crew';
 import { paneView, sealWord } from '../../state/pane';
+import { crewLine } from '../../state/orchestrated';
 import { lastEventText, searchSide } from '../../state/search';
 import type { SessionsState } from '../../state/sessions';
 import { basename, type ProjectView, type Row } from '../../state/sidebar';
@@ -10,21 +11,38 @@ import { MascotGlyph } from '../Mascot';
 import { StartForm } from '../StartForm';
 import type { Outcome, StartOptions } from '../window';
 
-function SessionItem({ row, sessions, now, on, depth, onPick }: { row: Row; sessions: SessionsState; now: number; on: boolean; depth: number; onPick: (r: Row) => void }) {
+function SessionItem({
+  row,
+  sessions,
+  now,
+  on,
+  crew,
+  hit,
+  onPick,
+}: {
+  row: Row;
+  sessions: SessionsState;
+  now: number;
+  on: boolean;
+  /** The children folded into this row when it is an orchestrator (D69). */
+  crew: readonly Row[] | undefined;
+  /** The short title of the child the search found it by (D69). */
+  hit: string | undefined;
+  onPick: (r: Row) => void;
+}) {
   const v = paneView(row, sessions.byId[row.id], now);
   const side = searchSide(row, now);
   const state = sessions.byId[row.id]?.state ?? row.state;
   const seal = state === 'running' || state === 'blocked' ? null : sealWord(row.verification);
   const last = lastEventText(row, now);
-  // A child of an orchestrator under its parent (D66): drawn in by how deep it is.
+  // One row per orchestrated project (D69): its agents counted by phase, from its own list when the window has it.
+  const line = row.role === 'orchestrator' ? crewLine(sessions.byId[row.id]?.agents.children, crew ?? []) : null;
   return (
     <button
       type="button"
-      className={`crew-item${depth > 0 ? ' crew-child' : ''}${on ? ' on' : ''}`}
+      className={`crew-item${on ? ' on' : ''}`}
       data-session-id={row.id}
       data-state={row.state}
-      data-depth={depth > 0 ? depth : undefined}
-      style={depth > 0 ? { paddingLeft: 10 + depth * 14 } : undefined}
       aria-current={on ? 'true' : undefined}
       onClick={() => onPick(row)}
     >
@@ -34,10 +52,17 @@ function SessionItem({ row, sessions, now, on, depth, onPick }: { row: Row; sess
         <span className={`crew-item-side tone-${side.tone}`}>{side.text}</span>
       </span>
       <span className="crew-item-title">{row.title}</span>
-      <span className="crew-item-meta">
-        {seal ? <span className={`tone-${seal.tone}`}>{seal.text}</span> : <span>{stateWord(state)}</span>}
-        {last && <span className="crew-item-last">{last}</span>}
-      </span>
+      {hit && <span className="crew-item-hit">↳ {hit}</span>}
+      {line ? (
+        <span className={`crew-item-meta tone-${line.tone}`} data-crew="true">
+          {line.text}
+        </span>
+      ) : (
+        <span className="crew-item-meta">
+          {seal ? <span className={`tone-${seal.tone}`}>{seal.text}</span> : <span>{stateWord(state)}</span>}
+          {last && <span className="crew-item-last">{last}</span>}
+        </span>
+      )}
     </button>
   );
 }
@@ -85,6 +110,7 @@ export function SessionsPane({
   const [orchestrating, setOrchestrating] = useState(false);
   const groups = useMemo(() => sessionGroups(projects, query, now), [projects, query, now]);
   const total = projects.reduce((n, p) => n + p.rows.length, 0);
+  const crews = useMemo(() => Object.assign({}, ...projects.map((p) => p.crew)) as Record<string, readonly Row[]>, [projects]);
   const known = projects.filter((p) => p.id);
   const start = (ws: string | null, options?: StartOptions) => {
     setMenu(false);
@@ -201,7 +227,9 @@ export function SessionsPane({
                 </h3>
               )}
               {open &&
-                g.rows.map((r) => <SessionItem key={r.id} row={r} sessions={sessions} now={now} on={r.id === focusId} depth={g.depth[r.id] ?? 0} onPick={onPick} />)}
+                g.rows.map((r) => (
+                  <SessionItem key={r.id} row={r} sessions={sessions} now={now} on={r.id === focusId} crew={crews[r.id]} hit={g.hits[r.id]} onPick={onPick} />
+                ))}
             </div>
           );
         })}

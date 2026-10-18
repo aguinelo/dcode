@@ -172,9 +172,13 @@
 .crew-item:hover {
   background: var(--dc-hover);
 }
-/* A child of an orchestrator, drawn in under its parent (D66). */
-.crew-item.crew-child .crew-item-project::before {
-  content: '↳ ';
+/* The child of an orchestrator the search found its row by (D69). */
+.crew-item-hit {
+  font-size: 11px;
+  color: var(--dc-dim);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .crew-item.on {
   background: var(--dc-sel);
@@ -224,6 +228,13 @@
   color: var(--dc-faint);
   white-space: nowrap;
   overflow: hidden;
+}
+/* An orchestrator's agents by phase (D69): it wraps rather than lose a phase, and waiting is said in the waiting tone. */
+.crew-item-meta[data-crew] {
+  white-space: normal;
+}
+.crew-item-meta[data-crew].tone-warn {
+  color: var(--dc-warn);
 }
 .crew-item-last {
   overflow: hidden;

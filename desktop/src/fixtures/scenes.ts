@@ -10,6 +10,7 @@ import { emptyLoops } from '../state/loop';
 import type { Look } from '../renderer/TopBar';
 import { loopRecording, recordedLoops } from './loop-recording';
 import { emptyOrchestraRecording, orchestraRecording } from './orchestra-recording';
+import { orchestrasRecording } from './orchestras-recording';
 import { planRecording } from './plan-recording';
 import { questionsRecording } from './questions-recording';
 import type { Recording } from './record';
@@ -44,4 +45,6 @@ export const referenceStates: Readonly<Record<string, Scene>> = {
   'crew-perguntas': crew(questionsRecording),
   // An orchestrator's plan as its main view (D68): each step with its agent's phase, and a merge card below.
   'crew-orquestra-plano': crew(planRecording),
+  // Two orchestrated projects and an ordinary conversation (D69): one row per orchestrator, no child and no reviewer listed.
+  'crew-orquestras': crew(orchestrasRecording),
 };

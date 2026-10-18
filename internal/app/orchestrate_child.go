@@ -78,6 +78,15 @@ func (d *Daemon) SpawnChild(req orchestrate.ChildRequest) (protocol.Session, err
 		return protocol.Session{}, protocol.Errorf(protocol.CodeOrchestratorUnavailable,
 			"child %s is not being recorded, so it could not survive a restart: %v", sess.ID, err)
 	}
+	// The child's conversation is named by its short title (.p §10), never by
+	// the first line of its task, which no row of a list can hold.
+	if req.Title != "" {
+		if err := sess.Rename(req.Title); err != nil {
+			_ = d.manager.Remove(sess.ID)
+			return protocol.Session{}, protocol.Errorf(protocol.CodeInternal,
+				"child %s could not be named %q: %v", sess.ID, req.Title, err)
+		}
+	}
 	d.watch(sess)
 	return sess.Describe(), nil
 }

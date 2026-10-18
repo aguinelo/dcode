@@ -7,6 +7,7 @@
 
 import type { Conversation } from '../protocol/generated';
 import { age, firstLine, since } from './format';
+import { foldCrew } from './orchestrated';
 import type { Prefs } from './prefs';
 import { openPathOf } from './questions';
 import type { SessionView } from './session';
@@ -58,8 +59,9 @@ export interface Row {
   /** The last event that moved it along. */
   lastEvent?: string;
   /**
-   * Its place under an orchestrator, as its session.created said (D66): the
-   * session that dispatched it, the project, and its role. Absent for a
+   * Its place under an orchestrator, as its session.created said: the session
+   * that dispatched it, the project, and its role, by which a child is folded
+   * into its orchestrator and a reviewer left out (D69). Absent for a
    * conversation a person opened.
    */
   parentId?: string;
@@ -170,7 +172,10 @@ export interface ProjectView {
   /** The workspace path. Labels, order and collapsing are keyed by it. */
   id: string;
   label: string;
+  /** Orchestrators, ordinary conversations, and a child no orchestrator is listed for (D69). */
   rows: Row[];
+  /** The children folded into each orchestrator of `rows`, by its id; reviewers are in no list (D69). */
+  crew: Readonly<Record<string, readonly Row[]>>;
   collapsed: boolean;
   /** Shown only while collapsed: who is waiting, else who is running, else how many. */
   meta: Side | null;
@@ -201,41 +206,15 @@ function projectMeta(rows: Row[], collapsed: boolean): Side | null {
 }
 
 /**
- * The folder each row is listed under (D66). A child of an orchestrator works
- * in a worktree of its own, but belongs to the project: it goes where the
- * session that dispatched it goes, up the parents; with its parent not
- * listed, where the orchestrator of its project_id is; with neither, under
- * its own folder — never dropped.
- */
-function projectFolders(rows: readonly Row[]): Map<string, string> {
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  const orchestrators = new Map<string, string>();
-  for (const r of rows) if (r.role === 'orchestrator' && r.projectId && !r.parentId) orchestrators.set(r.projectId, r.workspace);
-  const out = new Map<string, string>();
-  for (const r of rows) {
-    if (!r.parentId) continue;
-    let at = r;
-    const seen = new Set<string>([r.id]);
-    for (let up = byId.get(at.parentId ?? ''); up && !seen.has(up.id); up = byId.get(at.parentId ?? '')) {
-      seen.add(up.id);
-      at = up;
-    }
-    const ws = at !== r && !at.parentId ? at.workspace : orchestrators.get(r.projectId ?? '');
-    if (ws) out.set(r.id, ws);
-  }
-  return out;
-}
-
-/**
  * The projects in the sidebar: the person's order first, then the rest by most
  * recent activity; within a project, the newest first — by start, so rows do
  * not reshuffle under the pointer while sessions work.
  */
 export function projectsOf(rows: readonly Row[], prefs: Prefs): ProjectView[] {
   const groups = new Map<string, Row[]>();
-  const where = projectFolders(rows);
-  for (const r of rows) {
-    const ws = where.get(r.id) ?? r.workspace;
+  const { top, crew } = foldCrew(rows);
+  for (const r of top) {
+    const ws = r.workspace;
     const list = groups.get(ws);
     if (list) list.push(r);
     else groups.set(ws, [r]);
@@ -248,7 +227,9 @@ export function projectsOf(rows: readonly Row[], prefs: Prefs): ProjectView[] {
     const sorted = (groups.get(id) ?? []).slice().sort((a, b) => b.started - a.started);
     const collapsed = !!prefs.collapsed[id];
     const label = prefs.labels[id]?.trim() || (id ? basename(id) : '(sem projeto)');
-    return { id, label, rows: sorted, collapsed, meta: projectMeta(sorted, collapsed) };
+    const folded: Record<string, Row[]> = {};
+    for (const r of sorted) if (crew[r.id]) folded[r.id] = crew[r.id]!;
+    return { id, label, rows: sorted, crew: folded, collapsed, meta: projectMeta(sorted, collapsed) };
   });
 }
 
