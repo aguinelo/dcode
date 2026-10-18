@@ -120,6 +120,10 @@ type Forge interface {
 	Merge(ctx context.Context, c protocol.Child, measured string) (string, error)
 	// MainHealth is one reading of main's health at commit.
 	MainHealth(ctx context.Context, commit string) (protocol.MainHealth, error)
+	// MainTip is main's tip as the forge has it now: origin's after a fetch
+	// on github, the local branch on local. A fetch that fails is an error,
+	// never the local main in its place.
+	MainTip(ctx context.Context) (string, error)
 }
 
 // ForgeSetup is what NewForge needs. Integration and Gate are the local
@@ -181,6 +185,10 @@ type githubForge struct {
 }
 
 func (g *githubForge) Name() string { return ForgeGitHub }
+
+func (g *githubForge) MainTip(ctx context.Context) (string, error) {
+	return forgeGit(ctx, g.root, "rev-parse", "--verify", "refs/heads/"+g.main)
+}
 
 func (g *githubForge) Tips(ctx context.Context, branch string) (string, string, error) {
 	if _, err := forgeGit(ctx, g.root, "fetch", "-q", "origin", g.main, branch); err != nil {

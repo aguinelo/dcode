@@ -38,6 +38,11 @@ func newLocal(s ForgeSetup) (Forge, error) {
 
 func (l *localForge) Name() string { return ForgeLocal }
 
+// MainTip is the local main: there is no other.
+func (l *localForge) MainTip(ctx context.Context) (string, error) {
+	return forgeGit(ctx, l.root, "rev-parse", "--verify", "refs/heads/"+l.main)
+}
+
 func (l *localForge) Tips(ctx context.Context, branch string) (string, string, error) {
 	main, err := forgeGit(ctx, l.root, "rev-parse", "--verify", "refs/heads/"+l.main)
 	if err != nil {
