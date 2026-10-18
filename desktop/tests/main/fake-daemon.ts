@@ -29,6 +29,14 @@ export interface FakeOptions {
   refuseConversations?: boolean;
   /** The runs the stream of loops opens with; without it, the route is not there, as on a daemon before /loop. */
   loops?: unknown[];
+  /** The project routes (orchestration .p §5.1): each answer as given; without it, they are not there. */
+  projects?: { open: Reply; orchestrator?: Reply; children?: Reply; questions?: Reply; answer?: Reply };
+}
+
+/** One answer of a route: a status and a JSON body. */
+export interface Reply {
+  status: number;
+  body: unknown;
 }
 
 export interface FakeDaemon {
@@ -100,6 +108,13 @@ export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<F
       const ws = (body as { workspace?: string } | undefined)?.workspace ?? '';
       return json(res, 201, { id: sid, state: 'idle', workspace: ws, model: 'fake', sandbox_mode: 'workspace-write', mode: 'assist', created_at: '2026-10-01T10:00:00Z', last_seq: 1, done_criteria: 0 });
     }
+    const p = o.projects;
+    const said = (r: Reply | undefined) => (r ? json(res, r.status, r.body) : json(res, 404, { code: 'not_found', message: 'not under test' }));
+    if (p && method === 'POST' && u.pathname === '/v1/projects') return said(p.open);
+    if (p && method === 'GET' && /^\/v1\/projects\/[^/]+\/orchestrator$/.test(u.pathname)) return said(p.orchestrator);
+    if (p && method === 'GET' && rest === '/children') return said(p.children);
+    if (p && method === 'GET' && rest === '/questions') return said(p.questions);
+    if (p && method === 'POST' && rest.startsWith('/questions/')) return said(p.answer);
     if (method === 'GET' && u.pathname === '/v1/models' && o.models !== undefined) return json(res, 200, o.models);
     if (method === 'GET' && u.pathname === '/v1/conversations') {
       if (o.refuseConversations) return json(res, 500, { code: 'internal', message: 'the records could not be read' });
