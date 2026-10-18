@@ -161,14 +161,16 @@ func report(planned []*pending, echo bool) Result {
 
 	var lines []string
 	var diffs []string
-	totalAdded, totalRemoved := 0, 0
+	totalAdded, totalRemoved, dropped := 0, 0, 0
 	for _, p := range planned {
 		added, removed := lineDelta(p.before, p.after)
 		totalAdded += added
 		totalRemoved += removed
 		lines = append(lines, fmt.Sprintf("%s (%d replacement(s), +%d −%d)",
 			p.shown, p.changes, added, removed))
-		diffs = append(diffs, UnifiedDiff(p.before, p.after, p.shown))
+		d, n := unifiedDiff(p.before, p.after, p.shown)
+		diffs = append(diffs, d)
+		dropped += n
 	}
 
 	head := "edited " + lines[0]
@@ -176,21 +178,26 @@ func report(planned []*pending, echo bool) Result {
 		head = fmt.Sprintf("edited %d files:\n  %s", len(lines), strings.Join(lines, "\n  "))
 	}
 	diff := strings.Join(diffs, "\n")
+	res := Result{}
 	if echo {
 		// The diff already declares its own truncation, which is what stops
 		// the model concluding about a part it never saw with the confidence
-		// of having seen all of it.
+		// of having seen all of it. Echoed, it is the output, so its cut is
+		// the Result's cut too — counted in diff lines, the unit of the cap.
 		head += "\n\n" + diff
+		if dropped > 0 {
+			head += fmt.Sprintf("\n… %d more diff lines not shown.", dropped)
+		}
+		res.Truncated, res.Remaining = dropped > 0, dropped
 	}
-	return Result{
-		Output: head,
-		Meta: Meta{
-			Files: len(planned), Added: totalAdded, Removed: totalRemoved,
-			// Meta.Diff goes to the client in every mode. What the key
-			// controls is only whether the model also pays for it.
-			Diff: diff,
-		},
+	res.Output = head
+	res.Meta = Meta{
+		Files: len(planned), Added: totalAdded, Removed: totalRemoved,
+		// Meta.Diff goes to the client in every mode. What the key
+		// controls is only whether the model also pays for it.
+		Diff: diff,
 	}
+	return res
 }
 
 // readFileFor reads a file for editing. Separate so plan reads exactly once per

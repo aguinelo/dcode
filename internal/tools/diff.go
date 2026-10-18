@@ -27,13 +27,25 @@ const DiffMaxLines = 400
 // Empty when nothing changed: a diff with no hunks is noise, and the caller
 // uses the empty string to mean "nothing to show".
 func UnifiedDiff(before, after, path string) string {
+	d, _ := unifiedDiff(before, after, path)
+	return d
+}
+
+// unifiedDiff is UnifiedDiff that also says how many diff lines the cap left
+// out, for the caller that puts the diff in front of the model and so has to
+// declare the cut in its Result (RN-5).
+func unifiedDiff(before, after, path string) (string, int) {
 	if before == after {
-		return ""
+		return "", 0
 	}
 	a, b := splitLines(before), splitLines(after)
 	hunks := buildHunks(a, b, DiffContext)
 	if len(hunks) == 0 {
-		return ""
+		return "", 0
+	}
+	total := 0
+	for _, h := range hunks {
+		total += 1 + len(h.lines)
 	}
 
 	var out strings.Builder
@@ -64,10 +76,15 @@ func UnifiedDiff(before, after, path string) string {
 			written++
 		}
 	}
+	dropped := 0
 	if truncated {
+		dropped = total - written
+		// The marker stays as it was: it rides on Meta.Diff too, and the
+		// desktop client parses it. The count is said by the caller that
+		// echoes the diff to the model.
 		fmt.Fprintf(&out, "⋯ diff truncated at %d lines\n", DiffMaxLines)
 	}
-	return strings.TrimRight(out.String(), "\n")
+	return strings.TrimRight(out.String(), "\n"), dropped
 }
 
 func splitLines(s string) []string {

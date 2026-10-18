@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	ce "github.com/aguinelo/dcode/internal/contextengine"
 	"github.com/aguinelo/dcode/internal/policy"
@@ -66,8 +67,11 @@ type DelegateResult struct {
 	// read" would say the child never looked when in fact it looked, decided,
 	// and was stopped.
 	Unwritten []string
-	// Truncated reports that the conclusion was cut.
+	// Truncated reports that the conclusion was cut, and Remaining how many
+	// bytes the cut left out: "cut" alone does not say whether to ask again
+	// narrower or to read on.
 	Truncated bool
+	Remaining int
 }
 
 // String renders the result for the parent's history.
@@ -75,7 +79,7 @@ func (r DelegateResult) String() string {
 	var b strings.Builder
 	b.WriteString(r.Conclusion)
 	if r.Truncated {
-		b.WriteString("\n\n… report truncated.")
+		fmt.Fprintf(&b, "\n\n… report truncated: %d more bytes not returned.", r.Remaining)
 	}
 	if len(r.Read) > 0 {
 		fmt.Fprintf(&b, "\n\nlooked at: %s", strings.Join(r.Read, ", "))
@@ -182,6 +186,12 @@ func (e *Engine) Delegate(ctx context.Context, task, path string, lim DelegateLi
 		Unwritten:  uniqueSortedStrings(approver.unwritten),
 	}
 	if n := lim.MaxResultBytes; n > 0 && len(res.Conclusion) > n {
+		// On a whole character: half a rune at the end of a report is a
+		// byte the model reads as text.
+		for n > 0 && !utf8.RuneStart(res.Conclusion[n]) {
+			n--
+		}
+		res.Remaining = len(res.Conclusion) - n
 		res.Conclusion = res.Conclusion[:n]
 		res.Truncated = true
 	}
@@ -283,8 +293,9 @@ var readOnlyTools = map[string]bool{
 // one alone for that reason — so nothing can be proven about what it would
 // touch, and containment narrowed to owned paths would be arguing with a
 // process rather than with a declaration. Whether a writing child may run a
-// command is an open question in the research spec; excluding it is the safe
-// direction to be wrong in until that question has an answer.
+// command was a question in the research spec, and it is answered: no
+// (delegated-writing .r §6, fixed as an invariant in the .p §8). Reopening it
+// takes a case and a way to prove what a command reaches, not a measurement.
 var writingTools = map[string]bool{
 	"write": true,
 	"edit":  true,
@@ -359,13 +370,13 @@ func uniqueSortedStrings(in []string) []string {
 // The adapter lives here rather than in the tools package because everything it
 // decides — read-only mode, the reduced registry, the denying approver, the
 // budget debit — is a property of what a turn is, and turns belong to the loop.
-func (e *Engine) Explore(ctx context.Context, task, path string, owns []string) (string, []string, []string, []string, bool, error) {
+func (e *Engine) Explore(ctx context.Context, task, path string, owns []string) (string, []string, []string, []string, int, error) {
 	res, err := e.Delegate(ctx, task, path, DelegateLimits{
 		MaxIterations:  e.cfg.DelegateMaxIterations,
 		MaxResultBytes: e.cfg.DelegateMaxResultBytes,
 	}, owns)
 	if err != nil {
-		return "", nil, nil, nil, false, err
+		return "", nil, nil, nil, 0, err
 	}
-	return res.Conclusion, res.Read, res.Wrote, res.Unread, res.Truncated, nil
+	return res.Conclusion, res.Read, res.Wrote, res.Unread, res.Remaining, nil
 }

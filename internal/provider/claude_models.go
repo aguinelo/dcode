@@ -40,6 +40,19 @@ var claudeModels = []claudeModel{
 	{"claude-3-haiku", 200_000, 4_096},
 }
 
+// claudeAliases are undated names that match no row by prefix, each mapped to
+// the row of the model it names. They are matched exactly, never as a prefix:
+// claude-sonnet-4 as a prefix would hand its ceiling to every 4.x Sonnet the
+// table has not heard of, and too large is a request the API refuses.
+//
+// claude-sonnet-4 and claude-opus-4 are claude-sonnet-4-20250514 and
+// claude-opus-4-20250514. Without these, both fell to claudeDefaultOutput —
+// half of what Sonnet 4 allows.
+var claudeAliases = map[string]string{
+	"claude-sonnet-4": "claude-sonnet-4-0",
+	"claude-opus-4":   "claude-opus-4-0",
+}
+
 // claudeDefaultOutput is the ceiling for a claude-* model the table does not
 // name: the smallest any current Opus allows, which every model released
 // since claude-opus-4 accepts.
@@ -50,8 +63,12 @@ const claudeDefaultOutput = 32_000
 // refuses in the middle of a turn, which is the worse of the two.
 const claudeDefaultWindow = 200_000
 
-// lookupClaude finds the row for model by longest prefix.
+// lookupClaude finds the row for model by longest prefix, after resolving an
+// exact alias to the model it names.
 func lookupClaude(model string) (claudeModel, bool) {
+	if target, ok := claudeAliases[model]; ok {
+		model = target
+	}
 	var best claudeModel
 	found := false
 	for _, m := range claudeModels {

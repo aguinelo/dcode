@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/aguinelo/dcode/internal/policy"
@@ -23,7 +24,10 @@ type Delegator interface {
 	// when owns is empty, and otherwise the PARENT's mode, intersected with
 	// the owned paths. The caller never chooses either, which is why owns is a
 	// request rather than a grant.
-	Explore(ctx context.Context, task, path string, owns []string) (conclusion string, read, wrote, unread []string, truncated bool, err error)
+	//
+	// dropped is how many bytes of the conclusion the report cap left out;
+	// zero means the conclusion is whole.
+	Explore(ctx context.Context, task, path string, owns []string) (conclusion string, read, wrote, unread []string, dropped int, err error)
 }
 
 // Explore delegates reading, so the cost of it does not come back.
@@ -140,7 +144,7 @@ func (e Explore) Execute(ctx context.Context, input json.RawMessage, s *State) (
 			"no delegator is configured").Result(), nil
 	}
 
-	conclusion, read, wrote, unread, truncated, err := e.Delegator.Explore(ctx, in.Task, in.Path, in.Owns)
+	conclusion, read, wrote, unread, dropped, err := e.Delegator.Explore(ctx, in.Task, in.Path, in.Owns)
 	if err != nil {
 		// Named, never summarised away. With several children in flight, one
 		// that did not answer has to be identifiable — an incomplete result
@@ -152,8 +156,8 @@ func (e Explore) Execute(ctx context.Context, input json.RawMessage, s *State) (
 
 	var b strings.Builder
 	b.WriteString(conclusion)
-	if truncated {
-		b.WriteString("\n\n… report truncated.")
+	if dropped > 0 {
+		fmt.Fprintf(&b, "\n\n… report truncated: %d more bytes not returned.", dropped)
 	}
 	// The paths always travel with the conclusion. They do not prove the child
 	// understood; they prove it looked, which turns "trust me" into something
@@ -174,7 +178,8 @@ func (e Explore) Execute(ctx context.Context, input json.RawMessage, s *State) (
 
 	return Result{
 		Output:    b.String(),
-		Truncated: truncated,
+		Truncated: dropped > 0,
+		Remaining: dropped,
 		Meta:      Meta{Files: len(read)},
 	}, nil
 }

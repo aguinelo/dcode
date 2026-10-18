@@ -182,7 +182,8 @@ type Layer struct {
 }
 
 // Resolved é o resultado da cadeia. Os valores são lidos pelos acessores, que
-// convertem e devolvem o default quando a chave falta ou não converte.
+// convertem e devolvem o default quando a chave falta. Valor que não converte
+// também devolve o default, e fica registrado: Err o diz depois da leitura.
 type Resolved struct {
     Warnings []string // tentativas de sobrescrever chave travada (RN-9)
     // campos não exportados
@@ -190,9 +191,10 @@ type Resolved struct {
 
 func (r Resolved) Get(key string) (Value, bool)
 func (r Resolved) String(key, def string) string
-func (r Resolved) Bool(key string, def bool) bool
-func (r Resolved) Int(key string, def int) int
+func (r Resolved) Bool(key string, def bool) bool // 1/true/yes/on, 0/false/no/off
+func (r Resolved) Int(key string, def int) int    // o valor inteiro, strconv.Atoi
 func (r Resolved) Keys() []string
+func (r Resolved) Err() error // chave, valor e camada de cada valor que não converteu
 
 // Resolve aplica a cadeia da RN-7. PURA sobre camadas já carregadas.
 func Resolve(layers []Layer) Resolved
@@ -264,6 +266,7 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 - Comando de projeto vence comando de usuário de mesmo nome, com registro da colisão.
 - Um daemon resolve a cadeia no workspace de cada sessão, o arquivo do projeto incluso, e não no workspace em que subiu — para a sessão, para a medição dos critérios e para a lista de specs.
 - Configuração de projeto que não se lê recusa a sessão dizendo o que está errado, em vez de abri-la com a configuração do daemon.
+- Valor que não converte para o tipo da chave — `allow_network = "talvez"`, `12abc` num inteiro — recusa a configuração nomeando chave, valor e camada, em vez de valer como o padrão.
 
 
 ## Contratos comportamentais
@@ -288,3 +291,4 @@ Comando de projeto vence comando de usuário de mesmo nome. Colisão é registra
 - [202609302227 — Cada sessão lê a configuração do seu workspace](changelog/202609302227-cada-sessao-le-a-configuracao-do-seu-workspace.md)
 - [202610162300 — Toda chave lida está no esquema](changelog/202610162300-toda-chave-lida-esta-no-esquema.md)
 - [202610180100 — A spec segue o código](changelog/202610180100-a-spec-segue-o-codigo.md)
+- [202610180300 — Valor que não converte é dito, não trocado pelo padrão](changelog/202610180300-valor-que-nao-converte-e-dito.md)

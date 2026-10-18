@@ -333,19 +333,20 @@ Os limiares **não** desceram para encontrar o resultado.
 - `DoctrineOverlay` tem campo para `Practices` e **continua sem** campo para `Safety`. — `behavior-definition §8`.
 - `practices.md` substitui o texto embutido; não há variante que acrescenta. — `behavior-definition §8`.
 - `SectionOrigins.Practices` é `replaced` quando houve overlay e `builtin` quando não. — `behavior-definition §8`.
-- `DoctrineAudit` imprime a linha de práticas junto das outras quatro. — **sem reivindicação**: o código imprime a linha (`internal/app/app.go`), mas `TestAuditNamesAllFourSectionsAndTheirOrigin` não confere `Practices`.
+- `DoctrineAudit` imprime a linha de práticas junto das outras quatro. — `behavior-definition §8`.
 - `Build` continua pura com a seção de práticas: mesma doutrina, prefixo byte-idêntico. — `behavior-definition §8`.
 - `Probe` não executa nenhum portão que encontra. — `behavior-definition §8`.
 - `Probe` lê apenas `package.json` e `Makefile`; nenhuma outra fonte vira `Gate`. — `behavior-definition §8`, pela metade: a linha de lá diz as duas fontes; que nenhuma outra vire portão não tem asserção própria.
-- `Probe` num diretório sem nenhuma das duas devolve lista vazia, não erro. — **sem reivindicação**; `TestNothingDeclaredIsNoGates` (`internal/workspace`) afirma e não é reivindicado.
-- `Probe` com `package.json` ou `Makefile` presente e ilegível devolve o arquivo e o motivo, e a sessão avisa ao abrir. — **sem reivindicação**; `TestAMalformedPackageJSONIsUnreadableNotEmpty`, `TestAMakefileThatCannotBeScannedIsUnreadable` e `TestAnUnreadablePackageJSONIsSaid` afirmam e não são reivindicados.
+- `Probe` num diretório sem nenhuma das duas devolve lista vazia, não erro. — `behavior-definition §8`.
+- `Probe` com `package.json` ou `Makefile` presente e ilegível devolve o arquivo e o motivo, e a sessão avisa ao abrir. — `behavior-definition §8`, em três linhas: uma por manifesto e uma para o aviso.
 - `Makefile` com alvo começando por `.` não vira `Gate`. — `behavior-definition §8`.
 - O bloco de portões declara que nada ali afirma que eles passam. — `behavior-definition §8`.
 - Workspace sem portão declarado não renderiza bloco nenhum. — `behavior-definition §8`.
 - `Workspace` nulo renderiza nada, e nada no prefixo afirma que o projeto não declara portões. — `behavior-definition §8`.
 
-As três sem reivindicação são lacuna da `behavior-definition §8`, onde o código
-foi entregue, e é lá que fecham.
+As três que estavam sem reivindicação fecharam na `behavior-definition §8`,
+onde o código foi entregue
+(`../behavior-definition/changelog/202610180200-as-invariantes-sem-dono-ganham-teste.md`).
 
 A última é a lição do F-2 aplicada de novo: "não sondei" e "sondei e não há" não
 podem ler igual.

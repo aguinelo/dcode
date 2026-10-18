@@ -66,8 +66,11 @@ Mantém os **últimos** `max` bytes. O resumo de uma suíte, a contagem de falha
 a última asserção estão no fim; o cabeçalho é o que se pode perder.
 
 Corta em fronteira de linha quando existe uma dentro dos últimos `max` bytes, e
-no byte quando não existe — uma linha de 8000 caracteres é saída de máquina, e
-preservar meia linha dela é melhor do que devolver nada.
+no primeiro caractere inteiro quando não existe — uma linha de 8000 caracteres
+é saída de máquina, e preservar meia linha dela é melhor do que devolver nada;
+meio `é` não é: seria UTF-8 inválido entregue ao modelo. A busca anda para a
+frente (`utf8.RuneStart`), nunca para trás, para o teto valer; perde no máximo
+três bytes.
 
 **Truncado diz que foi truncado.** O `tail` não acrescenta marca nenhuma ao
 texto: devolve os bytes e o `Output.Truncated`. A frase é posta por
@@ -127,7 +130,8 @@ no contexto por este caminho. Ela é dita **uma vez, no bloco**, e não por saí
 - Um critério indisponível não tem saída guardada: não houve o que imprimir.
 - A saída é cortada em `MaxCriterionOutput` e diz que foi cortada.
 - O corte preserva o **fim**, nunca o começo.
-- O corte cai em fronteira de linha quando há uma; no byte quando não há.
+- O corte cai em fronteira de linha quando há uma; num caractere inteiro quando não há.
+- Sem fronteira de linha, o corte nunca parte um caractere de vários bytes: a saída cortada de um texto UTF-8 válido é UTF-8 válido.
 - O teto é por critério, e um conjunto com vários vermelhos entrega vários blocos.
 - `Progressed` não lê saída: o progresso continua sendo sobre nomes.
 - Critério que não imprimiu nada **nomeia o seu comando**, e diz que não imprimiu.
@@ -253,3 +257,4 @@ existe para que a etapa 3 tenha um "antes" que valha alguma coisa.
 - [202608301600 — o instrumento que faltava](changelog/202608301600-o-instrumento.md)
 - [202608310100 — o critério que não dizia o que era](changelog/202608310100-o-criterio-silencioso.md)
 - [202610172315 — a spec segue o código](changelog/202610172315-a-spec-segue-o-codigo.md)
+- [202610180310 — o corte não parte um caractere](changelog/202610180310-o-corte-nao-parte-um-caractere.md)
