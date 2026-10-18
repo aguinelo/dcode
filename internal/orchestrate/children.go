@@ -188,14 +188,15 @@ func (o *Orchestrator) fail(id string, err error) protocol.Child {
 	return o.move(id, stateFailed, protocol.StopError, err.Error())
 }
 
-// Children are the children /children answers: every one but a closed one
-// whose retention has passed. A failed one stays until someone closes it.
+// Children are the children /children answers: every one but a finished one
+// — closed or merged — whose retention has passed since it ended. A failed
+// one is not finished: it stays until someone closes it.
 func (o *Orchestrator) Children() []protocol.Child {
 	st := o.snapshot()
 	now := o.reg.now()
 	out := make([]protocol.Child, 0, len(st.Children))
 	for _, c := range st.Children {
-		if c.State == stateClosed && c.Ended != nil && now.Sub(*c.Ended) >= o.reg.retention {
+		if terminal(c.State) && c.Ended != nil && now.Sub(*c.Ended) >= o.reg.retention {
 			continue
 		}
 		out = append(out, c)
