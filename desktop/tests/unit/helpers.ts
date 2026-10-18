@@ -54,5 +54,5 @@ export function quietPr(): PrApi {
 /** A main process with no project to tell of, and none asked about (D66). */
 export function quietOrchestrate(): OrchestrateApi {
   const no = () => Promise.resolve({ ok: false as const, refusal: { code: 'internal', message: 'not under test' } });
-  return { openProject: no, orchestrator: no, children: no, questions: no, answer: no };
+  return { openProject: no, orchestrator: no, children: no, questions: no, answer: no, answerAll: no };
 }

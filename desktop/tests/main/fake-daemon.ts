@@ -30,7 +30,7 @@ export interface FakeOptions {
   /** The runs the stream of loops opens with; without it, the route is not there, as on a daemon before /loop. */
   loops?: unknown[];
   /** The project routes (orchestration .p §5.1): each answer as given; without it, they are not there. */
-  projects?: { open: Reply; orchestrator?: Reply; children?: Reply; questions?: Reply; answer?: Reply };
+  projects?: { open: Reply; orchestrator?: Reply; children?: Reply; questions?: Reply; answer?: Reply; answers?: Reply };
 }
 
 /** One answer of a route: a status and a JSON body. */
@@ -114,6 +114,7 @@ export async function fakeDaemon(socket: string, o: FakeOptions = {}): Promise<F
     if (p && method === 'GET' && /^\/v1\/projects\/[^/]+\/orchestrator$/.test(u.pathname)) return said(p.orchestrator);
     if (p && method === 'GET' && rest === '/children') return said(p.children);
     if (p && method === 'GET' && rest === '/questions') return said(p.questions);
+    if (p && method === 'POST' && rest === '/questions/answers') return said(p.answers);
     if (p && method === 'POST' && rest.startsWith('/questions/')) return said(p.answer);
     if (method === 'GET' && u.pathname === '/v1/models' && o.models !== undefined) return json(res, 200, o.models);
     if (method === 'GET' && u.pathname === '/v1/conversations') {

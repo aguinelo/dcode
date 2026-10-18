@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type * as P from '../../src/protocol/generated';
+import { cardsOf } from '../../src/state/card';
 import { LiveStore } from '../../src/renderer/live';
 import type { Answer, DcodeApi, SessionEvents } from '../../src/shared/api';
 import type { Row } from '../../src/state/sidebar';
@@ -61,6 +62,7 @@ function orchestrateApi() {
       children: (id: string) => answer('children', `children of ${id}`),
       questions: (id: string) => answer('questions', `questions of ${id}`),
       answer: (id: string, qid: string, a: string, note?: string) => answer('answer', `answer ${qid} of ${id}: ${a}${note ? ` (${note})` : ''}`),
+      answerAll: (id: string, batch: unknown) => answer('answerAll', `answer all of ${id}: ${JSON.stringify(batch)}`),
     },
   } as unknown as DcodeApi;
   return { api, asked, answers, push: (b: SessionEvents) => events.forEach((l) => l(b)) };
@@ -235,5 +237,50 @@ describe('answering a question', () => {
     replay(f);
     f.push({ sessionId: 's-orq', events: [{ seq: 5, session_id: 's-orq', type: 'question.answered', at: '2026-10-18T10:05:00Z', payload: { ...question('q1'), answer: 'merge', answered: '2026-10-18T10:05:00Z' } }] });
     expect(agentsOf(store).questions).toEqual([]);
+  });
+});
+
+const cardOf = (pending: number, updated: string): P.QuestionCard => ({
+  id: 'card-1',
+  kind: 'merge',
+  title: 'Merges prontos',
+  items: [{ ...question('q1'), state: pending > 0 ? 'pending' : 'answered', selected: 'merge' }],
+  pending,
+  created: '2026-10-18T10:02:00Z',
+  updated,
+});
+const cardsIn = (store: LiveStore) => cardsOf(store.getSnapshot().sessions.byId['s-orq']!);
+
+describe('the question card (D67)', () => {
+  it('reads the cards with the queue when the conversation opens', async () => {
+    const { f, store } = started();
+    replay(f);
+    f.answers.children = { ok: true, value: { children: [] } };
+    f.answers.questions = { ok: true, value: { questions: [question('q1')], cards: [cardOf(1, '2026-10-18T10:02:00Z')] } };
+    expect(await store.actions.readAgents('s-orq')).toEqual({ ok: true, value: null });
+    expect(cardsIn(store).map((c) => c.id)).toEqual(['card-1']);
+  });
+
+  it('confirms a card in one POST, and takes the cards and the answered questions the daemon answers', async () => {
+    const { f, store } = started();
+    replay(f);
+    const results: P.AnswerResult[] = [{ question_id: 'q1', status: 'answered' }];
+    f.answers.answerAll = { ok: true, value: { results, cards: [cardOf(0, '2026-10-18T10:04:00Z')] } };
+    const got = await store.actions.answerQuestions('s-orq', { card_id: 'card-1', answers: [{ question_id: 'q1', answer: 'merge' }] });
+    expect(got).toEqual({ ok: true, value: results });
+    expect(f.asked).toEqual(['answer all of s-orq: {"card_id":"card-1","answers":[{"question_id":"q1","answer":"merge"}]}']);
+    expect(cardsIn(store).map((c) => c.pending)).toEqual([0]);
+    expect(agentsOf(store).questions).toEqual([]);
+  });
+
+  it('says a batch the daemon refused whole, and an answer it cannot read', async () => {
+    const { f, store } = started();
+    replay(f);
+    f.answers.answerAll = { ok: false, refusal: { code: 'invalid_input', message: 'card c9 does not exist' } };
+    const refused = await store.actions.answerQuestions('s-orq', { card_id: 'c9', answers: [], skipped: ['q1'] });
+    expect(refused.ok ? '' : refused.why).toContain('card c9 does not exist');
+    f.answers.answerAll = { ok: true, value: { results: 'x' } };
+    const unread = await store.actions.answerQuestions('s-orq', { card_id: 'card-1', answers: [{ question_id: 'q1', answer: 'merge' }] });
+    expect(unread.ok ? '' : unread.why).toContain('results');
   });
 });

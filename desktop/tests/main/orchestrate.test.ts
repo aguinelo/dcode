@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { NOTE_LIMIT, projectId, questionAnswer, questionId } from '../../src/main/inputs';
+import { BATCH_LIMIT, NOTE_LIMIT, projectId, questionAnswer, questionAnswers, questionId } from '../../src/main/inputs';
 import { Requests } from '../../src/main/requests';
 import { fakeDaemon, tempSocket, type FakeOptions } from './fake-daemon';
 
@@ -34,6 +34,29 @@ describe('what an answer to a question carries', () => {
     expect(refused(questionId('../x'))).toContain('pergunta');
     expect(projectId('0123456789abcdef01234567')).toEqual({ ok: true, value: '0123456789abcdef01234567' });
     expect(refused(projectId('a/b'))).toContain('projeto');
+  });
+});
+
+describe('what the confirm of a card carries (D67)', () => {
+  it('is each answer checked as one answer is, and the skipped with their card', () => {
+    expect(questionAnswers({ card_id: 'c1', answers: [{ question_id: 'q1', answer: 'merge' }, { question_id: 'q2', answer: 'other', note: ' espera o CI ' }], skipped: ['q3'] })).toEqual({
+      ok: true,
+      value: { card_id: 'c1', answers: [{ question_id: 'q1', answer: 'merge' }, { question_id: 'q2', answer: 'other', note: 'espera o CI' }], skipped: ['q3'] },
+    });
+    expect(questionAnswers({ answers: [{ question_id: 'q1', answer: 'stop' }] })).toEqual({ ok: true, value: { answers: [{ question_id: 'q1', answer: 'stop' }] } });
+  });
+
+  it('is refused when the daemon would refuse the whole batch, or an answer would not be one', () => {
+    expect(refused(questionAnswers('x'))).toContain('objeto');
+    expect(refused(questionAnswers({ answers: [] }))).toContain('nenhuma resposta');
+    expect(refused(questionAnswers({ answers: [], skipped: ['q1'] }))).toContain('id do cartão');
+    expect(refused(questionAnswers({ card_id: '../c', answers: [{ question_id: 'q1', answer: 'merge' }] }))).toContain('cartão');
+    expect(refused(questionAnswers({ answers: [{ question_id: '../q', answer: 'merge' }] }))).toContain('pergunta');
+    expect(refused(questionAnswers({ answers: [{ question_id: 'q1', answer: '' }] }))).toContain('resposta');
+    expect(refused(questionAnswers({ answers: [{ question_id: 'q1', answer: 'merge', note: 'é'.repeat(NOTE_LIMIT + 1) }] }))).toContain(String(NOTE_LIMIT));
+    expect(refused(questionAnswers({ card_id: 'c1', answers: [], skipped: ['a/b'] }))).toContain('pergunta');
+    const many = Array.from({ length: BATCH_LIMIT + 1 }, (_, i) => ({ question_id: `q${i}`, answer: 'merge' }));
+    expect(refused(questionAnswers({ answers: many }))).toContain(String(BATCH_LIMIT));
   });
 });
 
@@ -76,5 +99,14 @@ describe('the project routes', () => {
     expect(await ask.answerQuestion('s-orq', 'q1', { answer: 'stop' })).toEqual({ ok: true, value: answered.body });
     expect(d.requests).toEqual(['GET /v1/sessions/s-orq/children', 'GET /v1/sessions/s-orq/questions', 'POST /v1/sessions/s-orq/questions/q1', 'POST /v1/sessions/s-orq/questions/q1']);
     expect(d.bodies).toEqual([{ answer: 'merge', note: 'ok' }, { answer: 'stop' }]);
+  });
+
+  it('confirms a card on its own route, the batch as it was checked', async () => {
+    const answered = { status: 200, body: { results: [{ question_id: 'q1', status: 'answered' }], cards: [] } };
+    const { d, ask } = await daemon({ open: { status: 201, body: project }, answers: answered });
+    const batch = { card_id: 'c1', answers: [{ question_id: 'q1', answer: 'merge' }], skipped: ['q2'] };
+    expect(await ask.answerQuestions('s-orq', batch)).toEqual({ ok: true, value: answered.body });
+    expect(d.requests).toEqual(['POST /v1/sessions/s-orq/questions/answers']);
+    expect(d.bodies).toEqual([batch]);
   });
 });
