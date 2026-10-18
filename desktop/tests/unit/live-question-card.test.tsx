@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type * as P from '../../src/protocol/generated';
@@ -8,6 +7,7 @@ import { cardsOf, withCards } from '../../src/state/card';
 import { flowBlocks } from '../../src/state/flow';
 import { applyRaw, emptySessions } from '../../src/state/sessions';
 import type { SessionView } from '../../src/state/session';
+import recorded from './live-question-cards.json';
 
 // The question card of a real orchestrator (D67), read from the daemon that
 // ran it (0.24.0-dev+ff7a8e18): three children reach their merge question one
@@ -22,11 +22,7 @@ import type { SessionView } from '../../src/state/session';
 // orchestrator saying the merges waited for the person and no card to answer.
 
 const ID = '1a14f751ca5d7c3a40c';
-const stream = JSON.parse(readFileSync(new URL('./live-question-cards.json', import.meta.url), 'utf8')) as Array<{
-  seq: number;
-  type: string;
-  payload: unknown;
-}>;
+const stream = recorded as Array<{ seq: number; type: string; payload: unknown }>;
 
 const fold = (events: readonly unknown[] = stream): SessionView => {
   const s = applyRaw(emptySessions, events);
