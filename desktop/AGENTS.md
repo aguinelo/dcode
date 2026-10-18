@@ -33,19 +33,23 @@ npm run gen:icons       # the app icon's sizes (.icns, .ico, .png) from assets/i
 `desktop/**`, `internal/protocol/**` or the workflow: `npm ci`, typecheck, lint,
 tests, the production build, and the protocol-types staleness check.
 
-**`check:visual` is not in CI**, on purpose: its limit holds only on macOS. The
-references are committed, in `refs/design/desktop/screenshots/`, but the 1.25%
-in `tests/visual/states.json` was measured with Playwright's Chromium on macOS,
-which draws text unhinted and antialiased in grey, as the references are. On the
-workflow's `ubuntu-latest` (Ubuntu 24.04) the same Chromium hints the glyphs and
-antialiases them in LCD subpixels, and the window scores 1.76% and 1.79% where
-macOS gives 1.17% and 1.19% — identical on four runners, with the layout the
-same and the difference in the text. Raising the limit to fit Linux would leave
-macOS more than 9,000 pixels of slack, room for a missing element to pass.
-Launching Chromium with `--disable-lcd-text --font-render-hinting=none` brought
-Linux to 1.19% and 1.20% and left macOS unchanged, but that changes the ruler
-`docs/loop/done.toml` protects, so it is a decision of its own. Until then, run
-it on macOS. Chromium for Playwright is installed once with
+**`check:visual` is not in CI**, on purpose: its limit is known to hold only on
+macOS. The references in `refs/design/desktop/screenshots/` are captures of the
+approved window made by this check itself, with Playwright's Chromium on macOS
+(D18), and on that machine the window scores 0.00% against them. How far the
+same Chromium on the workflow's `ubuntu-latest` lands from these captures has
+never been measured. What is known is older and about other references: against
+the handoff's PNGs, before the captures, Linux scored 1.76% and 1.79% where
+macOS scored 1.17% and 1.19%, because there Chromium hints the glyphs and antialiases them in LCD
+subpixels where macOS draws them unhinted in grey — the layout was the same and
+the difference was in the text. So a Linux run is expected to be off by the
+text alone, by an amount nobody has measured against the 1.25% in
+`tests/visual/states.json`; putting it in CI would be a gate whose margin is a
+guess. Measuring it, and either fixing the font rendering
+(`--disable-lcd-text --font-render-hinting=none` once narrowed the gap) or
+capturing Linux references, changes the ruler `docs/loop/done.toml` protects,
+so it is a decision of its own. Until then, run it on macOS. Chromium for
+Playwright is installed once with
 `npx playwright install chromium`; `--refs <dir>` or `DCODE_DESIGN_SCREENSHOTS`
 point it at other references. A missing reference or browser fails it with the
 reason; it never skips.
@@ -90,9 +94,10 @@ changes the measurement and has to be made deliberately, never to make a run
 pass.
 
 - `tests/visual/states.json` is the visual ruler: which states are measured, how,
-  and the limit with the reasoning that chose it. When new references arrive,
-  measure the new design's own floor (its mock rendered by the same Chromium)
-  before trusting the old limit.
+  and the limit with the reasoning that chose it. The references are captures
+  of the approved window — 02 and 03 of the grid, 05 to 12 of the Crew in both
+  themes — and their floor is 0.00% on macOS. When new references arrive,
+  measure their own floor on the same Chromium before trusting the old limit.
 - `tests/daemon/` is the daemon ruler: the scenarios, the scripted model, and the
   attributes the window exposes for them (`docs/loop/tasks.md`, "O que a régua
   lê"). A scenario checks the window against what the daemon logged, so a window

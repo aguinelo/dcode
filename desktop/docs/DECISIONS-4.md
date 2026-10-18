@@ -72,7 +72,8 @@ D35). Decisão do dono, de 2026-10-13, junto com o mascote (D49): o Laranja
 `#FF6A00` é a cor principal do dcode, no lugar do lima `#c6f36b` do grafite.
 O resto de D29 fica: escuro por padrão, denso, um acento só — para o que está
 trabalhando e para a marca —, um tom para o que espera você, verde e vermelho
-só para o que os critérios mediram, a fonte do sistema e cantos de 4px.
+só para o que os critérios mediram, a fonte do sistema e cantos de 4px (na
+grade; a Crew usa 8px nos cartões e painéis, D63).
 
 - **De onde saem as cores.** Da paleta de 23 tons da folha: o acento
   `#FF6A00`; os neutros `#0A0A0A`, `#1A1A1A`, `#2D2D2D`, `#4B5563`,
@@ -98,10 +99,31 @@ só para o que os critérios mediram, a fonte do sistema e cantos de 4px.
     Ficam `#137036` e `#B91C1C`, verde e vermelho escurecidos.
   - *Apagado no escuro da grade:* `#6B7280` dá 3,6:1, e `#9CA3AF` já é o
     `dim`. O `faint` é `#868B95`, um degrau entre os dois.
+- **O tom de espera é também o tom de aviso**, e só nestes usos: o que espera
+  você (a aprovação pendente, a contagem da barra, o ◆ da lista); as
+  respostas que ficam gravadas — neste projeto, sempre (D39); "rodada N/M" da
+  metade a três quartos do teto e o turno sem `usage` (D44); o medidor de
+  contexto de 75% a 89% (D15); o modo Auto (D36); "tocou a régua" e "sem
+  medição" (D13, D30); e as notas que dizem que algo ficou de fora — saída ou
+  diff cortado, pasta fora do git, rota que o daemon não tem. Nunca para o que
+  trabalha, que é do acento.
 - **O terminal** (D37) segue o mesmo: a seleção em laranja, e o azul, o roxo e
   o ciano do ANSI no escuro passam a ser os da folha (`#3B82F6`, `#8B5CF6`,
-  `#38BDF8`). O fundo da janela antes do primeiro quadro passa a ser
-  `#0a0a0a`.
+  `#38BDF8`); no claro, degraus escurecidos deles (`styles/terminal.css`). O
+  fundo do terminal é o `sunken` do tema; contra ele:
+
+  | ANSI | escuro (`#0f0f0f`) | | claro (`#f5f5f2` · Crew `#fafaf8`) | |
+  |---|---|---|---|---|
+  | preto | `#4b5563` | 2,54 | `#2d2d2d` | 12,61 · 13,18 |
+  | azul | `#3b82f6` | 5,21 | `#1f56b8` | 6,24 · 6,52 |
+  | magenta | `#8b5cf6` | 4,53 | `#8a3aa8` | 5,91 · 6,18 |
+  | ciano | `#38bdf8` | 8,95 | `#0f6f78` | 5,39 · 5,64 |
+
+  O preto do ANSI no escuro fica abaixo de 4,5:1, como em todo terminal
+  escuro: é a cor que os programas usam para o que deve sumir no fundo. Os
+  outros tons (vermelho, verde, amarelo, branco) são os `err`, `ok`, `warn` e
+  `dim` da tabela abaixo. O fundo da janela antes do primeiro quadro passa a
+  ser `#0a0a0a`.
 
 Contraste (WCAG, texto sobre chão; "sel" é a seleção sobre o painel). Todos
 acima de 4,5:1:
