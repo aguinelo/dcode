@@ -23,7 +23,7 @@
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 — cenários roteirizados | **feito** — `internal/app/scenario_*_test.go`: o harness (daemon real em processo, modelo roteirizado por papel, repositório de brinquedo, `gh` falso em `internal/app/testdata/scenariogh/`), os doze da tabela do passo e mais um, e dois testes em `internal/orchestrate/` (`transition_test.go`, `history_guard_test.go`); nenhuma invariante fica prevista |
 | 13 — a orquestradora lista os agentes | **feito** — a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate` (`cmd/dcode/orchestrate.go`), a leitura de `/children` e `/questions` ao abrir, `^Q` e `^R` sobre os filhos (`internal/tui/orchestrate.go`, `orchestrate_view.go`) |
-| 14 | **em parte** (#521; responder perguntas, abrir a orquestradora e agrupar filhos em #547, aguardando o dono) |
+| 14 — a lista viva no desktop | **feito**, menos o cenário do `check:daemon` (dois filhos, um esperando a pessoa, o merged saindo depois da retenção): `desktop/tests/daemon/` é caminho protegido e o cenário espera a autorização do dono — a aba Agentes (#521, D64) e as ações sobre a orquestradora (#547, D66: responder perguntas, abrir a orquestradora pelo "Nova", filhos agrupados sob o projeto), aprovadas pelo dono em 2026-10-18 |
 
 ## Pré-requisitos
 
