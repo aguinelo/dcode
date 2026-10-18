@@ -27,42 +27,14 @@ export interface SessionGroup {
   rows: Row[];
   /** "Mais antigas" opens on demand; the others are always open. */
   collapsible: boolean;
-  /** How far in a row is drawn: a child under its parent in the same group (D66); absent is the margin. */
-  depth: Readonly<Record<string, number>>;
+  /** A row found by one of its orchestrator's children, with that child's short title (D69). */
+  hits: Readonly<Record<string, string>>;
 }
 
-/**
- * A group's rows with each child after its parent, when the parent is in the
- * same group, and how far in each is drawn (D66). The order otherwise stays;
- * a child whose parent is elsewhere stands at the margin, never hidden.
- */
-export function asTree(rows: readonly Row[]): { rows: Row[]; depth: Record<string, number> } {
-  const ids = new Set(rows.map((r) => r.id));
-  const under = new Map<string, Row[]>();
-  const roots: Row[] = [];
-  for (const r of rows) {
-    if (r.parentId && r.parentId !== r.id && ids.has(r.parentId)) under.set(r.parentId, [...(under.get(r.parentId) ?? []), r]);
-    else roots.push(r);
-  }
-  const out: Row[] = [];
-  const depth: Record<string, number> = {};
-  const seen = new Set<string>();
-  const walk = (r: Row, d: number) => {
-    if (seen.has(r.id)) return;
-    seen.add(r.id);
-    out.push(r);
-    if (d > 0) depth[r.id] = d;
-    for (const c of under.get(r.id) ?? []) walk(c, d + 1);
-  };
-  for (const r of roots) walk(r, 0);
-  // A cycle of parents leaves its rows unreached: at the margin, never dropped.
-  for (const r of rows) walk(r, 0);
-  return { rows: out, depth };
-}
-
-function group(key: string, label: string, rows: Row[], collapsible: boolean): SessionGroup {
-  const tree = asTree(rows);
-  return { key, label, rows: tree.rows, collapsible, depth: tree.depth };
+function group(key: string, label: string, rows: Row[], collapsible: boolean, hits: Record<string, string>): SessionGroup {
+  const own: Record<string, string> = {};
+  for (const r of rows) if (hits[r.id]) own[r.id] = hits[r.id]!;
+  return { key, label, rows, collapsible, hits: own };
 }
 
 function isActive(r: Row): boolean {
@@ -79,31 +51,41 @@ function instant(s: string | null): number {
  * you, the waiting ones on top —, then one per project with what moved in the
  * last week, in the sidebar's order, then "Mais antigas", the most recent
  * first. A conversation with no instant at all is old: nothing says it is not.
- * Every word typed must be in the title or the project, as in ⌘K (D27).
+ * Every word typed must be in the title or the project, as in ⌘K (D27). An
+ * orchestrator is active while one of its children is, and is found by its
+ * children's titles too (D69).
  */
 export function sessionGroups(projects: readonly ProjectView[], query: string, now: number): SessionGroup[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
   const active: Row[] = [];
   const older: Row[] = [];
   const groups: SessionGroup[] = [];
+  const hits: Record<string, string> = {};
   for (const p of projects) {
     const place = `${fold(p.label)} ${fold(p.id)}`;
+    const found = (title: string) => words.every((w) => `${fold(title)} ${place}`.includes(w));
     const recent: Row[] = [];
     for (const r of p.rows) {
-      if (!words.every((w) => `${fold(r.title)} ${place}`.includes(w))) continue;
-      if (isActive(r)) active.push(r);
+      const crew = p.crew[r.id] ?? [];
+      if (!found(r.title)) {
+        // A hit inside a child shows under its orchestrator's row, named by the child's short title (D69).
+        const child = crew.find((c) => found(c.title));
+        if (!child) continue;
+        hits[r.id] = child.title;
+      }
+      if (isActive(r) || crew.some(isActive)) active.push(r);
       else if (r.lastAt && now - instant(r.lastAt) <= OLDER_AFTER_MS) recent.push(r);
       else older.push(r);
     }
-    if (recent.length > 0) groups.push(group(`p:${p.id}`, p.label, recent, false));
+    if (recent.length > 0) groups.push(group(`p:${p.id}`, p.label, recent, false, hits));
   }
   // Stable: within each state the sidebar's order stays.
   active.sort((a, b) => Number(b.state === 'blocked') - Number(a.state === 'blocked'));
   older.sort((a, b) => instant(b.lastAt) - instant(a.lastAt));
   return [
-    ...(active.length > 0 ? [group('ativas', 'Ativas', active, false)] : []),
+    ...(active.length > 0 ? [group('ativas', 'Ativas', active, false, hits)] : []),
     ...groups,
-    ...(older.length > 0 ? [group('mais-antigas', 'Mais antigas', older, true)] : []),
+    ...(older.length > 0 ? [group('mais-antigas', 'Mais antigas', older, true, hits)] : []),
   ];
 }
 

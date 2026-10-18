@@ -196,7 +196,8 @@ Descartado: trocar também a marca da barra (move a régua inteira por um nome
 que a pessoa já lê no título da janela e no Dock).
 
 **D66. A janela age sobre a orquestradora: responde a fila, abre a do projeto
-pelo "Nova" e agrupa os filhos sob o projeto** (fecha as lacunas de D64).
+pelo "Nova" e agrupa os filhos sob o projeto** (fecha as lacunas de D64; o
+agrupamento na lista foi substituído por D69).
 Passo 14 da primeira fatia do orquestrador (registro `202610132000`, decisão
 4 da `.i`: o desktop ganha a opção de abrir a orquestradora do projeto, ao
 lado da conversa comum, que continua o padrão), sobre as rotas que o daemon
@@ -401,3 +402,67 @@ principal); calcular o status do passo na janela (dois lugares decidiriam o
 mesmo, e a TUI teria um terceiro); um passo por agente, gerado pela janela (o
 plano é o da orquestradora, nas palavras dela); esconder o filho sem passo
 (um agente que trabalha fora da vista).
+
+**D69. A lateral mostra uma linha por projeto orquestrado: a orquestradora,
+com os agentes contados por fase** (emenda D66, cujo agrupamento substitui;
+D64, D67 e D68 continuam). Decisão do dono no teste ao vivo de 2026-10-18:
+com três tarefas a lista de Sessões já confundia — a orquestradora, depois cada
+filho com a primeira linha da tarefa por título ("Crie no pacote `listas` (Go,
+módulo …"), depois cada sessão de revisor ("Review commit 3aa49175…"); num
+projeto do tamanho do dcode seriam dezenas de linhas.
+
+- **Só a orquestradora fica na lista.** Filhos e revisões saem da lateral —
+  da Crew e da lateral da grade, que leem a mesma lista de projetos. Um filho
+  é dobrado na orquestradora acima dele pelos `parent_id`, ou na do mesmo
+  `project_id`; o filho mora no plano (D68) e na aba Agentes (D64), onde clicar
+  abre a conversa dele, como antes. Sem "↳", sem recuo, sem `data-depth`.
+- **A linha de estado** fica embaixo do título da orquestradora, no lugar do
+  estado e do último evento: os agentes em curso e quantos há em cada fase, na
+  ordem em que um filho anda — "6 agentes · 2 trabalhando · 1 em revisão · 2
+  esperando você · 1 com falha"; só as fases com alguém aparecem. Esperando
+  você é quem tem `waiting` ou está `awaiting_person` (a aprovação, a
+  pergunta, o merge), e vence a fase; despachado conta como trabalhando;
+  merged e fechado não contam. Com alguém esperando, a linha vai no amarelo
+  de espera de D52; sem nenhum em curso, "nenhum agente em curso"; sem filho
+  nenhum, a linha não aparece e a linha comum volta. Ela quebra em vez de
+  perder uma fase.
+- **De onde vem a contagem.** Da lista da orquestradora que a janela já dobra
+  (D64), quando a janela a acompanha; senão, das linhas dos filhos na
+  resposta do daemon — rodando é trabalhando, bloqueado é esperando você,
+  parado conta sem fase, terminado não conta. Nada lido de texto (D8).
+- **A orquestradora fica entre as Ativas** enquanto um filho dela roda ou
+  espera, mesmo parada: é ali que a pessoa olha.
+- **Revisor nunca é conversa da lista**, nem na busca, nem quando não há
+  orquestradora listada. O ⌘K busca nas mesmas linhas e também não o mostra.
+- **A busca acha um filho pelo título curto**: o acerto aparece na linha da
+  orquestradora, com "↳ listas: Unicos" embaixo do título dela. Uma linha só
+  por orquestradora, mesmo com vários filhos acertando — o primeiro, na ordem
+  em que vieram. Escolha minha, registrada aqui: abrir o filho fica com o
+  plano e a aba Agentes, que já levam a ele; a busca leva à orquestradora.
+- **Filho sem orquestradora na lista** — o pai e o `project_id` sem
+  orquestradora listada — continua como linha própria, na pasta dele: sem
+  isso, não haveria como abrir a conversa. Revisor nessa situação não.
+- **O título do filho é o título curto do despacho** (núcleo, `.p` §10 da
+  orquestração): o item de `delegate` dá um título de tópico de até 40
+  caracteres; o que vem longo ou vazio o núcleo encurta de forma
+  determinística, a partir dele ou da primeira linha da tarefa, e diz isso à
+  orquestradora; a conversa do filho leva esse nome. A janela não deriva nada:
+  a aba Agentes, o plano, os cabeçalhos do cartão e a busca leem
+  `Child.title` e o nome da conversa, que agora são o mesmo título curto.
+- **Modo fixture.** A sexta gravação, `orchestras-recording.ts`
+  (`?fixture=crew-orquestras`): a orquestra do dcode, uma orquestradora em
+  `listas` com três filhos ("listas: Unicos", "listas: Inverte", "listas:
+  Agrupa") e o revisor de um deles, e uma conversa comum em `listas`.
+
+As réguas: as dezoito referências continuam a 0,00% — nenhuma tem
+orquestradora. O `check:daemon` passa 13 de 14: o `orchestra-lists` confere
+o filho sob a orquestradora com "↳" e `data-depth="1"` (D66), que esta
+decisão tira; mudar o cenário espera a autorização do dono para
+`tests/daemon/`. As capturas — a lateral com dois projetos orquestrados e uma
+conversa comum, e a busca por um filho, nos dois temas — vão ao dono no PR.
+
+Descartados: manter os filhos recuados sob a orquestradora (é o que já
+confundia com três); um grupo recolhível por orquestradora (a lista continua
+crescendo com o projeto, e o plano já é a vista dos filhos); mostrar o filho
+achado pela busca como linha própria (volta a pôr filho na lista); derivar o
+título curto na janela (a TUI e as notificações teriam outro).

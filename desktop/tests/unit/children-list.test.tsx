@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { orchestraRecording, ORCHESTRA_AT } from '../../src/fixtures/orchestra-recording';
+import { orchestrasRecording } from '../../src/fixtures/orchestras-recording';
 import type * as P from '../../src/protocol/generated';
 import { SessionsPane } from '../../src/renderer/crew/SessionsPane';
 import { sessionGroups } from '../../src/state/crew';
@@ -142,5 +143,20 @@ describe('the sidebar of an orchestrated project', () => {
     expect(html).not.toContain('data-session-id="c-tui"');
     expect(html).not.toContain('data-depth');
     expect(html).toMatch(/data-crew="true"[^>]*>6 agentes · 2 trabalhando · 1 em revisão · 2 esperando você · 1 com falha</);
+  });
+
+  it('lists two orchestrated projects as one row each, beside an ordinary conversation', () => {
+    const sessions = applyRaw(emptySessions, orchestrasRecording.events);
+    const projects = projectsOf(rowsOfSessions(sessions), emptyPrefs);
+    expect(projects.map((p) => [p.label, p.rows.map((r) => r.id).sort()])).toEqual([
+      ['dcode', ['s-orq']],
+      ['listas', ['s-listas', 's-listas-doc']],
+    ]);
+    const listas = projects[1]!;
+    expect(listas.crew['s-listas']!.map((r) => r.title)).toEqual(['listas: Unicos', 'listas: Inverte', 'listas: Agrupa']);
+    expect(crewLine(sessions.byId['s-listas']!.agents.children, listas.crew['s-listas']!)).toEqual({
+      text: '3 agentes · 1 em revisão · 2 esperando você',
+      tone: 'warn',
+    });
   });
 });
