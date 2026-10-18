@@ -33,7 +33,7 @@ func TestTheChildsRegistryHasNoToolThatConducts(t *testing.T) {
 		t.Fatal(err)
 	}
 	names := strings.Join(child.Registry.Names(), " ")
-	for _, banned := range []string{"explore", "delegate", "children", "steer_child", "close_child", "ask", "verdict"} {
+	for _, banned := range []string{"explore", "delegate", "children", "steer_child", "close_child", "ask", "summarize", "propose_answers", "verdict"} {
 		if strings.Contains(" "+names+" ", " "+banned+" ") {
 			t.Errorf("the child's registry has %s: %s", banned, names)
 		}
@@ -58,7 +58,7 @@ func TestTheChildsRegistryHasNoToolThatConducts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"delegate", "children", "steer_child", "close_child", "ask"} {
+	for _, want := range []string{"delegate", "children", "steer_child", "close_child", "ask", "summarize", "propose_answers"} {
 		if _, ok := o.Registry.Get(want); !ok {
 			t.Errorf("the orchestrator has no %s", want)
 		}

@@ -40,6 +40,11 @@ func TestTheOrchestratorIsToldItsRoleAndNotToAskForTheMode(t *testing.T) {
 		"reports from your children", "origin `children`",
 		"`steer_child`", "`close_child`", "`ask`",
 		"Answer the person at once",
+		// The person decides in this conversation (orchestration .p §5.5):
+		// the orchestrator writes what changed, turns the person's words into
+		// a proposal, and never answers.
+		"call `summarize`", "the person's language",
+		"call `propose_answers`", "You never answer a question for the person",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the orchestrator's prompt does not say %q:\n%s", want, got)
