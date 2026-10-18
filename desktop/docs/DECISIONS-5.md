@@ -283,6 +283,13 @@ pergunta do Claude Code que o dono usa.
   janela da grade, que compartilham o corpo da conversa. Um cartão que o fluxo
   não viu, lido de `GET /questions` ao abrir ou da resposta de uma
   confirmação, entra no fim. Uma versão mais velha que a desenhada não volta.
+- **Enquanto espera a pessoa, o cartão é desenhado no fim do fluxo**, depois
+  de tudo o que veio desde que chegou, e volta ao seu ponto quando deixa de
+  esperar (o mesmo movimento do plano fixado de D57). Emenda de 2026-10-18,
+  medida ao vivo: numa orquestradora real o primeiro `question.card` chegou
+  depois do primeiro turno, e os relatórios dos filhos e as respostas dela —
+  mais três turnos — o empurraram para fora da vista que a janela mantém no
+  fim. A pessoa lia "os três merges esperam você" e não via cartão nenhum.
 - **Um item por vez**, com "1 de N" e as setas ‹ › no alto à direita; a
   etiqueta (`header`) pequena ao lado do tipo, e o texto da pergunta como
   título. Num merge, embaixo do título, o `summary` da orquestradora e a

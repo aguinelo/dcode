@@ -3,6 +3,7 @@
 // reported, never by reading numbers back out of its output text.
 
 import type * as P from '../protocol/generated';
+import { needsPerson } from './card';
 import { firstLine, plural } from './format';
 import type { Entry, ToolCall } from './session';
 
@@ -24,6 +25,12 @@ function isDelegated(call: ToolCall): boolean {
  * makes. A call whose crossing is put to the person is drawn by its approval
  * card while it waits, and after the card once answered, so the story reads in
  * the order it happened.
+ *
+ * An orchestrator's question card that waits for the person (D67) is drawn
+ * at the end, after everything said since it first came: the turns that
+ * follow it would push it out of the view the window keeps at the end, and a
+ * card the person cannot see is a decision nobody is asked for. Once it no
+ * longer waits it goes back to where it was first said.
  */
 export function flowBlocks(entries: readonly Entry[]): Block[] {
   const asked = new Map<string, Extract<Entry, { kind: 'approval' }>>();
@@ -31,9 +38,14 @@ export function flowBlocks(entries: readonly Entry[]): Block[] {
 
   const ordered: Entry[] = [];
   const held = new Map<string, Entry>();
+  const waiting: Entry[] = [];
   for (const e of entries) {
     if (e.kind === 'tool' && asked.has(e.call.id)) {
       held.set(e.call.id, e);
+      continue;
+    }
+    if (e.kind === 'card' && needsPerson(e.card)) {
+      waiting.push(e);
       continue;
     }
     ordered.push(e);
@@ -42,6 +54,7 @@ export function flowBlocks(entries: readonly Entry[]): Block[] {
       if (call) ordered.push(call);
     }
   }
+  ordered.push(...waiting);
 
   const blocks: Block[] = [];
   let run: ToolCall[] = [];
