@@ -17,7 +17,9 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 )
 
 // Source is where a value came from.
@@ -60,6 +62,60 @@ type Resolved struct {
 	// Warnings records attempts to override a locked key. Silently ignoring
 	// them would leave the user believing a change took effect.
 	Warnings []string
+	// unreadable collects every value an accessor could not convert. Shared
+	// by pointer because the accessors take Resolved by value, and a reading
+	// that fails has to be visible to whoever asks Err afterwards.
+	unreadable *unreadable
+}
+
+// unreadable is the list of values that did not convert, safe for readers on
+// more than one goroutine.
+type unreadable struct {
+	mu   sync.Mutex
+	seen map[string]bool
+	list []string
+}
+
+// refuse records that v is not the kind its reader asked for.
+func (r Resolved) refuse(v Value, kind string) {
+	if r.unreadable == nil {
+		return
+	}
+	origin := v.Origin
+	if v.Source == SourceEnv {
+		// "environment" says the layer but not where in it; the variable does.
+		if name, ok := KnownKeys[v.Key]; ok {
+			origin = name
+		}
+	}
+	msg := fmt.Sprintf("%s = %q (from %s, %s) is not %s", v.Key, v.Value, origin, v.Source, kind)
+	u := r.unreadable
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if !u.seen[msg] {
+		u.seen[msg] = true
+		u.list = append(u.list, msg)
+	}
+}
+
+// Err reports every value a Bool or Int read could not convert, or nil.
+//
+// The accessors still hand back the default, because their callers build a
+// whole configuration in one expression; Err is what keeps that default from
+// being taken for the value. Whoever reads the chain asks it after reading.
+func (r Resolved) Err() error {
+	if r.unreadable == nil {
+		return nil
+	}
+	u := r.unreadable
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if len(u.list) == 0 {
+		return nil
+	}
+	list := append([]string(nil), u.list...)
+	sort.Strings(list)
+	return fmt.Errorf("config: %s", strings.Join(list, "; "))
 }
 
 // Get returns a value and whether it was set.
@@ -76,7 +132,8 @@ func (r Resolved) String(key, def string) string {
 	return def
 }
 
-// Bool returns the effective boolean.
+// Bool returns the effective boolean. A value outside the vocabulary returns
+// def and is recorded for Err.
 func (r Resolved) Bool(key string, def bool) bool {
 	v, ok := r.values[key]
 	if !ok || v.Value == "" {
@@ -88,17 +145,20 @@ func (r Resolved) Bool(key string, def bool) bool {
 	case "0", "false", "no", "off":
 		return false
 	}
+	r.refuse(v, "a boolean (true or false)")
 	return def
 }
 
-// Int returns the effective integer.
+// Int returns the effective integer, read from the whole value: "12abc" is not
+// twelve. A value that does not convert returns def and is recorded for Err.
 func (r Resolved) Int(key string, def int) int {
 	v, ok := r.values[key]
 	if !ok || v.Value == "" {
 		return def
 	}
-	var n int
-	if _, err := fmt.Sscanf(v.Value, "%d", &n); err != nil {
+	n, err := strconv.Atoi(v.Value)
+	if err != nil {
+		r.refuse(v, "a whole number")
 		return def
 	}
 	return n
@@ -116,7 +176,7 @@ func (r Resolved) Keys() []string {
 
 // Resolve applies the chain. Pure over already-loaded layers.
 func Resolve(layers []Layer) Resolved {
-	out := Resolved{values: map[string]Value{}}
+	out := Resolved{values: map[string]Value{}, unreadable: &unreadable{seen: map[string]bool{}}}
 	locked := map[string]bool{}
 
 	for _, l := range layers {
