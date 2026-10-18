@@ -742,16 +742,17 @@ var Contracts = []Contract{
 	// else. Runs is what DemandingRuns already raises for a threshold at 95%,
 	// and this contract needs the same resolution for the same arithmetic.
 	//
-	// The spread has a cause and it is the harness's, not the model's: a
-	// scouting `explore` comes back with "the eval harness does not run
-	// delegated turns. Do the reading yourself", the model believes it, and
-	// never delegates again. The runs that pass are the ones that emitted all
-	// five children in one message before any refusal could arrive, and
-	// whether a model scouts first is a coin this harness keeps flipping.
+	// The spread was once blamed on the harness: a scouting `explore` came
+	// back with "the eval harness does not run delegated turns. Do the reading
+	// yourself", and the model stopped delegating. That is no longer what
+	// happens — the harness runs a real child turn through Workspace.Delegate
+	// (delegated-writing 202608200100), and the refusal is only what a harness
+	// with no delegator says. It was measured, and it was not the cause: with
+	// the child running the rate moved from 50% to 52% of fifty runs, inside
+	// the noise. The cause of the spread is not known.
 	//
 	// So the contract's job today is to catch a regression to zero, not to
-	// certify a rate. Raising it needs a harness that can answer a delegated
-	// call — see ROADMAP.
+	// certify a rate, until that cause is found — see ROADMAP.
 	{ID: "delegates-writing-when-disjoint", Threshold: 0.25, Rounds: 12, Runs: 50,
 		// Four rather than five: the contract is that the work was split, and
 		// a parent that keeps one piece for itself has still split. Demanding
