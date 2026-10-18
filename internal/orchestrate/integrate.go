@@ -40,7 +40,10 @@ func OpenIntegration(ctx context.Context, root, projectDir string) (*Integration
 	in := &Integration{repo: root, place: place}
 	if _, err := os.Stat(place); err == nil {
 		top, err := forgeGit(ctx, place, "rev-parse", "--show-toplevel")
-		if err != nil || filepath.Clean(top) != filepath.Clean(place) {
+		// git names the top with links resolved; place may hold one (/var on
+		// macOS is /private/var), and is the same place for it.
+		resolved, rerr := filepath.EvalSymlinks(place)
+		if err != nil || rerr != nil || filepath.Clean(top) != filepath.Clean(resolved) {
 			return nil, fmt.Errorf("orchestrate: %s exists and is not the integration worktree (%v)", place, err)
 		}
 		return in, nil

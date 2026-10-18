@@ -54,6 +54,12 @@ type MergeOptions struct {
 	Now  func() time.Time
 	// LocalSaid is whether forge.local was already said for this project.
 	LocalSaid bool
+	// Questions, Queue and Main are what the project's state.json kept of
+	// its merges, given back after a restart: the questions asked, the
+	// children the person said merge to, and main's last reading.
+	Questions []protocol.Question
+	Queue     []string
+	Main      protocol.MainHealth
 }
 
 // Merges is one project's merge questions and its serial queue.
@@ -91,8 +97,20 @@ func NewMerges(o MergeOptions) (*Merges, error) {
 			return nil, err
 		}
 	}
-	return &Merges{o: o}, nil
+	return &Merges{o: o, questions: append([]protocol.Question(nil), o.Questions...),
+		queue: append([]string(nil), o.Queue...), main: o.Main}, nil
 }
+
+// Queued is the merge queue, in order: the children the person said merge to
+// and that have not merged or left it.
+func (m *Merges) Queued() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]string(nil), m.queue...)
+}
+
+// Main is main's health as the queue last read it.
+func (m *Merges) Main() protocol.MainHealth { return m.health() }
 
 // Proposal is a child the pipeline measured green, to be proposed.
 type Proposal struct {

@@ -93,9 +93,11 @@ var KnownKeys = map[string]string{
 	"orchestrator.gate_command":     "DCODE_ORCHESTRATOR_GATE_COMMAND",
 	"orchestrator.gate_timeout":     "DCODE_ORCHESTRATOR_GATE_TIMEOUT",
 
-	// The review's keys, read by the orchestrator (orchestration .config §2, §3).
+	// The pipeline's keys, read by the orchestrator (orchestration .config §2, §3).
 	"orchestrator.reviewer_profiles":     "DCODE_ORCHESTRATOR_REVIEWER_PROFILES",
 	"orchestrator.review_max_diff_bytes": "DCODE_ORCHESTRATOR_REVIEW_MAX_DIFF_BYTES",
+	"orchestrator.max_returns":           "DCODE_ORCHESTRATOR_MAX_RETURNS",
+	"orchestrator.report_debounce":       "DCODE_ORCHESTRATOR_REPORT_DEBOUNCE",
 
 	// The merge's keys (orchestration .config §3).
 	"orchestrator.forge":                "DCODE_ORCHESTRATOR_FORGE",

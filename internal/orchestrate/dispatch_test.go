@@ -25,11 +25,25 @@ func (f *fakeSpawner) SpawnChild(req ChildRequest) (protocol.Session, error) {
 		ParentID: req.ParentID, Role: protocol.RoleChild, Owns: req.Owns}, nil
 }
 
-func (f *fakeSpawner) Submit(id, text, _ string) error {
+func (f *fakeSpawner) Submit(id, text, origin string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.busy[id] {
+		return protocol.Errorf(protocol.CodeTurnAlreadyActive, "a turn is already running")
+	}
 	f.submitted = append(f.submitted, id+": "+text)
+	f.origins = append(f.origins, origin)
 	return f.failSubmit
+}
+
+func (f *fakeSpawner) SpawnReviewer(req ReviewRequest) (protocol.Session, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failReviewer != nil {
+		return protocol.Session{}, f.failReviewer
+	}
+	f.reviewers = append(f.reviewers, req)
+	return protocol.Session{ID: req.ID, Workspace: req.Worktree, ParentID: req.ParentID, Role: protocol.RoleReviewer}, nil
 }
 
 func (f *fakeSpawner) Steer(id, text string) error {
@@ -123,6 +137,7 @@ func (p *project) registry(t *testing.T, keys map[string]string) *Registry {
 	if err != nil {
 		t.Fatal(err)
 	}
+	r.async = func(f func()) { f() } // the pipeline's long steps run inline, in order
 	t.Cleanup(r.Close)
 	return r
 }
