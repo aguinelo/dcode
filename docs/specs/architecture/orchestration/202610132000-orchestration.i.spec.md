@@ -22,7 +22,7 @@
 | 10 — um merge espera a pessoa | **feito** — o componente (`merge.go`, `integrate.go`, `forge.go`, `forge_local.go`) e a fiação em `internal/orchestrate/merging.go` (`Propose` no verde, `Answer`, a fila serial, `merged`), `questions.go` e a ferramenta `internal/tools/ask.go`; perguntas, fila, `Main` e `LocalSaid` no `State`; as rotas de `/questions` em `internal/server/orchestrate.go` |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
 | 12 — cenários roteirizados | **feito** — `internal/app/scenario_*_test.go`: o harness (daemon real em processo, modelo roteirizado por papel, repositório de brinquedo, `gh` falso em `internal/app/testdata/scenariogh/`), os doze da tabela do passo e mais um, e dois testes em `internal/orchestrate/` (`transition_test.go`, `history_guard_test.go`); nenhuma invariante fica prevista |
-| 13 — a orquestradora lista os agentes | **em parte**: a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate`, `^Q`, `^R` e a leitura de `/children` ao abrir ficam para o resto do passo |
+| 13 — a orquestradora lista os agentes | **feito** — a lista na coluna lateral, dobrada do fio (`internal/tui/agents.go`, `agents_side.go`); `dcode orchestrate` (`cmd/dcode/orchestrate.go`), a leitura de `/children` e `/questions` ao abrir, `^Q` e `^R` sobre os filhos (`internal/tui/orchestrate.go`, `orchestrate_view.go`) |
 | 14 | **não feito** |
 
 ## Pré-requisitos
@@ -316,6 +316,21 @@ sob a orquestradora; escolher um anexa a TUI a ele, onde a aprovação é respon
 `TestAClosedChildLeavesWhenTheDaemonNoLongerListsItAndAFailedOneStays`, em
 `internal/tui/agents_test.go`. A forma da coluna está na `client-tui.p` §2.2. O do `^Q` vem com a
 tecla.
+
+**Feito na segunda parte**, com o resto do passo:
+
+- [x] `dcode orchestrate` resolve o projeto da pasta pelo `POST /v1/projects` e anexa à
+      orquestradora (`GET .../orchestrator`), num daemon que já roda: nunca sobe um próprio, que
+      morreria com o terminal. Sem daemon, diz `dcode serve`; desligada, diz `orchestrator.enabled`
+      e `record.enabled`. `dcode` sozinho não muda (decisão 4).
+- [x] Ao abrir, `/children` e `/questions` por `loadAgents`, depois do histórico.
+- [x] `^Q` abre a pergunta mais antiga com a recomendada marcada; Enter responde pelo `POST`;
+      `question_already_answered` é dito — `TestASecondAnswerIsSaidAsAlreadyAnswered`, o quarto
+      teste obrigatório, com os outros em `internal/tui/orchestrate_test.go`.
+- [x] `^R` lista os filhos e anexa ao escolhido; do filho, a orquestradora é a primeira linha.
+- [x] Testes do comando com um daemon falso em `cmd/dcode/orchestrate_test.go`.
+
+O porquê está no changelog da `client-tui`, `202610181200-dcode-orchestrate-abre-a-orquestradora.md`.
 
 ### Passo 14 — `feat(desktop): the live agent list`
 

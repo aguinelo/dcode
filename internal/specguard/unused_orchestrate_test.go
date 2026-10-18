@@ -13,7 +13,7 @@ func init() {
 	for _, name := range []string{"ValidRole"} {
 		exportedWithoutUser[name] = orchestrationAhead
 	}
-	for _, name := range []string{"AnswerQuestion", "ListProjects", "OpenProject"} {
+	for _, name := range []string{"ListProjects"} {
 		exportedWithoutUser[name] = orchestrationClient
 	}
 }

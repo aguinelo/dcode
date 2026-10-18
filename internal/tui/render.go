@@ -377,6 +377,14 @@ func render(m Model, g Geometry) string {
 	if m.Nav.Active {
 		return overlay(b.String(), renderSessionList(m, g), g)
 	}
+	// And to the orchestrator's question and its list of agents, summoned
+	// the same way (orchestrate_view.go).
+	if m.Ask != nil {
+		return overlay(b.String(), renderAsk(m, g), g)
+	}
+	if m.Pick.Active {
+		return overlay(b.String(), renderPick(m, g), g)
+	}
 	return b.String()
 }
 

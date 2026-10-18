@@ -415,6 +415,7 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Última linha sem fim de linha é cortada ao reabrir e devolvida por `Torn`; linha completa ilegível ou `seq` fora de ordem impede o log de abrir.
 - Nenhuma linha do log passa de 64 KiB; o campo maior é cortado e diz quantos bytes perdeu.
 - `dcode decisions` lê o log sem daemon e nunca o escreve; linha ilegível é dita com o número, e o resto é impresso.
+- `dcode orchestrate` abre a orquestradora num daemon que já roda e nunca sobe um próprio, que morreria com o terminal.
 - Um projeto tem **uma** orquestradora: dois `POST /v1/projects` da mesma árvore, por caminhos diferentes, devolvem o mesmo `Project`.
 - A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
 - O gate roda numa worktree descartável no commit exato, sem `GIT_*` no ambiente, nunca na árvore da pessoa nem na do filho.
@@ -500,3 +501,4 @@ Cada linha é um PR sem "and" no título; o detalhe, o teste obrigatório e as d
 - [202610180300 — Um merge espera a pessoa](changelog/202610180300-um-merge-espera-a-pessoa.md)
 - [202610180400 — O relato de um filho começa o turno da orquestradora](changelog/202610180400-o-relato-de-um-filho-comeca-o-turno.md)
 - [202610181200 — Os cenários roteirizados](changelog/202610181200-os-cenarios-roteirizados.md)
+- [202610181200 — `dcode orchestrate` abre a orquestradora do projeto](../client-tui/changelog/202610181200-dcode-orchestrate-abre-a-orquestradora.md)

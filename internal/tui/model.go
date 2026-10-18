@@ -155,6 +155,10 @@ type Model struct {
 	InFlight, MaxInFlight int
 	// Nav is the session list's cursor while the rail has the keyboard.
 	Nav RailNav
+	// Ask is the question ^Q opened, and Pick the list of agents ^R opened,
+	// both only under an orchestrator (orchestrate.go).
+	Ask  *AskView
+	Pick AgentPick
 	// Navigating says the transcript has the keyboard.
 	//
 	// A MODE, and that is the whole point of it. The design's footer offers

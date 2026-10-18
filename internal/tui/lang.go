@@ -126,6 +126,34 @@ type Strings struct {
 	AgentRefused       string
 	AgentLocal         string
 
+	// What `dcode orchestrate` adds (orchestrate.go): ^Q answering the oldest
+	// question, the answers of the kinds the daemon asks in the person's
+	// language, and ^R attaching to one of the orchestrator's agents.
+	AgentsLoadFailed   string
+	AskHead            string
+	AskRecommended     string
+	AskWhy             string
+	AskChild           string
+	AskSensitive       string
+	AskKeys            string
+	AskNoOptions       string
+	AskNone            string
+	AskNotHere         string
+	AskAnswered        string
+	AskAlreadyAnswered string
+	AskFailed          string
+	AnswerMerge        string
+	AnswerReturn       string
+	AnswerClose        string
+	AnswerContinue     string
+	AnswerStop         string
+	PickOrchestrator   string
+	PickKeys           string
+	PickNone           string
+	PickOpenFailed     string
+	KeyQuestion        string
+	KeyAgents          string
+
 	// The lane legend.
 	LaneYou     string
 	LaneProcess string
@@ -462,6 +490,30 @@ var catalogue = map[Lang]Strings{
 		AgentEnded:             "ended",
 		AgentRefused:           "merge refused",
 		AgentLocal:             "local",
+		AgentsLoadFailed:       "the orchestrator's list could not be read: %v",
+		AskHead:                "question",
+		AskRecommended:         "recommended",
+		AskWhy:                 "why",
+		AskChild:               "child",
+		AskSensitive:           "sensitive",
+		AskKeys:                "up/down choose, enter answers, esc closes",
+		AskNoOptions:           "the daemon sent this question with no answer to choose",
+		AskNone:                "no question waits for you",
+		AskNotHere:             "^Q answers an orchestrator's questions: open one with dcode orchestrate",
+		AskAnswered:            "answered: %s — %s",
+		AskAlreadyAnswered:     "that question was already answered elsewhere; the first answer wins",
+		AskFailed:              "the answer did not go through: %v",
+		AnswerMerge:            "merge",
+		AnswerReturn:           "return to the child",
+		AnswerClose:            "close the child",
+		AnswerContinue:         "continue",
+		AnswerStop:             "stop",
+		PickOrchestrator:       "the orchestrator",
+		PickKeys:               "up/down choose, enter attaches, esc closes",
+		PickNone:               "no agent to open yet",
+		PickOpenFailed:         "%s could not be opened: %v",
+		KeyQuestion:            "orchestrator: answer the oldest question",
+		KeyAgents:              "orchestrator: attach to one of its agents",
 		LaneYou:                "you",
 		LaneProcess:            "work",
 		LaneAnswer:             "answer",
@@ -636,6 +688,7 @@ Usage:
   dcode login [flags]        store the model credential, read without echo
   dcode config [key]         the effective configuration and where it came from
   dcode sessions [show <id>] what dcode has done here, and what it did
+  dcode orchestrate [flags]  open this project's orchestrator in the daemon
   dcode decisions [flags]    the orchestrator's decisions here, read without the daemon
   dcode socket               the daemon's socket path
   dcode -c                   continue the most recent session here
@@ -741,6 +794,30 @@ Environment:
 		AgentEnded:             "terminou",
 		AgentRefused:           "merge recusado",
 		AgentLocal:             "local",
+		AgentsLoadFailed:       "a lista da orquestradora não pôde ser lida: %v",
+		AskHead:                "pergunta",
+		AskRecommended:         "recomendada",
+		AskWhy:                 "por quê",
+		AskChild:               "filho",
+		AskSensitive:           "sensível",
+		AskKeys:                "cima/baixo escolhe, enter responde, esc fecha",
+		AskNoOptions:           "o daemon mandou esta pergunta sem resposta para escolher",
+		AskNone:                "nenhuma pergunta espera você",
+		AskNotHere:             "^Q responde às perguntas da orquestradora: abra uma com dcode orchestrate",
+		AskAnswered:            "respondida: %s — %s",
+		AskAlreadyAnswered:     "essa pergunta já foi respondida em outro lugar; a primeira resposta vale",
+		AskFailed:              "a resposta não chegou: %v",
+		AnswerMerge:            "fazer o merge",
+		AnswerReturn:           "devolver ao filho",
+		AnswerClose:            "fechar o filho",
+		AnswerContinue:         "continuar",
+		AnswerStop:             "parar",
+		PickOrchestrator:       "a orquestradora",
+		PickKeys:               "cima/baixo escolhe, enter anexa, esc fecha",
+		PickNone:               "nenhum agente para abrir ainda",
+		PickOpenFailed:         "%s não pôde ser aberto: %v",
+		KeyQuestion:            "orquestradora: responder à pergunta mais antiga",
+		KeyAgents:              "orquestradora: anexar a um dos agentes dela",
 		LaneYou:                "você",
 		LaneProcess:            "trabalho",
 		LaneAnswer:             "resposta",
@@ -915,6 +992,7 @@ Uso:
   dcode login [flags]        guarda a credencial do modelo, lida sem eco
   dcode config [chave]       a configuração efetiva e de onde ela veio
   dcode sessions [show <id>] o que o dcode fez aqui, e o que ele fez
+  dcode orchestrate [flags]  abre a orquestradora deste projeto no daemon
   dcode decisions [flags]    as decisões da orquestradora daqui, lidas sem o daemon
   dcode socket               o caminho do socket do daemon
   dcode -c                   continua a sessão mais recente daqui

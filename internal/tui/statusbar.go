@@ -290,9 +290,16 @@ func navSegment(m Model, g Geometry) segment {
 	// It is the only thing on screen that says which of two keyboards a key is
 	// about to reach, and that state used to be invisible — which is half of
 	// why a letter bound to a mode could eat a keystroke with no visible cause.
+	// Under an orchestrator ^R lists its agents, not the recorded
+	// conversations, and the hint says the list it opens. The list is only
+	// ever held there: on the orchestrator, or carried to a child by ^R.
+	sessions := t.NavSessions
+	if m.Role == protocol.RoleOrchestrator || len(m.Agents.Children) > 0 {
+		sessions = t.SideAgents
+	}
 	badge, keys := StyleMeta, []string{
 		keyHint(p, "esc", t.NavEnter),
-		keyHint(p, "^r", t.NavSessions),
+		keyHint(p, "^r", sessions),
 		keyHint(p, "^b", t.NavColumn),
 		keyHint(p, "?", t.NavKeys),
 	}

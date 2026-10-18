@@ -161,6 +161,10 @@ func HelpText(user config.CommandSet, lang Lang) string {
 		{"^A ^E ^W ^U ^K", t.KeyEditing},
 		{"^C", t.KeyInterrupt},
 		{"^D", t.KeyQuit},
+		// Only under `dcode orchestrate`, and said so on the line: elsewhere
+		// ^Q says where it works, and ^R keeps the conversation list.
+		{"^Q", t.KeyQuestion},
+		{"^R", t.KeyAgents},
 	} {
 		fmt.Fprintf(&b, "  %-16s %s\n", k[0], k[1])
 	}

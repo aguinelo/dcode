@@ -19,6 +19,7 @@ var orchestrationInvariants = map[string]string{
 	"devolvida por `Torn`":                           "TestATornLastLineIsCutOnReopenAndSaid",
 	"Nenhuma linha do log passa de 64 KiB":           "TestALineOver64KiBCutsTheLargestFieldAndSaysHowMuch",
 	"linha ilegível é dita com o número":             "TestAnUnreadableLineIsSaidWithItsNumberAndTheRestIsPrinted",
+	"nunca sobe um próprio":                          "TestOrchestrateDispatchesAndNeverStartsADaemonOfItsOwn",
 	"devolvem o mesmo `Project`":                     "TestTwoOpensOfOneTreeAreOneProject",
 	"volta do reinício do daemon **sob o mesmo id**": "TestTheOrchestratorSurvivesADaemonRestart",
 
