@@ -37,7 +37,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 	grep -qE '^(desktop|internal/protocol)/' <<<"$changed" && desktop_gate=yes
 
 	tree=$(mktemp -d "${TMPDIR:-/tmp}/dcode-pre-push.XXXXXX")
-	trap 'git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1 || true' EXIT
+	# A git stopped in the middle of the add leaves the tree locked
+	# ("initializing"), and one --force refuses a locked tree: -f -f does not.
+	trap 'git -C "$root" worktree remove -f -f "$tree" >/dev/null 2>&1; rm -rf "$tree"; git -C "$root" worktree prune >/dev/null 2>&1 || true' EXIT
 	git worktree add --quiet --detach "$tree" "$local_sha"
 
 	echo "pre-push: ${local_ref#refs/heads/} at ${local_sha:0:7} — go gate: $go_gate, desktop gate: $desktop_gate"
@@ -64,7 +66,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 		)
 	fi
 
-	git -C "$root" worktree remove --force "$tree"
+	git -C "$root" worktree remove -f -f "$tree"
 	trap - EXIT
 done
 
