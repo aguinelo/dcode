@@ -158,7 +158,7 @@ describe('the sessions list of the Crew', () => {
     const sessions = applyRaw(emptySessions, log('s3').add('session.created', { ...created, id: 's3' }).events);
     const projects = projectsOf([row('s3', 'idle'), row('s4', 'recorded')], { order: [], labels: {}, collapsed: {} });
     const html = renderToStaticMarkup(
-      <SessionsPane projects={projects} sessions={sessions} focusId={null} now={NOW} onPick={() => {}} onStart={() => {}} onLoop={() => {}}
+      <SessionsPane projects={projects} sessions={sessions} focusId={null} now={NOW} onPick={() => {}} onStart={() => {}} onLoop={() => {}} onOrchestrate={() => {}}
         listModels={async () => ({ ok: false, why: '' })} pickFolder={async () => null} />,
     );
     expect(html).toContain('data-session-id="s3" data-state="idle"');

@@ -24,6 +24,8 @@ export interface CrewHandlers {
   startIn: (workspace: string | null, options?: StartOptions) => void;
   /** Opens the "Começar loop" sheet in a known project (D55, D63). */
   loop: (workspace: string) => void;
+  /** Opens the project's orchestrator for a known project, or from the folder picker with null; it takes the middle (D66). */
+  orchestrate: (workspace: string | null) => void;
   look: (look: Look) => void;
   theme: (theme: ThemeChoice) => void;
 }

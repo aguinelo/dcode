@@ -139,6 +139,21 @@ export function useWindows(o: {
     [actions, fromFolder, once, place],
   );
 
+  /**
+   * The project's orchestrator, for a known project or from the folder picker
+   * with null (D66): opened or found by the daemon, it takes the middle as a
+   * new session does. A refusal is said, with the keys when it is unavailable.
+   */
+  const orchestrateIn = useCallback(
+    async (workspace: string | null) => {
+      const where = workspace ?? (await actions.pickFolder());
+      if (!where) return;
+      const opened = await once(`orchestrate:${where}`, () => actions.openOrchestrator(where));
+      if (opened?.ok) place(opened.value);
+    },
+    [actions, once, place],
+  );
+
   const dropChooser = useCallback((key: string) => {
     setChoosers((c) => c.filter((k) => k !== key));
     setOpening((w) => without(w, key));
@@ -353,6 +368,7 @@ export function useWindows(o: {
     open,
     newSession,
     startIn,
+    orchestrateIn,
     dropChooser,
     openIn,
     sendIn,

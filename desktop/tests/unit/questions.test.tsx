@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type * as P from '../../src/protocol/generated';
-import { decodeChildren, decodeProject, decodeQuestion, decodeQuestions } from '../../src/protocol/orchestrate';
+import { decodeChildren, decodeProject, decodeQuestion, decodeQuestions } from '../../src/protocol/projects';
 import { QuestionQueue } from '../../src/renderer/AgentsPanel';
 import { answerRefusal, openRefusal, takesNote } from '../../src/state/questions';
 

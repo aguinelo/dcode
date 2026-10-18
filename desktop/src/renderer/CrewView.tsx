@@ -114,6 +114,7 @@ export function CrewView({
           <SessionsPane projects={projects} sessions={sessions} focusId={row?.id ?? null} now={now} onPick={on.pick}
             onStart={on.startIn}
             onLoop={on.loop}
+            onOrchestrate={on.orchestrate}
             listModels={actions.listModels}
             pickFolder={actions.pickFolder}
           />
@@ -146,6 +147,8 @@ export function CrewView({
               const r = rowIn(projects, id);
               if (r) on.pick(r);
             }}
+            readAgents={actions.readAgents}
+            answerQuestion={actions.answerQuestion}
           />
         </div>
       );

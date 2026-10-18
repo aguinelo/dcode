@@ -1,6 +1,8 @@
 import {
   Version,
+  type AnswerQuestionRequest,
   type CompactResult,
+  type OpenProjectRequest,
   type CreateGitPRRequest,
   type CreateSessionRequest,
   type ModelsResponse,
@@ -206,6 +208,32 @@ export class Requests {
   /** What each spec folder of a project declares, without running its criteria (D55). Passed on as it came. */
   listSpecs(workspace: string): Promise<Answer<unknown>> {
     return this.call('GET', `/${Version}/specs?workspace=${encodeURIComponent(workspace)}&measure=false`);
+  }
+
+  /** Opens the project of a folder, or finds it (D66). The project is passed on as it came. */
+  openProject(workspace: string): Promise<Answer<unknown>> {
+    const body: OpenProjectRequest = { workspace };
+    return this.call('POST', `/${Version}/projects`, body);
+  }
+
+  /** The session that conducts a project (D66). Passed on as it came. */
+  projectOrchestrator(projectId: string): Promise<Answer<unknown>> {
+    return this.call('GET', `/${Version}/projects/${encodeURIComponent(projectId)}/orchestrator`);
+  }
+
+  /** An orchestrator's children, the closed inside their retention among them (D64, D66). Passed on as it came. */
+  listChildren(sessionId: string): Promise<Answer<unknown>> {
+    return this.call('GET', `${sessionPath(sessionId)}/children`);
+  }
+
+  /** An orchestrator's questions, answered or not (D66). Passed on as it came. */
+  listQuestions(sessionId: string): Promise<Answer<unknown>> {
+    return this.call('GET', `${sessionPath(sessionId)}/questions`);
+  }
+
+  /** The person's answer to a question; the first answer wins (D66). The question is passed on as it came. */
+  answerQuestion(sessionId: string, questionId: string, body: AnswerQuestionRequest): Promise<Answer<unknown>> {
+    return this.call('POST', `${sessionPath(sessionId)}/questions/${encodeURIComponent(questionId)}`, body);
   }
 
   private async call(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<Answer<unknown>> {

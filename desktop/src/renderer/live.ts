@@ -6,13 +6,26 @@
 import { decodeChange } from '../protocol/conversations';
 import { decodeEvent } from '../protocol/events';
 import { decodeModels } from '../protocol/models';
-import { CodeGhUnavailable, CodeNoActiveTurn, CodePRRefused, CodeTurnAlreadyActive, type CompactResult, type GitPRResponse, type UndoResult } from '../protocol/generated';
+import {
+  CodeGhUnavailable,
+  CodeNoActiveTurn,
+  CodePRRefused,
+  CodeQuestionAlreadyAnswered,
+  CodeQuestionNotFound,
+  CodeTurnAlreadyActive,
+  type CompactResult,
+  type GitPRResponse,
+  type UndoResult,
+} from '../protocol/generated';
+import { decodeChildren, decodeOrchestrator, decodeProject, decodeQuestion, decodeQuestions } from '../protocol/projects';
+import { withAnswered, withChildren, withQuestions } from '../state/agents';
+import { answerRefusal, openRefusal } from '../state/questions';
 import { isRecord } from '../protocol/validate';
 import type { Answer, Attachment, DaemonStatus, DcodeApi, NewSessionOptions } from '../shared/api';
 import { STEER_TAKES_TEXT } from '../state/attachments';
 import { modeToSwitch, sandboxOf } from '../state/mode';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
-import { applyDecoded, emptySessions, type SessionsState } from '../state/sessions';
+import { applyDecoded, emptySessions, withAgentsOf, type SessionsState } from '../state/sessions';
 import { readHistory } from '../state/history';
 import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeCommands } from '../protocol/commands';
@@ -233,7 +246,61 @@ export class LiveStore {
     openProposal: async (id, file) => outcome(await this.api.loops.openProposal(id, file), 'O arquivo da proposta não abriu'),
     listSpecs: async (workspace) =>
       read(await this.api.loops.specs(workspace), decodeSpecs, 'as pastas de spec de um projeto (GET /v1/specs)', 'O daemon não disse quais pastas de spec existem'),
+    openOrchestrator: (workspace) => this.openOrchestrator(workspace),
+    readAgents: (id) => this.readAgents(id),
+    answerQuestion: (id, questionId, answer, note) => this.answerQuestion(id, questionId, answer, note),
   };
+
+  /**
+   * A project's orchestrator (D66): the folder's project, opened or found,
+   * then the session that conducts it, followed like any other. Unavailable is
+   * said with the keys that turn it on.
+   */
+  private async openOrchestrator(workspace: string): Promise<Outcome<string>> {
+    const opened = await this.api.orchestrate.openProject(workspace);
+    if (!opened.ok && opened.refusal.code !== UNEXPECTED) return { ok: false, why: openRefusal(opened.refusal.code, opened.refusal.message, workspace) };
+    const project = read(opened, decodeProject, 'os projetos (POST /v1/projects)', `A orquestradora de ${workspace} não abriu`);
+    if (!project.ok) return project;
+    const orchestrator = read(
+      await this.api.orchestrate.orchestrator(project.value.id),
+      decodeOrchestrator,
+      'a orquestradora de um projeto (GET /v1/projects/{id}/orchestrator)',
+      `A orquestradora de ${workspace} não abriu`,
+    );
+    return orchestrator.ok ? this.follow(orchestrator.value.id) : orchestrator;
+  }
+
+  /**
+   * An orchestrator's children and questions as the daemon holds them now,
+   * over what its events said (D64): a closed child it no longer carries
+   * leaves. Each answer is taken on its own — one that failed leaves the
+   * events' version of its half — and the failure is said.
+   */
+  private async readAgents(id: string): Promise<Outcome<null>> {
+    const children = read(await this.api.orchestrate.children(id), decodeChildren, 'os filhos de uma orquestradora (GET /v1/sessions/{id}/children)', 'Os agentes não foram lidos do daemon');
+    if (children.ok) this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withChildren(a, children.value)) });
+    const questions = read(await this.api.orchestrate.questions(id), decodeQuestions, 'as perguntas de uma orquestradora (GET /v1/sessions/{id}/questions)', 'As perguntas não foram lidas do daemon');
+    if (questions.ok) this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withQuestions(a, questions.value)) });
+    if (!children.ok) return children;
+    return questions.ok ? { ok: true, value: null } : questions;
+  }
+
+  /**
+   * The person's answer (D66). Taken, the question leaves the queue at once,
+   * as its question.answered will say; another answer that came first is
+   * said, and the queue is read again so it shows what the daemon holds.
+   */
+  private async answerQuestion(id: string, questionId: string, answer: string, note: string): Promise<Outcome<null>> {
+    const sent = await this.api.orchestrate.answer(id, questionId, answer, note.trim() ? note : undefined);
+    if (!sent.ok) {
+      if (sent.refusal.code === CodeQuestionAlreadyAnswered || sent.refusal.code === CodeQuestionNotFound) await this.readAgents(id);
+      return { ok: false, why: answerRefusal(sent.refusal.code, sent.refusal.message) };
+    }
+    const got = read(sent, decodeQuestion, 'responder uma pergunta (POST /v1/sessions/{id}/questions/{qid})', 'A resposta não foi enviada');
+    if (!got.ok) return got;
+    this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withAnswered(a, questionId)) });
+    return { ok: true, value: null };
+  }
 
   private set(part: Partial<LiveSnapshot>): void {
     this.snap = { ...this.snap, ...part };

@@ -111,4 +111,13 @@ export interface WindowActions {
   continueLoop(loopId: string): Promise<Outcome<LoopRun>>;
   /** Opens a run's proposal in the system's editor, through the main process (D56). */
   openProposal(loopId: string, file: string): Promise<Outcome<null>>;
+  /**
+   * Opens the project of a folder and its orchestrator, and answers the
+   * orchestrator's session to show (D66); unavailable says the keys to set.
+   */
+  openOrchestrator(workspace: string): Promise<Outcome<string>>;
+  /** Reads an orchestrator's children and questions from the daemon into its list (D64, D66). */
+  readAgents(sessionId: string): Promise<Outcome<null>>;
+  /** The person's answer to a question, with a note or "" (D66); losing to an earlier answer is said. */
+  answerQuestion(sessionId: string, questionId: string, answer: string, note: string): Promise<Outcome<null>>;
 }

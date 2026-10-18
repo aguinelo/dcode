@@ -194,3 +194,78 @@ tarefas como "Electron", e o dono pediu o ícone do mascote (D49) e o nome
 
 Descartado: trocar também a marca da barra (move a régua inteira por um nome
 que a pessoa já lê no título da janela e no Dock).
+
+**D66. A janela age sobre a orquestradora: responde a fila, abre a do projeto
+pelo "Nova" e agrupa os filhos sob o projeto** (fecha as lacunas de D64).
+Passo 14 da primeira fatia do orquestrador (registro `202610132000`, decisão
+4 da `.i`: o desktop ganha a opção de abrir a orquestradora do projeto, ao
+lado da conversa comum, que continua o padrão), sobre as rotas que o daemon
+já serve (`.p` §5.1).
+
+- **Responder da aba Agentes.** "◆ N perguntas" abre a fila como antes, e cada
+  pergunta ganha um botão por opção que o daemon mandou — merge, devolver e
+  fechar num merge; continuar e parar no teto; as do desenho —, a recomendada
+  no acento. Merge e desenho levam uma nota opcional (o porquê, o que falta);
+  o teto não, porque as duas respostas dizem tudo. Nada é otimista: a
+  pergunta sai quando o daemon toma a resposta, e o `question.answered` que
+  chega de outra janela ou da TUI a tira do mesmo jeito. A primeira resposta
+  vale: `question_already_answered` é dito na própria pergunta, com a
+  mensagem do daemon, e a fila é relida para mostrar o que ele guarda.
+- **Abrir a orquestradora do projeto, no menu "Nova".** O menu ganha um
+  terceiro alternador, "◆ orquestradora", ao lado de "com modelo e modo" e de
+  "↻ loop": ligado, o título vira "Abrir a orquestradora de", e escolher um
+  projeto — ou "Outra pasta…" — faz `POST /projects` com a pasta, pede a
+  sessão a `GET /projects/{id}/orchestrator` e a põe no meio, como uma sessão
+  nova. Uma pasta que já tem projeto abre a mesma orquestradora.
+  `orchestrator_unavailable` é dito com a razão do daemon, que nomeia a chave
+  desligada, e com o que ligar: `orchestrator.enabled = true` e
+  `record.enabled = true` (ou `DCODE_ORCHESTRATOR_ENABLED=true`), reiniciando
+  o daemon. É o menor lugar coerente: a conversa comum continua sendo o que
+  "Nova" abre sem escolha, e o que muda o tipo do que se abre já mora ali (o
+  loop). O cabeçalho do projeto na lista foi descartado: está em toda tela
+  medida da Crew.
+- **Escondido enquanto o loop está ligado**, como "Outra pasta…" já fica. A
+  folha do loop é um modo próprio, e o menu com o loop ligado é a referência
+  11, nos dois temas: mostrar o alternador ali mudaria a régua sem mudar o
+  que o loop faz. Se o dono quiser os três sempre visíveis, é recapturar a 11.
+- **Os filhos sob o projeto na lista de Sessões.** Cada filho trabalha na sua
+  worktree, e a lista agrupava por pasta: agora um filho vai para a pasta de
+  quem o despachou, subindo pelos `parent_id`; com o pai fora da lista, para a
+  da orquestradora do mesmo `project_id`; sem nenhum dos dois, para a própria
+  pasta — nunca some. Dentro de cada grupo da Crew (Ativas, o do projeto,
+  Mais antigas) um filho vem logo abaixo do pai, recuado 14px por nível, com
+  "↳" antes da pasta; um filho cujo pai está em outro grupo fica na margem. O
+  agrupamento vale também para a lateral da grade, que lê a mesma lista de
+  projetos; o recuo é só da Crew, e a grade não muda de desenho.
+- **`/children` e `/questions` alimentam a lista** ao abrir a conversa
+  orquestradora, e de novo cada vez que o fluxo dela fica 1,5s quieto. A
+  resposta do daemon substitui os filhos que os eventos tinham dobrado — é
+  ela que segura a retenção de um fechado (D64) —, e os eventos que chegam
+  depois dobram por cima. Reler no silêncio é o que mantém a lista na resposta
+  do daemon sem um relógio da janela, e o que corrige a primeira leitura
+  quando o replay de abertura ainda chegava. Uma leitura que falha é dita no
+  alto da aba, e a lista dos eventos continua. Uma orquestradora terminada,
+  lida do histórico, não lê nada: não há daemon que a guarde.
+- **Só o fio (D8).** As respostas das rotas são conferidas na fronteira
+  (`protocol/projects.ts`) contra os tipos gerados, e o processo principal
+  confere o que a janela manda antes de enviar: a pasta absoluta, os ids no
+  alfabeto do daemon, a resposta como id de opção de até 64 caracteres e a
+  nota de até 2000.
+- **Modo fixture.** A gravação da orquestra ganha uma pergunta de teto e a
+  terceira opção do merge; responder diz que nada foi enviado, e abrir a
+  orquestradora também. A lista agrupada aparece em `crew-orquestra`.
+
+As réguas: as dezoito referências continuam a 0,00% — nenhuma tem filho de
+orquestradora, e o menu medido (11) é o do loop ligado. O `check:daemon`
+passa 13 de 13; o cenário com dois filhos e a retenção curta que a `.i` pede
+continua esperando, porque `tests/daemon/` é régua protegida. As capturas da
+fila, da entrada no "Nova" e da lista agrupada, nos dois temas, vão ao dono
+no PR.
+
+Descartados: o ⌘K como lugar de abrir a orquestradora (a busca é a tela 12,
+medida); a resposta otimista, tirando a pergunta antes do daemon (perder para
+outra resposta deixaria a janela mostrando uma resposta que não valeu); nota
+também no teto (continuar e parar não pedem porquê); reler `/children` num
+relógio fixo (D64 deu a retenção ao daemon, e o silêncio do fluxo já diz
+quando reler); recuar os filhos também na grade (a grade não muda de desenho
+nesta fatia).

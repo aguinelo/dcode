@@ -242,6 +242,32 @@ export function serveTheWindows(daemon: Connection, terminals: Terminals): void 
     const where = input.workspace(workspace);
     return where.ok ? ask.listSpecs(where.value) : where;
   });
+  // A project's orchestrator (D66): a folder as any new session takes one, and
+  // ids in the daemon's alphabet, since each becomes a path there.
+  handle(CHANNELS.openProject, (_event, workspace) => {
+    const where = input.workspace(workspace);
+    return where.ok ? ask.openProject(where.value) : where;
+  });
+  handle(CHANNELS.projectOrchestrator, (_event, id) => {
+    const project = input.projectId(id);
+    return project.ok ? ask.projectOrchestrator(project.value) : project;
+  });
+  handle(CHANNELS.listChildren, (_event, id) => {
+    const session = input.recordedId(id);
+    return session.ok ? ask.listChildren(session.value) : session;
+  });
+  handle(CHANNELS.listQuestions, (_event, id) => {
+    const session = input.recordedId(id);
+    return session.ok ? ask.listQuestions(session.value) : session;
+  });
+  handle(CHANNELS.answerQuestion, (_event, id, questionId, answer, note) => {
+    const session = input.recordedId(id);
+    if (!session.ok) return session;
+    const question = input.questionId(questionId);
+    if (!question.ok) return question;
+    const said = input.questionAnswer(answer, note);
+    return said.ok ? ask.answerQuestion(session.value, question.value, said.value) : said;
+  });
   handle(CHANNELS.resolveApproval, (_event, id, approvalId, decision) => {
     const session = input.id(id, SESSION);
     if (!session.ok) return session;
