@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/aguinelo/dcode/internal/protocol"
 )
 
 // PruneBudget is how much history is kept.
@@ -90,10 +92,13 @@ func Prune(dir string, b PruneBudget) (int, error) {
 			total += r.size
 			continue
 		}
+		old := b.MaxAge > 0 && time.Since(r.mod) > b.MaxAge
+		over := b.MaxBytes > 0 && total+r.size > b.MaxBytes
 		switch {
-		case b.MaxAge > 0 && time.Since(r.mod) > b.MaxAge:
-			doomed = append(doomed, r.name)
-		case b.MaxBytes > 0 && total+r.size > b.MaxBytes:
+		case (old || over) && orchestrates(filepath.Join(dir, r.name)):
+			// Spared, and outside the budget: an orchestrator comes back
+			// from its record after a restart, and every child names it.
+		case old || over:
 			doomed = append(doomed, r.name)
 		default:
 			total += r.size
@@ -107,4 +112,13 @@ func Prune(dir string, b PruneBudget) (int, error) {
 		}
 	}
 	return removed, nil
+}
+
+// orchestrates reports whether the record at path is an orchestrator's, read
+// from the session.created that opens it. Read only for a record about to go,
+// so a prune does not open every file it keeps. A record whose opening cannot
+// be read is not spared on that account: it is no session a reopen could use.
+func orchestrates(path string) bool {
+	o, err := Origin(path)
+	return err == nil && o.Role == protocol.RoleOrchestrator
 }

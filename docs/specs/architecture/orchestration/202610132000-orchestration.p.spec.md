@@ -51,7 +51,7 @@ desktop/src/renderer/AgentsPanel.tsx
 ```go
 package orchestrate
 type Registry struct{ /* dir, spawner, forges, mu, projects map[string]*Orchestrator */ }
-func (r *Registry) Open(workspace string) (*Orchestrator, error) // idempotente
+func (r *Registry) Open(workspace string) (*Orchestrator, bool, error) // idempotente; bool: criado
 func (r *Registry) Reload(ctx context.Context) []error           // no boot, §8
 // Orchestrator conducts one project. No method waits for a child.
 type Orchestrator struct{ /* state State, store *Store, log *DecisionLog, leases Leases */ }
@@ -321,10 +321,9 @@ As conversas — orquestradora, filhos, revisores — são sessões gravadas pel
 3. a esteira retoma do passo persistido: revisão ou gate em curso **rodam de novo** (gate só conta
    terminado); merge em curso é conciliado pelo forge (`gh pr view` diz `MERGED` → `merged`; senão
    `pr`); perguntas pendentes continuam pendentes;
-4. `daemon.restart` no log, com o que reabriu e o que não pôde.
+4. `daemon.restart` no log, com o que reabriu, o que não pôde e a linha que `Torn` cortou.
 
-`state.json` ilegível: o projeto não abre, o erro vai ao log do daemon e `Reload` o devolve — nunca
-um projeto vazio no lugar dele.
+`state.json` ilegível: o projeto não abre, o erro vai ao log do daemon e `Reload` o devolve — nunca um projeto vazio.
 
 ## 9. O log de decisões
 
@@ -431,6 +430,8 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 - Última linha sem fim de linha é cortada ao reabrir e devolvida por `Torn`; linha completa ilegível ou `seq` fora de ordem impede o log de abrir.
 - Nenhuma linha do log passa de 64 KiB; o campo maior é cortado e diz quantos bytes perdeu.
 - `dcode decisions` lê o log sem daemon e nunca o escreve; linha ilegível é dita com o número, e o resto é impresso.
+- Um projeto tem **uma** orquestradora: dois `POST /v1/projects` da mesma árvore, por caminhos diferentes, devolvem o mesmo `Project`.
+- A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
 - O gate roda numa worktree descartável no commit exato, sem `GIT_*` no ambiente, nunca na árvore da pessoa nem na do filho.
 - A worktree descartável do gate sai sempre, até depois de um pânico.
 - O que o filho disse do gate vai ao log como `claim`, ao lado do medido, e nunca muda o `result`.
@@ -439,8 +440,6 @@ determinística de `orchestrator-distrusts-the-claim` — nenhum merge sem gate 
 
 ## 14. Invariantes previstas — sem teste ainda; cada uma sobe para a §13 com o seu
 
-- Um projeto tem **uma** orquestradora: dois `POST /v1/projects` da mesma árvore, por caminhos diferentes, devolvem o mesmo `Project`.
-- A orquestradora volta do reinício do daemon **sob o mesmo id**, com o histórico inteiro.
 - Criar filhos volta com os ids antes de qualquer turno de filho terminar; com filhos rodando, a orquestradora fica `idle`, nunca `blocked`.
 - Lote com `owns` que se cruzam, entre si ou com filho vivo, é recusado **inteiro**, com os caminhos em disputa, e nenhuma worktree é criada.
 - Lote que passaria de `max_children` é recusado inteiro com `max_children_reached`.
@@ -497,3 +496,4 @@ As diferenças desta ordem para a do `.r` §10, e por quê, estão na `.i`.
 - [202610172330 — Toda decisão vai ao log com o porquê](changelog/202610172330-toda-decisao-vai-ao-log.md)
 - [202610172350 — O log de decisões se lê sem o daemon](changelog/202610172350-o-log-de-decisoes-se-le-sem-o-daemon.md)
 - [202610172358 — A orquestradora roda o gate ela mesma](changelog/202610172358-a-orquestradora-roda-o-gate.md)
+- [202610180000 — Um projeto tem uma orquestradora, que sobrevive ao daemon](changelog/202610180000-uma-orquestradora-por-projeto.md)

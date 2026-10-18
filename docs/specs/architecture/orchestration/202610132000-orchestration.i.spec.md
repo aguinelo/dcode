@@ -14,7 +14,8 @@
 | 2 — uma sessão pode ter mãe | **feito**, menos `TurnStarted.Origin`, `OriginChildren` e `StopDaemonRestart`, que entram com o passo 3 |
 | 3 — a sessão gravada reabre sob o próprio id | **feito** (#519), com os três itens do fio que o passo 2 deixou |
 | 4 — toda decisão vai ao log | **feito** — `internal/orchestrate/decisions.go`, e `orchestrator.dir` lida por `internal/orchestrate/dir.go` |
-| 5 a 8 | **não feito** |
+| 5 — um projeto tem uma orquestradora | **feito** — `internal/orchestrate/registry.go`, `store.go`; `app.Daemon` é a `Spawner` com `SpawnOrchestrator`, `Reopen` e `Close` (os de filho e revisor entram nos passos 6 e 8); `SubmitOrigin` segue sem chamador até o passo 7 |
+| 6 a 8 | **não feito** |
 | 9 — a orquestradora roda o gate | **em parte**: o componente — `internal/orchestrate/gate.go` (`Gate.Measure`, `GateFrom`, `RecordGate`, `CheckFresh`); a integração em `integration/`, o merge da main e a chamada na esteira (depois da revisão, antes da fila de merge) entram quando os passos 6 a 8 chegarem |
 | 10 | **não feito** |
 | 11 — `dcode decisions` lê o log | **feito** — `cmd/dcode/decisions.go`, com `LogReader` e `ResolveProject` em `internal/orchestrate/` |
@@ -108,11 +109,11 @@ Pacote novo `internal/orchestrate/`: `DecisionLog`, `Decision`, o esquema da `.p
 implementa a `Spawner`. Lê `orchestrator.enabled`, `orchestrator.profile`,
 `orchestrator.main_branch`.
 
-- [ ] `ProjectID` da raiz resolvida da worktree principal (`--git-common-dir`); outra worktree da
+- [x] `ProjectID` da raiz resolvida da worktree principal (`--git-common-dir`); outra worktree da
       mesma árvore dá o mesmo projeto.
-- [ ] A orquestradora é sessão `RoleOrchestrator`, modo `plan`, na raiz.
-- [ ] `state.json` atômico; `Reload` no boot reabre a orquestradora sob o mesmo id.
-- [ ] `record.enabled` falso ou `orchestrator.enabled` falso: `orchestrator_unavailable` dizendo qual.
+- [x] A orquestradora é sessão `RoleOrchestrator`, modo `plan`, na raiz.
+- [x] `state.json` atômico; `Reload` no boot reabre a orquestradora sob o mesmo id.
+- [x] `record.enabled` falso ou `orchestrator.enabled` falso: `orchestrator_unavailable` dizendo qual.
 
 **Testes obrigatórios:**
 

@@ -34,9 +34,9 @@ const (
 	// gateWaitDelay is how long Wait waits, after the kill, for output pipes
 	// something outside the process group still holds.
 	gateWaitDelay = 5 * time.Second
-	// gitDeadline bounds each git the gate runs around the command: resolving
+	// gateGitDeadline bounds each git the gate runs around the command: resolving
 	// the commit, adding the throwaway tree, removing it.
-	gitDeadline = 2 * time.Minute
+	gateGitDeadline = 2 * time.Minute
 )
 
 // The four results of .p §5.2.
@@ -105,7 +105,7 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 		return protocol.GateResult{}, &protocol.Error{Code: protocol.CodeInvalidInput,
 			Message: fmt.Sprintf("the gate measures one exact commit, a full SHA; %q is not one", commit)}
 	}
-	gctx, cancel := context.WithTimeout(ctx, gitDeadline)
+	gctx, cancel := context.WithTimeout(ctx, gateGitDeadline)
 	tree, err := gateGit(gctx, dir, "rev-parse", "--verify", "--quiet", commit+"^{commit}^{tree}")
 	cancel()
 	if err != nil {
@@ -137,7 +137,7 @@ func (g Gate) Measure(ctx context.Context, dir, commit string) (_ protocol.GateR
 		}
 	}()
 
-	gctx, cancel = context.WithTimeout(ctx, gitDeadline)
+	gctx, cancel = context.WithTimeout(ctx, gateGitDeadline)
 	_, err = gateGit(gctx, dir, "worktree", "add", "--quiet", "--detach", place, commit)
 	cancel()
 	if err != nil {
@@ -201,7 +201,7 @@ func runCommand(ctx context.Context, g Gate, tree string, out *gateOutput) (exit
 // removeTree takes the throwaway worktree out of git and off the disk. It runs
 // on a context of its own: the caller's may be the reason the gate stopped.
 func removeTree(repo, place, scratch string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), gitDeadline)
+	ctx, cancel := context.WithTimeout(context.Background(), gateGitDeadline)
 	defer cancel()
 	var errs []error
 	if _, err := os.Stat(place); err == nil {
