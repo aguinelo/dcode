@@ -1,6 +1,6 @@
 // The third recording: an orchestrator's conversation and its children, for
 // the live agent list (orchestration RN-9). One child in each of the eight
-// states, a merge question and a design question waiting for the person, and
+// states, a merge, a design and a ceiling question waiting for the person, and
 // the health of main after the first merge — every fact in the events the
 // orchestrator's log carries (.p §5.3), nothing read from text (D8). The
 // children that have a conversation of their own replay it too, so a row
@@ -67,7 +67,8 @@ const mergeQuestion: P.Question = {
   child_id: 'c-sessao',
   options: [
     { id: 'merge', label: 'Merge' },
-    { id: 'return', label: 'Devolver' },
+    { id: 'return', label: 'Devolver ao filho' },
+    { id: 'close', label: 'Fechar o filho' },
   ],
   sensitive: ['internal/session/reopen.go'],
   asked: at(3 * MINUTE),
@@ -85,6 +86,20 @@ const designQuestion: P.Question = {
     { id: 'warn', label: 'Só avisa' },
   ],
   asked: at(6 * MINUTE),
+};
+
+/** The token ceiling, which no child asks: the project's own (orchestrator.token_ceiling). */
+const ceilingQuestion: P.Question = {
+  id: 'q-ceiling-1',
+  kind: 'ceiling',
+  text: 'O projeto gastou 2.100.000 tokens, passou do orchestrator.token_ceiling (2.000.000). Continuar com uma janela nova, ou parar de despachar?',
+  recommended: 'stop',
+  why: 'os filhos que rodam terminam o que fazem; nenhum novo é despachado até a resposta',
+  options: [
+    { id: 'continue', label: 'Continuar: uma janela nova de tokens' },
+    { id: 'stop', label: 'Parar de despachar' },
+  ],
+  asked: at(90),
 };
 
 function orchestrator(): SessionWriter {
@@ -123,6 +138,7 @@ function orchestrator(): SessionWriter {
   });
   w.emit('question.asked', 3 * MINUTE, mergeQuestion);
   w.emit('child.started', 2 * MINUTE, { child: cliente });
+  w.emit('question.asked', 90, ceilingQuestion);
   return w.emit('progress', 60, { turn_id: 't-1', kind: 'in_flight', done: 6, total: 8 });
 }
 

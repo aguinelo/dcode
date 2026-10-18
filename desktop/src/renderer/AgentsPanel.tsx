@@ -2,31 +2,90 @@ import { GitPullRequest } from 'lucide-react';
 import { useState } from 'react';
 import type * as P from '../protocol/generated';
 import { agentTree, childStateView, ciView, liveCount, mainHealthView, ownsSummary, questionsOf, usageLine, type AgentList } from '../state/agents';
+import { NOTE_LIMIT, takesNote } from '../state/questions';
+import type { Outcome } from './window';
 
 const KIND: Record<string, string> = { merge: 'merge', design: 'desenho', ceiling: 'teto' };
 
-/** The queue of what waits for the person, opened from "◆ N perguntas". */
-function Questions({ questions, titleOf }: { questions: P.Question[]; titleOf: (id: string) => string | null }) {
+/** Sends the person's answer, with the note or "", and says whether the daemon took it. */
+export type AnswerQuestion = (questionId: string, answer: string, note: string) => Promise<Outcome<null>>;
+
+/**
+ * One question of the queue (D66): what it asks, the recommended option and
+ * why, the sensitive paths of a merge, each option the daemon sent as a
+ * button, and a note where the answer takes one. Nothing is optimistic: the
+ * question leaves when the daemon took the answer, and a refusal is said here.
+ */
+function QuestionItem({ q, of, onAnswer }: { q: P.Question; of: string | null; onAnswer?: AnswerQuestion }) {
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState<string | null>(null);
+  const [why, setWhy] = useState<string | null>(null);
+  const recommended = q.options.find((o) => o.id === q.recommended)?.label ?? q.recommended;
+  const send = (answer: string) => {
+    if (!onAnswer || sending) return;
+    setSending(answer);
+    setWhy(null);
+    void onAnswer(q.id, answer, note).then((out) => {
+      setSending(null);
+      if (!out.ok) setWhy(out.why);
+    });
+  };
+  return (
+    <li data-question-id={q.id}>
+      <span className="agents-q-head">
+        <span className="tone-warn">◆ {KIND[q.kind] ?? q.kind}</span>
+        {of && <span className="tone-faint"> · {of}</span>}
+      </span>
+      <span className="agents-q-text">{q.text}</span>
+      <span className="agents-q-why tone-dim">
+        recomenda <b>{recommended}</b> — {q.why}
+      </span>
+      {q.sensitive && q.sensitive.length > 0 && <span className="agents-q-why tone-warn mono">sensível: {q.sensitive.join(', ')}</span>}
+      {takesNote(q) && (
+        <textarea
+          className="agents-q-note-field"
+          rows={2}
+          value={note}
+          maxLength={NOTE_LIMIT}
+          placeholder="Nota opcional: o porquê, o que falta"
+          aria-label={`Nota da resposta a ${q.text}`}
+          disabled={!onAnswer || sending !== null}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      )}
+      <span className="agents-q-options" role="group" aria-label="Respostas">
+        {q.options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            className={o.id === q.recommended ? 'agents-q-option recommended' : 'agents-q-option'}
+            data-answer={o.id}
+            data-recommended={o.id === q.recommended ? 'true' : undefined}
+            disabled={!onAnswer || sending !== null}
+            title={o.id === q.recommended ? 'A recomendada' : undefined}
+            onClick={() => send(o.id)}
+          >
+            {sending === o.id ? 'enviando…' : o.label}
+          </button>
+        ))}
+      </span>
+      {why && <span className="agents-q-why tone-err" role="alert">{why}</span>}
+    </li>
+  );
+}
+
+/** The queue of what waits for the person, opened from "◆ N perguntas", answered here (D66). */
+export function QuestionQueue({ questions, titleOf, onAnswer }: { questions: P.Question[]; titleOf: (id: string) => string | null; onAnswer?: AnswerQuestion }) {
   return (
     <ul className="agents-questions" aria-label="Perguntas esperando você">
-      {questions.map((q) => {
-        const recommended = q.options.find((o) => o.id === q.recommended)?.label ?? q.recommended;
-        const of = q.child_id ? titleOf(q.child_id) : null;
-        return (
-          <li key={q.id} data-question-id={q.id}>
-            <span className="agents-q-head">
-              <span className="tone-warn">◆ {KIND[q.kind] ?? q.kind}</span>
-              {of && <span className="tone-faint"> · {of}</span>}
-            </span>
-            <span className="agents-q-text">{q.text}</span>
-            <span className="agents-q-why tone-dim">
-              recomenda <b>{recommended}</b> — {q.why}
-            </span>
-            {q.sensitive && q.sensitive.length > 0 && <span className="agents-q-why tone-warn mono">sensível: {q.sensitive.join(', ')}</span>}
-          </li>
-        );
-      })}
-      <li className="agents-q-note tone-faint">Responder daqui chega quando o app ler a fila do daemon; até lá, a resposta vai na conversa.</li>
+      {questions.map((q) => (
+        <QuestionItem key={q.id} q={q} of={q.child_id ? titleOf(q.child_id) : null} onAnswer={onAnswer} />
+      ))}
+      <li className="agents-q-note tone-faint">
+        {onAnswer
+          ? 'A primeira resposta vale — desta janela, de outra ou da TUI; a pergunta sai quando o daemon a toma.'
+          : 'Responder pede o daemon, e esta janela não fala com nenhum.'}
+      </li>
     </ul>
   );
 }
@@ -106,6 +165,8 @@ export function AgentsPanel({
   rootId,
   canOpen,
   onOpen,
+  onAnswer,
+  readError,
 }: {
   agents: AgentList;
   /** The orchestrator's session id: its children are the tree's first level. */
@@ -113,6 +174,10 @@ export function AgentsPanel({
   /** Whether a child's conversation is in the window's list, to be opened. */
   canOpen: (id: string) => boolean;
   onOpen: (id: string) => void;
+  /** Answers a question of the queue (D66); absent, the queue only shows. */
+  onAnswer?: AnswerQuestion;
+  /** Why the daemon's /children or /questions could not be read; the events' list is what shows then. */
+  readError?: string | null;
 }) {
   const [queue, setQueue] = useState(false);
   const nodes = agentTree(agents, rootId);
@@ -134,7 +199,12 @@ export function AgentsPanel({
           </button>
         )}
       </div>
-      {queue && n > 0 && <Questions questions={agents.questions} titleOf={titleOf} />}
+      {readError && (
+        <p className="crew-quiet tone-err" role="alert">
+          {readError} — a lista abaixo é a dos eventos.
+        </p>
+      )}
+      {queue && n > 0 && <QuestionQueue questions={agents.questions} titleOf={titleOf} onAnswer={onAnswer} />}
       {nodes.length === 0 ? (
         <p className="crew-quiet">Esta orquestradora ainda não despachou nenhum agente.</p>
       ) : (

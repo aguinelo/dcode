@@ -13,7 +13,9 @@ import {
   StopNow,
 } from '../protocol/generated';
 import { isRecord } from '../protocol/validate';
+import type { AnswerQuestionRequest } from '../protocol/generated';
 import type { NewSessionOptions, PrDraft, Refusal } from '../shared/api';
+import { NOTE_LIMIT } from '../state/questions';
 
 // What the renderer hands the main process is checked here, at the boundary,
 // before any of it reaches the daemon. A bad argument is a refusal the window
@@ -253,4 +255,38 @@ export const STOPS: readonly string[] = [StopNow, StopAfterSpec];
 export function stopWhen(v: unknown): Checked<string> {
   if (typeof v === 'string' && STOPS.includes(v)) return { ok: true, value: v };
   return invalid(`Parar o loop precisa ser um de ${STOPS.join(', ')}, e veio ${shown(v)}.`);
+}
+
+/** A project's id, in the daemon's alphabet: it becomes part of a path there (D66). */
+export function projectId(v: unknown): Checked<string> {
+  if (typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v)) return { ok: true, value: v };
+  return invalid(`O id do projeto precisa ter de 1 a 128 letras, dígitos, - ou _, e veio ${shown(v)}.`);
+}
+
+/** A question's id, in the daemon's alphabet: it becomes part of a path there (D66). */
+export function questionId(v: unknown): Checked<string> {
+  if (typeof v === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(v)) return { ok: true, value: v };
+  return invalid(`O id da pergunta precisa ter de 1 a 128 letras, dígitos, - ou _, e veio ${shown(v)}.`);
+}
+
+export { NOTE_LIMIT };
+
+/** How long an option's id may be: the daemon's are a word (merge, return, continue). */
+const ANSWER_LIMIT = 64;
+
+/**
+ * The person's answer to a question (D66): one of its options, by id — which
+ * one is the daemon's to check, since only it holds the question — and a note
+ * when written. A blank note is no note: the daemon reads an absent one.
+ */
+export function questionAnswer(answer: unknown, note: unknown): Checked<AnswerQuestionRequest> {
+  if (!filled(answer)) return invalid(`A resposta precisa ser uma das opções da pergunta, e veio ${shown(answer)}.`);
+  // eslint-disable-next-line no-control-regex -- an option id is a word; a control character is not one
+  if (answer.length > ANSWER_LIMIT || /[\0-\x1f]/.test(answer)) {
+    return invalid(`A resposta precisa ser o id de uma opção, até ${ANSWER_LIMIT} caracteres, e veio ${shown(answer)}.`);
+  }
+  if (note !== undefined && typeof note !== 'string') return invalid(`A nota da resposta precisa ser um texto, e veio ${shown(note)}.`);
+  const said = (note ?? '').trim();
+  if (said.length > NOTE_LIMIT) return invalid(`A nota tem ${said.length} caracteres, e a resposta leva até ${NOTE_LIMIT}.`);
+  return { ok: true, value: said ? { answer, note: said } : { answer } };
 }

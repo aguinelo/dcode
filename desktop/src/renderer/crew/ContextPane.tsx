@@ -18,6 +18,8 @@ import { LoopSection } from '../LoopRuler';
 import { DoneRow } from '../Pane';
 import { AgentsPanel } from '../AgentsPanel';
 import { liveCount } from '../../state/agents';
+import { useAgentsRead } from '../useAgentsRead';
+import type { Outcome } from '../window';
 
 type Tab = 'agentes' | 'mudancas' | 'pronto' | 'sessao';
 
@@ -239,6 +241,8 @@ export function ContextPane({
   onMode,
   canOpen,
   onOpen,
+  readAgents,
+  answerQuestion,
 }: {
   row: Row | null;
   view: PaneView | null;
@@ -254,6 +258,10 @@ export function ContextPane({
   /** Whether a child of an orchestrator has a conversation in the list, and opening it in the middle (RN-9). */
   canOpen: (id: string) => boolean;
   onOpen: (id: string) => void;
+  /** Reads an orchestrator's children and questions from the daemon (D66). Stable: a read is timed by it. */
+  readAgents: (id: string) => Promise<Outcome<null>>;
+  /** The person's answer to one of its questions (D66). */
+  answerQuestion: (id: string, questionId: string, answer: string, note: string) => Promise<Outcome<null>>;
 }) {
   // Null is the default: Agentes for an orchestrator's conversation (RN-9), Mudanças for any other.
   const [picked, setPicked] = useState<Tab | null>(null);
@@ -265,6 +273,8 @@ export function ContextPane({
   // The folder's count once git answered; what the tools wrote until then.
   const files = git.state.kind === 'ready' && git.state.git.repository ? git.state.git.files.length : wrote.length;
   const live = session ? liveCount(session.agents) : 0;
+  // Only a followed session: an ended orchestrator's history has no daemon list to read.
+  const readError = useAgentsRead(row && !history ? row.id : null, orchestrator, session?.lastSeq ?? 0, readAgents);
   const tabs: { id: Tab; label: string; count?: string }[] = [
     ...(orchestrator ? [{ id: 'agentes' as const, label: 'Agentes', count: live > 0 ? String(live) : undefined }] : []),
     { id: 'mudancas', label: 'Mudanças', count: files > 0 ? String(files) : undefined },
@@ -285,7 +295,14 @@ export function ContextPane({
         {!row || !view ? (
           <p className="crew-quiet">Nenhuma conversa em foco.</p>
         ) : tab === 'agentes' && session ? (
-          <AgentsPanel agents={session.agents} rootId={row.id} canOpen={canOpen} onOpen={onOpen} />
+          <AgentsPanel
+            agents={session.agents}
+            rootId={row.id}
+            canOpen={canOpen}
+            onOpen={onOpen}
+            onAnswer={history ? undefined : (q, a, n) => answerQuestion(row.id, q, a, n)}
+            readError={readError}
+          />
         ) : tab === 'mudancas' ? (
           <>
             <PullRequest conversationId={row.id} title={row.title} entries={session?.entries} git={git.state} />

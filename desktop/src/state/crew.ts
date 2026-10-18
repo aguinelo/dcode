@@ -27,6 +27,42 @@ export interface SessionGroup {
   rows: Row[];
   /** "Mais antigas" opens on demand; the others are always open. */
   collapsible: boolean;
+  /** How far in a row is drawn: a child under its parent in the same group (D66); absent is the margin. */
+  depth: Readonly<Record<string, number>>;
+}
+
+/**
+ * A group's rows with each child after its parent, when the parent is in the
+ * same group, and how far in each is drawn (D66). The order otherwise stays;
+ * a child whose parent is elsewhere stands at the margin, never hidden.
+ */
+export function asTree(rows: readonly Row[]): { rows: Row[]; depth: Record<string, number> } {
+  const ids = new Set(rows.map((r) => r.id));
+  const under = new Map<string, Row[]>();
+  const roots: Row[] = [];
+  for (const r of rows) {
+    if (r.parentId && r.parentId !== r.id && ids.has(r.parentId)) under.set(r.parentId, [...(under.get(r.parentId) ?? []), r]);
+    else roots.push(r);
+  }
+  const out: Row[] = [];
+  const depth: Record<string, number> = {};
+  const seen = new Set<string>();
+  const walk = (r: Row, d: number) => {
+    if (seen.has(r.id)) return;
+    seen.add(r.id);
+    out.push(r);
+    if (d > 0) depth[r.id] = d;
+    for (const c of under.get(r.id) ?? []) walk(c, d + 1);
+  };
+  for (const r of roots) walk(r, 0);
+  // A cycle of parents leaves its rows unreached: at the margin, never dropped.
+  for (const r of rows) walk(r, 0);
+  return { rows: out, depth };
+}
+
+function group(key: string, label: string, rows: Row[], collapsible: boolean): SessionGroup {
+  const tree = asTree(rows);
+  return { key, label, rows: tree.rows, collapsible, depth: tree.depth };
 }
 
 function isActive(r: Row): boolean {
@@ -59,15 +95,15 @@ export function sessionGroups(projects: readonly ProjectView[], query: string, n
       else if (r.lastAt && now - instant(r.lastAt) <= OLDER_AFTER_MS) recent.push(r);
       else older.push(r);
     }
-    if (recent.length > 0) groups.push({ key: `p:${p.id}`, label: p.label, rows: recent, collapsible: false });
+    if (recent.length > 0) groups.push(group(`p:${p.id}`, p.label, recent, false));
   }
   // Stable: within each state the sidebar's order stays.
   active.sort((a, b) => Number(b.state === 'blocked') - Number(a.state === 'blocked'));
   older.sort((a, b) => instant(b.lastAt) - instant(a.lastAt));
   return [
-    ...(active.length > 0 ? [{ key: 'ativas', label: 'Ativas', rows: active, collapsible: false }] : []),
+    ...(active.length > 0 ? [group('ativas', 'Ativas', active, false)] : []),
     ...groups,
-    ...(older.length > 0 ? [{ key: 'mais-antigas', label: 'Mais antigas', rows: older, collapsible: true }] : []),
+    ...(older.length > 0 ? [group('mais-antigas', 'Mais antigas', older, true)] : []),
   ];
 }
 

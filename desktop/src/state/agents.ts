@@ -56,6 +56,11 @@ export function withQuestions(list: AgentList, questions: P.Question[]): AgentLi
   return { ...list, questions: questions.filter((q) => !q.answered) };
 }
 
+/** The daemon took an answer to a question (D66): it leaves the queue, as its question.answered will say. */
+export function withAnswered(list: AgentList, questionId: string): AgentList {
+  return { ...list, questions: list.questions.filter((q) => q.id !== questionId) };
+}
+
 /** Folds one orchestrator event; every other event leaves the list as it was. */
 export function applyAgentEvent(list: AgentList, ev: ProtocolEvent): AgentList {
   switch (ev.type) {
@@ -74,7 +79,7 @@ export function applyAgentEvent(list: AgentList, ev: ProtocolEvent): AgentList {
       if (ev.payload.answered || list.questions.some((q) => q.id === ev.payload.id)) return list;
       return { ...list, questions: [...list.questions, ev.payload] };
     case 'question.answered':
-      return { ...list, questions: list.questions.filter((q) => q.id !== ev.payload.id) };
+      return withAnswered(list, ev.payload.id);
     case 'merge.refused':
       return { ...list, refused: { ...list.refused, [ev.payload.child_id]: ev.payload } };
     case 'merge.completed': {

@@ -50,6 +50,10 @@
   gap: 2px;
   font-size: 12px;
 }
+.agents-questions li + li {
+  padding-top: 8px;
+  border-top: 1px solid var(--dc-line-soft);
+}
 .agents-q-head {
   font-size: 11px;
 }
@@ -66,6 +70,47 @@
 }
 .agents-q-note {
   font-size: 11px;
+}
+/* Answering from the queue (D66): the options the daemon sent, the recommended one in the accent. */
+.agents-q-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.agents-q-option {
+  padding: 3px 9px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  font-size: 11.5px;
+  color: var(--dc-text);
+}
+.agents-q-option:hover:not(:disabled) {
+  border-color: var(--dc-line-hover);
+  background: var(--dc-hover);
+}
+.agents-q-option.recommended {
+  border-color: var(--dc-accent);
+  color: var(--dc-accent);
+}
+.agents-q-option:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.agents-q-note-field {
+  margin-top: 4px;
+  padding: 5px 7px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  background: var(--dc-sunken);
+  color: var(--dc-text);
+  font: inherit;
+  font-size: 11.5px;
+  resize: vertical;
+}
+.agents-q-note-field:focus {
+  outline: none;
+  border-color: var(--dc-line-focus);
 }
 
 .agents-list {

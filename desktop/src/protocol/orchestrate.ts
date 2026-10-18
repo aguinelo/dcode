@@ -1,7 +1,8 @@
 // The orchestrator's events, read at the boundary like every other: the shapes
-// of the payloads internal/protocol/orchestrate.go declares. Nothing shows them
-// yet — the live agent list is a later step — but an event the daemon can send
-// is an event this desktop reads and checks, never one it lets through unread.
+// of the payloads internal/protocol/orchestrate.go declares. The live agent
+// list folds them (D64), and an event the daemon can send is an event this
+// desktop reads and checks, never one it lets through unread. The answers of
+// the project routes are read in projects.ts, with these shapes.
 
 import type * as P from './generated';
 import { opt, req, type Shape } from './validate';
@@ -55,7 +56,7 @@ const CHILD_PR: Shape<P.ChildPR> = {
   ci: opt('string'),
 };
 
-const CHILD: Shape<P.Child> = {
+export const CHILD: Shape<P.Child> = {
   id: req('string'),
   parent_id: req('string'),
   title: req('string'),
@@ -84,7 +85,7 @@ const QUESTION_OPTION: Shape<P.QuestionOption> = {
   label: req('string'),
 };
 
-const QUESTION: Shape<P.Question> = {
+export const QUESTION: Shape<P.Question> = {
   id: req('string'),
   kind: req('string'),
   text: req('string'),

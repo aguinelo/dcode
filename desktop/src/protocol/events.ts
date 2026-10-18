@@ -48,7 +48,7 @@ export type ProtocolEvent = {
 
 export type EventOf<K extends EventKind> = Extract<ProtocolEvent, { type: K }>;
 
-const SESSION: Shape<P.Session> = {
+export const SESSION: Shape<P.Session> = {
   id: req('string'),
   state: req('string'),
   workspace: req('string'),

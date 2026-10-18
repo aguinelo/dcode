@@ -56,6 +56,23 @@ export interface Row {
   verification?: string;
   /** The last event that moved it along. */
   lastEvent?: string;
+  /**
+   * Its place under an orchestrator, as its session.created said (D66): the
+   * session that dispatched it, the project, and its role. Absent for a
+   * conversation a person opened.
+   */
+  parentId?: string;
+  projectId?: string;
+  role?: string;
+}
+
+/** The fields of a session that place it under an orchestrator, carried only when set. */
+function placed(s: { parent_id?: string; project_id?: string; role?: string } | null | undefined): Pick<Row, 'parentId' | 'projectId' | 'role'> {
+  const out: Pick<Row, 'parentId' | 'projectId' | 'role'> = {};
+  if (s?.parent_id) out.parentId = s.parent_id;
+  if (s?.project_id) out.projectId = s.project_id;
+  if (s?.role) out.role = s.role;
+  return out;
 }
 
 function instant(s: string | null | undefined): number {
@@ -74,6 +91,7 @@ export function rowOfSession(v: SessionView): Row {
     branch: v.info?.branch,
     model: v.info?.model,
     turns: v.turns,
+    ...placed(v.info),
   };
 }
 
@@ -98,6 +116,7 @@ export function rowOfConversation(c: Conversation): Row {
     turns: c.turns,
     verification: c.verification,
     lastEvent: c.last_event,
+    ...placed(c),
   };
 }
 
@@ -172,16 +191,44 @@ function projectMeta(rows: Row[], collapsed: boolean): Side | null {
 }
 
 /**
+ * The folder each row is listed under (D66). A child of an orchestrator works
+ * in a worktree of its own, but belongs to the project: it goes where the
+ * session that dispatched it goes, up the parents; with its parent not
+ * listed, where the orchestrator of its project_id is; with neither, under
+ * its own folder — never dropped.
+ */
+function projectFolders(rows: readonly Row[]): Map<string, string> {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const orchestrators = new Map<string, string>();
+  for (const r of rows) if (r.role === 'orchestrator' && r.projectId && !r.parentId) orchestrators.set(r.projectId, r.workspace);
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    if (!r.parentId) continue;
+    let at = r;
+    const seen = new Set<string>([r.id]);
+    for (let up = byId.get(at.parentId ?? ''); up && !seen.has(up.id); up = byId.get(at.parentId ?? '')) {
+      seen.add(up.id);
+      at = up;
+    }
+    const ws = at !== r && !at.parentId ? at.workspace : orchestrators.get(r.projectId ?? '');
+    if (ws) out.set(r.id, ws);
+  }
+  return out;
+}
+
+/**
  * The projects in the sidebar: the person's order first, then the rest by most
  * recent activity; within a project, the newest first — by start, so rows do
  * not reshuffle under the pointer while sessions work.
  */
 export function projectsOf(rows: readonly Row[], prefs: Prefs): ProjectView[] {
   const groups = new Map<string, Row[]>();
+  const where = projectFolders(rows);
   for (const r of rows) {
-    const list = groups.get(r.workspace);
+    const ws = where.get(r.id) ?? r.workspace;
+    const list = groups.get(ws);
     if (list) list.push(r);
-    else groups.set(r.workspace, [r]);
+    else groups.set(ws, [r]);
   }
   const known = prefs.order.filter((id) => groups.has(id));
   const rest = [...groups.keys()]

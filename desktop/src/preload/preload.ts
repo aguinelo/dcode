@@ -123,6 +123,16 @@ const api: DcodeApi = {
     read: (conversationId) => invoke<Answer<unknown>>(CHANNELS.readGitPR, conversationId),
     open: (conversationId, draft) => invoke<Answer<unknown>>(CHANNELS.createGitPR, conversationId, draft),
   },
+  orchestrate: {
+    openProject: (workspace) => invoke<Answer<unknown>>(CHANNELS.openProject, workspace),
+    orchestrator: (projectId) => invoke<Answer<unknown>>(CHANNELS.projectOrchestrator, projectId),
+    children: (sessionId) => invoke<Answer<unknown>>(CHANNELS.listChildren, sessionId),
+    questions: (sessionId) => invoke<Answer<unknown>>(CHANNELS.listQuestions, sessionId),
+    answer: (sessionId, questionId, answer, note) =>
+      note === undefined
+        ? invoke<Answer<unknown>>(CHANNELS.answerQuestion, sessionId, questionId, answer)
+        : invoke<Answer<unknown>>(CHANNELS.answerQuestion, sessionId, questionId, answer, note),
+  },
 };
 
 contextBridge.exposeInMainWorld('dcode', api);

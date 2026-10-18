@@ -1,6 +1,7 @@
 // Every session the window knows, folded from the events of all of them.
 
 import { decodeEvent, type Decoded, type Problem } from '../protocol/events';
+import type { AgentList } from './agents';
 import { applyEvent, emptySession, withNote, type SessionView } from './session';
 
 export interface SessionsState {
@@ -37,6 +38,16 @@ export function applyDecoded(state: SessionsState, decoded: Decoded): SessionsSt
   const { state: withSession, view } = sessionOf(state, p.sessionId);
   const at = p.at ?? view.lastAt ?? new Date(0).toISOString();
   return put(withSession, withNote(view, p.seq ?? view.lastSeq, at, { kind: 'protocol', reason: p.reason }));
+}
+
+/**
+ * Changes one followed session's agent list with what the daemon answered
+ * outside its stream — /children, /questions, an answer (D66). A session the
+ * window has no events of yet is left alone: there is no view to change.
+ */
+export function withAgentsOf(state: SessionsState, id: string, change: (agents: AgentList) => AgentList): SessionsState {
+  const view = state.byId[id];
+  return view ? put(state, { ...view, agents: change(view.agents) }) : state;
 }
 
 /** Decodes and folds a batch of events as they came off the wire. */

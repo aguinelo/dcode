@@ -182,6 +182,23 @@ export interface PrApi {
   open(conversationId: string, draft: PrDraft): Promise<Answer<unknown>>;
 }
 
+/**
+ * A project's orchestrator and what waits on it (orchestration .p §5.1, D66).
+ * Answers come as they came, and the renderer reads them at its boundary.
+ */
+export interface OrchestrateApi {
+  /** Opens the project of a folder, or finds the one it already is (`POST /projects`). */
+  openProject(workspace: string): Promise<Answer<unknown>>;
+  /** The session that conducts a project (`GET /projects/{id}/orchestrator`). */
+  orchestrator(projectId: string): Promise<Answer<unknown>>;
+  /** An orchestrator's children, the closed inside their retention among them (`GET /sessions/{id}/children`). */
+  children(sessionId: string): Promise<Answer<unknown>>;
+  /** An orchestrator's questions, answered or not (`GET /sessions/{id}/questions`). */
+  questions(sessionId: string): Promise<Answer<unknown>>;
+  /** The person's answer to one, with a note when written (`POST /sessions/{id}/questions/{qid}`); the first answer wins. */
+  answer(sessionId: string, questionId: string, answer: string, note?: string): Promise<Answer<unknown>>;
+}
+
 export interface DcodeApi {
   /** process.platform of the main process: decides where the native window controls are. */
   readonly platform: string;
@@ -283,6 +300,8 @@ export interface DcodeApi {
   readonly loops: LoopApi;
   /** A conversation's PR: reading it, and opening one a person confirmed (D60). */
   readonly pr: PrApi;
+  /** A project's orchestrator: opening it, its children and questions, and answering one (D66). */
+  readonly orchestrate: OrchestrateApi;
 }
 
 /** The channels, one per request and one per push. */
@@ -334,6 +353,11 @@ export const CHANNELS = {
   listSpecs: 'dcode:list-specs',
   continueLoop: 'dcode:continue-loop',
   openProposal: 'dcode:open-proposal',
+  openProject: 'dcode:open-project',
+  projectOrchestrator: 'dcode:project-orchestrator',
+  listChildren: 'dcode:list-children',
+  listQuestions: 'dcode:list-questions',
+  answerQuestion: 'dcode:answer-question',
 } as const;
 
 /** The channel the main process answers `user()` on. */

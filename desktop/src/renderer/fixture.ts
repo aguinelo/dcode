@@ -67,6 +67,10 @@ export const fixtureActions: WindowActions = {
   listSpecs: async () => ({ ok: false, why: NOT_CONNECTED }),
   continueLoop: async () => ({ ok: false, why: NOT_CONNECTED }),
   openProposal: unsent,
+  openOrchestrator: async () => ({ ok: false, why: NOT_CONNECTED }),
+  // The recording's events are the whole list: there is no daemon to read it from again.
+  readAgents: async () => ({ ok: true, value: null }),
+  answerQuestion: unsent,
   readGitDiff: async (id, path) => {
     const git = recordedGit[recordedWorkspace(id) ?? ''];
     const diff = git?.files.some((f) => f.path === path) ? recordedDiffs[path] : undefined;

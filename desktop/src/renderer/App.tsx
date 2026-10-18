@@ -249,7 +249,6 @@ export function App({
   // sessions pane's "Nova" lists the known projects (D33).
   const crewNew = useCallback(() => void win.startIn(null), [win]);
   const isConversation = useCallback((id: string) => rowById.has(id) || id in sessions.byId, [rowById, sessions]);
-
   // Crew shows one conversation in the middle: the one in focus — a loop's followed to where it is now (D63) —, else the first that wants attention.
   const crewFocusId = followLoop(loops, win.focusId);
   const crewId = crewFocusId && isConversation(crewFocusId) ? crewFocusId : (plan.ids[0] ?? null);
@@ -350,6 +349,7 @@ export function App({
               newSession: crewNew,
               startIn: (workspace, options) => void win.startIn(workspace, options),
               loop: loop.sheet,
+              orchestrate: (workspace) => void win.orchestrateIn(workspace),
               look: chooseLook,
               theme: chooseTheme,
             }}

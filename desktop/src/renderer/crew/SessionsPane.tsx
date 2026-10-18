@@ -10,18 +10,21 @@ import { MascotGlyph } from '../Mascot';
 import { StartForm } from '../StartForm';
 import type { Outcome, StartOptions } from '../window';
 
-function SessionItem({ row, sessions, now, on, onPick }: { row: Row; sessions: SessionsState; now: number; on: boolean; onPick: (r: Row) => void }) {
+function SessionItem({ row, sessions, now, on, depth, onPick }: { row: Row; sessions: SessionsState; now: number; on: boolean; depth: number; onPick: (r: Row) => void }) {
   const v = paneView(row, sessions.byId[row.id], now);
   const side = searchSide(row, now);
   const state = sessions.byId[row.id]?.state ?? row.state;
   const seal = state === 'running' || state === 'blocked' ? null : sealWord(row.verification);
   const last = lastEventText(row, now);
+  // A child of an orchestrator under its parent (D66): drawn in by how deep it is.
   return (
     <button
       type="button"
-      className={`crew-item${on ? ' on' : ''}`}
+      className={`crew-item${depth > 0 ? ' crew-child' : ''}${on ? ' on' : ''}`}
       data-session-id={row.id}
       data-state={row.state}
+      data-depth={depth > 0 ? depth : undefined}
+      style={depth > 0 ? { paddingLeft: 10 + depth * 14 } : undefined}
       aria-current={on ? 'true' : undefined}
       onClick={() => onPick(row)}
     >
@@ -51,6 +54,7 @@ export function SessionsPane({
   onPick,
   onStart,
   onLoop,
+  onOrchestrate,
   listModels,
   pickFolder,
 }: {
@@ -63,6 +67,8 @@ export function SessionsPane({
   onStart: (workspace: string | null, options?: StartOptions) => void;
   /** "Começar loop…" in the project chosen (D55, D63). */
   onLoop: (workspace: string) => void;
+  /** Opens the project's orchestrator, in a known project or from the folder picker with null (D66). */
+  onOrchestrate: (workspace: string | null) => void;
   /** For choosing the model and mode before opening (D38). */
   listModels: (workspace: string) => Promise<Outcome<ModelsResponse>>;
   pickFolder: () => Promise<string | null>;
@@ -75,6 +81,8 @@ export function SessionsPane({
   const [where, setWhere] = useState<string | null>(null);
   // With "loop" on, choosing a project opens the loop's sheet there instead (D55), as in the grid's Nova sessão.
   const [looping, setLooping] = useState(false);
+  // With "orquestradora" on, choosing a project opens its orchestrator instead (D66), beside the ordinary conversation.
+  const [orchestrating, setOrchestrating] = useState(false);
   const groups = useMemo(() => sessionGroups(projects, query, now), [projects, query, now]);
   const total = projects.reduce((n, p) => n + p.rows.length, 0);
   const known = projects.filter((p) => p.id);
@@ -84,6 +92,11 @@ export function SessionsPane({
     onStart(ws, options);
   };
   const choose = (ws: string | null) => {
+    if (orchestrating) {
+      setMenu(false);
+      setOrchestrating(false);
+      return onOrchestrate(ws);
+    }
     if (looping && ws) {
       setMenu(false);
       setLooping(false);
@@ -113,7 +126,7 @@ export function SessionsPane({
                 <StartForm workspace={where} listModels={listModels} opening={false} onOpen={(o) => start(where, o)} onBack={() => setWhere(null)} />
               ) : (
                 <>
-                  <span className="crew-new-title">{looping ? 'Começar loop em' : 'Abrir em'}</span>
+                  <span className="crew-new-title">{looping ? 'Começar loop em' : orchestrating ? 'Abrir a orquestradora de' : 'Abrir em'}</span>
                   {known.map((p) => (
                     <button key={p.id} type="button" role="menuitem" className="place" title={p.id} onClick={() => choose(p.id)}>
                       {p.label}
@@ -130,7 +143,7 @@ export function SessionsPane({
                     aria-checked={choosing}
                     className="crew-new-choose"
                     title="Escolher o modelo e o modo antes de abrir"
-                    onClick={() => (setChoosing((c) => !c), setLooping(false))}
+                    onClick={() => (setChoosing((c) => !c), setLooping(false), setOrchestrating(false))}
                   >
                     {choosing ? '✓' : '+'} com modelo e modo
                   </button>
@@ -139,10 +152,24 @@ export function SessionsPane({
                     aria-pressed={looping}
                     className="crew-new-choose"
                     title="Começar um loop no projeto escolhido: uma pasta de spec ou um objetivo"
-                    onClick={() => (setLooping((l) => !l), setChoosing(false))}
+                    onClick={() => (setLooping((l) => !l), setChoosing(false), setOrchestrating(false))}
                   >
                     {looping ? '✓' : '↻'} loop
                   </button>
+                  {/* Hidden while the loop is chosen, as "Outra pasta…" is: that menu is a measured reference (D66). */}
+                  {!looping && (
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={orchestrating}
+                      className="crew-new-choose"
+                      data-orchestrate
+                      title="Abrir a orquestradora do projeto escolhido: ela despacha agentes e pergunta antes de cada merge"
+                      onClick={() => (setOrchestrating((o) => !o), setChoosing(false))}
+                    >
+                      {orchestrating ? '✓' : '◆'} orquestradora
+                    </button>
+                  )}
                 </>
               )}
             </span>
@@ -174,7 +201,7 @@ export function SessionsPane({
                 </h3>
               )}
               {open &&
-                g.rows.map((r) => <SessionItem key={r.id} row={r} sessions={sessions} now={now} on={r.id === focusId} onPick={onPick} />)}
+                g.rows.map((r) => <SessionItem key={r.id} row={r} sessions={sessions} now={now} on={r.id === focusId} depth={g.depth[r.id] ?? 0} onPick={onPick} />)}
             </div>
           );
         })}
