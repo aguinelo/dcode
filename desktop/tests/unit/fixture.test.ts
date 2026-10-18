@@ -25,6 +25,7 @@ describe('the recording behind the reference states', () => {
       'crew-orquestra': ['crew', null],
       'crew-orquestra-vazia': ['crew', null],
       'crew-perguntas': ['crew', null],
+      'crew-orquestra-plano': ['crew', null],
     });
     // 02 and 03 replay the first recording untouched: a session added to it would move their sidebar.
     expect(referenceStates['02-janela-principal-rodando']!.recording).toBe(recording);

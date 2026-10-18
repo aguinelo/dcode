@@ -337,3 +337,60 @@ um, e três merges com evidência não cabem na altura da conversa); responder
 os itens não vistos com a seleção (uma resposta que a pessoa não leu); a
 fila de D66 ao lado do cartão (duas maneiras de responder a mesma pergunta na
 mesma tela).
+
+**D68. O plano da orquestradora é a vista principal, e cada passo mostra a
+fase dos agentes que o cumprem** (emenda D57 para a orquestradora; D64 e D67
+continuam). Pedido do dono no teste ao vivo de 2026-10-18: o plano fixo como
+checklist (D57) deixou muito claro o que acontecia; que fique como a vista
+principal da orquestradora, vendo os agentes em paralelo — em que fase o
+trabalho está e como cada agente vai.
+
+- **O plano da orquestradora fica fixo entre os turnos dela.** D57 fixa o
+  plano só enquanto o turno que o revisou roda; a orquestradora fica parada
+  enquanto os filhos trabalham, e o plano voltaria ao fluxo justamente quando
+  há mais o que acompanhar. Com `role: orchestrator` o último plano fica no
+  alto sempre; uma conversa comum continua como D57.
+- **O status do passo é do núcleo.** O item de `delegate` nomeia o passo
+  (`Child.plan_step`), e o núcleo manda o plano com o status de cada passo
+  tirado dos filhos (changelog do núcleo, `.p` §10). A janela não calcula
+  status: desenha o do evento, como D57.
+- **Cada passo leva os seus agentes na linha**, embaixo do texto: o nome, que
+  abre a conversa do filho como a aba Agentes abre (desabilitado, dito no
+  title, quando ela não está na lista da janela); a esteira **despachado ·
+  trabalhando · revisão · gate · PR · merged**, as fases passadas apagadas, a
+  corrente com borda e no tom, as que faltam em tênue; o estado numa palavra;
+  e os tokens somados (entrada, saída e cache lido), sem dinheiro.
+- **A fase vem do estado, da revisão e do gate**, só do fio (D8):
+  `dispatched` despachado; `working` e `awaiting_person` trabalhando;
+  `in_review` sem veredito revisão, com veredito gate; `pr` PR; `merged`
+  merged. Falhou e fechado ficam na fase aonde chegaram (PR, gate ou
+  trabalho).
+- **Os tons são os de D52, D61 e D64**: acento no que anda; amarelo no que
+  espera você — a aprovação, a pergunta, o merge — e no devolvido
+  ("devolvido 2×"); vermelho no que falhou, com o fim do turno; cinza no
+  despachado e no fechado. **Merged em verde**, não no cinza de D64: na
+  lista o merged é o que acabou, e na esteira é a fase que deu certo — o
+  verde de medido de D61.
+- **Passo sem agente fica como D57 o desenhava**, sem lista e com o mesmo
+  DOM. **Filho sem passo**, ou com um passo que o plano não tem, vai a "Fora
+  do plano", embaixo da checklist: nenhum agente some da vista.
+- **Cabe no alto.** O bloco com agentes rola sozinho depois de 42% da
+  altura, para o cartão de perguntas (D67) e o campo continuarem à vista. Na
+  grade, a linha de D57 não muda.
+- **A aba Agentes continua** (D64): a lista com owns, PR, CI e perguntas é o
+  detalhe; o plano é o andamento.
+- **Modo fixture.** A quinta gravação, `plan-recording.ts`
+  (`?fixture=crew-orquestra-plano`): três passos, um filho cada — merged, em
+  revisão, esperando o merge com o cartão de D67 embaixo.
+
+As réguas: as dezoito referências continuam a 0,00% — nenhuma tem
+orquestradora, e o plano de 07 (D57) mantém o DOM e o CSS, que só mudam sob
+`.with-agents`. O `check:daemon` passa 14 de 14 sem mexer em cenário. As
+capturas — os três passos nos dois temas — vão ao dono no PR, e a régua só
+ganha o estado depois do visto dele.
+
+Descartados: a esteira só na aba Agentes (o dono quer o plano como vista
+principal); calcular o status do passo na janela (dois lugares decidiriam o
+mesmo, e a TUI teria um terceiro); um passo por agente, gerado pela janela (o
+plano é o da orquestradora, nas palavras dela); esconder o filho sem passo
+(um agente que trabalha fora da vista).

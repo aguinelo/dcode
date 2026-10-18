@@ -28,11 +28,17 @@ function stepOf(items: P.PlanItem[]): number {
   return open >= 0 ? open : items.length - 1;
 }
 
-/** The plan to pin, or null: no turn under way, no plan it revised, or an empty one. */
-export function pinnedPlan(view: Pick<SessionView, 'turn' | 'entries'>): PinnedPlan | null {
-  if (!view.turn) return null;
+/**
+ * The plan to pin, or null: no turn under way, no plan it revised, or an
+ * empty one. An orchestrator's plan stays pinned between its turns (D68): it
+ * is idle while its children work, and the plan is where the person follows
+ * them.
+ */
+export function pinnedPlan(view: Pick<SessionView, 'turn' | 'entries'> & { info?: SessionView['info'] }): PinnedPlan | null {
   const plan = view.entries.find((e) => e.kind === 'plan');
-  if (!plan || plan.kind !== 'plan' || plan.turnId !== view.turn.id || plan.items.length === 0) return null;
+  if (!plan || plan.kind !== 'plan' || plan.items.length === 0) return null;
+  const orchestrator = view.info?.role === 'orchestrator';
+  if (!orchestrator && (!view.turn || plan.turnId !== view.turn.id)) return null;
   const at = stepOf(plan.items);
   return { items: plan.items, step: at + 1, total: plan.items.length, current: plan.items[at]?.text ?? '' };
 }

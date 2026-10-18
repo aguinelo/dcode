@@ -4,6 +4,8 @@ import type * as P from '../../src/protocol/generated';
 import { PlanPin } from '../../src/renderer/PlanPin';
 import { pinnedPlan } from '../../src/state/plan';
 import { PHASES, childPhase, stepAgents } from '../../src/state/plan-agents';
+import { planRecording } from '../../src/fixtures/plan-recording';
+import { applyRaw, emptySessions } from '../../src/state/sessions';
 import { created, log } from './helpers';
 
 // The orchestrator's plan as its main view (D68): pinned at the top of its
@@ -119,5 +121,16 @@ describe('the agents of each plan step (D68)', () => {
     const html = renderToStaticMarkup(<PlanPin pin={pin} compact={false} />);
     expect(html).not.toContain('data-plan-child-id');
     expect(html).not.toContain('Fora do plano');
+  });
+});
+
+describe('the plan recording (D68)', () => {
+  it('replays three steps whose agents are merged, under review and waiting for the merge, the card below', () => {
+    const orq = applyRaw(emptySessions, planRecording.events).byId['s-plano']!;
+    const pin = pinnedPlan(orq);
+    expect(pin?.items.map((i) => i.status)).toEqual(['done', 'active', 'active']);
+    const g = stepAgents(pin!.items, orq.agents.children);
+    expect([1, 2, 3].map((s) => at(g.byStep[s]![0]!))).toEqual(['merged', 'review', 'pr']);
+    expect(orq.entries.some((e) => e.kind === 'card')).toBe(true);
   });
 });

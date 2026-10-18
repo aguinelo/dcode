@@ -46,6 +46,8 @@ export function ThreadPane({
   on,
   git,
   measure,
+  canOpenChild,
+  onOpenChild,
 }: {
   row: Row | null;
   view: PaneView | null;
@@ -62,6 +64,9 @@ export function ThreadPane({
   git: GitState;
   /** What the daemon's list says of the family it runs on, beside the criteria. */
   measure: Measure | null;
+  /** An orchestrator's children, opened from its plan as from the Agentes tab (D68). */
+  canOpenChild?: (id: string) => boolean;
+  onOpenChild?: (id: string) => void;
 }) {
   if (!row || !view) {
     return (
@@ -122,6 +127,8 @@ export function ThreadPane({
           onStop={() => on.stop(row.id)}
           onMissing={on.missing}
           onMode={session?.info ? (anchor) => on.mode(row.id, anchor) : undefined}
+          canOpenChild={canOpenChild}
+          onOpenChild={onOpenChild}
         />
       )}
     </section>
