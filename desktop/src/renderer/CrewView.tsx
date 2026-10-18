@@ -35,6 +35,12 @@ function loadSection(): CrewSection {
   }
 }
 
+/** A conversation of the sessions list, by id: where a child of an orchestrator opens from (RN-9). */
+function rowIn(projects: readonly ProjectView[], id: string): Row | null {
+  for (const p of projects) for (const r of p.rows) if (r.id === id) return r;
+  return null;
+}
+
 /**
  * The second version of the screen (D32, D33): a rail of sections, and in
  * the Painel three panes — the daemon's conversations on the left, the one in
@@ -135,6 +141,11 @@ export function CrewView({
             moved={moved}
             onModel={on.model}
             onMode={on.mode}
+            canOpen={(id) => rowIn(projects, id) !== null}
+            onOpen={(id) => {
+              const r = rowIn(projects, id);
+              if (r) on.pick(r);
+            }}
           />
         </div>
       );

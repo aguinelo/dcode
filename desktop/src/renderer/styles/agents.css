@@ -1,0 +1,171 @@
+/*
+ * The live agent list (orchestration RN-9) in the Crew's right pane: the
+ * grammar of Mudanças (D41) — a summary line, then one row per child — with
+ * the tones of D52 and D61. Tokens only, so both themes hold.
+ */
+
+.agents-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 11.5px;
+}
+.agents-mode {
+  padding: 2px 7px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-dim);
+}
+.agents-main-health {
+  min-width: 0;
+}
+.agents-asks {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-warn);
+  font-size: 11.5px;
+}
+.agents-asks:hover,
+.agents-asks[aria-expanded='true'] {
+  background: var(--dc-hover);
+}
+
+.agents-questions {
+  margin: 0;
+  padding: 10px 12px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--dc-line-soft);
+  border-radius: var(--dc-radius);
+  background: var(--dc-raised);
+}
+.agents-questions li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.agents-q-head {
+  font-size: 11px;
+}
+.agents-q-text {
+  color: var(--dc-text);
+}
+.agents-q-why {
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.agents-q-why b {
+  font-weight: 500;
+  color: var(--dc-text);
+}
+.agents-q-note {
+  font-size: 11px;
+}
+
+.agents-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agents-row {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px;
+  border-radius: var(--dc-radius-sm);
+  color: inherit;
+  text-align: left;
+  font-size: 12px;
+}
+.agents-row:hover:not(:disabled) {
+  background: var(--dc-hover);
+}
+.agents-row:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.agents-dot,
+.agents-ci-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.agents-dot {
+  margin-top: 5px;
+}
+.agents-ci-dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 1px 0 4px;
+}
+.agents-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agents-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.agents-title {
+  min-width: 0;
+  color: var(--dc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agents-state {
+  flex: none;
+  font-size: 11.5px;
+}
+.agents-sub {
+  font-size: 11px;
+  color: var(--dc-faint);
+}
+.agents-sub > span:last-child:not(:first-child) {
+  flex: none;
+}
+.agents-sub.tone-warn {
+  color: var(--dc-warn);
+}
+.agents-sub.tone-err {
+  color: var(--dc-err);
+}
+.agents-usage {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agents-owns {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agents-pr {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--dc-dim);
+}
+.agents-ask {
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
