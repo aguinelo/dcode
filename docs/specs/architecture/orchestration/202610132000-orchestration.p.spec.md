@@ -325,11 +325,11 @@ As conversas — orquestradora, filhos, revisores — são sessões gravadas pel
 | `why` | string | sim, não vazio | do modelo quando ele escolheu (`why` das ferramentas), do harness quando a regra escolheu |
 | `claim` | string | não | o que um filho **disse** — nunca lido como prova |
 | `measured` | objeto | nas medições | `GateResult`, `Verdict`, `MainHealth` |
-| `data` | objeto | não | o resto do fato, por `kind` |
+| `data` | objeto | não | o resto do fato, por `kind`; o de `child.returned` tem uma forma só, quem quer que o escreva: `{return: Return, returned: n}` |
 
 `kind`: `project.opened`, `dispatch`, `dispatch.refused`, `model.chosen`, `worktree.created`,
 `hooks.changed`, `child.state`, `child.completed`, `child.returned`, `owns.checked`,
-`review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`,
+`review.verdict`, `red_test.confirmed`, `branch.updated`, `gate.measured`, `pr.opened`, `pr.updated`,
 `question.asked`, `question.answered`, `merge.queued`, `merge.completed`, `merge.refused`,
 `main.health`, `ceiling.reached`, `forge.local`, `worktree.removed`, `child.closed`,
 `daemon.restart`.

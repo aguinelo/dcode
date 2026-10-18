@@ -38,6 +38,11 @@ func newLocal(s ForgeSetup) (Forge, error) {
 
 func (l *localForge) Name() string { return ForgeLocal }
 
+// UpdatePR has no PR to update: a local merge opens none.
+func (l *localForge) UpdatePR(_ context.Context, pr protocol.ChildPR, _, _ string) (protocol.ChildPR, error) {
+	return pr, nil
+}
+
 // MainTip is the local main: there is no other.
 func (l *localForge) MainTip(ctx context.Context) (string, error) {
 	return forgeGit(ctx, l.root, "rev-parse", "--verify", "refs/heads/"+l.main)

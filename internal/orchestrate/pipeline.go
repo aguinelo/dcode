@@ -137,7 +137,7 @@ func (o *Orchestrator) startReview(id string, attempt int) {
 	c, b := o.child(id), o.brief(id)
 	ctx, cancel := context.WithTimeout(context.Background(), reviewDeadline)
 	defer cancel()
-	base, err := reviewBase(ctx, o.Project(), c)
+	base, err := o.reviewBase(ctx, c)
 	if err != nil {
 		o.stall(id, err)
 		return
@@ -183,8 +183,9 @@ func (o *Orchestrator) startReview(id string, attempt int) {
 // reviewBase is where the child's own work starts: the merge-base of its head
 // and main's tip. It is the branch's Base until the integration merges main
 // into it; after that, what main brought is not the child's to review.
-func reviewBase(ctx context.Context, p protocol.Project, c protocol.Child) (string, error) {
-	tip, err := mainTip(ctx, p.Root, p.Main)
+func (o *Orchestrator) reviewBase(ctx context.Context, c protocol.Child) (string, error) {
+	p := o.Project()
+	tip, err := o.mainNow(ctx)
 	if err != nil {
 		return "", fmt.Errorf("main %s cannot be read for the review: %w", p.Main, err)
 	}
@@ -271,12 +272,6 @@ func (o *Orchestrator) stall(id string, err error) {
 // false for the red phase becoming the fix phase, which is one return in two
 // halves. Past max_returns the child fails incomplete instead.
 func (o *Orchestrator) giveBack(id string, ret protocol.Return, count bool, text string) {
-	o.handBack(id, ret, count, text, true)
-}
-
-// handBack is giveBack; logged false is a return whose child.returned line a
-// step already wrote — the integration's conflict — and only the state follows.
-func (o *Orchestrator) handBack(id string, ret protocol.Return, count bool, text string, logged bool) {
 	c := o.child(id)
 	if terminal(c.State) {
 		return
@@ -297,17 +292,14 @@ func (o *Orchestrator) handBack(id string, ret protocol.Return, count bool, text
 		why += ", phase " + ret.Phase
 	}
 	why += ")"
+	if len(ret.Paths) > 0 {
+		why += ": " + strings.Join(ret.Paths, ", ")
+	}
 	back := edit(id, func(ch *protocol.Child) {
 		r := ret
 		ch.State, ch.Reason, ch.Waiting, ch.Return, ch.Returned = stateWorking, "", "", &r, n
 	})
-	var err error
-	if logged {
-		err = o.commit(Decision{Kind: "child.returned", Child: id, Why: why, Data: data}, back)
-	} else {
-		err = o.apply(back)
-	}
-	if err != nil {
+	if err := o.commit(Decision{Kind: "child.returned", Child: id, Why: why, Data: data}, back); err != nil {
 		o.sayError(protocol.CodeInternal, fmt.Sprintf("child %s was not handed back: the log did not take it: %v", id, err))
 		return
 	}

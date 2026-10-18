@@ -9,11 +9,12 @@
   back to the same child in two phases. In the red phase the child writes only the failing test and
   names it with the new `red_test` tool. The harness runs it on that commit before any fix, and takes
   the fix only once the test fails (`red_test.confirmed`). After an approval the harness merges main's
-  tip into the branch in its integration place. A conflict goes back to the child with the markers,
+  tip into the branch in its integration place. With forge github that tip is origin's, fetched first. A conflict goes back to the child with the markers,
   and the harness's next commit concludes the merge. The harness then measures the gate itself on the
   result, with main's tip as its base, and keeps the child's own claim beside the measurement. A red
   gate goes back in the fix phase. A green one is pushed, its pull request opened, and the person
-  asked. Only the person's `merge`, through the new `POST /v1/sessions/{id}/questions/{qid}`, puts the
+  asked. A child measured again after `gate_stale` keeps its pull request: the branch is pushed again,
+  never forced, and the evidence refreshed. Only the person's `merge`, through the new `POST /v1/sessions/{id}/questions/{qid}`, puts the
   child in the serial queue. The child then merges, its worktree is removed, and it is `merged`.
   `return` hands the work back and `close` closes it. The orchestrator gains `ask` for design
   questions, and `GET /v1/sessions/{id}/questions` lists them. Past `orchestrator.max_returns` (3) the
@@ -36,10 +37,12 @@
   com relato. `changes_requested` volta ao mesmo filho em duas fases: na `red` ele escreve só o teste
   que falha e o nomeia com a ferramenta nova `red_test`; o harness o roda naquele commit, antes do
   conserto, e só aceita o conserto depois de o teste falhar (`red_test.confirmed`). Depois da
-  aprovação, o harness faz o merge da ponta da main na branch, no lugar de integração — conflito volta
+  aprovação, o harness faz o merge da ponta da main — a do `origin`, depois de um `fetch`, com forge
+  `github` — na branch, no lugar de integração — conflito volta
   ao filho com os marcadores, e o commit seguinte do harness conclui o merge —, e mede o gate ele mesmo
   no resultado, com a ponta da main como `base` e a alegação do filho ao lado. Gate vermelho volta em
-  fase `fix`; verde é empurrado, ganha PR e uma pergunta à pessoa, e só o `merge` dela, pelo novo
+  fase `fix`; verde é empurrado, ganha PR e uma pergunta à pessoa (medido de novo depois de `gate_stale`,
+  mantém o PR, empurrado sem `--force` e com a evidência refeita), e só o `merge` dela, pelo novo
   `POST /v1/sessions/{id}/questions/{qid}`, põe o filho na fila serial: ele entra na main, a worktree
   sai, e fica `merged`; `return` devolve, `close` fecha. A orquestradora ganha `ask` para perguntas de
   desenho, e `GET /v1/sessions/{id}/questions` as lista. Além de `orchestrator.max_returns` (3) o filho

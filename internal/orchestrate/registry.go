@@ -143,6 +143,7 @@ type Orchestrator struct {
 	mergeCfg MergeConfig
 	mergeMu  sync.Mutex
 	in       *Integration
+	forge    Forge
 	mg       *Merges
 	drainMu  sync.Mutex
 }

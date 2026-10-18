@@ -71,6 +71,16 @@ ordem; o modelo lê os resultados e decide.
   pessoa fechar o filho não o reabre: `move`, a devolução e a proposta conferem o estado antes.
 - **O lugar de integração com link no caminho** (`/var` é `/private/var` no macOS) era lido como
   "não é a worktree de integração" ao reabrir; `OpenIntegration` compara os caminhos resolvidos.
+- **A ponta da main é a do forge** (`Forge.MainTip`). Com `github`, `git fetch origin <main>` e
+  `refs/remotes/origin/<main>`; com `local`, `refs/heads/<main>`. A esteira mede, revisa e atualiza
+  sobre ela, que é a mesma que o merge compara: medir sobre a main local, que um merge no GitHub nunca
+  move, deixava todo filho seguinte `gate_stale` para sempre, achado pelos cenários do passo 12.
+  `fetch` que falha é dito e para o passo, nunca a main local no lugar.
+- **Filho com PR mantém o PR** (`Forge.UpdatePR`, `pr.updated`, kind novo da §9.1). Medido de novo
+  depois de `gate_stale`, a branch é empurrada de novo, sem `--force`, e o corpo do PR é refeito com a
+  evidência nova; pedir um segundo PR ao `gh` falhava e parava a esteira.
+- **`child.returned` tem uma forma só**, `{return, returned}`, escrita sempre pela devolução da
+  esteira; a integração devolve o `*Conflict` e não escreve mais a linha dela (§9.1).
 - **Os passos longos** — gate, `red_test`, a fila — correm fora da goroutine que lê os eventos da
   sessão, para que um gate de meia hora não derrube a assinatura do log.
 

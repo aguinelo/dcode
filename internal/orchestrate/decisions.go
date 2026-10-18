@@ -46,7 +46,7 @@ var kinds = map[string]bool{
 	"project.opened": true, "dispatch": true, "dispatch.refused": true, "model.chosen": true,
 	"worktree.created": true, "hooks.changed": true, "child.state": true, "child.completed": true,
 	"child.returned": true, "owns.checked": true, "review.verdict": true, "red_test.confirmed": true,
-	"branch.updated": true, "gate.measured": true, "pr.opened": true, "question.asked": true,
+	"branch.updated": true, "gate.measured": true, "pr.opened": true, "pr.updated": true, "question.asked": true,
 	"question.answered": true, "merge.queued": true, "merge.completed": true, "merge.refused": true,
 	"main.health": true, "ceiling.reached": true, "forge.local": true, "worktree.removed": true,
 	"child.closed": true, "daemon.restart": true,
