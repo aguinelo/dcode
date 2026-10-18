@@ -1,3 +1,4 @@
+import { cardsOf } from '../../state/card';
 import { ChevronDown, FileDiff } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type * as P from '../../protocol/generated';
@@ -302,6 +303,7 @@ export function ContextPane({
             onOpen={onOpen}
             onAnswer={history ? undefined : (q, a, n) => answerQuestion(row.id, q, a, n)}
             readError={readError}
+            cards={cardsOf(session)}
           />
         ) : tab === 'mudancas' ? (
           <>

@@ -1,3 +1,4 @@
+import { CardEntry } from './QuestionCard';
 import { useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { delegation, toolLine, VERBS, WORKING, type Activity, type Block, type Tone } from '../state/flow';
 import { elapsed, since } from '../state/format';
@@ -168,9 +169,12 @@ function EntryView({
   onAnswer,
   onRun,
   images,
+  sessionId,
 }: {
   entry: Exclude<Entry, { kind: 'tool' }>;
   now: number;
+  /** The conversation a question card answers in (D67); absent, a card only shows. */
+  sessionId?: string;
   onAnswer: (d: string) => void;
   onRun?: (command: string) => void;
   /** The pictures this window sent with the message (D46), when it is one. */
@@ -236,6 +240,8 @@ function EntryView({
       const n = noteText(entry.note);
       return n.text ? <div className={`note ${toneClass(n.tone)}`}>{n.text}</div> : null;
     }
+    case 'card':
+      return <CardEntry card={entry.card} sessionId={sessionId} />;
     case 'error':
       return (
         <div className="error-entry">
@@ -252,8 +258,11 @@ export function FlowBlocks({
   onAnswer,
   onRun,
   imagesAt,
+  sessionId,
 }: {
   blocks: Block[];
+  /** The live conversation the flow is of: its question cards answer in it (D67). */
+  sessionId?: string;
   now: number;
   onAnswer: (d: string) => void;
   /** Opens the conversation's terminal with a command the agent proposed typed in (D37). */
@@ -276,7 +285,8 @@ export function FlowBlocks({
         if (b.kind === 'delegation') return <Delegation key={`d-${b.calls[0]?.id}`} calls={b.calls} />;
         return (
           <EntryView
-            key={`e-${i}-${b.entry.kind}`}
+            key={b.entry.kind === 'card' ? `c-${b.entry.card.id}` : `e-${i}-${b.entry.kind}`}
+            sessionId={sessionId}
             entry={b.entry}
             now={now}
             onAnswer={onAnswer}

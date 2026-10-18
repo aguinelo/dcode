@@ -88,7 +88,7 @@ describe('the answers of the project routes, read at the boundary', () => {
     expect(decodeChildren({ children: [] })).toEqual({ ok: true, value: [] });
     // Go writes a nil slice as null: no children.
     expect(decodeChildren({ children: null })).toEqual({ ok: true, value: [] });
-    expect(decodeQuestions({ questions: [merge] })).toEqual({ ok: true, value: [merge] });
+    expect(decodeQuestions({ questions: [merge] })).toEqual({ ok: true, value: { questions: [merge], cards: [] } });
     expect(decodeQuestion({ ...merge, answer: 'merge', answered: '2026-10-18T10:05:00Z' }).ok).toBe(true);
   });
 

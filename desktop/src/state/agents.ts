@@ -90,11 +90,6 @@ export function applyAgentEvent(list: AgentList, ev: ProtocolEvent): AgentList {
     }
     case 'main.health':
       return { ...list, main: ev.payload };
-    case 'question.card':
-      // The card is read and checked like every event; it is drawn in the
-      // conversation (.p §5.5), not in this list, whose queue the
-      // question.* events keep.
-      return list;
     default:
       // child.completed carries a turn's end; the child's own state, usage
       // included, arrives in the child.state that follows it.

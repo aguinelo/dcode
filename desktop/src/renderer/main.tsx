@@ -22,6 +22,7 @@ import './styles/loop.css';
 import './styles/turn.css';
 import './styles/pr.css';
 import './styles/agents.css';
+import './styles/question-card.css';
 
 import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -35,6 +36,7 @@ import { fixtureActions } from './fixture';
 import { currentHost, type Host } from './host';
 import { LiveStore } from './live';
 import { GitReaderContext } from './useGit';
+import { CardsContext } from './QuestionCard';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('index.html has no #root to draw into');
@@ -74,7 +76,9 @@ if (wanted !== null && scene === null) {
     createRoot(root).render(
       <StrictMode>
         <GitReaderContext.Provider value={store.actions}>
-          <LiveWindow host={host} store={store} />
+          <CardsContext.Provider value={store.actions.answerQuestions}>
+            <LiveWindow host={host} store={store} />
+          </CardsContext.Provider>
         </GitReaderContext.Provider>
       </StrictMode>,
     );
@@ -87,17 +91,19 @@ if (wanted !== null && scene === null) {
     createRoot(root).render(
       <StrictMode>
         <GitReaderContext.Provider value={fixtureActions}>
-          <App
-            host={host}
-            rows={rows}
-            sessions={sessions}
-            daemon={{ state: 'recording', version: shown.daemonVersion }}
-            actions={fixtureActions}
-            initialSelection={scene?.session ?? null}
-            // 02 and 03 are the grid's maximized window, captured before the Crew became the main screen (D63).
-            initialLook={scene?.look}
-            loops={scene?.loops}
-          />
+          <CardsContext.Provider value={fixtureActions.answerQuestions}>
+            <App
+              host={host}
+              rows={rows}
+              sessions={sessions}
+              daemon={{ state: 'recording', version: shown.daemonVersion }}
+              actions={fixtureActions}
+              initialSelection={scene?.session ?? null}
+              // 02 and 03 are the grid's maximized window, captured before the Crew became the main screen (D63).
+              initialLook={scene?.look}
+              loops={scene?.loops}
+            />
+          </CardsContext.Provider>
         </GitReaderContext.Provider>
       </StrictMode>,
     );

@@ -42,7 +42,7 @@ que ela não subiu continua rodando. O `dcode` instalado precisa ser 0.23.0 ou
 mais novo, que serve a lista de conversas. No navegador, `?fixture=` abre um
 dos estados gravados de `src/fixtures/scenes.ts`, com os controles de janela
 desenhados onde o macOS os poria: `crew`, `crew-vazia`, `crew-loop`,
-`crew-orquestra` e `crew-orquestra-vazia` na Crew, e
+`crew-orquestra`, `crew-orquestra-vazia` e `crew-perguntas` na Crew, e
 `02-janela-principal-rodando` e `03-janela-principal-aprovacao` na janela
 maximizada da grade.
 

@@ -1,6 +1,7 @@
 import {
   Version,
   type AnswerQuestionRequest,
+  type AnswerQuestionsRequest,
   type CompactResult,
   type OpenProjectRequest,
   type CreateGitPRRequest,
@@ -234,6 +235,11 @@ export class Requests {
   /** The person's answer to a question; the first answer wins (D66). The question is passed on as it came. */
   answerQuestion(sessionId: string, questionId: string, body: AnswerQuestionRequest): Promise<Answer<unknown>> {
     return this.call('POST', `${sessionPath(sessionId)}/questions/${encodeURIComponent(questionId)}`, body);
+  }
+
+  /** The person's confirm of a card, every answer in one POST (D67). The results and cards are passed on as they came. */
+  answerQuestions(sessionId: string, body: AnswerQuestionsRequest): Promise<Answer<unknown>> {
+    return this.call('POST', `${sessionPath(sessionId)}/questions/answers`, body);
   }
 
   private async call(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<Answer<unknown>> {

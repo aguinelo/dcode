@@ -2,6 +2,7 @@ import { GitPullRequest } from 'lucide-react';
 import { useState } from 'react';
 import type * as P from '../protocol/generated';
 import { agentTree, childStateView, ciView, liveCount, mainHealthView, ownsSummary, questionsOf, usageLine, type AgentList } from '../state/agents';
+import { cardFor } from '../state/card';
 import { NOTE_LIMIT, takesNote } from '../state/questions';
 import type { Outcome } from './window';
 
@@ -74,7 +75,19 @@ function QuestionItem({ q, of, onAnswer }: { q: P.Question; of: string | null; o
   );
 }
 
-/** The queue of what waits for the person, opened from "◆ N perguntas", answered here (D66). */
+/**
+ * Takes the person to a card in the conversation (D67): scrolled into view and
+ * focused, so ↑, ↓ and ↵ answer it. False when the card is not drawn.
+ */
+function focusCard(id: string): boolean {
+  const el = document.querySelector<HTMLElement>(`[data-card-id="${CSS.escape(id)}"]`);
+  if (!el) return false;
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  el.focus({ preventScroll: true });
+  return true;
+}
+
+/** The queue of what waits for the person, opened from "◆ N perguntas" when no card holds it, answered here (D66). */
 export function QuestionQueue({ questions, titleOf, onAnswer }: { questions: P.Question[]; titleOf: (id: string) => string | null; onAnswer?: AnswerQuestion }) {
   return (
     <ul className="agents-questions" aria-label="Perguntas esperando você">
@@ -167,8 +180,11 @@ export function AgentsPanel({
   onOpen,
   onAnswer,
   readError,
+  cards = [],
 }: {
   agents: AgentList;
+  /** The question cards of the conversation (D67): "◆ N perguntas" takes the person to the one that holds them. */
+  cards?: readonly P.QuestionCard[];
   /** The orchestrator's session id: its children are the tree's first level. */
   rootId: string;
   /** Whether a child's conversation is in the window's list, to be opened. */
@@ -185,6 +201,8 @@ export function AgentsPanel({
   const live = liveCount(agents);
   const main = agents.main ? mainHealthView(agents.main) : null;
   const titleOf = (id: string) => agents.children.find((c) => c.id === id)?.title ?? null;
+  // A card holds the questions: they are answered there, in the conversation, and the queue is for none (D67).
+  const target = cardFor(cards, agents.questions);
   return (
     <>
       <div className="agents-head">
@@ -194,7 +212,16 @@ export function AgentsPanel({
         </span>
         {main && <span className={`agents-main-health tone-${main.tone}`}>{main.word}</span>}
         {n > 0 && (
-          <button type="button" className="agents-asks" aria-expanded={queue} onClick={() => setQueue((q) => !q)}>
+          <button
+            type="button"
+            className="agents-asks"
+            aria-expanded={target ? undefined : queue}
+            data-card-target={target ?? undefined}
+            title={target ? 'Ir ao cartão de perguntas na conversa' : undefined}
+            onClick={() => {
+              if (!target || !focusCard(target)) setQueue((q) => !q);
+            }}
+          >
             ◆ {n} {n === 1 ? 'pergunta' : 'perguntas'}
           </button>
         )}
@@ -204,7 +231,7 @@ export function AgentsPanel({
           {readError} — a lista abaixo é a dos eventos.
         </p>
       )}
-      {queue && n > 0 && <QuestionQueue questions={agents.questions} titleOf={titleOf} onAnswer={onAnswer} />}
+      {queue && n > 0 && !target && <QuestionQueue questions={agents.questions} titleOf={titleOf} onAnswer={onAnswer} />}
       {nodes.length === 0 ? (
         <p className="crew-quiet">Esta orquestradora ainda não despachou nenhum agente.</p>
       ) : (

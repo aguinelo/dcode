@@ -50,6 +50,12 @@ export function withAgentsOf(state: SessionsState, id: string, change: (agents: 
   return view ? put(state, { ...view, agents: change(view.agents) }) : state;
 }
 
+/** Changes one followed session's view with what the daemon answered outside its stream — the cards of /questions (D67). */
+export function withSessionOf(state: SessionsState, id: string, change: (view: SessionView) => SessionView): SessionsState {
+  const view = state.byId[id];
+  return view ? put(state, change(view)) : state;
+}
+
 /** Decodes and folds a batch of events as they came off the wire. */
 export function applyRaw(state: SessionsState, raw: readonly unknown[]): SessionsState {
   return raw.reduce<SessionsState>((s, r) => applyDecoded(s, decodeEvent(r)), state);

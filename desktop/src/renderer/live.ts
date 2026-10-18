@@ -14,11 +14,13 @@ import {
   CodeQuestionNotFound,
   CodeSessionNotFound,
   CodeTurnAlreadyActive,
+  type AnswerQuestionsRequest,
+  type AnswerResult,
   type CompactResult,
   type GitPRResponse,
   type UndoResult,
 } from '../protocol/generated';
-import { decodeChildren, decodeOrchestrator, decodeProject, decodeQuestion, decodeQuestions } from '../protocol/projects';
+import { decodeAnswers, decodeChildren, decodeOrchestrator, decodeProject, decodeQuestion, decodeQuestions } from '../protocol/projects';
 import { withAnswered, withChildren, withQuestions } from '../state/agents';
 import {
   answerRefusal,
@@ -35,7 +37,8 @@ import type { Answer, Attachment, DaemonStatus, DcodeApi, NewSessionOptions } fr
 import { STEER_TAKES_TEXT } from '../state/attachments';
 import { modeToSwitch, sandboxOf } from '../state/mode';
 import { applyListChange, emptyConversations, liveContinuationOf, type ConversationsState } from '../state/conversations';
-import { applyDecoded, emptySessions, withAgentsOf, type SessionsState } from '../state/sessions';
+import { applyDecoded, emptySessions, withAgentsOf, withSessionOf, type SessionsState } from '../state/sessions';
+import { withCards } from '../state/card';
 import { readHistory } from '../state/history';
 import { rowOfConversation, type Row } from '../state/sidebar';
 import { decodeCommands } from '../protocol/commands';
@@ -262,6 +265,7 @@ export class LiveStore {
     openOrchestrator: (workspace) => this.openOrchestrator(workspace),
     readAgents: (id) => this.readAgents(id),
     answerQuestion: (id, questionId, answer, note) => this.answerQuestion(id, questionId, answer, note),
+    answerQuestions: (id, batch) => this.answerQuestions(id, batch),
   };
 
   /**
@@ -315,7 +319,10 @@ export class LiveStore {
     const children = read(await this.api.orchestrate.children(id), decodeChildren, 'os filhos de uma orquestradora (GET /v1/sessions/{id}/children)', 'Os agentes não foram lidos do daemon');
     if (children.ok) this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withChildren(a, children.value)) });
     const questions = read(await this.api.orchestrate.questions(id), decodeQuestions, 'as perguntas de uma orquestradora (GET /v1/sessions/{id}/questions)', 'As perguntas não foram lidas do daemon');
-    if (questions.ok) this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withQuestions(a, questions.value)) });
+    if (questions.ok) {
+      this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withQuestions(a, questions.value.questions)) });
+      this.set({ sessions: withSessionOf(this.snap.sessions, id, (v) => withCards(v, questions.value.cards)) });
+    }
     if (!children.ok) return children;
     return questions.ok ? { ok: true, value: null } : questions;
   }
@@ -335,6 +342,24 @@ export class LiveStore {
     if (!got.ok) return got;
     this.set({ sessions: withAgentsOf(this.snap.sessions, id, (a) => withAnswered(a, questionId)) });
     return { ok: true, value: null };
+  }
+
+  /**
+   * The person's confirm of a card (D67): one POST with every answer and
+   * every skip. The cards the daemon answers change in the flow at once, and
+   * the questions it answered leave the queue, as their events will say; a
+   * batch refused whole is said with the daemon's reason.
+   */
+  private async answerQuestions(id: string, batch: AnswerQuestionsRequest): Promise<Outcome<AnswerResult[]>> {
+    const sent = await this.api.orchestrate.answerAll(id, batch);
+    if (!sent.ok && sent.refusal.code !== UNEXPECTED) return { ok: false, why: `As respostas não foram enviadas: ${sent.refusal.message}` };
+    const got = read(sent, decodeAnswers, 'confirmar um cartão (POST /v1/sessions/{id}/questions/answers)', 'As respostas não foram enviadas');
+    if (!got.ok) return got;
+    const answered = got.value.results.filter((r) => r.status === 'answered').map((r) => r.question_id);
+    let sessions = withSessionOf(this.snap.sessions, id, (v) => withCards(v, got.value.cards));
+    for (const q of answered) sessions = withAgentsOf(sessions, id, (a) => withAnswered(a, q));
+    this.set({ sessions });
+    return { ok: true, value: got.value.results };
   }
 
   private set(part: Partial<LiveSnapshot>): void {

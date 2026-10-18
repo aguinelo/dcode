@@ -271,3 +271,69 @@ também no teto (continuar e parar não pedem porquê); reler `/children` num
 relógio fixo (D64 deu a retenção ao daemon, e o silêncio do fluxo já diz
 quando reler); recuar os filhos também na grade (a grade não muda de desenho
 nesta fatia).
+
+**D67. A pessoa decide na conversa da orquestradora, num cartão de perguntas
+igual ao do Claude Code** (emenda D66). Decisão do dono, de 2026-10-18, que o
+núcleo já serve (`.p` §5.5 da orquestração, #558): as perguntas do mesmo tipo
+que esperam juntas são um cartão, e o cliente o desenha como o cartão de
+pergunta do Claude Code que o dono usa.
+
+- **O cartão mora na conversa**, no ponto do fluxo em que o `question.card`
+  chegou pela primeira vez, e muda ali mesmo a cada versão nova — na Crew e na
+  janela da grade, que compartilham o corpo da conversa. Um cartão que o fluxo
+  não viu, lido de `GET /questions` ao abrir ou da resposta de uma
+  confirmação, entra no fim. Uma versão mais velha que a desenhada não volta.
+- **Um item por vez**, com "1 de N" e as setas ‹ › no alto à direita; a
+  etiqueta (`header`) pequena ao lado do tipo, e o texto da pergunta como
+  título. Num merge, embaixo do título, o `summary` da orquestradora e a
+  `evidence` compacta — veredito da revisão, resultado do gate, o comando e o
+  commit curto —, lida do log e nunca do que o filho disse.
+- **As opções são linhas de rádio**: rótulo em negrito e `description`
+  embaixo, a `selected` marcada, a `recommended` com "(Recomendado)"; por
+  último "Outro", que abre um campo de texto, quando o item tem `allow_other`.
+  As palavras vão como `answer: "other"` com a nota; o daemon diz o que fez
+  delas (repassadas à orquestradora num merge, a resposta num desenho).
+- **Rodapé**: "Aplicar a recomendação a todos" à esquerda; "Pular" e
+  "Próximo ⌘↵" à direita. No último item "Próximo" vira "Confirmar", que manda
+  **todas** as escolhas num `POST /questions/answers` só, com os pulados em
+  `skipped`. Um item que a pessoa não chegou a ver vai como pulado: nada é
+  respondido sem ser visto, e quem quer responder tudo sem olhar tem o
+  "Aplicar a recomendação a todos", o mesmo `POST` com a recomendada de cada
+  item. "Pular" no último item pula e confirma o resto.
+- **Proposto**: o cartão que a orquestradora fez das palavras da pessoa abre
+  com "Você pediu: …" e o porquê dela, e as escolhas propostas marcadas, a
+  nota proposta junto. Só a confirmação da pessoa vira resposta.
+- **Teclado**: ↑/↓ movem a escolha, ↵ e ⌘↵ avançam (e confirmam no último),
+  Esc não fecha nada — o cartão fica no fluxo, e o Esc não chega à janela.
+- **Nada é otimista.** O item muda quando o cartão do daemon diz; o resultado
+  de cada resposta aparece embaixo do item — respondida, repassada, pulada ou
+  recusada com a mensagem do daemon (`question_already_answered` dito como
+  D66 já dizia). Um lote recusado inteiro é dito no cartão.
+- **O selo "◆ Precisa da sua contribuição · N pendentes"**, no amarelo de
+  espera de D52, fica embaixo do cartão enquanto `pending` passa de zero. Um
+  cartão fechado vira a lista do que foi respondido, sem selo.
+- **A aba Agentes leva ao cartão.** "◆ N perguntas" rola até o cartão mais
+  recente que tem uma das perguntas e o foca, em vez de abrir a fila; sem
+  cartão desenhado, abre a fila de D66 como antes.
+- **Só o fio (D8).** O cartão é conferido na fronteira (`QUESTION_CARD`), a
+  resposta do lote também (`decodeAnswers`), e o processo principal confere o
+  lote antes de enviar: ids no alfabeto do daemon, cada resposta como em D66,
+  pulo só com o id do cartão, nem vazio nem acima de 64 itens.
+- **Modo fixture.** A quarta gravação, `questions-recording.ts`
+  (`?fixture=crew-perguntas`): três merges num cartão e o cartão proposto das
+  palavras da pessoa.
+
+As réguas: as dezoito referências continuam a 0,00% — nenhuma tem
+orquestradora. O `check:daemon` passa 14 de 14: o `orchestra-lists`, com
+autorização do dono para mexer só nele, responde agora o merge pelo cartão
+(escolhe Merge, Confirmar, um `POST /questions/answers`) depois de o "◆ 1
+pergunta" focar o cartão, e confere o mesmo desfecho. As capturas — o cartão
+de três merges no primeiro e no último item, e o proposto, nos dois temas —
+vão ao dono no PR.
+
+Descartados: o cartão só no painel da direita (o dono quer decidir na
+conversa); todos os itens abertos de uma vez (o cartão do Claude Code mostra
+um, e três merges com evidência não cabem na altura da conversa); responder
+os itens não vistos com a seleção (uma resposta que a pessoa não leu); a
+fila de D66 ao lado do cartão (duas maneiras de responder a mesma pergunta na
+mesma tela).

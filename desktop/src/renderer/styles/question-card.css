@@ -1,0 +1,257 @@
+/*
+ * The orchestrator's question card in the conversation (D67), drawn like
+ * Claude Code's: one item at a time, the options as radio rows, the footer
+ * with "Pular" and "Próximo ⌘↵". The Crew's tokens, and the grid's where the
+ * Crew has none (the 8px corner is the Crew's own, D63).
+ */
+
+.qcard-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.qcard {
+  width: 100%;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius-lg, var(--dc-radius));
+  background: var(--dc-panel);
+  outline: none;
+}
+.qcard:focus-visible,
+.qcard:focus-within {
+  border-color: var(--dc-line-focus, var(--dc-line));
+}
+.qcard.closed {
+  background: none;
+}
+.qcard-from {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--dc-line-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dc-text);
+}
+.qcard-from-why {
+  display: block;
+  font-size: 12px;
+}
+.qcard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px 0;
+}
+.qcard-kind {
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+}
+.qcard-header {
+  color: var(--dc-faint);
+}
+.qcard-title-sm {
+  font-size: 12.5px;
+  color: var(--dc-dim);
+}
+.qcard-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--dc-faint);
+  font-variant-numeric: tabular-nums;
+}
+.qcard-pager button {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-dim);
+}
+.qcard-pager button:hover:not(:disabled) {
+  background: var(--dc-hover);
+  color: var(--dc-text);
+}
+.qcard-pager button:disabled {
+  opacity: 0.35;
+}
+.qcard-item {
+  padding: 4px 14px 8px;
+}
+.qcard-title {
+  margin: 4px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--dc-emph);
+}
+.qcard-summary {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dc-dim);
+  white-space: pre-line;
+}
+.qcard-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+.qcard-line {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.qcard-why {
+  padding: 0 14px;
+}
+.qcard-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.qcard-option {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--dc-radius);
+  text-align: left;
+  color: var(--dc-text);
+}
+.qcard-option:hover:not(:disabled) {
+  background: var(--dc-hover);
+}
+.qcard-option.on {
+  border-color: var(--dc-line);
+  background: var(--dc-sel);
+}
+.qcard-option:disabled {
+  opacity: 0.6;
+}
+.qcard-radio {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 2px;
+  border: 1.5px solid var(--dc-faint);
+  border-radius: 50%;
+}
+.qcard-option.on .qcard-radio {
+  border-color: var(--dc-accent);
+  background: radial-gradient(circle, var(--dc-accent) 0 3px, transparent 3.5px);
+}
+.qcard-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+}
+.qcard-option-text b {
+  font-weight: 600;
+  color: var(--dc-emph);
+}
+.qcard-option-desc {
+  font-size: 12px;
+  color: var(--dc-faint);
+}
+.qcard-other {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  background: var(--dc-sunken);
+  color: var(--dc-text);
+  font: inherit;
+  font-size: 13px;
+}
+.qcard-other:focus {
+  border-color: var(--dc-line-focus, var(--dc-line));
+  outline: none;
+}
+.qcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--dc-line-soft);
+}
+.qcard-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.qcard-all,
+.qcard-skip {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--dc-line);
+  border-radius: var(--dc-radius);
+  font-size: 12px;
+  color: var(--dc-dim);
+}
+.qcard-all {
+  border-color: transparent;
+  padding: 0 4px;
+  color: var(--dc-faint);
+}
+.qcard-all:hover:not(:disabled),
+.qcard-skip:hover:not(:disabled) {
+  color: var(--dc-text);
+  background: var(--dc-hover);
+}
+.qcard-all:disabled,
+.qcard-skip:disabled,
+.qcard-next:disabled {
+  opacity: 0.5;
+}
+.qcard-key {
+  opacity: 0.7;
+  font-size: 11px;
+}
+.qcard-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--dc-warn-line);
+  border-radius: 11px;
+  background: var(--dc-warn-bg);
+  font-size: 11.5px;
+}
+.qcard-done-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 0 14px 10px;
+  list-style: none;
+}
+.qcard-item .qcard-done-list {
+  padding: 0;
+}
+.qcard-done {
+  display: flex;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.qcard-done-q {
+  color: var(--dc-dim);
+}
+.qcard-done-a {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--dc-text);
+}
