@@ -202,7 +202,27 @@ var tuiInvariants = map[string]string{
 	"desenhado como veio":                "TestAnUnknownStateIsDrawnAsItCame",
 	"nunca cortado em silêncio":          "TestChildrenThatDoNotFitAreCounted",
 	"os oito estados continuam":          "TestTheEightStatesStayDistinctInASCII",
-	"Ela aparece sozinha a partir de":    "TestTheSideColumnAppearsOnATerminalWideEnoughForIt",
+	// `dcode orchestrate`, ^Q and ^R over the children (orchestrate.go; the
+	// command in cmd/dcode/orchestrate.go).
+	"pelo `POST /v1/projects` e anexa":        "TestOrchestrateOpensTheProjectOfTheFolderAndAttachesToItsOrchestrator",
+	"não sobe daemon próprio":                 "TestOrchestrateWithNoDaemonSaysToRunServe",
+	"nomeando `orchestrator.enabled`":         "TestADisabledOrchestratorIsSaidNamingTheKey",
+	"nunca é aberta como se fosse":            "TestASessionThatIsNotAnOrchestratorIsRefused",
+	"lê `/children` e `/questions` ao abrir":  "TestOpeningTheOrchestratorReadsChildrenAndQuestionsIntoTheList",
+	"**só depois do histórico**":              "TestTheListIsReadOnlyAfterTheBacklogSoReplayCannotResurrectAChild",
+	"abre a pergunta mais antiga":             "TestCtrlQAnswersTheOldestQuestionThroughThePost",
+	"Enter sozinho responde a recomendada":    "TestEnterOnAFreshQuestionAnswersTheRecommendedOne",
+	"a primeira resposta vale":                "TestASecondAnswerIsSaidAsAlreadyAnswered",
+	"nada parece respondido":                  "TestAFailedAnswerIsSaidAndTheQuestionStays",
+	"respondida em outro lugar fecha":         "TestAQuestionAnsweredElsewhereClosesTheOpenOne",
+	"nunca no rótulo inglês do fio":           "TestTheAnswerOptionsSpeakThePersonsLanguage",
+	"sem pergunta esperando diz":              "TestCtrlQWithNothingWaitingSaysSo",
+	"fora da orquestradora diz onde funciona": "TestCtrlQOutsideAnOrchestratorSaysWhereItWorks",
+	"fecha a pergunta sem responder":          "TestEscClosesTheQuestionWithoutAnswering",
+	"lista os filhos e **anexa**":             "TestCtrlRUnderTheOrchestratorAttachesToAChildAndBack",
+	"nem continuado no lugar dele":            "TestAChildThatCannotBeOpenedIsSaidAndNothingIsStarted",
+	"não toma o teclado e diz por quê":        "TestCtrlRWithNoChildrenDoesNotOpen",
+	"Ela aparece sozinha a partir de":         "TestTheSideColumnAppearsOnATerminalWideEnoughForIt",
 
 	// The column earns its width.
 	"não repete o fluxo":                "TestTheSideColumnSaysWhatIsNowhereElse",

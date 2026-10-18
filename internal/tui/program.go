@@ -193,6 +193,10 @@ type program struct {
 	// tick can stop when the session goes idle and be started again exactly
 	// once when a turn begins.
 	ticking bool
+
+	// orch is the orchestrator this client was opened on, when it was
+	// (orchestrate.go).
+	orch orchFollow
 }
 
 // catchingUp reports whether the client is still reading history it was handed
@@ -315,6 +319,10 @@ func (p *program) Init() tea.Cmd {
 	}
 	if p.opts.DaemonFailed != nil {
 		cmds = append(cmds, p.watchDaemon())
+	}
+	p.startOrchestrating()
+	if c := p.loadAgentsIfDue(); c != nil {
+		cmds = append(cmds, c)
 	}
 	return tea.Batch(cmds...)
 }
@@ -477,7 +485,9 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// than carried over: keeping entries from the old one would show a
 		// history the model no longer has.
 		p.opts.SessionID = msg.session.ID
+		agents := p.model.Agents
 		p.model = NewModel(msg.session.ID, msg.session.Workspace, msg.session.Model, msg.session.SandboxMode, p.opts.Lang)
+		p.carryAgents(agents, msg.session.ID)
 		// Backlog and From belong to the session that just replaced the old
 		// one, not the one the client happened to start attached to.
 		//
@@ -498,7 +508,14 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// empty itself the first time somebody ran /clear.
 		p.model.Sessions = p.opts.Sessions
 		p.attach(msg.session.ID)
-		return p, p.waitForEvent()
+		return p, tea.Batch(p.waitForEvent(), p.loadAgentsIfDue())
+
+	case agentsLoadedMsg:
+		p.onAgentsLoaded(msg)
+		return p, nil
+
+	case answeredMsg:
+		return p, p.onAnswered(msg)
 
 	case eventMsg:
 		// From a stream that has been replaced: an event still in the old
@@ -510,6 +527,7 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		p.model.Now = p.now()
 		p.model = p.model.Apply(msg.ev)
+		p.syncAsk()
 		// The queue drains when the session goes idle: the protocol refuses a
 		// concurrent turn, so waiting here is what turns a refusal into a
 		// usable experience.
@@ -525,6 +543,9 @@ func (p *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m, text := p.model.DrainQueue()
 			p.model = m
 			cmds = append(cmds, p.submit(text))
+		}
+		if c := p.loadAgentsIfDue(); c != nil {
+			cmds = append(cmds, c)
 		}
 		cmds = append(cmds, p.waitForEvent())
 		return p, tea.Batch(cmds...)
@@ -618,6 +639,16 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// letting keystrokes fall through would let them dismiss it by accident.
 	if p.model.Pending != nil {
 		return p.onApprovalKey(k)
+	}
+	p.clearOrchFlash()
+
+	// The orchestrator's question and its list of agents own the keyboard
+	// while they are open, for the reason every overlay here does.
+	if p.model.Ask != nil {
+		return p.onAskKey(k)
+	}
+	if p.model.Pick.Active {
+		return p.onPickKey(k)
 	}
 
 	// Copy mode owns the keyboard while it is open, and nothing else does. A
@@ -841,7 +872,15 @@ func (p *program) onKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		p.model = p.model.RemoveFromQueue(0)
 		return p, nil
 
+	case "ctrl+q":
+		return p.openAsk()
+
 	case "ctrl+r":
+		// Under an orchestrator the list is its agents, not the recorded
+		// conversations: choosing one attaches to it (orchestrate.go).
+		if p.orchestrating() {
+			return p.openPick()
+		}
 		// Focus the conversation list. Nothing to choose from means nothing to
 		// focus: a mode that opens onto an empty list is a mode that swallows
 		// the next keystroke for no reason.

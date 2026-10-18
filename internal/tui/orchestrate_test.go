@@ -213,7 +213,8 @@ func TestCtrlQAnswersTheOldestQuestionThroughThePost(t *testing.T) {
 		t.Fatalf("^Q did not open the oldest question: %+v", p.model.Ask)
 	}
 	s := screen(p)
-	for _, want := range []string{"merge c1?", "the gate is green", "Merge", "Return to the child", "Close the child", Text(En).AskRecommended} {
+	tx := Text(En)
+	for _, want := range []string{"merge c1?", "the gate is green", tx.AnswerMerge, tx.AnswerReturn, tx.AnswerClose, tx.AskRecommended} {
 		if !strings.Contains(s, want) {
 			t.Errorf("the question does not show %q:\n%s", want, s)
 		}
