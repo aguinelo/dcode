@@ -126,6 +126,10 @@ var nonSession = map[string]string{
 	"orchestrator.enabled":     "read by the daemon, which conducts projects and outlives any one session",
 	"orchestrator.profile":     "read by the orchestrator, which conducts sessions and is not one",
 	"orchestrator.main_branch": "read by the orchestrator, which conducts sessions and is not one",
+
+	// The gate is measured by the orchestrator, never by the session it judges.
+	"orchestrator.gate_command": "read by the orchestrator, which runs the gate itself and is not a session",
+	"orchestrator.gate_timeout": "read by the orchestrator, which runs the gate itself and is not a session",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.
