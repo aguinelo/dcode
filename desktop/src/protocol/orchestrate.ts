@@ -44,6 +44,8 @@ const GATE_RESULT: Shape<P.GateResult> = {
   result: req('string'),
   output_tail: opt('string'),
   output_path: opt('string'),
+  sandbox: opt('string'),
+  sandbox_mode: opt('string'),
   at: req('string'),
 };
 
