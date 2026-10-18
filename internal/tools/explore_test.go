@@ -15,15 +15,15 @@ type fakeDelegator struct {
 	conclusion string
 	read       []string
 	unread     []string
-	truncated  bool
+	dropped    int
 	err        error
 	task, path string
 }
 
-func (f *fakeDelegator) Explore(_ context.Context, task, path string, owns []string) (string, []string, []string, []string, bool, error) {
+func (f *fakeDelegator) Explore(_ context.Context, task, path string, owns []string) (string, []string, []string, []string, int, error) {
 	f.owns = owns
 	f.task, f.path = task, path
-	return f.conclusion, f.read, f.wrote, f.unread, f.truncated, f.err
+	return f.conclusion, f.read, f.wrote, f.unread, f.dropped, f.err
 }
 
 func TestExploreReportsWhereItLookedAndWhatItCouldNotRead(t *testing.T) {
@@ -55,7 +55,7 @@ func TestExploreReportsWhereItLookedAndWhatItCouldNotRead(t *testing.T) {
 
 func TestExploreDeclaresTruncation(t *testing.T) {
 	s, _ := setup(t)
-	res := run(t, Explore{Delegator: &fakeDelegator{conclusion: "…", truncated: true}}, s,
+	res := run(t, Explore{Delegator: &fakeDelegator{conclusion: "…", dropped: 900}}, s,
 		ExploreInput{Task: "explain"})
 	if !res.Truncated || !strings.Contains(res.Output, "truncated") {
 		t.Fatalf("a cut report did not declare it:\n%s", res.Output)

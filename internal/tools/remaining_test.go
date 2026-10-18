@@ -156,8 +156,8 @@ func cutSymbol(t *testing.T) (Result, int) {
 
 func cutExplore(t *testing.T) (Result, int) {
 	s, _ := setup(t)
-	return run(t, Explore{Delegator: &fakeDelegator{conclusion: "…", truncated: true}}, s,
-		ExploreInput{Task: "explain"}), 0
+	return run(t, Explore{Delegator: &fakeDelegator{conclusion: "…", dropped: 900}}, s,
+		ExploreInput{Task: "explain"}), 900
 }
 
 // The echoed diff is the edit's output when it is echoed, so its cut is the
@@ -170,7 +170,7 @@ func cutEdit(t *testing.T) (Result, int) {
 	s.MarkRead(p, body, 0)
 	return run(t, Edit{}, s, EditInput{
 		Path: "big.txt", OldString: "target", NewString: "changed", ReplaceAll: true,
-	}), 0
+	}), 2*(DiffMaxLines+200) + 1 - DiffMaxLines // one hunk: its header, every line out and in
 }
 
 func cutBash(t *testing.T) (Result, int) {

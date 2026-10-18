@@ -247,6 +247,8 @@ func (sy Symbol) Execute(_ context.Context, input json.RawMessage, s *State) (Re
 	unknownExt := map[string]struct{}{}
 	limit := s.Limits.SymbolMaxMatches
 	truncated := false
+	// Counted past the limit, never emitted, for the reason grep counts them.
+	remaining := 0
 
 	for _, rel := range files {
 		raw, err := os.ReadFile(filepath.Join(root, rel))
@@ -279,12 +281,10 @@ func (sy Symbol) Execute(_ context.Context, input json.RawMessage, s *State) (Re
 			}
 			if limit > 0 && len(hits) >= limit {
 				truncated = true
-				break
+				remaining++
+				continue
 			}
 			hits = append(hits, hit{rel, i + 1, line, isDef})
-		}
-		if truncated {
-			break
 		}
 	}
 
@@ -304,7 +304,13 @@ func (sy Symbol) Execute(_ context.Context, input json.RawMessage, s *State) (Re
 	}
 
 	var head strings.Builder
-	fmt.Fprintf(&head, "symbol: %s (%s) — %d match, %d refs\n", in.Name, kind, defs, refs)
+	fmt.Fprintf(&head, "symbol: %s (%s) — %d match, %d refs", in.Name, kind, defs, refs)
+	if truncated {
+		// On the first line too: the counts beside it are of what is shown,
+		// and read alone they would pass for the whole.
+		fmt.Fprintf(&head, ", %d more not shown", remaining)
+	}
+	head.WriteString("\n")
 	head.WriteString(SymbolLimit + "\n")
 	if len(unknownExt) > 0 {
 		exts := make([]string, 0, len(unknownExt))
@@ -333,7 +339,9 @@ func (sy Symbol) Execute(_ context.Context, input json.RawMessage, s *State) (Re
 	}
 	if truncated {
 		res.Truncated = true
-		res.Output += fmt.Sprintf("\n… stopped at %d matches. Narrow with path or glob.\n", limit)
+		res.Remaining = remaining
+		res.Output += fmt.Sprintf("\n… stopped at %d matches, %d more not shown. Narrow with path or glob.\n",
+			limit, remaining)
 	}
 	return res, nil
 }

@@ -125,7 +125,7 @@ func TestExploreAdaptsTheEngineToTheToolInterface(t *testing.T) {
 		{call("c1", "read", `{"path":"pay.go"}`), done()},
 		{text("found it"), done()},
 	})
-	conclusion, read, _, unread, truncated, err := e.Explore(context.Background(), "find it", "", nil)
+	conclusion, read, _, unread, dropped, err := e.Explore(context.Background(), "find it", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,8 +135,8 @@ func TestExploreAdaptsTheEngineToTheToolInterface(t *testing.T) {
 	if len(read) == 0 {
 		t.Error("no paths reported")
 	}
-	if len(unread) != 0 || truncated {
-		t.Errorf("unexpected unread=%v truncated=%v", unread, truncated)
+	if len(unread) != 0 || dropped != 0 {
+		t.Errorf("unexpected unread=%v dropped=%d", unread, dropped)
 	}
 }
 
