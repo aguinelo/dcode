@@ -82,6 +82,33 @@ func TestUpdatingMergesMainIntoTheBranchAndNeverRewritesIt(t *testing.T) {
 	}
 }
 
+// Spec: AGENTS.md, every failure said — a child's worktree that cannot move
+// forward to H, an edit of its own in the way, is an error and nothing is
+// recorded as updated.
+func TestABranchThatCannotMoveForwardIsAnError(t *testing.T) {
+	p := newProject(t, false)
+	wt, head := p.child(t, "dcode/a", "main", "a.txt", "a\n")
+	writeFile(t, p.root, "file.txt", "main moved\n")
+	git(t, p.root, "commit", "-qam", "main moves")
+	writeFile(t, wt, "file.txt", "the child's own edit\n")
+	l := openLog(t, filepath.Dir(p.dir), protocolProject(p))
+	in, err := OpenIntegration(context.Background(), p.root, p.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := in.Update(context.Background(), l, "c1", wt, head, revParse(t, p.root, "main")); err == nil {
+		t.Fatal("the branch moved over the child's own edit")
+	}
+	if revParse(t, p.root, "dcode/a") != head {
+		t.Error("the branch moved")
+	}
+	for _, d := range readLines(t, filepath.Dir(p.dir)) {
+		if d.Kind == "branch.updated" {
+			t.Error("branch.updated was recorded for an update that failed")
+		}
+	}
+}
+
 // Spec: orchestration .i step 9, Q-H — a conflict goes back to the child that
 // owns the branch with the paths, the markers left in its worktree; the
 // integration ends clean and the orchestrator resolves nothing.

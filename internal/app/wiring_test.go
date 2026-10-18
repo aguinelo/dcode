@@ -142,6 +142,12 @@ var nonSession = map[string]string{
 	// starts, and the session never chooses its own reviewer or its diff.
 	"orchestrator.reviewer_profiles":     "read by the orchestrator, which chooses the reviewer's profile from the allow-list",
 	"orchestrator.review_max_diff_bytes": "read by the orchestrator, which assembles the reviewer's diff",
+
+	// The merge's keys (orchestration .config §3).
+	"orchestrator.forge":                "read by the orchestrator, which merges through the project's forge",
+	"orchestrator.ci_timeout":           "read by the orchestrator, which waits for main's CI after a merge",
+	"orchestrator.sensitive":            "read by the orchestrator, which marks a merge question sensitive",
+	"orchestrator.sensitive_diff_lines": "read by the orchestrator, which marks a large merge question sensitive",
 }
 
 // TestEveryKnownKeyIsAccountedFor is what the rest of this file was missing.
