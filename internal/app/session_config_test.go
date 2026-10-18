@@ -69,6 +69,42 @@ func TestAProjectConfigurationThatCannotBeReadRefusesTheSession(t *testing.T) {
 	}
 }
 
+// A value that does not convert to what its key reads refuses the session and
+// says which key, which layer and which value — `allow_network = "talvez"` used
+// to open a session with the network on, the default, and nothing said that
+// the line in the file had been read as nothing at all.
+func TestAValueThatDoesNotConvertRefusesTheSessionNamingIt(t *testing.T) {
+	env := envFrom(map[string]string{"DCODE_HOME": t.TempDir()})
+	broken := t.TempDir()
+	projectConfig(t, broken, "[sandbox]\nallow_network = \"talvez\"\n")
+
+	_, c := daemonBootedIn(t, env, t.TempDir())
+	_, err := c.CreateSession(context.Background(), protocol.CreateSessionRequest{Workspace: broken})
+	if err == nil {
+		t.Fatal(`a session opened with allow_network = "talvez" read as the default`)
+	}
+	for _, want := range []string{"sandbox.allow_network", "talvez", filepath.Join(".dcode", "config.toml")} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("refused without naming %q: %v", want, err)
+		}
+	}
+}
+
+// A number is the whole value or it is not a number. "12abc" used to resolve
+// to 12, by the prefix a format scan stops at.
+func TestANumberThatIsOnlyAPrefixIsRefusedNamingTheVariable(t *testing.T) {
+	env := envFrom(map[string]string{"DCODE_HOME": t.TempDir(), "DCODE_MAX_ITERATIONS": "12abc"})
+	_, _, err := FromEnv(env, t.TempDir())
+	if err == nil {
+		t.Fatal("DCODE_MAX_ITERATIONS=12abc was read without a word")
+	}
+	for _, want := range []string{"limits.max_iterations", "12abc", "DCODE_MAX_ITERATIONS"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("refused without naming %q: %v", want, err)
+		}
+	}
+}
+
 func projectConfig(t *testing.T, ws, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Join(ws, ".dcode"), 0o755); err != nil {

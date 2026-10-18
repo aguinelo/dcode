@@ -60,6 +60,7 @@ var configInvariants = map[string]string{
 	// One daemon, many projects. Asserted through the daemon's own wiring.
 	"no workspace de cada sessão":               "TestEachSessionReadsTheConfigurationOfItsOwnWorkspace",
 	"recusa a sessão dizendo o que está errado": "TestAProjectConfigurationThatCannotBeReadRefusesTheSession",
+	"Valor que não converte para o tipo":        "TestAValueThatDoesNotConvertRefusesTheSessionNamingIt",
 }
 
 func TestEveryInvariantHasATest(t *testing.T) {

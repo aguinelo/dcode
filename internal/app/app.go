@@ -382,6 +382,12 @@ func fromResolved(r config.Resolved, env func(string) string, workspace string) 
 			MaxOutputTokens:   r.Int("limits.max_output_tokens", 0),
 		},
 	}
+	// A value that did not convert was read above as its default. Going on
+	// would run the session under a setting nobody chose — allow_network =
+	// "talvez" opened the network — so it refuses, naming key, layer and value.
+	if err := r.Err(); err != nil {
+		return Options{}, r, err
+	}
 	if err := config.CheckAnthropicWorkspace(opts.AnthropicWorkspace); err != nil {
 		return Options{}, r, err
 	}

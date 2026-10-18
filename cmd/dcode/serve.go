@@ -62,14 +62,21 @@ func runServe(args []string) error {
 		return err
 	}
 
+	record, budget := recordDir(resolved), recordBudget(resolved)
+	// The record keys are read here, after loadOptions already asked: a
+	// record.keep_days that does not convert is refused the same way.
+	if err := resolved.Err(); err != nil {
+		return err
+	}
+
 	d := app.NewDaemon(app.DaemonOptions{
 		Orchestrator:    orch,
 		Log:             func(msg string) { fmt.Fprintln(os.Stderr, msg) },
 		SocketPath:      path,
 		MaxSessions:     *maxSessions,
 		EventRetention:  *retention,
-		RecordDir:       recordDir(resolved),
-		RecordBudget:    recordBudget(resolved),
+		RecordDir:       record,
+		RecordBudget:    budget,
 		ApprovalTimeout: *timeout,
 		Base:            base,
 	})
